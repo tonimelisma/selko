@@ -7,7 +7,8 @@ Uses service role key for admin operations.
 import argparse
 import sys
 
-from selko.config import add_env_argument, load_config
+from selko.config import add_env_argument, add_logging_arguments, load_config
+from selko.logging import setup_logging
 from selko.services.users import (
     UserManagementError,
     create_user,
@@ -75,9 +76,13 @@ Examples:
 
   # Use staging environment
   uv run python -m cli.cli_user --env staging list
+
+  # Enable verbose logging
+  uv run python -m cli.cli_user -v list
         """,
     )
     add_env_argument(parser)
+    add_logging_arguments(parser)
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -103,6 +108,7 @@ Examples:
     )
 
     args = parser.parse_args()
+    setup_logging(verbose=args.verbose, quiet=args.quiet)
     config = load_config(args.env)
 
     if args.command == "create":

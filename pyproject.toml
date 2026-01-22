@@ -9,6 +9,12 @@ dependencies = [
     "selko-cli",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+]
+
 [tool.uv.sources]
 selko = { workspace = true }
 selko-cli = { workspace = true }

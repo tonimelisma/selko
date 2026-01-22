@@ -4,6 +4,48 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-22
 
+### POC Hardening - Testing, Logging, and Fixes
+
+**Files created:**
+- `backend/selko/logging.py` - Centralized logging configuration with verbose/quiet support
+- `backend/tests/__init__.py` - Test suite package marker
+- `backend/tests/conftest.py` - Pytest fixtures for testing
+- `backend/tests/test_config.py` - Configuration loading tests
+- `backend/tests/test_emails.py` - Email parsing tests (RFC 5322 compliance)
+- `backend/tests/test_integrations.py` - OAuth credential storage tests
+- `supabase/migrations/20260122000002_add_indexes.sql` - Performance indexes for emails, integrations, attachments
+- `supabase/migrations/20260122000003_add_updated_at_triggers.sql` - Auto-update timestamps on integrations/users
+
+**Files modified:**
+- `backend/selko/config.py` - Added `add_logging_arguments()` helper, improved error handling, use logger
+- `backend/selko/services/auth.py` - Use logging, catch specific `AuthApiError`
+- `backend/selko/services/users.py` - Use logging, conditional email confirmation by environment
+- `backend/selko/services/integrations.py` - Use logging, catch specific `PostgrestAPIError`
+- `backend/selko/services/gmail.py` - Use logging, catch `RefreshError`/`HttpError`, add rate limiting
+- `backend/selko/services/emails.py` - Use stdlib `email.utils` for RFC 5322 parsing, use upsert for efficiency
+- `cli/cli_user.py` - Add `-v`/`--verbose` and `-q`/`--quiet` flags
+- `cli/cli_auth_gmail.py` - Add verbose/quiet flags, use logging
+- `cli/cli_fetch_emails.py` - Add verbose/quiet flags, use logging
+- `backend/pyproject.toml` - Add test dependencies (pytest, pytest-cov)
+- `pyproject.toml` - Add test dependencies
+- `CLAUDE.md` - Updated structure, CLI flags, database indexes/triggers
+- `README.md` - Updated structure, added testing section
+
+**Improvements:**
+1. **Logging Infrastructure**: Replace all `print()` with Python logging module; CLI supports `-v`/`-q` flags
+2. **Email Parsing Fix**: Use stdlib `email.utils.parseaddr()` and `getaddresses()` for RFC 5322 compliance (handles quoted names with commas, angle brackets)
+3. **Database Efficiency**: Replace 2-query SELECT+INSERT/UPDATE pattern with single upsert
+4. **Exception Handling**: Catch specific exceptions (`AuthApiError`, `PostgrestAPIError`, `RefreshError`) instead of generic `Exception`
+5. **Conditional Email Confirmation**: Auto-confirm users in development only; staging/production require email verification
+6. **Gmail Rate Limiting**: Exponential backoff for 429 errors, small delays between requests
+7. **Database Indexes**: Add indexes for common query patterns (user+date, content_hash, status)
+8. **Database Triggers**: Auto-update `updated_at` timestamps on integrations and users tables
+9. **Test Suite**: 27 unit tests covering config, email parsing, and integrations
+
+**Reason:** POC hardening to improve code quality, reliability, and maintainability before further development.
+
+---
+
 ### 1159713 - Refactor POC to monorepo with proper user authentication
 
 **Files created:**

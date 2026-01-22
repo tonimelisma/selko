@@ -4,9 +4,13 @@ Provides admin operations for user CRUD using the service role key.
 These operations bypass RLS for administrative purposes.
 """
 
-from supabase import Client, create_client
+import logging
+
+from supabase import AuthApiError, Client, create_client
 
 from selko.config import Config
+
+logger = logging.getLogger(__name__)
 
 
 class UserManagementError(Exception):
@@ -44,6 +48,8 @@ def create_user(
     """Create a new user in auth.users.
 
     The database trigger automatically creates the public.users profile.
+    In development, users are auto-confirmed. In staging/production,
+    a confirmation email is sent.
 
     Args:
         config: Configuration object.
@@ -59,25 +65,33 @@ def create_user(
     """
     client = get_admin_client(config)
 
+    # Only auto-confirm in development
+    auto_confirm = config.environment == "development"
+
     try:
         response = client.auth.admin.create_user(
             {
                 "email": email,
                 "password": password,
-                "email_confirm": True,  # Auto-confirm for dev
+                "email_confirm": auto_confirm,
             }
         )
 
         if not response.user:
             raise UserManagementError(f"Failed to create user: {email}")
 
+        if auto_confirm:
+            logger.debug(f"Auto-confirmed user {email} (development mode)")
+        else:
+            logger.info(f"User {email} created - confirmation email sent")
+
         return {
             "id": str(response.user.id),
             "email": response.user.email,
         }
 
-    except Exception as e:
-        raise UserManagementError(f"Failed to create user: {e}") from e
+    except AuthApiError as e:
+        raise UserManagementError(f"Failed to create user: {e.message}") from e
 
 
 def list_users(config: Config) -> list[dict]:
@@ -97,8 +111,8 @@ def list_users(config: Config) -> list[dict]:
             {"id": str(user.id), "email": user.email}
             for user in response
         ]
-    except Exception as e:
-        raise UserManagementError(f"Failed to list users: {e}") from e
+    except AuthApiError as e:
+        raise UserManagementError(f"Failed to list users: {e.message}") from e
 
 
 def delete_user(config: Config, user_id: str) -> bool:
@@ -118,9 +132,10 @@ def delete_user(config: Config, user_id: str) -> bool:
 
     try:
         client.auth.admin.delete_user(user_id)
+        logger.info(f"Deleted user {user_id}")
         return True
-    except Exception as e:
-        raise UserManagementError(f"Failed to delete user: {e}") from e
+    except AuthApiError as e:
+        raise UserManagementError(f"Failed to delete user: {e.message}") from e
 
 
 def get_user(config: Config, user_id: str) -> dict:
@@ -146,5 +161,5 @@ def get_user(config: Config, user_id: str) -> dict:
             "id": str(response.user.id),
             "email": response.user.email,
         }
-    except Exception as e:
-        raise UserManagementError(f"Failed to get user: {e}") from e
+    except AuthApiError as e:
+        raise UserManagementError(f"Failed to get user: {e.message}") from e

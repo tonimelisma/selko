@@ -4,14 +4,17 @@ Handles OAuth token storage and retrieval from the integrations table.
 Uses RLS - all operations are scoped to the authenticated user.
 """
 
+import logging
 from datetime import datetime
 from typing import Optional
 
 from google.oauth2.credentials import Credentials
-from supabase import Client
+from supabase import Client, PostgrestAPIError
 
 from selko.config import Config
 from selko.services.auth import get_current_user_id
+
+logger = logging.getLogger(__name__)
 
 
 class IntegrationError(Exception):
@@ -59,9 +62,9 @@ def save_oauth_credentials(
         client.table("integrations").upsert(
             data, on_conflict="user_id,provider"
         ).execute()
-        print(f"Saved {provider} integration for user {user_id}")
-    except Exception as e:
-        raise IntegrationError(f"Failed to save integration: {e}") from e
+        logger.info(f"Saved {provider} integration for user {user_id}")
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to save integration: {e.message}") from e
 
 
 def get_oauth_credentials(
@@ -101,7 +104,7 @@ def get_oauth_credentials(
 
         # Check if integration is in error/revoked state
         if row.get("status") in ("revoked", "error"):
-            print(f"Warning: {provider} integration is {row['status']}")
+            logger.warning(f"{provider} integration is {row['status']}")
             return None
 
         # Reconstruct credentials with client_id/secret for refresh
@@ -116,8 +119,8 @@ def get_oauth_credentials(
 
         return creds
 
-    except Exception as e:
-        raise IntegrationError(f"Failed to get integration: {e}") from e
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to get integration: {e.message}") from e
 
 
 def update_integration_status(
@@ -138,8 +141,9 @@ def update_integration_status(
         client.table("integrations").update(
             {"status": status, "updated_at": datetime.utcnow().isoformat()}
         ).eq("user_id", user_id).eq("provider", provider).execute()
-    except Exception as e:
-        raise IntegrationError(f"Failed to update integration status: {e}") from e
+        logger.debug(f"Updated {provider} integration status to {status}")
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to update integration status: {e.message}") from e
 
 
 def update_oauth_credentials(
@@ -169,5 +173,6 @@ def update_oauth_credentials(
                 "updated_at": datetime.utcnow().isoformat(),
             }
         ).eq("user_id", user_id).eq("provider", provider).execute()
-    except Exception as e:
-        raise IntegrationError(f"Failed to update tokens: {e}") from e
+        logger.debug(f"Updated {provider} OAuth tokens")
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to update tokens: {e.message}") from e

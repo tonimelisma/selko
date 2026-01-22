@@ -129,12 +129,16 @@ selko/
 │   ├── selko/
 │   │   ├── __init__.py
 │   │   ├── config.py          # Centralized configuration
+│   │   ├── logging.py         # Centralized logging
 │   │   └── services/
 │   │       ├── auth.py        # User authentication
 │   │       ├── users.py       # User management (admin)
 │   │       ├── integrations.py # OAuth token storage
 │   │       ├── gmail.py       # Gmail OAuth + API
 │   │       └── emails.py      # Email parsing + storage
+│   ├── tests/                  # Test suite
+│   │   ├── conftest.py        # Pytest fixtures
+│   │   └── test_*.py          # Unit tests
 │   └── pyproject.toml
 │
 ├── cli/                        # CLI tools
@@ -186,6 +190,25 @@ uv run python -m cli.cli_auth_gmail
 
 # Fetch emails (uses credentials from database)
 uv run python -m cli.cli_fetch_emails --max 20
+
+# Enable verbose logging
+uv run python -m cli.cli_fetch_emails -v --max 10
+
+# Quiet mode (only warnings/errors)
+uv run python -m cli.cli_fetch_emails -q --max 100
+```
+
+### Running Tests
+
+```bash
+# Install test dependencies
+uv sync --extra test
+
+# Run all tests
+uv run pytest backend/tests/ -v
+
+# Run with coverage report
+uv run pytest backend/tests/ --cov=selko
 ```
 
 ## Documentation

@@ -3,12 +3,16 @@
 Handles Gmail OAuth flow and API interactions.
 """
 
+import logging
+import time
 from typing import Optional
 
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from supabase import Client
 
 from selko.config import Config
@@ -17,6 +21,8 @@ from selko.services.integrations import (
     update_integration_status,
     update_oauth_credentials,
 )
+
+logger = logging.getLogger(__name__)
 
 # Gmail read-only scope
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
@@ -54,14 +60,17 @@ def run_oauth_flow(config: Config) -> Credentials:
             str(config.credentials_file), SCOPES
         )
 
-        print("Opening browser for authentication...")
-        print("If browser doesn't open, visit the URL shown below.\n")
+        logger.info("Opening browser for authentication...")
+        logger.info("If browser doesn't open, visit the URL shown below.")
 
         creds = flow.run_local_server(port=0)
+        logger.info("OAuth flow completed successfully")
         return creds
 
-    except Exception as e:
-        raise GmailError(f"OAuth flow failed: {e}") from e
+    except FileNotFoundError as e:
+        raise GmailError(f"Credentials file not found: {e}") from e
+    except ValueError as e:
+        raise GmailError(f"Invalid credentials file format: {e}") from e
 
 
 def get_credentials(
@@ -85,15 +94,15 @@ def get_credentials(
     # Refresh if expired
     if creds.expired and creds.refresh_token:
         try:
-            print("Token expired, refreshing...")
+            logger.info("Token expired, refreshing...")
             creds.refresh(Request())
 
             # Save refreshed token to database
             update_oauth_credentials(client, "gmail", creds)
-            print("Token refreshed and saved.")
+            logger.info("Token refreshed and saved")
 
-        except Exception as e:
-            print(f"Token refresh failed: {e}")
+        except RefreshError as e:
+            logger.warning(f"Token refresh failed: {e}")
             update_integration_status(client, "gmail", "expired")
             return None
 
@@ -128,13 +137,15 @@ def fetch_messages(
     service,
     max_results: int = 10,
     label_ids: list[str] = None,
+    max_retries: int = 3,
 ) -> list[dict]:
-    """Fetch email messages from Gmail.
+    """Fetch email messages from Gmail with rate limit handling.
 
     Args:
         service: Gmail API service.
         max_results: Maximum number of messages to fetch.
         label_ids: Optional list of label IDs to filter by.
+        max_retries: Maximum retries for rate-limited requests.
 
     Returns:
         List of full message objects.
@@ -151,18 +162,38 @@ def fetch_messages(
 
     messages = results.get("messages", [])
     if not messages:
-        print("No messages found.")
+        logger.info("No messages found")
         return []
 
-    # Fetch full message details
-    full_messages = []
-    for msg in messages:
-        full_msg = (
-            service.users()
-            .messages()
-            .get(userId="me", id=msg["id"], format="full")
-            .execute()
-        )
-        full_messages.append(full_msg)
+    logger.debug(f"Found {len(messages)} message IDs, fetching full details")
 
+    # Fetch full message details with rate limiting
+    full_messages = []
+    for i, msg in enumerate(messages):
+        for attempt in range(max_retries):
+            try:
+                full_msg = (
+                    service.users()
+                    .messages()
+                    .get(userId="me", id=msg["id"], format="full")
+                    .execute()
+                )
+                full_messages.append(full_msg)
+                break
+            except HttpError as e:
+                if e.resp.status == 429:  # Rate limited
+                    wait_time = (2**attempt) + 1  # 1, 3, 5 seconds
+                    logger.warning(
+                        f"Rate limited, waiting {wait_time}s "
+                        f"(attempt {attempt + 1}/{max_retries})"
+                    )
+                    time.sleep(wait_time)
+                else:
+                    raise
+
+        # Small delay between requests to avoid hitting rate limits
+        if i < len(messages) - 1:
+            time.sleep(0.1)
+
+    logger.info(f"Fetched {len(full_messages)} messages")
     return full_messages

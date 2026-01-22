@@ -3,12 +3,16 @@
 Handles email parsing and database storage.
 """
 
+import logging
 from datetime import datetime
+from email.utils import getaddresses, parseaddr
 from typing import Any
 
-from supabase import Client
+from supabase import Client, PostgrestAPIError
 
 from selko.services.auth import get_current_user_id
+
+logger = logging.getLogger(__name__)
 
 
 class EmailError(Exception):
@@ -19,6 +23,8 @@ class EmailError(Exception):
 
 def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
     """Parse Gmail API email into database format.
+
+    Uses Python stdlib email.utils for RFC 5322 compliant header parsing.
 
     Args:
         email: Full Gmail message object from API.
@@ -31,19 +37,14 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
         for h in email.get("payload", {}).get("headers", [])
     }
 
-    # Parse from header (format: "Name <email>" or just "email")
+    # Use stdlib for reliable RFC 5322 parsing
     from_header = headers.get("from", "")
-    from_name = None
-    from_email = from_header
+    from_name, from_email = parseaddr(from_header)
 
-    if "<" in from_header and ">" in from_header:
-        parts = from_header.split("<")
-        from_name = parts[0].strip().strip('"')
-        from_email = parts[1].rstrip(">").strip()
-
-    # Parse to header (comma-separated list)
+    # Handle multiple recipients using stdlib
     to_header = headers.get("to", "")
-    to_emails = [addr.strip() for addr in to_header.split(",") if addr.strip()]
+    to_addresses = getaddresses([to_header])
+    to_emails = [addr[1] for addr in to_addresses if addr[1]]
 
     # Parse date
     date_sent = None
@@ -80,59 +81,50 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _log_email_subject(parsed: dict[str, Any], action: str) -> None:
+    """Log email subject for debugging."""
+    subject = parsed.get("subject", "(no subject)")
+    if len(subject) > 50:
+        subject = subject[:50] + "..."
+    logger.debug(f"{action}: {subject}")
+
+
 def save_emails(
     client: Client,
     emails: list[dict[str, Any]],
-) -> tuple[int, int]:
+) -> int:
     """Save emails to Supabase database using upsert.
 
     The user_id is automatically determined from the authenticated session.
+    Uses single upsert operation for efficiency.
 
     Args:
         client: Authenticated Supabase client.
         emails: List of parsed email dicts (from parse_gmail_message).
 
     Returns:
-        Tuple of (inserted_count, updated_count).
+        Number of emails saved (inserted or updated).
 
     Raises:
         EmailError: If save fails.
     """
     user_id = get_current_user_id(client)
-    inserted = 0
-    updated = 0
+    saved = 0
 
     for parsed in emails:
         # Add user_id to the email record
         parsed["user_id"] = user_id
 
         try:
-            # Check if email already exists
-            existing = (
-                client.table("emails")
-                .select("id")
-                .eq("user_id", user_id)
-                .eq("gmail_id", parsed["gmail_id"])
-                .maybe_single()
-                .execute()
-            )
+            # Single upsert instead of SELECT + INSERT/UPDATE
+            client.table("emails").upsert(
+                parsed, on_conflict="user_id,gmail_id"
+            ).execute()
+            saved += 1
+            _log_email_subject(parsed, "Saved")
 
-            if existing.data:
-                # Update existing record
-                client.table("emails").update(parsed).eq(
-                    "id", existing.data["id"]
-                ).execute()
-                updated += 1
-                subject = parsed.get("subject", "(no subject)")
-                print(f"Updated: {subject[:50]}...")
-            else:
-                # Insert new record
-                client.table("emails").insert(parsed).execute()
-                inserted += 1
-                subject = parsed.get("subject", "(no subject)")
-                print(f"Inserted: {subject[:50]}...")
+        except PostgrestAPIError as e:
+            raise EmailError(f"Failed to save email: {e.message}") from e
 
-        except Exception as e:
-            raise EmailError(f"Failed to save email: {e}") from e
-
-    return inserted, updated
+    logger.info(f"Saved {saved} emails")
+    return saved

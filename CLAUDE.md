@@ -74,13 +74,19 @@ selko/
 │   ├── selko/
 │   │   ├── __init__.py
 │   │   ├── config.py          # Centralized configuration
+│   │   ├── logging.py         # Centralized logging setup
 │   │   └── services/
 │   │       ├── __init__.py
 │   │       ├── auth.py        # User auth (sign in/out)
 │   │       ├── users.py       # User CRUD (admin operations)
 │   │       ├── integrations.py # OAuth token storage
-│   │       ├── gmail.py       # Gmail OAuth + API
+│   │       ├── gmail.py       # Gmail OAuth + API (with rate limiting)
 │   │       └── emails.py      # Email parsing + storage
+│   ├── tests/                  # Test suite
+│   │   ├── conftest.py        # Pytest fixtures
+│   │   ├── test_config.py     # Config tests
+│   │   ├── test_emails.py     # Email parsing tests
+│   │   └── test_integrations.py # Integration tests
 │   └── pyproject.toml
 │
 ├── cli/                        # CLI tools for POC and development
@@ -138,7 +144,21 @@ ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 | Flag | Description |
 |------|-------------|
 | `--env` | Override environment: `development`, `staging`, `production` |
+| `-v`, `--verbose` | Enable verbose (DEBUG) logging |
+| `-q`, `--quiet` | Only show warnings and errors |
 | `--max` | Maximum emails to fetch (for cli_fetch_emails) |
+
+**Running Tests:**
+```bash
+# Install test dependencies
+uv sync --extra test
+
+# Run all tests
+uv run pytest backend/tests/ -v
+
+# Run with coverage
+uv run pytest backend/tests/ --cov=selko
+```
 
 ### Authentication Model
 
@@ -201,6 +221,8 @@ Current tables in `supabase/migrations/`:
 - `provider_email` - Email associated with integration
 - `last_history_id` - Gmail sync cursor
 - RLS: Users manage own integrations
+- Indexes: `idx_integrations_user_status` for status queries
+- Triggers: `set_integrations_updated_at` auto-updates timestamp
 
 **`emails`** - Synced Gmail messages
 - Gmail identifiers: `gmail_id`, `thread_id`
@@ -209,6 +231,7 @@ Current tables in `supabase/migrations/`:
 - Auto-computed flags (via trigger): `is_spam`, `is_trash`, `is_promotions`, `is_social`, `is_updates`, `is_forums`, `is_primary`, `is_important`, `is_starred`, `is_unread`
 - `content_hash` - For deduplication
 - RLS: Users manage own emails
+- Indexes: `idx_emails_user_date` for date queries, `idx_emails_content_hash` for deduplication
 
 **`attachments`** - Email attachment metadata
 - `gmail_attachment_id`, `filename`, `mime_type`, `size_bytes`

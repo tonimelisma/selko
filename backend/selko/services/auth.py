@@ -4,9 +4,13 @@ Provides user authentication using Supabase sign_in_with_password.
 All operations use the anon key with RLS enforcement.
 """
 
-from supabase import Client, create_client
+import logging
+
+from supabase import AuthApiError, Client, create_client
 
 from selko.config import Config
+
+logger = logging.getLogger(__name__)
 
 
 class AuthenticationError(Exception):
@@ -49,11 +53,11 @@ def get_authenticated_client(config: Config) -> Client:
                 f"Failed to sign in as {config.test_user_email}"
             )
 
-        print(f"Signed in as {response.user.email}")
+        logger.info(f"Signed in as {response.user.email}")
         return client
 
-    except Exception as e:
-        raise AuthenticationError(f"Authentication failed: {e}") from e
+    except AuthApiError as e:
+        raise AuthenticationError(f"Sign-in failed: {e.message}") from e
 
 
 def get_current_user_id(client: Client) -> str:

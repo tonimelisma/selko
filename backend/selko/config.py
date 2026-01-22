@@ -4,6 +4,8 @@ Handles environment detection and .env file loading with support for
 development/staging/production environments.
 """
 
+import argparse
+import logging
 import os
 import sys
 from dataclasses import dataclass
@@ -11,6 +13,8 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Project root directory (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -51,10 +55,17 @@ def get_environment(override: Optional[str] = None) -> str:
 
     Returns:
         Environment name: 'development', 'staging', or 'production'.
+
+    Raises:
+        ValueError: If the environment name is invalid.
     """
-    if override:
-        return override
-    return os.getenv("ENVIRONMENT", "development")
+    env = override if override else os.getenv("ENVIRONMENT", "development")
+    if env not in ENV_FILES:
+        raise ValueError(
+            f"Invalid environment '{env}'. "
+            f"Valid environments: {', '.join(ENV_FILES.keys())}"
+        )
+    return env
 
 
 def load_config(env_override: Optional[str] = None) -> Config:
@@ -69,25 +80,25 @@ def load_config(env_override: Optional[str] = None) -> Config:
     Raises:
         SystemExit: If required environment variables are missing.
     """
-    environment = get_environment(env_override)
+    try:
+        environment = get_environment(env_override)
+    except ValueError as e:
+        logger.error(str(e))
+        sys.exit(1)
 
     # Determine which .env file to load
     env_file = ENV_FILES.get(environment)
-    if not env_file:
-        print(f"Error: Unknown environment '{environment}'")
-        print(f"Valid environments: {', '.join(ENV_FILES.keys())}")
-        sys.exit(1)
 
     env_path = PROJECT_ROOT / env_file
 
     if not env_path.exists():
-        print(f"Error: Environment file not found: {env_path}")
-        print(f"Copy .env.example to {env_file} and fill in values.")
+        logger.error(f"Environment file not found: {env_path}")
+        logger.error(f"Copy .env.example to {env_file} and fill in values.")
         sys.exit(1)
 
     # Load environment variables from file
     load_dotenv(env_path, override=True)
-    print(f"Loaded config from {env_file} ({environment})")
+    logger.info(f"Loaded config from {env_file} ({environment})")
 
     # Get required variables
     supabase_url = os.getenv("SUPABASE_URL")
@@ -104,8 +115,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         missing.append("SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_API_KEY")
 
     if missing:
-        print(f"Error: Missing required environment variables: {', '.join(missing)}")
-        print(f"Check your {env_file} file.")
+        logger.error(f"Missing required environment variables: {', '.join(missing)}")
+        logger.error(f"Check your {env_file} file.")
         sys.exit(1)
 
     return Config(
@@ -120,7 +131,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
     )
 
 
-def add_env_argument(parser) -> None:
+def add_env_argument(parser: argparse.ArgumentParser) -> None:
     """Add --env argument to an argparse parser.
 
     Args:
@@ -130,4 +141,25 @@ def add_env_argument(parser) -> None:
         "--env",
         choices=list(ENV_FILES.keys()),
         help="Override ENVIRONMENT variable (development, staging, production)",
+    )
+
+
+def add_logging_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add --verbose and --quiet flags to argument parser.
+
+    Args:
+        parser: argparse.ArgumentParser instance.
+    """
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose (DEBUG) logging",
+    )
+    group.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Only show warnings and errors",
     )
