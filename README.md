@@ -56,9 +56,28 @@ supabase start
 # Apply migrations
 supabase db reset
 
-# Run the POC scripts
-uv run python poc/fetch_emails.py
+# Authenticate with Gmail (one-time setup)
+uv run python -m poc.auth_gmail
+
+# Fetch emails (local development)
+uv run python -m poc.fetch_emails --user-id <YOUR_USER_UUID>
+
+# Fetch emails to staging environment
+uv run python -m poc.fetch_emails --env staging --user-id <YOUR_USER_UUID>
+
+# Fetch emails with JSON debug output
+uv run python -m poc.fetch_emails --json --user-id <YOUR_USER_UUID>
 ```
+
+### Multi-Environment Support
+
+The POC supports three environments via the `--env` flag or `ENVIRONMENT` variable:
+
+| Environment | Config File | Supabase |
+|-------------|-------------|----------|
+| `development` | `.env` | Local (Docker) |
+| `staging` | `.env.test` | Cloud staging |
+| `production` | `.env.production` | Cloud production |
 
 ### Environment Variables
 
@@ -93,12 +112,18 @@ supabase migration list
 ```
 selko/
 ├── poc/                    # Proof of concept scripts
-│   ├── fetch_emails.py     # Gmail API integration
+│   ├── __init__.py         # Package marker
+│   ├── config.py           # Centralized configuration module
+│   ├── auth_gmail.py       # Gmail OAuth authentication
+│   ├── fetch_emails.py     # Fetch emails and store in Supabase
 │   ├── credentials.json    # Google OAuth credentials (gitignored)
 │   └── token.json          # OAuth tokens (gitignored)
 ├── supabase/
 │   ├── config.toml         # Supabase CLI configuration
 │   └── migrations/         # Database migrations
+├── .env                    # Local development config (gitignored)
+├── .env.test               # Staging environment config (gitignored)
+├── .env.production         # Production environment config (gitignored)
 ├── .env.example            # Environment template
 ├── CLAUDE.md               # AI assistant instructions
 ├── PRD_ARCH.md             # Product requirements & architecture

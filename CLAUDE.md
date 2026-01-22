@@ -56,6 +56,30 @@ supabase db push
 supabase migration list
 ```
 
+### POC Scripts
+
+The `poc/` directory contains proof-of-concept scripts for validating core functionality.
+
+**Modules:**
+- `poc/config.py` - Centralized configuration with environment detection
+- `poc/auth_gmail.py` - Gmail OAuth authentication
+- `poc/fetch_emails.py` - Fetch and store emails in Supabase
+
+**Environment Selection:**
+```bash
+# Via environment variable
+ENVIRONMENT=staging uv run python -m poc.fetch_emails --user-id <UUID>
+
+# Via CLI flag (overrides env variable)
+uv run python -m poc.fetch_emails --env production --user-id <UUID>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--env` | Override environment: `development`, `staging`, `production` |
+| `--user-id` | User UUID for database storage (required for Supabase) |
+| `--json` | Also save raw JSON files for debugging |
+
 ## Architecture Overview
 
 ### Phased Approach
