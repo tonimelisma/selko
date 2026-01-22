@@ -64,29 +64,91 @@ supabase db push
 supabase migration list
 ```
 
-### POC Scripts
+## Monorepo Structure
 
-The `poc/` directory contains proof-of-concept scripts for validating core functionality.
+The project uses a monorepo structure with separate packages:
 
-**Modules:**
-- `poc/config.py` - Centralized configuration with environment detection
-- `poc/auth_gmail.py` - Gmail OAuth authentication
-- `poc/fetch_emails.py` - Fetch and store emails in Supabase
+```
+selko/
+├── backend/                    # Python backend (shared business logic)
+│   ├── selko/
+│   │   ├── __init__.py
+│   │   ├── config.py          # Centralized configuration
+│   │   └── services/
+│   │       ├── __init__.py
+│   │       ├── auth.py        # User auth (sign in/out)
+│   │       ├── users.py       # User CRUD (admin operations)
+│   │       ├── integrations.py # OAuth token storage
+│   │       ├── gmail.py       # Gmail OAuth + API
+│   │       └── emails.py      # Email parsing + storage
+│   └── pyproject.toml
+│
+├── cli/                        # CLI tools for POC and development
+│   ├── __init__.py
+│   ├── cli_user.py            # User management CLI
+│   ├── cli_auth_gmail.py      # Gmail OAuth CLI
+│   ├── cli_fetch_emails.py    # Email fetch CLI
+│   ├── credentials.json       # Google OAuth app credentials
+│   └── pyproject.toml
+│
+├── web/                        # Web frontend (placeholder)
+├── ios/                        # iOS app (placeholder)
+├── android/                    # Android app (placeholder)
+│
+├── supabase/                   # Database
+│   ├── config.toml
+│   └── migrations/
+│
+├── pyproject.toml              # Root workspace config
+└── .env, .env.test, .env.production
+```
+
+### CLI Tools
+
+**User Management:**
+```bash
+# Create a user (first time only per environment)
+uv run python -m cli.cli_user create --email test@selko.local --password testpass123
+
+# List all users
+uv run python -m cli.cli_user list
+
+# Delete a user
+uv run python -m cli.cli_user delete --user-id <uuid>
+```
+
+**Gmail Integration:**
+```bash
+# Authenticate with Gmail (stores token in database)
+uv run python -m cli.cli_auth_gmail
+
+# Fetch emails
+uv run python -m cli.cli_fetch_emails --max 10
+```
 
 **Environment Selection:**
 ```bash
-# Via environment variable
-ENVIRONMENT=staging uv run python -m poc.fetch_emails --user-id <UUID>
+# Via CLI flag
+uv run python -m cli.cli_fetch_emails --env staging
 
-# Via CLI flag (overrides env variable)
-uv run python -m poc.fetch_emails --env production --user-id <UUID>
+# Via environment variable
+ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--env` | Override environment: `development`, `staging`, `production` |
-| `--user-id` | User UUID for database storage (required for Supabase) |
-| `--json` | Also save raw JSON files for debugging |
+| `--max` | Maximum emails to fetch (for cli_fetch_emails) |
+
+### Authentication Model
+
+All CLI operations use proper user authentication:
+
+1. **User Management**: Uses service role key for admin operations (create/delete users)
+2. **Other Operations**: Sign in with `TEST_USER_EMAIL`/`TEST_USER_PASSWORD` from `.env`
+3. **RLS Enforcement**: All operations respect Row Level Security policies
+
+No more `--user-id` flag needed - the CLI signs in as the configured test user.
 
 ## Architecture Overview
 
@@ -128,12 +190,15 @@ Current tables in `supabase/migrations/`:
 **`users`** - User profiles linked to Supabase Auth
 - `id` (uuid, PK) → references `auth.users`
 - `email`, `display_name`, timestamps
-- RLS: Users can view/update own profile
+- RLS: Users can view/update/insert own profile
+- Auto-created via trigger on auth.users insert
 
 **`integrations`** - OAuth tokens for external providers
 - `provider`: `gmail`, `google_photos`, `google_calendar`
 - `status`: `active`, `expired`, `revoked`, `error`
 - `access_token`, `refresh_token`, `token_expiry`
+- `scopes[]` - OAuth scopes granted
+- `provider_email` - Email associated with integration
 - `last_history_id` - Gmail sync cursor
 - RLS: Users manage own integrations
 

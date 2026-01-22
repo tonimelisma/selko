@@ -1,1 +1,0 @@
-# POC scripts for Selko

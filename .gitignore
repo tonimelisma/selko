@@ -9,14 +9,14 @@
 supabase/.env
 .mcp.json
 
-# POC sensitive data
-poc/credentials.json
-poc/token.json
-poc/emails/
+# CLI sensitive data
+cli/credentials.json
+cli/token.json
 
 # Python
 __pycache__/
 *.pyc
+*.egg-info/
 .venv/
 
 # Claude

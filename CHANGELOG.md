@@ -2,6 +2,49 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-22
+
+### 1159713 - Refactor POC to monorepo with proper user authentication
+
+**Files created:**
+- `backend/pyproject.toml` - Backend package configuration
+- `backend/selko/__init__.py` - Backend package marker
+- `backend/selko/config.py` - Centralized configuration (enhanced from poc/config.py)
+- `backend/selko/services/__init__.py` - Services package exports
+- `backend/selko/services/auth.py` - User authentication with sign_in_with_password
+- `backend/selko/services/users.py` - User CRUD with admin (service role) operations
+- `backend/selko/services/integrations.py` - OAuth token storage in database
+- `backend/selko/services/gmail.py` - Gmail OAuth flow and API interactions
+- `backend/selko/services/emails.py` - Email parsing and database storage
+- `cli/pyproject.toml` - CLI package configuration
+- `cli/__init__.py` - CLI package marker
+- `cli/cli_user.py` - User management CLI (create, list, delete)
+- `cli/cli_auth_gmail.py` - Gmail OAuth CLI (stores tokens in database)
+- `cli/cli_fetch_emails.py` - Email fetching CLI
+- `cli/credentials.json` - Moved from poc/
+- `supabase/migrations/20260122000001_auto_create_user_profile.sql` - Trigger for auto-creating user profiles
+- `web/README.md` - Web frontend placeholder
+- `ios/README.md` - iOS app placeholder
+- `android/README.md` - Android app placeholder
+
+**Files modified:**
+- `pyproject.toml` - Converted to uv workspace configuration
+- `.env.example` - Added TEST_USER_EMAIL and TEST_USER_PASSWORD
+- `CLAUDE.md` - Updated with new monorepo structure and CLI commands
+- `README.md` - Updated with new project structure and setup instructions
+
+**Files deleted:**
+- `poc/` directory - Replaced by backend/ and cli/ packages
+
+**Reason:** Major refactoring to:
+1. Implement proper user authentication with RLS enforcement (no more --user-id flag)
+2. Store OAuth tokens in database instead of local token.json files
+3. Reorganize as monorepo with separate backend and CLI packages
+4. Add user management CLI since Supabase CLI doesn't support user CRUD
+5. Add database trigger to auto-create user profiles on signup
+
+---
+
 ## 2026-01-21
 
 ### 564d62b - Update documentation with POC multi-environment support

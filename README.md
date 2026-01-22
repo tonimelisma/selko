@@ -27,7 +27,7 @@ AI-powered assistant that automates personal organization by analyzing digital i
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.10+
 - [uv](https://github.com/astral-sh/uv) package manager
 - [Supabase CLI](https://supabase.com/docs/guides/cli)
 - Docker Desktop (for local Supabase)
@@ -56,28 +56,40 @@ supabase start
 # Apply migrations
 supabase db reset
 
-# Authenticate with Gmail (one-time setup)
-uv run python -m poc.auth_gmail
+# Create a test user (one-time setup)
+uv run python -m cli.cli_user create --email test@selko.local --password testpass123
 
-# Fetch emails (local development)
-uv run python -m poc.fetch_emails --user-id <YOUR_USER_UUID>
+# Add credentials to .env
+# TEST_USER_EMAIL=test@selko.local
+# TEST_USER_PASSWORD=testpass123
 
-# Fetch emails to staging environment
-uv run python -m poc.fetch_emails --env staging --user-id <YOUR_USER_UUID>
+# Authenticate with Gmail (stores token in database)
+uv run python -m cli.cli_auth_gmail
 
-# Fetch emails with JSON debug output
-uv run python -m poc.fetch_emails --json --user-id <YOUR_USER_UUID>
+# Fetch emails
+uv run python -m cli.cli_fetch_emails
+
+# Fetch more emails
+uv run python -m cli.cli_fetch_emails --max 50
 ```
 
 ### Multi-Environment Support
 
-The POC supports three environments via the `--env` flag or `ENVIRONMENT` variable:
+The CLI supports three environments via the `--env` flag or `ENVIRONMENT` variable:
 
 | Environment | Config File | Supabase |
 |-------------|-------------|----------|
 | `development` | `.env` | Local (Docker) |
 | `staging` | `.env.test` | Cloud staging |
 | `production` | `.env.production` | Cloud production |
+
+```bash
+# Use staging environment
+uv run python -m cli.cli_fetch_emails --env staging
+
+# Use production environment
+uv run python -m cli.cli_user list --env production
+```
 
 ### Environment Variables
 
@@ -91,6 +103,8 @@ The POC supports three environments via the `--env` flag or `ENVIRONMENT` variab
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `ENVIRONMENT` | `development`, `staging`, or `production` |
+| `TEST_USER_EMAIL` | Test user email for CLI authentication |
+| `TEST_USER_PASSWORD` | Test user password for CLI authentication |
 
 ### Database Migrations
 
@@ -111,24 +125,67 @@ supabase migration list
 
 ```
 selko/
-├── poc/                    # Proof of concept scripts
-│   ├── __init__.py         # Package marker
-│   ├── config.py           # Centralized configuration module
-│   ├── auth_gmail.py       # Gmail OAuth authentication
-│   ├── fetch_emails.py     # Fetch emails and store in Supabase
-│   ├── credentials.json    # Google OAuth credentials (gitignored)
-│   └── token.json          # OAuth tokens (gitignored)
+├── backend/                    # Python backend (shared business logic)
+│   ├── selko/
+│   │   ├── __init__.py
+│   │   ├── config.py          # Centralized configuration
+│   │   └── services/
+│   │       ├── auth.py        # User authentication
+│   │       ├── users.py       # User management (admin)
+│   │       ├── integrations.py # OAuth token storage
+│   │       ├── gmail.py       # Gmail OAuth + API
+│   │       └── emails.py      # Email parsing + storage
+│   └── pyproject.toml
+│
+├── cli/                        # CLI tools
+│   ├── cli_user.py            # User management
+│   ├── cli_auth_gmail.py      # Gmail OAuth
+│   ├── cli_fetch_emails.py    # Email fetching
+│   ├── credentials.json       # Google OAuth credentials (gitignored)
+│   └── pyproject.toml
+│
+├── web/                        # Web frontend (placeholder)
+├── ios/                        # iOS app (placeholder)
+├── android/                    # Android app (placeholder)
+│
 ├── supabase/
-│   ├── config.toml         # Supabase CLI configuration
-│   └── migrations/         # Database migrations
-├── .env                    # Local development config (gitignored)
-├── .env.test               # Staging environment config (gitignored)
-├── .env.production         # Production environment config (gitignored)
-├── .env.example            # Environment template
-├── CLAUDE.md               # AI assistant instructions
-├── PRD_ARCH.md             # Product requirements & architecture
-├── pyproject.toml          # Python project configuration
-└── README.md               # This file
+│   ├── config.toml            # Supabase CLI configuration
+│   └── migrations/            # Database migrations
+│
+├── .env                       # Local development config (gitignored)
+├── .env.test                  # Staging environment (gitignored)
+├── .env.production            # Production environment (gitignored)
+├── .env.example               # Environment template
+├── pyproject.toml             # Root workspace config
+├── CLAUDE.md                  # AI assistant instructions
+├── PRD_ARCH.md                # Product requirements & architecture
+├── CHANGELOG.md               # Detailed change history
+└── README.md                  # This file
+```
+
+## CLI Commands
+
+### User Management
+
+```bash
+# Create a user
+uv run python -m cli.cli_user create --email user@example.com --password secret
+
+# List all users
+uv run python -m cli.cli_user list
+
+# Delete a user
+uv run python -m cli.cli_user delete --user-id <uuid>
+```
+
+### Gmail Integration
+
+```bash
+# Authenticate with Gmail (interactive OAuth flow)
+uv run python -m cli.cli_auth_gmail
+
+# Fetch emails (uses credentials from database)
+uv run python -m cli.cli_fetch_emails --max 20
 ```
 
 ## Documentation

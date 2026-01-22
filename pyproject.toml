@@ -1,13 +1,17 @@
 [project]
-name = "selko"
+name = "selko-workspace"
 version = "0.1.0"
-description = "Add your description here"
+description = "Selko - AI-powered personal organization assistant"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "google-api-python-client>=2.188.0",
-    "google-auth-httplib2>=0.3.0",
-    "google-auth-oauthlib>=1.2.4",
-    "python-dotenv>=1.2.1",
-    "supabase>=2.27.2",
+    "selko",
+    "selko-cli",
 ]
+
+[tool.uv.sources]
+selko = { workspace = true }
+selko-cli = { workspace = true }
+
+[tool.uv.workspace]
+members = ["backend", "cli"]

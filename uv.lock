@@ -6,6 +6,13 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 
+[manifest]
+members = [
+    "selko",
+    "selko-cli",
+    "selko-workspace",
+]
+
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -1347,7 +1354,7 @@ wheels = [
 [[package]]
 name = "selko"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "backend" }
 dependencies = [
     { name = "google-api-python-client" },
     { name = "google-auth-httplib2" },
@@ -1363,6 +1370,32 @@ requires-dist = [
     { name = "google-auth-oauthlib", specifier = ">=1.2.4" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "supabase", specifier = ">=2.27.2" },
+]
+
+[[package]]
+name = "selko-cli"
+version = "0.1.0"
+source = { editable = "cli" }
+dependencies = [
+    { name = "selko" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "selko", editable = "backend" }]
+
+[[package]]
+name = "selko-workspace"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "selko" },
+    { name = "selko-cli" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "selko", editable = "backend" },
+    { name = "selko-cli", editable = "cli" },
 ]
 
 [[package]]

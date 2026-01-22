@@ -1,0 +1,18 @@
+[project]
+name = "selko-cli"
+version = "0.1.0"
+description = "Selko CLI tools for POC and development"
+requires-python = ">=3.10"
+dependencies = [
+    "selko",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["cli_user", "cli_auth_gmail", "cli_fetch_emails"]
+
+[tool.uv.sources]
+selko = { workspace = true }
