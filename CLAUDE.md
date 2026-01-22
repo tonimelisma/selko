@@ -83,10 +83,19 @@ selko/
 │   │       ├── gmail.py       # Gmail OAuth + API (with rate limiting)
 │   │       └── emails.py      # Email parsing + storage
 │   ├── tests/                  # Test suite
-│   │   ├── conftest.py        # Pytest fixtures
-│   │   ├── test_config.py     # Config tests
-│   │   ├── test_emails.py     # Email parsing tests
-│   │   └── test_integrations.py # Integration tests
+│   │   ├── conftest.py        # Pytest fixtures (unit tests)
+│   │   ├── test_config.py     # Config unit tests
+│   │   ├── test_emails.py     # Email parsing unit tests
+│   │   ├── test_integrations.py # OAuth unit tests (mocked)
+│   │   └── integration/       # Integration tests (real Supabase)
+│   │       ├── conftest.py    # Integration test fixtures
+│   │       ├── test_integration_auth.py
+│   │       ├── test_integration_users.py
+│   │       ├── test_integration_oauth.py
+│   │       ├── test_integration_gmail.py
+│   │       ├── test_integration_emails.py
+│   │       ├── test_integration_e2e.py
+│   │       └── test_integration_cli.py
 │   └── pyproject.toml
 │
 ├── cli/                        # CLI tools for POC and development
@@ -153,12 +162,32 @@ ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 # Install test dependencies
 uv sync --extra test
 
-# Run all tests
+# Run unit tests only (fast, no external dependencies)
+uv run pytest backend/tests/ -m "not integration" -v
+
+# Run all tests including integration (requires local Supabase)
+supabase start
 uv run pytest backend/tests/ -v
+
+# Run integration tests only
+uv run pytest backend/tests/integration/ -m "development" -v
+
+# Run staging integration tests (real Gmail)
+uv run pytest backend/tests/integration/ -m "staging" -v
 
 # Run with coverage
 uv run pytest backend/tests/ --cov=selko
 ```
+
+**Test Markers:**
+| Marker | Description |
+|--------|-------------|
+| `integration` | All integration tests (requires Supabase) |
+| `development` | Tests against local Supabase |
+| `staging` | Tests against staging Supabase + real Gmail |
+| `production` | Read-only smoke tests for production |
+
+See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
 
 ### Authentication Model
 
