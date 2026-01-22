@@ -68,16 +68,47 @@ Expected: All staging tests should pass.
 
 ---
 
-## CI/CD Setup (Future)
+## CI/CD Setup (GitHub Actions)
 
-If setting up GitHub Actions:
+The workflow file is already created at `.github/workflows/test.yml`. You need to add the secrets.
 
-- [ ] Add repository secrets:
-  - `STAGING_SUPABASE_URL`
-  - `STAGING_SUPABASE_ANON_KEY`
-  - `STAGING_SUPABASE_SERVICE_ROLE_KEY`
-  - `STAGING_TEST_USER_EMAIL`
-  - `STAGING_TEST_USER_PASSWORD`
+### Required GitHub Secrets
+
+Go to: Repository → Settings → Secrets and variables → Actions → New repository secret
+
+| Secret Name | Value | Notes |
+|-------------|-------|-------|
+| `STAGING_SUPABASE_URL` | `https://lxmysergoeaegxlyfzwk.supabase.co` | Staging Supabase URL |
+| `STAGING_SUPABASE_ANON_KEY` | (from Supabase dashboard) | Project Settings → API → anon public |
+| `STAGING_SUPABASE_SERVICE_ROLE_KEY` | (from Supabase dashboard) | Project Settings → API → service_role |
+| `STAGING_TEST_USER_EMAIL` | (email of test user) | Same as in `.env.test` |
+| `STAGING_TEST_USER_PASSWORD` | (password of test user) | Same as in `.env.test` |
+| `GOOGLE_CLIENT_ID` | (from Google Cloud Console) | OAuth 2.0 Client ID |
+| `GOOGLE_CLIENT_SECRET` | (from Google Cloud Console) | OAuth 2.0 Client Secret |
+
+### Add Secrets Checklist
+
+- [ ] `STAGING_SUPABASE_URL`
+- [ ] `STAGING_SUPABASE_ANON_KEY`
+- [ ] `STAGING_SUPABASE_SERVICE_ROLE_KEY`
+- [ ] `STAGING_TEST_USER_EMAIL`
+- [ ] `STAGING_TEST_USER_PASSWORD`
+- [ ] `GOOGLE_CLIENT_ID`
+- [ ] `GOOGLE_CLIENT_SECRET`
+
+### How CI/CD Works
+
+| Job | Trigger | What it does |
+|-----|---------|--------------|
+| **Unit Tests** | Every push/PR | Fast tests, no external deps |
+| **Integration (Dev)** | Every push/PR | Spins up local Supabase in Docker |
+| **Integration (Staging)** | Main branch only | Uses cloud Supabase + real Gmail |
+
+### Important Notes
+
+1. **OAuth tokens are in the database** - GitHub Actions doesn't need token files, just Supabase access
+2. **Staging tests only on main** - Prevents burning through Gmail API quota on every PR
+3. **Development tests spin up Supabase** - Uses `supabase start` in the workflow
 
 ---
 
