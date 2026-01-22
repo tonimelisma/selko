@@ -17,6 +17,9 @@ See `PRD_ARCH.md` for complete product requirements and technical architecture s
 ### Project Phase
 This is a **Proof of Concept (POC)** phase using local Python scripts to validate core functionality before building the full cloud-based web application.
 
+### Workflow
+- **Auto-commit**: After completing each stage of work, automatically git commit and push to remote without waiting for user to request it
+
 ### Environment Configuration
 
 | File | Purpose | Committed |
