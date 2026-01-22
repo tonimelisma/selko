@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-22
 
+### Integration Tests Plan
+
+**Files created:**
+- `INTEGRATION_TESTS_PLAN.md` - Comprehensive plan for implementing integration tests
+
+**Contents:**
+- Environment strategy (development/staging/production) with different test approaches per environment
+- Test categories: Authentication, User Management, OAuth, Gmail API, Email Pipeline, E2E, CLI
+- Pytest markers for selective test execution
+- Integration test fixtures design
+- Burner Gmail account setup instructions for staging tests
+- CI/CD GitHub Actions workflow template
+- Implementation order (8 phases)
+- Test data management strategy
+
+**Reason:** Plan integration testing strategy before implementation. Staging environment will use real Gmail API with burner accounts for validation.
+
+---
+
 ### POC Hardening - Testing, Logging, and Fixes
 
 **Files created:**
