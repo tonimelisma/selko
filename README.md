@@ -135,6 +135,7 @@ selko/
 
 - [CLAUDE.md](CLAUDE.md) - Development guidelines and database schema
 - [PRD_ARCH.md](PRD_ARCH.md) - Product requirements and architecture specification
+- [CHANGELOG.md](CHANGELOG.md) - Detailed change history
 
 ## License
 

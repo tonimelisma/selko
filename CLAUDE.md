@@ -19,6 +19,14 @@ This is a **Proof of Concept (POC)** phase using local Python scripts to validat
 
 ### Workflow
 - **Auto-commit**: After completing each stage of work, automatically git commit and push to remote without waiting for user to request it
+- **Documentation**: After every change, update relevant documentation files:
+  - `CLAUDE.md` - Development instructions, environment setup, database schema
+  - `README.md` - User-facing documentation, setup guides, project structure
+  - `PRD_ARCH.md` - Only for product/architecture specification changes
+- **Changelog**: Maintain `CHANGELOG.md` with detailed entries for every change:
+  - Date and commit hash
+  - Files modified with brief description of changes
+  - Reason/purpose for the change
 
 ### Environment Configuration
 
