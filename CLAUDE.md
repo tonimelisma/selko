@@ -17,6 +17,42 @@ See `PRD_ARCH.md` for complete product requirements and technical architecture s
 ### Project Phase
 This is a **Proof of Concept (POC)** phase using local Python scripts to validate core functionality before building the full cloud-based web application.
 
+### Environment Configuration
+
+| File | Purpose | Committed |
+|------|---------|-----------|
+| `.env` | Local development (Docker) | No |
+| `.env.test` | Staging environment | No |
+| `.env.production` | Production environment | No |
+| `.env.example` | Template for setup | Yes |
+
+### Supabase Setup
+
+**Environments:**
+| Environment | Project Ref | URL |
+|-------------|-------------|-----|
+| Local | N/A | `http://localhost:54321` |
+| Staging | `lxmysergoeaegxlyfzwk` | `https://lxmysergoeaegxlyfzwk.supabase.co` |
+| Production | `khahcozfbnpykspvatrg` | `https://khahcozfbnpykspvatrg.supabase.co` |
+
+**CLI Commands:**
+```bash
+# Local development (requires Docker)
+supabase start
+supabase db reset
+
+# Link to staging
+supabase link --project-ref lxmysergoeaegxlyfzwk
+supabase db push
+
+# Link to production
+supabase link --project-ref khahcozfbnpykspvatrg
+supabase db push
+
+# View migration status
+supabase migration list
+```
+
 ## Architecture Overview
 
 ### Phased Approach
@@ -50,7 +86,37 @@ This is a **Proof of Concept (POC)** phase using local Python scripts to validat
    - Cloud file storage (categorized uploads)
    - Task management integration
 
-### Key Data Model Concepts
+### Database Schema (POC)
+
+Current tables in `supabase/migrations/`:
+
+**`users`** - User profiles linked to Supabase Auth
+- `id` (uuid, PK) → references `auth.users`
+- `email`, `display_name`, timestamps
+- RLS: Users can view/update own profile
+
+**`integrations`** - OAuth tokens for external providers
+- `provider`: `gmail`, `google_photos`, `google_calendar`
+- `status`: `active`, `expired`, `revoked`, `error`
+- `access_token`, `refresh_token`, `token_expiry`
+- `last_history_id` - Gmail sync cursor
+- RLS: Users manage own integrations
+
+**`emails`** - Synced Gmail messages
+- Gmail identifiers: `gmail_id`, `thread_id`
+- Headers: `subject`, `from_email`, `from_name`, `to_emails`, `date_sent`
+- `gmail_label_ids[]` - Raw labels from Gmail API
+- Auto-computed flags (via trigger): `is_spam`, `is_trash`, `is_promotions`, `is_social`, `is_updates`, `is_forums`, `is_primary`, `is_important`, `is_starred`, `is_unread`
+- `content_hash` - For deduplication
+- RLS: Users manage own emails
+
+**`attachments`** - Email attachment metadata
+- `gmail_attachment_id`, `filename`, `mime_type`, `size_bytes`
+- `storage_path` - Reference to Supabase Storage
+- `content_hash` - For deduplication
+- RLS: Users manage own attachments
+
+### Future Data Model (MVP)
 
 - **assets**: Raw input units (emails, photos, PDFs) with content hashing for deduplication
 - **inferences**: AI-extracted structured data from assets (1 asset → N inferences)
