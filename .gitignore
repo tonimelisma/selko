@@ -1,0 +1,9 @@
+# POC sensitive data
+poc/credentials.json
+poc/token.json
+poc/emails/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
