@@ -460,6 +460,39 @@ OAuth tokens expire after 1 hour. The staging tests should:
 
 This is already implemented in `gmail.get_credentials()` with `creds.refresh()`.
 
+### Making Tests Fully Automatic (No Manual Re-auth)
+
+**The Problem**: Google OAuth refresh tokens have different lifetimes depending on app status:
+
+| App Status | Refresh Token Lifetime | Manual Re-auth Needed? |
+|------------|------------------------|------------------------|
+| **Testing** (unpublished) | **7 days** | Yes, weekly |
+| **Published** (internal or external) | Indefinite* | No |
+
+*Unless user revokes access or you request new scopes
+
+**The Solution**: Publish the OAuth app to get indefinite refresh tokens.
+
+**Steps to enable fully automatic tests:**
+
+1. **Google Cloud Console → OAuth consent screen**
+2. **Change status from "Testing" to "In Production"**
+3. **Select "Internal"** (if using Google Workspace) or publish externally with limited scopes
+4. Once published, refresh tokens won't expire
+
+**After publishing:**
+- Staging tests run indefinitely without manual intervention
+- CI/CD only needs environment variables (Supabase URL/keys, test user credentials)
+- OAuth tokens live in database and auto-refresh via `gmail.get_credentials()`
+
+### Automation Summary by Environment
+
+| Environment | Database | Gmail API | Fully Automatic? |
+|-------------|----------|-----------|------------------|
+| **Development** | Local Supabase | Mocked (no real API) | ✓ Yes |
+| **Staging** | Cloud Supabase | Real (burner account) | ✓ Yes (after OAuth app published) |
+| **Production** | Cloud Supabase | Read-only or skipped | ✓ Yes |
+
 ---
 
 ## CI/CD Integration

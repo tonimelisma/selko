@@ -4,6 +4,34 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-22
 
+### Integration Tests Implementation
+
+**Files created:**
+- `backend/tests/integration/__init__.py` - Integration tests package
+- `backend/tests/integration/conftest.py` - Integration test fixtures (authenticated clients, temp users, cleanup)
+- `backend/tests/integration/test_integration_auth.py` - Authentication tests (6 tests)
+- `backend/tests/integration/test_integration_users.py` - User management tests (10 tests)
+- `backend/tests/integration/test_integration_oauth.py` - OAuth credential storage tests (10 tests)
+- `backend/tests/integration/test_integration_gmail.py` - Gmail API tests with mocking (13 tests)
+- `backend/tests/integration/test_integration_emails.py` - Email parsing and storage tests (15 tests)
+- `backend/tests/integration/test_integration_e2e.py` - End-to-end pipeline tests (4 tests)
+- `backend/tests/integration/test_integration_cli.py` - CLI subprocess tests (13 tests)
+
+**Files modified:**
+- `backend/pyproject.toml` - Added pytest markers (integration, development, staging, production), responses library for HTTP mocking
+- `INTEGRATION_TESTS_PLAN.md` - Added OAuth automation section explaining how to avoid manual re-auth
+- `CLAUDE.md` - Updated test directory structure, added test commands and marker documentation
+
+**Test Coverage:**
+- **71 integration tests** covering all services
+- Development tests: Local Supabase + mocked Gmail API
+- Staging tests: Cloud Supabase + real Gmail (burner account)
+- Full automation: OAuth tokens auto-refresh, no manual intervention after initial setup
+
+**Reason:** Implement integration tests as planned in INTEGRATION_TESTS_PLAN.md to ensure all services work correctly with real Supabase.
+
+---
+
 ### Integration Tests Plan
 
 **Files created:**

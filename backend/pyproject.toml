@@ -16,6 +16,8 @@ dependencies = [
 test = [
     "pytest>=8.0",
     "pytest-cov>=4.0",
+    "responses>=0.25.0",
+    "pytest-timeout>=2.0",
 ]
 
 [build-system]
@@ -29,3 +31,10 @@ packages = ["selko"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "development: tests that run against local Supabase",
+    "staging: tests that run against staging Supabase + real Gmail",
+    "production: read-only smoke tests for production",
+    "slow: tests that take >10 seconds",
+]
