@@ -2,7 +2,7 @@
 -- Stores synced Gmail messages with parsed label flags
 
 create table public.emails (
-    id uuid primary key default uuid_generate_v4(),
+    id uuid primary key default gen_random_uuid(),
     user_id uuid not null references public.users(id) on delete cascade,
     integration_id uuid references public.integrations(id) on delete set null,
 

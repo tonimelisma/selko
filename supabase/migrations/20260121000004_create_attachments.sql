@@ -2,7 +2,7 @@
 -- Stores email attachment metadata with references to Supabase Storage
 
 create table public.attachments (
-    id uuid primary key default uuid_generate_v4(),
+    id uuid primary key default gen_random_uuid(),
     user_id uuid not null references public.users(id) on delete cascade,
     email_id uuid not null references public.emails(id) on delete cascade,
 

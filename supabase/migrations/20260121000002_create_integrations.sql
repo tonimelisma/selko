@@ -5,7 +5,7 @@ create type integration_provider as enum ('gmail', 'google_photos', 'google_cale
 create type integration_status as enum ('active', 'expired', 'revoked', 'error');
 
 create table public.integrations (
-    id uuid primary key default uuid_generate_v4(),
+    id uuid primary key default gen_random_uuid(),
     user_id uuid not null references public.users(id) on delete cascade,
     provider integration_provider not null,
     status integration_status default 'active' not null,
