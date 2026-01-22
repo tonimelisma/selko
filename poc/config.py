@@ -91,14 +91,17 @@ def load_config(env_override: Optional[str] = None) -> Config:
 
     # Get required variables
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_anon_key = os.getenv("SUPABASE_ANON_KEY")
+    # Support both legacy anon key (JWT) and newer publishable key formats
+    supabase_anon_key = os.getenv("SUPABASE_ANON_KEY") or os.getenv(
+        "SUPABASE_PUBLISHABLE_API_KEY"
+    )
 
     # Validate required variables
     missing = []
     if not supabase_url:
         missing.append("SUPABASE_URL")
     if not supabase_anon_key:
-        missing.append("SUPABASE_ANON_KEY")
+        missing.append("SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_API_KEY")
 
     if missing:
         print(f"Error: Missing required environment variables: {', '.join(missing)}")
