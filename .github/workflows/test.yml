@@ -1,0 +1,125 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --extra test
+
+      - name: Run unit tests
+        run: uv run pytest backend/tests/ -m "not integration" -v --tb=short
+
+  integration-tests-development:
+    name: Integration Tests (Development)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --extra test
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: |
+          supabase start
+          # Wait for Supabase to be ready
+          sleep 10
+
+      - name: Create .env file for local Supabase
+        run: |
+          # Get credentials from supabase status
+          SUPABASE_URL=$(supabase status --output json | jq -r '.API_URL')
+          SUPABASE_ANON_KEY=$(supabase status --output json | jq -r '.ANON_KEY')
+          SUPABASE_SERVICE_ROLE_KEY=$(supabase status --output json | jq -r '.SERVICE_ROLE_KEY')
+
+          cat > .env << EOF
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+          SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+          TEST_USER_EMAIL=test@selko.local
+          TEST_USER_PASSWORD=testpass123
+          EOF
+
+      - name: Create test user
+        run: |
+          uv run python -m cli.cli_user create \
+            --email test@selko.local \
+            --password testpass123 \
+            --env development || true
+        env:
+          TEST_USER_EMAIL: test@selko.local
+          TEST_USER_PASSWORD: testpass123
+
+      - name: Run integration tests
+        run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short
+        env:
+          ENVIRONMENT: development
+          TEST_USER_EMAIL: test@selko.local
+          TEST_USER_PASSWORD: testpass123
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
+
+  integration-tests-staging:
+    name: Integration Tests (Staging)
+    runs-on: ubuntu-latest
+    # Only run on main branch pushes or manual trigger (not on PRs)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [unit-tests]  # Only run if unit tests pass
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --extra test
+
+      - name: Run staging integration tests
+        run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short
+        env:
+          ENVIRONMENT: staging
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
