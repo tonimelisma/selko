@@ -199,6 +199,41 @@ All CLI operations use proper user authentication:
 
 No more `--user-id` flag needed - the CLI signs in as the configured test user.
 
+## Backend Technology Stack
+
+### Framework Decision (2026-01-22)
+
+**Selected:** FastAPI + ARQ (async task queue) + APScheduler (polling)
+
+See `BACKEND_FRAMEWORK_EVALUATION.md` for complete analysis of 7 frameworks.
+
+**Why FastAPI:**
+- Async-native (efficient with Supabase I/O)
+- Automatic OpenAPI/Swagger documentation
+- Type-safe with Pydantic (works with existing type hints)
+- Low overhead for solo developer
+- Production-ready (Netflix, Uber, Microsoft)
+- Score: 92% (highest ranked)
+
+**Why ARQ:**
+- Pure async (works naturally with Supabase async client)
+- Simple Redis-based queue
+- Built-in cron scheduling
+- Minimal configuration
+
+**Alternative Considered:** Django+DRF rejected (conflicts with Supabase RLS architecture)
+
+**Migration Strategy:**
+- Phase 1: Keep CLI tools (current)
+- Phase 2: Add FastAPI alongside CLI (non-breaking)
+- Phase 3: Move long-running tasks to ARQ workers
+- CLI tools remain for development/debugging
+
+**When to Implement:**
+- Start building web/mobile UI (need REST APIs)
+- Need webhooks (e.g., Gmail push notifications)
+- Have background jobs (attachment OCR, AI processing)
+
 ## Architecture Overview
 
 ### Phased Approach
