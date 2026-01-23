@@ -7,6 +7,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Selko** is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems. The system acts as a "Human-in-the-loop" filter, ensuring accuracy before committing changes to permanent records.
 
 See `PRD_ARCH.md` for complete product requirements and technical architecture specification.
+See `docs/architecture/ARCHITECTURE.md` for high-level system diagrams.
+
+## Development Philosophy
+
+### End-to-End First
+**CRITICAL PRINCIPLE:** Complete full end-to-end journeys before expanding scope.
+
+- Do NOT add new inputs (Google Photos) until current input (Email) works end-to-end
+- Do NOT add new outputs (File Storage, Task Management) until current output (Calendar) works end-to-end
+- Each journey must be fully functional before adding complexity
+
+**First Complete Journey: Email → Calendar Event**
+```
+Email arrives → Fetch via Gmail API → LLM extracts event details →
+User reviews → Approve/Edit → Write to Google Calendar → Done
+```
+
+### AI Architecture: LLM-Centric
+**All intelligence features use the same multimodal LLM (Gemini):**
+- OCR & text extraction → LLM reads images/PDFs directly (multimodal)
+- Entity extraction → LLM extracts dates, times, locations, vendors, amounts
+- Document classification → LLM categorizes content type (receipt, invitation, etc.)
+
+**No separate OCR service needed.** The LLM is multimodal and handles all of FR-B.1, FR-B.2, and FR-B.3 from the PRD.
+
+See `docs/guides/gemini-integration.md` for detailed LLM integration patterns.
+
+### YAGNI (You Aren't Gonna Need It)
+Add complexity only when measured need exists:
+- No Redis until you measure queue performance issues
+- No separate microservices until you hit scaling limits
+- Start with the simplest solution that works
 
 ## Development Environment
 
@@ -339,6 +371,35 @@ Current tables in `supabase/migrations/`:
 **Update vs. Create Detection**: System must semantically detect if a new asset is an update to existing data (e.g., "Time Changed" email) and merge values rather than creating duplicates.
 
 **Compensating Transactions**: Every action (CREATE/UPDATE/DELETE) must be reversible by storing previous_state and external resource IDs.
+
+## Next Steps (MVP Roadmap)
+
+Implementation order (end-to-end focus):
+
+| Priority | Feature | PRD Reference | Notes |
+|----------|---------|---------------|-------|
+| **1** | LLM integration | FR-B.1, FR-B.2, FR-B.3 | Gemini via Vertex AI |
+| **2** | Email → LLM analysis | FR-A.2 + FR-B.* | Parse emails/attachments with AI |
+| **3** | Calendar sync (write) | FR-D.1 | Complete first end-to-end journey |
+| **4** | Review interface | FR-C.1 | Human-in-loop before auto-execution |
+| **5** | Undo/Redo | FR-C.2 | Safety net for calendar writes |
+| **6** | Automation rules | FR-B.5 | Bypass review for trusted sources |
+| **7** | FastAPI web framework | Architecture | API for web/mobile clients |
+| **8** | Google Photos sync | FR-A.1 | ONLY after email→calendar works |
+
+## Reference Documentation
+
+### Technical Guides
+- `docs/guides/gmail-integration.md` - Gmail API architecture, push vs polling, History API
+- `docs/guides/gemini-integration.md` - Vertex AI setup, Pydantic structured outputs, multimodal input
+
+### Architecture Decisions
+- `BACKEND_FRAMEWORK_EVALUATION.md` - Why FastAPI (7 frameworks evaluated)
+- `HOSTING_EVALUATION.md` - Why Fly.io (10 platforms evaluated)
+- `SIMPLIFIED_STACK.md` - Why no Redis/ARQ for POC/MVP
+
+### Plans (Historical)
+- `docs/plans/attachment-storage.md` - Email attachment implementation (COMPLETED)
 
 ## License
 

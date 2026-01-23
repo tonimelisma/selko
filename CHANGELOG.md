@@ -4,6 +4,57 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-23
 
+### Documentation Alignment & Restructuring
+
+**Files created:**
+- `docs/architecture/ARCHITECTURE.md` - High-level system overview with ASCII diagrams
+- `docs/guides/gmail-integration.md` - Gmail API technical guide (moved from root)
+- `docs/guides/gemini-integration.md` - LLM integration patterns (moved from root)
+- `docs/plans/attachment-storage.md` - Implementation plan (moved, marked COMPLETED)
+
+**Files modified:**
+- `CLAUDE.md` - Added critical sections:
+  - "Development Philosophy" (end-to-end journeys first)
+  - "AI Architecture" (all intelligence via LLM, no separate OCR)
+  - "Next Steps" (MVP roadmap with correct order)
+  - "Reference Documentation" (links to guides)
+- `README.md` - Updated:
+  - "Features" section: split into Implemented/Planned/Future
+  - Added `attachments.py` to project structure
+  - Documented `--fetch-attachments` flag
+  - Expanded testing section (71+ tests, markers explained)
+  - Added `docs/` folder to project structure
+  - Updated Documentation section with all new docs
+- `PRD_ARCH.md` - Added "Phase 0: POC" section with implementation status
+
+**Files deleted:**
+- `Accessing Gmail Data with Python.md` - Moved to `docs/guides/gmail-integration.md`
+- `gemini_apis.md` - Moved to `docs/guides/gemini-integration.md`
+- `PLAN_ATTACHMENT_STORAGE.md` - Moved to `docs/plans/attachment-storage.md`
+
+**Documentation Structure:**
+```
+docs/
+├── architecture/
+│   └── ARCHITECTURE.md      # System overview + diagrams
+├── guides/
+│   ├── gmail-integration.md # Gmail API technical details
+│   └── gemini-integration.md # LLM integration patterns
+└── plans/
+    └── attachment-storage.md # Completed implementation plan
+```
+
+**Key Alignment Fixes:**
+1. Clarified phase terminology: POC (Phase 0) vs MVP (Phase 1)
+2. Documented that all AI/intelligence features use multimodal LLM (no separate OCR)
+3. Established end-to-end first principle (Email→Calendar before Photos)
+4. Committed previously untracked reference docs
+5. Marked attachment storage plan as COMPLETED
+
+**Reason:** Documentation alignment as identified in analysis. Consolidate overlapping content, commit valuable reference docs, clarify development philosophy and next steps.
+
+---
+
 ### Attachment Storage Implementation & CI/CD Improvements
 
 **Files created:**

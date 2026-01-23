@@ -6,15 +6,28 @@ AI-powered assistant that automates personal organization by analyzing digital i
 
 **Phase 1 (POC)**: Validating core functionality with local Python scripts before building the full cloud-based web application.
 
-## Features (Planned)
+## Features
 
-- Email inbox monitoring with attachment extraction
-- Cloud Photo Library sync
-- OCR & text extraction (including handwriting)
-- Entity extraction (dates, times, locations, vendors, amounts)
-- Document classification (receipts, invitations, drawings)
-- Calendar sync with create/update events
+### Implemented (POC)
+- Email inbox monitoring via Gmail API
+- Attachment extraction and storage (Supabase Storage)
+- Content deduplication (SHA-256 hashing)
+- Multi-environment support (development/staging/production)
+- User authentication with Row-Level Security (RLS)
+- OAuth token storage in database
+
+### Planned (MVP)
+- AI-powered analysis via Gemini LLM (OCR, entity extraction, classification)
+- Google Calendar sync (create/update events)
 - Human-in-the-loop review interface
+- Undo/Redo with compensating transactions
+- Automation rules for trusted sources
+
+### Future
+- Cloud Photo Library sync
+- Web upload interface
+- Task management integration
+- Mobile app with on-device processing
 
 ## Tech Stack
 
@@ -145,10 +158,12 @@ selko/
 │   │       ├── users.py       # User management (admin)
 │   │       ├── integrations.py # OAuth token storage
 │   │       ├── gmail.py       # Gmail OAuth + API
-│   │       └── emails.py      # Email parsing + storage
+│   │       ├── emails.py      # Email parsing + storage
+│   │       └── attachments.py # Attachment download + storage
 │   ├── tests/                  # Test suite
 │   │   ├── conftest.py        # Pytest fixtures
-│   │   └── test_*.py          # Unit tests
+│   │   ├── test_*.py          # Unit tests
+│   │   └── integration/       # Integration tests
 │   └── pyproject.toml
 │
 ├── cli/                        # CLI tools
@@ -161,6 +176,11 @@ selko/
 ├── web/                        # Web frontend (placeholder)
 ├── ios/                        # iOS app (placeholder)
 ├── android/                    # Android app (placeholder)
+│
+├── docs/                       # Documentation
+│   ├── architecture/          # System design docs
+│   ├── guides/                # Technical integration guides
+│   └── plans/                 # Implementation plans
 │
 ├── supabase/
 │   ├── config.toml            # Supabase CLI configuration
@@ -201,6 +221,9 @@ uv run python -m cli.cli_auth_gmail
 # Fetch emails (uses credentials from database)
 uv run python -m cli.cli_fetch_emails --max 20
 
+# Fetch emails AND download attachments
+uv run python -m cli.cli_fetch_emails --max 10 --fetch-attachments
+
 # Enable verbose logging
 uv run python -m cli.cli_fetch_emails -v --max 10
 
@@ -208,24 +231,58 @@ uv run python -m cli.cli_fetch_emails -v --max 10
 uv run python -m cli.cli_fetch_emails -q --max 100
 ```
 
+**Attachment Storage:**
+- Files stored in Supabase Storage (`attachments` bucket)
+- User-scoped paths: `{user_id}/{unique_id}_{filename}`
+- Content deduplication via SHA-256 hash
+- Maximum file size: 50 MB
+
 ### Running Tests
+
+The project has 71+ tests covering all services.
 
 ```bash
 # Install test dependencies
 uv sync --extra test
 
-# Run all tests
+# Run unit tests only (fast, no external dependencies)
+uv run pytest backend/tests/ -m "not integration" -v
+
+# Run all tests including integration (requires local Supabase)
+supabase start
 uv run pytest backend/tests/ -v
+
+# Run integration tests only
+uv run pytest backend/tests/integration/ -m "development" -v
 
 # Run with coverage report
 uv run pytest backend/tests/ --cov=selko
 ```
 
+**Test Categories:**
+| Marker | Description |
+|--------|-------------|
+| `integration` | All integration tests (requires Supabase) |
+| `development` | Tests against local Supabase |
+| `staging` | Tests against staging Supabase + real Gmail |
+
+See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
+
 ## Documentation
 
+**Core Documents:**
 - [CLAUDE.md](CLAUDE.md) - Development guidelines and database schema
 - [PRD_ARCH.md](PRD_ARCH.md) - Product requirements and architecture specification
 - [CHANGELOG.md](CHANGELOG.md) - Detailed change history
+
+**Architecture & Decisions:**
+- [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) - High-level system overview
+- [BACKEND_FRAMEWORK_EVALUATION.md](BACKEND_FRAMEWORK_EVALUATION.md) - Framework decision rationale
+- [SIMPLIFIED_STACK.md](SIMPLIFIED_STACK.md) - Why we avoid complexity
+
+**Technical Guides:**
+- [docs/guides/gmail-integration.md](docs/guides/gmail-integration.md) - Gmail API integration details
+- [docs/guides/gemini-integration.md](docs/guides/gemini-integration.md) - LLM integration patterns
 
 ## License
 
