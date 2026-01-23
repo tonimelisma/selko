@@ -730,17 +730,23 @@ Phase 2:   API → Supabase  (CLI becomes thin wrapper)
 
 ## Summary
 
-### TL;DR
+### TL;DR (Updated for Simplified Stack)
 
 **For Selko POC:**
-- ✅ **Start:** FastAPI + ARQ (if you need APIs/workers now)
-- ✅ **Or wait:** Stick with CLI until you build web/mobile UI
-- ❌ **Avoid:** Django (conflicts with Supabase architecture)
+- ✅ **Start:** FastAPI + Supabase (2 components, no Redis/ARQ)
+- ✅ **Background jobs:** Use FastAPI BackgroundTasks (in-process, simple)
+- ✅ **Scheduling:** Use APScheduler (Python) or pg_cron (Supabase)
+- ❌ **Avoid:** Django (conflicts with Supabase), Redis/ARQ (premature optimization)
+
+**Add Complexity Only When Needed:**
+- **PostgreSQL queue:** When BackgroundTasks insufficient (still free)
+- **Redis + ARQ:** Only when >1000 jobs/hour (measure first!)
 
 **Next Steps:**
-1. Decide if you need API layer now or can wait
-2. If now: Add FastAPI alongside existing code (non-breaking)
-3. Start with simple endpoints, add ARQ when you have long tasks
-4. Keep CLI tools for development/debugging
+1. Start with FastAPI + BackgroundTasks + APScheduler
+2. Keep CLI tools for development/debugging
+3. Deploy to Fly.io free tier ($0/mo)
+4. Add PostgreSQL queue only if you hit real limits
+5. Add Redis only when you measure the need (YAGNI)
 
-**Key Insight:** FastAPI won't slow you down (it's actually faster to develop than writing CLI args), and you'll need it eventually for web/mobile. Start small, grow as needed.
+**Key Insight:** Start with what Supabase already provides (PostgreSQL, pg_cron, storage). Add external services only when you measure actual limits. Simpler = faster development, lower costs, easier debugging.

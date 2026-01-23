@@ -613,21 +613,21 @@ redis_settings = RedisSettings(
 
 ---
 
-## Recommendation for Selko
+## Recommendation for Selko (Simplified Stack)
 
-### 🏆 Winner: Fly.io + Upstash Redis
+### 🏆 Winner: Fly.io (No Redis Needed)
 
-**Why This Combination:**
+**Why Fly.io Alone:**
 
 1. **Best Free Tier**
    - Fly.io: 3 shared VMs free (256MB each)
-   - Upstash: 10k Redis requests/day free
+   - Supabase: Free tier (PostgreSQL + Storage + Auth)
    - **Total POC cost: $0/month**
 
-2. **Perfect for FastAPI + ARQ**
+2. **Perfect for FastAPI + Supabase**
    - Native ASGI support
-   - Multi-process (API + workers in one app)
-   - Upstash Redis works great with ARQ
+   - Can run multiple processes (if needed later)
+   - No Redis needed (use Supabase PostgreSQL for queues)
 
 3. **Minimal DevOps**
    - `fly deploy` and done
@@ -647,21 +647,23 @@ redis_settings = RedisSettings(
    - Active community
    - No complex configuration
 
-**Architecture:**
+**Simplified Architecture:**
 ```
 ┌─────────────────────────────┐
 │     Fly.io Application      │
-│  ┌─────────┐  ┌──────────┐  │
-│  │ FastAPI │  │ ARQ      │  │  ← Two processes in one app
-│  │ (API)   │  │ Workers  │  │
-│  └────┬────┘  └────┬─────┘  │
-│       │            │         │
-└───────┼────────────┼─────────┘
-        │            │
-        ├─────────→  │  Upstash Redis (serverless)
-        │            │
-        └─────────→ Supabase (PostgreSQL + Storage + Auth)
+│  ┌─────────────────────┐    │
+│  │ FastAPI             │    │  ← Single process
+│  │ + BackgroundTasks   │    │     (or APScheduler for cron)
+│  │ + APScheduler       │    │
+│  └──────────┬──────────┘    │
+│             │                │
+└─────────────┼────────────────┘
+              │
+              └─→ Supabase (PostgreSQL + Storage + Auth)
+                  (PostgreSQL can handle queues if needed)
 ```
+
+**Note:** Add Redis/ARQ only if you measure >1000 jobs/hour. Start simple!
 
 ---
 
@@ -982,35 +984,33 @@ curl -w "@curl-format.txt" -o /dev/null -s https://khahcozfbnpykspvatrg.supabase
 
 ---
 
-## Cost Projections
+## Cost Projections (Simplified Stack)
 
 ### POC Stage (0-100 users)
 
 | Platform | Cost | Notes |
 |----------|------|-------|
-| **Fly.io** | **$0-5/mo** | Free tier sufficient |
+| **Fly.io** | **$0/mo** | Free tier (3 VMs) |
 | Railway | $5-10/mo | Trial credit → paid |
 | Cloud Run | $0-5/mo | Pay per request |
 | Render | $0-7/mo | Free tier (with sleep) |
 
-**+ Supabase:** Free tier or ~$25/mo (Pro)
-**+ Upstash Redis:** Free tier or ~$5/mo
+**+ Supabase:** Free tier (sufficient for POC)
 
-**Total POC:** $0-10/mo (excluding Supabase)
+**Total POC:** $0/mo (all-in with Fly.io + Supabase free tiers)
 
 ### MVP Stage (100-1000 users)
 
 | Platform | Cost | Notes |
 |----------|------|-------|
-| **Fly.io** | **$10-20/mo** | 2-3 instances |
-| Railway | $15-30/mo | 2 services + Redis |
+| **Fly.io** | **$10-20/mo** | 2-3 instances if needed |
+| Railway | $15-30/mo | 1-2 services |
 | Cloud Run | $10-20/mo | Serverless scaling |
 | Render | $21-40/mo | Paid tier required |
 
-**+ Supabase:** $25/mo (Pro)
-**+ Upstash Redis:** $5-10/mo
+**+ Supabase:** $25/mo (Pro plan)
 
-**Total MVP:** $40-60/mo (all-in)
+**Total MVP:** $35-45/mo (all-in, no Redis needed)
 
 ### Growth Stage (1k-10k users)
 
@@ -1022,7 +1022,9 @@ curl -w "@curl-format.txt" -o /dev/null -s https://khahcozfbnpykspvatrg.supabase
 | AWS/GCP | $100-500/mo | More control, more cost |
 
 **+ Supabase:** $25/mo (Pro) or $599/mo (Team)
-**+ Upstash Redis:** $10-30/mo
+**+ Redis (if needed):** $10-30/mo (only if >1000 jobs/hour)
+
+**Total Growth:** $55-130/mo (add Redis only if measured need)
 
 ---
 
@@ -1072,24 +1074,31 @@ curl -w "@curl-format.txt" -o /dev/null -s https://khahcozfbnpykspvatrg.supabase
 
 ## Summary
 
-### TL;DR
+### TL;DR (Updated for Simplified Stack)
 
 **For Selko POC/MVP:**
-- ✅ **Winner: Fly.io + Upstash Redis**
-- ✅ **Alternative: Railway** (easier, slightly pricier)
+- ✅ **Winner: Fly.io** (no Redis needed!)
+- ✅ **Alternative: Railway** (easier DX, $15/mo)
 - ❌ **Avoid: AWS/Azure** (overkill), **Heroku** (overpriced), **VPS** (too much ops)
 
 **Why Fly.io:**
 - Free tier for POC ($0/mo)
-- Perfect FastAPI + ARQ support
+- Perfect FastAPI support
+- No Redis needed (use Supabase PostgreSQL for queues)
 - Minimal DevOps overhead
 - Production-ready scaling path
 - `fly deploy` and done
 
-**Next Steps:**
-1. Start with Fly.io free tier
-2. Deploy POC at zero cost
-3. Evaluate if you need Railway's better DX
-4. Scale on Fly.io or migrate to Cloud Run if cost becomes issue
+**Simplified Stack:**
+- **POC:** Fly.io free tier + Supabase free tier = $0/mo
+- **MVP:** Fly.io ($10-20/mo) + Supabase Pro ($25/mo) = $35-45/mo
+- **Scale:** Add Redis only if PostgreSQL queue can't keep up (measure first!)
 
-**Key Insight:** Modern platforms (Fly/Railway/Render) are **vastly better** than traditional cloud (AWS/Azure/GCP) for solo developers. Save the complexity for when you actually need it.
+**Next Steps:**
+1. Deploy FastAPI to Fly.io free tier
+2. Use FastAPI BackgroundTasks for simple jobs
+3. Use APScheduler or pg_cron for scheduled tasks
+4. Add PostgreSQL queue if BackgroundTasks insufficient
+5. Add Redis only when you measure >1000 jobs/hour (YAGNI)
+
+**Key Insight:** Modern platforms (Fly/Railway/Render) are **vastly better** than traditional cloud (AWS/Azure/GCP) for solo developers. Start simple with what you already have (Supabase), add complexity only when measured.

@@ -1,12 +1,14 @@
-# Implementation Plan: Email Attachment Storage
+# Implementation Plan: Email Attachment Storage (Simplified)
 
-**Date:** 2026-01-22
+**Date:** 2026-01-22 (Updated)
 **Branch:** `claude/plan-attachment-storage-lm7AY`
 **PRD Reference:** Part 2, Section 1.2 (Ingestion Service - Attachment Parsing) & Section 1.3 (Object/Blob Storage)
 
 ## Overview
 
 Implement end-to-end attachment storage for Gmail emails, including download from Gmail API, content deduplication, upload to Supabase Storage, and metadata tracking in the database.
+
+**Architecture:** Simple Python services (no Redis, no ARQ) - aligns with simplified stack (FastAPI + Supabase only)
 
 ## Current State Analysis
 
