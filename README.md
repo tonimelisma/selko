@@ -18,10 +18,20 @@ AI-powered assistant that automates personal organization by analyzing digital i
 
 ## Tech Stack
 
+### Current (POC)
 - **Backend**: Python, Supabase (PostgreSQL + Auth + Storage)
 - **Package Manager**: [uv](https://github.com/astral-sh/uv)
 - **Database**: PostgreSQL via Supabase
 - **Integrations**: Gmail API, Google Calendar API, Google Photos API
+
+### Planned (MVP)
+- **API Framework**: FastAPI (async, with automatic OpenAPI docs)
+- **Background Jobs**: FastAPI BackgroundTasks → PostgreSQL queue (if needed)
+- **Scheduling**: APScheduler (Python) or pg_cron (Supabase built-in)
+- **Hosting**: Fly.io (free tier for POC, scales to production)
+- **Cost**: $0/mo (POC on free tiers) → $35-45/mo (MVP)
+
+**Architecture Decision:** Keep it simple - FastAPI + Supabase only. No Redis/ARQ unless measured need (>1000 jobs/hour). See `SIMPLIFIED_STACK.md` for rationale.
 
 ## Setup
 

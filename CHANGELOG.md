@@ -4,6 +4,65 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-22
 
+### Technology Stack Evaluations (Simplified)
+
+**Files created:**
+- `BACKEND_FRAMEWORK_EVALUATION.md` - Comprehensive analysis of 7 Python backend frameworks + 6 job queue options
+- `HOSTING_EVALUATION.md` - Comprehensive analysis of 10 hosting platforms for POC/MVP deployment
+- `PLAN_ATTACHMENT_STORAGE.md` - Detailed implementation plan for email attachment storage (6 phases)
+- `SIMPLIFIED_STACK.md` - Reality check on avoiding feature creep, why Redis/ARQ not needed for POC/MVP
+
+**Files modified:**
+- `CLAUDE.md` - Added "Backend Technology Stack" section with simplified recommendations (FastAPI + Supabase only)
+- `README.md` - Added "Planned (MVP)" tech stack section
+
+**Backend Framework Decision:**
+- **Selected:** FastAPI (standalone)
+- **Score:** 92% (highest of 7 frameworks evaluated)
+- **Rationale:** Async-native, automatic OpenAPI docs, type-safe, low overhead for solo dev, production-ready
+- **Rejected:** Django+DRF (conflicts with Supabase RLS architecture)
+- **Alternatives:** Litestar (81%), Flask (79%)
+
+**Background Jobs Decision:**
+- **POC:** FastAPI BackgroundTasks (in-process, simple)
+- **MVP:** PostgreSQL table-based queue if needed (uses existing Supabase, free)
+- **Scale:** Redis + ARQ only when actually needed (1000s jobs/hour)
+- **Rationale:** YAGNI principle - don't add Redis until you measure the need
+
+**Polling/Scheduling Decision:**
+- **Selected:** Supabase pg_cron (built-in PostgreSQL extension)
+- **Alternative:** APScheduler (Python) or systemd timers on Fly.io
+- **Rationale:** Use what's already available in Supabase
+
+**Hosting Platform Decision:**
+- **Selected:** Fly.io
+- **Score:** 91% (highest of 10 platforms evaluated)
+- **Rationale:** Best free tier ($0/mo POC), perfect FastAPI support, minimal DevOps, production-ready scaling
+- **Alternative:** Railway (86%, better DX but $15/mo)
+- **Rejected:** AWS/Azure (overkill), Heroku (overpriced), VPS (too much ops work)
+
+**Simplified Stack:**
+- POC: FastAPI + Supabase (2 components, $0/mo)
+- MVP: Add PostgreSQL queue if needed (still 2 components, $25/mo for Supabase Pro)
+- Scale: Add Redis only when PostgreSQL queue insufficient (measure first!)
+
+**Evaluation Criteria:**
+- Backend: 14 weighted criteria (developer velocity, learning curve, API development, job queue integration, observability, etc.)
+- Hosting: 14 weighted criteria (developer experience, operational overhead, cost, FastAPI support, Redis hosting, etc.)
+- Both evaluations include cost projections, code examples, deployment configs, migration strategies
+
+**Key Insights:**
+1. Modern platforms (Fly.io, Railway) vastly better than traditional cloud (AWS/Azure) for solo developers
+2. FastAPI ideal for async workloads with Supabase
+3. PostgreSQL can handle queues for POC/MVP (table-based or LISTEN/NOTIFY)
+4. Supabase pg_cron handles scheduling (no need for external cron service)
+5. Start with $0/mo (Fly.io free tier + Supabase free tier)
+6. Add complexity only when measured limits are hit (YAGNI)
+
+**Reason:** Document technology decisions for backend framework and hosting platform before MVP implementation. Reality check on avoiding premature optimization and feature creep - start simple, add complexity only when needed.
+
+---
+
 ### Integration Tests Implementation
 
 **Files created:**
