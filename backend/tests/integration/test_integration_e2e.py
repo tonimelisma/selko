@@ -100,8 +100,8 @@ class TestEndToEndDevelopment:
 
                 # Parse and save
                 parsed_emails = [parse_gmail_message(msg) for msg in messages]
-                count = save_emails(client, parsed_emails)
-                assert count == 2
+                saved = save_emails(client, parsed_emails)
+                assert len(saved) == 2
 
             # Verify emails in database
             result = (

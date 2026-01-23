@@ -240,13 +240,13 @@ class TestCrossUserRLSIsolation:
         self, config, authenticated_client, test_user_id, temp_user
     ):
         """User A cannot read User B's OAuth integrations."""
-        # Create integration as User A
+        # Create integration as User A (using valid provider enum value)
         integration_result = (
             authenticated_client.table("integrations")
             .insert(
                 {
                     "user_id": test_user_id,
-                    "provider": "test_provider",
+                    "provider": "gmail",  # Valid enum value
                     "status": "active",
                     "access_token": "secret_token_123",
                     "scopes": ["read"],
@@ -279,7 +279,7 @@ class TestCrossUserRLSIsolation:
             by_provider = (
                 user_b_client.table("integrations")
                 .select("*")
-                .eq("provider", "test_provider")
+                .eq("provider", "gmail")
                 .execute()
             )
             user_a_integrations = [i for i in by_provider.data if i["user_id"] == test_user_id]
