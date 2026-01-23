@@ -2,7 +2,7 @@
 """CLI for fetching Gmail emails.
 
 Fetches emails from Gmail and stores them in Supabase.
-No more local JSON file storage.
+Optionally downloads and stores email attachments.
 """
 
 import argparse
@@ -18,7 +18,9 @@ from selko.services.gmail import (
     build_service,
     fetch_messages,
     get_credentials,
+    extract_attachments,
 )
+from selko.services.attachments import AttachmentError, process_attachment
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,9 @@ Examples:
 
   # Fetch 50 emails
   uv run python -m cli.cli_fetch_emails --max 50
+
+  # Fetch emails AND download attachments
+  uv run python -m cli.cli_fetch_emails --max 10 --fetch-attachments
 
   # Use staging environment
   uv run python -m cli.cli_fetch_emails --env staging
@@ -53,6 +58,11 @@ Note:
         type=int,
         default=10,
         help="Maximum number of emails to fetch (default: 10)",
+    )
+    parser.add_argument(
+        "--fetch-attachments",
+        action="store_true",
+        help="Also download and store email attachments (default: False)",
     )
     args = parser.parse_args()
 
@@ -93,11 +103,62 @@ Note:
     # Parse and save emails
     try:
         parsed = [parse_gmail_message(msg) for msg in messages]
-        saved = save_emails(client, parsed)
-        logger.info(f"Done! Saved {saved} emails")
+        saved_records = save_emails(client, parsed)
+        logger.info(f"Saved {len(saved_records)} emails")
     except EmailError as e:
         logger.error(f"Error saving emails: {e}")
         sys.exit(1)
+
+    # Process attachments if requested
+    if args.fetch_attachments:
+        logger.info("Fetching attachments for saved emails...")
+        total_processed = 0
+        total_skipped = 0
+
+        # Map gmail_id to saved record for lookup
+        gmail_id_to_record = {r["gmail_id"]: r for r in saved_records}
+
+        for msg in messages:
+            gmail_id = msg["id"]
+            email_record = gmail_id_to_record.get(gmail_id)
+
+            if not email_record:
+                logger.warning(f"No saved record for message {gmail_id}")
+                continue
+
+            attachments = extract_attachments(msg)
+            if not attachments:
+                continue
+
+            logger.info(
+                f"Processing {len(attachments)} attachments for: "
+                f"{email_record.get('subject', '(no subject)')[:50]}"
+            )
+
+            for att_part in attachments:
+                try:
+                    result = process_attachment(
+                        client=client,
+                        gmail_service=service,
+                        email_id=email_record["id"],
+                        message_id=gmail_id,
+                        attachment_part=att_part,
+                        config=config,
+                    )
+                    if result:
+                        total_processed += 1
+                    else:
+                        total_skipped += 1
+                except AttachmentError as e:
+                    logger.error(f"Failed to process attachment: {e}")
+                    total_skipped += 1
+                    continue
+
+        logger.info(
+            f"Attachments: {total_processed} processed, {total_skipped} skipped"
+        )
+
+    logger.info("Done!")
 
 
 if __name__ == "__main__":

@@ -81,11 +81,13 @@ selko/
 │   │       ├── users.py       # User CRUD (admin operations)
 │   │       ├── integrations.py # OAuth token storage
 │   │       ├── gmail.py       # Gmail OAuth + API (with rate limiting)
-│   │       └── emails.py      # Email parsing + storage
+│   │       ├── emails.py      # Email parsing + storage
+│   │       └── attachments.py # Attachment download + storage
 │   ├── tests/                  # Test suite
 │   │   ├── conftest.py        # Pytest fixtures (unit tests)
 │   │   ├── test_config.py     # Config unit tests
 │   │   ├── test_emails.py     # Email parsing unit tests
+│   │   ├── test_attachments.py # Attachment unit tests
 │   │   ├── test_integrations.py # OAuth unit tests (mocked)
 │   │   └── integration/       # Integration tests (real Supabase)
 │   │       ├── conftest.py    # Integration test fixtures
@@ -94,6 +96,8 @@ selko/
 │   │       ├── test_integration_oauth.py
 │   │       ├── test_integration_gmail.py
 │   │       ├── test_integration_emails.py
+│   │       ├── test_integration_attachments.py
+│   │       ├── test_integration_rls_security.py
 │   │       ├── test_integration_e2e.py
 │   │       └── test_integration_cli.py
 │   └── pyproject.toml
@@ -139,6 +143,9 @@ uv run python -m cli.cli_auth_gmail
 
 # Fetch emails
 uv run python -m cli.cli_fetch_emails --max 10
+
+# Fetch emails AND download attachments
+uv run python -m cli.cli_fetch_emails --max 10 --fetch-attachments
 ```
 
 **Environment Selection:**
@@ -156,6 +163,7 @@ ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 | `-v`, `--verbose` | Enable verbose (DEBUG) logging |
 | `-q`, `--quiet` | Only show warnings and errors |
 | `--max` | Maximum emails to fetch (for cli_fetch_emails) |
+| `--fetch-attachments` | Also download and store email attachments |
 
 **Running Tests:**
 ```bash
@@ -307,8 +315,16 @@ Current tables in `supabase/migrations/`:
 **`attachments`** - Email attachment metadata
 - `gmail_attachment_id`, `filename`, `mime_type`, `size_bytes`
 - `storage_path` - Reference to Supabase Storage
-- `content_hash` - For deduplication
+- `content_hash` - For deduplication (SHA-256)
 - RLS: Users manage own attachments
+- Index: `idx_attachments_content_hash` for deduplication lookups
+
+**Supabase Storage Bucket: `attachments`**
+- Private bucket (not publicly accessible)
+- 50 MB file size limit
+- User-scoped paths: `{user_id}/{unique_id}_{filename}`
+- RLS policies: Users can only access files in their own folder
+- Supported MIME types: images, PDFs, Office docs, text, CSV, ZIP
 
 ### Future Data Model (MVP)
 

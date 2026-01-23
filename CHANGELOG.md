@@ -2,6 +2,62 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-23
+
+### Attachment Storage Implementation & CI/CD Improvements
+
+**Files created:**
+- `backend/selko/services/attachments.py` - Attachment service module (download, upload, deduplication, metadata)
+- `backend/tests/test_attachments.py` - Unit tests for attachment functions (17 tests)
+- `backend/tests/integration/test_integration_attachments.py` - Integration tests for attachment storage
+- `backend/tests/integration/test_integration_rls_security.py` - Cross-user RLS denial tests (critical security)
+- `supabase/migrations/20260122000004_create_storage_buckets.sql` - Storage bucket creation with RLS policies
+
+**Files modified:**
+- `.github/workflows/test.yml` - CI/CD reliability improvements:
+  - Replaced `sleep 10` with health check for Supabase readiness
+  - Added uv dependency caching for faster CI
+  - Fixed .env creation with proper quoting
+  - Improved test user creation error handling
+- `backend/selko/services/__init__.py` - Added attachment service exports
+- `backend/selko/services/gmail.py` - Added `extract_attachments()` function for parsing MIME multipart
+- `backend/selko/services/emails.py` - `save_emails()` now returns records (not just count) for attachment linking
+- `backend/selko/config.py` - Added storage configuration (bucket name, max file size)
+- `cli/cli_fetch_emails.py` - Added `--fetch-attachments` flag for downloading attachments
+- `backend/tests/integration/conftest.py` - Added attachment-related fixtures
+
+**Attachment Storage Features:**
+- Download attachments from Gmail API with rate limiting and retry
+- Upload to Supabase Storage with user-scoped paths (`{user_id}/{unique_id}_{filename}`)
+- Content deduplication using SHA-256 hash (skip duplicates across emails)
+- Metadata storage in `attachments` table linked to email records
+- 50 MB file size limit with configurable MIME type allowlist
+- RLS policies: users can only access their own folder in storage
+
+**CI/CD Improvements:**
+- Health check loop replaces fragile `sleep 10` for Supabase readiness
+- uv dependency caching reduces CI build time
+- Proper quoting prevents issues with special characters in .env
+- Better error messaging for test user creation
+
+**Security Tests Added:**
+- Cross-user email read denial
+- Cross-user email update denial
+- Cross-user email delete denial
+- Cross-user attachment access denial
+- Cross-user integration access denial
+- Injection attempt (inserting data with wrong user_id)
+
+**CLI Usage:**
+```bash
+# Fetch emails AND download attachments
+uv run python -m cli.cli_fetch_emails --max 10 --fetch-attachments
+```
+
+**Reason:** Implement email attachment storage as planned in `PLAN_ATTACHMENT_STORAGE.md`. Improve CI/CD reliability based on code review findings. Add critical security tests for multi-tenant isolation.
+
+---
+
 ## 2026-01-22
 
 ### Technology Stack Evaluations (Simplified)
