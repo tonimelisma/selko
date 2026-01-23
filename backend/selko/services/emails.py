@@ -92,7 +92,7 @@ def _log_email_subject(parsed: dict[str, Any], action: str) -> None:
 def save_emails(
     client: Client,
     emails: list[dict[str, Any]],
-) -> int:
+) -> list[dict[str, Any]]:
     """Save emails to Supabase database using upsert.
 
     The user_id is automatically determined from the authenticated session.
@@ -103,13 +103,13 @@ def save_emails(
         emails: List of parsed email dicts (from parse_gmail_message).
 
     Returns:
-        Number of emails saved (inserted or updated).
+        List of saved email records (with database IDs).
 
     Raises:
         EmailError: If save fails.
     """
     user_id = get_current_user_id(client)
-    saved = 0
+    saved_records = []
 
     for parsed in emails:
         # Add user_id to the email record
@@ -117,14 +117,15 @@ def save_emails(
 
         try:
             # Single upsert instead of SELECT + INSERT/UPDATE
-            client.table("emails").upsert(
+            result = client.table("emails").upsert(
                 parsed, on_conflict="user_id,gmail_id"
             ).execute()
-            saved += 1
+            if result.data:
+                saved_records.append(result.data[0])
             _log_email_subject(parsed, "Saved")
 
         except PostgrestAPIError as e:
             raise EmailError(f"Failed to save email: {e.message}") from e
 
-    logger.info(f"Saved {saved} emails")
-    return saved
+    logger.info(f"Saved {len(saved_records)} emails")
+    return saved_records

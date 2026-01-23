@@ -43,6 +43,10 @@ class Config:
     test_user_email: Optional[str] = None
     test_user_password: Optional[str] = None
 
+    # Storage configuration
+    storage_bucket_attachments: str = "attachments"
+    max_attachment_size: int = 50 * 1024 * 1024  # 50 MB
+
     # Paths (derived, not from env)
     credentials_file: Path = CLI_DIR / "credentials.json"
 

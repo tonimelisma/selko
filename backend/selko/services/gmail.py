@@ -133,6 +133,56 @@ def get_user_profile(service) -> dict:
     return service.users().getProfile(userId="me").execute()
 
 
+def extract_attachments(email: dict) -> list[dict]:
+    """Extract attachment metadata from Gmail message.
+
+    Recursively parses MIME multipart structure to find all attachments.
+
+    Args:
+        email: Full Gmail message object from API.
+
+    Returns:
+        List of attachment dicts with keys:
+        - attachment_id: Gmail attachment ID
+        - filename: Original filename
+        - mime_type: MIME type
+        - size_bytes: Size in bytes (from Gmail metadata)
+
+    Note:
+        Does NOT download attachment data - only extracts metadata.
+    """
+    attachments = []
+
+    def _extract_from_part(part: dict) -> None:
+        """Recursively extract attachments from a MIME part."""
+        # Check if this part has an attachment
+        body = part.get("body", {})
+        attachment_id = body.get("attachmentId")
+        filename = part.get("filename", "")
+
+        if attachment_id and filename:
+            attachments.append(
+                {
+                    "attachment_id": attachment_id,
+                    "filename": filename,
+                    "mime_type": part.get("mimeType", "application/octet-stream"),
+                    "size_bytes": body.get("size", 0),
+                }
+            )
+            logger.debug(f"Found attachment: {filename}")
+
+        # Recursively check nested parts (for multipart messages)
+        for nested_part in part.get("parts", []):
+            _extract_from_part(nested_part)
+
+    # Start with the payload
+    payload = email.get("payload", {})
+    _extract_from_part(payload)
+
+    logger.debug(f"Extracted {len(attachments)} attachments from message {email.get('id')}")
+    return attachments
+
+
 def fetch_messages(
     service,
     max_results: int = 10,

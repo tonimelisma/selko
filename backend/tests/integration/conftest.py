@@ -194,3 +194,42 @@ def sample_gmail_api_message():
             "parts": [],
         },
     }
+
+
+@pytest.fixture
+def sample_gmail_api_message_with_attachment():
+    """Sample Gmail API message with attachment for testing."""
+    return {
+        "id": f"msg_{uuid4().hex[:12]}",
+        "threadId": f"thread_{uuid4().hex[:12]}",
+        "snippet": "Email with attachment",
+        "labelIds": ["INBOX"],
+        "payload": {
+            "headers": [
+                {"name": "From", "value": "sender@example.com"},
+                {"name": "Subject", "value": "Test with attachment"},
+                {"name": "Date", "value": "Wed, 22 Jan 2026 10:30:00 +0000"},
+            ],
+            "mimeType": "multipart/mixed",
+            "parts": [
+                {
+                    "mimeType": "text/plain",
+                    "body": {"data": "VGVzdCBib2R5"},  # base64 "Test body"
+                },
+                {
+                    "filename": "test_document.pdf",
+                    "mimeType": "application/pdf",
+                    "body": {
+                        "attachmentId": f"att_{uuid4().hex[:12]}",
+                        "size": 1024,
+                    },
+                },
+            ],
+        },
+    }
+
+
+@pytest.fixture
+def sample_attachment_data():
+    """Sample attachment bytes for testing."""
+    return b"This is sample attachment content for testing purposes."
