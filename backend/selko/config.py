@@ -69,7 +69,10 @@ def get_environment(override: Optional[str] = None) -> str:
 
 
 def load_config(env_override: Optional[str] = None) -> Config:
-    """Load configuration from the appropriate .env file.
+    """Load configuration from environment variables or .env file.
+
+    For CI/CD: Set environment variables directly (no .env file needed).
+    For local dev: Uses .env, .env.test, or .env.production files.
 
     Args:
         env_override: Optional environment name to override ENVIRONMENT variable.
@@ -88,17 +91,21 @@ def load_config(env_override: Optional[str] = None) -> Config:
 
     # Determine which .env file to load
     env_file = ENV_FILES.get(environment)
-
     env_path = PROJECT_ROOT / env_file
 
-    if not env_path.exists():
+    # Load from .env file if it exists (local development)
+    # Skip if running in CI/CD where env vars are set directly
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+        logger.info(f"Loaded config from {env_file} ({environment})")
+    elif os.getenv("SUPABASE_URL"):
+        # Env vars already set (CI/CD mode)
+        logger.info(f"Using environment variables ({environment})")
+    else:
         logger.error(f"Environment file not found: {env_path}")
         logger.error(f"Copy .env.example to {env_file} and fill in values.")
+        logger.error("Or set environment variables directly (for CI/CD).")
         sys.exit(1)
-
-    # Load environment variables from file
-    load_dotenv(env_path, override=True)
-    logger.info(f"Loaded config from {env_file} ({environment})")
 
     # Get required variables
     supabase_url = os.getenv("SUPABASE_URL")
