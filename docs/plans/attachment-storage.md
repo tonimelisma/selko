@@ -1,7 +1,12 @@
 # Implementation Plan: Email Attachment Storage (Simplified)
 
+> **STATUS: COMPLETED** (2026-01-23)
+>
+> This plan has been fully implemented. See CHANGELOG.md entry for 2026-01-23.
+
 **Date:** 2026-01-22 (Updated)
-**Branch:** `claude/plan-attachment-storage-lm7AY`
+**Completed:** 2026-01-23
+**Branch:** `claude/plan-attachment-storage-lm7AY` (merged to main)
 **PRD Reference:** Part 2, Section 1.2 (Ingestion Service - Attachment Parsing) & Section 1.3 (Object/Blob Storage)
 
 ## Overview
@@ -10,22 +15,32 @@ Implement end-to-end attachment storage for Gmail emails, including download fro
 
 **Architecture:** Simple Python services (no Redis, no ARQ) - aligns with simplified stack (FastAPI + Supabase only)
 
-## Current State Analysis
+## Implementation Status
 
-### What Exists
+All phases completed:
+- ✅ Phase 1: Storage Infrastructure (bucket creation, RLS policies)
+- ✅ Phase 2: Attachment Service Module (download, hash, upload, metadata)
+- ✅ Phase 3: Gmail Service Extension (extract_attachments function)
+- ✅ Phase 4: CLI Integration (--fetch-attachments flag)
+- ✅ Phase 5: Testing (17 unit tests, integration tests, security tests)
+- ✅ Phase 6: Documentation (CLAUDE.md, README.md updated)
+
+## Original Plan Analysis
+
+### What Existed (Before Implementation)
 - ✅ Database schema: `attachments` table with RLS policies (`20260121000004_create_attachments.sql`)
 - ✅ Email parsing: `parse_gmail_message()` detects `has_attachments` boolean
 - ✅ Supabase Storage: Enabled with 50MiB limit, S3 protocol support
 - ✅ Authentication: User auth working with RLS enforcement
 - ✅ Testing framework: pytest with fixtures in `backend/tests/`
 
-### What's Missing
-- ❌ No Storage buckets configured
-- ❌ No attachment download logic from Gmail API
-- ❌ No attachment service module
-- ❌ No content hashing/deduplication
-- ❌ No CLI integration for attachment processing
-- ❌ No tests for attachment functionality
+### What Was Implemented
+- ✅ Storage bucket configured (`20260122000004_create_storage_buckets.sql`)
+- ✅ Attachment download logic from Gmail API (`attachments.py`)
+- ✅ Attachment service module (`backend/selko/services/attachments.py`)
+- ✅ Content hashing/deduplication (SHA-256)
+- ✅ CLI integration (`--fetch-attachments` flag)
+- ✅ Tests for attachment functionality (17 unit + integration tests)
 
 ## PRD Requirements Mapping
 
@@ -709,5 +724,5 @@ processing of attachments (OCR, classification).
 
 ---
 
-**Plan Status:** Draft - Ready for Review
-**Next Steps:** Approve plan → Begin Phase 1 implementation
+**Plan Status:** COMPLETED (2026-01-23)
+**Implementation:** All phases completed and merged to main branch

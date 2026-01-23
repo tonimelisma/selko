@@ -12,6 +12,28 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 ### **3\. Phased Architecture & Roadmap**
 
+#### **3.0. Phase 0: Proof of Concept (Current - COMPLETE)**
+
+* **Platform:** Local Python CLI tools
+* **Purpose:** Validate core data ingestion before building web application
+* **Status:** COMPLETE (2026-01-23)
+
+**Implemented Features:**
+| Feature | Status | Implementation |
+| :---- | :---- | :---- |
+| Gmail OAuth authentication | DONE | `cli/cli_auth_gmail.py` |
+| Email fetching and parsing | DONE | `backend/selko/services/emails.py` |
+| Attachment download | DONE | `backend/selko/services/attachments.py` |
+| Supabase Storage upload | DONE | With SHA-256 deduplication |
+| RLS-enforced multi-tenancy | DONE | All tables have RLS policies |
+| Unit + Integration tests | DONE | 71+ tests across all services |
+
+**Not Yet Implemented (MVP scope):**
+- LLM integration (Gemini)
+- Calendar sync
+- Review interface
+- Undo/Redo
+
 #### **3.1. Phase 1: Web-First Cloud Processing (MVP)**
 
 * **Platform:** Responsive Web Application (Dashboard).  
