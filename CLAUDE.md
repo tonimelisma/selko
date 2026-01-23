@@ -203,9 +203,10 @@ No more `--user-id` flag needed - the CLI signs in as the configured test user.
 
 ### Framework Decision (2026-01-22)
 
-**Selected:** FastAPI + ARQ (async task queue) + APScheduler (polling)
+**Selected:** FastAPI + Supabase (simplified stack)
 
 See `BACKEND_FRAMEWORK_EVALUATION.md` for complete analysis of 7 frameworks.
+See `SIMPLIFIED_STACK.md` for rationale on avoiding feature creep.
 
 **Why FastAPI:**
 - Async-native (efficient with Supabase I/O)
@@ -215,18 +216,24 @@ See `BACKEND_FRAMEWORK_EVALUATION.md` for complete analysis of 7 frameworks.
 - Production-ready (Netflix, Uber, Microsoft)
 - Score: 92% (highest ranked)
 
-**Why ARQ:**
-- Pure async (works naturally with Supabase async client)
-- Simple Redis-based queue
-- Built-in cron scheduling
-- Minimal configuration
+**Why NOT Redis/ARQ (for now):**
+- Supabase PostgreSQL can handle queues (table-based or LISTEN/NOTIFY)
+- Supabase pg_cron handles polling/scheduling (built-in)
+- FastAPI BackgroundTasks sufficient for simple async jobs
+- Add Redis only when you actually need it (YAGNI principle)
 
 **Alternative Considered:** Django+DRF rejected (conflicts with Supabase RLS architecture)
 
+**Simplified Stack:**
+- POC: FastAPI + Supabase (2 components)
+- MVP: Add PostgreSQL queue if BackgroundTasks insufficient (still free)
+- Scale: Add Redis + ARQ only when hitting real limits (1000s jobs/hour)
+
 **Migration Strategy:**
 - Phase 1: Keep CLI tools (current)
-- Phase 2: Add FastAPI alongside CLI (non-breaking)
-- Phase 3: Move long-running tasks to ARQ workers
+- Phase 2: Add FastAPI with BackgroundTasks (non-breaking)
+- Phase 3: Add PostgreSQL table queue if needed (still using Supabase)
+- Phase 4: Add Redis/ARQ only if PostgreSQL queue can't keep up
 - CLI tools remain for development/debugging
 
 **When to Implement:**
