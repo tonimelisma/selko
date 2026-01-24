@@ -44,19 +44,20 @@ def create_user(
     email: str,
     password: str,
     display_name: str = None,
-    auto_confirm: bool = True,
+    auto_confirm: bool = False,
 ) -> dict:
     """Create a new user in auth.users.
 
     The database trigger automatically creates the public.users profile.
-    By default, users are auto-confirmed for testing purposes.
+    By default, users require email confirmation (production-safe).
+    Tests should explicitly pass auto_confirm=True when needed.
 
     Args:
         config: Configuration object.
         email: User's email address.
         password: User's password.
         display_name: Optional display name (defaults to email prefix).
-        auto_confirm: Whether to auto-confirm the user (default: True).
+        auto_confirm: Whether to auto-confirm the user (default: False for production safety).
 
     Returns:
         Dict with 'id' and 'email' of the created user.

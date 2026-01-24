@@ -100,7 +100,7 @@ def temp_user(config):
     email = f"test-{uuid4()}@selko.local"
     password = "testpass123"
 
-    user = create_user(config, email, password)
+    user = create_user(config, email, password, auto_confirm=True)
     yield user["id"], email, password
 
     # Cleanup
