@@ -4,17 +4,33 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-24
 
-### Fix Staging Integration Test Failures (Commit: 2069f89)
+### Production-Safe User Creation Defaults (Commit: eb3d7e6)
+
+**Files modified:**
+- `backend/selko/services/users.py` - Changed auto_confirm default from True to False (production-safe)
+- `backend/tests/integration/conftest.py` - temp_user fixture explicitly passes auto_confirm=True
+- `backend/tests/integration/test_integration_users.py` - Development tests explicitly pass auto_confirm=True
+- `backend/tests/integration/test_integration_e2e.py` - E2E tests explicitly pass auto_confirm=True
+
+**Purpose:**
+- Ensure production safety: CLI-created users in staging/production now require email confirmation
+- Tests remain functional: Test fixtures explicitly opt-in to auto-confirm for immediate usability
+- Single staging test (test_create_user_staging_no_auto_confirm) validates email confirmation flow
+
+**Result:** All tests passing (86 development, 11 staging)
+
+### Fix Staging Integration Test Failures (Commit: 2069f89, 0e7face)
 
 **Files modified:**
 - `backend/tests/integration/test_integration_emails.py` - Fixed test_save_email_staging to use len(saved) instead of expecting integer count from save_emails()
-- `backend/selko/services/users.py` - Added auto_confirm parameter (default: True) to create_user(), removed environment-dependent logic
+- `backend/selko/services/users.py` - Initially added auto_confirm parameter (default: True) - later changed to False in eb3d7e6
+- `CHANGELOG.md` - Documented test fixes
 
 **Purpose:**
 - Fix test_save_email_staging: save_emails() returns a list of saved records, not a count
-- Fix test_rls_enforced_staging: temp_user fixture now auto-confirms users in all environments, allowing immediate sign-in for testing
+- Fix test_rls_enforced_staging: temp_user fixture now auto-confirms users, allowing immediate sign-in
 
-**Result:** All staging tests now passing (11 passed, 7 skipped)
+**Result:** All staging tests passing (11 passed, 7 skipped)
 
 ## 2026-01-23
 
