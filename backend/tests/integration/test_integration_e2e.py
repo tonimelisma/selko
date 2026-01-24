@@ -216,8 +216,8 @@ class TestEndToEndStaging:
         # Parse and store
         if messages:
             parsed_emails = [parse_gmail_message(msg) for msg in messages]
-            count = save_emails(authenticated_client, parsed_emails)
-            assert count == len(messages)
+            saved_emails = save_emails(authenticated_client, parsed_emails)
+            assert len(saved_emails) == len(messages)
 
             # Verify stored in DB
             result = (
