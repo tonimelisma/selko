@@ -16,17 +16,23 @@ def run_cli(module: str, args: list[str], env_override: str = "development") -> 
     Args:
         module: CLI module name (e.g., "cli.cli_user")
         args: Command line arguments
-        env_override: Environment to use
+        env_override: Environment to use (via ENVIRONMENT env var)
 
     Returns:
         CompletedProcess with stdout/stderr
     """
-    cmd = [sys.executable, "-m", module, "--env", env_override] + args
+    import os
+
+    cmd = [sys.executable, "-m", module] + args
+    env = os.environ.copy()
+    env["ENVIRONMENT"] = env_override
+
     return subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         timeout=60,  # 60 second timeout
+        env=env,
     )
 
 
