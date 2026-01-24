@@ -44,18 +44,19 @@ def create_user(
     email: str,
     password: str,
     display_name: str = None,
+    auto_confirm: bool = True,
 ) -> dict:
     """Create a new user in auth.users.
 
     The database trigger automatically creates the public.users profile.
-    In development, users are auto-confirmed. In staging/production,
-    a confirmation email is sent.
+    By default, users are auto-confirmed for testing purposes.
 
     Args:
         config: Configuration object.
         email: User's email address.
         password: User's password.
         display_name: Optional display name (defaults to email prefix).
+        auto_confirm: Whether to auto-confirm the user (default: True).
 
     Returns:
         Dict with 'id' and 'email' of the created user.
@@ -64,9 +65,6 @@ def create_user(
         UserManagementError: If user creation fails.
     """
     client = get_admin_client(config)
-
-    # Only auto-confirm in development
-    auto_confirm = config.environment == "development"
 
     try:
         response = client.auth.admin.create_user(
@@ -81,7 +79,7 @@ def create_user(
             raise UserManagementError(f"Failed to create user: {email}")
 
         if auto_confirm:
-            logger.debug(f"Auto-confirmed user {email} (development mode)")
+            logger.debug(f"Auto-confirmed user {email}")
         else:
             logger.info(f"User {email} created - confirmation email sent")
 
