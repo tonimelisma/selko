@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-23
 
+### Comprehensive Setup Guide in TODO.md
+
+**Files modified:**
+- `TODO.md` - Expanded from staging-only to comprehensive setup guide covering:
+  - Development environment setup (prerequisites, local Supabase, test user, Google OAuth)
+  - Staging environment setup (burner Gmail, GitHub Actions secrets)
+  - Production environment setup (migrations, OAuth authorization)
+  - Fly.io deployment instructions (Dockerfile, fly.toml, .dockerignore examples)
+  - CI/CD pipeline status and quick reference
+- `README.md` - Added link to TODO.md for first-time setup
+
+**Purpose:** Provide step-by-step checklists for setting up all three environments and deploying to Fly.io, consolidating all manual tasks in one location.
+
 ### FastAPI Foundation Implementation
 
 **Files created:**
