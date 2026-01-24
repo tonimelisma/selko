@@ -9,7 +9,7 @@ import argparse
 import logging
 import sys
 
-from selko.config import add_env_argument, add_logging_arguments, load_config
+from selko.config import add_logging_arguments, load_config
 from selko.logging import setup_logging
 from selko.services.auth import AuthenticationError, get_authenticated_client
 from selko.services.gmail import GmailError, build_service, get_user_profile, run_oauth_flow
@@ -28,7 +28,7 @@ Examples:
   uv run python -m cli.cli_auth_gmail
 
   # Use staging environment
-  uv run python -m cli.cli_auth_gmail --env staging
+  ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
 
   # Enable verbose logging
   uv run python -m cli.cli_auth_gmail -v
@@ -38,12 +38,11 @@ Note:
   Tokens are stored in the integrations table, not local files.
         """,
     )
-    add_env_argument(parser)
     add_logging_arguments(parser)
     args = parser.parse_args()
 
     setup_logging(verbose=args.verbose, quiet=args.quiet)
-    config = load_config(args.env)
+    config = load_config()
 
     # Sign in as the test user
     try:
