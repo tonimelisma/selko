@@ -109,13 +109,22 @@ For comprehensive tests, send a few emails to the burner account:
 ### 8. GitHub Actions Secrets
 Go to: Repository → Settings → Secrets and variables → Actions → New repository secret
 
+**For Deployment (Required):**
+- [ ] `SUPABASE_ACCESS_TOKEN` = Generate at https://supabase.com/dashboard/account/tokens (used for `supabase link` and `supabase db push`)
+
+**For Staging Tests:**
 - [ ] `STAGING_SUPABASE_URL` = `https://lxmysergoeaegxlyfzwk.supabase.co`
-- [ ] `STAGING_SUPABASE_PUBLISHABLE_KEY` = (from Supabase dashboard > Settings > API > Publishable key)
-- [ ] `STAGING_SUPABASE_SERVICE_ROLE_KEY` = (from Supabase dashboard)
+- [ ] `STAGING_SUPABASE_ANON_KEY` = (from Supabase dashboard > Settings > API > Anon key)
+- [ ] `STAGING_SUPABASE_SERVICE_ROLE_KEY` = (from Supabase dashboard > Settings > API > Service role key)
 - [ ] `STAGING_TEST_USER_EMAIL` = (burner email)
 - [ ] `STAGING_TEST_USER_PASSWORD` = (burner password)
+
+**For OAuth Integration:**
 - [ ] `GOOGLE_CLIENT_ID` = (from Google Cloud Console)
 - [ ] `GOOGLE_CLIENT_SECRET` = (from Google Cloud Console)
+
+**For Fly.io Deployment (TODO - not yet set up):**
+- [ ] `FLY_API_TOKEN` = Generate with `fly tokens create deploy -x 999999h`
 
 ### 9. Verification
 - [ ] Run staging tests: `ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v`
@@ -313,19 +322,39 @@ When you have a frontend, add CORS configuration:
 
 | Job | Trigger | Status |
 |-----|---------|--------|
-| Unit Tests | Every push | ✅ Configured |
-| Integration (Dev) | Every push | ✅ Configured |
-| Integration (Staging) | Main only | ⬜ Needs GitHub secrets (step 8 above) |
-| Deploy (Staging) | Main only | ⬜ Needs Fly.io setup |
-| Deploy (Production) | Manual/tag | ⬜ Needs Fly.io setup |
+| Unit Tests | Every push/PR | ✅ Configured |
+| Integration (Dev) | Every push/PR | ✅ Configured |
+| Deploy Staging (DB) | Main only | ✅ Configured (needs `SUPABASE_ACCESS_TOKEN` secret) |
+| Deploy Staging (API) | Main only | ⬜ TODO: Uncomment when Fly.io set up |
+| Integration (Staging) | Main only (after deploy) | ⬜ Needs GitHub secrets (step 8 above) |
+| Deploy Production (DB) | Manual/tag | ✅ Configured (needs `SUPABASE_ACCESS_TOKEN` secret) |
+| Deploy Production (API) | Manual/tag | ⬜ TODO: Uncomment when Fly.io set up |
 
 ### How CI/CD Works
+
+**Pull Requests:**
+1. Unit Tests → Integration Tests (Dev with local Supabase)
+2. No deployment on PRs
+
+**Push to Main:**
+1. Unit Tests → Integration Tests (Dev with local Supabase)
+2. **Deploy to Staging** (atomic: DB migrations + FastAPI)
+3. Integration Tests (Staging) - validates deployed code
+4. ✅ Staging environment now running latest code
+
+**Manual Trigger or Git Tag:**
+1. **Deploy to Production** (atomic: DB migrations + FastAPI)
+2. Production smoke tests (read-only, optional)
+
+### Deployment Details
 
 | Job | Trigger | What it does |
 |-----|---------|--------------|
 | **Unit Tests** | Every push/PR | Fast tests, no external deps |
 | **Integration (Dev)** | Every push/PR | Spins up local Supabase in Docker |
-| **Integration (Staging)** | Main branch only | Uses cloud Supabase + real Gmail |
+| **Deploy Staging** | Main branch only | 1. Deploy DB migrations<br>2. Deploy FastAPI to Fly.io (TODO)<br>**Atomic: both or neither** |
+| **Integration (Staging)** | Main branch only (after deploy) | Tests the deployed staging environment with real Gmail |
+| **Deploy Production** | Manual workflow_dispatch or tag | 1. Deploy DB migrations<br>2. Deploy FastAPI to Fly.io (TODO)<br>**Manual safety gate** |
 
 ### Important Notes
 

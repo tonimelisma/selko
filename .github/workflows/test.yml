@@ -117,12 +117,44 @@ jobs:
         if: always()
         run: supabase stop
 
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    # Only run on main branch pushes (not PRs, not manual trigger)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [unit-tests, integration-tests-development]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Deploy database migrations first (atomic deployment requirement)
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to Staging Supabase
+        run: supabase link --project-ref lxmysergoeaegxlyfzwk
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy migrations to Staging
+        run: supabase db push
+
+      # TODO: Deploy FastAPI to Fly.io (uncomment when Fly.io is set up)
+      # - name: Setup Fly.io CLI
+      #   uses: superfly/flyctl-actions/setup-flyctl@master
+      #
+      # - name: Deploy FastAPI to Fly.io Staging
+      #   run: flyctl deploy --app selko-api-staging --remote-only
+      #   env:
+      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
   integration-tests-staging:
     name: Integration Tests (Staging)
     runs-on: ubuntu-latest
-    # Only run on main branch pushes or manual trigger (not on PRs)
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    needs: [unit-tests]  # Only run if unit tests pass
+    # Only run on main branch pushes (after deployment)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [deploy-staging]  # Run AFTER deployment to test deployed code
     steps:
       - uses: actions/checkout@v4
 
@@ -156,3 +188,35 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    # Only run on manual workflow_dispatch or git tags
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    # No dependencies - production deployment is independent
+    steps:
+      - uses: actions/checkout@v4
+
+      # Deploy database migrations first (atomic deployment requirement)
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to Production Supabase
+        run: supabase link --project-ref khahcozfbnpykspvatrg
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy migrations to Production
+        run: supabase db push
+
+      # TODO: Deploy FastAPI to Fly.io (uncomment when Fly.io is set up)
+      # - name: Setup Fly.io CLI
+      #   uses: superfly/flyctl-actions/setup-flyctl@master
+      #
+      # - name: Deploy FastAPI to Fly.io Production
+      #   run: flyctl deploy --app selko-api --remote-only
+      #   env:
+      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
