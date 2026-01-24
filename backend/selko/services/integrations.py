@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Optional
 
 from google.oauth2.credentials import Credentials
+from postgrest.exceptions import APIError
 from supabase import Client, PostgrestAPIError
 
 from selko.config import Config
@@ -97,13 +98,14 @@ def get_oauth_credentials(
             .execute()
         )
 
-        if not result.data:
+        # maybe_single() returns None when no rows found
+        if result is None or not result.data:
             return None
 
         row = result.data
 
-        # Check if integration is in error/revoked state
-        if row.get("status") in ("revoked", "error"):
+        # Check if integration is in non-active state
+        if row.get("status") in ("expired", "revoked", "error"):
             logger.warning(f"{provider} integration is {row['status']}")
             return None
 
@@ -119,6 +121,11 @@ def get_oauth_credentials(
 
         return creds
 
+    except APIError as e:
+        # maybe_single() throws APIError with code 204 when no rows found
+        if e.code == "204":
+            return None
+        raise IntegrationError(f"Failed to get integration: {e.message}") from e
     except PostgrestAPIError as e:
         raise IntegrationError(f"Failed to get integration: {e.message}") from e
 

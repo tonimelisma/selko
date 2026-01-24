@@ -73,7 +73,8 @@ class TestCLIUser:
 
     def test_cli_user_verbose(self):
         """CLI verbose flag enables debug logging."""
-        result = run_cli("cli.cli_user", ["list", "-v"])
+        # Note: -v must come before subcommand (it's on parent parser)
+        result = run_cli("cli.cli_user", ["-v", "list"])
 
         # Verbose output should include DEBUG level logs
         # At minimum, should not error
@@ -81,7 +82,8 @@ class TestCLIUser:
 
     def test_cli_user_quiet(self):
         """CLI quiet flag reduces output."""
-        result = run_cli("cli.cli_user", ["list", "-q"])
+        # Note: -q must come before subcommand (it's on parent parser)
+        result = run_cli("cli.cli_user", ["-q", "list"])
 
         assert result.returncode == 0
         # Quiet mode should have less output
