@@ -196,18 +196,20 @@ uv run python -m cli.cli_fetch_emails --max 10 --fetch-attachments
 
 **Environment Selection:**
 ```bash
-# Recommended: Use ENVIRONMENT variable
+# Use ENVIRONMENT variable to select environment
 ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 
-# Alternative: Use --env flag
-uv run python -m cli.cli_fetch_emails --env staging
+# Default is development if not specified
+uv run python -m cli.cli_fetch_emails
 ```
 
-**Note:** Prefer using the `ENVIRONMENT` variable over the `--env` flag. The `--env` flag may be deprecated in future versions.
+**Environments:**
+- `development` (default) - Uses `.env` file, connects to local Supabase
+- `staging` - Uses `.env.test` file, connects to cloud staging Supabase
+- `production` - Uses `.env.production` file, connects to cloud production Supabase
 
 | Flag | Description |
 |------|-------------|
-| `--env` | Override environment (optional, prefer ENVIRONMENT variable) |
 | `-v`, `--verbose` | Enable verbose (DEBUG) logging |
 | `-q`, `--quiet` | Only show warnings and errors |
 | `--max` | Maximum emails to fetch (for cli_fetch_emails) |

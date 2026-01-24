@@ -141,19 +141,6 @@ def load_config(env_override: Optional[str] = None) -> Config:
     )
 
 
-def add_env_argument(parser: argparse.ArgumentParser) -> None:
-    """Add --env argument to an argparse parser.
-
-    Args:
-        parser: argparse.ArgumentParser instance.
-    """
-    parser.add_argument(
-        "--env",
-        choices=list(ENV_FILES.keys()),
-        help="Override ENVIRONMENT variable (development, staging, production)",
-    )
-
-
 def add_logging_arguments(parser: argparse.ArgumentParser) -> None:
     """Add --verbose and --quiet flags to argument parser.
 

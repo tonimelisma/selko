@@ -9,7 +9,7 @@ import argparse
 import logging
 import sys
 
-from selko.config import add_env_argument, add_logging_arguments, load_config
+from selko.config import add_logging_arguments, load_config
 from selko.logging import setup_logging
 from selko.services.auth import AuthenticationError, get_authenticated_client
 from selko.services.emails import EmailError, parse_gmail_message, save_emails
@@ -41,7 +41,7 @@ Examples:
   uv run python -m cli.cli_fetch_emails --max 10 --fetch-attachments
 
   # Use staging environment
-  uv run python -m cli.cli_fetch_emails --env staging
+  ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 
   # Enable verbose logging
   uv run python -m cli.cli_fetch_emails -v --max 20
@@ -51,7 +51,6 @@ Note:
   Run cli_auth_gmail first to authenticate with Gmail.
         """,
     )
-    add_env_argument(parser)
     add_logging_arguments(parser)
     parser.add_argument(
         "--max",
@@ -67,7 +66,7 @@ Note:
     args = parser.parse_args()
 
     setup_logging(verbose=args.verbose, quiet=args.quiet)
-    config = load_config(args.env)
+    config = load_config()
 
     # Sign in as the test user
     try:

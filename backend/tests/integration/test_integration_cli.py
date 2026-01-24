@@ -155,15 +155,15 @@ class TestCLIEnvironmentSelection:
         # At minimum, should not fail due to env parsing
         assert "Invalid environment" not in result.stderr
 
-    def test_env_flag_override(self):
-        """--env flag overrides ENVIRONMENT variable."""
+    def test_env_variable_override(self):
+        """ENVIRONMENT variable sets the environment."""
         import os
 
-        # Set env var to staging but use --env development
+        # Set env var to staging
         env = os.environ.copy()
         env["ENVIRONMENT"] = "staging"
 
-        cmd = [sys.executable, "-m", "cli.cli_user", "--env", "development", "list"]
+        cmd = [sys.executable, "-m", "cli.cli_user", "list"]
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -172,9 +172,9 @@ class TestCLIEnvironmentSelection:
             timeout=30,
         )
 
-        # Should use development, not staging
-        # (Would fail if staging config is missing)
-        # This verifies the --env flag takes precedence
+        # Should load staging config
+        # Verify it doesn't fail with invalid environment error
+        assert result.returncode == 0 or "Invalid environment" not in result.stderr
 
 
 @pytest.mark.integration
