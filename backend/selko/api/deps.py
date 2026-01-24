@@ -1,0 +1,120 @@
+"""FastAPI dependencies for authentication and configuration."""
+
+import logging
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import Annotated
+
+from fastapi import Depends, Header, HTTPException, status
+from supabase import Client, create_client
+
+from selko.config import Config, load_config
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CurrentUser:
+    """Authenticated user information from JWT."""
+
+    id: str
+    email: str | None
+    token: str
+
+
+@lru_cache
+def get_config() -> Config:
+    """Load configuration (cached for performance)."""
+    return load_config()
+
+
+def get_current_user(
+    authorization: Annotated[str | None, Header()] = None,
+    config: Config = Depends(get_config),
+) -> CurrentUser:
+    """Validate JWT token and extract user information.
+
+    Uses Supabase's auth.get_user() to validate the token, which works
+    with both HS256 (cloud) and ES256 (local) JWT algorithms.
+
+    Args:
+        authorization: Bearer token from Authorization header.
+        config: Application configuration.
+
+    Returns:
+        CurrentUser with id, email, and original token.
+
+    Raises:
+        HTTPException: 401 if token is missing, invalid, or expired.
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Extract token from "Bearer <token>"
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Authorization header format. Use: Bearer <token>",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = parts[1]
+
+    try:
+        # Create client and validate token via Supabase auth
+        client = create_client(config.supabase_url, config.supabase_anon_key)
+
+        # get_user() validates the token against Supabase auth
+        user_response = client.auth.get_user(token)
+
+        if not user_response or not user_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        user = user_response.user
+        return CurrentUser(
+            id=user.id,
+            email=user.email,
+            token=token,
+        )
+
+    except Exception as e:
+        # Catch any auth errors (invalid token, expired, etc.)
+        logger.warning(f"Token validation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def get_authenticated_client(
+    user: CurrentUser = Depends(get_current_user),
+    config: Config = Depends(get_config),
+) -> Client:
+    """Create Supabase client authenticated with user's JWT.
+
+    This client will have RLS policies applied based on the user's identity.
+
+    Args:
+        user: Current authenticated user (from JWT).
+        config: Application configuration.
+
+    Returns:
+        Supabase client with user's auth context.
+    """
+    # Create client with anon key, then set the access token
+    client = create_client(config.supabase_url, config.supabase_anon_key)
+
+    # Set the user's JWT so RLS policies apply
+    client.auth.set_session(user.token, user.token)  # access_token, refresh_token
+
+    return client

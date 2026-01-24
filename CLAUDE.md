@@ -107,6 +107,19 @@ selko/
 │   │   ├── __init__.py
 │   │   ├── config.py          # Centralized configuration
 │   │   ├── logging.py         # Centralized logging setup
+│   │   ├── api/               # FastAPI application
+│   │   │   ├── __init__.py
+│   │   │   ├── __main__.py    # Dev server entry point
+│   │   │   ├── app.py         # FastAPI app factory
+│   │   │   ├── deps.py        # Dependencies (auth, config)
+│   │   │   ├── schemas/       # Pydantic response models
+│   │   │   │   ├── common.py
+│   │   │   │   ├── emails.py
+│   │   │   │   └── integrations.py
+│   │   │   └── routes/        # API route modules
+│   │   │       ├── health.py
+│   │   │       ├── emails.py
+│   │   │       └── integrations.py
 │   │   └── services/
 │   │       ├── __init__.py
 │   │       ├── auth.py        # User auth (sign in/out)
@@ -131,7 +144,8 @@ selko/
 │   │       ├── test_integration_attachments.py
 │   │       ├── test_integration_rls_security.py
 │   │       ├── test_integration_e2e.py
-│   │       └── test_integration_cli.py
+│   │       ├── test_integration_cli.py
+│   │       └── test_integration_api.py  # FastAPI endpoint tests
 │   └── pyproject.toml
 │
 ├── cli/                        # CLI tools for POC and development
@@ -196,6 +210,44 @@ ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 | `-q`, `--quiet` | Only show warnings and errors |
 | `--max` | Maximum emails to fetch (for cli_fetch_emails) |
 | `--fetch-attachments` | Also download and store email attachments |
+
+### FastAPI Server
+
+**Running the API:**
+```bash
+# Start development server (with auto-reload)
+uv run python -m selko.api
+
+# Server runs at http://localhost:8000
+# API docs at http://localhost:8000/docs (Swagger UI)
+# ReDoc at http://localhost:8000/redoc
+```
+
+**API Endpoints:**
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | No | Basic health check |
+| GET | `/health/db` | No | Database connectivity |
+| GET | `/emails` | Yes | List emails (paginated) |
+| GET | `/emails/{id}` | Yes | Get single email |
+| GET | `/integrations` | Yes | List integrations |
+| GET | `/integrations/{provider}` | Yes | Get integration status |
+
+**Authentication:**
+The API uses JWT tokens from Supabase. To get a token for testing:
+```bash
+# Sign in and get access token
+TOKEN=$(uv run python -c "
+from selko.config import load_config
+from selko.services.auth import get_authenticated_client
+config = load_config()
+client = get_authenticated_client(config)
+print(client.auth.get_session().access_token)
+")
+
+# Use the token
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/emails
+```
 
 **Running Tests:**
 ```bash
