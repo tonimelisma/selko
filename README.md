@@ -96,6 +96,8 @@ uv run python -m cli.cli_fetch_emails
 uv run python -m cli.cli_fetch_emails --max 50
 ```
 
+> **First-time setup?** See [TODO.md](TODO.md) for step-by-step checklists for development, staging, and production environments.
+
 ### Multi-Environment Support
 
 The CLI supports three environments via the `--env` flag or `ENVIRONMENT` variable:
