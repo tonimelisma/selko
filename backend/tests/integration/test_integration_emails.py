@@ -322,9 +322,9 @@ class TestEmailStorageStaging:
         """Can save email to staging database."""
         cleanup_emails.append(sample_email_data["gmail_id"])
 
-        count = save_emails(authenticated_client, [sample_email_data])
+        saved = save_emails(authenticated_client, [sample_email_data])
 
-        assert count == 1
+        assert len(saved) == 1
 
     def test_triggers_work_staging(
         self, authenticated_client, test_user_id, cleanup_emails
