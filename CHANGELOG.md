@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-23
+
+### Implement Automated CI/CD Deployment Pipeline
+
+**Files modified:**
+- `.github/workflows/test.yml` - Added deployment jobs for staging and production
+- `CLAUDE.md` - Added comprehensive CI/CD Pipeline section with deployment flow documentation
+- `TODO.md` - Updated GitHub Actions Secrets section and CI/CD Pipeline Status with deployment details
+
+**Purpose:**
+- Implement atomic deployments: Database migrations and FastAPI must deploy together to prevent schema/code drift
+- Automate staging deployments: Deploy to staging on every main branch push after tests pass
+- Manual production deployments: Require explicit trigger (workflow_dispatch or git tag) for safety
+- Test deployed code: Staging integration tests now run AFTER deployment to validate the actual deployed environment
+
+**CI/CD Flow:**
+| Event | Actions |
+|-------|---------|
+| **Pull Request** | Unit tests + Integration tests (local Supabase) - No deployment |
+| **Push to main** | Tests → Deploy staging (DB + API) → Integration tests (staging) |
+| **Manual/Tag** | Deploy production (DB + API) → Optional smoke tests |
+
+**Deployment Jobs:**
+- `deploy-staging`: Runs `supabase db push` to staging, includes TODO placeholder for Fly.io deployment
+- `deploy-production`: Runs `supabase db push` to production, includes TODO placeholder for Fly.io deployment
+- `integration-tests-staging`: Now depends on `deploy-staging` to test the actual deployed code
+
+**GitHub Secrets Required:**
+- `SUPABASE_ACCESS_TOKEN` - For Supabase CLI authentication (generate at https://supabase.com/dashboard/account/tokens)
+- `FLY_API_TOKEN` - For Fly.io deployment (TODO: not yet needed until Fly.io set up)
+
+**Key Principle:**
+Database and application deployments are atomic - migrations run first, and if they fail, the application deployment is skipped. This prevents 500 errors from schema/code mismatches.
+
+**Result:** Staging environment will auto-update on main branch pushes. Production remains manual for safety. Fly.io deployment steps are clearly marked as TODO placeholders for future implementation.
+
 ## 2026-01-24
 
 ### Standardize Environment Selection (Commit: 2ce524e)
