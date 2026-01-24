@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-24
 
+### Standardize Environment Selection (Commit: 2ce524e)
+
+**Files modified:**
+- `backend/selko/config.py` - Removed add_env_argument() function
+- `cli/cli_user.py` - Removed --env flag, updated examples to use ENVIRONMENT variable
+- `cli/cli_auth_gmail.py` - Removed --env flag, updated examples
+- `cli/cli_fetch_emails.py` - Removed --env flag, updated examples
+- `backend/tests/integration/test_integration_cli.py` - Updated test_env_variable_override to verify ENVIRONMENT variable
+- `CLAUDE.md` - Updated documentation to show single standardized method
+
+**Purpose:**
+- Eliminate confusion: Remove dual methods (ENVIRONMENT vs --env flag)
+- Single source of truth: ENVIRONMENT variable for all user-facing environment selection
+- Tests remain automatic: pytest markers continue to work internally
+
+**Environment Selection (Standardized):**
+| Context | Method |
+|---------|--------|
+| CLI Users | `ENVIRONMENT=staging uv run python -m cli.cli_user list` |
+| Tests | Automatic via pytest markers (`@pytest.mark.staging`) |
+| Default | `development` if ENVIRONMENT not set |
+
+**Result:** All CLI tools and tests verified working with standardized approach
+
 ### Production-Safe User Creation Defaults (Commit: eb3d7e6)
 
 **Files modified:**
