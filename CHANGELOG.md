@@ -4,6 +4,64 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-23
 
+### FastAPI Foundation Implementation
+
+**Files created:**
+- `backend/selko/api/__init__.py` - API package marker
+- `backend/selko/api/__main__.py` - Development server entry point (uvicorn)
+- `backend/selko/api/app.py` - FastAPI app factory with CORS and exception handlers
+- `backend/selko/api/deps.py` - Dependencies for auth and config (JWT validation)
+- `backend/selko/api/schemas/__init__.py` - Schema exports
+- `backend/selko/api/schemas/common.py` - Common schemas (pagination, errors, health)
+- `backend/selko/api/schemas/emails.py` - Email response model
+- `backend/selko/api/schemas/integrations.py` - Integration response model
+- `backend/selko/api/routes/__init__.py` - Route exports
+- `backend/selko/api/routes/health.py` - Health check endpoints
+- `backend/selko/api/routes/emails.py` - Email list/get endpoints
+- `backend/selko/api/routes/integrations.py` - Integration list/get endpoints
+- `backend/tests/integration/test_integration_api.py` - API integration tests
+
+**Files modified:**
+- `backend/pyproject.toml` - Added fastapi, uvicorn, python-jose, httpx dependencies
+- `backend/selko/config.py` - Added `supabase_jwt_secret` field to Config
+- `.env.example` - Added `SUPABASE_JWT_SECRET` documentation
+- `CLAUDE.md` - Added API folder to monorepo structure, API server section
+- `README.md` - Added API section with endpoints, updated tech stack
+
+**API Endpoints:**
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | No | Basic health check |
+| GET | `/health/db` | No | Database connectivity |
+| GET | `/emails` | Yes | List emails (paginated) |
+| GET | `/emails/{id}` | Yes | Get single email |
+| GET | `/integrations` | Yes | List integrations |
+| GET | `/integrations/{provider}` | Yes | Get integration status |
+
+**Features:**
+- JWT authentication using Supabase JWT secret
+- RLS enforcement via authenticated Supabase client
+- CORS configured for local development
+- Auto-generated OpenAPI docs at `/docs` and `/redoc`
+- Exception handlers for service errors (AuthenticationError, EmailError, IntegrationError)
+- Pagination support for email listing
+
+**Usage:**
+```bash
+# Start development server
+uv run python -m selko.api
+
+# Test health endpoint
+curl http://localhost:8000/health
+
+# Test authenticated endpoint
+curl -H "Authorization: Bearer <token>" http://localhost:8000/emails
+```
+
+**Reason:** Implement FastAPI foundation as planned to enable web/mobile client development. Read-only endpoints validate the architecture before adding mutations.
+
+---
+
 ### Documentation Alignment & Restructuring
 
 **Files created:**

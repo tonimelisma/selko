@@ -33,12 +33,12 @@ AI-powered assistant that automates personal organization by analyzing digital i
 
 ### Current (POC)
 - **Backend**: Python, Supabase (PostgreSQL + Auth + Storage)
+- **API Framework**: FastAPI (async, with automatic OpenAPI docs)
 - **Package Manager**: [uv](https://github.com/astral-sh/uv)
 - **Database**: PostgreSQL via Supabase
 - **Integrations**: Gmail API, Google Calendar API, Google Photos API
 
 ### Planned (MVP)
-- **API Framework**: FastAPI (async, with automatic OpenAPI docs)
 - **Background Jobs**: FastAPI BackgroundTasks → PostgreSQL queue (if needed)
 - **Scheduling**: APScheduler (Python) or pg_cron (Supabase built-in)
 - **Hosting**: Fly.io (free tier for POC, scales to production)
@@ -121,6 +121,7 @@ uv run python -m cli.cli_user list --env production
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anonymous/public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
+| `SUPABASE_JWT_SECRET` | JWT secret for API auth (Dashboard > Settings > API) |
 | `SUPABASE_DB_URL` | Direct PostgreSQL connection string |
 | `SUPABASE_PROJECT_REF` | Project reference ID |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
@@ -164,6 +165,11 @@ selko/
 │   │   ├── conftest.py        # Pytest fixtures
 │   │   ├── test_*.py          # Unit tests
 │   │   └── integration/       # Integration tests
+│   ├── api/                    # FastAPI application
+│   │   ├── app.py             # App factory
+│   │   ├── deps.py            # Dependencies (auth)
+│   │   ├── schemas/           # Pydantic models
+│   │   └── routes/            # API endpoints
 │   └── pyproject.toml
 │
 ├── cli/                        # CLI tools
@@ -195,6 +201,37 @@ selko/
 ├── PRD_ARCH.md                # Product requirements & architecture
 ├── CHANGELOG.md               # Detailed change history
 └── README.md                  # This file
+```
+
+## API Server
+
+Start the FastAPI development server:
+
+```bash
+# Start server with auto-reload
+uv run python -m selko.api
+
+# Server runs at http://localhost:8000
+# API documentation at http://localhost:8000/docs
+```
+
+### Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | No | Health check |
+| GET | `/health/db` | No | Database connectivity |
+| GET | `/emails` | Yes | List emails (paginated) |
+| GET | `/emails/{id}` | Yes | Get single email |
+| GET | `/integrations` | Yes | List integrations |
+| GET | `/integrations/{provider}` | Yes | Get integration status |
+
+### Authentication
+
+API endpoints require a JWT token from Supabase. Include it in the Authorization header:
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:8000/emails
 ```
 
 ## CLI Commands

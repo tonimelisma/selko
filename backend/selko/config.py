@@ -36,6 +36,7 @@ class Config:
     supabase_url: str
     supabase_anon_key: str
     supabase_service_role_key: Optional[str] = None
+    supabase_jwt_secret: Optional[str] = None
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
 
@@ -135,6 +136,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         supabase_url=supabase_url,
         supabase_anon_key=supabase_anon_key,
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
+        supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
         google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
         test_user_email=os.getenv("TEST_USER_EMAIL"),
