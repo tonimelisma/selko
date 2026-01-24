@@ -196,16 +196,18 @@ uv run python -m cli.cli_fetch_emails --max 10 --fetch-attachments
 
 **Environment Selection:**
 ```bash
-# Via CLI flag
-uv run python -m cli.cli_fetch_emails --env staging
-
-# Via environment variable
+# Recommended: Use ENVIRONMENT variable
 ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
+
+# Alternative: Use --env flag
+uv run python -m cli.cli_fetch_emails --env staging
 ```
+
+**Note:** Prefer using the `ENVIRONMENT` variable over the `--env` flag. The `--env` flag may be deprecated in future versions.
 
 | Flag | Description |
 |------|-------------|
-| `--env` | Override environment: `development`, `staging`, `production` |
+| `--env` | Override environment (optional, prefer ENVIRONMENT variable) |
 | `-v`, `--verbose` | Enable verbose (DEBUG) logging |
 | `-q`, `--quiet` | Only show warnings and errors |
 | `--max` | Maximum emails to fetch (for cli_fetch_emails) |

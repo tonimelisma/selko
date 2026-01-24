@@ -33,11 +33,16 @@ def development_config():
 
 @pytest.fixture(scope="session")
 def staging_config():
-    """Load staging configuration (cloud Supabase)."""
-    # Only load if staging tests are being run
-    if os.getenv("ENVIRONMENT") == "staging" or os.getenv("PYTEST_STAGING"):
+    """Load staging configuration (cloud Supabase).
+
+    Always loads staging config - tests marked with @pytest.mark.staging
+    will use this. If .env.test is missing, load_config will fail appropriately.
+    """
+    try:
         return load_config(env_override="staging")
-    return None
+    except SystemExit:
+        # .env.test doesn't exist or is invalid
+        return None
 
 
 @pytest.fixture(scope="function")

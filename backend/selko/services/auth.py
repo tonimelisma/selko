@@ -1,7 +1,7 @@
 """Authentication service for Selko.
 
 Provides user authentication using Supabase sign_in_with_password.
-All operations use the anon key with RLS enforcement.
+All operations use the publishable key with RLS enforcement.
 """
 
 import logging
@@ -38,7 +38,7 @@ def get_authenticated_client(config: Config) -> Client:
             "TEST_USER_EMAIL and TEST_USER_PASSWORD must be configured in .env"
         )
 
-    client = create_client(config.supabase_url, config.supabase_anon_key)
+    client = create_client(config.supabase_url, config.supabase_key)
 
     try:
         response = client.auth.sign_in_with_password(
