@@ -61,7 +61,7 @@ Tests the user authentication flow with real Supabase Auth.
 def test_sign_in_valid_credentials(env):
     """User can sign in and obtain session token."""
     config = load_config(env_override=env)
-    client = create_supabase_client(config.supabase_url, config.supabase_anon_key)
+    client = create_supabase_client(config.supabase_url, config.supabase_key)
 
     result = sign_in(client, config.test_user_email, config.test_user_password)
 
@@ -541,7 +541,7 @@ jobs:
     env:
       ENVIRONMENT: staging
       SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
       TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
       TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
