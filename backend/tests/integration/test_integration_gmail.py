@@ -160,7 +160,7 @@ class TestGmailDevelopment:
         bad_config = Config(
             environment=config.environment,
             supabase_url=config.supabase_url,
-            supabase_anon_key=config.supabase_anon_key,
+            supabase_key=config.supabase_key,
             credentials_file=Path("/nonexistent/credentials.json"),
         )
 

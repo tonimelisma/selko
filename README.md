@@ -100,7 +100,7 @@ uv run python -m cli.cli_fetch_emails --max 50
 
 ### Multi-Environment Support
 
-The CLI supports three environments via the `--env` flag or `ENVIRONMENT` variable:
+The application supports three environments via the `ENVIRONMENT` variable:
 
 | Environment | Config File | Supabase |
 |-------------|-------------|----------|
@@ -110,25 +110,25 @@ The CLI supports three environments via the `--env` flag or `ENVIRONMENT` variab
 
 ```bash
 # Use staging environment
-uv run python -m cli.cli_fetch_emails --env staging
+ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 
 # Use production environment
-uv run python -m cli.cli_user list --env production
+ENVIRONMENT=production uv run python -m cli.cli_user list
 ```
 
 ### Environment Variables
 
 | Variable | Description |
 |----------|-------------|
+| `ENVIRONMENT` | Environment name: `development`, `staging`, or `production` |
 | `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Supabase anonymous/public key |
+| `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (format: `sb_publishable_XXX` or JWT for local) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
 | `SUPABASE_JWT_SECRET` | JWT secret for API auth (Dashboard > Settings > API) |
 | `SUPABASE_DB_URL` | Direct PostgreSQL connection string |
 | `SUPABASE_PROJECT_REF` | Project reference ID |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `ENVIRONMENT` | `development`, `staging`, or `production` |
 | `TEST_USER_EMAIL` | Test user email for CLI authentication |
 | `TEST_USER_PASSWORD` | Test user password for CLI authentication |
 

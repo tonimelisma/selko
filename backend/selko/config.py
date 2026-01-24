@@ -34,7 +34,7 @@ class Config:
 
     environment: str
     supabase_url: str
-    supabase_anon_key: str
+    supabase_key: str  # Publishable key for client operations
     supabase_service_role_key: Optional[str] = None
     supabase_jwt_secret: Optional[str] = None
     google_client_id: Optional[str] = None
@@ -114,17 +114,14 @@ def load_config(env_override: Optional[str] = None) -> Config:
 
     # Get required variables
     supabase_url = os.getenv("SUPABASE_URL")
-    # Support both legacy anon key (JWT) and newer publishable key formats
-    supabase_anon_key = os.getenv("SUPABASE_ANON_KEY") or os.getenv(
-        "SUPABASE_PUBLISHABLE_API_KEY"
-    )
+    supabase_key = os.getenv("SUPABASE_PUBLISHABLE_KEY")
 
     # Validate required variables
     missing = []
     if not supabase_url:
         missing.append("SUPABASE_URL")
-    if not supabase_anon_key:
-        missing.append("SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_API_KEY")
+    if not supabase_key:
+        missing.append("SUPABASE_PUBLISHABLE_KEY")
 
     if missing:
         logger.error(f"Missing required environment variables: {', '.join(missing)}")
@@ -134,7 +131,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
     return Config(
         environment=environment,
         supabase_url=supabase_url,
-        supabase_anon_key=supabase_anon_key,
+        supabase_key=supabase_key,
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         google_client_id=os.getenv("GOOGLE_CLIENT_ID"),

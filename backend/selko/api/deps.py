@@ -67,7 +67,7 @@ def get_current_user(
 
     try:
         # Create client and validate token via Supabase auth
-        client = create_client(config.supabase_url, config.supabase_anon_key)
+        client = create_client(config.supabase_url, config.supabase_key)
 
         # get_user() validates the token against Supabase auth
         user_response = client.auth.get_user(token)
@@ -111,8 +111,8 @@ def get_authenticated_client(
     Returns:
         Supabase client with user's auth context.
     """
-    # Create client with anon key, then set the access token
-    client = create_client(config.supabase_url, config.supabase_anon_key)
+    # Create client with publishable key, then set the access token
+    client = create_client(config.supabase_url, config.supabase_key)
 
     # Set the user's JWT so RLS policies apply
     client.auth.set_session(user.token, user.token)  # access_token, refresh_token

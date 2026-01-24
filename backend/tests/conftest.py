@@ -14,7 +14,7 @@ def mock_config():
     return Config(
         environment="development",
         supabase_url="http://localhost:54321",
-        supabase_anon_key="test-anon-key",
+        supabase_key="test-anon-key",
         supabase_service_role_key="test-service-key",
         google_client_id="test-client-id",
         google_client_secret="test-client-secret",

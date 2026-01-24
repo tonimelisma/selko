@@ -94,7 +94,7 @@ class TestUserManagement:
         no_key_config = Config(
             environment=config.environment,
             supabase_url=config.supabase_url,
-            supabase_anon_key=config.supabase_anon_key,
+            supabase_key=config.supabase_key,
             supabase_service_role_key=None,
         )
 

@@ -33,7 +33,7 @@ class TestEndToEndDevelopment:
             test_config = Config(
                 environment=config.environment,
                 supabase_url=config.supabase_url,
-                supabase_anon_key=config.supabase_anon_key,
+                supabase_key=config.supabase_key,
                 supabase_service_role_key=config.supabase_service_role_key,
                 google_client_id=config.google_client_id,
                 google_client_secret=config.google_client_secret,
@@ -137,7 +137,7 @@ class TestEndToEndDevelopment:
         test_config = Config(
             environment=config.environment,
             supabase_url=config.supabase_url,
-            supabase_anon_key=config.supabase_anon_key,
+            supabase_key=config.supabase_key,
             test_user_email=email,
             test_user_password="testpass123",
         )

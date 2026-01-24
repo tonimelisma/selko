@@ -41,7 +41,7 @@ class TestCrossUserRLSIsolation:
 
         # Now sign in as User B (temp_user)
         temp_user_id, temp_email, temp_password = temp_user
-        user_b_client = create_client(config.supabase_url, config.supabase_anon_key)
+        user_b_client = create_client(config.supabase_url, config.supabase_key)
         user_b_client.auth.sign_in_with_password(
             {"email": temp_email, "password": temp_password}
         )
@@ -87,7 +87,7 @@ class TestCrossUserRLSIsolation:
 
         # Sign in as User B
         temp_user_id, temp_email, temp_password = temp_user
-        user_b_client = create_client(config.supabase_url, config.supabase_anon_key)
+        user_b_client = create_client(config.supabase_url, config.supabase_key)
         user_b_client.auth.sign_in_with_password(
             {"email": temp_email, "password": temp_password}
         )
@@ -138,7 +138,7 @@ class TestCrossUserRLSIsolation:
 
         # Sign in as User B
         temp_user_id, temp_email, temp_password = temp_user
-        user_b_client = create_client(config.supabase_url, config.supabase_anon_key)
+        user_b_client = create_client(config.supabase_url, config.supabase_key)
         user_b_client.auth.sign_in_with_password(
             {"email": temp_email, "password": temp_password}
         )
@@ -207,7 +207,7 @@ class TestCrossUserRLSIsolation:
 
         # Sign in as User B
         temp_user_id, temp_email, temp_password = temp_user
-        user_b_client = create_client(config.supabase_url, config.supabase_anon_key)
+        user_b_client = create_client(config.supabase_url, config.supabase_key)
         user_b_client.auth.sign_in_with_password(
             {"email": temp_email, "password": temp_password}
         )
@@ -258,7 +258,7 @@ class TestCrossUserRLSIsolation:
 
         # Sign in as User B
         temp_user_id, temp_email, temp_password = temp_user
-        user_b_client = create_client(config.supabase_url, config.supabase_anon_key)
+        user_b_client = create_client(config.supabase_url, config.supabase_key)
         user_b_client.auth.sign_in_with_password(
             {"email": temp_email, "password": temp_password}
         )
@@ -298,7 +298,7 @@ class TestCrossUserRLSIsolation:
         """User cannot insert data with another user's ID."""
         # Sign in as User B
         temp_user_id, temp_email, temp_password = temp_user
-        user_b_client = create_client(config.supabase_url, config.supabase_anon_key)
+        user_b_client = create_client(config.supabase_url, config.supabase_key)
         user_b_client.auth.sign_in_with_password(
             {"email": temp_email, "password": temp_password}
         )
@@ -372,7 +372,7 @@ class TestCrossUserRLSIsolationStaging:
 
         # Sign in as different user
         temp_user_id, temp_email, temp_password = temp_user
-        user_b_client = create_client(config.supabase_url, config.supabase_anon_key)
+        user_b_client = create_client(config.supabase_url, config.supabase_key)
         user_b_client.auth.sign_in_with_password(
             {"email": temp_email, "password": temp_password}
         )

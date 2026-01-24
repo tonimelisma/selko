@@ -39,7 +39,7 @@ class TestAuthentication:
         invalid_config = Config(
             environment=config.environment,
             supabase_url=config.supabase_url,
-            supabase_anon_key=config.supabase_anon_key,
+            supabase_key=config.supabase_key,
             test_user_email="nonexistent@example.com",
             test_user_password="wrongpassword",
         )
@@ -61,7 +61,7 @@ class TestAuthentication:
     def test_get_current_user_id_unauthenticated(self, config):
         """Getting user ID without auth raises error."""
         # Create unauthenticated client
-        client = create_client(config.supabase_url, config.supabase_anon_key)
+        client = create_client(config.supabase_url, config.supabase_key)
 
         with pytest.raises(AuthenticationError) as exc_info:
             get_current_user_id(client)
@@ -89,7 +89,7 @@ class TestAuthentication:
         empty_config = Config(
             environment=config.environment,
             supabase_url=config.supabase_url,
-            supabase_anon_key=config.supabase_anon_key,
+            supabase_key=config.supabase_key,
             test_user_email=None,
             test_user_password=None,
         )

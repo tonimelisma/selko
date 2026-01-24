@@ -23,7 +23,7 @@ This file contains step-by-step checklists for setting up each environment and d
 - [ ] Copy `.env.example` to `.env`
 - [ ] Fill in local Supabase values from step 2:
   - [ ] `SUPABASE_URL` (e.g., `http://127.0.0.1:54321`)
-  - [ ] `SUPABASE_ANON_KEY`
+  - [ ] `SUPABASE_PUBLISHABLE_KEY`
   - [ ] `SUPABASE_SERVICE_ROLE_KEY`
   - [ ] `SUPABASE_JWT_SECRET`
 
@@ -82,14 +82,14 @@ This file contains step-by-step checklists for setting up each environment and d
 - [ ] Create `.env.test` file
 - [ ] Configure:
   - [ ] `SUPABASE_URL=https://lxmysergoeaegxlyfzwk.supabase.co`
-  - [ ] `SUPABASE_ANON_KEY=<from step 1>`
+  - [ ] `SUPABASE_PUBLISHABLE_KEY=<from step 1>`
   - [ ] `SUPABASE_SERVICE_ROLE_KEY=<from step 1>`
   - [ ] `SUPABASE_JWT_SECRET=<from step 1>`
   - [ ] `GOOGLE_CLIENT_ID=<from local setup>`
   - [ ] `GOOGLE_CLIENT_SECRET=<from local setup>`
 
 ### 5. Create Staging Test User
-- [ ] Run: `uv run python -m cli.cli_user create --env staging --email <burner-email> --password <password>`
+- [ ] Run: `ENVIRONMENT=staging uv run python -m cli.cli_user create --email <burner-email> --password <password>`
 - [ ] Add to `.env.test`:
   - [ ] `TEST_USER_EMAIL=<burner-email>`
   - [ ] `TEST_USER_PASSWORD=<password>`
@@ -110,7 +110,7 @@ For comprehensive tests, send a few emails to the burner account:
 Go to: Repository → Settings → Secrets and variables → Actions → New repository secret
 
 - [ ] `STAGING_SUPABASE_URL` = `https://lxmysergoeaegxlyfzwk.supabase.co`
-- [ ] `STAGING_SUPABASE_ANON_KEY` = (from Supabase dashboard)
+- [ ] `STAGING_SUPABASE_PUBLISHABLE_KEY` = (from Supabase dashboard > Settings > API > Publishable key)
 - [ ] `STAGING_SUPABASE_SERVICE_ROLE_KEY` = (from Supabase dashboard)
 - [ ] `STAGING_TEST_USER_EMAIL` = (burner email)
 - [ ] `STAGING_TEST_USER_PASSWORD` = (burner password)
@@ -118,7 +118,7 @@ Go to: Repository → Settings → Secrets and variables → Actions → New rep
 - [ ] `GOOGLE_CLIENT_SECRET` = (from Google Cloud Console)
 
 ### 9. Verification
-- [ ] Run staging tests: `uv run pytest backend/tests/integration/ -m "staging" -v`
+- [ ] Run staging tests: `ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v`
 
 ---
 
@@ -140,14 +140,14 @@ Go to: Repository → Settings → Secrets and variables → Actions → New rep
 - [ ] Create `.env.production` file
 - [ ] Configure:
   - [ ] `SUPABASE_URL=https://khahcozfbnpykspvatrg.supabase.co`
-  - [ ] `SUPABASE_ANON_KEY=<from step 1>`
+  - [ ] `SUPABASE_PUBLISHABLE_KEY=<from step 1>`
   - [ ] `SUPABASE_SERVICE_ROLE_KEY=<from step 1>`
   - [ ] `SUPABASE_JWT_SECRET=<from step 1>`
   - [ ] `GOOGLE_CLIENT_ID=<from Google Cloud Console>`
   - [ ] `GOOGLE_CLIENT_SECRET=<from Google Cloud Console>`
 
 ### 4. Create Production User
-- [ ] Run: `uv run python -m cli.cli_user create --env production --email <your-email> --password <password>`
+- [ ] Run: `ENVIRONMENT=production uv run python -m cli.cli_user create --email <your-email> --password <password>`
 - [ ] Add to `.env.production`:
   - [ ] `TEST_USER_EMAIL=<your-email>`
   - [ ] `TEST_USER_PASSWORD=<password>`
@@ -158,7 +158,7 @@ Go to: Repository → Settings → Secrets and variables → Actions → New rep
 - [ ] Verify tokens stored in production Supabase
 
 ### 6. Verification
-- [ ] Test email fetch: `uv run python -m cli.cli_fetch_emails --env production --max 5`
+- [ ] Test email fetch: `ENVIRONMENT=production uv run python -m cli.cli_fetch_emails --max 5`
 - [ ] Check emails in Supabase dashboard
 
 ---
@@ -269,7 +269,7 @@ docs
 ```bash
 fly secrets set ENVIRONMENT=staging
 fly secrets set SUPABASE_URL=https://lxmysergoeaegxlyfzwk.supabase.co
-fly secrets set SUPABASE_ANON_KEY=<staging-anon-key>
+fly secrets set SUPABASE_PUBLISHABLE_KEY=<staging-anon-key>
 fly secrets set SUPABASE_SERVICE_ROLE_KEY=<staging-service-role-key>
 fly secrets set SUPABASE_JWT_SECRET=<staging-jwt-secret>
 ```
@@ -347,11 +347,11 @@ When you have a frontend, add CORS configuration:
 
 ### Common Commands
 ```bash
-# Switch environments
-uv run python -m cli.cli_fetch_emails --env development  # Local
-uv run python -m cli.cli_fetch_emails --env staging      # Cloud staging
-uv run python -m cli.cli_fetch_emails --env production   # Cloud production
+# Switch environments using ENVIRONMENT variable (recommended)
+ENVIRONMENT=development uv run python -m cli.cli_fetch_emails  # Local
+ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails      # Cloud staging
+ENVIRONMENT=production uv run python -m cli.cli_fetch_emails   # Cloud production
 
-# Or use environment variable
-ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
+# Alternative: Use --env flag
+uv run python -m cli.cli_fetch_emails --env staging
 ```

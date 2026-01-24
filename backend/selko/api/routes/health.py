@@ -32,8 +32,8 @@ async def health_db_check(
     Tests connection to Supabase and returns status.
     """
     try:
-        # Create anonymous client for health check
-        client = create_client(config.supabase_url, config.supabase_anon_key)
+        # Create client for health check
+        client = create_client(config.supabase_url, config.supabase_key)
 
         # Simple query to test connectivity
         # Using a table that exists but returns minimal data
