@@ -23,7 +23,7 @@ class TestEndToEndDevelopment:
     def test_new_user_flow_mocked(self, config, sample_oauth_credentials):
         """Complete flow: create user → auth → save creds → fetch emails."""
         email = f"e2e-test-{uuid4()}@selko.local"
-        user = create_user(config, email, "testpass123")
+        user = create_user(config, email, "testpass123", auto_confirm=True)
         user_id = user["id"]
 
         try:
@@ -128,7 +128,7 @@ class TestEndToEndDevelopment:
     def test_user_data_cascade_delete(self, config, sample_oauth_credentials):
         """Deleting user cascades to integrations and emails."""
         email = f"cascade-test-{uuid4()}@selko.local"
-        user = create_user(config, email, "testpass123")
+        user = create_user(config, email, "testpass123", auto_confirm=True)
         user_id = user["id"]
 
         # Create config for test user

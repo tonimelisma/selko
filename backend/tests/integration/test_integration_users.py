@@ -27,7 +27,7 @@ class TestUserManagement:
         email = f"test-{uuid4()}@selko.local"
         password = "testpass123"
 
-        user = create_user(config, email, password)
+        user = create_user(config, email, password, auto_confirm=True)
 
         assert user["id"] is not None
         assert user["email"] == email
@@ -58,7 +58,7 @@ class TestUserManagement:
     def test_delete_user(self, config):
         """Delete user removes from auth."""
         email = f"test-{uuid4()}@selko.local"
-        user = create_user(config, email, "testpass123")
+        user = create_user(config, email, "testpass123", auto_confirm=True)
         user_id = user["id"]
 
         result = delete_user(config, user_id)
@@ -106,7 +106,7 @@ class TestUserManagement:
     def test_user_profile_auto_created(self, config, admin_client):
         """User profile in public.users is auto-created by trigger."""
         email = f"test-{uuid4()}@selko.local"
-        user = create_user(config, email, "testpass123")
+        user = create_user(config, email, "testpass123", auto_confirm=True)
         user_id = user["id"]
 
         try:
