@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-24
+
+### Fix Staging Integration Test Failures (Commit: 2069f89)
+
+**Files modified:**
+- `backend/tests/integration/test_integration_emails.py` - Fixed test_save_email_staging to use len(saved) instead of expecting integer count from save_emails()
+- `backend/selko/services/users.py` - Added auto_confirm parameter (default: True) to create_user(), removed environment-dependent logic
+
+**Purpose:**
+- Fix test_save_email_staging: save_emails() returns a list of saved records, not a count
+- Fix test_rls_enforced_staging: temp_user fixture now auto-confirms users in all environments, allowing immediate sign-in for testing
+
+**Result:** All staging tests now passing (11 passed, 7 skipped)
+
 ## 2026-01-23
 
 ### Comprehensive Setup Guide in TODO.md
