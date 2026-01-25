@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-25
 
+### Update Testing Documentation to Match Real Workflow
+
+**Files modified:**
+- `CLAUDE.md` - Updated Definition of Done, Test Requirements, and Running Tests sections
+- `PRD_ARCH.md` - Updated Part 4 Section 5 (Running Tests)
+
+**Purpose:** Align documentation with actual testing workflow after 2026-01-25 change where development tests now use real Gmail API with seeded tokens.
+
+**Key Changes:**
+1. **Definition of Done**: Changed from separate unit + staging tests to single command `uv run pytest backend/tests/ -v` (runs both unit + integration)
+2. **Test Requirements**: Simplified from 3-step process to 2 steps (start Supabase, run all tests)
+3. **Running Tests**: Added note that staging tests are CI-only (run after deployment to validate deployed environment)
+4. **PRD_ARCH.md**: Clarified that staging tests run in CI only, not locally before commits
+
+**Rationale:**
+- Development integration tests already validate real Gmail API using seeded tokens
+- Running staging tests locally before deployment tests nothing useful (tests stale staging state, not your changes)
+- Staging tests belong in CI where they run AFTER deploying to staging to validate the deployed environment
+- Eliminates confusion about when to run which tests
+
+**Result:** Documentation now correctly reflects the workflow: local dev runs all tests (unit + integration with real Gmail), CI runs same tests → deploys to staging → runs staging tests to validate deployment.
+
+## 2026-01-25 (earlier)
+
 ### Documentation Consolidation
 
 **Simplified documentation structure from 17 files to 8 files + 3 placeholders.** Deleted obsolete evaluation docs, merged architecture and testing content into PRD_ARCH.md, and flattened docs/ structure.
