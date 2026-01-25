@@ -15,7 +15,7 @@ from datetime import datetime
 
 from supabase import create_client
 
-from selko.config import add_logging_arguments, load_config
+from selko.config import Config, add_logging_arguments, load_config
 from selko.logging import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -82,29 +82,50 @@ def get_user_by_email(admin_client, email: str) -> dict | None:
     return None
 
 
-def apply_env_overrides(config, prefix: str):
-    """Apply environment variable overrides to config.
+def load_config_with_prefix(env_name: str, prefix: str) -> Config:
+    """Load config, checking for prefixed env vars first (CI mode).
 
-    This allows CI to override config values without .env files.
-    Looks for variables like {PREFIX}_SUPABASE_URL, {PREFIX}_SUPABASE_SERVICE_ROLE_KEY, etc.
+    In CI, env vars like SOURCE_SUPABASE_URL are set instead of .env files.
+    This function checks for prefixed vars first, then falls back to load_config.
 
     Args:
-        config: Config object to modify.
-        prefix: Prefix for environment variables (e.g., 'STAGING', 'SOURCE', 'TARGET').
+        env_name: Environment name ('development', 'staging', 'production').
+        prefix: Prefix for environment variables (e.g., 'SOURCE', 'TARGET').
+
+    Returns:
+        Config object with configuration values.
+
+    Raises:
+        TokenSeedError: If configuration cannot be loaded.
     """
     import os
 
-    # Check for URL override
     url_var = f"{prefix}_SUPABASE_URL"
-    if os.getenv(url_var):
-        config.supabase_url = os.getenv(url_var)
-        logger.debug(f"Overriding Supabase URL from {url_var}")
-
-    # Check for service role key override
     key_var = f"{prefix}_SUPABASE_SERVICE_ROLE_KEY"
-    if os.getenv(key_var):
-        config.supabase_service_role_key = os.getenv(key_var)
-        logger.debug(f"Overriding service role key from {key_var}")
+
+    # CI mode: prefixed env vars are set
+    if os.getenv(url_var):
+        logger.info(f"Using {prefix}_* environment variables for {env_name} config")
+        return Config(
+            environment=env_name,
+            supabase_url=os.getenv(url_var),
+            supabase_key=os.getenv(f"{prefix}_SUPABASE_PUBLISHABLE_KEY", ""),
+            supabase_service_role_key=os.getenv(key_var),
+            test_user_email=os.getenv("TEST_USER_EMAIL"),
+            test_user_password=os.getenv("TEST_USER_PASSWORD"),
+            google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
+            google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        )
+
+    # Local dev mode: use .env files
+    try:
+        return load_config(env_override=env_name)
+    except SystemExit:
+        raise TokenSeedError(
+            f"Could not load {env_name} config. "
+            f"Check that the env file exists and has required variables, "
+            f"or set {prefix}_SUPABASE_URL and {prefix}_SUPABASE_SERVICE_ROLE_KEY for CI."
+        )
 
 
 def seed_tokens(
@@ -129,25 +150,9 @@ def seed_tokens(
     logger.info(f"Seeding {provider} tokens from {source_env} to {target_env}")
 
     # Load configs for both environments
-    try:
-        source_config = load_config(env_override=source_env)
-        # Apply CI overrides (SOURCE_SUPABASE_URL, etc.)
-        apply_env_overrides(source_config, "SOURCE")
-    except SystemExit:
-        raise TokenSeedError(
-            f"Could not load {source_env} config. "
-            f"Check that the env file exists and has required variables."
-        )
-
-    try:
-        target_config = load_config(env_override=target_env)
-        # Apply CI overrides (TARGET_SUPABASE_URL, etc.)
-        apply_env_overrides(target_config, "TARGET")
-    except SystemExit:
-        raise TokenSeedError(
-            f"Could not load {target_env} config. "
-            f"Check that the env file exists and has required variables."
-        )
+    # Checks for prefixed env vars first (CI mode), then falls back to .env files
+    source_config = load_config_with_prefix(source_env, "SOURCE")
+    target_config = load_config_with_prefix(target_env, "TARGET")
 
     # Validate service role keys exist
     if not source_config.supabase_service_role_key:
