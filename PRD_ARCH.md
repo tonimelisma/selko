@@ -681,24 +681,32 @@ markers = [
 
 #### **4.3 Running Tests**
 
+**Local Development (Pre-commit):**
 ```bash
+# Run all tests (unit + integration) before committing
+supabase start  # If not already running
+uv run pytest backend/tests/ -v
+
+# Or run separately:
 # Unit tests only (fast, no external dependencies)
-uv run pytest backend/tests/ -m "not integration"
+uv run pytest backend/tests/ -m "not integration" -v
 
-# Integration tests - development (requires local Supabase + seeded tokens)
-supabase start
-uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+# Integration tests only (requires local Supabase + seeded tokens)
 uv run pytest backend/tests/integration/ -m "development" -v
-
-# Integration tests - staging (requires network + burner Gmail)
-uv run pytest backend/tests/integration/ -m "staging" -v
-
-# All integration tests (development + staging)
-uv run pytest backend/tests/integration/ -m "integration" -v
-
-# Smoke tests for production (read-only)
-uv run pytest backend/tests/integration/ -m "production" -v
 ```
+
+**CI/CD Testing:**
+Staging tests run in CI only, after deploying to staging, to validate the deployed environment. They are not meant to be run locally before commits.
+
+```bash
+# Staging tests (CI only, runs after deployment)
+ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v
+
+# Smoke tests for production (CI only, read-only)
+ENVIRONMENT=production uv run pytest backend/tests/integration/ -m "production" -v
+```
+
+**Note:** Development integration tests already validate real Gmail API using seeded tokens. Running staging tests locally before deployment tests nothing useful (you're testing stale staging state, not your changes).
 
 ### **5. Burner Gmail Account Setup**
 

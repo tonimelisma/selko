@@ -14,15 +14,14 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture spec
 
 **Before ANY work increment is considered complete, ALL of the following MUST pass:**
 
-- [ ] **Run unit tests**: `uv run pytest backend/tests/ -m "not integration" -v`
-- [ ] **Run staging integration tests**: `ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v`
+- [ ] **Run all tests**: `uv run pytest backend/tests/ -v` (unit + integration)
 - [ ] **Git commit** with conventional commit message format (e.g., `feat:`, `fix:`, `test:`, `docs:`)
 - [ ] **Git push** to `origin/main`
 - [ ] **Update CHANGELOG.md** with detailed entry (if not already done during implementation)
 
 **DO NOT declare work complete, say "done", or mark todos as complete until ALL checklist items pass.**
 
-**Critical:** Staging tests validate real integrations (Gmail API, cloud Supabase) and MUST pass on every commit to ensure production readiness. Never skip staging tests.
+**Critical:** Development integration tests validate real Gmail API with seeded tokens. Staging tests run in CI only, after deploying to staging.
 
 ---
 
@@ -81,18 +80,12 @@ This is a **Proof of Concept (POC)** phase using local Python scripts to validat
 
 Before declaring any work increment complete or making git commits:
 
-1. **Run unit tests**: `uv run pytest backend/tests/ -m "not integration" -v`
-2. **Run development integration tests**: 
-   - Start local Supabase: `supabase start`
-   - Run tests: `uv run pytest backend/tests/integration/ -m "development" -v`
-3. **Run staging integration tests** (ALWAYS required):
-   - Ensure `.env.test` is configured with staging Supabase credentials
-   - Ensure Gmail OAuth tokens exist: `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`
-   - Run: `ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v`
+1. **Start local Supabase**: `supabase start` (if not already running)
+2. **Run all tests**: `uv run pytest backend/tests/ -v` (unit + integration)
 
 All tests must pass before committing. Do not commit with skipped or failing tests.
 
-**Critical:** Staging tests validate real integrations (Gmail API, cloud Supabase) and must pass on every commit to ensure production readiness.
+**Critical:** Development integration tests validate real Gmail API with seeded tokens. Staging tests run in CI only, after deploying to staging, to validate the deployed environment.
 
 ### Environment Configuration
 
@@ -323,12 +316,11 @@ uv run pytest backend/tests/ -v
 # Run integration tests only
 uv run pytest backend/tests/integration/ -m "development" -v
 
-# Run staging integration tests (real Gmail)
-uv run pytest backend/tests/integration/ -m "staging" -v
-
 # Run with coverage
 uv run pytest backend/tests/ --cov=selko
 ```
+
+**Note:** Staging tests (`-m "staging"`) are for CI only. They run after deploying to staging to validate the deployed environment. For local development, use development tests which also validate real Gmail API.
 
 **Test Markers:**
 | Marker | Description |
