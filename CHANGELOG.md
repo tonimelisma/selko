@@ -2,6 +2,56 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-25
+
+### Simplify Integration Testing - Real Gmail Only
+
+**Simplified all integration tests to use real Gmail API.** Removed mocked Gmail tests and the `local_real` marker. Development and staging tests both use real Gmail, with development tests running against local Supabase with seeded tokens.
+
+**Files added:**
+- `cli/cli_seed_tokens.py` - CLI tool to copy OAuth tokens between environments with automatic user ID remapping and CI environment variable override support
+
+**Files modified:**
+- `backend/pyproject.toml` - Updated `development` marker description, removed `local_real` marker
+- `backend/tests/integration/test_integration_gmail.py` - Deleted mocked `TestGmailDevelopment` class, renamed `TestGmailLocalReal` to `TestGmailDevelopment`
+- `.github/workflows/test.yml` - Added token seeding step to development tests (CI automatically seeds from staging)
+- `cli/cli_seed_tokens.py` - Added `apply_env_overrides()` function for CI to override Supabase URLs/keys via environment variables
+- `CLAUDE.md` - Removed local_real references, updated testing workflow to emphasize real Gmail usage
+- `INTEGRATION_TESTS_PLAN.md` - Removed local_real environment, updated development environment to use real Gmail
+- `README.md` - Simplified testing section, removed local_real marker
+
+**Test Modes (Simplified):**
+| Mode | Database | Gmail API |
+|------|----------|-----------|
+| `development` | Local Supabase | Real (seeded tokens) |
+| `staging` | Cloud Supabase | Real |
+
+**Key Changes:**
+1. **All integration tests use real Gmail API** - No mocking ensures tests validate actual 3rd-party integration behavior
+2. **CI seeds tokens automatically** - Development tests in CI seed tokens from staging before running
+3. **Simpler mental model** - Only two test modes instead of three
+4. **Better test quality** - Always testing against real API, catch issues earlier
+
+**Local Development:**
+```bash
+# One-time setup after supabase start/reset
+supabase start
+uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+
+# Run tests (uses real Gmail)
+uv run pytest backend/tests/integration/ -m "development" -v
+```
+
+**CI Pipeline:**
+- Unit tests run first
+- Local Supabase starts in CI
+- Tokens automatically seeded from staging to local
+- Development integration tests run with real Gmail API
+- Staging tests run after deployment (as before)
+
+---
+
 ## 2026-01-23
 
 ### Implement Automated CI/CD Deployment Pipeline

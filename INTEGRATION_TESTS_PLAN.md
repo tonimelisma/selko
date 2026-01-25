@@ -8,11 +8,32 @@ Integration tests will validate end-to-end functionality with real services (Sup
 
 ## Environment Strategy
 
+**All integration tests use real Gmail API.** No mocking ensures tests validate actual 3rd-party integration behavior.
+
 | Environment | Database | Gmail API | Purpose | Safety Level |
 |-------------|----------|-----------|---------|--------------|
-| **Development** | Local Supabase (Docker) | Mocked | Fast iteration, CI/CD | Safe (isolated) |
+| **Development** | Local Supabase (Docker) | Real (seeded tokens) | Fast iteration, CI/CD | Safe (isolated) |
 | **Staging** | Cloud Supabase (staging) | Real (burner account) | Pre-production validation | Safe (test data only) |
 | **Production** | Cloud Supabase (prod) | Real (read-only) | Smoke tests only | Restricted (read-only) |
+
+### Development Environment Tests
+- **Database**: Local Supabase via Docker (`supabase start`)
+- **Gmail**: Real Gmail API with tokens seeded from staging
+- **Credentials**: OAuth tokens copied via `cli_seed_tokens` with user ID remapping
+- **Purpose**: Test real Gmail integration without deploying to staging or polluting cloud DB
+- **Cleanup**: `supabase db reset` clears everything, re-seed tokens as needed
+- **CI**: Tokens automatically seeded from staging before tests run
+
+**Setup:**
+```bash
+# One-time setup after supabase start/reset
+supabase start
+uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+
+# Run development tests (uses real Gmail)
+uv run pytest backend/tests/integration/ -m "development" -v
+```
 
 ### Development Environment Tests
 - **Database**: Local Supabase via Docker (`supabase start`)
@@ -339,7 +360,7 @@ backend/
 [tool.pytest.ini_options]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
-    "development: tests that run against local Supabase",
+    "development: tests that run against local Supabase with real Gmail (requires seeded tokens)",
     "staging: tests that run against staging Supabase + real Gmail",
     "production: read-only smoke tests for production",
     "slow: tests that take >10 seconds",
@@ -352,14 +373,15 @@ markers = [
 # Unit tests only (fast, no external dependencies)
 uv run pytest backend/tests/ -m "not integration"
 
-# Integration tests - development (requires local Supabase)
+# Integration tests - development (requires local Supabase + seeded tokens)
 supabase start
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
 uv run pytest backend/tests/integration/ -m "development" -v
 
 # Integration tests - staging (requires network + burner Gmail)
 uv run pytest backend/tests/integration/ -m "staging" -v
 
-# All integration tests
+# All integration tests (development + staging)
 uv run pytest backend/tests/integration/ -m "integration" -v
 
 # Smoke tests for production (read-only)

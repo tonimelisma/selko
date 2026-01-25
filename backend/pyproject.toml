@@ -37,7 +37,7 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
-    "development: tests that run against local Supabase",
+    "development: tests that run against local Supabase with real Gmail (requires seeded tokens)",
     "staging: tests that run against staging Supabase + real Gmail",
     "production: read-only smoke tests for production",
     "slow: tests that take >10 seconds",
