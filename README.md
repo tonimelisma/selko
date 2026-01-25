@@ -178,6 +178,7 @@ selko/
 │   ├── cli_user.py            # User management
 │   ├── cli_auth_gmail.py      # Gmail OAuth
 │   ├── cli_fetch_emails.py    # Email fetching
+│   ├── cli_seed_tokens.py     # Token seeding between environments
 │   ├── credentials.json       # Google OAuth credentials (gitignored)
 │   └── pyproject.toml
 │
@@ -270,6 +271,18 @@ uv run python -m cli.cli_fetch_emails -v --max 10
 uv run python -m cli.cli_fetch_emails -q --max 100
 ```
 
+### Token Seeding
+
+Copy OAuth tokens between environments to enable local testing with real Gmail API:
+
+```bash
+# Copy Gmail tokens from staging to local development
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+
+# Tokens are copied with automatic user ID remapping
+# Required for running development integration tests
+```
+
 **Attachment Storage:**
 - Files stored in Supabase Storage (`attachments` bucket)
 - User-scoped paths: `{user_id}/{unique_id}_{filename}`
@@ -278,7 +291,7 @@ uv run python -m cli.cli_fetch_emails -q --max 100
 
 ### Running Tests
 
-The project has 71+ tests covering all services.
+The project has 71+ tests covering all services. **All integration tests use real Gmail API** - no mocking.
 
 ```bash
 # Install test dependencies
@@ -287,15 +300,17 @@ uv sync --extra test
 # Run unit tests only (fast, no external dependencies)
 uv run pytest backend/tests/ -m "not integration" -v
 
-# Run all tests including integration (requires local Supabase)
+# Run development integration tests (local Supabase + real Gmail)
+# One-time setup after supabase start/reset:
 supabase start
-uv run pytest backend/tests/ -v
+uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
 
-# Run development integration tests only
+# Run tests
 uv run pytest backend/tests/integration/ -m "development" -v
 
 # Run staging integration tests (REQUIRED before every commit)
-ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v
+uv run pytest backend/tests/integration/ -m "staging" -v
 
 # Run with coverage report
 uv run pytest backend/tests/ --cov=selko
@@ -305,15 +320,24 @@ uv run pytest backend/tests/ --cov=selko
 | Marker | Description |
 |--------|-------------|
 | `integration` | All integration tests (requires Supabase) |
-| `development` | Tests against local Supabase |
+| `development` | Tests against local Supabase + real Gmail (requires seeded tokens) |
 | `staging` | Tests against staging Supabase + real Gmail |
+
+**Token Seeding:**
+
+Development tests use real Gmail tokens seeded from staging:
+
+```bash
+# Seed tokens from staging to local (with user ID remapping)
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+```
 
 **Before Every Commit:**
 1. Run unit tests
-2. Run development integration tests (local Supabase)
+2. Run development integration tests (local Supabase + real Gmail)
 3. Run staging integration tests (cloud Supabase + real Gmail)
 
-All tests must pass. Staging tests validate real integrations and ensure production readiness.
+All tests must pass. Both development and staging tests validate real Gmail integration.
 
 See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
 

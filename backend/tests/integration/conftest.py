@@ -16,12 +16,17 @@ from selko.services.users import create_user, delete_user, get_admin_client
 
 
 def _get_env_for_markers(request) -> str:
-    """Determine environment from test markers."""
+    """Determine environment from test markers.
+
+    The local_real marker uses development environment (local Supabase)
+    but expects real Gmail tokens to be seeded via cli_seed_tokens.
+    """
     if request.node.get_closest_marker("staging"):
         return "staging"
     if request.node.get_closest_marker("production"):
         return "production"
-    # Default to development
+    # Both "development" and "local_real" use local Supabase
+    # The difference is whether Gmail API is mocked or real
     return "development"
 
 

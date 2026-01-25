@@ -181,6 +181,7 @@ selko/
 │   ├── cli_user.py            # User management CLI
 │   ├── cli_auth_gmail.py      # Gmail OAuth CLI
 │   ├── cli_fetch_emails.py    # Email fetch CLI
+│   ├── cli_seed_tokens.py     # Token seeding between environments
 │   ├── credentials.json       # Google OAuth app credentials
 │   └── pyproject.toml
 │
@@ -220,6 +221,15 @@ uv run python -m cli.cli_fetch_emails --max 10
 
 # Fetch emails AND download attachments
 uv run python -m cli.cli_fetch_emails --max 10 --fetch-attachments
+```
+
+**Token Seeding (for local-real testing):**
+```bash
+# Copy Gmail tokens from staging to local development
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+
+# This enables running real Gmail tests against local Supabase
+# Tokens are copied with automatic user ID remapping
 ```
 
 **Environment Selection:**
@@ -307,20 +317,43 @@ uv run pytest backend/tests/ --cov=selko
 | Marker | Description |
 |--------|-------------|
 | `integration` | All integration tests (requires Supabase) |
-| `development` | Tests against local Supabase |
+| `development` | Tests against local Supabase + real Gmail (requires seeded tokens) |
 | `staging` | Tests against staging Supabase + real Gmail |
 | `production` | Read-only smoke tests for production |
 
+**All integration tests use real Gmail API** - no mocking. This ensures tests validate actual 3rd-party integration behavior.
+
 See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
+
+**Development Testing (Real Gmail with Local Supabase):**
+
+Development tests use local Supabase with real Gmail API tokens seeded from staging.
+
+```bash
+# One-time setup after supabase start/reset
+supabase start
+uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+
+# Run development integration tests (uses real Gmail)
+uv run pytest backend/tests/integration/ -m "development" -v
+```
+
+Benefits:
+- Test real Gmail integration without deploying to staging
+- Fast iteration with isolated local database
+- CI automatically seeds tokens and runs these tests
 
 **Token Persistence Rules:**
 
-**Development tests** (local Supabase):
+**Development tests** (local Supabase + real Gmail):
 - Database is ephemeral (reset each `supabase start`)
-- Tests create mock tokens and clean them up
-- `cleanup_integrations` fixture is appropriate
+- Uses real Gmail API tokens seeded from staging via `cli_seed_tokens`
+- Tokens must be re-seeded after `supabase db reset`
+- Tests are READ-ONLY for integrations (preserve seeded tokens)
+- Use `pytest.fail()` not `pytest.skip()` when credentials are missing
 
-**Staging tests** (cloud Supabase):
+**Staging tests** (cloud Supabase + real Gmail):
 - Database is persistent across runs
 - Real OAuth tokens from `cli_auth_gmail` must be preserved
 - Staging tests should be READ-ONLY for integrations
@@ -330,6 +363,19 @@ See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
 **Production tests**:
 - Read-only smoke tests only
 - Never modify data
+
+**Test User Management Across Environments:**
+
+Each environment has **separate users with different UUIDs**:
+
+| Environment | Config File | Example Email | User UUID | OAuth Tokens |
+|-------------|-------------|---------------|-----------|--------------|
+| Development | `.env` | `test@selko.local` | `abc123...` | Seeded from staging |
+| Staging | `.env.test` | `test@selko.local` | `xyz789...` | Real from OAuth flow |
+
+OAuth tokens in the `integrations` table are stored with `user_id` foreign key.
+When you copy tokens between environments, the `cli_seed_tokens` script automatically
+remaps the user ID from the source user to the target user (matched by email).
 
 ### Authentication Model
 

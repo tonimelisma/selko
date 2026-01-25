@@ -108,12 +108,31 @@ jobs:
           TEST_USER_EMAIL: test@selko.local
           TEST_USER_PASSWORD: testpass123
 
+      - name: Seed Gmail tokens from staging
+        run: |
+          # Get local Supabase service role key dynamically
+          export TARGET_SUPABASE_SERVICE_ROLE_KEY=$(supabase status --output json | jq -r '.SERVICE_ROLE_KEY')
+          
+          uv run python -m cli.cli_seed_tokens \
+            --from staging --to development --provider gmail
+        env:
+          # Source (staging) credentials via environment overrides
+          SOURCE_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SOURCE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          # Target (local) credentials
+          TARGET_SUPABASE_URL: http://localhost:54321
+          TEST_USER_EMAIL: test@selko.local
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
       - name: Run integration tests
         run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short
         env:
           ENVIRONMENT: development
           TEST_USER_EMAIL: test@selko.local
           TEST_USER_PASSWORD: testpass123
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: Stop Supabase
         if: always()
