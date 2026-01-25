@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-25
 
+### Fix Test Cleanup Conflicts with Seeded Gmail Credentials
+
+**Commit:** 41acf8a
+
+**Files modified:**
+- `backend/tests/integration/conftest.py` - Added temp_user_client fixture
+- `backend/tests/integration/test_integration_oauth.py` - Use temp_user_client instead of cleanup_integrations
+- `backend/tests/integration/test_integration_api.py` - Use temp_user_client for API tests
+- `backend/tests/integration/test_integration_rls_security.py` - Use google_calendar to avoid gmail conflict
+
+**Problem:** Tests that create OAuth credentials used `cleanup_integrations` fixture which deleted ALL integrations for a provider. When OAuth/API tests created and cleaned up Gmail credentials, they also deleted the real seeded Gmail tokens needed by Gmail integration tests. This caused 5 Gmail tests to fail with "No Gmail credentials found" when running the full test suite.
+
+**Solution:**
+- Tests that CREATE data now use `temp_user` fixture for complete isolation
+- Created `temp_user_client` fixture that returns authenticated client for temp user
+- Temp user and all associated data (integrations, emails, etc.) automatically deleted after test via cascade delete
+- Tests that READ seeded data continue using `authenticated_client` (main test user)
+- No cleanup_integrations conflicts since temp user data is completely isolated
+
+**Result:** All 142 tests now pass. Tests that create fake credentials use isolated temp users, tests that read real seeded credentials use the main test user.
+
 ### Fix CI Token Seeding Configuration Loading
 
 **Commit:** 97061f9
