@@ -13,7 +13,15 @@ from selko.services.attachments import (
     save_attachment_metadata,
     upload_to_storage,
     delete_attachment,
+    process_attachment,
     AttachmentError,
+)
+from selko.services.emails import parse_gmail_message, save_emails
+from selko.services.gmail import (
+    get_credentials,
+    build_service,
+    fetch_messages,
+    extract_attachments,
 )
 
 
@@ -290,3 +298,62 @@ class TestAttachmentStorageStaging:
         authenticated_client.storage.from_(
             config.storage_bucket_attachments
         ).remove([storage_path])
+
+
+@pytest.mark.integration
+@pytest.mark.staging
+class TestGmailAttachmentStaging:
+    """Test Gmail attachment download with real Gmail API."""
+
+    def test_gmail_attachment_full_pipeline(
+        self, authenticated_client, config
+    ):
+        """Complete pipeline: Gmail fetch → download → storage → metadata."""
+        # 1. Get Gmail credentials
+        creds = get_credentials(authenticated_client, config)
+        if creds is None:
+            pytest.fail("No Gmail credentials - run cli_auth_gmail first")
+
+        # 2. Build service and fetch emails with attachments
+        service = build_service(creds)
+        messages = fetch_messages(service, max_results=20)
+
+        # 3. Find an email with attachments
+        email_with_attachment = None
+        attachment_part = None
+        for msg in messages:
+            attachments = extract_attachments(msg)
+            if attachments:
+                email_with_attachment = msg
+                attachment_part = attachments[0]
+                break
+
+        if not email_with_attachment:
+            pytest.fail("No emails with attachments found in staging Gmail")
+
+        # 4. Save email to DB first (required for attachment FK)
+        parsed = parse_gmail_message(email_with_attachment)
+        saved_emails = save_emails(authenticated_client, [parsed])
+        email_record = saved_emails[0]
+
+        # 5. Process attachment (download → upload → save metadata)
+        result = process_attachment(
+            client=authenticated_client,
+            gmail_service=service,
+            email_id=email_record["id"],
+            message_id=email_with_attachment["id"],
+            attachment_part=attachment_part,
+            config=config,
+        )
+
+        # 6. Verify result
+        assert result is not None
+        assert result["filename"] == attachment_part["filename"]
+        assert result["storage_path"] is not None
+        assert result["content_hash"] is not None
+
+        # 7. Verify file exists in storage
+        downloaded = authenticated_client.storage.from_(
+            config.storage_bucket_attachments
+        ).download(result["storage_path"])
+        assert len(downloaded) > 0

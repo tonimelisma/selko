@@ -76,6 +76,13 @@ Database and application deployments are atomic - migrations run first, and if t
     - Updated `integration-tests-staging` job to use `STAGING_SUPABASE_PUBLISHABLE_KEY` and `STAGING_SUPABASE_SERVICE_ROLE_KEY` secrets.
   - **Reason**: Integration tests were failing because the backend configuration requires `SUPABASE_PUBLISHABLE_KEY` to be present, but it was missing from the CI environment variables.
 
+- `test: add Gmail attachment staging integration test`
+  - Modified `backend/tests/integration/test_integration_attachments.py`:
+    - Added imports for Gmail and email services (get_credentials, build_service, fetch_messages, extract_attachments, parse_gmail_message, save_emails, process_attachment)
+    - Added new test class `TestGmailAttachmentStaging` with `test_gmail_attachment_full_pipeline` test
+    - Test validates complete pipeline: Gmail API fetch → attachment download → Supabase Storage upload → metadata save
+  - **Reason**: Previous tests only verified Supabase Storage operations with synthetic data. This test exercises the full real-world Gmail attachment download flow with actual emails from the authenticated staging Gmail account, ensuring end-to-end attachment handling works correctly with real API calls.
+
 ## 2026-01-24
 
 ### Standardize Environment Selection (Commit: 2ce524e)
