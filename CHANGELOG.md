@@ -38,6 +38,14 @@ Database and application deployments are atomic - migrations run first, and if t
 
 **Result:** Staging environment will auto-update on main branch pushes. Production remains manual for safety. Fly.io deployment steps are clearly marked as TODO placeholders for future implementation.
 
+## 2026-01-25
+
+- **9b0bc01** - `ci: fix missing SUPABASE_PUBLISHABLE_KEY in development and staging tests`
+  - Modified `.github/workflows/test.yml`:
+    - Added `SUPABASE_PUBLISHABLE_KEY` export to development environment setup (mapped from ANON_KEY).
+    - Updated `integration-tests-staging` job to use `STAGING_SUPABASE_PUBLISHABLE_KEY` and `STAGING_SUPABASE_SERVICE_ROLE_KEY` secrets.
+  - **Reason**: Integration tests were failing because the backend configuration requires `SUPABASE_PUBLISHABLE_KEY` to be present, but it was missing from the CI environment variables.
+
 ## 2026-01-24
 
 ### Standardize Environment Selection (Commit: 2ce524e)
