@@ -44,7 +44,7 @@ AI-powered assistant that automates personal organization by analyzing digital i
 - **Hosting**: Render (free tier for POC, scales to production)
 - **Cost**: $0/mo (POC on free tiers) → $35-45/mo (MVP)
 
-**Architecture Decision:** Keep it simple - FastAPI + Supabase only. No Redis/ARQ unless measured need (>1000 jobs/hour). See `SIMPLIFIED_STACK.md` for rationale.
+**Architecture Decision:** Keep it simple - FastAPI + Supabase only. No Redis/ARQ unless measured need (>1000 jobs/hour). See `PRD_ARCH.md` Part 3 for rationale.
 
 ## Setup
 
@@ -339,7 +339,7 @@ uv run python -m cli.cli_seed_tokens --from staging --to development --provider 
 
 All tests must pass. Both development and staging tests validate real Gmail integration.
 
-See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
+See `PRD_ARCH.md` Part 4 for detailed testing strategy.
 
 ## Documentation
 
@@ -349,13 +349,11 @@ See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
 - [CHANGELOG.md](CHANGELOG.md) - Detailed change history
 
 **Architecture & Decisions:**
-- [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) - High-level system overview
-- [BACKEND_FRAMEWORK_EVALUATION.md](BACKEND_FRAMEWORK_EVALUATION.md) - Framework decision rationale
-- [SIMPLIFIED_STACK.md](SIMPLIFIED_STACK.md) - Why we avoid complexity
+- [PRD_ARCH.md](PRD_ARCH.md) - Product requirements, architecture, and implementation details
 
 **Technical Guides:**
-- [docs/guides/gmail-integration.md](docs/guides/gmail-integration.md) - Gmail API integration details
-- [docs/guides/gemini-integration.md](docs/guides/gemini-integration.md) - LLM integration patterns
+- [docs/gmail-integration.md](docs/gmail-integration.md) - Gmail API integration details
+- [docs/gemini-integration.md](docs/gemini-integration.md) - LLM integration patterns
 
 ## License
 
