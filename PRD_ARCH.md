@@ -215,3 +215,611 @@ The system automatically ingests unstructured data from emails and photos to cre
    * *Create Undo:* Triggers external DELETE.  
    * *Update Undo:* Triggers external UPDATE (restoring previous\_state).  
    * *Reject Undo:* Triggers state restoration to PENDING\_REVIEW.
+
+---
+
+## **Part 3: Implementation Architecture**
+
+### **1. System Overview**
+
+Selko is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              SELKO ARCHITECTURE                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐   │
+│  │   Gmail     │    │   Google    │    │   Web       │    │   Manual    │   │
+│  │   API       │    │   Photos    │    │   Upload    │    │   Camera    │   │
+│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘   │
+│         │                  │                  │                  │          │
+│         └──────────────────┴────────┬─────────┴──────────────────┘          │
+│                                     ▼                                        │
+│                    ┌────────────────────────────────────┐                   │
+│                    │       INGESTION LAYER              │                   │
+│                    │  (OAuth, MIME parsing, Storage)    │                   │
+│                    └────────────────┬───────────────────┘                   │
+│                                     │                                        │
+│                                     ▼                                        │
+│                    ┌────────────────────────────────────┐                   │
+│                    │      SUPABASE (PostgreSQL)         │                   │
+│                    │  ┌──────────┐  ┌──────────────┐    │                   │
+│                    │  │  emails  │  │ attachments  │    │                   │
+│                    │  └──────────┘  └──────────────┘    │                   │
+│                    │  ┌──────────────────────────────┐  │                   │
+│                    │  │    Supabase Storage (S3)     │  │                   │
+│                    │  └──────────────────────────────┘  │                   │
+│                    └────────────────┬───────────────────┘                   │
+│                                     │                                        │
+│                                     ▼                                        │
+│                    ┌────────────────────────────────────┐                   │
+│                    │      INTELLIGENCE ENGINE           │                   │
+│                    │   (Gemini LLM - multimodal)        │                   │
+│                    │  ┌─────────────────────────────┐   │                   │
+│                    │  │ OCR, Entity Extraction,     │   │                   │
+│                    │  │ Classification, Update      │   │                   │
+│                    │  │ Detection                   │   │                   │
+│                    │  └─────────────────────────────┘   │                   │
+│                    └────────────────┬───────────────────┘                   │
+│                                     │                                        │
+│                                     ▼                                        │
+│                    ┌────────────────────────────────────┐                   │
+│                    │      REVIEW INTERFACE              │                   │
+│                    │   (Human-in-the-loop)              │                   │
+│                    │  ┌─────────────────────────────┐   │                   │
+│                    │  │ Source ←→ Extracted Data    │   │                   │
+│                    │  │ Approve / Edit / Reject     │   │                   │
+│                    │  └─────────────────────────────┘   │                   │
+│                    └────────────────┬───────────────────┘                   │
+│                                     │                                        │
+│         ┌───────────────────────────┼───────────────────────────┐           │
+│         ▼                           ▼                           ▼           │
+│  ┌─────────────┐           ┌─────────────┐            ┌─────────────┐       │
+│  │   Google    │           │   Cloud     │            │    Task     │       │
+│  │   Calendar  │           │   Storage   │            │   Manager   │       │
+│  └─────────────┘           └─────────────┘            └─────────────┘       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### **2. Development Phases**
+
+#### **Phase 0: Proof of Concept**
+- **Status:** COMPLETE (2026-01-23)
+- **Goal:** Validate core data ingestion and storage
+- **Components:** CLI tools, Supabase (PostgreSQL + Storage), Gmail API
+- **Features implemented:**
+  - Gmail OAuth authentication
+  - Email fetching and parsing
+  - Attachment download and storage
+  - Content deduplication (SHA-256)
+  - RLS-enforced multi-tenancy
+
+#### **Phase 1: MVP (Web-First Cloud Processing)**
+- **Status:** PLANNED
+- **Goal:** Complete end-to-end journey: Email → LLM → Calendar
+- **Components:** FastAPI, Gemini LLM, Google Calendar API
+- **Order of implementation:**
+  1. LLM integration (Gemini via Vertex AI)
+  2. Email → LLM analysis pipeline
+  3. Calendar sync (write events)
+  4. Review interface (web dashboard)
+  5. Undo/Redo functionality
+  6. Automation rules
+
+#### **Phase 2: Extended Inputs**
+- **Status:** FUTURE
+- **Goal:** Add more input sources after Email→Calendar works
+- **Features:**
+  - Google Photos sync
+  - Web upload interface
+  - Direct camera capture (mobile)
+
+#### **Phase 3: Mobile Companion**
+- **Status:** FUTURE
+- **Goal:** Native mobile app with on-device processing
+- **Features:**
+  - iOS/Android apps
+  - Local LLM inference
+  - Push notifications
+
+### **3. Key Architectural Principles**
+
+#### **3.1 End-to-End First**
+Complete full journeys before expanding scope:
+- Do NOT add Google Photos until Email→Calendar works end-to-end
+- Do NOT add Task Management until Calendar integration is complete
+- Each input→output path must be fully functional before adding more
+
+#### **3.2 LLM-Centric Intelligence**
+All intelligence features use the same multimodal LLM (Gemini):
+- OCR & text extraction → LLM reads images/PDFs directly
+- Entity extraction → LLM extracts dates, times, locations
+- Document classification → LLM categorizes content
+- No separate OCR service needed - the LLM is multimodal
+
+#### **3.3 Human-in-the-Loop**
+Every automated action goes through review:
+- Side-by-side view of source vs. extracted data
+- User can approve, edit, or reject
+- Automation rules can bypass review for trusted sources
+- Undo/Redo for all actions
+
+#### **3.4 Simplified Stack (YAGNI)**
+Add complexity only when measured need exists:
+- POC: CLI + Supabase (2 components, $0/mo)
+- MVP: Add FastAPI (still 2 components)
+- Scale: Add Redis only when PostgreSQL queue insufficient
+
+### **4. The "Async Monolith" Architecture**
+
+We implement the **"Async Monolith"** pattern. A single Docker container handles three distinct workloads concurrently using Python's `asyncio` event loop.
+
+#### **4.1 Component Overview**
+
+```mermaid
+graph TD
+    User[User / Client] -->|HTTP Request| API[FastAPI Router]
+    
+    subgraph RenderService[Render Web Service $7/mo]
+        direction TB
+        Process[Single Python Process]
+        
+        API -->|Async/Await| Logic[Business Logic]
+        
+        Scheduler[APScheduler] -->|Interval: 5m| Poller[Gmail Poller]
+        
+        API -->|Trigger| BG[FastAPI BackgroundTasks]
+        
+        Poller -->|Write| DB[(Supabase DB)]
+        BG -->|Write| DB
+        Logic -->|Read/Write| DB
+    end
+    
+    subgraph ExternalServices[External Services]
+        Gmail[Gmail API]
+        Gemini[Gemini LLM]
+    end
+    
+    Poller -->|Fetch| Gmail
+    BG -->|Analyze| Gemini
+```
+
+#### **4.2 The Three Workloads**
+
+1.  **REST API (FastAPI):**
+    *   Handles real-time requests from the frontend/CLI.
+    *   **Tech:** `FastAPI` + `Uvicorn`.
+    *   **Why:** Native async support is critical for I/O-bound operations (calling Gmail/Gemini) without blocking the main thread. Pydantic provides free validation.
+
+2.  **Cron Scheduler (APScheduler):**
+    *   Handles periodic polling (e.g., "Check Gmail every 5 minutes").
+    *   **Tech:** `APScheduler` (`AsyncIOScheduler`).
+    *   **Implementation:** Initialized in `app.on_event("startup")`. Runs inside the same event loop as the API.
+    *   **Rationale:** Eliminates the need for external cron services (GitHub Actions, Cloud Scheduler) or separate "Clock" processes.
+
+3.  **Background Workers (FastAPI BackgroundTasks):**
+    *   Handles "fire-and-forget" tasks triggered by API calls or the Scheduler (e.g., "Process this email content").
+    *   **Tech:** `fastapi.BackgroundTasks`.
+    *   **Rationale:** Removes the need for Redis, Celery, or a separate worker process. Tasks run in-memory.
+
+### **5. Technology Stack Decisions**
+
+| Layer | Component | Purpose | Decision Rationale |
+|-------|-----------|---------|-------------------|
+| **Data** | Supabase PostgreSQL | Relational data, RLS | Managed Postgres, no OPS overhead |
+| **Storage** | Supabase Storage | Attachment files (S3-compatible) | Integrated with auth/RLS |
+| **API** | FastAPI | REST API, async processing | Async-native, auto-docs, type-safe |
+| **AI** | Gemini (Vertex AI) | Multimodal LLM | Native multimodal support |
+| **Auth** | Supabase Auth | User management, JWT | Built-in RLS integration |
+| **Hosting** | Render (Starter Plan) | Application deployment | $7/mo, 24/7 uptime, simple deploys |
+
+#### **5.1 Why FastAPI**
+- **Async Native:** Heavily I/O bound (Gmail API, Gemini API, Supabase API). Blocking frameworks would choke concurrency.
+- **Developer Experience:** Pydantic models offer strict typing and auto-generated OpenAPI docs.
+- **Supabase Compatibility:** Works natively with the async Supabase Python client.
+
+#### **5.2 Why Supabase**
+- **Managed Postgres:** No OPS overhead.
+- **Auth:** Handles JWTs, Row Level Security (RLS) policies out of the box.
+- **Storage:** S3-compatible storage for email attachments.
+
+#### **5.3 Why Render**
+- **No Sleep:** Free tier sleeps after inactivity, which kills the Scheduler. Starter plan ($7/mo) runs 24/7.
+- **Simplicity:** "Git Push" deployment. No complex IAM, no Kubernetes, no manual VPS configuration.
+- **Predictable Cost:** Flat $7/mo. No opaque bandwidth/CPU credits.
+- **Concurrency:** Starter plan (0.5 CPU) handles concurrent async requests well for expected MVP volume.
+
+### **6. Rejected Alternatives**
+
+#### **6.1 Rejection: Serverless (Google Cloud Run / AWS Lambda)**
+- **Problem:** Serverless instances spin down to zero when idle. This kills the `APScheduler`.
+- **Workaround Cost:** Keeping a Cloud Run instance "Always On" costs ~$25+/mo.
+- **Complexity:** Requires external "Pingers" (Cloud Scheduler) to trigger polling, splitting logic and adding IAM permission complexity.
+
+#### **6.2 Rejection: Microservices / Separate Workers**
+- **Architecture:** Deploying a separate "Worker" service for background jobs.
+- **Problem:** On Render, this doubles the cost ($7 for API + $7 for Worker = $14/mo).
+- **Complexity:** Requires Redis ($10/mo+) to pass messages between API and Worker.
+- **Verdict:** Overkill for a solo dev MVP.
+
+#### **6.3 Rejection: Django**
+- **Problem:** ORM is heavy and synchronous. Conflicts with the Supabase RLS pattern (Django wants to own the database user). Overkill for an API-first backend.
+
+### **7. Deployment Strategy**
+
+#### **7.1 Configuration**
+*   **Repo:** GitHub.
+*   **Render Config:** Connect repo → Select "Web Service".
+*   **Build Command:** `uv pip install -r pyproject.toml` (or Dockerfile).
+*   **Start Command:** `uvicorn selko.api.app:app --host 0.0.0.0 --port $PORT`
+*   **Env Vars:**
+    *   `SUPABASE_URL`
+    *   `SUPABASE_KEY`
+    *   `GOOGLE_CREDENTIALS` (JSON string)
+
+#### **7.2 Code Structure**
+```python
+# backend/selko/api/app.py
+from fastapi import FastAPI
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+app = FastAPI()
+scheduler = AsyncIOScheduler()
+
+@app.on_event("startup")
+async def start_scheduler():
+    # Defines the polling schedule
+    scheduler.add_job(fetch_emails, 'interval', minutes=5)
+    scheduler.start()
+
+@app.get("/")
+async def health_check():
+    return {"status": "ok", "scheduler": "running"}
+```
+
+### **8. Security Model**
+
+#### **8.1 Row-Level Security (RLS)**
+All database access is controlled by Supabase RLS policies:
+- Users can only see their own data
+- Service role key for admin operations only
+- User credentials (JWT) for all normal operations
+
+#### **8.2 OAuth 2.0**
+External integrations use OAuth with minimal scopes:
+- Gmail: `gmail.readonly` (read-only access)
+- Calendar: `calendar.events` (event management)
+- Photos: `photoslibrary.readonly` (read-only access)
+
+#### **8.3 Storage Isolation**
+Supabase Storage uses user-scoped paths:
+- Pattern: `{user_id}/{unique_id}_{filename}`
+- RLS policies enforce folder-level access
+- Users cannot access other users' files
+
+### **9. Future Scalability (When to break the Monolith)**
+
+We will stick to this $7 Monolith until we hit specific breaking points:
+
+1.  **CPU Saturation:** If AI processing (OCR/Embedding) starts blocking the CPU, causing API latency.
+    *   *Solution:* Move AI tasks to a separate Render Background Worker + Redis.
+2.  **Memory Limits:** If the 512MB RAM (Starter Plan) is exceeded.
+    *   *Solution:* Upgrade Render plan ($7 → $25).
+3.  **Scale:** If we exceed ~50-100 concurrent requests.
+    *   *Solution:* Horizontal scaling (Render handles this easily).
+
+**Current Status:** The Monolith is sufficient for < 10,000 users given the async nature of our workload.
+
+---
+
+## **Part 4: Testing Strategy**
+
+### **1. Overview**
+
+Integration tests validate end-to-end functionality with real services (Supabase, Gmail API) rather than mocked dependencies. The tests are organized by environment to ensure proper isolation and safety.
+
+**All integration tests use real Gmail API.** No mocking ensures tests validate actual 3rd-party integration behavior.
+
+### **2. Environment Strategy**
+
+| Environment | Database | Gmail API | Purpose | Safety Level |
+|-------------|----------|-----------|---------|--------------|
+| **Development** | Local Supabase (Docker) | Real (seeded tokens) | Fast iteration, CI/CD | Safe (isolated) |
+| **Staging** | Cloud Supabase (staging) | Real (burner account) | Pre-production validation | Safe (test data only) |
+| **Production** | Cloud Supabase (prod) | Real (read-only) | Smoke tests only | Restricted (read-only) |
+
+#### **2.1 Development Environment Tests**
+- **Database**: Local Supabase via Docker (`supabase start`)
+- **Gmail**: Real Gmail API with tokens seeded from staging
+- **Credentials**: OAuth tokens copied via `cli_seed_tokens` with user ID remapping
+- **Purpose**: Test real Gmail integration without deploying to staging or polluting cloud DB
+- **Cleanup**: `supabase db reset` clears everything, re-seed tokens as needed
+- **CI**: Tokens automatically seeded from staging before tests run
+
+**Setup:**
+```bash
+# One-time setup after supabase start/reset
+supabase start
+uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+
+# Run development tests (uses real Gmail)
+uv run pytest backend/tests/integration/ -m "development" -v
+```
+
+#### **2.2 Staging Environment Tests**
+- **Database**: Cloud Supabase staging instance (`lxmysergoeaegxlyfzwk`)
+- **Gmail**: Real Gmail API with dedicated burner account
+- **Credentials**: Real OAuth tokens stored in staging DB
+- **Purpose**: Validate real-world integrations before production
+- **Cleanup**: Delete test data after each test run
+
+#### **2.3 Production Environment Tests**
+- **Database**: Cloud Supabase production instance (`khahcozfbnpykspvatrg`)
+- **Gmail**: Read-only operations only (no sending, no modifications)
+- **Purpose**: Smoke tests to verify production health
+- **Restrictions**: No data creation, no destructive operations
+
+### **3. Test Categories**
+
+#### **3.1 Authentication Tests** (`test_integration_auth.py`)
+Tests the user authentication flow with real Supabase Auth.
+
+| Test | Development | Staging | Production |
+|------|-------------|---------|------------|
+| Sign in with valid credentials | ✓ | ✓ | ✓ (read-only) |
+| Sign in with invalid credentials (error handling) | ✓ | ✓ | ✗ |
+| Get current user ID from session | ✓ | ✓ | ✓ |
+| Session token refresh | ✓ | ✓ | ✗ |
+| Sign out and invalidate session | ✓ | ✓ | ✗ |
+
+#### **3.2 User Management Tests** (`test_integration_users.py`)
+Tests admin operations using service role key.
+
+| Test | Development | Staging | Production |
+|------|-------------|---------|------------|
+| Create user with auto-confirm | ✓ | ✗ | ✗ |
+| Create user with email verification | ✗ | ✓ | ✗ |
+| List all users | ✓ | ✓ | ✗ |
+| Delete user (cascades integrations/emails) | ✓ | ✓ | ✗ |
+| User profile auto-created on auth signup | ✓ | ✓ | ✗ |
+
+#### **3.3 OAuth Integration Tests** (`test_integration_oauth.py`)
+Tests storing and retrieving OAuth credentials from the database.
+
+| Test | Development | Staging | Production |
+|------|-------------|---------|------------|
+| Save Gmail OAuth credentials | ✓ | ✓ | ✗ |
+| Retrieve and reconstruct Credentials object | ✓ | ✓ | ✓ |
+| Update existing credentials (upsert) | ✓ | ✓ | ✗ |
+| Handle expired token status | ✓ | ✓ | ✗ |
+| Unique constraint (user_id, provider) | ✓ | ✓ | ✗ |
+| Scopes array storage | ✓ | ✓ | ✓ |
+
+#### **3.4 Gmail API Tests** (`test_integration_gmail.py`)
+Tests Gmail API interactions. **Requires burner Gmail account for staging.**
+
+| Test | Development | Staging | Production |
+|------|-------------|---------|------------|
+| OAuth flow (interactive) | Manual | Manual | ✗ |
+| Build Gmail service from credentials | ✓ (real) | ✓ (real) | ✗ |
+| Get user profile (email address) | ✓ (real) | ✓ (real) | ✗ |
+| Fetch messages (list) | ✓ (real) | ✓ (real) | ✗ |
+| Fetch message details | ✓ (real) | ✓ (real) | ✗ |
+| Token refresh on expiry | ✓ (real) | ✓ (real) | ✗ |
+
+#### **3.5 Email Pipeline Tests** (`test_integration_emails.py`)
+Tests the complete email fetch → parse → store pipeline.
+
+| Test | Development | Staging | Production |
+|------|-------------|---------|------------|
+| Parse Gmail message structure | ✓ | ✓ | ✗ |
+| Store email in database | ✓ | ✓ | ✗ |
+| Upsert on duplicate gmail_id | ✓ | ✓ | ✗ |
+| Trigger parses labels into flags | ✓ | ✓ | ✗ |
+| Content hash deduplication | ✓ | ✓ | ✗ |
+| RLS: user sees only own emails | ✓ | ✓ | ✗ |
+
+#### **3.6 End-to-End Pipeline Tests** (`test_integration_e2e.py`)
+Tests complete user journeys across multiple services.
+
+| Test | Development | Staging | Production |
+|------|-------------|---------|------------|
+| New user: create → auth → gmail → fetch | ✓ | ✓ | ✗ |
+| Existing user: sign in → fetch new emails | ✓ | ✓ | ✗ |
+| Delete user cascades all data | ✓ | ✓ | ✗ |
+
+#### **3.7 CLI Integration Tests** (`test_integration_cli.py`)
+Tests CLI tools as subprocess to validate argument parsing and output.
+
+| Test | Development | Staging | Production |
+|------|-------------|---------|------------|
+| cli_user create/list/delete | ✓ | ✓ | ✗ |
+| cli_fetch_emails --max N | ✓ | ✓ | ✗ |
+| --env flag overrides environment | ✓ | ✓ | ✗ |
+| -v verbose logging | ✓ | ✓ | ✗ |
+| -q quiet mode | ✓ | ✓ | ✗ |
+
+### **4. Test Infrastructure**
+
+#### **4.1 Directory Structure**
+
+```
+backend/
+└── tests/
+    ├── conftest.py              # Shared fixtures
+    ├── test_config.py           # Unit tests
+    ├── test_emails.py           # Unit tests
+    ├── test_integrations.py     # Unit tests
+    └── integration/             # Integration tests
+        ├── __init__.py
+        ├── conftest.py          # Integration-specific fixtures
+        ├── test_integration_auth.py
+        ├── test_integration_users.py
+        ├── test_integration_oauth.py
+        ├── test_integration_gmail.py
+        ├── test_integration_emails.py
+        ├── test_integration_e2e.py
+        └── test_integration_cli.py
+```
+
+#### **4.2 Pytest Markers**
+
+```python
+# backend/pyproject.toml
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "development: tests that run against local Supabase with real Gmail (requires seeded tokens)",
+    "staging: tests that run against staging Supabase + real Gmail",
+    "production: read-only smoke tests for production",
+    "slow: tests that take >10 seconds",
+]
+```
+
+#### **4.3 Running Tests**
+
+```bash
+# Unit tests only (fast, no external dependencies)
+uv run pytest backend/tests/ -m "not integration"
+
+# Integration tests - development (requires local Supabase + seeded tokens)
+supabase start
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+uv run pytest backend/tests/integration/ -m "development" -v
+
+# Integration tests - staging (requires network + burner Gmail)
+uv run pytest backend/tests/integration/ -m "staging" -v
+
+# All integration tests (development + staging)
+uv run pytest backend/tests/integration/ -m "integration" -v
+
+# Smoke tests for production (read-only)
+uv run pytest backend/tests/integration/ -m "production" -v
+```
+
+### **5. Burner Gmail Account Setup**
+
+#### **5.1 One-Time Setup (Manual)**
+
+1. **Create burner Gmail account:**
+   - Account: `selko-staging-test@gmail.com` (example)
+   - Use a strong password, store securely
+   - Enable 2FA for security
+
+2. **Google Cloud Console setup:**
+   - Create project or use existing Selko project
+   - Enable Gmail API
+   - Add burner account email to OAuth consent screen test users
+
+3. **Authorize OAuth for staging:**
+   ```bash
+   # Run once to authorize and store tokens
+   ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
+   ```
+   - Complete OAuth flow in browser
+   - Tokens stored in staging database `integrations` table
+
+4. **Prepare test data in Gmail:**
+   - Send a few test emails to the burner account
+   - Include various label types (starred, important, promotions)
+   - Keep inbox small (<100 emails) for fast tests
+
+#### **5.2 Token Refresh Handling**
+
+OAuth tokens expire after 1 hour. The staging tests should:
+1. Check if token is expired before running
+2. Use refresh token to get new access token
+3. Update stored credentials in database
+
+This is already implemented in `gmail.get_credentials()` with `creds.refresh()`.
+
+#### **5.3 Making Tests Fully Automatic (No Manual Re-auth)**
+
+**The Problem**: Google OAuth refresh tokens have different lifetimes depending on app status:
+
+| App Status | Refresh Token Lifetime | Manual Re-auth Needed? |
+|------------|------------------------|------------------------|
+| **Testing** (unpublished) | **7 days** | Yes, weekly |
+| **Published** (internal or external) | Indefinite* | No |
+
+*Unless user revokes access or you request new scopes
+
+**The Solution**: Publish the OAuth app to get indefinite refresh tokens.
+
+**Steps to enable fully automatic tests:**
+
+1. **Google Cloud Console → OAuth consent screen**
+2. **Change status from "Testing" to "In Production"**
+3. **Select "Internal"** (if using Google Workspace) or publish externally with limited scopes
+4. Once published, refresh tokens won't expire
+
+**After publishing:**
+- Staging tests run indefinitely without manual intervention
+- CI/CD only needs environment variables (Supabase URL/keys, test user credentials)
+- OAuth tokens live in database and auto-refresh via `gmail.get_credentials()`
+
+### **6. CI/CD Integration**
+
+#### **6.1 GitHub Actions Workflow**
+
+```yaml
+# .github/workflows/test.yml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --extra test
+      - run: uv run pytest backend/tests/ -m "not integration" -v
+
+  integration-tests-development:
+    runs-on: ubuntu-latest
+    services:
+      supabase:
+        # Use Supabase CLI in Docker or local setup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - uses: supabase/setup-cli@v1
+      - run: supabase start
+      - run: uv sync --extra test
+      - run: uv run pytest backend/tests/integration/ -m "development" -v
+    env:
+      ENVIRONMENT: development
+
+  integration-tests-staging:
+    runs-on: ubuntu-latest
+    # Only run on main branch or manual trigger
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --extra test
+      - run: uv run pytest backend/tests/integration/ -m "staging" -v
+    env:
+      ENVIRONMENT: staging
+      SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+      TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+```
+
+### **7. Success Criteria**
+
+Integration tests are complete when:
+
+1. **Coverage**: All services have integration tests
+2. **Environments**: Tests run in development and staging
+3. **Reliability**: Tests pass consistently (no flaky tests)
+4. **Speed**: Development tests complete in <2 minutes
+5. **CI/CD**: Automated testing in GitHub Actions
+6. **Documentation**: Clear setup instructions for new developers

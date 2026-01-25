@@ -6,8 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Selko** is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems. The system acts as a "Human-in-the-loop" filter, ensuring accuracy before committing changes to permanent records.
 
-See `PRD_ARCH.md` for complete product requirements and technical architecture specification.
-See `docs/architecture/ARCHITECTURE.md` for high-level system diagrams.
+See `PRD_ARCH.md` for complete product requirements, technical architecture specification, and implementation details.
 
 ---
 
@@ -50,7 +49,7 @@ User reviews → Approve/Edit → Write to Google Calendar → Done
 
 **No separate OCR service needed.** The LLM is multimodal and handles all of FR-B.1, FR-B.2, and FR-B.3 from the PRD.
 
-See `docs/guides/gemini-integration.md` for detailed LLM integration patterns.
+See `docs/gemini-integration.md` for detailed LLM integration patterns.
 
 ### YAGNI (You Aren't Gonna Need It)
 Add complexity only when measured need exists:
@@ -341,7 +340,7 @@ uv run pytest backend/tests/ --cov=selko
 
 **All integration tests use real Gmail API** - no mocking. This ensures tests validate actual 3rd-party integration behavior.
 
-See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
+See `PRD_ARCH.md` Part 4 for detailed testing strategy.
 
 **Development Testing (Real Gmail with Local Supabase):**
 
@@ -519,7 +518,7 @@ supabase link --project-ref lxmysergoeaegxlyfzwk
 supabase db push
 
 # FastAPI auto-deploys to Render via GitHub integration
-# See RENDER_MIGRATION_PLAN.md for setup
+# See PRD_ARCH.md Part 3 for deployment details
 ```
 
 **Manual Production Deployment:**
@@ -531,7 +530,7 @@ supabase link --project-ref khahcozfbnpykspvatrg
 supabase db push
 
 # FastAPI deploys to Render (manual or auto on tag)
-# See RENDER_MIGRATION_PLAN.md for setup
+# See PRD_ARCH.md Part 3 for deployment details
 ```
 
 **Trigger Production Deployment via GitHub:**
@@ -544,7 +543,7 @@ git tag -a v1.0.0 -m "Release 1.0.0"
 git push origin v1.0.0
 ```
 
-See `RENDER_MIGRATION_PLAN.md` for Render setup instructions.
+See `PRD_ARCH.md` Part 3 for Render deployment details.
 
 ## Backend Technology Stack
 
@@ -552,8 +551,7 @@ See `RENDER_MIGRATION_PLAN.md` for Render setup instructions.
 
 **Selected:** FastAPI + Supabase (simplified stack)
 
-See `BACKEND_FRAMEWORK_EVALUATION.md` for complete analysis of 7 frameworks.
-See `SIMPLIFIED_STACK.md` for rationale on avoiding feature creep.
+See `PRD_ARCH.md` Part 3 for stack decisions and rejection rationale.
 
 **Why FastAPI:**
 - Async-native (efficient with Supabase I/O)
@@ -697,17 +695,8 @@ Implementation order (end-to-end focus):
 ## Reference Documentation
 
 ### Technical Guides
-- `docs/guides/gmail-integration.md` - Gmail API architecture, push vs polling, History API
-- `docs/guides/gemini-integration.md` - Vertex AI setup, Pydantic structured outputs, multimodal input
-
-### Architecture Decisions
-- `BACKEND_FRAMEWORK_EVALUATION.md` - Why FastAPI (7 frameworks evaluated)
-- `HOSTING_EVALUATION.md` - Hosting platforms evaluated (historical)
-- `RENDER_MIGRATION_PLAN.md` - Render deployment setup
-- `SIMPLIFIED_STACK.md` - Why no Redis/ARQ for POC/MVP
-
-### Plans (Historical)
-- `docs/plans/attachment-storage.md` - Email attachment implementation (COMPLETED)
+- `docs/gmail-integration.md` - Gmail API architecture, push vs polling, History API
+- `docs/gemini-integration.md` - Vertex AI setup, Pydantic structured outputs, multimodal input
 
 ## License
 

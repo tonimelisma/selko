@@ -4,6 +4,39 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-25
 
+### Documentation Consolidation
+
+**Simplified documentation structure from 17 files to 8 files + 3 placeholders.** Deleted obsolete evaluation docs, merged architecture and testing content into PRD_ARCH.md, and flattened docs/ structure.
+
+**Files deleted (9):**
+- `GEMINI.md` - Misnamed (not Gemini-specific), content was redundant with ARCHITECTURE.md
+- `HOSTING_EVALUATION.md` - Obsolete (recommended Fly.io, but we use Render)
+- `BACKEND_FRAMEWORK_EVALUATION.md` - Historical evaluation, decision already made (FastAPI)
+- `SIMPLIFIED_STACK.md` - Redundant with TECHNICAL_ARCHITECTURE.md
+- `RENDER_MIGRATION_PLAN.md` - No migration occurred (never used Fly.io)
+- `docs/architecture/ARCHITECTURE.md` - Content merged into PRD_ARCH.md Part 3
+- `docs/architecture/TECHNICAL_ARCHITECTURE.md` - Content merged into PRD_ARCH.md Part 3
+- `docs/plans/attachment-storage.md` - Completed plan, no longer needed
+- `INTEGRATION_TESTS_PLAN.md` - Content merged into PRD_ARCH.md Part 4
+
+**Files modified (4):**
+- `PRD_ARCH.md` - Added Part 3 (Implementation Architecture) and Part 4 (Testing Strategy) with complete details from deleted files
+- `CLAUDE.md` - Updated references to point to PRD_ARCH.md and new docs/ paths
+- `README.md` - Updated references to point to PRD_ARCH.md and new docs/ paths
+- `TODO.md` - Updated references to point to PRD_ARCH.md
+
+**Files moved (2):**
+- `docs/guides/gemini-integration.md` → `docs/gemini-integration.md`
+- `docs/guides/gmail-integration.md` → `docs/gmail-integration.md`
+
+**Final structure:**
+```
+Root: CLAUDE.md, README.md, CHANGELOG.md, TODO.md, PRD_ARCH.md, LICENSE
+docs/: gemini-integration.md, gmail-integration.md
+```
+
+**Rationale:** Eliminate redundancy and complexity. All architecture, stack decisions, rejection rationale, deployment details, and testing strategy are now consolidated in PRD_ARCH.md. Only two technical guides remain in docs/ (gemini and gmail integration details).
+
 ### Simplify Integration Testing - Real Gmail Only
 
 **Simplified all integration tests to use real Gmail API.** Removed mocked Gmail tests and the `local_real` marker. Development and staging tests both use real Gmail, with development tests running against local Supabase with seeded tokens.

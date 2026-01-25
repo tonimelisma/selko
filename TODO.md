@@ -174,7 +174,7 @@ Go to: Repository → Settings → Secrets and variables → Actions → New rep
 
 ## Render Deployment Setup
 
-See `RENDER_MIGRATION_PLAN.md` for the full migration plan.
+See `PRD_ARCH.md` Part 3 for deployment details.
 
 ### Prerequisites
 - [ ] Create a Render account at https://render.com
