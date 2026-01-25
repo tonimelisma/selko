@@ -144,14 +144,9 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      # TODO: Deploy FastAPI to Fly.io (uncomment when Fly.io is set up)
-      # - name: Setup Fly.io CLI
-      #   uses: superfly/flyctl-actions/setup-flyctl@master
-      #
-      # - name: Deploy FastAPI to Fly.io Staging
-      #   run: flyctl deploy --app selko-api-staging --remote-only
-      #   env:
-      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      # TODO: Deploy FastAPI to Render (uncomment when Render is set up)
+      # Render deploys automatically via GitHub integration - no manual step needed here
+      # See RENDER_MIGRATION_PLAN.md for setup instructions
 
   integration-tests-staging:
     name: Integration Tests (Staging)
@@ -218,11 +213,6 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      # TODO: Deploy FastAPI to Fly.io (uncomment when Fly.io is set up)
-      # - name: Setup Fly.io CLI
-      #   uses: superfly/flyctl-actions/setup-flyctl@master
-      #
-      # - name: Deploy FastAPI to Fly.io Production
-      #   run: flyctl deploy --app selko-api --remote-only
-      #   env:
-      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      # TODO: Deploy FastAPI to Render (uncomment when Render is set up)
+      # Render deploys automatically via GitHub integration - no manual step needed here
+      # See RENDER_MIGRATION_PLAN.md for setup instructions

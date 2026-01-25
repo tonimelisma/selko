@@ -182,7 +182,7 @@ Supabase Storage uses user-scoped paths:
 | **API** | FastAPI (planned) | REST API, async processing |
 | **AI** | Gemini (Vertex AI) | Multimodal LLM |
 | **Auth** | Supabase Auth | User management, JWT |
-| **Hosting** | Fly.io (planned) | Application deployment |
+| **Hosting** | Render | Application deployment |
 
 ## Related Documents
 

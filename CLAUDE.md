@@ -374,7 +374,7 @@ Unit Tests + Integration Tests (local Supabase)
     ↓
 Deploy to Staging (ATOMIC)
     ├─ 1. Deploy database migrations (supabase db push)
-    └─ 2. Deploy FastAPI to Fly.io (TODO: uncomment when set up)
+    └─ 2. Deploy FastAPI to Render (auto-deploys via GitHub integration)
     ↓
 Integration Tests (Staging)
     └─ Tests the DEPLOYED code with real Gmail API
@@ -388,7 +388,7 @@ workflow_dispatch or tag push
     ↓
 Deploy to Production (ATOMIC)
     ├─ 1. Deploy database migrations (supabase db push)
-    └─ 2. Deploy FastAPI to Fly.io (TODO: uncomment when set up)
+    └─ 2. Deploy FastAPI to Render (manual deploy or auto-deploy on tag)
     ↓
 (Optional) Production smoke tests (read-only)
     ↓
@@ -429,7 +429,6 @@ Configure at: Repository → Settings → Secrets and variables → Actions
 | `STAGING_TEST_USER_PASSWORD` | Test user password | Set when creating user |
 | `GOOGLE_CLIENT_ID` | OAuth for Gmail integration | Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | OAuth secret | Google Cloud Console |
-| `FLY_API_TOKEN` | Fly.io deployment (TODO) | `fly tokens create deploy -x 999999h` |
 
 **Note on naming:** GitHub secrets use `STAGING_*` prefix to distinguish environments, but the workflow maps these to unprefixed environment variables (`TEST_USER_EMAIL`, etc.) that the code expects.
 
@@ -455,8 +454,8 @@ supabase link --project-ref lxmysergoeaegxlyfzwk
 # Deploy migrations
 supabase db push
 
-# TODO: Deploy FastAPI (when Fly.io set up)
-# fly deploy --app selko-api-staging
+# FastAPI auto-deploys to Render via GitHub integration
+# See RENDER_MIGRATION_PLAN.md for setup
 ```
 
 **Manual Production Deployment:**
@@ -467,8 +466,8 @@ supabase link --project-ref khahcozfbnpykspvatrg
 # Deploy migrations
 supabase db push
 
-# TODO: Deploy FastAPI (when Fly.io set up)
-# fly deploy --app selko-api
+# FastAPI deploys to Render (manual or auto on tag)
+# See RENDER_MIGRATION_PLAN.md for setup
 ```
 
 **Trigger Production Deployment via GitHub:**
@@ -481,7 +480,7 @@ git tag -a v1.0.0 -m "Release 1.0.0"
 git push origin v1.0.0
 ```
 
-See `TODO.md` for complete Fly.io setup instructions.
+See `RENDER_MIGRATION_PLAN.md` for Render setup instructions.
 
 ## Backend Technology Stack
 
@@ -639,7 +638,8 @@ Implementation order (end-to-end focus):
 
 ### Architecture Decisions
 - `BACKEND_FRAMEWORK_EVALUATION.md` - Why FastAPI (7 frameworks evaluated)
-- `HOSTING_EVALUATION.md` - Why Fly.io (10 platforms evaluated)
+- `HOSTING_EVALUATION.md` - Hosting platforms evaluated (historical)
+- `RENDER_MIGRATION_PLAN.md` - Render deployment setup
 - `SIMPLIFIED_STACK.md` - Why no Redis/ARQ for POC/MVP
 
 ### Plans (Historical)

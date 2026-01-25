@@ -123,8 +123,8 @@ Go to: Repository → Settings → Secrets and variables → Actions → New rep
 - [ ] `GOOGLE_CLIENT_ID` = (from Google Cloud Console)
 - [ ] `GOOGLE_CLIENT_SECRET` = (from Google Cloud Console)
 
-**For Fly.io Deployment (TODO - not yet set up):**
-- [ ] `FLY_API_TOKEN` = Generate with `fly tokens create deploy -x 999999h`
+**For Render Deployment:**
+- Render auto-deploys via GitHub integration - no secrets needed in GitHub
 
 ### 9. Verification
 - [ ] Run staging tests: `ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v`
@@ -172,149 +172,51 @@ Go to: Repository → Settings → Secrets and variables → Actions → New rep
 
 ---
 
-## Fly.io Deployment Setup
+## Render Deployment Setup
+
+See `RENDER_MIGRATION_PLAN.md` for the full migration plan.
 
 ### Prerequisites
-- [ ] Install Fly CLI: `brew install flyctl` (macOS) or see [Fly.io docs](https://fly.io/docs/hands-on/install-flyctl/)
-- [ ] Authenticate: `fly auth login`
+- [ ] Create a Render account at https://render.com
+- [ ] Connect your GitHub account to Render
 
-### 1. Create Dockerfile
-Create `Dockerfile` in repository root:
+### 1. Create Staging Web Service
+- [ ] Go to Render Dashboard → New → Web Service
+- [ ] Connect the `tonimelisma/selko` repository
+- [ ] Configure:
+  - **Name:** `selko-api-staging`
+  - **Region:** Oregon (US West) or nearest to Supabase
+  - **Branch:** `main`
+  - **Root Directory:** (leave blank)
+  - **Runtime:** Python 3
+  - **Build Command:** `pip install uv && uv sync --no-dev`
+  - **Start Command:** `uv run uvicorn selko.api.app:create_app --factory --host 0.0.0.0 --port $PORT`
+  - **Plan:** Starter ($7/mo) or Free for testing
+- [ ] Set environment variables:
+  - `ENVIRONMENT=staging`
+  - `SUPABASE_URL=https://lxmysergoeaegxlyfzwk.supabase.co`
+  - `SUPABASE_PUBLISHABLE_KEY=<staging-anon-key>`
+  - `SUPABASE_SERVICE_ROLE_KEY=<staging-service-role-key>`
+  - `GOOGLE_CLIENT_ID=<from Google Cloud Console>`
+  - `GOOGLE_CLIENT_SECRET=<from Google Cloud Console>`
+- [ ] Deploy and verify: `curl https://selko-api-staging.onrender.com/health`
 
-```dockerfile
-# Multi-stage build for smaller image
-FROM python:3.12-slim AS builder
+### 2. Create Production Web Service
+- [ ] Create another Web Service with same settings but:
+  - **Name:** `selko-api`
+  - **Auto-Deploy:** Off (manual deploys only for production safety)
+- [ ] Set environment variables with production values
+- [ ] Deploy and verify: `curl https://selko-api.onrender.com/health`
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+### 3. GitHub Integration
+Render auto-deploys from GitHub - no additional secrets or workflow steps needed.
+- Staging: Auto-deploys on every push to `main`
+- Production: Manual deploy from Render Dashboard (or configure auto-deploy on tags)
 
-WORKDIR /app
-
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
-COPY backend/pyproject.toml backend/
-COPY cli/pyproject.toml cli/
-
-# Install dependencies
-RUN uv sync --frozen --no-dev
-
-# Production image
-FROM python:3.12-slim
-
-WORKDIR /app
-
-# Copy virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
-
-# Copy application code
-COPY backend/ backend/
-COPY cli/ cli/
-
-# Set environment
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app/backend"
-
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
-
-# Run the API
-CMD ["python", "-m", "uvicorn", "selko.api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-- [ ] Create `Dockerfile` with above content
-
-### 2. Create fly.toml
-Create `fly.toml` in repository root:
-
-```toml
-app = 'selko-api-staging'
-primary_region = 'sjc'
-
-[build]
-
-[http_service]
-  internal_port = 8000
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
-
-[[vm]]
-  memory = '256mb'
-  cpu_kind = 'shared'
-  cpus = 1
-```
-
-- [ ] Create `fly.toml` with above content
-
-### 3. Create .dockerignore
-Create `.dockerignore` in repository root:
-
-```
-.git
-.github
-.venv
-__pycache__
-*.pyc
-.env*
-.pytest_cache
-.coverage
-*.egg-info
-supabase
-docs
-*.md
-!README.md
-```
-
-- [ ] Create `.dockerignore` with above content
-
-### 4. Deploy Staging to Fly.io
-- [ ] Run: `fly launch --name selko-api-staging --no-deploy`
-- [ ] Set secrets:
-```bash
-fly secrets set ENVIRONMENT=staging
-fly secrets set SUPABASE_URL=https://lxmysergoeaegxlyfzwk.supabase.co
-fly secrets set SUPABASE_PUBLISHABLE_KEY=<staging-anon-key>
-fly secrets set SUPABASE_SERVICE_ROLE_KEY=<staging-service-role-key>
-fly secrets set SUPABASE_JWT_SECRET=<staging-jwt-secret>
-```
-- [ ] Deploy: `fly deploy`
-- [ ] Verify: `curl https://selko-api-staging.fly.dev/health`
-
-### 5. Deploy Production to Fly.io
-- [ ] Create production app: `fly launch --name selko-api --no-deploy`
-- [ ] Update `fly.toml`: change `app = 'selko-api'`
-- [ ] Set secrets with production values (same pattern as staging)
-- [ ] Deploy: `fly deploy`
-- [ ] Verify: `curl https://selko-api.fly.dev/health`
-
-### 6. GitHub Actions Deployment (Optional)
-- [ ] Generate deploy token: `fly tokens create deploy -x 999999h`
-- [ ] Add `FLY_API_TOKEN` secret to GitHub repository
-- [ ] Add deploy job to `.github/workflows/test.yml`:
-
-```yaml
-  deploy-staging:
-    name: Deploy to Staging
-    needs: [test-staging]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-```
-
-### 7. Update CORS Origins (When Adding Frontend)
+### 4. Update CORS Origins (When Adding Frontend)
 When you have a frontend, add CORS configuration:
 - [ ] Add `ALLOWED_ORIGINS` environment variable support in `app.py`
-- [ ] Set `ALLOWED_ORIGINS` in Fly.io: `fly secrets set ALLOWED_ORIGINS=https://your-frontend.com`
+- [ ] Set `ALLOWED_ORIGINS` in Render environment variables
 
 ---
 
@@ -324,11 +226,11 @@ When you have a frontend, add CORS configuration:
 |-----|---------|--------|
 | Unit Tests | Every push/PR | ✅ Configured |
 | Integration (Dev) | Every push/PR | ✅ Configured |
-| Deploy Staging (DB) | Main only | ✅ Configured (needs `SUPABASE_ACCESS_TOKEN` secret) |
-| Deploy Staging (API) | Main only | ⬜ TODO: Uncomment when Fly.io set up |
-| Integration (Staging) | Main only (after deploy) | ⬜ Needs GitHub secrets (step 8 above) |
-| Deploy Production (DB) | Manual/tag | ✅ Configured (needs `SUPABASE_ACCESS_TOKEN` secret) |
-| Deploy Production (API) | Manual/tag | ⬜ TODO: Uncomment when Fly.io set up |
+| Deploy Staging (DB) | Main only | ✅ Configured |
+| Deploy Staging (API) | Main only | ✅ Auto-deploys via Render GitHub integration |
+| Integration (Staging) | Main only (after deploy) | ✅ Configured |
+| Deploy Production (DB) | Manual/tag | ✅ Configured |
+| Deploy Production (API) | Manual/tag | ⬜ Manual deploy in Render Dashboard |
 
 ### How CI/CD Works
 
@@ -338,13 +240,14 @@ When you have a frontend, add CORS configuration:
 
 **Push to Main:**
 1. Unit Tests → Integration Tests (Dev with local Supabase)
-2. **Deploy to Staging** (atomic: DB migrations + FastAPI)
+2. **Deploy to Staging** (DB migrations via GitHub Actions + API via Render auto-deploy)
 3. Integration Tests (Staging) - validates deployed code
 4. ✅ Staging environment now running latest code
 
 **Manual Trigger or Git Tag:**
-1. **Deploy to Production** (atomic: DB migrations + FastAPI)
-2. Production smoke tests (read-only, optional)
+1. **Deploy to Production** (DB migrations via GitHub Actions)
+2. Manually deploy API in Render Dashboard
+3. Production smoke tests (read-only, optional)
 
 ### Deployment Details
 
@@ -352,9 +255,9 @@ When you have a frontend, add CORS configuration:
 |-----|---------|--------------|
 | **Unit Tests** | Every push/PR | Fast tests, no external deps |
 | **Integration (Dev)** | Every push/PR | Spins up local Supabase in Docker |
-| **Deploy Staging** | Main branch only | 1. Deploy DB migrations<br>2. Deploy FastAPI to Fly.io (TODO)<br>**Atomic: both or neither** |
+| **Deploy Staging** | Main branch only | 1. Deploy DB migrations (GitHub Actions)<br>2. API auto-deploys via Render |
 | **Integration (Staging)** | Main branch only (after deploy) | Tests the deployed staging environment with real Gmail |
-| **Deploy Production** | Manual workflow_dispatch or tag | 1. Deploy DB migrations<br>2. Deploy FastAPI to Fly.io (TODO)<br>**Manual safety gate** |
+| **Deploy Production** | Manual workflow_dispatch or tag | 1. Deploy DB migrations (GitHub Actions)<br>2. Manually deploy API in Render |
 
 ### Important Notes
 
@@ -362,6 +265,7 @@ When you have a frontend, add CORS configuration:
 2. **Staging tests only on main** - Prevents burning through Gmail API quota on every PR
 3. **Development tests spin up Supabase** - Uses `supabase start` in the workflow
 4. **OAuth tokens auto-refresh** - After initial setup and OAuth app publication, no manual intervention needed
+5. **Render auto-deploys staging** - No GitHub secrets needed for API deployment
 
 ---
 
