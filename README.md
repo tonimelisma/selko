@@ -41,7 +41,7 @@ AI-powered assistant that automates personal organization by analyzing digital i
 ### Planned (MVP)
 - **Background Jobs**: FastAPI BackgroundTasks → PostgreSQL queue (if needed)
 - **Scheduling**: APScheduler (Python) or pg_cron (Supabase built-in)
-- **Hosting**: Fly.io (free tier for POC, scales to production)
+- **Hosting**: Render (free tier for POC, scales to production)
 - **Cost**: $0/mo (POC on free tiers) → $35-45/mo (MVP)
 
 **Architecture Decision:** Keep it simple - FastAPI + Supabase only. No Redis/ARQ unless measured need (>1000 jobs/hour). See `SIMPLIFIED_STACK.md` for rationale.

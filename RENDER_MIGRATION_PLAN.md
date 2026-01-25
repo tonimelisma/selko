@@ -1,6 +1,6 @@
 # Render Migration Plan
 
-This document outlines the steps to migrate the Selko backend to a "Monolith" architecture on Render, replacing the previous Fly.io strategy.
+This document outlines the steps to deploy the Selko backend as an "Async Monolith" architecture on Render.
 
 ## 1. Architecture Overview
 
@@ -61,14 +61,13 @@ To support the cron job (which runs without a user session), we must refactor se
 
 ## 3. Documentation & Deployment
 
-### 3.1 Documentation Cleanup
-- Remove outdated evaluation docs:
-  - `BACKEND_FRAMEWORK_EVALUATION.md`
-  - `HOSTING_EVALUATION.md`
-  - `SIMPLIFIED_STACK.md`
-- Update `README.md`:
-  - Remove Fly.io references.
-  - Add "Deployment on Render" section.
+### 3.1 Documentation
+- Historical evaluation docs retained for reference:
+  - `BACKEND_FRAMEWORK_EVALUATION.md` - Framework decision rationale
+  - `HOSTING_EVALUATION.md` - Hosting platforms evaluated
+  - `SIMPLIFIED_STACK.md` - Architecture decisions
+- `README.md` updated with Render as hosting provider
+- `TODO.md` contains Render deployment checklist
 
 ### 3.2 Deployment Config
 - Create `render.yaml` (optional, but good for IaC) or document the manual setup in `README.md`.

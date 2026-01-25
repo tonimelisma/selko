@@ -46,6 +46,16 @@ Database and application deployments are atomic - migrations run first, and if t
     - Added `SUPABASE_ACCESS_TOKEN` env var to "Deploy migrations to Production" step
   - **Reason**: GitHub Actions `env:` blocks are scoped per-step. The token was only set for the `supabase link` step but not for the subsequent `supabase db push` step, causing deploy failures with "Access token not provided" error.
 
+- `docs: replace Fly.io with Render across all documentation`
+  - Modified files:
+    - `.github/workflows/test.yml` - Replaced Fly.io deploy TODOs with Render comments
+    - `CLAUDE.md` - Updated deployment flow, removed FLY_API_TOKEN secret
+    - `README.md` - Changed hosting from Fly.io to Render
+    - `TODO.md` - Replaced Fly.io Deployment Setup section with Render setup
+    - `RENDER_MIGRATION_PLAN.md` - Cleaned up migration references
+    - `docs/architecture/ARCHITECTURE.md` - Updated hosting reference
+  - **Reason**: Project migrated from Fly.io to Render for hosting. Render uses GitHub integration for auto-deployment, simplifying CI/CD (no API tokens needed).
+
 - `cli: add --auto-confirm flag for test user creation`
   - Modified `cli/cli_user.py`:
     - Added `--auto-confirm` flag to create command for development/testing use
