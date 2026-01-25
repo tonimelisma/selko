@@ -25,6 +25,7 @@ def cmd_create(args, config):
             email=args.email,
             password=args.password,
             display_name=args.name,
+            auto_confirm=args.auto_confirm,
         )
         print(f"Created user: {user['id']} ({user['email']})")
     except UserManagementError as e:
@@ -95,6 +96,11 @@ Examples:
     )
     create_parser.add_argument(
         "--name", help="Display name (defaults to email prefix)"
+    )
+    create_parser.add_argument(
+        "--auto-confirm",
+        action="store_true",
+        help="Auto-confirm user email (for development/testing)",
     )
 
     # list command

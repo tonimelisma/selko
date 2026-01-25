@@ -40,6 +40,14 @@ Database and application deployments are atomic - migrations run first, and if t
 
 ## 2026-01-25
 
+- `cli: add --auto-confirm flag for test user creation`
+  - Modified `cli/cli_user.py`:
+    - Added `--auto-confirm` flag to create command for development/testing use
+    - Pass auto_confirm parameter to create_user() function
+  - Modified `.github/workflows/test.yml`:
+    - Added `--auto-confirm` flag to user creation command
+  - **Reason**: After commit eb3d7e6 changed default auto_confirm to False for production safety, test users created in CI couldn't sign in because their emails weren't confirmed. The CLI needed a way to explicitly auto-confirm users for development/testing environments.
+
 - `ci: fix GitHub Actions using deprecated --env flag for user creation`
   - Modified `.github/workflows/test.yml`:
     - Removed `--env development` flag from user creation command (line 105)
