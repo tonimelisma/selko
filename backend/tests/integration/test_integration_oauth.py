@@ -225,19 +225,18 @@ class TestOAuthIntegrations:
 class TestOAuthIntegrationsStaging:
     """Test OAuth storage in staging environment."""
 
-    def test_save_and_retrieve_staging(
+    def test_read_existing_credentials_staging(
         self,
         authenticated_client,
-        test_user_id,
         config,
-        sample_oauth_credentials,
-        cleanup_integrations,
     ):
-        """Can save and retrieve credentials in staging."""
-        cleanup_integrations.append("gmail")
-
-        save_oauth_credentials(authenticated_client, "gmail", sample_oauth_credentials)
-
+        """Can retrieve existing credentials from staging DB."""
+        # Do NOT use cleanup_integrations - we're reading, not creating
+        # This test expects real Gmail OAuth tokens from cli_auth_gmail
         creds = get_oauth_credentials(authenticated_client, config, "gmail")
-        assert creds is not None
-        assert creds.token == sample_oauth_credentials.token
+        
+        if creds is None:
+            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
+        
+        assert creds.token is not None
+        assert creds.refresh_token is not None
