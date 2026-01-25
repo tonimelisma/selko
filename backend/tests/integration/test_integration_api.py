@@ -216,53 +216,58 @@ class TestIntegrationEndpoints:
     def test_list_integrations_with_data(
         self,
         test_client,
-        auth_headers,
-        authenticated_client,
-        test_user_id,
+        config,
         sample_oauth_credentials,
-        cleanup_integrations,
+        temp_user_client,
     ):
         """GET /integrations returns integrations for user."""
         from selko.services.integrations import save_oauth_credentials
 
+        # Use temp user to avoid interfering with seeded credentials
+        # Get auth token for temp user
+        session = temp_user_client.auth.get_session()
+        headers = {"Authorization": f"Bearer {session.access_token}"}
+
         # Save test integration
-        cleanup_integrations.append("gmail")
         save_oauth_credentials(
-            authenticated_client, "gmail", sample_oauth_credentials, "test@gmail.com"
+            temp_user_client, "gmail", sample_oauth_credentials, "test@gmail.com"
         )
 
-        response = test_client.get("/integrations", headers=auth_headers)
+        response = test_client.get("/integrations", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
 
-        gmail_integration = next((i for i in data if i["provider"] == "gmail"), None)
-        assert gmail_integration is not None
-        assert gmail_integration["status"] == "active"
-        assert gmail_integration["provider_email"] == "test@gmail.com"
+        integration = next((i for i in data if i["provider"] == "gmail"), None)
+        assert integration is not None
+        assert integration["status"] == "active"
+        assert integration["provider_email"] == "test@gmail.com"
 
         # Verify sensitive fields are excluded
-        assert "access_token" not in gmail_integration
-        assert "refresh_token" not in gmail_integration
+        assert "access_token" not in integration
+        assert "refresh_token" not in integration
 
     def test_get_integration_by_provider(
         self,
         test_client,
-        auth_headers,
-        authenticated_client,
+        config,
         sample_oauth_credentials,
-        cleanup_integrations,
+        temp_user_client,
     ):
         """GET /integrations/{provider} returns specific integration."""
         from selko.services.integrations import save_oauth_credentials
 
-        cleanup_integrations.append("gmail")
+        # Use temp user to avoid interfering with seeded credentials
+        # Get auth token for temp user
+        session = temp_user_client.auth.get_session()
+        headers = {"Authorization": f"Bearer {session.access_token}"}
+
         save_oauth_credentials(
-            authenticated_client, "gmail", sample_oauth_credentials, "test@gmail.com"
+            temp_user_client, "gmail", sample_oauth_credentials, "test@gmail.com"
         )
 
-        response = test_client.get("/integrations/gmail", headers=auth_headers)
+        response = test_client.get("/integrations/gmail", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
