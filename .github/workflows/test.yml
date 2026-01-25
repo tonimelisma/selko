@@ -141,6 +141,8 @@ jobs:
 
       - name: Deploy migrations to Staging
         run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       # TODO: Deploy FastAPI to Fly.io (uncomment when Fly.io is set up)
       # - name: Setup Fly.io CLI
@@ -213,6 +215,8 @@ jobs:
 
       - name: Deploy migrations to Production
         run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       # TODO: Deploy FastAPI to Fly.io (uncomment when Fly.io is set up)
       # - name: Setup Fly.io CLI
