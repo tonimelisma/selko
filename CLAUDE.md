@@ -68,11 +68,14 @@ Before declaring any work increment complete or making git commits:
 2. **Run development integration tests**: 
    - Start local Supabase: `supabase start`
    - Run tests: `uv run pytest backend/tests/integration/ -m "development" -v`
-3. **Run staging integration tests** (if modifying staging-related code):
-   - Ensure `.env.test` is configured
+3. **Run staging integration tests** (ALWAYS required):
+   - Ensure `.env.test` is configured with staging Supabase credentials
+   - Ensure Gmail OAuth tokens exist: `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`
    - Run: `ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v`
 
 All tests must pass before committing. Do not commit with skipped or failing tests.
+
+**Critical:** Staging tests validate real integrations (Gmail API, cloud Supabase) and must pass on every commit to ensure production readiness.
 
 ### Environment Configuration
 
