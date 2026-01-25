@@ -240,13 +240,13 @@ class TestCrossUserRLSIsolation:
         self, config, authenticated_client, test_user_id, temp_user
     ):
         """User A cannot read User B's OAuth integrations."""
-        # Create integration as User A (using valid provider enum value)
+        # Create integration as User A (using google_calendar to avoid conflict with seeded gmail)
         integration_result = (
             authenticated_client.table("integrations")
             .insert(
                 {
                     "user_id": test_user_id,
-                    "provider": "gmail",  # Valid enum value
+                    "provider": "google_calendar",  # Use calendar instead of gmail
                     "status": "active",
                     "access_token": "secret_token_123",
                     "scopes": ["read"],

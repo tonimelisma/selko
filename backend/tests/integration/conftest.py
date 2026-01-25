@@ -116,6 +116,24 @@ def temp_user(config):
 
 
 @pytest.fixture(scope="function")
+def temp_user_client(config, temp_user):
+    """Get authenticated client for temporary user.
+    
+    Returns authenticated Supabase client for the temp user.
+    Temp user is automatically cleaned up after test.
+    """
+    user_id, email, password = temp_user
+    client = create_client(config.supabase_url, config.supabase_key)
+    client.auth.sign_in_with_password({"email": email, "password": password})
+    yield client
+    # Cleanup: sign out
+    try:
+        client.auth.sign_out()
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="function")
 def cleanup_emails(authenticated_client, test_user_id):
     """Delete test emails after test completes."""
     created_gmail_ids = []
