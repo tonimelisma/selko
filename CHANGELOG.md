@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-25
 
+### Fix CI Token Seeding Configuration Loading
+
+**Commit:** 97061f9
+
+**Files modified:**
+- `cli/cli_seed_tokens.py` - Fixed config loading to check prefixed env vars before .env files
+
+**Problem:** GitHub Actions integration tests were failing at the token seeding step with "Environment file not found: .env.test". The script called `load_config()` which looked for .env files before checking environment variables, causing it to exit before `apply_env_overrides()` could apply the prefixed variables (SOURCE_SUPABASE_URL, TARGET_SUPABASE_URL) that CI sets.
+
+**Solution:**
+1. Added `load_config_with_prefix()` helper that checks for prefixed env vars first (CI mode)
+2. If prefixed vars like `SOURCE_SUPABASE_URL` exist, constructs Config directly
+3. Otherwise, falls back to `load_config()` for local dev with .env files
+4. Removed `apply_env_overrides()` as it's no longer needed
+
+**Result:** CI can now successfully seed Gmail tokens from staging to local Supabase, enabling real Gmail integration tests to run in GitHub Actions without requiring committed .env files.
+
 ### Update Testing Documentation to Match Real Workflow
 
 **Files modified:**
