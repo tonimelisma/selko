@@ -92,6 +92,7 @@ jobs:
 
           echo "SUPABASE_URL=${SUPABASE_URL}" > .env
           echo "SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}" >> .env
+          echo "SUPABASE_PUBLISHABLE_KEY=${SUPABASE_ANON_KEY}" >> .env
           echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}" >> .env
           echo "TEST_USER_EMAIL=test@selko.local" >> .env
           echo "TEST_USER_PASSWORD=testpass123" >> .env
@@ -182,7 +183,7 @@ jobs:
         env:
           ENVIRONMENT: staging
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
           TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
