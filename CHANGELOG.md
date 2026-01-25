@@ -40,6 +40,12 @@ Database and application deployments are atomic - migrations run first, and if t
 
 ## 2026-01-25
 
+- `ci: fix missing SUPABASE_ACCESS_TOKEN in deploy steps`
+  - Modified `.github/workflows/test.yml`:
+    - Added `SUPABASE_ACCESS_TOKEN` env var to "Deploy migrations to Staging" step
+    - Added `SUPABASE_ACCESS_TOKEN` env var to "Deploy migrations to Production" step
+  - **Reason**: GitHub Actions `env:` blocks are scoped per-step. The token was only set for the `supabase link` step but not for the subsequent `supabase db push` step, causing deploy failures with "Access token not provided" error.
+
 - `cli: add --auto-confirm flag for test user creation`
   - Modified `cli/cli_user.py`:
     - Added `--auto-confirm` flag to create command for development/testing use
