@@ -40,6 +40,12 @@ Database and application deployments are atomic - migrations run first, and if t
 
 ## 2026-01-25
 
+- `ci: fix GitHub Actions using deprecated --env flag for user creation`
+  - Modified `.github/workflows/test.yml`:
+    - Removed `--env development` flag from user creation command (line 105)
+    - Added `ENVIRONMENT: development` to env block for user creation step
+  - **Reason**: Commit 2ce524e standardized environment selection to use `ENVIRONMENT` variable and removed `--env` flags from all CLI tools. The GitHub Actions workflow was still using the old flag, causing user creation to fail silently and all authentication-dependent tests to fail with "Invalid login credentials" error.
+
 - **9b0bc01** - `ci: fix missing SUPABASE_PUBLISHABLE_KEY in development and staging tests`
   - Modified `.github/workflows/test.yml`:
     - Added `SUPABASE_PUBLISHABLE_KEY` export to development environment setup (mapped from ANON_KEY).

@@ -101,9 +101,9 @@ jobs:
         run: |
           uv run python -m cli.cli_user create \
             --email test@selko.local \
-            --password testpass123 \
-            --env development 2>&1 || echo "Note: User may already exist (this is OK)"
+            --password testpass123 2>&1 || echo "Note: User may already exist (this is OK)"
         env:
+          ENVIRONMENT: development
           TEST_USER_EMAIL: test@selko.local
           TEST_USER_PASSWORD: testpass123
 
