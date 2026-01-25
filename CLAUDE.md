@@ -9,6 +9,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 See `PRD_ARCH.md` for complete product requirements and technical architecture specification.
 See `docs/architecture/ARCHITECTURE.md` for high-level system diagrams.
 
+---
+
+## ⚠️ DEFINITION OF DONE - READ BEFORE DECLARING WORK COMPLETE
+
+**Before ANY work increment is considered complete, ALL of the following MUST pass:**
+
+- [ ] **Run unit tests**: `uv run pytest backend/tests/ -m "not integration" -v`
+- [ ] **Run staging integration tests**: `ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v`
+- [ ] **Git commit** with conventional commit message format (e.g., `feat:`, `fix:`, `test:`, `docs:`)
+- [ ] **Git push** to `origin/main`
+- [ ] **Update CHANGELOG.md** with detailed entry (if not already done during implementation)
+
+**DO NOT declare work complete, say "done", or mark todos as complete until ALL checklist items pass.**
+
+**Critical:** Staging tests validate real integrations (Gmail API, cloud Supabase) and MUST pass on every commit to ensure production readiness. Never skip staging tests.
+
+---
+
 ## Development Philosophy
 
 ### End-to-End First
