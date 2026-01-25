@@ -291,8 +291,11 @@ uv run pytest backend/tests/ -m "not integration" -v
 supabase start
 uv run pytest backend/tests/ -v
 
-# Run integration tests only
+# Run development integration tests only
 uv run pytest backend/tests/integration/ -m "development" -v
+
+# Run staging integration tests (REQUIRED before every commit)
+ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v
 
 # Run with coverage report
 uv run pytest backend/tests/ --cov=selko
@@ -304,6 +307,13 @@ uv run pytest backend/tests/ --cov=selko
 | `integration` | All integration tests (requires Supabase) |
 | `development` | Tests against local Supabase |
 | `staging` | Tests against staging Supabase + real Gmail |
+
+**Before Every Commit:**
+1. Run unit tests
+2. Run development integration tests (local Supabase)
+3. Run staging integration tests (cloud Supabase + real Gmail)
+
+All tests must pass. Staging tests validate real integrations and ensure production readiness.
 
 See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
 
