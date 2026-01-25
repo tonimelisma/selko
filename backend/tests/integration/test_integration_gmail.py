@@ -190,9 +190,9 @@ class TestGmailStaging:
         """Can retrieve real Gmail credentials from staging DB."""
         creds = get_credentials(authenticated_client, config)
 
-        # If no credentials, skip the test
+        # If no credentials, fail the test
         if creds is None:
-            pytest.skip("No Gmail credentials in staging - run cli_auth_gmail first")
+            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
         assert creds.token is not None
         # Real credentials should have refresh token
@@ -202,7 +202,7 @@ class TestGmailStaging:
         """Can build service with real credentials."""
         creds = get_credentials(authenticated_client, config)
         if creds is None:
-            pytest.skip("No Gmail credentials in staging")
+            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
         service = build_service(creds)
         assert service is not None
@@ -211,7 +211,7 @@ class TestGmailStaging:
         """Can get real user profile from Gmail."""
         creds = get_credentials(authenticated_client, config)
         if creds is None:
-            pytest.skip("No Gmail credentials in staging")
+            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
         service = build_service(creds)
         profile = get_user_profile(service)
@@ -223,7 +223,7 @@ class TestGmailStaging:
         """Can fetch real messages from Gmail."""
         creds = get_credentials(authenticated_client, config)
         if creds is None:
-            pytest.skip("No Gmail credentials in staging")
+            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
         service = build_service(creds)
         messages = fetch_messages(service, max_results=5)
@@ -244,7 +244,7 @@ class TestGmailStaging:
         # The get_credentials function handles refresh automatically
         creds = get_credentials(authenticated_client, config)
         if creds is None:
-            pytest.skip("No Gmail credentials in staging")
+            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
         # Credentials should be valid (refreshed if needed)
         # If they were expired, get_credentials would have refreshed them

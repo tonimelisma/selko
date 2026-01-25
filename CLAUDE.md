@@ -60,6 +60,20 @@ This is a **Proof of Concept (POC)** phase using local Python scripts to validat
   - Files modified with brief description of changes
   - Reason/purpose for the change
 
+### Test Requirements
+
+Before declaring any work increment complete or making git commits:
+
+1. **Run unit tests**: `uv run pytest backend/tests/ -m "not integration" -v`
+2. **Run development integration tests**: 
+   - Start local Supabase: `supabase start`
+   - Run tests: `uv run pytest backend/tests/integration/ -m "development" -v`
+3. **Run staging integration tests** (if modifying staging-related code):
+   - Ensure `.env.test` is configured
+   - Run: `ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging" -v`
+
+All tests must pass before committing. Do not commit with skipped or failing tests.
+
 ### Environment Configuration
 
 | File | Purpose | Committed |
@@ -71,12 +85,23 @@ This is a **Proof of Concept (POC)** phase using local Python scripts to validat
 
 ### Supabase Setup
 
-**Environments:**
-| Environment | Project Ref | URL |
-|-------------|-------------|-----|
-| Local | N/A | `http://localhost:54321` |
-| Staging | `lxmysergoeaegxlyfzwk` | `https://lxmysergoeaegxlyfzwk.supabase.co` |
-| Production | `khahcozfbnpykspvatrg` | `https://khahcozfbnpykspvatrg.supabase.co` |
+**Supabase Instances:**
+
+There are TWO separate Supabase projects:
+
+| Instance | Project Name | Project Ref | URL | MCP Server Name |
+|----------|--------------|-------------|-----|-----------------|
+| **Staging** | selko-staging | `lxmysergoeaegxlyfzwk` | `https://lxmysergoeaegxlyfzwk.supabase.co` | `supabase selko-staging` |
+| **Production** | selko | `khahcozfbnpykspvatrg` | `https://khahcozfbnpykspvatrg.supabase.co` | `supabase selko` |
+| Local | N/A | `http://localhost:54321` | N/A (Docker) | No MCP server |
+
+**MCP Server Usage:**
+- When using MCP tools, always specify which instance you're targeting
+- `supabase selko-staging` - Use for staging environment queries/operations
+- `supabase selko` - Use for production environment queries/operations (read-only!)
+- Local development uses Docker (`supabase start`) - no MCP server needed
+
+**Critical:** Never confuse production and staging! Always verify which MCP server you're connected to before running queries.
 
 **CLI Commands:**
 ```bash
@@ -284,6 +309,24 @@ uv run pytest backend/tests/ --cov=selko
 | `production` | Read-only smoke tests for production |
 
 See `INTEGRATION_TESTS_PLAN.md` for detailed testing strategy.
+
+**Token Persistence Rules:**
+
+**Development tests** (local Supabase):
+- Database is ephemeral (reset each `supabase start`)
+- Tests create mock tokens and clean them up
+- `cleanup_integrations` fixture is appropriate
+
+**Staging tests** (cloud Supabase):
+- Database is persistent across runs
+- Real OAuth tokens from `cli_auth_gmail` must be preserved
+- Staging tests should be READ-ONLY for integrations
+- Do NOT use `cleanup_integrations` with real providers in staging
+- Use `pytest.fail()` not `pytest.skip()` when credentials are missing
+
+**Production tests**:
+- Read-only smoke tests only
+- Never modify data
 
 ### Authentication Model
 
