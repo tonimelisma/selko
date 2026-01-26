@@ -56,8 +56,12 @@ def load_fixture(fixtures_dir: Path, fixture_name: str) -> dict:
 
 @pytest.mark.integration
 @pytest.mark.development
+@pytest.mark.llm
 class TestGeminiRealAPI:
-    """Test Gemini extraction with real API calls."""
+    """Test Gemini extraction with real API calls.
+    
+    These tests require --run-llm flag to run (costs money).
+    """
 
     def test_birthday_party_extraction(self, gemini_client, fixtures_dir):
         """Test extraction from birthday party invitation."""
@@ -216,11 +220,14 @@ class TestGeminiRealAPI:
 
 @pytest.mark.integration
 @pytest.mark.development
+@pytest.mark.llm
 class TestGeminiWithDatabase:
     """Test Gemini extraction with real database emails.
 
     These tests require local Supabase running and at least one email
     in the database for the authenticated test user.
+    
+    These tests require --run-llm flag to run (costs money).
     """
 
     def test_fetch_and_extract_from_database(
@@ -280,8 +287,12 @@ class TestGeminiWithDatabase:
 
 @pytest.mark.integration
 @pytest.mark.development
+@pytest.mark.llm
 class TestGeminiErrorHandling:
-    """Test Gemini API error handling."""
+    """Test Gemini API error handling.
+    
+    These tests require --run-llm flag to run (costs money).
+    """
 
     def test_invalid_api_key(self, config):
         """Test error handling with invalid API key."""

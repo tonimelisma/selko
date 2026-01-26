@@ -9,13 +9,152 @@ from selko.services import events, gemini
 
 @pytest.mark.integration
 @pytest.mark.development
-class TestEventProcessing:
-    """Test email→event extraction and deduplication."""
+class TestEventProcessingMocked:
+    """Test email→event extraction with mocked LLM (no API costs).
+    
+    These tests validate service orchestration, database interactions,
+    and business logic without making real LLM API calls.
+    """
 
+    def test_process_email_creates_event_mocked(
+        self, authenticated_client, test_user_id, mock_gemini_client
+    ):
+        """Test that processing an email creates event records (mocked LLM)."""
+        # Create a test email
+        email_data = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-mocked-event-{uuid4().hex[:8]}",
+            "subject": "Birthday Party Invitation",
+            "from_email": "friend@example.com",
+            "from_name": "Best Friend",
+            "date_sent": "2026-02-15T12:00:00Z",
+            "snippet": "You're invited to Sarah's birthday party on Feb 20th at 2pm!",
+            "gmail_label_ids": ["INBOX"],
+        }
+        
+        result = authenticated_client.table("emails").insert(email_data).execute()
+        email_id = result.data[0]["id"]
+        
+        # Process email with mocked LLM
+        processing_result = events.process_email_for_events(
+            authenticated_client,
+            mock_gemini_client,
+            email_id,
+            test_user_id
+        )
+        
+        # Verify events were created
+        assert processing_result["num_events"] >= 0
+        assert processing_result["num_new"] >= 0
+        
+        # Check email status updated
+        email_result = authenticated_client.table("emails").select("*").eq(
+            "id", email_id
+        ).single().execute()
+        
+        assert email_result.data["processing_status"] == "processed"
+        
+        # Verify mock was called
+        assert mock_gemini_client.models.generate_content.called
+
+    def test_process_email_no_events_mocked(
+        self, authenticated_client, test_user_id, mock_gemini_no_events
+    ):
+        """Test processing email that has no events (mocked LLM)."""
+        email_data = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-no-event-{uuid4().hex[:8]}",
+            "subject": "Newsletter",
+            "from_email": "newsletter@example.com",
+            "from_name": "Newsletter",
+            "date_sent": "2026-02-15T12:00:00Z",
+            "snippet": "Read our latest articles...",
+            "gmail_label_ids": ["INBOX"],
+        }
+        
+        result = authenticated_client.table("emails").insert(email_data).execute()
+        email_id = result.data[0]["id"]
+        
+        # Process email
+        processing_result = events.process_email_for_events(
+            authenticated_client,
+            mock_gemini_no_events,
+            email_id,
+            test_user_id
+        )
+        
+        # Should process successfully with no events
+        assert processing_result["num_events"] == 0
+        assert processing_result["num_new"] == 0
+        assert processing_result["num_updated"] == 0
+        
+        # Email should be marked as processed
+        email_result = authenticated_client.table("emails").select("*").eq(
+            "id", email_id
+        ).single().execute()
+        assert email_result.data["processing_status"] == "processed"
+
+    def test_process_email_sender_ignored_mocked(
+        self, authenticated_client, test_user_id, mock_gemini_client
+    ):
+        """Test that ignored senders are skipped (mocked LLM)."""
+        # Create ignore rule
+        authenticated_client.table("sender_rules").insert({
+            "user_id": test_user_id,
+            "sender_email": "spam@example.com",
+            "action": "ignore",
+        }).execute()
+        
+        # Create email from ignored sender
+        email_data = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-ignored-{uuid4().hex[:8]}",
+            "subject": "Event Invitation",
+            "from_email": "spam@example.com",
+            "from_name": "Spammer",
+            "date_sent": "2026-02-15T12:00:00Z",
+            "snippet": "You're invited!",
+            "gmail_label_ids": ["INBOX"],
+        }
+        
+        result = authenticated_client.table("emails").insert(email_data).execute()
+        email_id = result.data[0]["id"]
+        
+        # Process email
+        processing_result = events.process_email_for_events(
+            authenticated_client,
+            mock_gemini_client,
+            email_id,
+            test_user_id
+        )
+        
+        # Should be skipped
+        assert processing_result.get("skipped") is True
+        assert processing_result["num_events"] == 0
+        
+        # Email should be marked as skipped
+        email_result = authenticated_client.table("emails").select("*").eq(
+            "id", email_id
+        ).single().execute()
+        assert email_result.data["processing_status"] == "skipped"
+        
+        # Mock should NOT be called
+        assert not mock_gemini_client.models.generate_content.called
+
+
+@pytest.mark.integration
+@pytest.mark.development
+class TestEventProcessing:
+    """Test email→event extraction with REAL LLM (requires --run-llm flag)."""
+
+    @pytest.mark.llm
     def test_process_email_creates_event(
         self, authenticated_client, test_user_id, gemini_client
     ):
-        """Test that processing an email with events creates event records."""
+        """Test that processing an email with events creates event records.
+        
+        This test requires --run-llm flag to run (costs money).
+        """
         # Create a test email
         email_data = {
             "user_id": test_user_id,

@@ -42,5 +42,6 @@ markers = [
     "development: tests that run against local Supabase with real Gmail (requires seeded tokens)",
     "staging: tests that run against staging Supabase + real Gmail",
     "production: read-only smoke tests for production",
+    "llm: marks tests as requiring real LLM API calls (deselect with '-m \"not llm\"')",
     "slow: tests that take >10 seconds",
 ]

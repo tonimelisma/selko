@@ -291,7 +291,7 @@ uv run python -m cli.cli_seed_tokens --from staging --to development --provider 
 
 ### Running Tests
 
-The project has 71+ tests covering all services. **All integration tests use real Gmail API** - no mocking.
+The project has 71+ tests covering all services. Tests are designed to minimize LLM API costs during local development.
 
 ```bash
 # Install test dependencies
@@ -300,28 +300,46 @@ uv sync --extra test
 # Run unit tests only (fast, no external dependencies)
 uv run pytest backend/tests/ -m "not integration" -v
 
-# Run development integration tests (local Supabase + real Gmail)
+# Run development integration tests (local Supabase + mocked LLM)
 # One-time setup after supabase start/reset:
 supabase start
 uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
 uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
 
-# Run tests
+# Run tests (uses mocked LLM by default)
 uv run pytest backend/tests/integration/ -m "development" -v
 
-# Run staging integration tests (REQUIRED before every commit)
-uv run pytest backend/tests/integration/ -m "staging" -v
+# Run with REAL LLM (costs money - use sparingly)
+uv run pytest backend/tests/integration/ -m "development" --run-llm -v
 
 # Run with coverage report
 uv run pytest backend/tests/ --cov=selko
 ```
 
 **Test Categories:**
-| Marker | Description |
-|--------|-------------|
-| `integration` | All integration tests (requires Supabase) |
-| `development` | Tests against local Supabase + real Gmail (requires seeded tokens) |
-| `staging` | Tests against staging Supabase + real Gmail |
+| Marker | Description | LLM API |
+|--------|-------------|---------|
+| `integration` | All integration tests (requires Supabase) | Mocked by default |
+| `development` | Tests against local Supabase + real Gmail | Mocked by default |
+| `staging` | Tests against staging Supabase + real Gmail | Real (CI only) |
+| `llm` | Tests requiring real LLM API calls | Requires `--run-llm` flag |
+
+**Test Architecture:**
+- **Unit tests**: Fully mocked, no external dependencies
+- **Integration tests (default)**: Real database + real Gmail + **mocked LLM** (no API costs)
+- **Integration tests with `--run-llm`**: Real database + real Gmail + **real LLM** (costs money)
+- **Staging tests (CI)**: Always run with real LLM to validate deployed environment
+
+**Why Mock LLM Locally?**
+- Fast iteration: Run full test suite dozens of times per day without costs
+- Test orchestration: Validate service integration, database queries, business logic
+- Staging validates real LLM: CI runs real LLM tests after each deployment
+
+**When to Use `--run-llm`:**
+- Before committing changes to LLM prompts or schemas
+- Debugging LLM-specific issues
+- Verifying LLM behavior changes
+- NOT needed for most development work (service logic, database, API changes)
 
 **Token Seeding:**
 
@@ -333,11 +351,11 @@ uv run python -m cli.cli_seed_tokens --from staging --to development --provider 
 ```
 
 **Before Every Commit:**
-1. Run unit tests
-2. Run development integration tests (local Supabase + real Gmail)
-3. Run staging integration tests (cloud Supabase + real Gmail)
+1. Run unit tests: `uv run pytest backend/tests/ -m "not integration" -v`
+2. Run integration tests (mocked LLM): `uv run pytest backend/tests/integration/ -m "development" -v`
+3. If you changed LLM code: `uv run pytest backend/tests/integration/ -m "development" --run-llm -v`
 
-All tests must pass. Both development and staging tests validate real Gmail integration.
+CI will run staging tests with real LLM automatically after deployment.
 
 See `PRD_ARCH.md` Part 4 for detailed testing strategy.
 

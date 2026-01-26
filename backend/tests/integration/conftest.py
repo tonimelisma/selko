@@ -268,6 +268,7 @@ def gemini_client(config):
     """Get Gemini client for real API calls.
     
     Requires GEMINI_API_KEY in environment.
+    This fixture is for tests marked with @pytest.mark.llm.
     """
     from selko.services.gemini import get_gemini_client
     
@@ -277,3 +278,79 @@ def gemini_client(config):
             "Get your API key from https://aistudio.google.com/apikey"
         )
     return get_gemini_client(config)
+
+
+@pytest.fixture
+def mock_gemini_client():
+    """Get mocked Gemini client for integration tests without API costs.
+    
+    This fixture provides a mock client that returns realistic responses
+    without making actual LLM API calls. Use for integration tests that
+    test service orchestration without LLM costs.
+    """
+    from unittest.mock import MagicMock
+    from selko.api.schemas.calendar import (
+        CalendarEventExtraction,
+        CalendarEvent,
+        GeminiEventsResponse,
+    )
+    from datetime import datetime
+    
+    mock_client = MagicMock()
+    
+    # Default mock response: event found
+    def mock_generate_content(*args, **kwargs):
+        """Default mock: returns a birthday party event."""
+        mock_response = MagicMock()
+        
+        # Check if this is a comparison/merge request or extraction
+        contents = kwargs.get("contents", [])
+        prompt_text = str(contents)
+        
+        # Event comparison (returns event ID or NO_MATCH)
+        if "Is the new event the same" in prompt_text or "comparing calendar events" in prompt_text.lower():
+            mock_response.text = "NO_MATCH"
+            return mock_response
+        
+        # Event merge (returns merged JSON)
+        if "merging calendar event data" in prompt_text.lower():
+            mock_response.text = '{"title": "Merged Event", "start_datetime": "2026-03-01T14:00:00Z", "end_datetime": "2026-03-01T15:00:00Z", "all_day": false, "location": "Merged Location", "description": "Merged description"}'
+            return mock_response
+        
+        # Event extraction (returns structured response)
+        mock_gemini_response = GeminiEventsResponse(
+            events_found=True,
+            events=[
+                CalendarEvent(
+                    title="Mock Event",
+                    start_datetime=datetime.fromisoformat("2026-03-01T14:00:00+00:00"),
+                    end_datetime=datetime.fromisoformat("2026-03-01T15:00:00+00:00"),
+                    all_day=False,
+                    location="Mock Location",
+                    description="This is a mock event for testing",
+                    confidence=0.9,
+                )
+            ],
+        )
+        mock_response.parsed = mock_gemini_response
+        return mock_response
+    
+    mock_client.models.generate_content.side_effect = mock_generate_content
+    return mock_client
+
+
+@pytest.fixture
+def mock_gemini_no_events():
+    """Mock Gemini client that returns no events found."""
+    from unittest.mock import MagicMock
+    from selko.api.schemas.calendar import GeminiEventsResponse
+    
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_gemini_response = GeminiEventsResponse(
+        events_found=False,
+        events=[],
+    )
+    mock_response.parsed = mock_gemini_response
+    mock_client.models.generate_content.return_value = mock_response
+    return mock_client
