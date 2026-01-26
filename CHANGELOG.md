@@ -2,6 +2,52 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-26
+
+### Add Gemini 3 Flash Calendar Event Extraction
+
+**Files created:**
+- `backend/selko/services/gemini.py` - Gemini client and calendar event extraction service
+- `backend/selko/api/schemas/calendar.py` - Pydantic schemas for CalendarEvent and CalendarEventExtraction
+- `cli/cli_extract_events.py` - CLI tool for extracting events from emails
+- `backend/tests/test_gemini.py` - Unit tests with mocked Gemini responses
+- `backend/tests/integration/test_integration_gemini.py` - Integration tests with real Gemini API
+- `backend/tests/fixtures/emails/*.json` - 6 test fixtures (birthday party, doctor appointment, meeting request, multiple events, newsletter, receipt)
+
+**Files modified:**
+- `backend/pyproject.toml` - Added google-genai>=1.0.0 dependency
+- `backend/selko/config.py` - Added gemini_api_key and gemini_model to Config dataclass
+- `.env.example` - Added GEMINI_API_KEY configuration section
+- `uv.lock` - Updated with google-genai and dependencies
+
+**Feature:** Implemented AI-powered calendar event extraction using Google's Gemini 3 Flash model. The system analyzes email content and attachments (images, PDFs) to extract structured calendar events with titles, dates, times, locations, and descriptions.
+
+**Key capabilities:**
+- Multimodal analysis (text + images + PDFs)
+- Structured Pydantic output with confidence scores
+- Rate limit handling with exponential backoff
+- CLI tool with three modes: database emails, recent emails, or test fixtures
+- JSON or formatted text output
+- 20MB attachment size limit with automatic skipping
+- Uses `thinking_level: "low"` for fast extraction (Gemini 3 best practice)
+
+**Usage:**
+```bash
+# Extract from database email
+uv run python -m cli.cli_extract_events --email-id <uuid>
+
+# Extract from recent emails  
+uv run python -m cli.cli_extract_events --recent 5
+
+# Test with fixture
+uv run python -m cli.cli_extract_events --fixture event_birthday_party.json
+
+# Output as JSON
+uv run python -m cli.cli_extract_events --email-id <uuid> --json
+```
+
+**Testing:** All 14 unit tests pass. Integration tests require GEMINI_API_KEY from https://aistudio.google.com/apikey
+
 ## 2026-01-25
 
 ### Fix Test Cleanup Conflicts with Seeded Gmail Credentials

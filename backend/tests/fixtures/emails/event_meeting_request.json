@@ -1,0 +1,26 @@
+{
+  "name": "meeting_request",
+  "description": "Work meeting request with Zoom link",
+  "input": {
+    "gmail_id": "fixture-003",
+    "subject": "Team Sync - Q1 Planning",
+    "from_email": "manager@techcorp.com",
+    "from_name": "Alice Manager",
+    "date_sent": "2026-01-23T09:15:00Z",
+    "body_text": "Hi Team,\n\nLet's schedule our Q1 planning meeting for next week.\n\nDate: Monday, January 27, 2026\nTime: 2:00 PM - 3:30 PM PST\nLocation: Zoom (link below)\n\nJoin Zoom Meeting:\nhttps://zoom.us/j/123456789\n\nAgenda:\n- Review Q4 results\n- Set Q1 goals\n- Discuss resource allocation\n\nPlease review the attached deck before the meeting.\n\nThanks,\nAlice",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Team Sync - Q1 Planning",
+        "start_datetime": "2026-01-27T14:00:00",
+        "end_datetime": "2026-01-27T15:30:00",
+        "location": "https://zoom.us/j/123456789",
+        "description": "Q1 planning meeting to review Q4 results and set Q1 goals",
+        "confidence": 0.97
+      }
+    ]
+  }
+}

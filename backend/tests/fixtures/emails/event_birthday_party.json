@@ -1,0 +1,26 @@
+{
+  "name": "birthday_party_invitation",
+  "description": "Email with birthday party details in body",
+  "input": {
+    "gmail_id": "fixture-001",
+    "subject": "You're invited to Jake's 7th Birthday!",
+    "from_email": "sarah@example.com",
+    "from_name": "Sarah Johnson",
+    "date_sent": "2026-01-20T10:00:00Z",
+    "body_text": "Hi! You're invited to Jake's 7th birthday party! \n\nDate: Saturday, February 15th, 2026\nTime: 2:00 PM - 5:00 PM\nLocation: 123 Oak Street, Springfield\n\nPlease RSVP by February 10th. Looking forward to seeing you there!\n\nBest,\nSarah",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Jake's 7th Birthday Party",
+        "start_datetime": "2026-02-15T14:00:00",
+        "end_datetime": "2026-02-15T17:00:00",
+        "location": "123 Oak Street, Springfield",
+        "description": "Birthday party celebration for Jake's 7th birthday",
+        "confidence": 0.95
+      }
+    ]
+  }
+}

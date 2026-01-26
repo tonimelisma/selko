@@ -40,6 +40,10 @@ class Config:
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
 
+    # Gemini API configuration
+    gemini_api_key: Optional[str] = None
+    gemini_model: str = "gemini-3-flash-preview"
+
     # Test user credentials for CLI authentication
     test_user_email: Optional[str] = None
     test_user_password: Optional[str] = None
@@ -136,6 +140,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
         google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        gemini_api_key=os.getenv("GEMINI_API_KEY"),
         test_user_email=os.getenv("TEST_USER_EMAIL"),
         test_user_password=os.getenv("TEST_USER_PASSWORD"),
     )

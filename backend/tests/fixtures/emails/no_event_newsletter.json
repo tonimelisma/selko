@@ -1,0 +1,17 @@
+{
+  "name": "newsletter_no_event",
+  "description": "Marketing newsletter with no calendar events",
+  "input": {
+    "gmail_id": "fixture-004",
+    "subject": "Weekly Tech News - January 2026",
+    "from_email": "newsletter@technews.com",
+    "from_name": "Tech News Weekly",
+    "date_sent": "2026-01-20T08:00:00Z",
+    "body_text": "Welcome to Tech News Weekly!\n\nTop Stories This Week:\n\n1. New AI Model Breaks Performance Records\nResearchers announced a breakthrough in language models this week...\n\n2. Smartphone Sales Hit New High\nGlobal smartphone sales reached record numbers in Q4...\n\n3. Cloud Computing Trends for 2026\nIndustry experts predict major shifts in cloud infrastructure...\n\nStay tuned for more updates next week!\n\nUnsubscribe | View in browser",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "events": []
+  }
+}
