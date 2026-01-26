@@ -13,7 +13,7 @@ from google import genai
 from google.genai import types
 from supabase import Client
 
-from selko.api.schemas.calendar import CalendarEventExtraction
+from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResponse
 from selko.config import Config
 
 logger = logging.getLogger(__name__)
@@ -169,7 +169,7 @@ def extract_calendar_events(
     # Configure generation with Gemini 3 best practices
     generate_config = types.GenerateContentConfig(
         response_mime_type="application/json",
-        response_schema=CalendarEventExtraction,
+        response_schema=GeminiEventsResponse,  # Only events, not metadata
         thinking_config=types.ThinkingConfig(thinking_level="low"),
         # Note: Keep temperature at default 1.0 for Gemini 3
     )
@@ -184,11 +184,21 @@ def extract_calendar_events(
                 config=generate_config,
             )
 
-            # Parse Pydantic model directly from response
-            result = response.parsed
+            # Parse Gemini's response (events only)
+            gemini_result = response.parsed
             logger.info(
-                f"Extraction complete: {len(result.events)} events found "
-                f"(events_found={result.events_found})"
+                f"Extraction complete: {len(gemini_result.events)} events found "
+                f"(events_found={gemini_result.events_found})"
+            )
+            
+            # Wrap with email metadata to create full extraction result
+            result = CalendarEventExtraction(
+                email_message_id=email_metadata.get("gmail_id", ""),
+                email_date=email_metadata.get("date_sent", datetime.now().isoformat()),
+                sender_name=email_metadata.get("from_name"),
+                sender_email=email_metadata.get("from_email", ""),
+                events_found=gemini_result.events_found,
+                events=gemini_result.events,
             )
             return result
 
@@ -298,6 +308,10 @@ def fetch_email_with_attachments(
         return email_metadata, email_text, attachments
 
     except Exception as e:
-        if "Email not found" in str(e):
+        error_str = str(e)
+        # Handle Supabase "no rows" error
+        if "PGRST116" in error_str or "0 rows" in error_str:
+            raise GeminiError(f"Email not found: {email_id}") from e
+        if "Email not found" in error_str:
             raise
         raise GeminiError(f"Failed to fetch email data: {e}") from e

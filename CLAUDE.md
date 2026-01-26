@@ -14,14 +14,18 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture spec
 
 **Before ANY work increment is considered complete, ALL of the following MUST pass:**
 
-- [ ] **Run all tests**: `uv run pytest backend/tests/ -v` (unit + integration)
+- [ ] **Run ALL tests**: `uv run pytest backend/tests/ -v` (unit + integration, all markers)
 - [ ] **Git commit** with conventional commit message format (e.g., `feat:`, `fix:`, `test:`, `docs:`)
 - [ ] **Git push** to `origin/main`
 - [ ] **Update CHANGELOG.md** with detailed entry (if not already done during implementation)
 
 **DO NOT declare work complete, say "done", or mark todos as complete until ALL checklist items pass.**
 
-**Critical:** Development integration tests validate real Gmail API with seeded tokens. Staging tests run in CI only, after deploying to staging.
+**Critical Requirements:**
+- ALL tests must pass, including integration tests that use real APIs (Gmail, Gemini, etc.)
+- Development integration tests require: local Supabase running, seeded Gmail tokens, GEMINI_API_KEY configured
+- Staging tests run in CI only after deploying to staging
+- If ANY test is skipped due to missing configuration, DOD is NOT met - fix the configuration first
 
 ---
 
