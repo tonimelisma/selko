@@ -94,6 +94,10 @@ uv run python -m cli.cli_fetch_emails
 
 # Fetch more emails
 uv run python -m cli.cli_fetch_emails --max 50
+
+# Set up git pre-commit hook (enforces test requirements)
+cp scripts/pre-commit.hook .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
 ```
 
 > **First-time setup?** See [TODO.md](TODO.md) for step-by-step checklists for development, staging, and production environments.
