@@ -1,0 +1,17 @@
+{
+  "name": "order_receipt_no_event",
+  "description": "Order confirmation receipt with no calendar event",
+  "input": {
+    "gmail_id": "fixture-005",
+    "subject": "Your Amazon.com order #123-4567890",
+    "from_email": "auto-confirm@amazon.com",
+    "from_name": "Amazon.com",
+    "date_sent": "2026-01-21T16:45:00Z",
+    "body_text": "Hello,\n\nThank you for your order!\n\nOrder #123-4567890\nPlaced on: January 21, 2026\n\nItems:\n- Wireless Mouse (Qty: 1) - $29.99\n- USB-C Cable (Qty: 2) - $15.98\n\nSubtotal: $45.97\nTax: $4.14\nTotal: $50.11\n\nEstimated Delivery: Thursday, January 23, 2026\n\nYou can track your shipment at: https://amazon.com/track/...\n\nThank you for shopping with us!\nAmazon.com",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "events": []
+  }
+}

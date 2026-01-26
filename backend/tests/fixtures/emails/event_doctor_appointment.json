@@ -1,0 +1,25 @@
+{
+  "name": "doctor_appointment_confirmation",
+  "description": "Medical appointment confirmation email",
+  "input": {
+    "gmail_id": "fixture-002",
+    "subject": "Appointment Confirmation - Dr. Smith",
+    "from_email": "appointments@healthclinic.com",
+    "from_name": "Springfield Health Clinic",
+    "date_sent": "2026-01-22T14:30:00Z",
+    "body_text": "Dear Patient,\n\nThis confirms your upcoming appointment:\n\nPatient: John Doe\nProvider: Dr. Emily Smith\nDate: Tuesday, January 28, 2026\nTime: 10:30 AM\nLocation: Springfield Health Clinic, 456 Medical Plaza, Suite 200\n\nPlease arrive 15 minutes early to complete any necessary paperwork.\n\nIf you need to reschedule, please call us at (555) 123-4567.\n\nThank you,\nSpringfield Health Clinic",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Appointment with Dr. Smith",
+        "start_datetime": "2026-01-28T10:30:00",
+        "location": "Springfield Health Clinic, 456 Medical Plaza, Suite 200",
+        "description": "Medical appointment with Dr. Emily Smith at Springfield Health Clinic",
+        "confidence": 0.98
+      }
+    ]
+  }
+}

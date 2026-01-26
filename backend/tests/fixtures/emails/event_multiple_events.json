@@ -1,0 +1,42 @@
+{
+  "name": "multiple_events",
+  "description": "Email containing multiple calendar events",
+  "input": {
+    "gmail_id": "fixture-006",
+    "subject": "Conference Schedule - TechSummit 2026",
+    "from_email": "info@techsummit.com",
+    "from_name": "TechSummit Organizers",
+    "date_sent": "2026-01-22T11:00:00Z",
+    "body_text": "Dear Attendee,\n\nThank you for registering for TechSummit 2026! Here's your personalized schedule:\n\nDay 1 - February 10, 2026:\n- Keynote Address\n  Time: 9:00 AM - 10:30 AM\n  Location: Main Hall, Convention Center\n  Speaker: Jane Tech, CEO of FutureCorp\n\n- Workshop: AI in Practice\n  Time: 2:00 PM - 4:00 PM\n  Location: Room 204, Convention Center\n  Instructor: Dr. Bob AI\n\nDay 2 - February 11, 2026:\n- Networking Breakfast\n  Time: 8:00 AM - 9:00 AM\n  Location: Atrium, Convention Center\n\nVenue: Downtown Convention Center, 789 Conference Blvd\n\nLooking forward to seeing you there!\n\nBest regards,\nTechSummit Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechSummit 2026 - Keynote Address",
+        "start_datetime": "2026-02-10T09:00:00",
+        "end_datetime": "2026-02-10T10:30:00",
+        "location": "Main Hall, Convention Center",
+        "description": "Keynote address by Jane Tech, CEO of FutureCorp at TechSummit 2026",
+        "confidence": 0.96
+      },
+      {
+        "title": "TechSummit 2026 - Workshop: AI in Practice",
+        "start_datetime": "2026-02-10T14:00:00",
+        "end_datetime": "2026-02-10T16:00:00",
+        "location": "Room 204, Convention Center",
+        "description": "Workshop on AI in Practice led by Dr. Bob AI",
+        "confidence": 0.95
+      },
+      {
+        "title": "TechSummit 2026 - Networking Breakfast",
+        "start_datetime": "2026-02-11T08:00:00",
+        "end_datetime": "2026-02-11T09:00:00",
+        "location": "Atrium, Convention Center",
+        "description": "Networking breakfast at TechSummit 2026",
+        "confidence": 0.94
+      }
+    ]
+  }
+}
