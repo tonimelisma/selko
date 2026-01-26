@@ -315,3 +315,252 @@ def fetch_email_with_attachments(
         if "Email not found" in error_str:
             raise
         raise GeminiError(f"Failed to fetch email data: {e}") from e
+
+
+def compare_events(
+    client: genai.Client,
+    new_event: dict[str, Any],
+    candidate_events: list[dict[str, Any]],
+    model: str = "gemini-3-flash-preview",
+) -> Optional[str]:
+    """Ask LLM if new_event matches any candidate events.
+    
+    Uses LLM to determine if a newly extracted event is the same as any 
+    existing events (for deduplication). This handles cases where the same
+    event is mentioned in multiple emails.
+    
+    Args:
+        client: Initialized Gemini client.
+        new_event: Dict with event details (title, start_datetime, location, etc).
+        candidate_events: List of existing event dicts from DB with same date.
+        model: Gemini model to use.
+        
+    Returns:
+        Event ID of matched event, or None if no match found.
+        
+    Raises:
+        GeminiError: If comparison fails.
+    """
+    if not candidate_events:
+        return None
+        
+    prompt = f"""You are comparing calendar events to detect duplicates.
+
+**New Event:**
+- Title: {new_event.get('title')}
+- Start: {new_event.get('start_datetime')}
+- End: {new_event.get('end_datetime')}
+- Location: {new_event.get('location', 'Not specified')}
+- Description: {new_event.get('description', '')}
+
+**Existing Events (same date):**
+"""
+    
+    for idx, candidate in enumerate(candidate_events):
+        prompt += f"""
+{idx + 1}. Event ID: {candidate.get('id')}
+   - Title: {candidate.get('title')}
+   - Start: {candidate.get('start_datetime')}
+   - End: {candidate.get('end_datetime')}
+   - Location: {candidate.get('location', 'Not specified')}
+   - Description: {candidate.get('description', '')}
+"""
+    
+    prompt += """
+**Question:** Is the new event the same as any of the existing events?
+
+Consider events the same if they refer to the same real-world event, even if:
+- Wording is slightly different
+- One has more details than the other
+- Time changed slightly (updates)
+
+Return the Event ID of the matching event, or "NO_MATCH" if it's a different event.
+
+Output format: Just the Event ID or "NO_MATCH", nothing else.
+"""
+    
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+        )
+        
+        result = response.text.strip()
+        logger.info(f"Event comparison result: {result}")
+        
+        if result == "NO_MATCH":
+            return None
+            
+        # Validate the returned ID exists in candidates
+        for candidate in candidate_events:
+            if str(candidate.get('id')) == result:
+                return result
+                
+        logger.warning(f"LLM returned unknown event ID: {result}")
+        return None
+        
+    except Exception as e:
+        raise GeminiError(f"Event comparison failed: {e}") from e
+
+
+def merge_event_data(
+    client: genai.Client,
+    existing_event: dict[str, Any],
+    new_extraction: dict[str, Any],
+    source_type: str,
+    model: str = "gemini-3-flash-preview",
+) -> dict[str, Any]:
+    """Ask LLM to merge new info into existing event.
+    
+    Uses LLM to intelligently merge event data from a new email into an
+    existing event. Follows rules like preferring specific times over all-day,
+    combining descriptions, etc.
+    
+    Args:
+        client: Initialized Gemini client.
+        existing_event: Current event data from DB.
+        new_extraction: New event data from email.
+        source_type: Type of update (update, cancellation, reminder, etc).
+        model: Gemini model to use.
+        
+    Returns:
+        Dict with merged event data.
+        
+    Raises:
+        GeminiError: If merge fails.
+    """
+    prompt = f"""You are merging calendar event data from multiple emails.
+
+**Existing Event:**
+- Title: {existing_event.get('title')}
+- Start: {existing_event.get('start_datetime')}
+- End: {existing_event.get('end_datetime')}
+- All Day: {existing_event.get('all_day', False)}
+- Location: {existing_event.get('location', 'Not specified')}
+- Description: {existing_event.get('description', '')}
+
+**New Information (source type: {source_type}):**
+- Title: {new_extraction.get('title')}
+- Start: {new_extraction.get('start_datetime')}
+- End: {new_extraction.get('end_datetime')}
+- All Day: {new_extraction.get('all_day', False)}
+- Location: {new_extraction.get('location', 'Not specified')}
+- Description: {new_extraction.get('description', '')}
+
+**Merge Rules:**
+1. If source_type is "cancellation", prefix title with "CANCELLED: " (if not already)
+2. Prefer specific time (e.g., 6-7pm) over all-day
+3. Combine descriptions, keeping all relevant info (append new info)
+4. Use most specific location (longer address usually better)
+5. Keep newer times if they differ (updates)
+
+Output JSON with merged event data:
+{{
+    "title": "...",
+    "start_datetime": "...",
+    "end_datetime": "...",
+    "all_day": true/false,
+    "location": "...",
+    "description": "..."
+}}
+"""
+    
+    try:
+        generate_config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+        )
+        
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=generate_config,
+        )
+        
+        import json
+        merged = json.loads(response.text)
+        logger.info(f"Event merge complete: {merged.get('title')}")
+        return merged
+        
+    except Exception as e:
+        raise GeminiError(f"Event merge failed: {e}") from e
+
+
+def generate_source_attribution(sources: list[dict[str, Any]]) -> str:
+    """Generate natural English source attribution for calendar event.
+    
+    Creates attribution like: "This event was automatically created from an email 
+    from WCSD on Jan 25th, 2026 at 1:30pm and updated based on emails from WC PTA 
+    on Jan 26th and 28th."
+    
+    Args:
+        sources: List of event_source dicts with email metadata.
+        
+    Returns:
+        Natural English attribution string.
+    """
+    if not sources:
+        return ""
+        
+    # Find the original invitation (first non-undone source)
+    original = None
+    updates = []
+    
+    for source in sorted(sources, key=lambda s: s.get('created_at', '')):
+        if source.get('is_undone'):
+            continue
+            
+        if source.get('source_type') == 'new_invitation' and not original:
+            original = source
+        elif source.get('source_type') in ['update', 'cancellation']:
+            updates.append(source)
+    
+    if not original:
+        return ""
+        
+    # Format original email
+    sender_name = original.get('email_sender_name') or original.get('email_sender', 'Unknown')
+    email_date = original.get('email_date')
+    
+    try:
+        from datetime import datetime
+        if isinstance(email_date, str):
+            dt = datetime.fromisoformat(email_date.replace('Z', '+00:00'))
+        else:
+            dt = email_date
+        date_str = dt.strftime("%B %d, %Y at %I:%M%p").replace(' 0', ' ').replace('AM', 'am').replace('PM', 'pm')
+    except:
+        date_str = str(email_date)
+    
+    attribution = f"This event was automatically created from an email from {sender_name} on {date_str}"
+    
+    # Add updates if any
+    if updates:
+        # Group updates by sender
+        update_senders = {}
+        for update in updates:
+            sender = update.get('email_sender_name') or update.get('email_sender', 'Unknown')
+            update_date = update.get('email_date')
+            try:
+                if isinstance(update_date, str):
+                    dt = datetime.fromisoformat(update_date.replace('Z', '+00:00'))
+                else:
+                    dt = update_date
+                date_str = dt.strftime("%B %d").replace(' 0', ' ')
+            except:
+                date_str = str(update_date)
+                
+            if sender not in update_senders:
+                update_senders[sender] = []
+            update_senders[sender].append(date_str)
+        
+        # Format updates
+        update_parts = []
+        for sender, dates in update_senders.items():
+            dates_str = " and ".join(dates)
+            update_parts.append(f"{sender} on {dates_str}")
+        
+        updates_str = " and ".join(update_parts)
+        attribution += f" and updated based on emails from {updates_str}"
+    
+    attribution += "."
+    return attribution

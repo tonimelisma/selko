@@ -183,3 +183,28 @@ def update_oauth_credentials(
         logger.debug(f"Updated {provider} OAuth tokens")
     except PostgrestAPIError as e:
         raise IntegrationError(f"Failed to update tokens: {e.message}") from e
+
+
+def get_credentials(
+    client: Client,
+    user_id: str,
+    provider: str,
+) -> Optional[Credentials]:
+    """Get OAuth credentials for a specific user and provider.
+    
+    This is a simplified version that doesn't require Config since it's called
+    from API context where we already have an authenticated client.
+    
+    Args:
+        client: Authenticated Supabase client.
+        user_id: User ID (not used, client auth handles this).
+        provider: Integration provider name.
+        
+    Returns:
+        Google Credentials object, or None if no integration found.
+    """
+    # Load config to get client_id/secret
+    from selko.config import load_config
+    config = load_config()
+    
+    return get_oauth_credentials(client, config, provider)

@@ -1,0 +1,92 @@
+"""Event-related Pydantic schemas for API responses."""
+
+from datetime import datetime
+from typing import Literal, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+
+class EventResponse(BaseModel):
+    """Event for list views."""
+
+    id: UUID
+    title: str
+    start_datetime: Optional[datetime] = None
+    end_datetime: Optional[datetime] = None
+    all_day: bool
+    location: Optional[str] = None
+    status: str  # pending_review, approved, syncing, synced, sync_failed, cancelled, rejected
+    source_count: int  # Number of emails contributing to this event
+    primary_sender: str  # Sender of the original event email (for grouping)
+    created_at: datetime
+    updated_at: datetime
+
+
+class EventSourceResponse(BaseModel):
+    """Per-email contribution info."""
+
+    id: UUID
+    email_id: UUID
+    email_subject: str
+    email_sender: str
+    email_sender_name: Optional[str] = None
+    email_date: datetime
+    source_type: str  # new_invitation, update, cancellation, reminder
+    source_quote: str  # Verbatim quote from email (collapsible in UI)
+    is_undone: bool
+    created_at: datetime
+
+
+class EventWithSources(EventResponse):
+    """Full event detail with all source emails."""
+
+    description: str
+    source_attribution: str  # Natural English: "Created from email from X on Y..."
+    google_calendar_event_id: Optional[str] = None
+    synced_at: Optional[datetime] = None
+    sources: list[EventSourceResponse] = Field(
+        default_factory=list
+    )  # All contributing emails
+
+
+class SenderRuleRequest(BaseModel):
+    """Create/update sender rule."""
+
+    sender_domain: Optional[str] = None
+    sender_email: Optional[str] = None
+    action: Literal["auto_approve", "ignore"]
+
+
+class SenderRuleResponse(BaseModel):
+    """Sender rule details."""
+
+    id: UUID
+    sender_domain: Optional[str] = None
+    sender_email: Optional[str] = None
+    action: str
+    created_at: datetime
+
+
+class CalendarListResponse(BaseModel):
+    """Available Google Calendar."""
+
+    id: str
+    name: str
+    is_primary: bool
+    is_selected: bool  # True if this is the target calendar
+
+
+class CalendarSettingsRequest(BaseModel):
+    """Update calendar settings."""
+
+    target_calendar_id: Optional[str] = None
+    default_invitees: Optional[str] = None  # Comma-separated emails
+
+
+class CalendarSettingsResponse(BaseModel):
+    """Current calendar settings."""
+
+    target_calendar_id: Optional[str] = None
+    target_calendar_name: Optional[str] = None
+    default_invitees: Optional[str] = None
