@@ -4,7 +4,35 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-26
 
+### Fix Gemini Integration Tests and CI Configuration
+
+**Commit:** 0caa407
+
+**Files modified:**
+- `backend/selko/services/gemini.py` - Fix Supabase error handling for nonexistent emails
+- `backend/selko/api/schemas/calendar.py` - Add GeminiEventsResponse schema (Gemini extracts events only, not metadata)
+- `backend/tests/test_gemini.py` - Update mocks to use GeminiEventsResponse
+- `backend/tests/integration/test_integration_gemini.py` - Fix assertion in database fetch test
+- `.github/workflows/test.yml` - Add GEMINI_API_KEY to CI environment for integration tests
+- `CLAUDE.md` - Clarify DOD requires ALL tests (unit + integration) to pass
+
+**Problem:** Integration tests were failing due to:
+1. Schema mismatch - Gemini was trying to generate email metadata (gmail_id, dates) that we already have
+2. Error handling didn't catch Supabase's PGRST116 "no rows" error properly
+3. CI workflow missing GEMINI_API_KEY configuration
+
+**Solution:**
+- Split schemas: `GeminiEventsResponse` (what Gemini generates) and `CalendarEventExtraction` (full result with metadata)
+- Gemini extracts only events, then we wrap with email metadata client-side
+- Added proper error handling for Supabase "0 rows" errors
+- Added GEMINI_API_KEY to GitHub Actions secrets and workflow configuration
+- Clarified DOD in CLAUDE.md: ALL tests must pass, including integration tests
+
+**Result:** All 166 tests now pass (55 unit + 111 integration), including 10 real Gemini API integration tests.
+
 ### Add Gemini 3 Flash Calendar Event Extraction
+
+**Commit:** 959d41e
 
 **Files created:**
 - `backend/selko/services/gemini.py` - Gemini client and calendar event extraction service
