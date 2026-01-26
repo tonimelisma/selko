@@ -261,3 +261,19 @@ def sample_gmail_api_message_with_attachment():
 def sample_attachment_data():
     """Sample attachment bytes for testing."""
     return b"This is sample attachment content for testing purposes."
+
+
+@pytest.fixture
+def gemini_client(config):
+    """Get Gemini client for real API calls.
+    
+    Requires GEMINI_API_KEY in environment.
+    """
+    from selko.services.gemini import get_gemini_client
+    
+    if not config.gemini_api_key:
+        pytest.fail(
+            "GEMINI_API_KEY not configured. "
+            "Get your API key from https://aistudio.google.com/apikey"
+        )
+    return get_gemini_client(config)

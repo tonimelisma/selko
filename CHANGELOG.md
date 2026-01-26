@@ -4,6 +4,58 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-26
 
+### Implement Event Processing Architecture with Deduplication and CLI
+
+**Files modified:**
+- `supabase/migrations/20260126000001_add_email_processing_status.sql` - Add processing_status tracking to emails
+- `supabase/migrations/20260126000002_create_events.sql` - Create events table with RLS
+- `supabase/migrations/20260126000003_create_event_sources.sql` - Create event_sources junction table with undo support
+- `supabase/migrations/20260126000004_create_sender_rules.sql` - Create sender_rules for auto-approve/ignore
+- `supabase/migrations/20260126000005_create_user_calendar_settings.sql` - Create calendar settings table
+- `supabase/migrations/20260126000006_add_events_triggers.sql` - Add updated_at triggers for new tables
+- `backend/selko/services/gemini.py` - Add compare_events(), merge_event_data(), generate_source_attribution()
+- `backend/selko/services/events.py` - NEW: Event processing pipeline with deduplication
+- `backend/selko/services/calendars.py` - NEW: Google Calendar integration service
+- `backend/selko/api/schemas/calendar.py` - Add CalendarEventExtracted (no confidence scores)
+- `backend/selko/api/schemas/events.py` - NEW: Event, source, and settings response schemas
+- `backend/selko/api/routes/events.py` - NEW: Events API endpoints (new/approved/updates views)
+- `backend/selko/api/routes/calendars.py` - NEW: Calendars API endpoints
+- `backend/selko/api/routes/sender_rules.py` - NEW: Sender rules API endpoints
+- `backend/selko/api/routes/__init__.py` - Register new routers
+- `backend/selko/api/app.py` - Include new routers and error handlers
+- `backend/selko/api/deps.py` - Add get_gemini_client dependency
+- `backend/selko/services/integrations.py` - Add get_credentials() wrapper
+- `cli/cli_events.py` - NEW: CLI tool for event management via REST API
+- `cli/cli_calendars.py` - NEW: CLI tool for calendar management
+- `backend/tests/integration/test_integration_events.py` - NEW: Integration tests for event processing
+- `backend/tests/integration/conftest.py` - Add gemini_client fixture
+
+**Architecture:**
+Implemented comprehensive event processing system with:
+1. **Three views**: New (pending approval), Approved (synced), Updates (change log)
+2. **Idempotent deduplication**: Date-based filtering + LLM comparison to merge events from multiple emails
+3. **Auto-applied updates**: Updates/cancellations automatically merged without approval
+4. **Granular undo**: Rollback individual email contributions using event snapshots
+5. **Sender rules**: Auto-approve or ignore senders (per-email, not per-event)
+6. **Calendar integration**: List calendars, set target, add default invitees
+7. **Source attribution**: Natural English descriptions in calendar events
+8. **CLI-first interface**: CLI calls REST APIs (server must be running)
+
+**Database schema:**
+- `emails.processing_status` - Track email processing state (pending/processing/processed/failed/skipped)
+- `events` - Deduplicated events with status, source_attribution, google_calendar_event_id
+- `event_sources` - Junction table tracking each email's contribution with snapshots for undo
+- `sender_rules` - Automation rules (auto_approve/ignore by sender domain or email)
+- `user_calendar_settings` - Target calendar and default invitees
+
+**Key features:**
+- **No confidence scores**: Removed because LLMs hallucinate them
+- **Cancelled events**: Stay in calendar with "CANCELLED: " prefix
+- **Multi-sender events**: Same event can have contributions from multiple senders (PTA, Principal, Teacher)
+- **Verbatim quotes**: LLM extracts source quotes from emails for audit trail
+
+**Tests:** 170 tests pass (55 unit + 115 integration including 9 new event tests).
+
 ### Update PRD_ARCH.md with Implementation Status Tracking
 
 **Commit:** ec58a28

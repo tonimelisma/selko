@@ -9,6 +9,7 @@ from fastapi import Depends, Header, HTTPException, status
 from supabase import Client, create_client
 
 from selko.config import Config, load_config
+from selko.services.gemini import get_gemini_client as create_gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -118,3 +119,15 @@ def get_authenticated_client(
     client.auth.set_session(user.token, user.token)  # access_token, refresh_token
 
     return client
+
+
+def get_gemini_client(config: Config = Depends(get_config)):
+    """Create Gemini client for LLM operations.
+    
+    Args:
+        config: Application configuration with Gemini API key.
+        
+    Returns:
+        Initialized Gemini client.
+    """
+    return create_gemini_client(config)

@@ -6,9 +6,18 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from selko.api.routes import emails_router, health_router, integrations_router
+from selko.api.routes import (
+    calendars_router,
+    emails_router,
+    events_router,
+    health_router,
+    integrations_router,
+    sender_rules_router,
+)
 from selko.services.auth import AuthenticationError
+from selko.services.calendars import CalendarsError
 from selko.services.emails import EmailError
+from selko.services.events import EventsError
 from selko.services.integrations import IntegrationError
 
 logger = logging.getLogger(__name__)
@@ -46,6 +55,9 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(emails_router)
     app.include_router(integrations_router)
+    app.include_router(events_router)
+    app.include_router(calendars_router)
+    app.include_router(sender_rules_router)
 
     # Exception handlers for service errors
     @app.exception_handler(AuthenticationError)
@@ -70,6 +82,22 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={"error": "integration_error", "detail": str(exc)},
+        )
+
+    @app.exception_handler(EventsError)
+    async def events_error_handler(request: Request, exc: EventsError):
+        logger.error(f"Events service error: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "events_error", "detail": str(exc)},
+        )
+
+    @app.exception_handler(CalendarsError)
+    async def calendars_error_handler(request: Request, exc: CalendarsError):
+        logger.error(f"Calendars service error: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "calendars_error", "detail": str(exc)},
         )
 
     return app

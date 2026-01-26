@@ -27,6 +27,29 @@ class CalendarEvent(BaseModel):
     )
 
 
+class CalendarEventExtracted(BaseModel):
+    """Event extracted from email with source quote for audit trail.
+    
+    This is the new schema without confidence scores (LLMs hallucinate them).
+    """
+
+    title: str = Field(description="The event title or name")
+    start_datetime: Optional[datetime] = Field(
+        None, description="The event start date and time (ISO 8601)"
+    )
+    end_datetime: Optional[datetime] = Field(
+        None, description="The event end date and time (ISO 8601)"
+    )
+    all_day: bool = Field(False, description="Whether this is an all-day event")
+    location: Optional[str] = Field(None, description="The event location or venue")
+    description: str = Field(
+        description="Detailed description of the event with all relevant information"
+    )
+    source_quote: str = Field(
+        description="Verbatim quote from the email that describes this event (1-3 sentences)"
+    )
+
+
 class GeminiEventsResponse(BaseModel):
     """Gemini's response containing only extracted events (no metadata)."""
 
