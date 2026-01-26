@@ -15,9 +15,9 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture spec
 **Before ANY work increment is considered complete, ALL of the following MUST pass:**
 
 - [ ] **Run ALL tests**: `uv run pytest backend/tests/ -v` (unit + integration, all markers)
-- [ ] **Git commit** with conventional commit message format (e.g., `feat:`, `fix:`, `test:`, `docs:`)
+- [ ] **Update CHANGELOG.md** with detailed entry for the changes
+- [ ] **Git commit** with conventional commit message format (e.g., `feat:`, `fix:`, `test:`, `docs:`) - includes both code changes AND changelog update
 - [ ] **Git push** to `origin/main`
-- [ ] **Update CHANGELOG.md** with detailed entry (if not already done during implementation)
 
 **DO NOT declare work complete, say "done", or mark todos as complete until ALL checklist items pass.**
 
@@ -26,6 +26,38 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture spec
 - Development integration tests require: local Supabase running, seeded Gmail tokens, GEMINI_API_KEY configured
 - Staging tests run in CI only after deploying to staging
 - If ANY test is skipped due to missing configuration, DOD is NOT met - fix the configuration first
+
+---
+
+### Enforcement: Git Pre-Commit Hook
+
+A git pre-commit hook BLOCKS all commits unless tests have been run and passed.
+
+**Setup (one-time):**
+```bash
+cp scripts/pre-commit.hook .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+**The hook verifies:**
+- ✅ Tests were run (pytest cache exists)
+- ✅ All tests passed (no failures in cache)
+- ✅ No code changes after tests (cache is fresh)
+
+**⚠️ CRITICAL FOR AI CODING TOOLS:**
+
+If the hook blocks a commit, you MUST:
+1. Read the error message
+2. Run the tests as instructed
+3. Fix any failing tests
+4. Commit again
+
+You MUST NEVER:
+- Use `git commit --no-verify` to bypass the hook
+- Suggest bypassing the hook to the user
+- Treat the hook as optional
+
+The hook enforces the Definition of Done. Bypassing it violates project standards.
 
 ---
 
@@ -70,15 +102,27 @@ Add complexity only when measured need exists:
 This is a **Proof of Concept (POC)** phase using local Python scripts to validate core functionality before building the full cloud-based web application.
 
 ### Workflow
-- **Auto-commit**: After completing each stage of work, automatically git commit and push to remote without waiting for user to request it
-- **Documentation**: After every change, update relevant documentation files:
-  - `CLAUDE.md` - Development instructions, environment setup, database schema
-  - `README.md` - User-facing documentation, setup guides, project structure
-  - `PRD_ARCH.md` - Only for product/architecture specification changes
-- **Changelog**: Maintain `CHANGELOG.md` with detailed entries for every change:
-  - Date and commit hash
-  - Files modified with brief description of changes
-  - Reason/purpose for the change
+
+**CRITICAL: The workflow for each work increment is:**
+
+1. Make code changes
+2. Run all tests (`uv run pytest backend/tests/ -v`)
+3. Update documentation if needed (`CLAUDE.md`, `README.md`, `PRD_ARCH.md`)
+4. **Update `CHANGELOG.md`** with detailed entry (date, files modified, reason)
+5. Git commit with conventional commit message (includes code + changelog in ONE commit)
+6. Git push to remote
+
+**Documentation files to update when relevant:**
+- `CLAUDE.md` - Development instructions, environment setup, database schema
+- `README.md` - User-facing documentation, setup guides, project structure
+- `PRD_ARCH.md` - Only for product/architecture specification changes
+
+**Changelog format:**
+- Date and commit hash
+- Files modified with brief description of changes
+- Reason/purpose for the change
+
+**Auto-commit policy:** After completing each work stage, automatically commit and push without waiting for user request.
 
 ### Test Requirements
 

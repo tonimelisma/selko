@@ -4,6 +4,36 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-27
 
+### Fix Workflow Documentation to Prevent Dual Commits
+
+**Files modified:**
+- `CLAUDE.md` - Reordered Definition of Done checklist and rewrote Workflow section
+
+**Problem:**
+The documentation had changelog updates listed AFTER git commit/push in the Definition of Done checklist, and the Workflow section didn't clearly specify when to update the changelog relative to committing. This caused coding agents to:
+1. Make code changes → commit → push
+2. Update CHANGELOG.md → commit again → push again
+
+This resulted in two separate commits when there should be only one.
+
+**Solution:**
+- Reordered Definition of Done: Tests → Update CHANGELOG.md → Git commit (includes both) → Push
+- Rewrote Workflow section as numbered steps making it crystal clear: changelog updates happen BEFORE committing
+- Added explicit note that commit includes "code + changelog in ONE commit"
+
+**Result:**
+All work increments now follow the correct workflow:
+1. Make changes
+2. Run tests
+3. Update changelog
+4. Commit everything together
+5. Push once
+
+**Reason:**
+Proper git hygiene requires related changes to be in a single atomic commit. The changelog documents the commit, so it must be part of that same commit.
+
+## 2026-01-27
+
 ### Add Mocked LLM Testing to Minimize API Costs
 
 **Files modified:**
