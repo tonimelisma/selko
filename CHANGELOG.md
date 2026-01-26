@@ -2,6 +2,47 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27
+
+### Replace Scheduled Polling with Asyncio Worker Pool
+
+**Commit:** edbb0a5
+
+**Files modified:**
+- `backend/selko/workers/pool.py` - NEW: WorkerPool class for managing long-running asyncio tasks
+- `backend/selko/workers/dispatcher.py` - DELETED: Obsolete scheduled polling approach
+- `backend/selko/workers/__init__.py` - Export WorkerPool instead of dispatcher
+- `backend/selko/api/app.py` - Start worker pool on startup instead of scheduled dispatcher
+- `backend/selko/config.py` - Add worker pool configuration (WORKER_POOL_SIZE, WORKER_IDLE_SLEEP_SECONDS, WORKER_ERROR_BACKOFF_SECONDS)
+- `backend/tests/integration/test_integration_jobs.py` - Add cleanup fixture and fix timezone handling
+- `CLAUDE.md` - Update job queue documentation with worker pool architecture
+- `PRD_ARCH.md` - Update background workers section
+
+**Architecture change:**
+Refactored job queue from scheduled polling (every 10 seconds) to continuous worker pool:
+
+**Previous approach:**
+- APScheduler runs dispatcher every 10 seconds
+- Each cycle processes up to 5 jobs sequentially
+- Latency: 0-10 seconds (average 5 seconds)
+- Throughput: 30 jobs/minute maximum
+
+**New approach:**
+- N long-running asyncio tasks (default: 3 workers)
+- Workers continuously poll queue and process jobs concurrently
+- Latency: ~1 second (immediate processing)
+- Throughput: Scales with number of workers and job processing time
+- Graceful shutdown ensures jobs complete before stopping
+
+**Benefits:**
+- 5-10x lower latency for job processing
+- Higher throughput with concurrent workers
+- Simpler architecture (easier to reason about)
+- Configurable worker pool size for performance tuning
+
+**Reason:**
+The scheduled polling approach introduced artificial latency where jobs waited up to 10 seconds before processing started. The asyncio worker pool provides immediate job processing while maintaining the "Async Monolith" pattern (no separate processes or Redis required).
+
 ## 2026-01-26
 
 ### Implement Event Processing Architecture with Deduplication and CLI
