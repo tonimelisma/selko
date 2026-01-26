@@ -12,27 +12,32 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 ### **3\. Phased Architecture & Roadmap**
 
-#### **3.0. Phase 0: Proof of Concept (Current - COMPLETE)**
+#### **3.0. Phase 0: Proof of Concept (Current - PARTIAL)**
 
 * **Platform:** Local Python CLI tools
-* **Purpose:** Validate core data ingestion before building web application
-* **Status:** COMPLETE (2026-01-23)
+* **Purpose:** Validate core data ingestion and AI extraction before building web application
+* **Status:** PARTIAL (updated 2026-01-26)
 
-**Implemented Features:**
-| Feature | Status | Implementation |
-| :---- | :---- | :---- |
-| Gmail OAuth authentication | DONE | `cli/cli_auth_gmail.py` |
-| Email fetching and parsing | DONE | `backend/selko/services/emails.py` |
-| Attachment download | DONE | `backend/selko/services/attachments.py` |
-| Supabase Storage upload | DONE | With SHA-256 deduplication |
-| RLS-enforced multi-tenancy | DONE | All tables have RLS policies |
-| Unit + Integration tests | DONE | 71+ tests across all services |
+**✅ Implemented Features:**
+| Feature | Status | Implementation | Tests |
+| :---- | :---- | :---- | :---- |
+| Gmail OAuth authentication | ✅ DONE | `cli/cli_auth_gmail.py` | Integration tests |
+| Email fetching and parsing | ✅ DONE | `backend/selko/services/emails.py` | Unit + Integration |
+| Attachment download | ✅ DONE | `backend/selko/services/attachments.py` | Unit + Integration |
+| Supabase Storage upload | ✅ DONE | With SHA-256 deduplication | Integration tests |
+| RLS-enforced multi-tenancy | ✅ DONE | All tables have RLS policies | Security tests |
+| **Gemini LLM integration** | ✅ DONE | `backend/selko/services/gemini.py` | 55 unit + 10 integration |
+| **Calendar event extraction** | ✅ DONE | `cli/cli_extract_events.py` | Real API evals |
+| **Multimodal AI (text + images)** | ✅ DONE | Email body + attachments | Integration tests |
+| Unit + Integration tests | ✅ DONE | **166 total tests** (55 unit + 111 integration) | All passing |
 
-**Not Yet Implemented (MVP scope):**
-- LLM integration (Gemini)
-- Calendar sync
-- Review interface
-- Undo/Redo
+**❌ Not Yet Implemented (MVP scope):**
+- ❌ Calendar sync (write to Google Calendar API)
+- ❌ Review interface (web UI)
+- ❌ Undo/Redo functionality
+- ❌ Automation rules
+- ❌ Google Photos sync
+- ❌ Web upload interface
 
 #### **3.1. Phase 1: Web-First Cloud Processing (MVP)**
 
@@ -53,70 +58,78 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 *The system must support the following ingestion methods for Phase 1\.*
 
-| ID | Feature | Description | Priority |
-| :---- | :---- | :---- | :---- |
-| **FR-A.1** | **Cloud Photo Library** | Server detects new photos added to connected providers. Primary method for "mobile" photo ingestion in Phase 1\. | **P0** |
-| **FR-A.2** | **Email Inbox** | Server detects new emails arriving in connected inboxes. Must extract attachments. | **P0** |
-| **FR-A.3** | **Web Upload (Manual)** | Drag-and-drop zone on Web Dashboard for direct file ingestion (PDFs/Images). | **P0** |
+| ID | Feature | Description | Priority | Status |
+| :---- | :---- | :---- | :---- | :---- |
+| **FR-A.1** | **Cloud Photo Library** | Server detects new photos added to connected providers. Primary method for "mobile" photo ingestion in Phase 1\. | **P0** | ❌ Not Started |
+| **FR-A.2** | **Email Inbox** | Server detects new emails arriving in connected inboxes. Must extract attachments. | **P0** | ✅ **DONE** |
+| **FR-A.3** | **Web Upload (Manual)** | Drag-and-drop zone on Web Dashboard for direct file ingestion (PDFs/Images). | **P0** | ❌ Not Started |
 
 #### **Domain B: Intelligence Engine (AI & Logic)**
 
 *Core processing capabilities.*
 
-| ID | Feature | Description | Priority |
-| :---- | :---- | :---- | :---- |
-| **FR-B.1** | **OCR & Text Extraction** | Extract text from physical images (handwriting recognition) and parse HTML/Text emails. | **P0** |
-| **FR-B.2** | **Entity Extraction** | NLP to identify Entities: *Event Date*, *Time*, *Location*, *Vendor*, *Amount*. | **P0** |
-| **FR-B.3** | **Classification** | Distinguish document types: *Receipt* vs. *Invitation* vs. *Kid's Drawing* vs. *Trash*. | **P0** |
-| **FR-B.4** | **Smart Idempotency** | Detect duplicates. **Update Logic:** If an email is an update (e.g., "Time Change"), modify the existing event rather than creating a duplicate. | **P0** |
-| **FR-B.5** | **Automation Rules** | User-defined logic (e.g., "Always accept from school@district.edu") to bypass review. | **P0** |
+| ID | Feature | Description | Priority | Status |
+| :---- | :---- | :---- | :---- | :---- |
+| **FR-B.1** | **OCR & Text Extraction** | Extract text from physical images (handwriting recognition) and parse HTML/Text emails. | **P0** | ✅ **DONE** (Gemini multimodal) |
+| **FR-B.2** | **Entity Extraction** | NLP to identify Entities: *Event Date*, *Time*, *Location*, *Vendor*, *Amount*. | **P0** | ✅ **DONE** (Calendar events) |
+| **FR-B.3** | **Classification** | Distinguish document types: *Receipt* vs. *Invitation* vs. *Kid's Drawing* vs. *Trash*. | **P0** | 🟡 Partial (Events only) |
+| **FR-B.4** | **Smart Idempotency** | Detect duplicates. **Update Logic:** If an email is an update (e.g., "Time Change"), modify the existing event rather than creating a duplicate. | **P0** | ❌ Not Started |
+| **FR-B.5** | **Automation Rules** | User-defined logic (e.g., "Always accept from school@district.edu") to bypass review. | **P0** | ❌ Not Started |
 
 #### **Domain C: User Experience & Control**
 
 *Interaction model.*
 
-| ID | Feature | Description | Priority |
-| :---- | :---- | :---- | :---- |
-| **FR-C.1** | **Review Interface** | Side-by-side view (Source Asset vs. Extracted Data) allowing users to edit, approve, or reject. | **P0** |
-| **FR-C.2** | **Undo/Redo** | **Compensating Transactions:** Ability to revert any action (Create/Update/Delete) and restore original state. | **P0** |
-| **FR-C.3** | **Authentication** | Passwordless or Social Login. Granular scope management for integrations. | **P0** |
+| ID | Feature | Description | Priority | Status |
+| :---- | :---- | :---- | :---- | :---- |
+| **FR-C.1** | **Review Interface** | Side-by-side view (Source Asset vs. Extracted Data) allowing users to edit, approve, or reject. | **P0** | ❌ Not Started |
+| **FR-C.2** | **Undo/Redo** | **Compensating Transactions:** Ability to revert any action (Create/Update/Delete) and restore original state. | **P0** | ❌ Not Started |
+| **FR-C.3** | **Authentication** | Passwordless or Social Login. Granular scope management for integrations. | **P0** | ✅ **DONE** (Supabase Auth) |
 
 #### **Domain D: System Outputs**
 
 *External actions.*
 
-| ID | Feature | Description | Priority |
-| :---- | :---- | :---- | :---- |
-| **FR-D.1** | **Calendar Sync** | Create/Update events in external calendars. | **P0** |
-| **FR-D.2** | **File Storage** | Upload categorized documents to external cloud storage. | **P0** |
-| **FR-D.3** | **Task Management** | Create tasks in external task managers. | **P0** |
+| ID | Feature | Description | Priority | Status |
+| :---- | :---- | :---- | :---- | :---- |
+| **FR-D.1** | **Calendar Sync** | Create/Update events in external calendars. | **P0** | ❌ Not Started |
+| **FR-D.2** | **File Storage** | Upload categorized documents to external cloud storage. | **P0** | ❌ Not Started |
+| **FR-D.3** | **Task Management** | Create tasks in external task managers. | **P0** | ❌ Not Started |
 
 ### **5\. User Journeys & Example Journeys**
 
-#### **Journey 1: The "Event Invitation" (Email \-\> Calendar)**
+#### **Journey 1: The "Event Invitation" (Email \-\> Calendar)** - 🟡 PARTIAL
 
 *Goal: User receives a PDF invite and wants it on their calendar without typing.*
 
-| Step | User Action | System Action | Related FR |
-| :---- | :---- | :---- | :---- |
-| 1 | User receives email with "Invite.pdf". | System detects email, ingests PDF, performs OCR. | FR-A.2, FR-B.1 |
-| 2 | N/A | **AI Analysis:** Identifies Date (Oct 5), Time (2 PM), Title (Party). Classifies as "Invitation". | FR-B.2, FR-B.3 |
-| 3 | User logs into Dashboard. | **Notification:** Badge on "Review" tab. | FR-C.1 |
-| 4 | User opens Review Tab. | Displays PDF side-by-side with proposed Event details. | FR-C.1 |
-| 5 | User corrects time (OCR read 5 PM as 6 PM) and clicks "Approve". | System updates payload, writes to Calendar. | FR-C.1, FR-D.1 |
-| 6 | N/A | System logs "Event Created (User Modified)" in Activity Log. | FR-C.2 |
+| Step | User Action | System Action | Related FR | Status |
+| :---- | :---- | :---- | :---- | :---- |
+| 1 | User receives email with "Invite.pdf". | System detects email, ingests PDF, performs OCR. | FR-A.2, FR-B.1 | ✅ DONE |
+| 2 | N/A | **AI Analysis:** Identifies Date (Oct 5), Time (2 PM), Title (Party). Classifies as "Invitation". | FR-B.2, FR-B.3 | ✅ DONE |
+| 3 | User logs into Dashboard. | **Notification:** Badge on "Review" tab. | FR-C.1 | ❌ Not Started |
+| 4 | User opens Review Tab. | Displays PDF side-by-side with proposed Event details. | FR-C.1 | ❌ Not Started |
+| 5 | User corrects time (OCR read 5 PM as 6 PM) and clicks "Approve". | System updates payload, writes to Calendar. | FR-C.1, FR-D.1 | ❌ Not Started |
+| 6 | N/A | System logs "Event Created (User Modified)" in Activity Log. | FR-C.2 | ❌ Not Started |
 
-#### **Journey 4: The "Kid's Drawing" (Photo \-\> Cloud Storage)**
+**Current Implementation:**
+- ✅ CLI tool can extract events: `uv run python -m cli.cli_extract_events --email-id <uuid>`
+- ✅ JSON output with structured CalendarEvent data
+- ❌ No web UI yet
+- ❌ No calendar write capability yet
+
+#### **Journey 4: The "Kid's Drawing" (Photo \-\> Cloud Storage)** - ❌ NOT STARTED
 
 *Goal: User snaps a memory, and system automatically files it to the correct folder.*
 
-| Step | User Action | System Action | Related FR |
-| :---- | :---- | :---- | :---- |
-| 1 | User snaps a photo of child's drawing. | Phone syncs photo to Cloud Library. | FR-A.1 |
-| 2 | N/A | Server detects new asset in Cloud Library. | FR-A.1 |
-| 3 | N/A | **AI Analysis:** Visual recognition detects content is "Hand-drawn art" or "Child's Drawing". | FR-B.3 |
-| 4 | N/A | **Rule Check:** System finds user rule: Type: Artwork \-\> Dest: /Family/Kids Art. | FR-B.5 |
-| 5 | N/A | **Execution:** System copies image to specified folder automatically (bypassing review). | FR-D.2 |
+| Step | User Action | System Action | Related FR | Status |
+| :---- | :---- | :---- | :---- | :---- |
+| 1 | User snaps a photo of child's drawing. | Phone syncs photo to Cloud Library. | FR-A.1 | ❌ Not Started |
+| 2 | N/A | Server detects new asset in Cloud Library. | FR-A.1 | ❌ Not Started |
+| 3 | N/A | **AI Analysis:** Visual recognition detects content is "Hand-drawn art" or "Child's Drawing". | FR-B.3 | ❌ Not Started |
+| 4 | N/A | **Rule Check:** System finds user rule: Type: Artwork \-\> Dest: /Family/Kids Art. | FR-B.5 | ❌ Not Started |
+| 5 | N/A | **Execution:** System copies image to specified folder automatically (bypassing review). | FR-D.2 | ❌ Not Started |
+
+**Rationale:** This journey is Phase 2 (after Email→Calendar works end-to-end).
 
 ## **Part 2: Technical Architecture Specification**
 
@@ -220,6 +233,51 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 ## **Part 3: Implementation Architecture**
 
+### **0. Current Implementation Status**
+
+**Last Updated:** 2026-01-26
+
+**✅ Completed Components:**
+
+| Component | Status | Files | Tests |
+|-----------|--------|-------|-------|
+| **Data Layer** | ✅ Complete | `supabase/migrations/` | 166 passing |
+| **Gmail Integration** | ✅ Complete | `selko/services/gmail.py` | 5 integration tests |
+| **Email Pipeline** | ✅ Complete | `selko/services/emails.py` | 9 integration tests |
+| **Attachment Storage** | ✅ Complete | `selko/services/attachments.py` | 8 integration tests |
+| **Gemini LLM Integration** | ✅ Complete | `selko/services/gemini.py` | 55 unit + 10 integration |
+| **Calendar Event Extraction** | ✅ Complete | `selko/api/schemas/calendar.py` | Real API evals |
+| **CLI Tools** | ✅ Complete | `cli/*.py` (7 tools) | 10 CLI integration tests |
+| **Authentication** | ✅ Complete | `selko/services/auth.py` | 6 auth tests |
+| **RLS Security** | ✅ Complete | All tables | 8 security tests |
+
+**❌ Not Yet Implemented:**
+
+| Component | Priority | Blocker | Next Steps |
+|-----------|----------|---------|------------|
+| **Google Calendar API** | P0 | None | Write events to calendar |
+| **Review Web UI** | P0 | Calendar API | FastAPI endpoints + frontend |
+| **Undo/Redo** | P0 | Calendar API | Compensating transactions |
+| **Automation Rules** | P0 | Review UI | Database schema + logic |
+| **Google Photos** | P1 | End-to-end Email→Calendar | Similar to Gmail integration |
+| **Web Upload** | P1 | Review UI | Frontend drag-and-drop |
+
+**Current Capability:**
+- ✅ Fetch emails from Gmail (OAuth authenticated)
+- ✅ Download and store attachments (SHA-256 deduplication)
+- ✅ Extract calendar events from emails using Gemini LLM
+- ✅ Process multimodal content (email body + image attachments)
+- ❌ Cannot yet write events to Google Calendar
+- ❌ No web UI for reviewing/approving events
+
+**Next Milestone: End-to-End Email → Calendar**
+1. Implement Google Calendar API integration
+2. Build review interface (web UI)
+3. Add undo/redo functionality
+4. Complete first user journey
+
+---
+
 ### **1. System Overview**
 
 Selko is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems.
@@ -297,16 +355,16 @@ Selko is an AI-powered assistant that automates personal organization by analyzi
   - RLS-enforced multi-tenancy
 
 #### **Phase 1: MVP (Web-First Cloud Processing)**
-- **Status:** PLANNED
+- **Status:** 🟡 IN PROGRESS (started 2026-01-25)
 - **Goal:** Complete end-to-end journey: Email → LLM → Calendar
 - **Components:** FastAPI, Gemini LLM, Google Calendar API
-- **Order of implementation:**
-  1. LLM integration (Gemini via Vertex AI)
-  2. Email → LLM analysis pipeline
-  3. Calendar sync (write events)
-  4. Review interface (web dashboard)
-  5. Undo/Redo functionality
-  6. Automation rules
+- **Implementation progress:**
+  1. ✅ **LLM integration (Gemini 3 Flash)** - DONE (2026-01-26)
+  2. ✅ **Email → LLM analysis pipeline** - DONE (2026-01-26)
+  3. ❌ Calendar sync (write events) - NOT STARTED
+  4. ❌ Review interface (web dashboard) - NOT STARTED
+  5. ❌ Undo/Redo functionality - NOT STARTED
+  6. ❌ Automation rules - NOT STARTED
 
 #### **Phase 2: Extended Inputs**
 - **Status:** FUTURE
