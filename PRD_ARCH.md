@@ -457,10 +457,12 @@ graph TD
     *   **Implementation:** Initialized in `app.on_event("startup")`. Runs inside the same event loop as the API.
     *   **Rationale:** Eliminates the need for external cron services (GitHub Actions, Cloud Scheduler) or separate "Clock" processes.
 
-3.  **Background Workers (FastAPI BackgroundTasks):**
-    *   Handles "fire-and-forget" tasks triggered by API calls or the Scheduler (e.g., "Process this email content").
-    *   **Tech:** `fastapi.BackgroundTasks`.
-    *   **Rationale:** Removes the need for Redis, Celery, or a separate worker process. Tasks run in-memory.
+3.  **Background Workers (PostgreSQL Job Queue):**
+    *   Handles async tasks triggered by API calls or the Scheduler (e.g., "Process this email content").
+    *   **Tech:** PostgreSQL-based job queue + asyncio worker pool.
+    *   **Implementation:** `jobs` table with atomic claiming via `FOR UPDATE SKIP LOCKED`. Worker pool with N long-running asyncio tasks continuously process jobs with ~1 second latency.
+    *   **Rationale:** Removes the need for Redis, Celery, or a separate worker process. Provides persistent queue with retry logic, priority ordering, and immediate job processing.
+    *   **Status:** ✅ IMPLEMENTED (2026-01-27) - Full job queue with asyncio worker pool and email_fetch, email_process, and calendar_sync workers.
 
 ### **5. Technology Stack Decisions**
 

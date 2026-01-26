@@ -76,3 +76,32 @@ def get_current_user_id(client: Client) -> str:
     if not session or not session.user:
         raise AuthenticationError("No user signed in")
     return session.user.id
+
+
+def get_service_client(config: Config) -> Client:
+    """Get a Supabase client with service role privileges.
+
+    Used by background workers to bypass RLS and perform admin operations.
+
+    Args:
+        config: Configuration object with Supabase URL and service role key.
+
+    Returns:
+        Supabase client with service role access (bypasses RLS).
+
+    Raises:
+        AuthenticationError: If service role key not configured.
+    """
+    if not config.supabase_service_role_key:
+        raise AuthenticationError(
+            "SUPABASE_SERVICE_ROLE_KEY must be configured for background workers"
+        )
+
+    # Service role client bypasses RLS and doesn't need session management
+    client = create_client(
+        config.supabase_url,
+        config.supabase_service_role_key,
+    )
+
+    logger.debug("Created service role client (bypasses RLS)")
+    return client
