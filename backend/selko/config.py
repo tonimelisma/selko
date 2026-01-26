@@ -52,6 +52,11 @@ class Config:
     storage_bucket_attachments: str = "attachments"
     max_attachment_size: int = 50 * 1024 * 1024  # 50 MB
 
+    # Worker pool configuration
+    worker_pool_size: int = 3
+    worker_idle_sleep_seconds: float = 1.0
+    worker_error_backoff_seconds: float = 5.0
+
     # Paths (derived, not from env)
     credentials_file: Path = CLI_DIR / "credentials.json"
 
@@ -143,6 +148,9 @@ def load_config(env_override: Optional[str] = None) -> Config:
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
         test_user_email=os.getenv("TEST_USER_EMAIL"),
         test_user_password=os.getenv("TEST_USER_PASSWORD"),
+        worker_pool_size=int(os.getenv("WORKER_POOL_SIZE", "3")),
+        worker_idle_sleep_seconds=float(os.getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
+        worker_error_backoff_seconds=float(os.getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
     )
 
 

@@ -6,7 +6,7 @@ Handles email parsing and database storage.
 import logging
 from datetime import datetime
 from email.utils import getaddresses, parseaddr
-from typing import Any
+from typing import Any, Optional
 
 from supabase import Client, PostgrestAPIError
 
@@ -92,15 +92,17 @@ def _log_email_subject(parsed: dict[str, Any], action: str) -> None:
 def save_emails(
     client: Client,
     emails: list[dict[str, Any]],
+    user_id: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Save emails to Supabase database using upsert.
 
-    The user_id is automatically determined from the authenticated session.
-    Uses single upsert operation for efficiency.
+    The user_id can be provided explicitly (for service role operations)
+    or determined from the authenticated session.
 
     Args:
         client: Authenticated Supabase client.
         emails: List of parsed email dicts (from parse_gmail_message).
+        user_id: Optional user ID (required if using service role client).
 
     Returns:
         List of saved email records (with database IDs).
@@ -108,7 +110,8 @@ def save_emails(
     Raises:
         EmailError: If save fails.
     """
-    user_id = get_current_user_id(client)
+    if user_id is None:
+        user_id = get_current_user_id(client)
     saved_records = []
 
     for parsed in emails:

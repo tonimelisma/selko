@@ -72,8 +72,9 @@ def get_oauth_credentials(
     client: Client,
     config: Config,
     provider: str,
+    user_id: Optional[str] = None,
 ) -> Optional[Credentials]:
-    """Load OAuth credentials from DB for the current user.
+    """Load OAuth credentials from DB for a user.
 
     Reconstructs Google Credentials object with client_id/secret from config
     to enable token refresh.
@@ -82,11 +83,13 @@ def get_oauth_credentials(
         client: Authenticated Supabase client.
         config: Configuration with Google OAuth client credentials.
         provider: Integration provider name.
+        user_id: Optional user ID (required if using service role client).
 
     Returns:
         Google Credentials object, or None if no integration found.
     """
-    user_id = get_current_user_id(client)
+    if user_id is None:
+        user_id = get_current_user_id(client)
 
     try:
         result = (

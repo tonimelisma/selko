@@ -76,17 +76,19 @@ def run_oauth_flow(config: Config) -> Credentials:
 def get_credentials(
     client: Client,
     config: Config,
+    user_id: Optional[str] = None,
 ) -> Optional[Credentials]:
     """Get Gmail credentials from database, refreshing if needed.
 
     Args:
         client: Authenticated Supabase client.
         config: Configuration with Google OAuth credentials.
+        user_id: Optional user ID (required if using service role client).
 
     Returns:
         Valid Google Credentials, or None if not found.
     """
-    creds = get_oauth_credentials(client, config, "gmail")
+    creds = get_oauth_credentials(client, config, "gmail", user_id=user_id)
 
     if not creds:
         return None
