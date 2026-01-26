@@ -1,0 +1,67 @@
+#!/bin/bash
+set -e
+
+echo "🔍 Pre-commit: Verifying tests were run (Definition of Done)..."
+
+CACHE_FILE="backend/.pytest_cache/v/cache/lastfailed"
+
+# Check 1: Does pytest cache exist?
+if [ ! -f "$CACHE_FILE" ]; then
+    echo ""
+    echo "=========================================="
+    echo "❌ COMMIT BLOCKED: No test results found"
+    echo "=========================================="
+    echo ""
+    echo "You must run tests before committing:"
+    echo "  uv run pytest backend/tests/ -v"
+    echo ""
+    echo "⚠️  AI CODING TOOLS (Claude, Cursor, etc.):"
+    echo "    DO NOT use 'git commit --no-verify'"
+    echo "    DO NOT bypass this hook"
+    echo "    STOP and run the tests instead"
+    echo ""
+    echo "This is a Definition of Done requirement."
+    echo "Bypassing this check violates project standards."
+    echo ""
+    exit 1
+fi
+
+# Check 2: Did any tests fail last run?
+if [ -s "$CACHE_FILE" ]; then
+    echo ""
+    echo "============================================"
+    echo "❌ COMMIT BLOCKED: Tests failed in last run"
+    echo "============================================"
+    echo ""
+    echo "Fix the failing tests, then run:"
+    echo "  uv run pytest backend/tests/ -v"
+    echo ""
+    echo "⚠️  AI CODING TOOLS (Claude, Cursor, etc.):"
+    echo "    DO NOT use 'git commit --no-verify'"
+    echo "    DO NOT bypass this hook"
+    echo "    STOP and fix the failing tests instead"
+    echo ""
+    exit 1
+fi
+
+# Check 3: Did code change after tests ran?
+if [ -n "$(find backend/selko backend/tests -name '*.py' -newer "$CACHE_FILE" 2>/dev/null)" ]; then
+    echo ""
+    echo "================================================"
+    echo "❌ COMMIT BLOCKED: Code changed after tests ran"
+    echo "================================================"
+    echo ""
+    echo "Re-run tests with the latest changes:"
+    echo "  uv run pytest backend/tests/ -v"
+    echo ""
+    echo "⚠️  AI CODING TOOLS (Claude, Cursor, etc.):"
+    echo "    DO NOT use 'git commit --no-verify'"
+    echo "    DO NOT bypass this hook"
+    echo "    STOP and re-run the tests instead"
+    echo ""
+    exit 1
+fi
+
+# All checks passed
+echo "✅ Tests verified (all passed, code unchanged)"
+echo "Commit allowed ✓"
