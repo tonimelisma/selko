@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-26
 
+### Update PRD_ARCH.md with Implementation Status Tracking
+
+**Commit:** ec58a28
+
+**Files modified:**
+- `PRD_ARCH.md` - Add comprehensive status tracking throughout document
+
+**Changes:**
+- Updated Phase 0 status from "COMPLETE" to "PARTIAL" (Gemini done, Calendar API not started)
+- Added new "Current Implementation Status" section with detailed tables showing:
+  - ✅ 9 completed components (Gmail, Email, Attachments, Gemini, Auth, RLS, CLI, Tests)
+  - ❌ 6 not-yet-implemented components (Calendar API, Review UI, Undo/Redo, etc.)
+- Added "Status" column to all functional requirements tables (FR-A through FR-D)
+- Updated user journey tables to show which steps are implemented vs. not started
+- Updated Phase 1 progress tracking (2/6 items complete: LLM integration + Email analysis)
+
+**Purpose:** Make it crystal clear at a glance what's working vs. what's next to build.
+
 ### Fix Gemini Integration Tests and CI Configuration
 
 **Commit:** 0caa407
