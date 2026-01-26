@@ -4,6 +4,61 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-27
 
+### Add Mocked LLM Testing to Minimize API Costs
+
+**Files modified:**
+- `backend/tests/conftest.py` - Add pytest `--run-llm` flag configuration and auto-skip logic for LLM tests
+- `backend/tests/integration/conftest.py` - Add `mock_gemini_client` and `mock_gemini_no_events` fixtures
+- `backend/tests/integration/test_integration_gemini.py` - Mark all real LLM tests with `@pytest.mark.llm`
+- `backend/tests/integration/test_integration_events.py` - Add `TestEventProcessingMocked` class with 3 mocked LLM tests, mark real LLM test with `@pytest.mark.llm`
+- `backend/pyproject.toml` - Add `llm` marker to pytest configuration
+- `.github/workflows/test.yml` - Development tests use mocked LLM (no flag), staging tests use real LLM (`--run-llm`)
+- `README.md` - Update testing section with new workflow and test architecture table
+- `CLAUDE.md` - Update testing philosophy, add cost optimization strategy, document future mock endpoint strategy
+
+**Test Architecture:**
+Before this change, all integration tests made real LLM API calls (expensive):
+- Unit tests: Mocked LLM ✓
+- Integration tests: **Real LLM** ($$$ every test run)
+- Staging tests: Real LLM (CI only)
+
+After this change:
+- Unit tests: Mocked LLM ✓
+- Integration tests (default): **Mocked LLM** ($0)
+- Integration tests with `--run-llm`: Real LLM ($$$ - opt-in only)
+- Staging tests (CI): Real LLM (automatically)
+
+**New pytest flag:**
+```bash
+# Default: Mocked LLM (no API costs)
+uv run pytest backend/tests/integration/ -v
+
+# Opt-in: Real LLM (costs money)
+uv run pytest backend/tests/integration/ --run-llm -v
+```
+
+**Test Markers:**
+- `@pytest.mark.llm` - Marks tests requiring real LLM API (auto-skipped without `--run-llm` flag)
+
+**New Fixtures:**
+- `mock_gemini_client` - Returns realistic mock responses for event extraction, comparison, and merging
+- `mock_gemini_no_events` - Returns "no events found" response
+
+**Test Coverage:**
+- Added 3 new mocked LLM integration tests for event processing pipeline
+- Tests validate: event creation, no events handling, sender ignore rules
+- All existing real LLM tests (11 tests) marked with `@pytest.mark.llm` and skipped by default
+
+**CI Changes:**
+- Development tests: Run WITHOUT `--run-llm` (uses mocked LLM, no costs)
+- Staging tests: Run WITH `--run-llm` (validates real LLM after deployment)
+
+**Reason:**
+LLM API calls were costing money on every local test run (dozens of times per day during development). Most changes (database, API, business logic) don't require real LLM validation. This change allows fast iteration with mocked LLM while maintaining real LLM validation in CI where it matters most.
+
+**Future Strategy:**
+Document plan for mock endpoints for complex e2e flows (Gmail webhooks, Calendar API writes, notifications) when implementing multi-service orchestration and load testing.
+
 ### Replace Scheduled Polling with Asyncio Worker Pool
 
 **Commit:** edbb0a5

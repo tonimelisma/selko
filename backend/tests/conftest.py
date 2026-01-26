@@ -8,6 +8,35 @@ import pytest
 from selko.config import Config
 
 
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--run-llm",
+        action="store_true",
+        default=False,
+        help="Run tests that make real LLM API calls (costs money)",
+    )
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers", "llm: marks tests as requiring real LLM API calls (deselect with '-m \"not llm\"')"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Auto-skip LLM tests unless --run-llm flag is provided."""
+    if config.getoption("--run-llm"):
+        # Run all tests including LLM
+        return
+    
+    skip_llm = pytest.mark.skip(reason="LLM test requires --run-llm flag to avoid API costs")
+    for item in items:
+        if "llm" in item.keywords:
+            item.add_marker(skip_llm)
+
+
 @pytest.fixture
 def mock_config():
     """Create a mock Config object for testing."""

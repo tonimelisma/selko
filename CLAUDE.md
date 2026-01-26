@@ -469,31 +469,97 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/emails
 # Install test dependencies
 uv sync --extra test
 
-# Run unit tests only (fast, no external dependencies)
+# Run unit tests only (fast, fully mocked)
 uv run pytest backend/tests/ -m "not integration" -v
 
-# Run all tests including integration (requires local Supabase)
+# Run integration tests with mocked LLM (default, no API costs)
 supabase start
-uv run pytest backend/tests/ -v
-
-# Run integration tests only
 uv run pytest backend/tests/integration/ -m "development" -v
+
+# Run integration tests with REAL LLM (costs money)
+uv run pytest backend/tests/integration/ -m "development" --run-llm -v
 
 # Run with coverage
 uv run pytest backend/tests/ --cov=selko
 ```
 
-**Note:** Staging tests (`-m "staging"`) are for CI only. They run after deploying to staging to validate the deployed environment. For local development, use development tests which also validate real Gmail API.
+**Test Architecture - Minimize LLM Costs:**
+
+| Test Type | Database | LLM | Gmail | Command | Cost |
+|-----------|----------|-----|-------|---------|------|
+| Unit | None | Mocked | Mocked | `pytest -m "not integration"` | $0 |
+| Integration (default) | Local | **Mocked** | Real | `pytest -m "development"` | $0 |
+| Integration (real LLM) | Local | **Real** | Real | `pytest -m "development" --run-llm` | $$$ |
+| Staging (CI only) | Cloud | Real | Real | `pytest -m "staging" --run-llm` | $$$ |
+
+**Philosophy:**
+- **Local dev**: Use mocked LLM by default (iterate fast, no costs)
+- **LLM validation**: Run `--run-llm` only when changing LLM code
+- **CI staging**: Always uses real LLM to catch integration issues
+
+**Why Mock LLM?**
+- You run tests dozens of times per day during development
+- Most changes (database, API, business logic) don't need real LLM validation
+- Mocked integration tests still validate: service orchestration, database queries, error handling, data flow
+- Real LLM tests in CI catch actual LLM behavior issues
+
+**When to Use `--run-llm`:**
+- Changing LLM prompts or response schemas
+- Debugging LLM-specific behavior
+- Verifying Gemini API changes
+- NOT needed for: database changes, API changes, business logic, most service changes
 
 **Test Markers:**
 | Marker | Description |
 |--------|-------------|
 | `integration` | All integration tests (requires Supabase) |
 | `development` | Tests against local Supabase + real Gmail (requires seeded tokens) |
-| `staging` | Tests against staging Supabase + real Gmail |
+| `staging` | Tests against staging Supabase + real Gmail + real LLM |
+| `llm` | Tests requiring real LLM API calls (requires `--run-llm` flag) |
 | `production` | Read-only smoke tests for production |
 
-**All integration tests use real Gmail API** - no mocking. This ensures tests validate actual 3rd-party integration behavior.
+**Note:** Staging tests (`-m "staging"`) are for CI only. They run after deploying to staging to validate the deployed environment with real LLM.
+
+**All integration tests use real Gmail API** - no mocking for 3rd-party integrations ensures tests validate actual API behavior.
+
+**Future: Mock Endpoints for Complex E2E Flows**
+
+As the system evolves to handle complex multi-step flows (e.g., email arrives → parsed → matches old event → LLM merges → updates calendar → sends notification), we'll need dedicated mock endpoints:
+
+```python
+# Future: Mock endpoint fixtures for testing complex flows
+@pytest.fixture
+def mock_gmail_webhook():
+    """Simulate Gmail push notification."""
+    pass
+
+@pytest.fixture  
+def mock_calendar_api():
+    """Mock Google Calendar API for write operations."""
+    pass
+
+@pytest.fixture
+def mock_notification_service():
+    """Mock notification delivery."""
+    pass
+```
+
+**Use cases for mock endpoints:**
+- Testing full user journeys end-to-end without external API dependencies
+- Testing error scenarios (API failures, rate limits, network issues)
+- Testing race conditions and concurrent operations
+- Load testing without hitting real API quotas
+
+**Current approach (POC):**
+- Gmail: Real API with seeded tokens (validates actual integration)
+- LLM: Mocked by default, real with `--run-llm` (cost optimization)
+- Calendar: Not yet implemented (will use real API + mock endpoint)
+
+**When to add mock endpoints:**
+- Calendar write operations (MVP phase)
+- Webhook/push notification flows
+- Complex multi-service orchestration
+- Load/performance testing
 
 See `PRD_ARCH.md` Part 4 for detailed testing strategy.
 

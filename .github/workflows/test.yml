@@ -126,7 +126,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
-      - name: Run integration tests
+      - name: Run integration tests (mocked LLM)
         run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short
         env:
           ENVIRONMENT: development
@@ -135,6 +135,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        # NOTE: Does NOT use --run-llm flag, so LLM tests are skipped (mocked versions run instead)
 
       - name: Stop Supabase
         if: always()
@@ -197,8 +198,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra test
 
-      - name: Run staging integration tests
-        run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short
+      - name: Run staging integration tests (with real LLM)
+        run: uv run pytest backend/tests/integration/ -m "staging" --run-llm -v --tb=short
         env:
           ENVIRONMENT: staging
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
@@ -209,6 +210,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        # NOTE: Uses --run-llm flag to run real LLM tests in staging
 
   deploy-production:
     name: Deploy to Production
