@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from selko.api.schemas.calendar import CalendarEventExtraction
+from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResponse
 from selko.config import Config
 from selko.services.gemini import (
     GeminiError,
@@ -118,16 +118,12 @@ class TestExtractCalendarEvents:
         mock_client = MagicMock()
         mock_response = MagicMock()
 
-        # Build mock extraction result from expected data
-        mock_extraction = CalendarEventExtraction(
-            email_message_id=input_data["gmail_id"],
-            email_date=input_data["date_sent"],
-            sender_name=input_data.get("from_name"),
-            sender_email=input_data["from_email"],
+        # Build mock Gemini response (events only, no metadata)
+        mock_gemini_response = GeminiEventsResponse(
             events_found=expected_data["events_found"],
             events=expected_data["events"],
         )
-        mock_response.parsed = mock_extraction
+        mock_response.parsed = mock_gemini_response
 
         mock_client.models.generate_content.return_value = mock_response
 
@@ -162,14 +158,11 @@ class TestExtractCalendarEvents:
 
         # First call raises rate limit error, second succeeds
         mock_response = MagicMock()
-        mock_extraction = CalendarEventExtraction(
-            email_message_id="test-123",
-            email_date="2026-01-20T10:00:00Z",
-            sender_email="test@example.com",
+        mock_gemini_response = GeminiEventsResponse(
             events_found=False,
             events=[],
         )
-        mock_response.parsed = mock_extraction
+        mock_response.parsed = mock_gemini_response
 
         mock_client.models.generate_content.side_effect = [
             Exception("429 Rate limit exceeded"),
@@ -247,14 +240,11 @@ class TestExtractCalendarEvents:
         """Test that attachments are properly added to request."""
         mock_client = MagicMock()
         mock_response = MagicMock()
-        mock_extraction = CalendarEventExtraction(
-            email_message_id="test-123",
-            email_date="2026-01-20T10:00:00Z",
-            sender_email="test@example.com",
+        mock_gemini_response = GeminiEventsResponse(
             events_found=True,
             events=[],
         )
-        mock_response.parsed = mock_extraction
+        mock_response.parsed = mock_gemini_response
         mock_client.models.generate_content.return_value = mock_response
 
         email_metadata = {
@@ -291,14 +281,11 @@ class TestExtractCalendarEvents:
         """Test that oversized attachments are skipped."""
         mock_client = MagicMock()
         mock_response = MagicMock()
-        mock_extraction = CalendarEventExtraction(
-            email_message_id="test-123",
-            email_date="2026-01-20T10:00:00Z",
-            sender_email="test@example.com",
+        mock_gemini_response = GeminiEventsResponse(
             events_found=False,
             events=[],
         )
-        mock_response.parsed = mock_extraction
+        mock_response.parsed = mock_gemini_response
         mock_client.models.generate_content.return_value = mock_response
 
         email_metadata = {

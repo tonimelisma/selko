@@ -264,7 +264,9 @@ class TestGeminiWithDatabase:
 
         # Verify extraction completed
         assert isinstance(extraction_result, CalendarEventExtraction)
+        # email_message_id should match the gmail_id from the email
         assert extraction_result.email_message_id == email_metadata["gmail_id"]
+        assert extraction_result.sender_email == email_metadata["from_email"]
 
     def test_fetch_nonexistent_email(self, authenticated_client):
         """Test error handling for nonexistent email."""

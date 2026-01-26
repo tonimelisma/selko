@@ -27,8 +27,24 @@ class CalendarEvent(BaseModel):
     )
 
 
+class GeminiEventsResponse(BaseModel):
+    """Gemini's response containing only extracted events (no metadata)."""
+
+    events_found: bool = Field(
+        description="Whether any calendar events were found in the email"
+    )
+    events: list[CalendarEvent] = Field(
+        default_factory=list, description="List of extracted calendar events"
+    )
+
+    model_config = {"json_schema_extra": {"title": "GeminiEventsResponse"}}
+
+
 class CalendarEventExtraction(BaseModel):
-    """Complete extraction result from an email analysis."""
+    """Complete extraction result from an email analysis.
+    
+    This combines email metadata (that we already have) with Gemini's extracted events.
+    """
 
     email_message_id: str = Field(description="The Gmail message ID")
     email_date: datetime = Field(description="The date the email was sent")
