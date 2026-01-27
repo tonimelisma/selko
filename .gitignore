@@ -35,6 +35,7 @@ __pycache__/
 frontend/node_modules/
 frontend/.svelte-kit/
 frontend/build/
+frontend/coverage/
 
 # Test results (generated, used by pre-commit hook)
 ios/TestResults.xcresult/
