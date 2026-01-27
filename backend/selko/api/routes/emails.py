@@ -7,10 +7,15 @@ For direct email queries, use Supabase client from frontend.
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from supabase import Client, PostgrestAPIError
 
-from selko.api.deps import CurrentUser, get_authenticated_client, get_current_user
+from selko.api.deps import (
+    CurrentUser,
+    get_authenticated_client,
+    get_current_user,
+    get_quota_service,
+)
 from selko.api.schemas.emails import (
     BatchProcessRequest,
     EmailProcessResponse,
@@ -21,6 +26,7 @@ from selko.config import load_config
 from selko.services.emails import EmailError, fetch_emails_for_user
 from selko.services.events import EventsError, process_email_for_events
 from selko.services.gemini import get_gemini_client
+from selko.services.quotas import QuotaService
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +36,10 @@ router = APIRouter(prefix="/emails", tags=["emails"])
 @router.post("/sync", response_model=EmailSyncResponse)
 async def sync_emails(
     request: EmailSyncRequest,
+    response: Response,
     client: Client = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
+    quota_service: QuotaService = Depends(get_quota_service),
 ) -> EmailSyncResponse:
     """Manually trigger email fetch from Gmail.
 
@@ -46,8 +54,27 @@ async def sync_emails(
 
     Raises:
         404: No Gmail integration found.
+        429: Email sync quota exceeded.
         500: Email fetch or save failed.
     """
+    # Check email sync quota
+    quota_result = quota_service.check_and_increment(user.id, "email_syncs")
+    if not quota_result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Daily email sync quota exceeded",
+            headers={
+                "X-RateLimit-Limit": str(quota_result.limit),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": quota_result.resets_at,
+            },
+        )
+
+    # Add quota headers to response
+    response.headers["X-RateLimit-Limit"] = str(quota_result.limit)
+    response.headers["X-RateLimit-Remaining"] = str(quota_result.remaining)
+    response.headers["X-RateLimit-Reset"] = quota_result.resets_at
+
     config = load_config()
 
     try:
@@ -65,19 +92,21 @@ async def sync_emails(
         if "No Gmail integration" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
+                detail="No Gmail integration found. Connect Gmail first.",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to sync emails: {str(e)}",
+            detail="Failed to sync emails",
         )
 
 
 @router.post("/{email_id}/process", response_model=EmailProcessResponse)
 async def process_email(
     email_id: Annotated[str, Path(description="Email UUID")],
+    response: Response,
     client: Client = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
+    quota_service: QuotaService = Depends(get_quota_service),
 ) -> EmailProcessResponse:
     """Process an email to extract calendar events.
 
@@ -93,8 +122,27 @@ async def process_email(
 
     Raises:
         404: Email not found or not owned by user.
+        429: LLM quota exceeded.
         500: Event extraction failed.
     """
+    # Check LLM quota BEFORE any expensive operations
+    quota_result = quota_service.check_and_increment(user.id, "llm_calls")
+    if not quota_result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Daily LLM processing quota exceeded",
+            headers={
+                "X-RateLimit-Limit": str(quota_result.limit),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": quota_result.resets_at,
+            },
+        )
+
+    # Add quota headers to response
+    response.headers["X-RateLimit-Limit"] = str(quota_result.limit)
+    response.headers["X-RateLimit-Remaining"] = str(quota_result.remaining)
+    response.headers["X-RateLimit-Reset"] = quota_result.resets_at
+
     config = load_config()
 
     # Verify email exists and belongs to user
@@ -155,15 +203,17 @@ async def process_email(
         logger.error(f"Failed to process email for events: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to extract events: {str(e)}",
+            detail="Failed to extract events from email",
         )
 
 
 @router.post("/batch-process", response_model=EmailProcessResponse)
 async def batch_process_emails(
     request: BatchProcessRequest,
+    response: Response,
     client: Client = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
+    quota_service: QuotaService = Depends(get_quota_service),
 ) -> EmailProcessResponse:
     """Process multiple recent emails to extract events.
 
@@ -177,11 +227,12 @@ async def batch_process_emails(
         Aggregated processing results across all emails.
 
     Raises:
+        429: LLM quota exceeded.
         500: Event extraction failed.
     """
     config = load_config()
 
-    # Fetch recent emails
+    # Fetch recent emails first to know how many LLM calls we need
     try:
         result = (
             client.table("emails")
@@ -209,6 +260,26 @@ async def batch_process_emails(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch emails for processing",
         )
+
+    # Check LLM quota for all emails BEFORE processing
+    # Each email requires 1 LLM call
+    num_emails = len(email_ids)
+    quota_result = quota_service.check_and_increment(user.id, "llm_calls", num_emails)
+    if not quota_result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Daily LLM quota exceeded. Requested {num_emails} calls, only {quota_result.remaining + num_emails} remaining.",
+            headers={
+                "X-RateLimit-Limit": str(quota_result.limit),
+                "X-RateLimit-Remaining": str(quota_result.remaining),
+                "X-RateLimit-Reset": quota_result.resets_at,
+            },
+        )
+
+    # Add quota headers to response
+    response.headers["X-RateLimit-Limit"] = str(quota_result.limit)
+    response.headers["X-RateLimit-Remaining"] = str(quota_result.remaining)
+    response.headers["X-RateLimit-Reset"] = quota_result.resets_at
 
     # Process each email
     try:
@@ -264,5 +335,5 @@ async def batch_process_emails(
         logger.error(f"Batch processing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch processing failed: {str(e)}",
+            detail="Batch processing failed",
         )

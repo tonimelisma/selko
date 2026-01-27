@@ -2,6 +2,101 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (10)
+
+### Security & Rate Limiting Implementation
+
+**Purpose:** Implement comprehensive rate limiting system with per-user daily quota tracking to protect against API abuse, control LLM costs, and improve security posture.
+
+**Database Schema:**
+
+Created migration `20260127000003_create_usage_quotas.sql`:
+- `global_limits` table - Admin-configurable default limits and hard caps
+  - Seeded with: llm_calls_daily (100), email_syncs_daily (50), calendar_syncs_daily (100)
+- `usage_quotas` table - Per-user daily usage tracking
+  - Tracks llm_calls, email_syncs, calendar_syncs with count/limit per type
+  - RLS: Users can view own usage, service role manages quotas
+- `check_and_increment_quota()` RPC - Atomic check-and-increment with advisory locking
+- `get_user_quota_usage()` RPC - Retrieve current usage without incrementing
+
+**QuotaService (`backend/selko/services/quotas.py`):**
+- `QuotaService` class with:
+  - `check_and_increment()` - Atomic quota check before expensive operations
+  - `get_usage()` - Get user's current usage for all quota types
+  - `set_user_limit()` - Admin: Set custom limits per user
+- `QuotaCheckResult` dataclass with allowed, current_count, limit, remaining, resets_at
+- `QuotaExceededError` exception for quota exceeded scenarios
+- Fail-open design: Errors during quota check allow requests (availability > strict enforcement)
+
+**In-Memory Rate Limiting:**
+- Added `slowapi>=0.1.9` dependency
+- Configured rate limiter with user_id/IP key function
+- Default rate limit: 60 requests/minute per user
+- Added `RateLimitExceeded` exception handler returning 429
+
+**API Route Updates:**
+
+`backend/selko/api/routes/emails.py`:
+- `/emails/sync` - Checks `email_syncs` quota before Gmail API call
+- `/emails/{id}/process` - Checks `llm_calls` quota before LLM processing
+- `/emails/batch-process` - Pre-checks quota for all emails (N calls) before processing
+- All endpoints return `X-RateLimit-*` headers
+
+`backend/selko/api/routes/events.py`:
+- `/events/{id}/sync` - Checks `calendar_syncs` quota before Calendar API call
+- Returns `X-RateLimit-*` headers
+
+`backend/selko/api/routes/integrations.py`:
+- Added `_validate_redirect_uri()` to prevent open redirect attacks
+- Allowlist: localhost, 127.0.0.1, api.selko.app on specific callback paths
+- Invalid redirect URIs return 400
+
+**Error Sanitization:**
+- All error handlers now return generic messages (no internal details)
+- Internal details logged server-side only
+- Updated: auth_error_handler, email_error_handler, integration_error_handler, events_error_handler, calendars_error_handler
+
+**CORS Hardening:**
+- Changed `allow_methods=["*"]` to specific methods: GET, POST, PUT, DELETE, OPTIONS
+- Changed `allow_headers=["*"]` to specific: Authorization, Content-Type, Accept
+
+**Files Created:**
+- `supabase/migrations/20260127000003_create_usage_quotas.sql`
+- `backend/selko/services/quotas.py`
+- `backend/tests/unit/__init__.py`
+- `backend/tests/unit/test_quota_service.py` (19 tests)
+- `backend/tests/integration/test_rate_limiting.py` (13 tests)
+
+**Files Modified:**
+- `backend/pyproject.toml` - Added slowapi dependency
+- `backend/selko/api/deps.py` - Added quota service and service role client dependencies
+- `backend/selko/api/app.py` - Added slowapi middleware, rate limit handlers, error sanitization
+- `backend/selko/api/routes/emails.py` - Quota checks, X-RateLimit headers
+- `backend/selko/api/routes/events.py` - Quota checks, X-RateLimit headers
+- `backend/selko/api/routes/integrations.py` - redirect_uri validation, error sanitization
+
+**Rate Limiting Policy:**
+
+| Operation | User Limit (default) | Tracked |
+|-----------|---------------------|---------|
+| LLM calls | 100/day | Database (usage_quotas) |
+| Email syncs | 50/day | Database (usage_quotas) |
+| Calendar syncs | 100/day | Database (usage_quotas) |
+| All API endpoints | 60/minute | In-memory (slowapi) |
+
+**Response Headers:**
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 73
+X-RateLimit-Reset: 2026-01-28T00:00:00+00:00
+```
+
+**Security Improvements:**
+- OAuth redirect_uri validation prevents open redirects
+- Error messages sanitized to prevent information disclosure
+- CORS methods/headers restricted to needed values
+- Quota system prevents API abuse and cost overruns
+
 ## 2026-01-27 (9)
 
 ### Remove Playwright E2E Tests
