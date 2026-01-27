@@ -38,6 +38,7 @@ chmod +x .git/hooks/pre-commit
 
 **The hook checks per-module using native test caches:**
 - **backend**: pytest cache at `backend/.pytest_cache/v/cache/lastfailed`
+- **frontend**: vitest JSON at `frontend/test-results.json`
 - **ios**: xcresult bundle at `ios/TestResults.xcresult`
 - **android**: gradle results at `android/app/build/test-results/`
 
@@ -157,6 +158,9 @@ uv run pytest backend/tests/ -v                              # All backend tests
 uv run pytest backend/tests/ -m "not integration" -v         # Unit tests only
 uv run pytest backend/tests/integration/ -m "development" -v # Integration tests (mocked LLM)
 uv run pytest backend/tests/integration/ -m "development" --run-llm -v  # Real LLM (costs $$$)
+
+# Frontend (vitest) - must output JSON for pre-commit hook
+cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json
 
 # iOS (xcodebuild) - must use -resultBundlePath for pre-commit hook
 xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \

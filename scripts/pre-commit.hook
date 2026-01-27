@@ -23,6 +23,7 @@ fi
 
 # Determine which modules have changes
 BACKEND_CHANGED=false
+FRONTEND_CHANGED=false
 IOS_CHANGED=false
 ANDROID_CHANGED=false
 
@@ -30,6 +31,9 @@ for file in $STAGED_FILES; do
     case "$file" in
         backend/*.py|cli/*.py)
             BACKEND_CHANGED=true
+            ;;
+        frontend/src/*.js|frontend/src/*.svelte|frontend/src/**/*.js|frontend/src/**/*.svelte)
+            FRONTEND_CHANGED=true
             ;;
         ios/*.swift)
             IOS_CHANGED=true
@@ -61,6 +65,32 @@ check_backend() {
 
     # Check no source files newer than cache
     if [ -n "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/cli" -name '*.py' -newer "$cache_file" 2>/dev/null | head -1)" ]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Check frontend using vitest JSON results
+check_frontend() {
+    local results_file="$PROJECT_ROOT/frontend/test-results.json"
+
+    # Check results file exists
+    if [ ! -f "$results_file" ]; then
+        return 1
+    fi
+
+    # Check no source files newer than results
+    if [ -n "$(find "$PROJECT_ROOT/frontend/src" \( -name '*.js' -o -name '*.svelte' \) -newer "$results_file" 2>/dev/null | head -1)" ]; then
+        return 1
+    fi
+
+    # Parse JSON for success (requires jq or grep)
+    # Check for "success":true and "numFailedTests":0
+    if ! grep -q '"success" *: *true' "$results_file"; then
+        return 1
+    fi
+    if grep -q '"numFailedTests" *: *[1-9]' "$results_file"; then
         return 1
     fi
 
@@ -143,6 +173,16 @@ if [ "$BACKEND_CHANGED" = true ]; then
     fi
 fi
 
+if [ "$FRONTEND_CHANGED" = true ]; then
+    echo "  Checking frontend..."
+    if check_frontend; then
+        echo "    Frontend tests verified (vitest JSON)"
+    else
+        BLOCKED=true
+        MODULES_NEEDING_TESTS="$MODULES_NEEDING_TESTS frontend"
+    fi
+fi
+
 if [ "$IOS_CHANGED" = true ]; then
     echo "  Checking ios..."
     if check_ios; then
@@ -177,6 +217,10 @@ if [ "$BLOCKED" = true ]; then
             backend)
                 echo "  backend:"
                 echo "    uv run pytest backend/tests/ -v"
+                ;;
+            frontend)
+                echo "  frontend:"
+                echo "    cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json"
                 ;;
             ios)
                 echo "  ios:"
