@@ -1,0 +1,67 @@
+{
+  "name": "event_update_details_thread",
+  "description": "Event with follow-up providing additional details (location change)",
+  "difficulty": "hard",
+  "tags": ["event", "update", "location-change", "thread"],
+  "emails": [
+    {
+      "order": 1,
+      "fixture_path": "thread_party_original.json",
+      "expected_action": "create",
+      "description": "Original party invitation"
+    },
+    {
+      "order": 2,
+      "fixture_path": "thread_party_update.json",
+      "expected_action": "update",
+      "description": "Location change notice"
+    },
+    {
+      "order": 3,
+      "fixture_path": "thread_party_final.json",
+      "expected_action": "update",
+      "description": "Final reminder with all details"
+    }
+  ],
+  "thread_emails": [
+    {
+      "gmail_id": "thread-update-001",
+      "thread_id": "thread-update",
+      "subject": "Save the Date: Mike's Retirement Party - April 10th",
+      "from_email": "hr@company.com",
+      "from_name": "HR Department",
+      "date_sent": "2026-03-01T10:00:00Z",
+      "body_text": "Save the Date!\n\nPlease join us to celebrate Mike Thompson's retirement after 30 years.\n\nDate: Friday, April 10, 2026\nTime: 5:00 PM - 8:00 PM\nLocation: TBD (details to follow)\n\nMore information coming soon!\n\nHR Department"
+    },
+    {
+      "gmail_id": "thread-update-002",
+      "thread_id": "thread-update",
+      "subject": "Update: Mike's Retirement Party - Location Confirmed",
+      "from_email": "hr@company.com",
+      "from_name": "HR Department",
+      "date_sent": "2026-03-15T14:00:00Z",
+      "body_text": "Update on Mike's Retirement Party!\n\nWe've secured a venue:\n\nDate: Friday, April 10, 2026\nTime: 5:00 PM - 8:00 PM\nLocation: The Grand Ballroom\n          Hilton Garden Inn\n          1000 Hotel Circle, San Jose, CA 95128\n\nDinner will be served. Please RSVP by April 3rd.\n\nHR Department"
+    },
+    {
+      "gmail_id": "thread-update-003",
+      "thread_id": "thread-update",
+      "subject": "Final Reminder: Mike's Retirement Party Tomorrow!",
+      "from_email": "hr@company.com",
+      "from_name": "HR Department",
+      "date_sent": "2026-04-09T09:00:00Z",
+      "body_text": "Final Reminder!\n\nMike's Retirement Party is TOMORROW:\n\nDate: Friday, April 10, 2026\nTime: 5:00 PM - 8:00 PM\nLocation: The Grand Ballroom\n          Hilton Garden Inn\n          1000 Hotel Circle, San Jose, CA 95128\n\nParking: Complimentary valet parking\nDress code: Business casual\n\nDon't forget to sign Mike's card at the reception desk!\n\nSee you there!\nHR Department"
+    }
+  ],
+  "expected_final_state": {
+    "event_count": 1,
+    "final_event": {
+      "title": "Mike's Retirement Party",
+      "start_datetime": "2026-04-10T17:00:00",
+      "end_datetime": "2026-04-10T20:00:00",
+      "location": "The Grand Ballroom, Hilton Garden Inn, 1000 Hotel Circle, San Jose, CA 95128",
+      "status": "pending_review"
+    },
+    "source_count": 3
+  },
+  "notes": "Tests multi-email updates merging into single event with evolving details"
+}

@@ -1,0 +1,49 @@
+{
+  "name": "event_cancellation_thread",
+  "description": "Event scheduled then cancelled",
+  "difficulty": "medium",
+  "tags": ["event", "cancellation", "thread"],
+  "emails": [
+    {
+      "order": 1,
+      "fixture_path": "thread_event_original.json",
+      "expected_action": "create",
+      "description": "Original event invitation"
+    },
+    {
+      "order": 2,
+      "fixture_path": "thread_event_cancelled.json",
+      "expected_action": "cancel",
+      "description": "Event cancellation notice"
+    }
+  ],
+  "thread_emails": [
+    {
+      "gmail_id": "thread-cancel-001",
+      "thread_id": "thread-cancel",
+      "subject": "You're Invited: Company Picnic - March 14th",
+      "from_email": "events@company.com",
+      "from_name": "Company Events",
+      "date_sent": "2026-02-20T10:00:00Z",
+      "body_text": "Dear Employees,\n\nYou're invited to our annual company picnic!\n\nDate: Saturday, March 14, 2026\nTime: 11:00 AM - 4:00 PM\nLocation: Sunny Park, Pavilion A\n          123 Park Drive, Sunnyvale\n\nBring your families! Food and games provided.\n\nRSVP by March 7th.\n\nCompany Events Team"
+    },
+    {
+      "gmail_id": "thread-cancel-002",
+      "thread_id": "thread-cancel",
+      "subject": "CANCELLED: Company Picnic - March 14th",
+      "from_email": "events@company.com",
+      "from_name": "Company Events",
+      "date_sent": "2026-03-01T08:00:00Z",
+      "body_text": "Dear Employees,\n\nWe regret to inform you that the company picnic scheduled for March 14th has been CANCELLED due to the forecasted severe weather.\n\nWe are looking at alternative dates and will send a new invitation soon.\n\nWe apologize for any inconvenience.\n\nCompany Events Team"
+    }
+  ],
+  "expected_final_state": {
+    "event_count": 1,
+    "final_event": {
+      "title": "Company Picnic",
+      "start_datetime": "2026-03-14T11:00:00",
+      "status": "cancelled"
+    }
+  },
+  "notes": "Tests that cancellation email marks event as cancelled rather than deleting"
+}

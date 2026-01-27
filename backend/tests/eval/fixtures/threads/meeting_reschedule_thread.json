@@ -1,0 +1,51 @@
+{
+  "name": "meeting_reschedule_thread",
+  "description": "Meeting scheduled, then rescheduled to new time",
+  "difficulty": "medium",
+  "tags": ["meeting", "reschedule", "update", "thread"],
+  "emails": [
+    {
+      "order": 1,
+      "fixture_path": "thread_meeting_original.json",
+      "expected_action": "create",
+      "description": "Original meeting invitation"
+    },
+    {
+      "order": 2,
+      "fixture_path": "thread_meeting_reschedule.json",
+      "expected_action": "update",
+      "description": "Rescheduled to new time"
+    }
+  ],
+  "thread_emails": [
+    {
+      "gmail_id": "thread-rs-001",
+      "thread_id": "thread-reschedule",
+      "subject": "Team Review Meeting - February 20th",
+      "from_email": "manager@company.com",
+      "from_name": "Sarah Manager",
+      "date_sent": "2026-02-10T09:00:00Z",
+      "body_text": "Hi team,\n\nLet's meet to review our progress.\n\nWhen: Friday, February 20, 2026\nTime: 2:00 PM - 3:00 PM\nWhere: Conference Room C\n\nPlease confirm your attendance.\n\nSarah"
+    },
+    {
+      "gmail_id": "thread-rs-002",
+      "thread_id": "thread-reschedule",
+      "subject": "Re: Team Review Meeting - RESCHEDULED to February 23rd",
+      "from_email": "manager@company.com",
+      "from_name": "Sarah Manager",
+      "date_sent": "2026-02-15T11:30:00Z",
+      "body_text": "Hi team,\n\nDue to a conflict, I need to reschedule our meeting.\n\nNEW TIME:\nWhen: Monday, February 23, 2026\nTime: 10:00 AM - 11:00 AM\nWhere: Conference Room C (same room)\n\nSorry for the inconvenience.\n\nSarah"
+    }
+  ],
+  "expected_final_state": {
+    "event_count": 1,
+    "final_event": {
+      "title": "Team Review Meeting",
+      "start_datetime": "2026-02-23T10:00:00",
+      "end_datetime": "2026-02-23T11:00:00",
+      "location": "Conference Room C",
+      "status": "pending_review"
+    }
+  },
+  "notes": "Tests that rescheduled meeting updates existing event rather than creating duplicate"
+}

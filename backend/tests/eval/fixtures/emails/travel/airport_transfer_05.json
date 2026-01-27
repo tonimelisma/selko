@@ -1,0 +1,35 @@
+{
+  "name": "airport_transfer_05",
+  "category": "travel",
+  "description": "Airport shuttle/transfer booking",
+  "difficulty": "easy",
+  "tags": ["transfer", "shuttle", "airport", "pickup"],
+  "input": {
+    "gmail_id": "eval-travel-005",
+    "thread_id": "thread-travel-005",
+    "subject": "Your SuperShuttle Reservation",
+    "from_email": "confirm@supershuttle.com",
+    "from_name": "SuperShuttle",
+    "to_emails": ["traveler@example.com"],
+    "date_sent": "2026-02-12T16:00:00Z",
+    "snippet": "Your airport transfer is confirmed...",
+    "body_text": "SUPERSHUTTLE\nYour Ride to the Airport\n\nReservation Confirmed!\nConfirmation #: SS789456\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPICK-UP DETAILS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: Saturday, February 28, 2026\nTime: 5:30 AM\n\nPick-up Address:\n123 Main Street, Apt 4B\nSan Diego, CA 92101\n\nDestination:\nSan Diego International Airport (SAN)\nTerminal 2\n\nPassengers: 1\nLuggage: 2 checked bags\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDriver will call 10-15 minutes before arrival.\nLook for the blue SuperShuttle van.\n\nTotal: $32.00 (prepaid)\n\nNeed changes? Call 1-800-258-3826\nor visit supershuttle.com\n\nHave a great trip!",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Airport Shuttle Pickup - SuperShuttle",
+        "start_datetime": "2026-02-28T05:30:00",
+        "end_datetime": null,
+        "location": "123 Main Street, Apt 4B, San Diego, CA 92101",
+        "description": "SuperShuttle pickup to San Diego Airport Terminal 2",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Airport transfer service pickup"
+}

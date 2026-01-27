@@ -1,0 +1,25 @@
+{
+  "name": "survey_request_09",
+  "category": "no_events",
+  "description": "Customer satisfaction survey request",
+  "difficulty": "easy",
+  "tags": ["survey", "feedback", "customer-service", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-009",
+    "thread_id": "thread-noev-009",
+    "subject": "How was your recent experience? Quick survey inside",
+    "from_email": "feedback@company.com",
+    "from_name": "Company Feedback Team",
+    "to_emails": ["customer@example.com"],
+    "date_sent": "2026-02-17T11:00:00Z",
+    "snippet": "We'd love to hear about your recent purchase...",
+    "body_text": "COMPANY\n\nHow Did We Do?\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHi there,\n\nThank you for your recent purchase! We'd love to hear about your experience.\n\nPlease take a moment to complete our quick survey:\n\n[Take Survey - 2 minutes]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYOUR RECENT ORDER\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nOrder #: 12345678\nPurchased: February 10, 2026\nItem: Premium Widget Pro\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nYour feedback helps us improve!\n\nAs a thank you, complete the survey for a chance to win a $50 gift card.\n\nSurvey closes: February 24, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nNot interested? [Unsubscribe from surveys]\n\nThank you!\nThe Company Feedback Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Survey request - deadline is not a calendar event"
+}

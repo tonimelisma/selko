@@ -1,0 +1,35 @@
+{
+  "name": "car_rental_03",
+  "category": "travel",
+  "description": "Car rental reservation confirmation",
+  "difficulty": "medium",
+  "tags": ["car", "rental", "pickup", "dropoff"],
+  "input": {
+    "gmail_id": "eval-travel-003",
+    "thread_id": "thread-travel-003",
+    "subject": "Your Hertz Reservation is Confirmed",
+    "from_email": "reservations@hertz.com",
+    "from_name": "Hertz Rent A Car",
+    "to_emails": ["renter@example.com"],
+    "date_sent": "2026-02-05T14:30:00Z",
+    "snippet": "Thank you for choosing Hertz...",
+    "body_text": "HERTZ\nGold Plus Rewards\n\nReservation Confirmed\nConfirmation #: H12345678\n\n─────────────────────────────────\nPICK-UP\n─────────────────────────────────\nLocation: Los Angeles LAX Airport\n          9000 Airport Blvd\n          Los Angeles, CA 90045\n\nDate: Saturday, February 21, 2026\nTime: 10:00 AM\n\n─────────────────────────────────\nDROP-OFF\n─────────────────────────────────\nLocation: Same as pick-up\n\nDate: Wednesday, February 25, 2026\nTime: 6:00 PM\n\n─────────────────────────────────\nVEHICLE\n─────────────────────────────────\nClass: Full Size (Toyota Camry or similar)\nFeatures: A/C, Automatic, 4 doors\n\n─────────────────────────────────\nESTIMATED TOTAL: $287.45\n(Includes taxes and fees)\n\nGold Plus Members: Skip the counter!\nGo directly to the Hertz Gold area.\n\nView/Modify: hertz.com/myreservations\n\nSafe travels!",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Rental - Hertz LAX",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": "2026-02-25T18:00:00",
+        "location": "Hertz LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Full size car rental (Toyota Camry or similar)",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Car rental with pickup and drop-off times"
+}

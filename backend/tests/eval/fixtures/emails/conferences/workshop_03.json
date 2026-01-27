@@ -1,0 +1,35 @@
+{
+  "name": "workshop_03",
+  "category": "conferences",
+  "description": "In-person professional workshop",
+  "difficulty": "easy",
+  "tags": ["workshop", "training", "professional", "in-person"],
+  "input": {
+    "gmail_id": "eval-conf-003",
+    "thread_id": "thread-conf-003",
+    "subject": "Workshop Confirmation: Leadership Essentials",
+    "from_email": "training@leadershipinstitute.org",
+    "from_name": "Leadership Institute",
+    "to_emails": ["professional@example.com"],
+    "date_sent": "2026-02-12T09:00:00Z",
+    "snippet": "Your spot is reserved for the Leadership Essentials workshop...",
+    "body_text": "LEADERSHIP INSTITUTE\nDeveloping Tomorrow's Leaders\n\n══════════════════════════════════════\nWORKSHOP CONFIRMATION\n══════════════════════════════════════\n\nThank you for registering!\n\nParticipant: Jennifer Park\nWorkshop: Leadership Essentials\nOrder #: LI-2026-3456\n\n──────────────────────────────────────\nWORKSHOP DETAILS\n──────────────────────────────────────\n\nDate: Saturday, March 7, 2026\nTime: 9:00 AM - 4:00 PM\n\nLocation:\nLeadership Institute Training Center\n800 Corporate Drive, Suite 500\nChicago, IL 60601\n\n──────────────────────────────────────\nWHAT TO BRING\n──────────────────────────────────────\n• Laptop (optional)\n• Business cards for networking\n• Comfortable attire\n\n──────────────────────────────────────\nSCHEDULE\n──────────────────────────────────────\n9:00 AM - Welcome & Introductions\n9:30 AM - Module 1: Leadership Foundations\n11:00 AM - Break\n11:15 AM - Module 2: Communication Strategies\n12:30 PM - Lunch (provided)\n1:30 PM - Module 3: Team Building\n3:00 PM - Break\n3:15 PM - Module 4: Action Planning\n4:00 PM - Wrap-up & Certificates\n\n──────────────────────────────────────\n\nParking: Free garage parking available\nCatering: Lunch and refreshments included\n\nContact: training@leadershipinstitute.org\n\nWe look forward to seeing you!",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00",
+        "end_datetime": "2026-03-07T16:00:00",
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Full-day leadership workshop",
+        "is_all_day": false,
+        "confidence_min": 0.9
+      }
+    ]
+  },
+  "notes": "Full-day professional workshop with detailed schedule"
+}

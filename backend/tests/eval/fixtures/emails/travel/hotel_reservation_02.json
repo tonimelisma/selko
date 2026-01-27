@@ -1,0 +1,35 @@
+{
+  "name": "hotel_reservation_02",
+  "category": "travel",
+  "description": "Hotel booking confirmation with check-in/check-out",
+  "difficulty": "medium",
+  "tags": ["hotel", "booking", "checkin", "checkout"],
+  "input": {
+    "gmail_id": "eval-travel-002",
+    "thread_id": "thread-travel-002",
+    "subject": "Reservation Confirmed - Marriott Times Square",
+    "from_email": "confirm@marriott.com",
+    "from_name": "Marriott Hotels",
+    "to_emails": ["guest@example.com"],
+    "date_sent": "2026-01-30T10:20:00Z",
+    "snippet": "Your reservation is confirmed...",
+    "body_text": "MARRIOTT HOTELS\n\nYour Reservation is Confirmed!\n\nConfirmation Number: 89XYZ456\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMARRIOTT TIMES SQUARE\n1535 Broadway\nNew York, NY 10036\nPhone: (212) 555-1234\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nGuest: John Doe\n\nCheck-in:  Friday, March 13, 2026\n           From 3:00 PM\n\nCheck-out: Sunday, March 15, 2026\n           By 11:00 AM\n\nRoom Type: King Room, City View\nNights: 2\nGuests: 1 Adult\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nRATE DETAILS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nRoom Rate: $299.00/night\nTaxes & Fees: $89.70\nTOTAL: $687.70\n\nPayment: Visa ending in 1234\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nMobile Check-in available via Marriott app\nBonvoy Points Earned: 1,196\n\nNeed to modify? Visit marriott.com/reservations\n\nWe look forward to welcoming you!",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hotel Stay - Marriott Times Square",
+        "start_datetime": "2026-03-13T15:00:00",
+        "end_datetime": "2026-03-15T11:00:00",
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "2-night hotel stay, King Room with City View",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Hotel reservation spanning multiple days"
+}

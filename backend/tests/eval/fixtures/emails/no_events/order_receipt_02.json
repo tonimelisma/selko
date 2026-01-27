@@ -1,0 +1,25 @@
+{
+  "name": "order_receipt_02",
+  "category": "no_events",
+  "description": "E-commerce order confirmation/receipt",
+  "difficulty": "easy",
+  "tags": ["receipt", "order", "shopping", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-002",
+    "thread_id": "thread-noev-002",
+    "subject": "Your Amazon.com order #112-3456789-0123456",
+    "from_email": "auto-confirm@amazon.com",
+    "from_name": "Amazon.com",
+    "to_emails": ["customer@example.com"],
+    "date_sent": "2026-02-10T14:22:00Z",
+    "snippet": "Thank you for your order. Your estimated delivery date is...",
+    "body_text": "amazon\n\nOrder Confirmation\nThank you for shopping with us.\n\n─────────────────────────────────────\nOrder #112-3456789-0123456\nPlaced on February 10, 2026\n─────────────────────────────────────\n\nShipping to:\nJohn Smith\n123 Main Street\nAnytown, CA 94000\n\n─────────────────────────────────────\nOrder Details\n─────────────────────────────────────\n\nSony WH-1000XM5 Wireless Headphones\nQty: 1\nPrice: $348.00\n\nAnker USB-C Cable (3-pack)\nQty: 1\nPrice: $15.99\n\n─────────────────────────────────────\nSubtotal:    $363.99\nShipping:    FREE\nTax:         $29.12\n─────────────────────────────────────\nOrder Total: $393.11\n─────────────────────────────────────\n\nEstimated delivery: February 13-15, 2026\n\nTrack your package: [Track Package]\nManage your order: [View Order]\n\nThank you for shopping with Amazon.com!",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Order receipt - delivery estimates are not calendar events"
+}

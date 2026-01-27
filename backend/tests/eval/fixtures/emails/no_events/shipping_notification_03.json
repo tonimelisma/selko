@@ -1,0 +1,25 @@
+{
+  "name": "shipping_notification_03",
+  "category": "no_events",
+  "description": "Package shipped notification",
+  "difficulty": "medium",
+  "tags": ["shipping", "delivery", "tracking", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-003",
+    "thread_id": "thread-noev-003",
+    "subject": "Your package has shipped! Tracking #1Z999AA10123456784",
+    "from_email": "shipping@store.com",
+    "from_name": "Store.com Shipping",
+    "to_emails": ["customer@example.com"],
+    "date_sent": "2026-02-11T09:45:00Z",
+    "snippet": "Good news! Your order has shipped...",
+    "body_text": "STORE.COM\n\nGreat news! Your order has shipped!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSHIPMENT DETAILS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nOrder #: ST-2026-789456\nShipped: February 11, 2026\nCarrier: UPS Ground\nTracking: 1Z999AA10123456784\n\nEstimated Delivery: February 14-16, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSHIPPING TO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nJane Doe\n456 Oak Avenue, Apt 7\nSan Francisco, CA 94102\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nITEMS IN THIS SHIPMENT\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n• Running Shoes - Size 8 (x1)\n• Athletic Socks 6-Pack (x1)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n[Track Your Package]\n\nQuestions? Contact us at support@store.com\n\nThank you for your order!\nStore.com Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Shipping notification - delivery date range is not a calendar event"
+}

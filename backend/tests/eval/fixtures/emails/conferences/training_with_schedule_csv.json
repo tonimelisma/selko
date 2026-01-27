@@ -1,0 +1,35 @@
+{
+  "name": "training_with_schedule_csv",
+  "category": "conferences",
+  "description": "Training registration with CSV schedule attachment",
+  "difficulty": "hard",
+  "tags": ["training", "attachment", "csv", "schedule", "multiple-events"],
+  "input": {
+    "gmail_id": "eval-attach-003",
+    "thread_id": "thread-attach-003",
+    "subject": "Python Training Registration Confirmed - Schedule Attached",
+    "from_email": "training@learntech.com",
+    "from_name": "LearnTech Training",
+    "to_emails": ["student@example.com"],
+    "date_sent": "2026-03-01T14:00:00Z",
+    "snippet": "Your registration for the Python Programming Fundamentals course is confirmed...",
+    "body_text": "LearnTech Training\n\nYour registration is confirmed!\n\nCourse: Python Programming Fundamentals\nDates: March 23-24, 2026\nLocation: LearnTech Training Center, 100 Tech Blvd, Austin, TX 78701\n\nPlease see the attached schedule (CSV) for detailed session times and instructors.\n\nWhat to bring:\n- Laptop with Python 3.10+ installed\n- Notebook for notes\n\nSee you there!\nLearnTech Team",
+    "attachments": ["training_schedule.csv"]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Python Programming Fundamentals Training",
+        "start_datetime": "2026-03-23T09:00:00",
+        "end_datetime": "2026-03-24T16:30:00",
+        "location": "LearnTech Training Center, 100 Tech Blvd, Austin, TX 78701",
+        "description": "2-day Python programming training course",
+        "is_all_day": false,
+        "confidence_min": 0.8
+      }
+    ]
+  },
+  "notes": "Training with CSV schedule attachment - tests CSV parsing"
+}

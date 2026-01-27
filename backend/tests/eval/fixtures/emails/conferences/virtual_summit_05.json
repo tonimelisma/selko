@@ -1,0 +1,44 @@
+{
+  "name": "virtual_summit_05",
+  "category": "conferences",
+  "description": "Multi-day virtual summit with session schedule",
+  "difficulty": "hard",
+  "tags": ["summit", "virtual", "multi-day", "multiple-sessions"],
+  "input": {
+    "gmail_id": "eval-conf-005",
+    "thread_id": "thread-conf-005",
+    "subject": "Your Product Management Virtual Summit Access",
+    "from_email": "events@pmsummit.com",
+    "from_name": "PM Summit 2026",
+    "to_emails": ["pm@example.com"],
+    "date_sent": "2026-02-20T12:00:00Z",
+    "snippet": "Welcome to PM Summit 2026! Here's your complete access information...",
+    "body_text": "PM SUMMIT 2026\nThe Premier Product Management Virtual Event\n\n═════════════════════════════════════════════\nWELCOME, PRODUCT LEADER!\n═════════════════════════════════════════════\n\nYou're registered for PM Summit 2026!\n\nRegistrant: David Lee\nTicket: All-Access Pass\nOrder #: PMS-2026-12345\n\n─────────────────────────────────────────────\nEVENT DATES\n─────────────────────────────────────────────\n\nApril 7-8, 2026 (Virtual)\nAll times in Pacific Time (PT)\n\n─────────────────────────────────────────────\nDAY 1 - TUESDAY, APRIL 7\n─────────────────────────────────────────────\n\n9:00 AM - Opening Keynote\n\"The Future of Product\" - CEO, ProductCo\n\n10:30 AM - Track Sessions Begin\nChoose from 4 concurrent tracks\n\n12:00 PM - Lunch Break & Networking\n\n1:00 PM - Afternoon Sessions\n\n4:00 PM - Day 1 Closing Panel\n\n─────────────────────────────────────────────\nDAY 2 - WEDNESDAY, APRIL 8\n─────────────────────────────────────────────\n\n9:00 AM - Day 2 Kickoff\n\n9:30 AM - Workshop Sessions\nHands-on, interactive sessions\n\n12:00 PM - Lunch Break\n\n1:00 PM - Afternoon Sessions\n\n3:30 PM - Closing Keynote\n\"Building Products That Matter\"\n\n4:30 PM - Summit Concludes\n\n─────────────────────────────────────────────\nACCESS INFORMATION\n─────────────────────────────────────────────\n\nPlatform: Hopin (no download required)\nAccess Link: https://hopin.com/events/pmsummit2026\nYour Login: david.lee@example.com\n\nThe platform opens 30 minutes before each day starts.\n\n─────────────────────────────────────────────\n\nAll sessions will be recorded and available for 90 days.\n\nBuild your schedule: pmsummit.com/schedule\n\nSee you online!\nPM Summit Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "PM Summit 2026 - Day 1",
+        "start_datetime": "2026-04-07T09:00:00",
+        "end_datetime": "2026-04-07T16:00:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 1 - Keynotes and track sessions",
+        "is_all_day": false,
+        "confidence_min": 0.8
+      },
+      {
+        "title": "PM Summit 2026 - Day 2",
+        "start_datetime": "2026-04-08T09:00:00",
+        "end_datetime": "2026-04-08T16:30:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 2 - Workshops and closing keynote",
+        "is_all_day": false,
+        "confidence_min": 0.8
+      }
+    ]
+  },
+  "notes": "Virtual summit with detailed multi-day schedule - tests extraction of separate day events"
+}

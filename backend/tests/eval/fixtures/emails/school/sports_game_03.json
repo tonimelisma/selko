@@ -1,0 +1,35 @@
+{
+  "name": "sports_game_03",
+  "category": "school",
+  "description": "Youth sports game schedule",
+  "difficulty": "easy",
+  "tags": ["sports", "soccer", "kids", "game"],
+  "input": {
+    "gmail_id": "eval-school-003",
+    "thread_id": "thread-school-003",
+    "subject": "Soccer Game This Saturday - Wildcats vs. Eagles",
+    "from_email": "coach.davis@aysosoccer.org",
+    "from_name": "Coach Davis",
+    "to_emails": ["wildcats-parents@aysosoccer.org"],
+    "date_sent": "2026-02-18T18:45:00Z",
+    "snippet": "Reminder about this Saturday's game...",
+    "body_text": "Hi Wildcats Families!\n\nReminder about this Saturday's game:\n\n⚽ GAME DETAILS ⚽\n\nWildcats vs. Eagles\n\nDate: Saturday, February 21, 2026\nTime: 10:00 AM (please arrive by 9:30)\nField: Sunnyvale Sports Complex, Field #3\n       500 Athletic Way\n       Sunnyvale, CA 94086\n\nPlayers should wear:\n- Green Wildcats jersey\n- Black shorts\n- Shin guards (required!)\n- Cleats\n- Water bottle\n\nPlease bring a folding chair - no bleachers at this field.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSNACK DUTY\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nThe Martinez family is bringing snacks this week.\nThank you!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nLet's go Wildcats! 🐱\n\nCoach Davis\n(408) 555-GOAL",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Soccer Game - Wildcats vs Eagles",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": null,
+        "location": "Sunnyvale Sports Complex, Field #3, 500 Athletic Way, Sunnyvale, CA 94086",
+        "description": "Youth soccer game - arrive by 9:30 AM",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Youth sports game with arrival time different from game time"
+}

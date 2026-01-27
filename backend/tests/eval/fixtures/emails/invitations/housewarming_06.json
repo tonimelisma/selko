@@ -1,0 +1,35 @@
+{
+  "name": "housewarming_06",
+  "category": "invitations",
+  "description": "Housewarming party with open house style timing",
+  "difficulty": "easy",
+  "tags": ["housewarming", "open-house", "casual"],
+  "input": {
+    "gmail_id": "eval-inv-006",
+    "thread_id": "thread-inv-006",
+    "subject": "We moved! Come see our new place",
+    "from_email": "chris.nguyen@gmail.com",
+    "from_name": "Chris Nguyen",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-01T19:30:00Z",
+    "snippet": "We finally got the keys and moved in...",
+    "body_text": "Hey!\n\nWe finally got the keys and moved in! 🏠🎉\n\nCome check out our new place:\n\nHOUSEWARMING PARTY\nSaturday, February 28th\n4pm - 9pm\n\nOur new address:\n567 Willow Way, Apt 12B\nSeattle, WA 98101\n\nDrop by anytime during the party - no need to stay the whole time.\nBYOB, we'll have snacks!\n\nNo gifts necessary, just bring yourselves!\n\nSee you there,\nChris & Jamie",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Chris & Jamie's Housewarming Party",
+        "start_datetime": "2026-02-28T16:00:00",
+        "end_datetime": "2026-02-28T21:00:00",
+        "location": "567 Willow Way, Apt 12B, Seattle, WA 98101",
+        "description": "Housewarming party - drop by anytime, BYOB",
+        "is_all_day": false,
+        "confidence_min": 0.8
+      }
+    ]
+  },
+  "notes": "Casual housewarming with informal time format (4pm instead of 4:00 PM)"
+}

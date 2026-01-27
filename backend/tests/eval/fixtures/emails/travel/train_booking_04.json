@@ -1,0 +1,35 @@
+{
+  "name": "train_booking_04",
+  "category": "travel",
+  "description": "Amtrak train reservation",
+  "difficulty": "easy",
+  "tags": ["train", "amtrak", "booking"],
+  "input": {
+    "gmail_id": "eval-travel-004",
+    "thread_id": "thread-travel-004",
+    "subject": "Amtrak Reservation Confirmation",
+    "from_email": "reservations@amtrak.com",
+    "from_name": "Amtrak",
+    "to_emails": ["passenger@example.com"],
+    "date_sent": "2026-02-10T09:45:00Z",
+    "snippet": "Your trip is booked and ready...",
+    "body_text": "AMTRAK\nAmerica's Railroad\n\n═══════════════════════════════════\nRESERVATION CONFIRMED\n═══════════════════════════════════\n\nConfirmation Number: 2K9F8X\nPassenger: JANE SMITH\n\n───────────────────────────────────\nYOUR TRIP\n───────────────────────────────────\n\nTrain: Acela 2151\nDate: Monday, March 2, 2026\n\nDeparts: WASHINGTON, DC (WAS)\n         Union Station\n         7:05 AM\n\nArrives: NEW YORK, NY (NYP)\n         Penn Station\n         10:00 AM\n\nDuration: 2h 55m\nClass: Business Class\nSeat: Car 3, Seat 12A\n\n───────────────────────────────────\n\nTicket: eTicket - show on mobile\nTotal: $189.00\n\nBenefits:\n- Complimentary WiFi\n- Power outlets\n- Cafe car access\n\nManage trip: amtrak.com/mytrip\n\nThank you for riding Amtrak!",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151 - Washington to New York",
+        "start_datetime": "2026-03-02T07:05:00",
+        "end_datetime": "2026-03-02T10:00:00",
+        "location": "Union Station, Washington DC",
+        "description": "Amtrak Acela train to New York Penn Station",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Train reservation with departure and arrival times"
+}

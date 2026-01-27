@@ -1,0 +1,35 @@
+{
+  "name": "graduation_party_05",
+  "category": "invitations",
+  "description": "High school graduation party with afternoon timing",
+  "difficulty": "easy",
+  "tags": ["graduation", "party", "afternoon"],
+  "input": {
+    "gmail_id": "eval-inv-005",
+    "thread_id": "thread-inv-005",
+    "subject": "Graduation Party for Tyler!",
+    "from_email": "dave.thompson@gmail.com",
+    "from_name": "Dave Thompson",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-04-28T10:15:00Z",
+    "snippet": "Please join us to celebrate Tyler's graduation...",
+    "body_text": "CLASS OF 2026!\n\nPlease join us to celebrate\nTYLER THOMPSON'S\nHigh School Graduation!\n\nSaturday, June 13th, 2026\n3:00 PM - 7:00 PM\n\nThe Thompson Residence\n1234 Oak Drive\nSan Jose, CA 95123\n\nBackyard BBQ & Pool Party!\nBring your swimsuit! 🏊‍♂️\n\nRSVP: dave.thompson@gmail.com by June 6th\n\nCongratulations Tyler!\n\nThe Thompson Family",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Tyler Thompson's Graduation Party",
+        "start_datetime": "2026-06-13T15:00:00",
+        "end_datetime": "2026-06-13T19:00:00",
+        "location": "1234 Oak Drive, San Jose, CA 95123",
+        "description": "High school graduation celebration - backyard BBQ and pool party",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Graduation party with clear time range"
+}
