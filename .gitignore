@@ -26,8 +26,9 @@ __pycache__/
 *.egg-info/
 .venv/
 
-# Claude
-.claude/
+# Claude - track hooks and shared settings, ignore personal/local config
+.claude/settings.local.json
+.claude/mcp.json
 
 .cursor/
 
