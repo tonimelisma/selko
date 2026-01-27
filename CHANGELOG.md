@@ -22,7 +22,6 @@ All notable changes to this project are documented in this file.
 **Files Updated:**
 - `CLAUDE.md` - Added "Parallel Agent Workflow" section with quick reference commands
 - `docs/ci-cd.md` - Added "Auto-Merge & CI Checks" section documenting auto-merge behavior and email notifications
-- `TODO.md` - Added "Parallel Agent Workflow Setup" section with manual tasks for users
 
 **Key Workflow:**
 ```
@@ -33,7 +32,6 @@ CI passes → Auto-merge to main → Other agents rebase on updated main
 **Notes:**
 - Branch protection requires GitHub Pro for private repos (not configured)
 - Auto-merge works without branch protection but manual merge isn't blocked
-- Users must verify their GitHub notification settings manually
 
 ## 2026-01-27 (7)
 
