@@ -9,9 +9,19 @@ import SwiftUI
 
 @main
 struct SelkoApp: App {
+    @State private var router = AppRouter()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            Group {
+                if router.isLoading {
+                    ProgressView("Loading...")
+                } else if router.isAuthenticated {
+                    HomeView()
+                } else {
+                    LoginView()
+                }
+            }
         }
     }
 }
