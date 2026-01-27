@@ -2,6 +2,39 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (8)
+
+### Parallel Agent Workflow Documentation
+
+**Purpose:** Document and configure a workflow for multiple AI coding agents working in parallel on the same repository using git worktrees, feature branches, and auto-merge PRs.
+
+**GitHub Configuration:**
+- Enabled auto-merge on repository via `gh repo edit --enable-auto-merge`
+
+**Files Created:**
+- `docs/parallel-agents.md` - Comprehensive guide covering:
+  - Git worktree setup for parallel agents
+  - Feature branch → PR → auto-merge workflow
+  - Rebasing when other agents merge
+  - Task assignment to minimize conflicts
+  - Troubleshooting common issues
+
+**Files Updated:**
+- `CLAUDE.md` - Added "Parallel Agent Workflow" section with quick reference commands
+- `docs/ci-cd.md` - Added "Auto-Merge & CI Checks" section documenting auto-merge behavior and email notifications
+- `TODO.md` - Added "Parallel Agent Workflow Setup" section with manual tasks for users
+
+**Key Workflow:**
+```
+Agent creates worktree → Works on feature branch → Creates PR with --auto →
+CI passes → Auto-merge to main → Other agents rebase on updated main
+```
+
+**Notes:**
+- Branch protection requires GitHub Pro for private repos (not configured)
+- Auto-merge works without branch protection but manual merge isn't blocked
+- Users must verify their GitHub notification settings manually
+
 ## 2026-01-27 (7)
 
 ### Documentation Update - Establish Direct Supabase Access Architecture

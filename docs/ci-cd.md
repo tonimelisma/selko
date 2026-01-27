@@ -150,7 +150,41 @@ git tag -a v1.0.0 -m "Release 1.0.0"
 git push origin v1.0.0
 ```
 
+## Auto-Merge & CI Checks
+
+### How Auto-Merge Works
+
+PRs created with `--auto` flag wait for CI before merging:
+```bash
+gh pr create --title "..." --body "..." --auto
+```
+
+The PR will automatically merge once all status checks pass:
+- `unit-tests`
+- `integration-tests-development`
+- `android-unit-tests`
+
+**Important:** Without GitHub Pro, there's no branch protection. Manual merge is still possible before CI completes. Always use `--auto` to ensure CI passes first.
+
+### Email Notifications
+
+GitHub sends automatic email notifications when:
+- CI workflow fails on your branch
+- A PR you authored has a failed check
+
+Ensure notifications are enabled in your personal GitHub settings:
+Settings → Notifications → Actions → "Send notifications for failed workflows only"
+
+### Parallel Agent Workflow
+
+When multiple agents work simultaneously, they use git worktrees for isolation. See `docs/parallel-agents.md` for the complete guide covering:
+- Creating worktrees with feature branches
+- PR workflow with auto-merge
+- Rebasing after other agents merge
+- Conflict resolution strategies
+
 ## Related Documentation
 
 - [PRD_ARCH.md](../PRD_ARCH.md) Part 3 - Render deployment configuration
 - [PRD_ARCH.md](../PRD_ARCH.md) Part 4 - Testing strategy details
+- [parallel-agents.md](parallel-agents.md) - Multi-agent workflow guide

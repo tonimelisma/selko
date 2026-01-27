@@ -59,6 +59,54 @@ You MUST NEVER:
 - Suggest bypassing the hook to the user
 - Treat the hook as optional
 
+### Parallel Agent Workflow
+
+When multiple AI agents (or developers) work simultaneously on the same machine:
+
+**Setup: Create Worktrees**
+```bash
+# From main repo, create worktree for each agent
+git worktree add ../selko-agent1 -b agent1/task-name main
+git worktree add ../selko-agent2 -b agent2/task-name main
+
+# Each worktree needs dependencies installed
+cd ../selko-agent1 && uv sync && cd frontend && npm ci
+cd ../selko-agent2 && uv sync && cd frontend && npm ci
+```
+
+**Workflow: Feature Branch → PR → Auto-Merge**
+```bash
+# Agent works in their worktree
+cd ../selko-agent1
+
+# Make changes, commit, push
+git add -A && git commit -m "feat: description"
+git push -u origin agent1/task-name
+
+# Create PR with auto-merge enabled
+gh pr create --title "feat: description" --body "..." --auto
+```
+
+**After Another Agent Merges**
+```bash
+# Rebase on updated main before continuing
+git fetch origin main
+git rebase origin/main
+# Resolve conflicts if any, then continue working
+```
+
+**Cleanup When Done**
+```bash
+git worktree remove ../selko-agent1
+# Or: rm -rf ../selko-agent1 && git worktree prune
+```
+
+**Rules:**
+- Each worktree MUST be on a different branch
+- PRs auto-merge ONLY after ALL CI checks pass
+- Rebase frequently to avoid large merge conflicts
+- See `docs/parallel-agents.md` for complete guide
+
 ---
 
 ## Development Philosophy
@@ -344,6 +392,7 @@ uv run python -m selko.api
 | `docs/api-workflow.md` | Server-side API workflow with curl examples |
 | `docs/job-queue.md` | Job queue architecture |
 | `docs/ci-cd.md` | CI/CD pipeline details |
+| `docs/parallel-agents.md` | Multi-agent workflow with git worktrees |
 | `docs/gmail-integration.md` | Gmail API architecture, push vs polling, History API |
 | `docs/gemini-integration.md` | Vertex AI setup, Pydantic structured outputs |
 

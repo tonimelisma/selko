@@ -313,6 +313,27 @@ When you have a frontend, add CORS configuration:
 
 ---
 
+## Parallel Agent Workflow Setup
+
+### GitHub Settings (One-Time)
+- [x] Enable auto-merge on repository (done via `gh repo edit --enable-auto-merge`)
+
+### Personal Settings (Each User)
+- [ ] Verify GitHub notification settings:
+  1. Go to https://github.com/settings/notifications
+  2. Under "Actions", ensure "Send notifications for failed workflows only" is enabled
+  3. Verify your email address receives GitHub notifications
+
+### Optional: Branch Protection (Requires GitHub Pro)
+Branch protection for private repos requires GitHub Pro subscription ($4/month).
+Without it, auto-merge still works but manual merge isn't blocked.
+- [ ] Upgrade to GitHub Pro (optional)
+- [ ] Configure branch protection rules for `main`:
+  - [ ] Require status checks: `unit-tests`, `integration-tests-development`, `android-unit-tests`
+  - [ ] Require branches to be up-to-date before merging
+
+---
+
 ## Quick Reference
 
 ### Environment Files
