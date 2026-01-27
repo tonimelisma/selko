@@ -98,8 +98,8 @@ def get_calendar_settings(
                 if cal["id"] == settings["target_calendar_id"]:
                     calendar_name = cal["name"]
                     break
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to get calendar name: {e}")
     
     return {
         "target_calendar_id": settings.get("target_calendar_id"),

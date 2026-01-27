@@ -5,9 +5,6 @@ This worker:
 2. Writes it to Google Calendar via the API
 3. Updates event status to 'synced'
 4. Stores the Google Calendar event ID
-
-Note: Google Calendar API integration is not yet implemented.
-This is a placeholder for future implementation.
 """
 
 import logging
@@ -16,6 +13,7 @@ from typing import Any
 from supabase import Client
 
 from selko.config import Config
+from selko.services.calendars import sync_event_to_calendar, CalendarsError
 
 logger = logging.getLogger(__name__)
 
@@ -62,31 +60,10 @@ async def process_calendar_sync_job(
     except Exception as e:
         raise ValueError(f"Failed to fetch event {event_id}: {e}") from e
 
-    # TODO: Implement Google Calendar API integration
-    # For now, just log that we would sync this event
-    logger.warning(
-        f"Google Calendar API not yet implemented. "
-        f"Would sync event: {event['title']} at {event['start_datetime']}"
-    )
-
-    # Mark as synced (even though we didn't actually sync)
-    # Remove this when real implementation is added
+    # Sync to Google Calendar using the calendars service
     try:
-        client.table("events").update({
-            "status": "synced",
-            "synced_at": None,  # Would store actual sync time
-            "google_calendar_event_id": None,  # Would store Calendar event ID
-        }).eq("id", event_id).execute()
-
-        logger.info(f"Marked event {event_id} as synced (placeholder)")
-
-    except Exception as e:
-        logger.error(f"Failed to update event status: {e}")
+        google_event_id = sync_event_to_calendar(client, event["user_id"], event_id)
+        logger.info(f"Synced event {event_id} to Google Calendar: {google_event_id}")
+    except CalendarsError as e:
+        logger.error(f"Failed to sync event {event_id} to Google Calendar: {e}")
         raise
-
-    # TODO: Actual implementation would:
-    # 1. Get user's Google Calendar credentials
-    # 2. Build Calendar API service
-    # 3. Create event using events.insert()
-    # 4. Store returned event ID
-    # 5. Update event status to 'synced' with timestamp

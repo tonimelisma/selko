@@ -2,6 +2,43 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (11)
+
+### Code Quality Fixes and Refactoring
+
+**Purpose:** Address code review findings - fix placeholder code, replace bare except blocks with proper logging, improve rate limiting accuracy, and modernize FastAPI patterns.
+
+**Calendar Sync Worker (`backend/selko/workers/calendar_sync.py`):**
+- **Fixed placeholder implementation** - Worker now calls the real `sync_event_to_calendar()` service instead of marking events as "synced" without actually syncing
+- Imports `CalendarsError` for proper error handling
+- Events are now actually written to Google Calendar when processed
+
+**Bare Except Blocks (4 files):**
+- `backend/selko/services/calendars.py:101-102` - Added logging: `logger.warning(f"Failed to get calendar name: {e}")`
+- `backend/selko/services/events.py:179` - Changed to `except (ValueError, AttributeError)` with debug logging
+- `backend/selko/services/gemini.py:531` - Added debug logging for date format failures (original email)
+- `backend/selko/services/gemini.py:549` - Added debug logging for date format failures (update emails)
+
+**Rate Limit Key Extraction (`backend/selko/api/app.py:40-62`):**
+- Fixed rate limiting to use actual user ID from JWT instead of truncated token
+- Now extracts `sub` claim from JWT for consistent rate limiting per user
+- Falls back to token prefix if JWT decode fails
+
+**FastAPI Lifespan Pattern (`backend/selko/api/app.py`):**
+- Migrated from deprecated `@app.on_event("startup")` / `@app.on_event("shutdown")` decorators
+- Implemented modern `@asynccontextmanager` lifespan pattern
+- Worker pool and APScheduler startup/shutdown now use the lifespan context manager
+- Eliminates deprecation warnings in FastAPI 0.95+
+
+**Files Modified:**
+- `backend/selko/workers/calendar_sync.py`
+- `backend/selko/services/calendars.py`
+- `backend/selko/services/events.py`
+- `backend/selko/services/gemini.py`
+- `backend/selko/api/app.py`
+
+**Tests:** 235 passed, 11 skipped (unchanged from baseline)
+
 ## 2026-01-27 (10)
 
 ### Security & Rate Limiting Implementation
