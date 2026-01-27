@@ -73,7 +73,7 @@ The system automatically ingests unstructured data from emails and photos to cre
 | **FR-B.1** | **OCR & Text Extraction** | Extract text from physical images (handwriting recognition) and parse HTML/Text emails. | **P0** | ✅ **DONE** (Gemini multimodal) |
 | **FR-B.2** | **Entity Extraction** | NLP to identify Entities: *Event Date*, *Time*, *Location*, *Vendor*, *Amount*. | **P0** | ✅ **DONE** (Calendar events) |
 | **FR-B.3** | **Classification** | Distinguish document types: *Receipt* vs. *Invitation* vs. *Kid's Drawing* vs. *Trash*. | **P0** | 🟡 Partial (Events only) |
-| **FR-B.4** | **Smart Idempotency** | Detect duplicates. **Update Logic:** If an email is an update (e.g., "Time Change"), modify the existing event rather than creating a duplicate. | **P0** | ❌ Not Started |
+| **FR-B.4** | **Smart Idempotency** | Detect duplicates. **Update Logic:** If an email is an update (e.g., "Time Change"), modify the existing event rather than creating a duplicate. | **P0** | 🟡 Partial (Calendar sync idempotent) |
 | **FR-B.5** | **Automation Rules** | User-defined logic (e.g., "Always accept from school@district.edu") to bypass review. | **P0** | ❌ Not Started |
 
 #### **Domain C: User Experience & Control**
@@ -92,7 +92,7 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 | ID | Feature | Description | Priority | Status |
 | :---- | :---- | :---- | :---- | :---- |
-| **FR-D.1** | **Calendar Sync** | Create/Update events in external calendars. | **P0** | ❌ Not Started |
+| **FR-D.1** | **Calendar Sync** | Create/Update events in external calendars. | **P0** | 🟡 Partial (CLI sync, idempotent) |
 | **FR-D.2** | **File Storage** | Upload categorized documents to external cloud storage. | **P0** | ❌ Not Started |
 | **FR-D.3** | **Task Management** | Create tasks in external task managers. | **P0** | ❌ Not Started |
 
@@ -114,8 +114,31 @@ The system automatically ingests unstructured data from emails and photos to cre
 **Current Implementation:**
 - ✅ CLI tool can extract events: `uv run python -m cli.cli_extract_events --email-id <uuid>`
 - ✅ JSON output with structured CalendarEvent data
+- ✅ CLI can sync events to Google Calendar: `uv run python -m cli.cli_events sync <event-id>`
+- ✅ Idempotent calendar sync (updates existing events, recreates if deleted)
 - ❌ No web UI yet
-- ❌ No calendar write capability yet
+
+#### **Calendar Sync Phased Approach**
+
+**Phase 1 (Current):** Basic idempotency + sync log table + CLI
+
+The calendar sync is now idempotent:
+1. If `google_calendar_event_id` is NULL: CREATE new calendar event
+2. If `google_calendar_event_id` exists:
+   - Try to UPDATE the existing event
+   - If 404 (deleted from Calendar): CREATE new event with new ID
+3. All syncs logged to `calendar_sync_log` table for audit trail
+
+**Phase 2 (Future):** Smart merge with drift detection
+
+When syncing and detecting user has manually edited the Calendar event:
+1. **Preserve user changes** - their edits are authoritative
+2. **Add notes for differences** - append to description like:
+   > "Note: You've manually set the address as XYZ, but an email from [sender] on [date] suggests it's [our extracted address]"
+
+This respects user agency while keeping them informed of new information from emails.
+
+The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Calendar, enabling future comparison with the actual Calendar state to detect drift.
 
 #### **Journey 4: The "Kid's Drawing" (Photo \-\> Cloud Storage)** - ❌ NOT STARTED
 

@@ -2,6 +2,76 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (13)
+
+### Idempotent Google Calendar Sync + CLI Refactoring
+
+**Purpose:** Implement idempotent calendar event writing to prevent duplicates, add a sync log for future drift detection, and refactor CLI commands to call services directly instead of non-existent REST endpoints.
+
+**Problem:**
+1. `sync_event_to_calendar()` always called `insert()`, creating duplicates if sync was triggered twice
+2. No record of what we've synced to Google Calendar (needed for future drift detection)
+3. `cli_events.py` called REST endpoints like `/events/new` that don't exist
+4. No CLI command for Google Calendar OAuth or manual event syncing
+
+**Solution:**
+
+**Part 0: Google Calendar OAuth CLI**
+- Added `cli/cli_auth_gcal.py` - CLI for Google Calendar OAuth authentication
+- Uses `CALENDAR_SCOPES` (read/write access) from integrations.py
+- Stores tokens in `integrations` table with `provider='google_calendar'`
+
+**Part 1: Sync Log Table**
+- Added migration `20260127000004_create_calendar_sync_log.sql`
+- Tracks all calendar sync operations: event_id, user_id, google_calendar_event_id
+- Stores action ('created', 'updated', 'deleted') and snapshot_synced (what we sent)
+- RLS enabled: users can only view their own sync logs
+- Enables future Phase 2 drift detection
+
+**Part 2: Idempotent Sync Logic**
+- Refactored `sync_event_to_calendar()` in `backend/selko/services/calendars.py`:
+  - If `google_calendar_event_id` is NULL: CREATE new event
+  - If exists: try UPDATE, or CREATE new if 404 (user deleted from Calendar)
+  - All syncs logged to `calendar_sync_log`
+- Added `_build_calendar_event_body()` helper to reduce duplication
+- Added `_update_or_recreate_calendar_event()` helper for idempotent logic
+- Added `_log_sync()` helper for audit logging
+- Added `extendedProperties.private.selko_event_id` to calendar events for traceability
+- Fixed 404 handling in `cancel_calendar_event()` for already-deleted events
+
+**Part 3: CLI Refactoring**
+- Refactored `cli/cli_events.py` - removed all httpx REST API calls:
+  - `new` → direct Supabase query for `status='pending_review'`
+  - `approved` → direct query for `status IN ('approved', 'synced')`
+  - `approve/reject/restore` → direct status updates
+  - `approve_sender/ignore_sender` → direct upsert to `sender_rules`
+  - `list_rules` → direct query of `sender_rules`
+  - Added `sync <event_id>` - sync single event to Google Calendar
+  - Added `sync-all` - sync all approved events
+- Refactored `cli/cli_calendars.py` - uses calendar service directly:
+  - `list` → `calendars.list_calendars()`
+  - `set` → `calendars.update_calendar_settings()`
+  - `invitees` → `calendars.update_calendar_settings()`
+  - `settings` → `calendars.get_calendar_settings()`
+
+**Part 4: Documentation**
+- Updated `PRD_ARCH.md`:
+  - FR-B.4 (Smart Idempotency): now "Partial (Calendar sync idempotent)"
+  - FR-D.1 (Calendar Sync): now "Partial (CLI sync, idempotent)"
+  - Added "Calendar Sync Phased Approach" section documenting Phase 1 (current) and Phase 2 (future smart merge with drift detection)
+
+**Files Added:**
+- `cli/cli_auth_gcal.py` - Google Calendar OAuth CLI
+- `supabase/migrations/20260127000004_create_calendar_sync_log.sql`
+
+**Files Modified:**
+- `backend/selko/services/calendars.py` - idempotent sync, helpers, logging
+- `cli/cli_events.py` - refactored to direct calls, added sync commands
+- `cli/cli_calendars.py` - refactored to direct service calls
+- `PRD_ARCH.md` - updated status and added Phase 2 documentation
+
+**Tests:** 235 passed, 11 skipped
+
 ## 2026-01-27 (12)
 
 ### Claude Code Worktree Enforcement Hook
