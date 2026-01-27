@@ -520,24 +520,8 @@ graph TD
     *   `GOOGLE_CREDENTIALS` (JSON string)
 
 #### **7.2 Code Structure**
-```python
-# backend/selko/api/app.py
-from fastapi import FastAPI
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-app = FastAPI()
-scheduler = AsyncIOScheduler()
-
-@app.on_event("startup")
-async def start_scheduler():
-    # Defines the polling schedule
-    scheduler.add_job(fetch_emails, 'interval', minutes=5)
-    scheduler.start()
-
-@app.get("/")
-async def health_check():
-    return {"status": "ok", "scheduler": "running"}
-```
+See `backend/selko/api/app.py` for the FastAPI application structure with APScheduler integration.
 
 ### **8. Security Model**
 
