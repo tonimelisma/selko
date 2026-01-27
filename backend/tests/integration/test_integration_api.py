@@ -579,3 +579,129 @@ class TestRLSSecurity:
         finally:
             # Cleanup via admin
             admin_client.table("emails").delete().eq("gmail_id", gmail_id).execute()
+
+
+@pytest.mark.integration
+@pytest.mark.development
+class TestCORSConfiguration:
+    """Test CORS middleware configuration."""
+
+    def test_cors_headers_on_allowed_origin(self, test_client):
+        """Response includes CORS headers for allowed origin."""
+        response = test_client.get(
+            "/health",
+            headers={"Origin": "http://localhost:3000"}
+        )
+
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        assert response.headers.get("access-control-allow-credentials") == "true"
+
+    def test_cors_headers_vite_origin(self, test_client):
+        """Response includes CORS headers for Vite dev server origin."""
+        response = test_client.get(
+            "/health",
+            headers={"Origin": "http://localhost:5173"}
+        )
+
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+    def test_cors_headers_127_origin(self, test_client):
+        """Response includes CORS headers for 127.0.0.1 origin."""
+        response = test_client.get(
+            "/health",
+            headers={"Origin": "http://127.0.0.1:3000"}
+        )
+
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == "http://127.0.0.1:3000"
+
+    def test_cors_preflight_request(self, test_client):
+        """OPTIONS preflight request returns proper CORS headers."""
+        response = test_client.options(
+            "/health",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "Authorization",
+            }
+        )
+
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        assert "GET" in response.headers.get("access-control-allow-methods", "")
+        assert response.headers.get("access-control-allow-credentials") == "true"
+
+    def test_cors_preflight_with_custom_headers(self, test_client):
+        """OPTIONS preflight allows Authorization header."""
+        response = test_client.options(
+            "/emails",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "Authorization, Content-Type",
+            }
+        )
+
+        assert response.status_code == 200
+        # Should allow all headers (allow_headers=["*"])
+        assert response.headers.get("access-control-allow-headers") is not None
+
+    def test_cors_on_authenticated_endpoint(self, test_client, auth_headers):
+        """CORS headers present on authenticated endpoints."""
+        headers = {**auth_headers, "Origin": "http://localhost:3000"}
+        response = test_client.get("/emails", headers=headers)
+
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        assert response.headers.get("access-control-allow-credentials") == "true"
+
+    def test_cors_on_post_request(self, test_client, auth_headers):
+        """CORS headers present on POST requests."""
+        headers = {**auth_headers, "Origin": "http://localhost:5173"}
+        # Use an endpoint that accepts POST
+        response = test_client.post(
+            "/emails/sync",
+            headers=headers,
+            json={"max_emails": 1}
+        )
+
+        # Response may fail (no Gmail integration) but CORS headers should be present
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+    def test_cors_not_allowed_origin(self, test_client):
+        """Response does not include CORS headers for disallowed origin."""
+        response = test_client.get(
+            "/health",
+            headers={"Origin": "https://evil-site.com"}
+        )
+
+        assert response.status_code == 200
+        # When origin is not allowed, the header should not be present
+        # or should not match the requested origin
+        cors_origin = response.headers.get("access-control-allow-origin")
+        assert cors_origin != "https://evil-site.com"
+
+    def test_cors_no_origin_header(self, test_client):
+        """Request without Origin header still works (same-origin request)."""
+        response = test_client.get("/health")
+
+        assert response.status_code == 200
+        # No CORS headers needed for same-origin requests
+        data = response.json()
+        assert data["status"] == "ok"
+
+    def test_cors_preflight_disallowed_origin(self, test_client):
+        """OPTIONS preflight from disallowed origin is handled."""
+        response = test_client.options(
+            "/health",
+            headers={
+                "Origin": "https://evil-site.com",
+                "Access-Control-Request-Method": "GET",
+            }
+        )
+
+        # Request goes through but CORS headers won't allow the origin
+        cors_origin = response.headers.get("access-control-allow-origin")
+        assert cors_origin != "https://evil-site.com"
