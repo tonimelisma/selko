@@ -154,17 +154,46 @@ git push origin v1.0.0
 
 ### How Auto-Merge Works
 
-PRs created with `--auto` flag wait for CI before merging:
+Auto-merge requires two steps:
+
 ```bash
-gh pr create --title "..." --body "..." --auto
+# Step 1: Create the PR
+gh pr create --title "..." --body "..."
+
+# Step 2: Enable auto-merge
+gh pr merge --auto --squash
 ```
 
-The PR will automatically merge once all status checks pass:
+**Note:** The `--auto` flag on `gh pr create` only sets the PR to ready/draft status - it does NOT enable auto-merge. You must use `gh pr merge --auto --squash` to enable automatic merging after CI passes.
+
+The PR will automatically merge once all required status checks pass:
 - `unit-tests`
 - `integration-tests-development`
 - `android-unit-tests`
 
-**Important:** Without GitHub Pro, there's no branch protection. Manual merge is still possible before CI completes. Always use `--auto` to ensure CI passes first.
+**No manual merge action is required.** Once auto-merge is enabled and CI passes, the PR merges automatically.
+
+**Important:** Without GitHub Pro, there's no branch protection. Manual merge is still possible before CI completes. Always enable auto-merge to ensure CI passes first.
+
+### Auto-Merge Troubleshooting
+
+If PR doesn't auto-merge after CI passes:
+
+```bash
+# Check CI status
+gh pr checks
+
+# Verify auto-merge is enabled
+gh pr view --json autoMergeRequest
+
+# Re-enable if needed
+gh pr merge --auto --squash
+```
+
+Common issues:
+- **Auto-merge not enabled:** Run `gh pr merge --auto --squash` after creating PR
+- **CI still running:** Wait for all checks to complete
+- **Merge conflicts:** Rebase your branch and force-push
 
 ### Email Notifications
 
