@@ -27,7 +27,10 @@ if [ ! -f "$CACHE_FILE" ]; then
 fi
 
 # Check 2: Did any tests fail last run?
-if [ -s "$CACHE_FILE" ]; then
+# Note: pytest writes {} (empty JSON object) when no tests failed
+#       but any other content means there are failures
+CACHE_CONTENT=$(cat "$CACHE_FILE" 2>/dev/null | tr -d '[:space:]')
+if [ "$CACHE_CONTENT" != "{}" ] && [ -n "$CACHE_CONTENT" ]; then
     echo ""
     echo "============================================"
     echo "❌ COMMIT BLOCKED: Tests failed in last run"
