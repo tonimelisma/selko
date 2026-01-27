@@ -2,216 +2,99 @@
 
 All notable changes to this project are documented in this file.
 
-## 2026-01-27 (16)
-
-### Email-to-Calendar Manual CLI Walkthrough
-
-**Purpose:** Create CLI tool for processing emails into saved events and comprehensive walkthrough documentation for the email-to-calendar flow.
-
-**Problem:**
-1. `cli_extract_events.py` only **previews** event extraction - it does NOT save events to database
-2. No CLI way to process emails and create actual events (had to use API)
-3. No end-to-end documentation for manually testing the email-to-calendar flow
-
-**Solution:**
-
-**Part 1: New CLI Tool**
-- Added `cli/cli_process_emails.py` - processes emails and saves extracted events to database
-- `--email-id <uuid>`: Process single email by ID
-- `--recent N`: Batch process N most recent pending emails
-- Calls `process_email_for_events()` from events service
-- Handles deduplication, sender rules, event-email linking
-- Updates email `processing_status` after processing
-
-**Part 2: Walkthrough Documentation**
-- Added `docs/manual-email-to-calendar-walkthrough.md` with:
-  - Prerequisites (Supabase, environment, OAuth credentials)
-  - Step-by-step walkthrough (8 steps from Gmail OAuth to Calendar sync)
-  - SQL verification queries for each step
-  - Additional CLI commands reference (calendar, sender rules, event management)
-  - Database tables reference
-  - Event status lifecycle diagram
-  - Troubleshooting section
-  - Quick reference table
-
-**Part 3: CLAUDE.md Updates**
-- Added new CLI commands to CLI Tools table
-- Added walkthrough document to Reference Index
-
-**Key distinction clarified:**
-- `cli_extract_events` = preview only (no database writes)
-- `cli_process_emails` = full processing with database writes
-
-**Files Added:**
-- `cli/cli_process_emails.py`
-- `docs/manual-email-to-calendar-walkthrough.md`
-
-**Files Modified:**
-- `CLAUDE.md`
-
-**Tests:** 285 passed, 11 skipped
-
-## 2026-01-27 (15)
-
-### Test Coverage Improvements
-
-**Purpose:** Address gaps in test coverage identified during code analysis, particularly for complex business logic in event and calendar services.
-
-**Changes:**
-
-**CI Configuration:**
-- Removed `--run-llm` flag from staging CI (`.github/workflows/test.yml`) to avoid LLM API costs
-- All CI environments now use mocked LLM; real LLM tests run manually via `--run-llm` flag
-
-**New Unit Tests:**
-- `backend/tests/test_events.py`: Unit tests for event service business logic
-  - `check_sender_rules()` - exact email and domain matching
-  - `find_matching_event()` - deduplication with date-based + LLM comparison
-  - `generate_source_attribution()` - natural language attribution generation
-  - `undo_email_contribution()` / `redo_email_contribution()` - snapshot restore
-
-- `backend/tests/test_calendars.py`: Unit tests for calendar service
-  - `_build_calendar_event_body()` - timed events, all-day events, invitees
-  - `sync_event_to_calendar()` - create, update, recreate deleted events
-  - `get_calendar_settings()` / `update_calendar_settings()` - settings CRUD
-  - `cancel_calendar_event()` - CANCELLED prefix handling
-
-- `backend/tests/test_gemini.py`: Added tests for Gemini comparison/merge
-  - `compare_events()` - event deduplication via LLM
-  - `merge_event_data()` - intelligent event data merging
-  - `generate_source_attribution()` - attribution string generation
-
-**New Integration Tests:**
-- `backend/tests/integration/test_integration_calendars.py`: Calendar sync integration
-  - Create/update/recreate Google Calendar events (mocked API)
-  - Settings CRUD with real Supabase
-  - Event cancellation flow
-
-- `backend/tests/integration/test_integration_workers.py`: Worker lifecycle tests
-  - `calendar_sync` worker with approved events
-  - `email_process` worker with mocked Gemini
-  - Job lifecycle: claim, complete, fail, retry
-  - Concurrent worker behavior
-
-- `backend/tests/integration/test_integration_events.py`: Added undo/redo tests
-  - Undo restores event snapshot
-  - Redo reactivates source
-  - Undo fails gracefully without snapshot
-  - Attribution excludes undone sources
-
-**Test Count:** Added ~50 new tests covering previously untested business logic.
-
-## 2026-01-27 (14)
-
-### Documentation: Auto-Merge Workflow Clarification
-
-**Purpose:** Update documentation to clarify the correct auto-merge workflow for PRs.
-
-**Problem:** Documentation mentioned `gh pr create --auto` but this flag doesn't actually enable auto-merge - it only controls draft/ready status. Users needed explicit instructions for enabling auto-merge.
-
-**Solution:**
-- Updated `CLAUDE.md`, `docs/parallel-agents.md`, and `docs/ci-cd.md` to clarify:
-  - Two-step process: `gh pr create` then `gh pr merge --auto --squash`
-  - Auto-merge happens automatically after CI passes, no manual review required
-  - Added troubleshooting section for auto-merge issues
-  - Updated all quick reference tables with correct commands
-
-## 2026-01-27 (13)
-
-### Idempotent Google Calendar Sync + CLI Refactoring
-
-**Purpose:** Implement idempotent calendar event writing to prevent duplicates, add a sync log for future drift detection, and refactor CLI commands to call services directly instead of non-existent REST endpoints.
-
-**Problem:**
-1. `sync_event_to_calendar()` always called `insert()`, creating duplicates if sync was triggered twice
-2. No record of what we've synced to Google Calendar (needed for future drift detection)
-3. `cli_events.py` called REST endpoints like `/events/new` that don't exist
-4. No CLI command for Google Calendar OAuth or manual event syncing
-
-**Solution:**
-
-**Part 0: Google Calendar OAuth CLI**
-- Added `cli/cli_auth_gcal.py` - CLI for Google Calendar OAuth authentication
-- Uses `CALENDAR_SCOPES` (read/write access) from integrations.py
-- Stores tokens in `integrations` table with `provider='google_calendar'`
-
-**Part 1: Sync Log Table**
-- Added migration `20260127000004_create_calendar_sync_log.sql`
-- Tracks all calendar sync operations: event_id, user_id, google_calendar_event_id
-- Stores action ('created', 'updated', 'deleted') and snapshot_synced (what we sent)
-- RLS enabled: users can only view their own sync logs
-- Enables future Phase 2 drift detection
-
-**Part 2: Idempotent Sync Logic**
-- Refactored `sync_event_to_calendar()` in `backend/selko/services/calendars.py`:
-  - If `google_calendar_event_id` is NULL: CREATE new event
-  - If exists: try UPDATE, or CREATE new if 404 (user deleted from Calendar)
-  - All syncs logged to `calendar_sync_log`
-- Added `_build_calendar_event_body()` helper to reduce duplication
-- Added `_update_or_recreate_calendar_event()` helper for idempotent logic
-- Added `_log_sync()` helper for audit logging
-- Added `extendedProperties.private.selko_event_id` to calendar events for traceability
-- Fixed 404 handling in `cancel_calendar_event()` for already-deleted events
-
-**Part 3: CLI Refactoring**
-- Refactored `cli/cli_events.py` - removed all httpx REST API calls:
-  - `new` → direct Supabase query for `status='pending_review'`
-  - `approved` → direct query for `status IN ('approved', 'synced')`
-  - `approve/reject/restore` → direct status updates
-  - `approve_sender/ignore_sender` → direct upsert to `sender_rules`
-  - `list_rules` → direct query of `sender_rules`
-  - Added `sync <event_id>` - sync single event to Google Calendar
-  - Added `sync-all` - sync all approved events
-- Refactored `cli/cli_calendars.py` - uses calendar service directly:
-  - `list` → `calendars.list_calendars()`
-  - `set` → `calendars.update_calendar_settings()`
-  - `invitees` → `calendars.update_calendar_settings()`
-  - `settings` → `calendars.get_calendar_settings()`
-
-**Part 4: Documentation**
-- Updated `PRD_ARCH.md`:
-  - FR-B.4 (Smart Idempotency): now "Partial (Calendar sync idempotent)"
-  - FR-D.1 (Calendar Sync): now "Partial (CLI sync, idempotent)"
-  - Added "Calendar Sync Phased Approach" section documenting Phase 1 (current) and Phase 2 (future smart merge with drift detection)
-
-**Files Added:**
-- `cli/cli_auth_gcal.py` - Google Calendar OAuth CLI
-- `supabase/migrations/20260127000004_create_calendar_sync_log.sql`
-
-**Files Modified:**
-- `backend/selko/services/calendars.py` - idempotent sync, helpers, logging
-- `cli/cli_events.py` - refactored to direct calls, added sync commands
-- `cli/cli_calendars.py` - refactored to direct service calls
-- `PRD_ARCH.md` - updated status and added Phase 2 documentation
-
-**Tests:** 235 passed, 11 skipped
-
 ## 2026-01-27 (12)
 
-### Claude Code Worktree Enforcement Hook
+### LLM Evaluation Test Data Framework
 
-**Purpose:** Enforce mandatory worktree workflow for AI coding agents by adding a Claude Code PreToolUse hook that blocks file edits in the main repository directory.
+**Purpose:** Create comprehensive test data and evaluation framework for LLM email processing quality assessment, enabling manual evaluation of Gemini's event extraction capabilities across diverse email scenarios.
 
-**Problem:** Multiple AI agents working simultaneously can cause merge conflicts and lost work when committing directly to main. The instructions in CLAUDE.md were being ignored.
+**Evaluation Framework (`backend/tests/eval/`):**
+- `run_eval.py` - CLI tool for running evaluations manually
+  - Supports running all fixtures, by category, or single fixture
+  - Caching system to avoid redundant LLM calls
+  - Auto-scoring with configurable thresholds (title/location similarity, time tolerance)
+  - Manual rating system (1-5 scale with notes)
+  - Summary reports and CSV export
+  - Commands: `--all`, `--category`, `--fixture`, `--report`, `--rate`, `--export`
+- `eval_config.py` - Configuration for categories, scoring thresholds, model settings
+- `conftest.py` - Pytest fixtures and parametrization helpers
+- `results/` - Cached evaluation results (gitignored)
 
-**Solution:**
-- Added Claude Code hook that intercepts Edit/Write/NotebookEdit tool calls
-- Hook checks if the target file is in the main repo (`/Users/tonimelisma/Development/selko/`)
-- Blocks the operation with exit code 2 and displays instructions to create a worktree
-- Allows edits to files in worktree directories (e.g., `../selko-feature/`)
+**Email Fixtures (56 total):**
 
-**Files Added:**
-- `.claude/hooks/block-main-repo-edits.sh` - PreToolUse hook script
+Organized by category with varying difficulty levels:
 
-**Files Modified:**
-- `.claude/settings.json` - Added hooks configuration
-- `CLAUDE.md` - Added prominent "MANDATORY FOR ALL AI CODING AGENTS" section at top, updated Definition of Done checklist, documented hook enforcement
+| Category | Count | Description |
+|----------|-------|-------------|
+| `invitations/` | 10 | Birthday parties, weddings, baby showers, graduations, etc. |
+| `appointments/` | 8 | Doctor, dentist, car service, salon, lawyer, accountant, vet |
+| `meetings/` | 10 | 1:1s, standups, board meetings, interviews, all-hands, project kickoffs |
+| `travel/` | 6 | Flights, hotels, car rentals, trains, shuttles, multi-leg itineraries |
+| `conferences/` | 7 | Tech conferences, webinars, workshops, training sessions |
+| `school/` | 5 | Parent-teacher conferences, school plays, sports, field trips |
+| `recurring/` | 4 | Weekly meetings, monthly clubs, bi-weekly 1:1s, quarterly reviews |
+| `no_events/` | 10 | Newsletters, receipts, shipping, marketing, social notifications |
 
-**How It Works:**
-1. AI agent tries to edit a file
-2. Hook extracts `file_path` from tool input
-3. If file is in main repo → BLOCKED with instructions
-4. If file is in worktree → allowed
+**Text Attachment Fixtures (`fixtures/attachments/`):**
+- `meeting_agenda.txt` - Meeting agenda document
+- `event_invite.ics` - ICS calendar file
+- `training_schedule.csv` - CSV schedule with multiple sessions
+- `conference_details.md` - Markdown document with event details
+- `field_trip_permission.txt` - School permission form
+
+**Multi-Email Thread Scenarios (`fixtures/threads/`):**
+- `meeting_reschedule_thread.json` - Meeting scheduled then rescheduled
+- `event_cancellation_thread.json` - Event scheduled then cancelled
+- `appointment_reminder_thread.json` - Appointment with reminder follow-up
+- `event_update_details_thread.json` - Event with evolving details (3 emails)
+
+**Fixture Format:**
+Each fixture includes:
+- Input: gmail_id, subject, from, date_sent, body_text, attachments
+- Expected: events_found, event_count, events with title/datetime/location/description
+- Metadata: category, difficulty, tags, notes
+
+**Key Test Scenarios:**
+- Date/time parsing: relative dates ("next Saturday"), written times ("four o'clock")
+- Multi-event extraction: flights with returns, conference multi-day schedules
+- Negative tests: Emails that should NOT create events (receipts, newsletters)
+- Attachment parsing: ICS files, CSV schedules, markdown details
+- Thread scenarios: Updates, cancellations, reminders for same event
+
+**Usage:**
+```bash
+# Run all evaluations (costs $$$)
+uv run python -m backend.tests.eval.run_eval --all
+
+# Run single category
+uv run python -m backend.tests.eval.run_eval --category invitations
+
+# View cached results report
+uv run python -m backend.tests.eval.run_eval --report
+
+# Rate results interactively
+uv run python -m backend.tests.eval.run_eval --rate
+```
+
+**Files Created:**
+- `backend/tests/eval/README.md`
+- `backend/tests/eval/__init__.py`
+- `backend/tests/eval/eval_config.py`
+- `backend/tests/eval/run_eval.py`
+- `backend/tests/eval/conftest.py`
+- `backend/tests/eval/results/.gitignore`
+- `backend/tests/eval/fixtures/emails/invitations/*.json` (10 files)
+- `backend/tests/eval/fixtures/emails/appointments/*.json` (8 files)
+- `backend/tests/eval/fixtures/emails/meetings/*.json` (10 files)
+- `backend/tests/eval/fixtures/emails/travel/*.json` (6 files)
+- `backend/tests/eval/fixtures/emails/conferences/*.json` (7 files)
+- `backend/tests/eval/fixtures/emails/school/*.json` (5 files)
+- `backend/tests/eval/fixtures/emails/recurring/*.json` (4 files)
+- `backend/tests/eval/fixtures/emails/no_events/*.json` (10 files)
+- `backend/tests/eval/fixtures/attachments/*` (5 files)
+- `backend/tests/eval/fixtures/threads/*.json` (4 files)
+
+**Note:** Evaluations are NOT run automatically. This is a manual testing framework for quality assessment and prompt tuning.
 
 ## 2026-01-27 (11)
 

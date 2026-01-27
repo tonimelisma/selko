@@ -1,0 +1,9 @@
+Date,Time,Session,Instructor,Room
+2026-03-23,9:00 AM - 10:30 AM,Introduction to Python,Sarah Chen,Lab A
+2026-03-23,10:45 AM - 12:15 PM,Data Structures Basics,Sarah Chen,Lab A
+2026-03-23,1:15 PM - 2:45 PM,Functions and Modules,Michael Park,Lab A
+2026-03-23,3:00 PM - 4:30 PM,Hands-on Practice,Michael Park,Lab A
+2026-03-24,9:00 AM - 10:30 AM,Object-Oriented Programming,Sarah Chen,Lab B
+2026-03-24,10:45 AM - 12:15 PM,File I/O and APIs,Sarah Chen,Lab B
+2026-03-24,1:15 PM - 2:45 PM,Project Workshop,Michael Park,Lab B
+2026-03-24,3:00 PM - 4:30 PM,Final Project Presentations,Both,Lab B

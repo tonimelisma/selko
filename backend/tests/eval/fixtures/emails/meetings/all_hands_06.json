@@ -1,0 +1,35 @@
+{
+  "name": "all_hands_06",
+  "category": "meetings",
+  "description": "Company all-hands meeting announcement",
+  "difficulty": "easy",
+  "tags": ["all-hands", "company", "announcement", "town-hall"],
+  "input": {
+    "gmail_id": "eval-mtg-006",
+    "thread_id": "thread-mtg-006",
+    "subject": "[All Company] February All-Hands Meeting",
+    "from_email": "ceo@startupco.com",
+    "from_name": "Michelle Park - CEO",
+    "to_emails": ["all@startupco.com"],
+    "date_sent": "2026-02-18T10:00:00Z",
+    "snippet": "Hi everyone! Please join us for our monthly all-hands...",
+    "body_text": "Hi everyone!\n\nPlease join us for our monthly All-Hands meeting. We have some exciting updates to share!\n\nWHEN: Friday, February 27, 2026\nTIME: 4:00 PM - 5:00 PM PST\nWHERE: Main Auditorium + Zoom for remote team\n\nZoom Link: https://zoom.us/j/allhands2026\nMeeting ID: 111 222 3333\n\nAGENDA:\n- Company performance update\n- Q2 roadmap preview\n- New hire introductions\n- AMA with leadership team\n- Surprise announcement! 🎉\n\nSnacks and drinks will be provided for in-office attendees.\n\nThis meeting is mandatory for all employees. If you absolutely cannot attend, please let your manager know.\n\nSee you there!\n\nMichelle\n\n--\nMichelle Park\nCEO, StartupCo",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Company All-Hands Meeting",
+        "start_datetime": "2026-02-27T16:00:00",
+        "end_datetime": "2026-02-27T17:00:00",
+        "location": "Main Auditorium",
+        "description": "Monthly all-hands meeting with company updates and AMA",
+        "is_all_day": false,
+        "confidence_min": 0.9
+      }
+    ]
+  },
+  "notes": "Company-wide all-hands meeting"
+}

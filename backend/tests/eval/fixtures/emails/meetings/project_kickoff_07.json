@@ -1,0 +1,35 @@
+{
+  "name": "project_kickoff_07",
+  "category": "meetings",
+  "description": "Internal project kickoff meeting",
+  "difficulty": "easy",
+  "tags": ["project", "kickoff", "internal", "planning"],
+  "input": {
+    "gmail_id": "eval-mtg-007",
+    "thread_id": "thread-mtg-007",
+    "subject": "Project Phoenix Kickoff - Please Join!",
+    "from_email": "daniel.kim@company.com",
+    "from_name": "Daniel Kim",
+    "to_emails": ["phoenix-team@company.com"],
+    "date_sent": "2026-02-08T16:45:00Z",
+    "snippet": "Hi team! It's time to kick off Project Phoenix...",
+    "body_text": "Hi team!\n\nIt's time to kick off Project Phoenix! I'm excited to get this initiative started.\n\nKICKOFF MEETING\n==============\nDate: Wednesday, February 18, 2026\nTime: 10:00 AM - 11:30 AM\nRoom: Innovation Lab (3rd floor)\n\nCalendar invite to follow.\n\nAGENDA:\n1. Project overview and goals\n2. Team introductions and roles\n3. Technical architecture overview\n4. Sprint planning approach\n5. Communication and tooling\n6. Q&A\n\nPRE-WORK (Optional but helpful):\n- Review the PRD doc: [link]\n- Think about potential risks\n- Bring your questions!\n\nLooking forward to building something great together.\n\nDan\n\n--\nDaniel Kim\nSenior Product Manager",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Phoenix Kickoff",
+        "start_datetime": "2026-02-18T10:00:00",
+        "end_datetime": "2026-02-18T11:30:00",
+        "location": "Innovation Lab (3rd floor)",
+        "description": "Project kickoff meeting with team introductions and planning",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Internal project kickoff meeting"
+}

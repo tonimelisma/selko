@@ -1,0 +1,19 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test Calendar//EN
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VEVENT
+DTSTART:20260315T140000
+DTEND:20260315T160000
+DTSTAMP:20260301T100000Z
+UID:test-event-12345@example.com
+ORGANIZER;CN=John Smith:mailto:john.smith@example.com
+ATTENDEE;RSVP=TRUE;CN=Recipient:mailto:recipient@example.com
+SUMMARY:Product Launch Planning Meeting
+DESCRIPTION:Meeting to finalize Q2 product launch strategy.\n\nTopics:\n- Launch timeline\n- Marketing materials\n- Press release review
+LOCATION:Innovation Hub, Room 501
+STATUS:CONFIRMED
+SEQUENCE:0
+END:VEVENT
+END:VCALENDAR

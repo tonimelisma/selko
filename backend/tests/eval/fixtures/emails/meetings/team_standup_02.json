@@ -1,0 +1,35 @@
+{
+  "name": "team_standup_02",
+  "category": "meetings",
+  "description": "Daily team standup meeting change",
+  "difficulty": "medium",
+  "tags": ["standup", "team", "daily", "time-change"],
+  "input": {
+    "gmail_id": "eval-mtg-002",
+    "thread_id": "thread-mtg-002",
+    "subject": "Team Standup Moving to New Time",
+    "from_email": "priya.sharma@company.com",
+    "from_name": "Priya Sharma",
+    "to_emails": ["platform-team@company.com"],
+    "date_sent": "2026-02-01T08:30:00Z",
+    "snippet": "Hi team, starting next week our daily standup...",
+    "body_text": "Hi team,\n\nStarting next week, our daily standup is moving to a new time to better accommodate our colleagues in different time zones.\n\nNEW SCHEDULE (effective Monday, February 9th):\n- Time: 9:30 AM PST (was 10:00 AM)\n- Duration: 15 minutes\n- Room: Conference Room B (same as before)\n- Zoom: https://zoom.us/j/123456789\n\nThe format stays the same:\n1. What did you accomplish yesterday?\n2. What are you working on today?\n3. Any blockers?\n\nPlease update your calendars accordingly.\n\nThanks,\nPriya\n\n--\nPriya Sharma\nTeam Lead, Platform Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Team Standup",
+        "start_datetime": "2026-02-09T09:30:00",
+        "end_datetime": "2026-02-09T09:45:00",
+        "location": "Conference Room B",
+        "description": "Daily team standup meeting (new time)",
+        "is_all_day": false,
+        "confidence_min": 0.8
+      }
+    ]
+  },
+  "notes": "Daily standup time change announcement - extract first occurrence"
+}

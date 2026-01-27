@@ -1,0 +1,35 @@
+{
+  "name": "parent_teacher_01",
+  "category": "school",
+  "description": "Parent-teacher conference scheduling",
+  "difficulty": "easy",
+  "tags": ["school", "parent-teacher", "conference", "education"],
+  "input": {
+    "gmail_id": "eval-school-001",
+    "thread_id": "thread-school-001",
+    "subject": "Parent-Teacher Conference Scheduled - Emma Johnson",
+    "from_email": "mrsthompson@lincolnelementary.edu",
+    "from_name": "Mrs. Thompson",
+    "to_emails": ["parent@example.com"],
+    "date_sent": "2026-02-10T15:30:00Z",
+    "snippet": "Your parent-teacher conference for Emma has been scheduled...",
+    "body_text": "Dear Johnson Family,\n\nYour parent-teacher conference for Emma has been scheduled.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCONFERENCE DETAILS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nStudent: Emma Johnson (3rd Grade)\nTeacher: Mrs. Thompson\n\nDate: Thursday, February 19, 2026\nTime: 4:15 PM - 4:35 PM\nLocation: Room 203, Lincoln Elementary\n          500 School Lane\n          Pleasantville, CA 94025\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDuring our conference, we will discuss:\n• Emma's academic progress\n• Social development\n• Upcoming curriculum\n• Any questions or concerns\n\nPlease arrive on time as conferences are scheduled back-to-back.\n\nIf you need to reschedule, please contact me as soon as possible.\n\nI look forward to meeting with you!\n\nBest regards,\nMrs. Thompson\n3rd Grade Teacher\nLincoln Elementary School\nmrsthompson@lincolnelementary.edu",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Parent-Teacher Conference - Emma Johnson",
+        "start_datetime": "2026-02-19T16:15:00",
+        "end_datetime": "2026-02-19T16:35:00",
+        "location": "Room 203, Lincoln Elementary, 500 School Lane, Pleasantville, CA 94025",
+        "description": "Conference with Mrs. Thompson about Emma's progress",
+        "is_all_day": false,
+        "confidence_min": 0.9
+      }
+    ]
+  },
+  "notes": "Parent-teacher conference with specific time slot"
+}

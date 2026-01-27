@@ -1,0 +1,50 @@
+{
+  "name": "appointment_reminder_thread",
+  "description": "Appointment confirmation followed by reminder",
+  "difficulty": "easy",
+  "tags": ["appointment", "reminder", "thread"],
+  "emails": [
+    {
+      "order": 1,
+      "fixture_path": "thread_appt_original.json",
+      "expected_action": "create",
+      "description": "Original appointment confirmation"
+    },
+    {
+      "order": 2,
+      "fixture_path": "thread_appt_reminder.json",
+      "expected_action": "reminder",
+      "description": "Day-before reminder"
+    }
+  ],
+  "thread_emails": [
+    {
+      "gmail_id": "thread-remind-001",
+      "thread_id": "thread-reminder",
+      "subject": "Appointment Confirmed - Dr. Williams, March 5th",
+      "from_email": "appointments@healthclinic.com",
+      "from_name": "Health Clinic",
+      "date_sent": "2026-02-20T14:00:00Z",
+      "body_text": "Your appointment has been confirmed.\n\nProvider: Dr. Lisa Williams\nDate: Thursday, March 5, 2026\nTime: 3:30 PM\n\nHealth Clinic\n500 Medical Way, Suite 100\nPalo Alto, CA 94301\n\nPlease arrive 15 minutes early.\n\nTo reschedule, call (650) 555-1234."
+    },
+    {
+      "gmail_id": "thread-remind-002",
+      "thread_id": "thread-reminder",
+      "subject": "Reminder: Your Appointment Tomorrow with Dr. Williams",
+      "from_email": "appointments@healthclinic.com",
+      "from_name": "Health Clinic",
+      "date_sent": "2026-03-04T09:00:00Z",
+      "body_text": "APPOINTMENT REMINDER\n\nThis is a reminder of your appointment tomorrow:\n\nProvider: Dr. Lisa Williams\nDate: Thursday, March 5, 2026\nTime: 3:30 PM\n\nHealth Clinic\n500 Medical Way, Suite 100\nPalo Alto, CA 94301\n\nPlease remember to:\n- Bring your insurance card\n- Arrive 15 minutes early\n- Bring a list of current medications\n\nNeed to reschedule? Call us at (650) 555-1234."
+    }
+  ],
+  "expected_final_state": {
+    "event_count": 1,
+    "final_event": {
+      "title": "Appointment with Dr. Williams",
+      "start_datetime": "2026-03-05T15:30:00",
+      "location": "Health Clinic, 500 Medical Way, Suite 100, Palo Alto, CA 94301",
+      "status": "pending_review"
+    }
+  },
+  "notes": "Tests that reminder email doesn't create duplicate event"
+}

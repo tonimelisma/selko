@@ -1,0 +1,35 @@
+{
+  "name": "car_service_03",
+  "category": "appointments",
+  "description": "Auto service appointment confirmation",
+  "difficulty": "easy",
+  "tags": ["car", "service", "auto", "morning"],
+  "input": {
+    "gmail_id": "eval-appt-003",
+    "thread_id": "thread-appt-003",
+    "subject": "Your Service Appointment is Confirmed",
+    "from_email": "service@hondasanjose.com",
+    "from_name": "Honda of San Jose Service",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-01-28T16:30:00Z",
+    "snippet": "Thank you for scheduling your service appointment...",
+    "body_text": "Thank you for scheduling your service appointment!\n\nCONFIRMATION DETAILS\n====================\n\nVehicle: 2023 Honda Accord\nVIN: 1HGCV1F34PA123456\n\nService Type: 30,000 Mile Maintenance\n- Oil change\n- Tire rotation\n- Multi-point inspection\n- Brake inspection\n\nAppointment Date: Saturday, February 7, 2026\nDrop-off Time: 8:00 AM\nEstimated Completion: 12:00 PM\n\nService Advisor: Marcus Johnson\nPhone: (408) 555-2345\n\nHonda of San Jose Service Center\n4321 Stevens Creek Blvd\nSan Jose, CA 95129\n\nFree WiFi and coffee available in our waiting area,\nor we offer complimentary shuttle service.\n\nQuestions? Reply to this email or call us.\n\nSee you soon!\nHonda of San Jose Service Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Service - Honda of San Jose",
+        "start_datetime": "2026-02-07T08:00:00",
+        "end_datetime": "2026-02-07T12:00:00",
+        "location": "Honda of San Jose Service Center, 4321 Stevens Creek Blvd, San Jose, CA 95129",
+        "description": "30,000 mile maintenance for 2023 Honda Accord",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Car service with drop-off and estimated completion times"
+}

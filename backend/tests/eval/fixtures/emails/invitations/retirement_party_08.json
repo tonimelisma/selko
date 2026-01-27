@@ -1,0 +1,35 @@
+{
+  "name": "retirement_party_08",
+  "category": "invitations",
+  "description": "Retirement celebration lunch",
+  "difficulty": "easy",
+  "tags": ["retirement", "lunch", "celebration"],
+  "input": {
+    "gmail_id": "eval-inv-008",
+    "thread_id": "thread-inv-008",
+    "subject": "Retirement Celebration for Bob Williams",
+    "from_email": "nancy.clark@company.com",
+    "from_name": "Nancy Clark",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-10T13:20:00Z",
+    "snippet": "After 35 years of dedicated service...",
+    "body_text": "Dear Colleagues,\n\nAfter 35 years of dedicated service, our dear friend and colleague Bob Williams is retiring!\n\nPlease join us for a celebration luncheon in his honor:\n\nDATE: Thursday, February 26, 2026\nTIME: 12:00 PM - 2:00 PM\nPLACE: Ocean View Restaurant\n       Private Dining Room\n       500 Harbor Boulevard\n       San Diego, CA 92101\n\nLunch will be provided. If you'd like to contribute to a group gift, please contact Nancy.\n\nKindly RSVP by February 19th to nancy.clark@company.com\n\nLet's give Bob the send-off he deserves!\n\nWarm regards,\nNancy Clark\nEvent Coordinator",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Bob Williams' Retirement Celebration",
+        "start_datetime": "2026-02-26T12:00:00",
+        "end_datetime": "2026-02-26T14:00:00",
+        "location": "Ocean View Restaurant, 500 Harbor Boulevard, San Diego, CA 92101",
+        "description": "Retirement luncheon celebrating Bob Williams' 35 years of service",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Retirement party with lunchtime event"
+}

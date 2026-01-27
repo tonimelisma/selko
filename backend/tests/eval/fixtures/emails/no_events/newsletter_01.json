@@ -1,0 +1,25 @@
+{
+  "name": "newsletter_01",
+  "category": "no_events",
+  "description": "Weekly tech newsletter with no actionable events",
+  "difficulty": "easy",
+  "tags": ["newsletter", "tech", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-001",
+    "thread_id": "thread-noev-001",
+    "subject": "TechDigest Weekly - Top Stories This Week",
+    "from_email": "newsletter@techdigest.com",
+    "from_name": "TechDigest",
+    "to_emails": ["subscriber@example.com"],
+    "date_sent": "2026-02-14T06:00:00Z",
+    "snippet": "This week in tech: AI breakthroughs, new smartphone releases...",
+    "body_text": "TECHDIGEST WEEKLY\nYour Week in Tech\n\nFebruary 14, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTOP STORIES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🤖 AI BREAKTHROUGH\nResearchers at MIT announce major advancement in neural network efficiency, reducing training costs by 40%.\n\n📱 NEW SMARTPHONE LAUNCHES\nSamsung unveils Galaxy S26 with revolutionary camera system. Apple rumored to follow next month.\n\n💻 SILICON VALLEY UPDATE\nTech layoffs continue as companies focus on profitability. Meta announces 5,000 new hires in AI division.\n\n🚗 ELECTRIC VEHICLES\nTesla's new affordable model hits production milestone. Ford announces partnership with charging network.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nREADING LIST\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n• \"The Future of Work in 2026\" - HBR\n• \"10 Productivity Apps You Need\" - Wired\n• \"How AI is Changing Healthcare\" - MIT Tech Review\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nYou're receiving this because you subscribed at techdigest.com\nUnsubscribe | Update Preferences\n\n© 2026 TechDigest",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Newsletter with no calendar events - should return events_found=false"
+}

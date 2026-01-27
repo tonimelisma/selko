@@ -1,0 +1,35 @@
+{
+  "name": "birthday_party_kids_01",
+  "category": "invitations",
+  "description": "Child's birthday party with time range and venue address",
+  "difficulty": "easy",
+  "tags": ["birthday", "kids", "time-range", "venue"],
+  "input": {
+    "gmail_id": "eval-inv-001",
+    "thread_id": "thread-inv-001",
+    "subject": "You're Invited! Emma's 6th Birthday Party!",
+    "from_email": "lisa.chen@gmail.com",
+    "from_name": "Lisa Chen",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-01-15T09:30:00Z",
+    "snippet": "Come celebrate Emma's special day...",
+    "body_text": "Hi there!\n\nYou're invited to celebrate Emma's 6th birthday!\n\nWhen: Saturday, February 22nd, 2026\nTime: 2:00 PM - 5:00 PM\nWhere: FunZone Play Center\n        456 Rainbow Lane\n        Pleasantville, CA 94123\n\nTheme: Unicorns & Rainbows!\n\nPlease RSVP by February 15th to lisa.chen@gmail.com or text (555) 123-4567.\n\nWe hope to see you there!\n\nLisa & Emma",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Emma's 6th Birthday Party",
+        "start_datetime": "2026-02-22T14:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "location": "FunZone Play Center, 456 Rainbow Lane, Pleasantville, CA 94123",
+        "description": "Unicorns & Rainbows theme birthday party for Emma",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Standard children's birthday party invitation with explicit date, time range, and venue"
+}
