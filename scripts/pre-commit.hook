@@ -1,70 +1,206 @@
 #!/bin/bash
 set -e
 
-echo "🔍 Pre-commit: Verifying tests were run (Definition of Done)..."
+# Per-module test enforcement using native test caches/results
+# Only requires tests for modules that have staged changes
 
-CACHE_FILE="backend/.pytest_cache/v/cache/lastfailed"
+echo "Pre-commit: Checking test status for changed modules..."
 
-# Check 1: Does pytest cache exist?
-if [ ! -f "$CACHE_FILE" ]; then
+# Get the project root
+if [[ "$0" == *".git/hooks"* ]]; then
+    PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+else
+    PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+fi
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only)
+
+if [ -z "$STAGED_FILES" ]; then
+    echo "No staged files, nothing to check"
+    exit 0
+fi
+
+# Determine which modules have changes
+BACKEND_CHANGED=false
+IOS_CHANGED=false
+ANDROID_CHANGED=false
+
+for file in $STAGED_FILES; do
+    case "$file" in
+        backend/*.py|cli/*.py)
+            BACKEND_CHANGED=true
+            ;;
+        ios/*.swift)
+            IOS_CHANGED=true
+            ;;
+        android/*.kt)
+            ANDROID_CHANGED=true
+            ;;
+    esac
+done
+
+# Track failures
+BLOCKED=false
+MODULES_NEEDING_TESTS=""
+
+# Check backend using pytest cache
+check_backend() {
+    local cache_file="$PROJECT_ROOT/backend/.pytest_cache/v/cache/lastfailed"
+
+    # Check cache exists
+    if [ ! -f "$cache_file" ]; then
+        return 1
+    fi
+
+    # Check all tests passed (empty JSON object = no failures)
+    local content=$(cat "$cache_file" 2>/dev/null | tr -d '[:space:]')
+    if [ "$content" != "{}" ] && [ -n "$content" ]; then
+        return 1
+    fi
+
+    # Check no source files newer than cache
+    if [ -n "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/cli" -name '*.py' -newer "$cache_file" 2>/dev/null | head -1)" ]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Check iOS using xcresult bundle
+check_ios() {
+    local result_bundle="$PROJECT_ROOT/ios/TestResults.xcresult"
+
+    # Check result bundle exists
+    if [ ! -d "$result_bundle" ]; then
+        return 1
+    fi
+
+    # Check no source files newer than result bundle
+    if [ -n "$(find "$PROJECT_ROOT/ios" -name '*.swift' -newer "$result_bundle" 2>/dev/null | head -1)" ]; then
+        return 1
+    fi
+
+    # Verify it's a valid xcresult and tests passed
+    # xcresulttool exits non-zero if bundle is invalid
+    local test_summary
+    if ! test_summary=$(xcrun xcresulttool get --path "$result_bundle" --format json 2>/dev/null); then
+        return 1
+    fi
+
+    # Check for test failures in the summary
+    if echo "$test_summary" | grep -q '"testsFailedCount" *: *[1-9]'; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Check Android using gradle test results
+check_android() {
+    local results_dir="$PROJECT_ROOT/android/app/build/test-results/testDebugUnitTest"
+
+    # Check results directory exists with XML files
+    if [ ! -d "$results_dir" ]; then
+        return 1
+    fi
+
+    local xml_files=$(find "$results_dir" -name "*.xml" -type f 2>/dev/null)
+    if [ -z "$xml_files" ]; then
+        return 1
+    fi
+
+    # Get the newest result file for timestamp comparison
+    local newest_result=$(ls -t "$results_dir"/*.xml 2>/dev/null | head -1)
+    if [ -z "$newest_result" ]; then
+        return 1
+    fi
+
+    # Check no source files newer than results
+    if [ -n "$(find "$PROJECT_ROOT/android" -name '*.kt' -newer "$newest_result" 2>/dev/null | head -1)" ]; then
+        return 1
+    fi
+
+    # Parse XML results for failures (failures="N" or errors="N" where N > 0)
+    if grep -q 'failures="[1-9]' "$results_dir"/*.xml 2>/dev/null; then
+        return 1
+    fi
+    if grep -q 'errors="[1-9]' "$results_dir"/*.xml 2>/dev/null; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Check each module that has changes
+if [ "$BACKEND_CHANGED" = true ]; then
+    echo "  Checking backend..."
+    if check_backend; then
+        echo "    Backend tests verified (pytest cache)"
+    else
+        BLOCKED=true
+        MODULES_NEEDING_TESTS="$MODULES_NEEDING_TESTS backend"
+    fi
+fi
+
+if [ "$IOS_CHANGED" = true ]; then
+    echo "  Checking ios..."
+    if check_ios; then
+        echo "    iOS tests verified (xcresult)"
+    else
+        BLOCKED=true
+        MODULES_NEEDING_TESTS="$MODULES_NEEDING_TESTS ios"
+    fi
+fi
+
+if [ "$ANDROID_CHANGED" = true ]; then
+    echo "  Checking android..."
+    if check_android; then
+        echo "    Android tests verified (gradle results)"
+    else
+        BLOCKED=true
+        MODULES_NEEDING_TESTS="$MODULES_NEEDING_TESTS android"
+    fi
+fi
+
+# If any module needs tests, block the commit
+if [ "$BLOCKED" = true ]; then
     echo ""
     echo "=========================================="
-    echo "❌ COMMIT BLOCKED: No test results found"
+    echo "COMMIT BLOCKED: Tests required"
     echo "=========================================="
     echo ""
-    echo "You must run tests before committing:"
-    echo "  uv run pytest backend/tests/ -v"
+    echo "The following modules need tests run:"
     echo ""
-    echo "⚠️  AI CODING TOOLS (Claude, Cursor, etc.):"
+    for module in $MODULES_NEEDING_TESTS; do
+        case "$module" in
+            backend)
+                echo "  backend:"
+                echo "    uv run pytest backend/tests/ -v"
+                ;;
+            ios)
+                echo "  ios:"
+                echo "    xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \\"
+                echo "      -destination 'platform=iOS Simulator,name=iPhone 16' \\"
+                echo "      -resultBundlePath ios/TestResults.xcresult"
+                ;;
+            android)
+                echo "  android:"
+                echo "    cd android && ./gradlew test"
+                ;;
+        esac
+        echo ""
+    done
+    echo "Run the tests above, then commit again."
+    echo ""
+    echo "AI CODING TOOLS (Claude, Cursor, etc.):"
     echo "    DO NOT use 'git commit --no-verify'"
     echo "    DO NOT bypass this hook"
     echo "    STOP and run the tests instead"
-    echo ""
-    echo "This is a Definition of Done requirement."
-    echo "Bypassing this check violates project standards."
-    echo ""
-    exit 1
-fi
-
-# Check 2: Did any tests fail last run?
-# Note: pytest writes {} (empty JSON object) when no tests failed
-#       but any other content means there are failures
-CACHE_CONTENT=$(cat "$CACHE_FILE" 2>/dev/null | tr -d '[:space:]')
-if [ "$CACHE_CONTENT" != "{}" ] && [ -n "$CACHE_CONTENT" ]; then
-    echo ""
-    echo "============================================"
-    echo "❌ COMMIT BLOCKED: Tests failed in last run"
-    echo "============================================"
-    echo ""
-    echo "Fix the failing tests, then run:"
-    echo "  uv run pytest backend/tests/ -v"
-    echo ""
-    echo "⚠️  AI CODING TOOLS (Claude, Cursor, etc.):"
-    echo "    DO NOT use 'git commit --no-verify'"
-    echo "    DO NOT bypass this hook"
-    echo "    STOP and fix the failing tests instead"
-    echo ""
-    exit 1
-fi
-
-# Check 3: Did code change after tests ran?
-if [ -n "$(find backend/selko backend/tests -name '*.py' -newer "$CACHE_FILE" 2>/dev/null)" ]; then
-    echo ""
-    echo "================================================"
-    echo "❌ COMMIT BLOCKED: Code changed after tests ran"
-    echo "================================================"
-    echo ""
-    echo "Re-run tests with the latest changes:"
-    echo "  uv run pytest backend/tests/ -v"
-    echo ""
-    echo "⚠️  AI CODING TOOLS (Claude, Cursor, etc.):"
-    echo "    DO NOT use 'git commit --no-verify'"
-    echo "    DO NOT bypass this hook"
-    echo "    STOP and re-run the tests instead"
     echo ""
     exit 1
 fi
 
 # All checks passed
-echo "✅ Tests verified (all passed, code unchanged)"
-echo "Commit allowed ✓"
+echo "All module tests verified"
+echo "Commit allowed"

@@ -14,7 +14,7 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture spec
 
 **Before ANY work increment is considered complete, ALL of the following MUST pass:**
 
-- [ ] **Run ALL tests**: `uv run pytest backend/tests/ -v` (unit + integration, all markers)
+- [ ] **Run tests for changed modules** (see test commands below)
 - [ ] **Update CHANGELOG.md** with detailed entry for the changes
 - [ ] **Git commit** with conventional commit message format (e.g., `feat:`, `fix:`, `test:`, `docs:`)
 - [ ] **Git push** to `origin/main`
@@ -28,7 +28,7 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture spec
 
 ### Pre-Commit Hook Enforcement
 
-A git pre-commit hook BLOCKS all commits unless tests have been run and passed.
+A git pre-commit hook BLOCKS commits unless tests have been run for changed modules.
 
 **Setup (one-time):**
 ```bash
@@ -36,16 +36,20 @@ cp scripts/pre-commit.hook .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
 
-**The hook verifies:**
-- Tests were run (pytest cache exists)
-- All tests passed (no failures in cache)
-- No code changes after tests (cache is fresh)
+**The hook checks per-module using native test caches:**
+- **backend**: pytest cache at `backend/.pytest_cache/v/cache/lastfailed`
+- **ios**: xcresult bundle at `ios/TestResults.xcresult`
+- **android**: gradle results at `android/app/build/test-results/`
+
+For each module with staged changes, the hook verifies:
+- Test results exist and show all tests passed
+- No source files are newer than the test results
 
 **CRITICAL FOR AI CODING TOOLS:**
 
 If the hook blocks a commit, you MUST:
-1. Read the error message
-2. Run the tests as instructed
+1. Read the error message to see which modules need tests
+2. Run the native test command for each module (see Test Commands below)
 3. Fix any failing tests
 4. Commit again
 
@@ -97,7 +101,7 @@ Add complexity only when measured need exists:
 |---------|---------|
 | `supabase start` | Start local Supabase (Docker) |
 | `supabase db reset` | Reset local database |
-| `uv run pytest backend/tests/ -v` | Run ALL tests (required before commits) |
+| `uv run pytest backend/tests/ -v` | Run backend tests |
 | `uv run python -m selko.api` | Start FastAPI server |
 
 ### CLI Tools
@@ -148,17 +152,19 @@ ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
 ### Test Commands
 
 ```bash
-# Run ALL tests (required before commits)
-uv run pytest backend/tests/ -v
+# Backend (Python/pytest)
+uv run pytest backend/tests/ -v                              # All backend tests
+uv run pytest backend/tests/ -m "not integration" -v         # Unit tests only
+uv run pytest backend/tests/integration/ -m "development" -v # Integration tests (mocked LLM)
+uv run pytest backend/tests/integration/ -m "development" --run-llm -v  # Real LLM (costs $$$)
 
-# Unit tests only (fast, fully mocked)
-uv run pytest backend/tests/ -m "not integration" -v
+# iOS (xcodebuild) - must use -resultBundlePath for pre-commit hook
+xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -resultBundlePath ios/TestResults.xcresult
 
-# Integration tests with mocked LLM (default, no API costs)
-uv run pytest backend/tests/integration/ -m "development" -v
-
-# Integration tests with REAL LLM (costs money)
-uv run pytest backend/tests/integration/ -m "development" --run-llm -v
+# Android (gradle)
+cd android && ./gradlew test
 ```
 
 ### Test Markers
