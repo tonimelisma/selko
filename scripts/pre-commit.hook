@@ -113,8 +113,9 @@ check_ios() {
 
     # Verify it's a valid xcresult and tests passed
     # xcresulttool exits non-zero if bundle is invalid
+    # Note: --legacy flag required for Xcode 26+ which deprecated the old format
     local test_summary
-    if ! test_summary=$(xcrun xcresulttool get --path "$result_bundle" --format json 2>/dev/null); then
+    if ! test_summary=$(xcrun xcresulttool get object --legacy --path "$result_bundle" --format json 2>/dev/null); then
         return 1
     fi
 

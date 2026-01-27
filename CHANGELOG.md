@@ -2,6 +2,83 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (2)
+
+### Enable Direct Supabase Access from All Frontends
+
+**Purpose:** Refactor architecture to have frontends (web, Android, iOS) call Supabase directly for data operations, while keeping the Python API only for operations requiring server-side processing (OAuth, Gmail sync, LLM processing, Calendar API).
+
+**Documentation Created:**
+- `docs/supabase-frontend-queries.md` - Comprehensive query patterns documentation with examples in JavaScript, Kotlin, and Swift for consistent implementations across platforms
+
+**Web Frontend Files Created:**
+- `frontend/src/lib/services/attachments.js` - Attachment queries and storage download
+- `frontend/src/lib/services/calendar-settings.js` - User calendar settings CRUD
+- `frontend/src/lib/services/sender-rules.js` - Sender rule management
+- `frontend/src/lib/services/event-sources.js` - Event source undo/redo operations
+- `frontend/src/lib/services/jobs.js` - Job status queries
+- `frontend/src/lib/services/index.js` - Re-exports all services
+- `frontend/src/lib/api/backend.js` - Python API client for server-side operations only (7 endpoints)
+- `frontend/src/lib/__tests__/services.test.js` - Tests for new services
+- `frontend/src/lib/__tests__/backend-api.test.js` - Tests for backend API client
+
+**Web Frontend Files Modified:**
+- `frontend/src/lib/types.js` - Added type definitions for Attachment, EventSource, SenderRule, CalendarSettings, Job
+
+**Android Files Created:**
+- `android/app/src/main/java/net/melisma/selko/data/model/Email.kt` - Email data model
+- `android/app/src/main/java/net/melisma/selko/data/model/CalendarEvent.kt` - Calendar event model
+- `android/app/src/main/java/net/melisma/selko/data/model/EventSource.kt` - Event source model
+- `android/app/src/main/java/net/melisma/selko/data/model/Integration.kt` - Integration model
+- `android/app/src/main/java/net/melisma/selko/data/repository/EmailRepository.kt` - Email Supabase queries
+- `android/app/src/main/java/net/melisma/selko/data/repository/EventRepository.kt` - Event Supabase queries
+- `android/app/src/main/java/net/melisma/selko/data/repository/IntegrationRepository.kt` - Integration queries
+- `android/app/src/main/java/net/melisma/selko/data/api/BackendApiClient.kt` - Python API client
+
+**Android Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/di/AppModule.kt` - Added new repositories to Koin DI
+- `android/gradle/libs.versions.toml` - Added ktor-client-content-negotiation, kotlinx-datetime
+- `android/app/build.gradle.kts` - Added new dependencies
+
+**iOS Files Created:**
+- `ios/Selko/Features/Emails/Models/Email.swift` - Email model
+- `ios/Selko/Features/Events/Models/CalendarEvent.swift` - Calendar event model
+- `ios/Selko/Features/Events/Models/EventSource.swift` - Event source model
+- `ios/Selko/Features/Integrations/Models/Integration.swift` - Integration model
+- `ios/Selko/Features/Emails/Services/EmailService.swift` - Email Supabase queries
+- `ios/Selko/Features/Events/Services/EventService.swift` - Event Supabase queries
+- `ios/Selko/Features/Integrations/Services/IntegrationService.swift` - Integration queries
+- `ios/Selko/Core/API/BackendAPI.swift` - Python API client for server-side operations
+
+**iOS Files Modified:**
+- `ios/Selko/Core/Config.swift` - Added apiURL property for backend API
+- `ios/Selko/Core/DI/DependencyContainer.swift` - Added new services to DI container
+
+**Architecture Benefits:**
+1. **Reduced Latency**: Frontend → Supabase is faster than Frontend → Python → Supabase
+2. **Simpler Backend**: Python API reduced from 35 endpoints to 7 (OAuth, sync, LLM processing)
+3. **Consistent Architecture**: All frontends use same Supabase query patterns
+4. **Better Scaling**: Less load on Python API
+5. **Easier Debugging**: Fewer layers to trace through
+
+**Python API Endpoints Retained (require server-side secrets):**
+| Endpoint | Reason |
+|----------|--------|
+| `GET /integrations/gmail/auth` | OAuth client secrets |
+| `GET /integrations/gmail/callback` | OAuth state validation + secrets |
+| `POST /emails/sync` | Gmail API credentials |
+| `POST /emails/{id}/process` | Gemini LLM API key |
+| `POST /emails/batch-process` | Gemini LLM API key |
+| `GET /calendars` | Google Calendar API |
+| `POST /events/{id}/sync` | Google Calendar API write |
+
+**Test Results:**
+- Frontend: All tests pass (JSON report written)
+- Android: BUILD SUCCESSFUL (30 tasks)
+- iOS: TEST SUCCEEDED (20 test cases)
+
+**Reason:** Enable direct database access from frontends to reduce latency, simplify the Python API, and provide consistent query patterns across all platforms. RLS policies enforce security at the database level.
+
 ## 2026-01-27
 
 ### Fix: CI Unit Tests Failing

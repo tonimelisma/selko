@@ -29,4 +29,15 @@ enum Config {
         return ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"] ?? ""
         #endif
     }
+
+    static var apiURL: String {
+        // Backend API URL for server-side operations
+        #if DEBUG
+        // Local development API
+        return ProcessInfo.processInfo.environment["SELKO_API_URL"] ?? "http://localhost:8000"
+        #else
+        // Production API
+        return ProcessInfo.processInfo.environment["SELKO_API_URL"] ?? ""
+        #endif
+    }
 }

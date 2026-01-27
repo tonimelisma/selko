@@ -1,0 +1,39 @@
+package net.melisma.selko.data.model
+
+import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+
+@Serializable
+enum class SourceType {
+    @SerialName("new_invitation") NEW_INVITATION,
+    @SerialName("update") UPDATE,
+    @SerialName("cancellation") CANCELLATION,
+    @SerialName("reminder") REMINDER,
+    @SerialName("unknown") UNKNOWN
+}
+
+@Serializable
+data class ExtractedData(
+    val title: String? = null,
+    @SerialName("start_datetime") val startDatetime: String? = null,
+    @SerialName("end_datetime") val endDatetime: String? = null,
+    val location: String? = null,
+    val description: String? = null,
+    @SerialName("source_quote") val sourceQuote: String? = null
+)
+
+@Serializable
+data class EventSource(
+    val id: String,
+    @SerialName("event_id") val eventId: String,
+    @SerialName("email_id") val emailId: String,
+    @SerialName("source_type") val sourceType: SourceType = SourceType.UNKNOWN,
+    @SerialName("extracted_data") val extractedData: ExtractedData? = null,
+    @SerialName("event_snapshot_before") val eventSnapshotBefore: JsonObject? = null,
+    @SerialName("is_undone") val isUndone: Boolean = false,
+    @SerialName("created_at") val createdAt: Instant? = null,
+    // Joined email data
+    val emails: Email? = null
+)

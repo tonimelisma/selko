@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		3B20E3B62F28A481003C6B1E /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 3B2337A12F2879000099BB8C /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		3B2337762F2878EE0099BB8C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3B20E3B62F28A481003C6B1E /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -196,10 +201,10 @@
 			);
 			mainGroup = 3B23375F2F2878ED0099BB8C;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			packageReferences = (
 				3B2337A02F2879000099BB8C /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
+			preferredProjectObjectVersion = 77;
 			productRefGroup = 3B2337692F2878ED0099BB8C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";

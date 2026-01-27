@@ -85,12 +85,15 @@ dependencies {
     implementation(libs.supabase.auth)
     implementation(libs.supabase.postgrest)
     implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
 
     // Navigation
     implementation(libs.navigation.compose)
 
-    // Kotlinx Serialization
+    // Kotlinx Serialization and DateTime
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.datetime)
 
     // ViewModel Compose
     implementation(libs.lifecycle.viewmodel.compose)
