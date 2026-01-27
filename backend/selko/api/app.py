@@ -42,6 +42,9 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application instance.
     """
+    # Load config early for CORS configuration
+    config = load_config()
+
     app = FastAPI(
         title="Selko API",
         description="AI-powered personal organization assistant",
@@ -50,15 +53,10 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # Configure CORS for development
+    # Configure CORS from environment
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",  # React dev server
-            "http://localhost:5173",  # Vite dev server
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-        ],
+        allow_origins=config.allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
