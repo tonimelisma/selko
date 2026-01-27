@@ -65,12 +65,26 @@ uv sync                         # Python deps
 cd frontend && npm ci && cd ..  # JS deps (if changing frontend)
 ```
 
+> **CRITICAL: You are now in the worktree directory.**
+>
+> From this point forward, ALL work happens inside `~/Development/selko-<type>-<task>/`.
+>
+> - Run all commands from this directory (just `git status`, not `git -C /path status`)
+> - Do NOT use path flags or absolute paths to target the worktree
+> - Do NOT return to the main repo until cleanup after merge
+>
+> **If a command is rejected or blocked:** Check your working directory with `pwd`.
+> If you're in `~/Development/selko/` instead of the worktree, that's the problem.
+> Change to the worktree directory and retry.
+
 ## Working in a Worktree
 
 ### Making Changes
 
 ```bash
-# You're in ~/Development/selko-feat-add-login/
+# IMPORTANT: You MUST be in ~/Development/selko-feat-add-login/
+# Verify with: pwd
+# If you're in ~/Development/selko/, STOP - change directory first
 
 # Edit files, run tests
 uv run pytest backend/tests/ -v

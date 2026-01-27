@@ -62,6 +62,20 @@ uv sync
 cd frontend && npm ci && cd ..  # if changing frontend
 ```
 
+> **CRITICAL: After step 5, your working directory MUST be the worktree.**
+>
+> All subsequent commands run from inside the worktree directory:
+> ```
+> ~/Development/selko-<type>-<task>/    ← CORRECT
+> ~/Development/selko/                  ← WRONG
+> ```
+>
+> Do NOT use `git -C /path`, `cd /path && command`, or absolute paths to the worktree.
+> Just run commands normally - you're already in the right place.
+>
+> **If a Bash command is rejected:** You're probably in the wrong directory.
+> Verify with `pwd` and change to the worktree if needed.
+
 **Full details:** `docs/parallel-agents.md`
 
 ### Enforcement
