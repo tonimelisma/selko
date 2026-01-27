@@ -2,6 +2,56 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-26 (2)
+
+### Android Architecture Implementation (Koin + Ktor + Navigation Compose)
+
+**Files created:**
+- `android/app/src/main/java/net/melisma/selko/SelkoApplication.kt` - Custom Application class with Koin initialization
+- `android/app/src/main/java/net/melisma/selko/di/AppModule.kt` - Koin DI module definitions
+- `android/app/src/main/java/net/melisma/selko/data/api/HttpClientFactory.kt` - Ktor HTTP client factory
+- `android/app/src/main/java/net/melisma/selko/data/api/SupabaseAuthApi.kt` - Supabase auth API client and DTOs
+- `android/app/src/main/java/net/melisma/selko/data/repository/TokenStorage.kt` - DataStore-based token persistence
+- `android/app/src/main/java/net/melisma/selko/data/repository/AuthRepository.kt` - Authentication repository
+- `android/app/src/main/java/net/melisma/selko/ui/navigation/NavRoutes.kt` - Type-safe navigation routes
+- `android/app/src/main/java/net/melisma/selko/ui/navigation/SelkoNavHost.kt` - Navigation host component
+- `android/app/src/main/java/net/melisma/selko/ui/screens/auth/AuthViewModel.kt` - Auth screen ViewModel
+- `android/app/src/main/java/net/melisma/selko/ui/screens/auth/AuthScreen.kt` - Login/register screen UI
+- `android/app/src/main/java/net/melisma/selko/ui/screens/home/HomeViewModel.kt` - Home screen ViewModel
+- `android/app/src/main/java/net/melisma/selko/ui/screens/home/HomeScreen.kt` - Home screen with logout
+
+**Files modified:**
+- `android/gradle/libs.versions.toml` - Added Koin 4.0.0, Ktor 3.0.3, Navigation 2.8.5, DataStore 1.1.2, Kotlinx Serialization
+- `android/build.gradle.kts` - Added Kotlin serialization plugin
+- `android/app/build.gradle.kts` - Added all new dependencies, BuildConfig fields for Supabase URLs, enabled buildConfig
+- `android/app/src/main/AndroidManifest.xml` - Added custom Application class and INTERNET permission
+- `android/app/src/main/java/net/melisma/selko/MainActivity.kt` - Updated to use Navigation Compose
+
+**Architecture stack:**
+| Layer | Technology |
+|-------|------------|
+| UI | Jetpack Compose (Material3) |
+| Architecture | ViewModel + Compose State |
+| DI | Koin 4.0.0 |
+| Navigation | Navigation Compose (type-safe routes) |
+| Networking | Ktor 3.0.3 (OkHttp engine) |
+| Local Storage | DataStore Preferences |
+| Serialization | Kotlinx Serialization |
+
+**Features implemented:**
+- User authentication via Supabase Auth (login and registration)
+- JWT token persistence with DataStore
+- Automatic navigation based on auth state
+- Type-safe navigation with Kotlin serialization
+- Clean MVVM architecture with reactive state flows
+
+**BuildConfig fields (debug/release):**
+- `SUPABASE_URL` - Supabase project URL (10.0.2.2:54321 for local dev in emulator)
+- `SUPABASE_ANON_KEY` - Supabase anonymous key
+- `SELKO_API_URL` - Selko backend API URL
+
+**Reason:** Implements the Android architecture plan with minimal complexity. The app now has working authentication that integrates with the existing Selko backend via Supabase Auth.
+
 ## 2026-01-26
 
 ### Add CORS Configuration from Environment
