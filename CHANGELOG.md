@@ -2,6 +2,55 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-26
+
+### Documentation Restructuring
+
+**Purpose:** Improve documentation organization by reducing redundancy, moving detailed content to dedicated docs files, and keeping CLAUDE.md focused on critical rules and quick reference.
+
+**Changes:**
+
+**New files created:**
+- `docs/api-workflow.md` - Manual API workflow with curl examples (moved from README.md)
+- `docs/job-queue.md` - Job queue architecture details (moved from CLAUDE.md)
+- `docs/ci-cd.md` - CI/CD pipeline documentation (moved from CLAUDE.md)
+
+**README.md (~200 lines, down from ~640):**
+- Removed Manual API Workflow section -> linked to `docs/api-workflow.md`
+- Removed full API endpoint table -> pointed to Swagger `/docs`
+- Simplified test instructions -> linked to CLAUDE.md
+- Added documentation table with links to all guides
+
+**CLAUDE.md (~310 lines, down from ~1070):**
+- Removed Job Queue System section (~150 lines) -> `docs/job-queue.md`
+- Removed CI/CD Pipeline section (~100 lines) -> `docs/ci-cd.md`
+- Removed Manual API Workflow section -> `docs/api-workflow.md`
+- Removed full API endpoint table -> pointed to Swagger
+- Removed "Future: Mock Endpoints" aspirational content
+- Removed "Next Steps (MVP Roadmap)" -> already in PRD_ARCH.md
+- Removed duplicate monorepo structure (already in README.md)
+- Consolidated all test commands into one Testing section
+- Consolidated CLI commands into Quick Reference table
+- Added Reference Documentation table
+
+**PRD_ARCH.md:**
+- Minor cleanup: Removed inline code example, pointed to source file
+
+**Document purposes after restructuring:**
+| Document | Target Lines | Purpose |
+|----------|--------------|---------|
+| README.md | ~200 | Setup, basic usage, project overview |
+| CLAUDE.md | ~310 | Critical rules, quick reference, schema |
+| PRD_ARCH.md | ~890 | Requirements, architecture, status |
+
+**Files Modified:**
+- `docs/api-workflow.md` - Created
+- `docs/job-queue.md` - Created
+- `docs/ci-cd.md` - Created
+- `README.md` - Restructured (removed duplicates, added links)
+- `CLAUDE.md` - Major restructure (moved content to docs/)
+- `PRD_ARCH.md` - Minor cleanup
+
 ## 2026-01-27
 
 ### Fix: JWT Validation Failures in pytest Due to Environment Pollution
