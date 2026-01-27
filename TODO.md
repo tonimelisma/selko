@@ -269,6 +269,50 @@ When you have a frontend, add CORS configuration:
 
 ---
 
+## Frontend Deployment Setup
+
+### 1. Local Frontend Development
+- [ ] Navigate to frontend: `cd frontend`
+- [ ] Copy environment template: `cp .env.example .env`
+- [ ] Configure `.env` with local Supabase values:
+  - [ ] `VITE_SUPABASE_URL=http://localhost:54321`
+  - [ ] `VITE_SUPABASE_ANON_KEY=<from supabase start output>`
+- [ ] Install dependencies: `npm install`
+- [ ] Start dev server: `npm run dev`
+- [ ] Verify at http://localhost:5173
+
+### 2. Deploy Frontend to Render (Staging)
+- [ ] Go to Render Dashboard → New → Static Site
+- [ ] Connect the `tonimelisma/selko` repository
+- [ ] Configure:
+  - **Name:** `selko-web-staging`
+  - **Branch:** `main`
+  - **Root Directory:** `frontend`
+  - **Build Command:** `npm run build`
+  - **Publish Directory:** `build`
+- [ ] Set environment variables:
+  - [ ] `VITE_SUPABASE_URL=https://lxmysergoeaegxlyfzwk.supabase.co`
+  - [ ] `VITE_SUPABASE_ANON_KEY=<staging-anon-key>`
+- [ ] Deploy and verify registration/login works
+
+### 3. Deploy Frontend to Render (Production)
+- [ ] Create another Static Site with same settings but:
+  - **Name:** `selko-web`
+  - **Auto-Deploy:** Off (manual deploys for production safety)
+- [ ] Set environment variables with production values:
+  - [ ] `VITE_SUPABASE_URL=https://khahcozfbnpykspvatrg.supabase.co`
+  - [ ] `VITE_SUPABASE_ANON_KEY=<production-anon-key>`
+- [ ] Deploy and verify
+
+### 4. Update Backend CORS (Required for Frontend)
+- [ ] Add `ALLOWED_ORIGINS` environment variable to backend `config.py`
+- [ ] Update `app.py` CORS configuration to use `ALLOWED_ORIGINS`
+- [ ] Set `ALLOWED_ORIGINS` in Render backend environment:
+  - Staging: `https://selko-web-staging.onrender.com`
+  - Production: `https://selko-web.onrender.com`
+
+---
+
 ## Quick Reference
 
 ### Environment Files
