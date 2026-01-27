@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27
+
+### Fix: CI Unit Tests Failing
+
+**Root Cause:**
+Commit `5cb571a` (CORS configuration) added `load_config()` call at app creation time to read CORS settings from environment. However, `load_config()` calls `sys.exit(1)` when required env vars are missing. In CI, the unit tests job runs without env vars, and pytest collection still imports `test_integration_api.py` which imports `app`, triggering the config validation failure.
+
+**Fix:**
+Modified `create_app()` in `backend/selko/api/app.py` to catch `SystemExit` and fall back to default localhost CORS origins when config is unavailable. This allows test collection to succeed while actual app startup still validates config properly.
+
+Files modified:
+- `backend/selko/api/app.py` - Wrapped config loading in try/except for graceful fallback during test collection
+
 ## 2026-01-26 (5)
 
 ### Web Frontend: Supabase SDK Extension & Comprehensive Testing
