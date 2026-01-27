@@ -29,13 +29,9 @@ import { parseSupabaseError } from '$lib/errors.js';
  */
 
 /**
- * @typedef {import('$lib/types.js').SupabaseServiceResult} SupabaseServiceResult
- */
-
-/**
  * Fetch all sources for an event
  * @param {string} eventId - The event UUID
- * @returns {Promise<SupabaseServiceResult<EventSource[]>>}
+ * @returns {Promise<{data: EventSource[], error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchEventSources(eventId) {
 	try {
@@ -62,7 +58,7 @@ export async function fetchEventSources(eventId) {
  * Undo a source's contribution to an event
  * This marks the source as undone but doesn't delete it, allowing for redo
  * @param {string} sourceId - The source UUID
- * @returns {Promise<SupabaseServiceResult<EventSource | null>>}
+ * @returns {Promise<{data: EventSource | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function undoSourceContribution(sourceId) {
 	try {
@@ -84,7 +80,7 @@ export async function undoSourceContribution(sourceId) {
 /**
  * Redo a previously undone source contribution
  * @param {string} sourceId - The source UUID
- * @returns {Promise<SupabaseServiceResult<EventSource | null>>}
+ * @returns {Promise<{data: EventSource | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function redoSourceContribution(sourceId) {
 	try {

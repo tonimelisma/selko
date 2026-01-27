@@ -4,6 +4,7 @@
 	import { supabase } from '$lib/supabase.js';
 	import { user, loading } from '$lib/stores.js';
 
+	/** @type {import('@supabase/supabase-js').User | null} */
 	let currentUser = $state(null);
 	let isLoading = $state(true);
 

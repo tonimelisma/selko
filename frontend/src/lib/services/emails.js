@@ -3,7 +3,6 @@ import { parseSupabaseError } from '$lib/errors.js';
 
 /**
  * @typedef {import('$lib/types.js').Email} Email
- * @typedef {import('$lib/types.js').SupabaseServiceResult} SupabaseServiceResult
  */
 
 /**
@@ -19,7 +18,7 @@ import { parseSupabaseError } from '$lib/errors.js';
 /**
  * Fetch emails for the current user
  * @param {FetchEmailsOptions} [options={}]
- * @returns {Promise<SupabaseServiceResult<Email[]>>}
+ * @returns {Promise<{data: Email[], count: number | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchEmails(options = {}) {
 	const {
@@ -64,7 +63,7 @@ export async function fetchEmails(options = {}) {
 /**
  * Get a single email by ID
  * @param {string} emailId - The email UUID
- * @returns {Promise<SupabaseServiceResult<Email | null>>}
+ * @returns {Promise<{data: Email | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function getEmail(emailId) {
 	try {
@@ -83,7 +82,7 @@ export async function getEmail(emailId) {
  * Note: This updates the local database flag only, not Gmail
  * @param {string} emailId - The email UUID
  * @param {boolean} isUnread - Whether the email should be marked as unread
- * @returns {Promise<SupabaseServiceResult<Email | null>>}
+ * @returns {Promise<{data: Email | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function updateEmailReadStatus(emailId, isUnread) {
 	try {

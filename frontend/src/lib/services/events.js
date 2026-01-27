@@ -4,7 +4,6 @@ import { parseSupabaseError } from '$lib/errors.js';
 /**
  * @typedef {import('$lib/types.js').CalendarEvent} CalendarEvent
  * @typedef {import('$lib/types.js').EventStatus} EventStatus
- * @typedef {import('$lib/types.js').SupabaseServiceResult} SupabaseServiceResult
  */
 
 /**
@@ -18,7 +17,7 @@ import { parseSupabaseError } from '$lib/errors.js';
 
 /**
  * Fetch events pending user review
- * @returns {Promise<SupabaseServiceResult<CalendarEvent[]>>}
+ * @returns {Promise<{data: CalendarEvent[], count: number | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchPendingEvents() {
 	try {
@@ -39,7 +38,7 @@ export async function fetchPendingEvents() {
 /**
  * Fetch events with optional filters
  * @param {FetchEventsOptions} [options={}]
- * @returns {Promise<SupabaseServiceResult<CalendarEvent[]>>}
+ * @returns {Promise<{data: CalendarEvent[], count: number | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchEvents(options = {}) {
 	const { limit = 50, offset = 0, statuses, startAfter, startBefore } = options;
@@ -74,7 +73,7 @@ export async function fetchEvents(options = {}) {
 /**
  * Get a single event by ID
  * @param {string} eventId - The event UUID
- * @returns {Promise<SupabaseServiceResult<CalendarEvent | null>>}
+ * @returns {Promise<{data: CalendarEvent | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function getEvent(eventId) {
 	try {
@@ -92,7 +91,7 @@ export async function getEvent(eventId) {
  * Update event status (approve, reject, etc.)
  * @param {string} eventId - The event UUID
  * @param {EventStatus} status - New status
- * @returns {Promise<SupabaseServiceResult<CalendarEvent | null>>}
+ * @returns {Promise<{data: CalendarEvent | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function updateEventStatus(eventId, status) {
 	try {
@@ -115,7 +114,7 @@ export async function updateEventStatus(eventId, status) {
  * Update event details
  * @param {string} eventId - The event UUID
  * @param {Partial<Pick<CalendarEvent, 'title' | 'start_datetime' | 'end_datetime' | 'all_day' | 'location' | 'description'>>} updates
- * @returns {Promise<SupabaseServiceResult<CalendarEvent | null>>}
+ * @returns {Promise<{data: CalendarEvent | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function updateEvent(eventId, updates) {
 	try {

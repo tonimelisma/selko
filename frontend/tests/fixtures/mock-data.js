@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Mock data for testing
  */
