@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (14)
+
+### Documentation: Auto-Merge Workflow Clarification
+
+**Purpose:** Update documentation to clarify the correct auto-merge workflow for PRs.
+
+**Problem:** Documentation mentioned `gh pr create --auto` but this flag doesn't actually enable auto-merge - it only controls draft/ready status. Users needed explicit instructions for enabling auto-merge.
+
+**Solution:**
+- Updated `CLAUDE.md`, `docs/parallel-agents.md`, and `docs/ci-cd.md` to clarify:
+  - Two-step process: `gh pr create` then `gh pr merge --auto --squash`
+  - Auto-merge happens automatically after CI passes, no manual review required
+  - Added troubleshooting section for auto-merge issues
+  - Updated all quick reference tables with correct commands
+
 ## 2026-01-27 (13)
 
 ### Idempotent Google Calendar Sync + CLI Refactoring

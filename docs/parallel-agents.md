@@ -8,7 +8,7 @@ This guide covers running multiple AI coding agents simultaneously on the same r
 |-----------|--------|-----|
 | Isolation | Git Worktrees | Disk-efficient, shared .git |
 | Branching | Feature branches | Required by worktrees, enables PRs |
-| Merging | Auto-merge PRs | Hands-off after CI passes |
+| Merging | Auto-merge PRs | No manual review required, merges after CI passes |
 | Alerts | Email notifications | Know immediately if CI fails |
 
 ## Naming Conventions
@@ -24,7 +24,7 @@ This guide covers running multiple AI coding agents simultaneously on the same r
 
 **Auto-Merge** (already enabled via `gh repo edit --enable-auto-merge`):
 - Allows PRs to auto-merge after CI passes
-- MUST always use `gh pr create --auto` to ensure CI passes first
+- Use `gh pr merge --auto --squash` after creating PR to enable auto-merge
 
 **Notifications** (Personal Settings → Notifications):
 - ✅ Actions: Send notifications for failed workflows only
@@ -89,10 +89,16 @@ git push -u origin feat/add-login
 ### Creating PR with Auto-Merge
 
 ```bash
+# Create the PR
 gh pr create \
   --title "feat: add new capability" \
-  --body "Description of changes" \
-  --auto
+  --body "Description of changes"
+
+# Enable auto-merge (PR will merge automatically after CI passes)
+gh pr merge --auto --squash
+
+# Monitor CI status (optional)
+gh pr checks
 ```
 
 ### When Another Agent's PR Merges
@@ -120,9 +126,12 @@ After your task is complete:
 - [ ] CHANGELOG.md updated
 - [ ] Committed with conventional commit format
 - [ ] Pushed to feature branch
-- [ ] PR created with `gh pr create --auto`
+- [ ] PR created with `gh pr create`
+- [ ] Auto-merge enabled with `gh pr merge --auto --squash`
 
 ## After PR Merges
+
+Auto-merge happens automatically after CI passes. No manual merge action is required.
 
 ```bash
 # Return to main repo
@@ -201,6 +210,8 @@ git merge origin/main
 | Remove worktree | `git worktree remove ../selko-<type>-<task>` |
 | Delete branch | `git branch -D <type>/<task>` |
 | Prune refs | `git worktree prune` |
-| Create PR | `gh pr create --auto` |
+| Create PR | `gh pr create` |
+| Enable auto-merge | `gh pr merge --auto --squash` |
+| Check CI status | `gh pr checks` |
 | Rebase | `git fetch origin main && git rebase origin/main` |
 | Force push | `git push --force-with-lease` |

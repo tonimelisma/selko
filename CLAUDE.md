@@ -83,9 +83,12 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] CHANGELOG.md updated
 - [ ] Git commit with conventional message
 - [ ] Git push to feature branch
-- [ ] PR created with `gh pr create --auto`
+- [ ] PR created with `gh pr create`
+- [ ] Auto-merge enabled with `gh pr merge --auto --squash`
 
 ### After PR Merges
+
+Auto-merge happens automatically after CI passes. No manual merge action is required.
 
 ```bash
 cd ~/Development/selko
@@ -111,7 +114,7 @@ Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/
 | `uv run pytest backend/tests/ -v` | Run backend tests |
 | `cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json` | Run frontend tests |
 | `uv run python -m selko.api` | Start FastAPI server |
-| `gh pr create --auto` | Create PR with auto-merge |
+| `gh pr create && gh pr merge --auto --squash` | Create PR and enable auto-merge |
 
 ### CLI Tools
 
