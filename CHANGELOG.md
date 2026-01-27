@@ -2,6 +2,35 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (9)
+
+### Remove Playwright E2E Tests
+
+**Purpose:** Remove Playwright E2E testing infrastructure since there are no real users yet. The tests add CI time and maintenance burden without proportional value at this early stage.
+
+**Files Deleted:**
+- `frontend/tests/e2e/auth.spec.js` - Authentication E2E tests
+- `frontend/tests/e2e/events.spec.js` - Events E2E tests
+- `frontend/playwright.config.js` - Playwright configuration
+
+**Files Updated:**
+- `frontend/package.json`:
+  - Removed `@playwright/test` from devDependencies
+  - Removed `test:e2e` and `test:all` scripts
+- `.github/workflows/test.yml`:
+  - Removed `frontend-e2e-staging` job (lines 248-285)
+- `.github/workflows/frontend-tests.yml`:
+  - Removed `e2e-tests` job (lines 48-136)
+
+**CI Impact:**
+- Faster CI runs (no Playwright browser installation/execution)
+- Simplified frontend workflow (unit tests and build check only)
+- Reduced GitHub Actions minutes usage
+
+**Notes:**
+- Unit tests (113 tests) continue to run and provide coverage
+- E2E tests can be re-added when the product has real users and stable UI
+
 ## 2026-01-27 (8)
 
 ### Parallel Agent Workflow Documentation
