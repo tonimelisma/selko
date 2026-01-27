@@ -27,10 +27,6 @@ import { parseSupabaseError } from '$lib/errors.js';
  */
 
 /**
- * @typedef {import('$lib/types.js').SupabaseServiceResult} SupabaseServiceResult
- */
-
-/**
  * @typedef {Object} FetchJobsOptions
  * @property {number} [limit=50] - Maximum number of jobs to fetch
  * @property {number} [offset=0] - Offset for pagination
@@ -41,7 +37,7 @@ import { parseSupabaseError } from '$lib/errors.js';
 /**
  * Fetch jobs for the current user
  * @param {FetchJobsOptions} [options={}]
- * @returns {Promise<SupabaseServiceResult<Job[]>>}
+ * @returns {Promise<{data: Job[], count: number | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchJobs(options = {}) {
 	const { limit = 50, offset = 0, statuses, types } = options;
@@ -73,7 +69,7 @@ export async function fetchJobs(options = {}) {
 /**
  * Get a single job by ID
  * @param {string} jobId - The job UUID
- * @returns {Promise<SupabaseServiceResult<Job | null>>}
+ * @returns {Promise<{data: Job | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function getJob(jobId) {
 	try {
@@ -101,7 +97,7 @@ export async function getPendingJobCounts() {
 		if (error) throw error;
 
 		const counts = /** @type {Record<JobType, number>} */ ({});
-		for (const job of data ?? []) {
+		for (const job of /** @type {{job_type: JobType}[]} */ (data ?? [])) {
 			counts[job.job_type] = (counts[job.job_type] || 0) + 1;
 		}
 

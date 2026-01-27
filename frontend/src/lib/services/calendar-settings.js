@@ -10,12 +10,8 @@ import { parseSupabaseError } from '$lib/errors.js';
  */
 
 /**
- * @typedef {import('$lib/types.js').SupabaseServiceResult} SupabaseServiceResult
- */
-
-/**
  * Get user's calendar settings
- * @returns {Promise<SupabaseServiceResult<CalendarSettings | null>>}
+ * @returns {Promise<{data: CalendarSettings | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function getCalendarSettings() {
 	try {
@@ -37,7 +33,7 @@ export async function getCalendarSettings() {
  * @param {Object} settings
  * @param {string} [settings.target_calendar_id] - Target calendar ID (null for primary)
  * @param {string} [settings.default_invitees] - Comma-separated emails
- * @returns {Promise<SupabaseServiceResult<CalendarSettings | null>>}
+ * @returns {Promise<{data: CalendarSettings | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function updateCalendarSettings(settings) {
 	try {

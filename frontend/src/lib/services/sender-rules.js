@@ -17,12 +17,8 @@ import { parseSupabaseError } from '$lib/errors.js';
  */
 
 /**
- * @typedef {import('$lib/types.js').SupabaseServiceResult} SupabaseServiceResult
- */
-
-/**
  * Fetch all sender rules for the current user
- * @returns {Promise<SupabaseServiceResult<SenderRule[]>>}
+ * @returns {Promise<{data: SenderRule[], error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchSenderRules() {
 	try {
@@ -45,7 +41,7 @@ export async function fetchSenderRules() {
  * @param {string} [rule.sender_domain] - Domain to match (e.g., "example.com")
  * @param {string} [rule.sender_email] - Email to match (takes precedence over domain)
  * @param {SenderRuleAction} rule.action - Action to take
- * @returns {Promise<SupabaseServiceResult<SenderRule | null>>}
+ * @returns {Promise<{data: SenderRule | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function createSenderRule(rule) {
 	try {
@@ -84,7 +80,7 @@ export async function deleteSenderRule(ruleId) {
 /**
  * Check if a sender matches any rule
  * @param {string} senderEmail - The sender's email address
- * @returns {Promise<SupabaseServiceResult<SenderRule | null>>}
+ * @returns {Promise<{data: SenderRule | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function findMatchingRule(senderEmail) {
 	try {

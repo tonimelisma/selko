@@ -8,6 +8,7 @@
 	let success = $state(false);
 	let isLoading = $state(false);
 
+	/** @param {SubmitEvent} event */
 	async function handleRegister(event) {
 		event.preventDefault();
 		error = '';

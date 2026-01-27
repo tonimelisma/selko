@@ -7,6 +7,7 @@
 	let error = $state('');
 	let isLoading = $state(false);
 
+	/** @param {SubmitEvent} event */
 	async function handleLogin(event) {
 		event.preventDefault();
 		error = '';

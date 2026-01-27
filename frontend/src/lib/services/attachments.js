@@ -16,13 +16,9 @@ import { parseSupabaseError } from '$lib/errors.js';
  */
 
 /**
- * @typedef {import('$lib/types.js').SupabaseServiceResult} SupabaseServiceResult
- */
-
-/**
  * Fetch attachments for an email
  * @param {string} emailId - The email UUID
- * @returns {Promise<SupabaseServiceResult<Attachment[]>>}
+ * @returns {Promise<{data: Attachment[], error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchAttachments(emailId) {
 	try {
@@ -43,7 +39,7 @@ export async function fetchAttachments(emailId) {
 /**
  * Get a single attachment by ID
  * @param {string} attachmentId - The attachment UUID
- * @returns {Promise<SupabaseServiceResult<Attachment | null>>}
+ * @returns {Promise<{data: Attachment | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function getAttachment(attachmentId) {
 	try {

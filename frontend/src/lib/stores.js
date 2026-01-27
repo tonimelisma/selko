@@ -8,6 +8,7 @@ import { supabase } from './supabase.js';
  */
 
 // Auth stores
+/** @type {import('svelte/store').Writable<import('@supabase/supabase-js').User | null>} */
 export const user = writable(null);
 export const loading = writable(true);
 

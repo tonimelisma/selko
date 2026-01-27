@@ -4,12 +4,11 @@ import { parseSupabaseError } from '$lib/errors.js';
 /**
  * @typedef {import('$lib/types.js').Integration} Integration
  * @typedef {import('$lib/types.js').IntegrationProvider} IntegrationProvider
- * @typedef {import('$lib/types.js').SupabaseServiceResult} SupabaseServiceResult
  */
 
 /**
  * Fetch all integrations for the current user
- * @returns {Promise<SupabaseServiceResult<Integration[]>>}
+ * @returns {Promise<{data: Integration[], count: number | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchIntegrations() {
 	try {
@@ -29,7 +28,7 @@ export async function fetchIntegrations() {
 /**
  * Get a single integration by ID
  * @param {string} integrationId - The integration UUID
- * @returns {Promise<SupabaseServiceResult<Integration | null>>}
+ * @returns {Promise<{data: Integration | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function getIntegration(integrationId) {
 	try {
@@ -50,7 +49,7 @@ export async function getIntegration(integrationId) {
 /**
  * Get integration by provider
  * @param {IntegrationProvider} provider - The provider name
- * @returns {Promise<SupabaseServiceResult<Integration | null>>}
+ * @returns {Promise<{data: Integration | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function getIntegrationByProvider(provider) {
 	try {
