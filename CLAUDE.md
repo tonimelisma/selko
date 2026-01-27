@@ -122,9 +122,15 @@ Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/
 |---------|---------|
 | `uv run python -m cli.cli_user create --email X --password Y` | Create user |
 | `uv run python -m cli.cli_auth_gmail` | Gmail OAuth flow |
+| `uv run python -m cli.cli_auth_gcal` | Google Calendar OAuth flow |
 | `uv run python -m cli.cli_fetch_emails --max 10` | Fetch emails |
+| `uv run python -m cli.cli_process_emails --recent 5` | Process emails into events |
+| `uv run python -m cli.cli_events new` | List pending events |
+| `uv run python -m cli.cli_events approve <id>` | Approve event |
+| `uv run python -m cli.cli_events sync <id>` | Sync event to Google Calendar |
 | `uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail` | Seed tokens |
 
+**Full walkthrough:** `docs/manual-email-to-calendar-walkthrough.md`
 **Full test guide:** `docs/testing-guide.md`
 
 ---
@@ -157,6 +163,7 @@ Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/
 
 | Topic | Document | When to Read |
 |-------|----------|--------------|
+| **Email-to-Calendar walkthrough** | `docs/manual-email-to-calendar-walkthrough.md` | For end-to-end manual testing |
 | **Worktree workflow** | `docs/parallel-agents.md` | Before any source code task |
 | **Testing** | `docs/testing-guide.md` | Before running tests |
 | **Database schema** | `docs/database-schema.md` | When working with data |

@@ -2,6 +2,55 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (16)
+
+### Email-to-Calendar Manual CLI Walkthrough
+
+**Purpose:** Create CLI tool for processing emails into saved events and comprehensive walkthrough documentation for the email-to-calendar flow.
+
+**Problem:**
+1. `cli_extract_events.py` only **previews** event extraction - it does NOT save events to database
+2. No CLI way to process emails and create actual events (had to use API)
+3. No end-to-end documentation for manually testing the email-to-calendar flow
+
+**Solution:**
+
+**Part 1: New CLI Tool**
+- Added `cli/cli_process_emails.py` - processes emails and saves extracted events to database
+- `--email-id <uuid>`: Process single email by ID
+- `--recent N`: Batch process N most recent pending emails
+- Calls `process_email_for_events()` from events service
+- Handles deduplication, sender rules, event-email linking
+- Updates email `processing_status` after processing
+
+**Part 2: Walkthrough Documentation**
+- Added `docs/manual-email-to-calendar-walkthrough.md` with:
+  - Prerequisites (Supabase, environment, OAuth credentials)
+  - Step-by-step walkthrough (8 steps from Gmail OAuth to Calendar sync)
+  - SQL verification queries for each step
+  - Additional CLI commands reference (calendar, sender rules, event management)
+  - Database tables reference
+  - Event status lifecycle diagram
+  - Troubleshooting section
+  - Quick reference table
+
+**Part 3: CLAUDE.md Updates**
+- Added new CLI commands to CLI Tools table
+- Added walkthrough document to Reference Index
+
+**Key distinction clarified:**
+- `cli_extract_events` = preview only (no database writes)
+- `cli_process_emails` = full processing with database writes
+
+**Files Added:**
+- `cli/cli_process_emails.py`
+- `docs/manual-email-to-calendar-walkthrough.md`
+
+**Files Modified:**
+- `CLAUDE.md`
+
+**Tests:** 285 passed, 11 skipped
+
 ## 2026-01-27 (15)
 
 ### Test Coverage Improvements
