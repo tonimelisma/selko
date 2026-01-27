@@ -485,28 +485,133 @@ uv run python -m selko.api
 **API Endpoints:**
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/health` | No | Basic health check |
-| GET | `/health/db` | No | Database connectivity |
+| GET | `/health` | No | Health check |
+| GET | `/health/db` | No | Database connectivity check |
+| **Emails** | | | |
 | GET | `/emails` | Yes | List emails (paginated) |
-| GET | `/emails/{id}` | Yes | Get single email |
-| GET | `/integrations` | Yes | List integrations |
+| GET | `/emails/{id}` | Yes | Get single email with details |
+| POST | `/emails/sync` | Yes | Manually fetch emails from Gmail |
+| POST | `/emails/{id}/process` | Yes | Extract events from specific email |
+| POST | `/emails/batch-process` | Yes | Process multiple recent emails |
+| GET | `/emails/{id}/attachments` | Yes | List attachments for an email |
+| **Integrations** | | | |
+| GET | `/integrations` | Yes | List all integrations |
 | GET | `/integrations/{provider}` | Yes | Get integration status |
+| GET | `/integrations/gmail/auth` | Yes | Initiate Gmail OAuth (redirects to Google) |
+| GET | `/integrations/gmail/callback` | No | OAuth callback (Google redirects here) |
+| DELETE | `/integrations/{provider}` | Yes | Disconnect integration |
+| **Attachments** | | | |
+| GET | `/attachments/{id}` | Yes | Get attachment metadata |
+| GET | `/attachments/{id}/download` | Yes | Download attachment file |
+| **Events** | | | |
+| GET | `/events/new` | Yes | List events pending approval |
+| GET | `/events/approved` | Yes | List approved/synced events |
+| GET | `/events/updates` | Yes | List event change log |
+| GET | `/events/{id}` | Yes | Get event with all source emails |
+| POST | `/events/{id}/approve` | Yes | Approve event for calendar sync |
+| POST | `/events/{id}/reject` | Yes | Reject event |
+| POST | `/events/{id}/restore` | Yes | Restore rejected event |
+| POST | `/events/{id}/sync` | Yes | Sync approved event to Google Calendar |
+| GET | `/events/{id}/sources` | Yes | List all source emails for event |
+| POST | `/events/{id}/sources/{source_id}/undo` | Yes | Undo email contribution |
+| POST | `/events/{id}/sources/{source_id}/redo` | Yes | Re-apply undone contribution |
 
 **Authentication:**
-The API uses JWT tokens from Supabase. To get a token for testing:
+The API uses Supabase's built-in authentication. Register/login via Supabase Auth endpoints to get a JWT token:
+
 ```bash
-# Sign in and get access token
-TOKEN=$(uv run python -c "
-from selko.config import load_config
-from selko.services.auth import get_authenticated_client
-config = load_config()
-client = get_authenticated_client(config)
-print(client.auth.get_session().access_token)
-")
+# For local development
+SUPABASE_URL="http://localhost:54321"
+SUPABASE_ANON_KEY="<from supabase start output>"
+
+# Register new user and get token
+curl -X POST "$SUPABASE_URL/auth/v1/signup" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"testpass123"}' \
+  | jq -r '.access_token' > token.txt
+
+# OR login if user exists
+curl -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"testpass123"}' \
+  | jq -r '.access_token' > token.txt
 
 # Use the token
+TOKEN=$(cat token.txt)
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/emails
 ```
+
+**Manual API Workflow (Complete E2E):**
+
+This demonstrates full manual control via REST API:
+
+```bash
+# Prerequisites
+supabase start
+uv run python -m selko.api  # separate terminal
+SUPABASE_URL="http://localhost:54321"
+SUPABASE_ANON_KEY="<from supabase start>"
+
+# 1. Register/Login
+curl -X POST "$SUPABASE_URL/auth/v1/signup" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"testpass123"}' \
+  | jq -r '.access_token' > token.txt
+
+TOKEN=$(cat token.txt)
+
+# 2. Connect Gmail OAuth (opens browser)
+curl -X GET "http://localhost:8000/integrations/gmail/auth" \
+  -H "Authorization: Bearer $TOKEN"
+# User approves in browser, callback saves credentials
+
+# 3. Fetch emails from Gmail
+curl -X POST "http://localhost:8000/emails/sync" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"max_results":10,"fetch_attachments":true}'
+
+# 4. List emails
+curl -X GET "http://localhost:8000/emails?limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 5. Process email (extract events via LLM)
+EMAIL_ID=$(curl -s "http://localhost:8000/emails" \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.items[0].id')
+
+curl -X POST "http://localhost:8000/emails/$EMAIL_ID/process" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 6. List pending events
+curl -X GET "http://localhost:8000/events/new" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 7. Approve event
+EVENT_ID=$(curl -s "http://localhost:8000/events/new" \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
+
+curl -X POST "http://localhost:8000/events/$EVENT_ID/approve" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 8. Sync to Google Calendar
+curl -X POST "http://localhost:8000/events/$EVENT_ID/sync" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 9. Download attachment (optional)
+ATTACHMENT_ID=$(curl -s "http://localhost:8000/emails/$EMAIL_ID/attachments" \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
+
+curl -X GET "http://localhost:8000/attachments/$ATTACHMENT_ID/download" \
+  -H "Authorization: Bearer $TOKEN" \
+  --output downloaded_file.pdf
+```
+
+**Journey:** Register → OAuth → Fetch → Process → Review → Approve → Sync → Done
+
+See README.md for detailed documentation of each endpoint and response schemas.
 
 **Running Tests:**
 ```bash

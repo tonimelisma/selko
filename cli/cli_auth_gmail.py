@@ -11,7 +11,7 @@ import sys
 
 from selko.config import add_logging_arguments, load_config
 from selko.logging import setup_logging
-from selko.services.auth import AuthenticationError, get_authenticated_client
+from selko.services.auth import AuthenticationError, get_authenticated_client, get_current_user_id
 from selko.services.gmail import GmailError, build_service, get_user_profile, run_oauth_flow
 from selko.services.integrations import IntegrationError, save_oauth_credentials
 
@@ -69,7 +69,8 @@ Note:
 
     # Save tokens to database
     try:
-        save_oauth_credentials(client, "gmail", creds, gmail_address)
+        user_id = get_current_user_id(client)
+        save_oauth_credentials(client, user_id, "gmail", creds, gmail_address)
         logger.info("Gmail integration saved successfully!")
         if gmail_address:
             logger.info(f"Connected account: {gmail_address}")

@@ -19,16 +19,13 @@ class TestSaveOAuthCredentials:
         creds.expiry = datetime(2026, 1, 22, 12, 0, 0, tzinfo=timezone.utc)
         creds.scopes = ["gmail.readonly"]
 
-        with patch(
-            "selko.services.integrations.get_current_user_id",
-            return_value="test-user-id",
-        ):
-            save_oauth_credentials(
-                mock_supabase_client,
-                provider="gmail",
-                credentials=creds,
-                provider_email="test@gmail.com",
-            )
+        save_oauth_credentials(
+            mock_supabase_client,
+            "test-user-id",
+            provider="gmail",
+            credentials=creds,
+            provider_email="test@gmail.com",
+        )
 
         # Verify upsert was called
         mock_supabase_client.table.assert_called_with("integrations")
@@ -53,15 +50,12 @@ class TestSaveOAuthCredentials:
         creds.expiry = None
         creds.scopes = []
 
-        with patch(
-            "selko.services.integrations.get_current_user_id",
-            return_value="test-user-id",
-        ):
-            save_oauth_credentials(
-                mock_supabase_client,
-                provider="gmail",
-                credentials=creds,
-            )
+        save_oauth_credentials(
+            mock_supabase_client,
+            "test-user-id",
+            provider="gmail",
+            credentials=creds,
+        )
 
         upsert_call = mock_supabase_client.table().upsert.call_args
         data = upsert_call[0][0]
@@ -78,15 +72,12 @@ class TestSaveOAuthCredentials:
         creds.expiry = None
         creds.scopes = None
 
-        with patch(
-            "selko.services.integrations.get_current_user_id",
-            return_value="test-user-id",
-        ):
-            save_oauth_credentials(
-                mock_supabase_client,
-                provider="gmail",
-                credentials=creds,
-            )
+        save_oauth_credentials(
+            mock_supabase_client,
+            "test-user-id",
+            provider="gmail",
+            credentials=creds,
+        )
 
         upsert_call = mock_supabase_client.table().upsert.call_args
         data = upsert_call[0][0]

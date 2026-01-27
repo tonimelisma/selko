@@ -49,6 +49,7 @@ class TestEndToEndDevelopment:
             # Save OAuth credentials
             save_oauth_credentials(
                 client,
+                current_user_id,
                 "gmail",
                 sample_oauth_credentials,
                 provider_email="test@gmail.com",
@@ -144,7 +145,8 @@ class TestEndToEndDevelopment:
 
         # Create data
         client = get_authenticated_client(test_config)
-        save_oauth_credentials(client, "gmail", sample_oauth_credentials)
+        current_user_id = get_current_user_id(client)
+        save_oauth_credentials(client, current_user_id, "gmail", sample_oauth_credentials)
         save_emails(
             client,
             [

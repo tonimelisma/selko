@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class EmailResponse(BaseModel):
@@ -36,3 +36,33 @@ class EmailResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class EmailSyncRequest(BaseModel):
+    """Request model for manual email sync."""
+
+    max_results: int = Field(default=10, ge=1, le=100, description="Maximum number of emails to fetch")
+    fetch_attachments: bool = Field(default=True, description="Whether to download email attachments")
+
+
+class EmailSyncResponse(BaseModel):
+    """Response model for email sync operation."""
+
+    fetched: int = Field(description="Number of emails fetched from Gmail")
+    saved: int = Field(description="Number of emails saved to database")
+    attachments_downloaded: int = Field(description="Number of attachments downloaded")
+
+
+class EmailProcessResponse(BaseModel):
+    """Response model for processing email to extract events."""
+
+    num_events: int = Field(description="Total number of events extracted")
+    num_new: int = Field(description="Number of new events created")
+    num_updated: int = Field(description="Number of existing events updated")
+    event_ids: list[str] = Field(description="List of event UUIDs created/updated")
+
+
+class BatchProcessRequest(BaseModel):
+    """Request model for batch processing emails."""
+
+    max_emails: int = Field(default=10, ge=1, le=50, description="Maximum number of recent emails to process")

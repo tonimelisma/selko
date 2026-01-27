@@ -90,3 +90,12 @@ class CalendarSettingsResponse(BaseModel):
     target_calendar_id: Optional[str] = None
     target_calendar_name: Optional[str] = None
     default_invitees: Optional[str] = None
+
+
+class CalendarSyncResponse(BaseModel):
+    """Calendar sync result."""
+
+    event_id: str
+    google_calendar_event_id: str
+    synced_at: datetime
+    status: Literal["synced"]

@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from selko.api.routes import (
+    attachments_router,
     calendars_router,
     emails_router,
     events_router,
@@ -71,6 +72,7 @@ def create_app() -> FastAPI:
     app.include_router(calendars_router)
     app.include_router(sender_rules_router)
     app.include_router(jobs_router)
+    app.include_router(attachments_router)
 
     # Exception handlers for service errors
     @app.exception_handler(AuthenticationError)

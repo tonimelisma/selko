@@ -1,5 +1,6 @@
 """API route modules."""
 
+from selko.api.routes.attachments import router as attachments_router
 from selko.api.routes.calendars import router as calendars_router
 from selko.api.routes.emails import router as emails_router
 from selko.api.routes.events import router as events_router
@@ -9,6 +10,7 @@ from selko.api.routes.jobs import router as jobs_router
 from selko.api.routes.sender_rules import router as sender_rules_router
 
 __all__ = [
+    "attachments_router",
     "health_router",
     "emails_router",
     "integrations_router",

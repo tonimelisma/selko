@@ -10,7 +10,16 @@ from typing import Any, Optional
 
 from supabase import Client, PostgrestAPIError
 
+from selko.config import Config
 from selko.services.auth import get_current_user_id
+from selko.services.gmail import (
+    GmailError,
+    build_service,
+    extract_attachments,
+    fetch_messages,
+    get_credentials,
+)
+from selko.services.attachments import AttachmentError, process_attachment
 
 logger = logging.getLogger(__name__)
 
@@ -132,3 +141,104 @@ def save_emails(
 
     logger.info(f"Saved {len(saved_records)} emails")
     return saved_records
+
+
+def fetch_emails_for_user(
+    client: Client,
+    config: Config,
+    max_results: int = 10,
+    fetch_attachments: bool = True,
+) -> dict[str, int]:
+    """Fetch emails from Gmail and store in Supabase.
+
+    Adapts the logic from cli_fetch_emails.py for API usage.
+
+    Args:
+        client: Authenticated Supabase client (user session).
+        config: Configuration object with Google OAuth credentials.
+        max_results: Maximum number of emails to fetch.
+        fetch_attachments: Whether to download and store attachments.
+
+    Returns:
+        Dict with counts: {fetched, saved, attachments_downloaded}.
+
+    Raises:
+        EmailError: If fetching or saving fails.
+    """
+    # Get Gmail credentials from database
+    try:
+        creds = get_credentials(client, config)
+        if not creds:
+            raise EmailError("No Gmail integration found. Please authenticate with Gmail first.")
+    except Exception as e:
+        raise EmailError(f"Error getting credentials: {e}") from e
+
+    # Build Gmail service and fetch emails
+    try:
+        service = build_service(creds)
+        logger.info(f"Fetching {max_results} most recent emails from inbox...")
+        messages = fetch_messages(service, max_results=max_results)
+    except GmailError as e:
+        raise EmailError(f"Error fetching emails: {e}") from e
+
+    if not messages:
+        logger.info("No emails found")
+        return {"fetched": 0, "saved": 0, "attachments_downloaded": 0}
+
+    # Parse and save emails
+    try:
+        parsed = [parse_gmail_message(msg) for msg in messages]
+        saved_records = save_emails(client, parsed)
+        logger.info(f"Saved {len(saved_records)} emails")
+    except EmailError as e:
+        raise EmailError(f"Error saving emails: {e}") from e
+
+    attachments_downloaded = 0
+
+    # Process attachments if requested
+    if fetch_attachments:
+        logger.info("Fetching attachments for saved emails...")
+
+        # Map gmail_id to saved record for lookup
+        gmail_id_to_record = {r["gmail_id"]: r for r in saved_records}
+
+        for msg in messages:
+            gmail_id = msg["id"]
+            email_record = gmail_id_to_record.get(gmail_id)
+
+            if not email_record:
+                logger.warning(f"No saved record for message {gmail_id}")
+                continue
+
+            attachments = extract_attachments(msg)
+            if not attachments:
+                continue
+
+            logger.info(
+                f"Processing {len(attachments)} attachments for: "
+                f"{email_record.get('subject', '(no subject)')[:50]}"
+            )
+
+            for att_part in attachments:
+                try:
+                    result = process_attachment(
+                        client=client,
+                        gmail_service=service,
+                        email_id=email_record["id"],
+                        message_id=gmail_id,
+                        attachment_part=att_part,
+                        config=config,
+                    )
+                    if result:
+                        attachments_downloaded += 1
+                except AttachmentError as e:
+                    logger.error(f"Failed to process attachment: {e}")
+                    continue
+
+        logger.info(f"Downloaded {attachments_downloaded} attachments")
+
+    return {
+        "fetched": len(messages),
+        "saved": len(saved_records),
+        "attachments_downloaded": attachments_downloaded,
+    }
