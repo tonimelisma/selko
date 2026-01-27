@@ -53,10 +53,16 @@ git worktree prune
 # 5. Create new worktree for your task
 git worktree add ../selko-<type>-<task> -b <type>/<task-name> main
 
-# 6. Move to worktree
+# 6. Copy environment files to worktree
+cp .env ../selko-<type>-<task>/
+cp .env.test ../selko-<type>-<task>/
+cp .env.production ../selko-<type>-<task>/
+cp frontend/.env ../selko-<type>-<task>/frontend/ 2>/dev/null || true
+
+# 7. Move to worktree
 cd ../selko-<type>-<task>
 
-# 7. Install dependencies (if needed)
+# 8. Install dependencies (if needed)
 uv sync                         # Python deps
 cd frontend && npm ci && cd ..  # JS deps (if changing frontend)
 ```
