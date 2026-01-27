@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (3)
+
+### Fix Render CI Build Failures for Frontend
+
+**Problem:** The `selko-web-staging` Render service was failing to build with error: "Files prefixed with + are reserved (saw src/routes/app/__tests__/+page.test.js)". SvelteKit reserves the `+` prefix for routing files.
+
+**Files Renamed:**
+- `frontend/src/routes/login/__tests__/+page.test.js` → `page.test.js`
+- `frontend/src/routes/app/__tests__/+page.test.js` → `page.test.js`
+
 ## 2026-01-27 (2)
 
 ### Enable Direct Supabase Access from All Frontends
