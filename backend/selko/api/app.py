@@ -6,6 +6,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from selko.api.routes import (
     calendars_router,
@@ -19,6 +23,7 @@ from selko.services.calendars import CalendarsError
 from selko.services.emails import EmailError
 from selko.services.events import EventsError
 from selko.services.integrations import IntegrationError
+from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.workers.email_fetch import schedule_email_fetches
 from selko.workers.pool import WorkerPool
@@ -30,6 +35,29 @@ scheduler = AsyncIOScheduler()
 
 # Global worker pool instance
 worker_pool: WorkerPool = None
+
+
+def get_user_id_or_ip(request: Request) -> str:
+    """Rate limit key function: by user_id if authenticated, else by IP.
+
+    Args:
+        request: FastAPI request object.
+
+    Returns:
+        Rate limit key string (user:{id} or ip:{address}).
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        # Extract user_id from JWT (we just use a hash of the token for simplicity)
+        # The actual user validation happens in the endpoint
+        token = auth_header[7:]
+        # Use first 32 chars of token as key (unique per session)
+        return f"user:{token[:32]}"
+    return f"ip:{get_remote_address(request)}"
+
+
+# Create limiter with user/IP key function
+limiter = Limiter(key_func=get_user_id_or_ip, default_limits=["60/minute"])
 
 
 def create_app() -> FastAPI:
@@ -61,13 +89,20 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
+    # Store limiter in app state for access in routes
+    app.state.limiter = limiter
+
+    # Add SlowAPI rate limiting middleware
+    app.add_middleware(SlowAPIMiddleware)
+
     # Configure CORS from environment
+    # Note: Specific methods/headers instead of wildcards for security
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 
     # Include routers (server-side endpoints only)
@@ -84,7 +119,7 @@ def create_app() -> FastAPI:
         logger.warning(f"Authentication error: {exc}")
         return JSONResponse(
             status_code=401,
-            content={"error": "authentication_error", "detail": str(exc)},
+            content={"error": "authentication_error", "detail": "Authentication failed"},
         )
 
     @app.exception_handler(EmailError)
@@ -92,7 +127,7 @@ def create_app() -> FastAPI:
         logger.error(f"Email service error: {exc}")
         return JSONResponse(
             status_code=500,
-            content={"error": "email_error", "detail": str(exc)},
+            content={"error": "email_error", "detail": "Email operation failed"},
         )
 
     @app.exception_handler(IntegrationError)
@@ -100,7 +135,7 @@ def create_app() -> FastAPI:
         logger.error(f"Integration service error: {exc}")
         return JSONResponse(
             status_code=500,
-            content={"error": "integration_error", "detail": str(exc)},
+            content={"error": "integration_error", "detail": "Integration operation failed"},
         )
 
     @app.exception_handler(EventsError)
@@ -108,7 +143,7 @@ def create_app() -> FastAPI:
         logger.error(f"Events service error: {exc}")
         return JSONResponse(
             status_code=500,
-            content={"error": "events_error", "detail": str(exc)},
+            content={"error": "events_error", "detail": "Event operation failed"},
         )
 
     @app.exception_handler(CalendarsError)
@@ -116,7 +151,33 @@ def create_app() -> FastAPI:
         logger.error(f"Calendars service error: {exc}")
         return JSONResponse(
             status_code=500,
-            content={"error": "calendars_error", "detail": str(exc)},
+            content={"error": "calendars_error", "detail": "Calendar operation failed"},
+        )
+
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        logger.warning(f"Rate limit exceeded: {exc.detail}")
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "rate_limit_exceeded",
+                "detail": "Too many requests. Please try again later.",
+            },
+            headers={"Retry-After": "60"},
+        )
+
+    @app.exception_handler(QuotaExceededError)
+    async def quota_exceeded_handler(request: Request, exc: QuotaExceededError):
+        logger.warning(f"Quota exceeded: {exc.quota_type} for user")
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "quota_exceeded",
+                "detail": f"Daily {exc.quota_type} quota exceeded",
+                "quota_type": exc.quota_type,
+                "limit": exc.limit,
+                "resets_at": "midnight UTC",
+            },
         )
 
     # Startup event: Initialize worker pool and scheduler

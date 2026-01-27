@@ -6,6 +6,7 @@ For direct integration queries, use Supabase client from frontend.
 
 import logging
 from typing import Annotated
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
@@ -20,9 +21,48 @@ from selko.services.integrations import (
     save_oauth_credentials,
 )
 
+# Allowed redirect URIs for OAuth flows
+# Add production URLs as needed
+ALLOWED_REDIRECT_HOSTS = {
+    "localhost",
+    "127.0.0.1",
+    "api.selko.app",  # Production API
+}
+
+ALLOWED_REDIRECT_PATHS = {
+    "/integrations/gmail/callback",
+    "/integrations/google_calendar/callback",
+}
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
+
+
+def _validate_redirect_uri(redirect_uri: str) -> bool:
+    """Validate redirect URI against allowlist to prevent open redirect attacks.
+
+    Args:
+        redirect_uri: The URI to validate.
+
+    Returns:
+        True if valid, False otherwise.
+    """
+    try:
+        parsed = urlparse(redirect_uri)
+        # Check scheme is http or https
+        if parsed.scheme not in ("http", "https"):
+            return False
+        # Check host is in allowlist
+        host = parsed.hostname
+        if host not in ALLOWED_REDIRECT_HOSTS:
+            return False
+        # Check path is a valid callback path
+        if parsed.path not in ALLOWED_REDIRECT_PATHS:
+            return False
+        return True
+    except Exception:
+        return False
 
 
 @router.get("/gmail/auth")
@@ -43,8 +83,16 @@ async def gmail_oauth_initiate(
         Redirect to Google OAuth consent screen.
 
     Raises:
+        400: Invalid redirect URI.
         500: OAuth initiation failed.
     """
+    # Validate redirect_uri to prevent open redirect attacks
+    if not _validate_redirect_uri(redirect_uri):
+        logger.warning(f"Invalid redirect_uri attempted: {redirect_uri}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid redirect URI",
+        )
 
     try:
         result = initiate_oauth_flow(
@@ -61,7 +109,7 @@ async def gmail_oauth_initiate(
         logger.error(f"Failed to initiate OAuth: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to initiate OAuth: {str(e)}",
+            detail="Failed to initiate OAuth flow",
         )
 
 
@@ -129,9 +177,9 @@ async def gmail_oauth_callback(
         if "Invalid or expired state" in error_msg or "State parameter expired" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_msg,
+                detail="OAuth state invalid or expired. Please try again.",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"OAuth callback failed: {error_msg}",
+            detail="OAuth callback failed",
         )

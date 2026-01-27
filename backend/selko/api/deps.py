@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from supabase import Client, create_client
 
 from selko.config import Config, load_config
 from selko.services.gemini import get_gemini_client as create_gemini_client
+from selko.services.quotas import QuotaService, get_quota_service as create_quota_service
 
 logger = logging.getLogger(__name__)
 
@@ -123,11 +124,50 @@ def get_authenticated_client(
 
 def get_gemini_client(config: Config = Depends(get_config)):
     """Create Gemini client for LLM operations.
-    
+
     Args:
         config: Application configuration with Gemini API key.
-        
+
     Returns:
         Initialized Gemini client.
     """
     return create_gemini_client(config)
+
+
+def get_service_role_client(config: Config = Depends(get_config)) -> Client:
+    """Create Supabase client with service role key.
+
+    Used for operations that need to bypass RLS, such as quota tracking.
+
+    Args:
+        config: Application configuration.
+
+    Returns:
+        Supabase client with service role privileges.
+
+    Raises:
+        HTTPException: 500 if service role key not configured.
+    """
+    if not config.supabase_service_role_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server configuration error",
+        )
+    return create_client(config.supabase_url, config.supabase_service_role_key)
+
+
+def get_quota_service(
+    service_client: Client = Depends(get_service_role_client),
+) -> QuotaService:
+    """Create QuotaService for rate limiting.
+
+    Uses service role client to ensure atomic quota operations work
+    regardless of RLS policies.
+
+    Args:
+        service_client: Supabase client with service role.
+
+    Returns:
+        Configured QuotaService instance.
+    """
+    return create_quota_service(service_client)

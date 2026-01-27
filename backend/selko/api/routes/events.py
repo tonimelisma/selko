@@ -8,12 +8,13 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from supabase import Client
 
-from selko.api.deps import get_authenticated_client
+from selko.api.deps import CurrentUser, get_authenticated_client, get_current_user, get_quota_service
 from selko.api.schemas.events import CalendarSyncResponse
 from selko.services.calendars import CalendarsError, sync_event_to_calendar
+from selko.services.quotas import QuotaService
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,10 @@ router = APIRouter(prefix="/events", tags=["events"])
 @router.post("/{event_id}/sync", response_model=CalendarSyncResponse)
 async def sync_event(
     event_id: UUID,
+    response: Response,
     client: Annotated[Client, Depends(get_authenticated_client)],
+    user: CurrentUser = Depends(get_current_user),
+    quota_service: QuotaService = Depends(get_quota_service),
 ) -> CalendarSyncResponse:
     """Sync approved event to Google Calendar.
 
@@ -39,11 +43,28 @@ async def sync_event(
     Raises:
         403: Not authorized to sync this event.
         404: Event not found or no calendar integration.
+        429: Calendar sync quota exceeded.
         500: Calendar sync failed.
     """
-    try:
-        user_id = client.auth.get_user().user.id
+    # Check calendar sync quota BEFORE any expensive operations
+    quota_result = quota_service.check_and_increment(user.id, "calendar_syncs")
+    if not quota_result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Daily calendar sync quota exceeded",
+            headers={
+                "X-RateLimit-Limit": str(quota_result.limit),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": quota_result.resets_at,
+            },
+        )
 
+    # Add quota headers to response
+    response.headers["X-RateLimit-Limit"] = str(quota_result.limit)
+    response.headers["X-RateLimit-Remaining"] = str(quota_result.remaining)
+    response.headers["X-RateLimit-Reset"] = quota_result.resets_at
+
+    try:
         # Verify ownership and status - use maybe_single for graceful 404
         event_result = client.table("events").select("user_id, status, synced_at").eq(
             "id", str(event_id)
@@ -53,7 +74,7 @@ async def sync_event(
         if event_result is None or event_result.data is None:
             raise HTTPException(status_code=404, detail="Event not found")
 
-        if event_result.data["user_id"] != user_id:
+        if event_result.data["user_id"] != user.id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
         # Validate event is approved
@@ -64,7 +85,7 @@ async def sync_event(
             )
 
         # Sync to calendar
-        google_event_id = sync_event_to_calendar(client, user_id, str(event_id))
+        google_event_id = sync_event_to_calendar(client, user.id, str(event_id))
 
         # Fetch updated event to get synced_at
         updated_event = client.table("events").select("synced_at").eq(
@@ -89,8 +110,8 @@ async def sync_event(
             )
         raise HTTPException(
             status_code=500,
-            detail=f"Calendar sync failed: {str(e)}"
+            detail="Calendar sync failed"
         )
     except Exception as e:
         logger.error(f"Failed to sync event: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Event sync failed")
