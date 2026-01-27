@@ -1,0 +1,169 @@
+name: Frontend Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-tests.yml'
+
+jobs:
+  unit-tests:
+    name: Unit & Component Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        working-directory: frontend
+        run: npm run test:coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          directory: frontend/coverage
+          flags: frontend
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install Supabase CLI
+        run: |
+          wget -qO- https://github.com/supabase/cli/releases/download/v2.0.6/supabase_2.0.6_linux_amd64.tar.gz | tar xz
+          sudo mv supabase /usr/local/bin/
+
+      - name: Start Supabase
+        run: |
+          supabase start --ignore-health-check
+        env:
+          SUPABASE_DB_PORT: 54322
+          SUPABASE_AUTH_PORT: 54321
+
+      - name: Install backend dependencies
+        run: uv sync
+
+      - name: Create test user
+        run: |
+          uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
+        env:
+          SUPABASE_URL: http://localhost:54321
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY_LOCAL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_LOCAL }}
+          TEST_USER_EMAIL: test@selko.local
+          TEST_USER_PASSWORD: testpass123
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+
+      - name: Create frontend .env
+        working-directory: frontend
+        run: |
+          echo "VITE_SUPABASE_URL=http://localhost:54321" > .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY_LOCAL }}" >> .env
+
+      - name: Run E2E tests
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Create .env for build
+        working-directory: frontend
+        run: |
+          echo "VITE_SUPABASE_URL=https://placeholder.supabase.co" > .env
+          echo "VITE_SUPABASE_ANON_KEY=placeholder-key" >> .env
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Run svelte-check
+        working-directory: frontend
+        run: npm run check

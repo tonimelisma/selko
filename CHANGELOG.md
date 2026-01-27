@@ -2,6 +2,87 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-26 (5)
+
+### Web Frontend: Supabase SDK Extension & Comprehensive Testing
+
+**Phase 1: Testing Infrastructure Setup**
+
+Files created:
+- `frontend/vitest.config.js` - Vitest configuration with Svelte 5 support and browser conditions
+- `frontend/vitest.setup.js` - Mock SvelteKit modules ($app/navigation, $app/stores) for component testing
+- `frontend/playwright.config.js` - Playwright E2E test configuration with dev server integration
+
+Files modified:
+- `frontend/package.json` - Added test dependencies and npm scripts (test, test:unit, test:coverage, test:e2e, test:all)
+
+**Phase 2: Supabase SDK Data Services**
+
+Files created:
+- `frontend/src/lib/types.js` - JSDoc type definitions for User, Email, CalendarEvent, Integration, EventSource, SenderRule, CalendarSettings
+- `frontend/src/lib/errors.js` - SupabaseError class and parseSupabaseError() with user-friendly error mappings
+- `frontend/src/lib/services/emails.js` - fetchEmails(), getEmail(), updateEmailReadStatus()
+- `frontend/src/lib/services/events.js` - fetchPendingEvents(), fetchEvents(), getEvent(), updateEventStatus(), updateEvent()
+- `frontend/src/lib/services/integrations.js` - fetchIntegrations(), getIntegration(), getIntegrationByProvider(), isProviderConnected()
+
+Files modified:
+- `frontend/src/lib/stores.js` - Added data stores: emails, emailsLoading, pendingEvents, pendingEventsLoading, integrations, integrationsLoading
+
+**Phase 3: Unit Tests**
+
+Files created:
+- `frontend/tests/fixtures/mock-supabase.js` - Mock Supabase client factory with chainable query builder
+- `frontend/tests/fixtures/mock-data.js` - Sample emails, events, integrations, user, and error objects
+- `frontend/src/lib/__tests__/errors.test.js` - 22 tests for SupabaseError class and parseSupabaseError()
+- `frontend/src/lib/services/__tests__/emails.test.js` - 11 tests for email service functions
+- `frontend/src/lib/services/__tests__/events.test.js` - 14 tests for event service functions
+- `frontend/src/lib/services/__tests__/integrations.test.js` - 13 tests for integration service functions
+
+**Phase 4: Component Tests**
+
+Files created:
+- `frontend/src/routes/login/__tests__/+page.test.js` - 9 tests for login page (form rendering, credential submission, error display, redirect)
+- `frontend/src/routes/app/__tests__/+page.test.js` - 9 tests for app page (loading state, user display, redirect, logout)
+
+**Phase 5: E2E Tests**
+
+Files created:
+- `frontend/tests/e2e/auth.spec.js` - 6 Playwright tests for auth flow (redirect, login, logout, error handling)
+- `frontend/tests/e2e/events.spec.js` - 3 tests for events review (placeholder tests for future UI)
+
+**Phase 6: CI/CD Integration**
+
+Files created:
+- `.github/workflows/frontend-tests.yml` - GitHub Actions workflow for frontend testing with:
+  - Unit tests with coverage upload to Codecov
+  - E2E tests with local Supabase and test user creation
+  - Build verification with svelte-check
+
+**Test Summary:**
+- 78 unit/component tests passing
+- E2E tests ready for manual execution with local Supabase
+- Coverage: 100% on emails.js, events.js, integrations.js; 95% on errors.js
+
+**Dependencies Added:**
+- vitest@4.0.18 - Test runner
+- jsdom@27.4.0 - DOM environment for component testing
+- @vitest/coverage-v8 - Code coverage
+- @testing-library/svelte@5.3.1 - Svelte component testing
+- @testing-library/jest-dom@6.9.1 - DOM matchers
+- @testing-library/user-event@14.6.1 - User interaction simulation
+- @playwright/test@1.58.0 - E2E testing
+
+**Run Tests:**
+```bash
+cd frontend
+npm run test:unit    # Run unit/component tests
+npm run test:coverage # Run with coverage report
+npm run test:e2e     # Run E2E tests (requires local Supabase)
+npm run test:all     # Run all tests
+```
+
+**Reason:** Extend the existing Supabase SDK usage from auth-only to full data operations, and add comprehensive testing infrastructure to ensure reliability as the frontend evolves.
+
 ## 2026-01-26 (4)
 
 ### Android: Refactor to Supabase Kotlin SDK + Add Comprehensive Testing
