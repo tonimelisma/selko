@@ -28,4 +28,20 @@ final class DependencyContainer {
     lazy var authService: AuthServiceProtocol = {
         AuthService(supabase: supabase)
     }()
+
+    lazy var emailService: EmailServiceProtocol = {
+        EmailService(supabase: supabase)
+    }()
+
+    lazy var eventService: EventServiceProtocol = {
+        EventService(supabase: supabase)
+    }()
+
+    lazy var integrationService: IntegrationServiceProtocol = {
+        IntegrationService(supabase: supabase)
+    }()
+
+    lazy var backendAPI: BackendAPIProtocol = {
+        BackendAPI(supabase: supabase)
+    }()
 }
