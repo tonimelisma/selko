@@ -112,6 +112,7 @@
 			);
 			name = iOS;
 			packageProductDependencies = (
+				3B2337A12F2879000099BB8C /* Supabase */,
 			);
 			productName = Selko;
 			productReference = 3B2337682F2878ED0099BB8C /* iOS.app */;
@@ -196,6 +197,9 @@
 			mainGroup = 3B23375F2F2878ED0099BB8C;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			packageReferences = (
+				3B2337A02F2879000099BB8C /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			productRefGroup = 3B2337692F2878ED0099BB8C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -578,6 +582,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3B2337A02F2879000099BB8C /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3B2337A12F2879000099BB8C /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3B2337A02F2879000099BB8C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 3B2337602F2878ED0099BB8C /* Project object */;
 }

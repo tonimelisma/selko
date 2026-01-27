@@ -2,6 +2,91 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-26 (3)
+
+### iOS App Architecture Implementation (SwiftUI + Supabase Swift SDK)
+
+**Files created:**
+
+Core:
+- `ios/Selko/Core/Config.swift` - Environment-aware Supabase configuration (staging/production URLs)
+- `ios/Selko/Core/Storage/KeychainManager.swift` - iOS Keychain wrapper for secure token storage
+- `ios/Selko/Core/DI/DependencyContainer.swift` - Dependency injection container (Supabase client, services)
+
+Auth Models:
+- `ios/Selko/Features/Auth/Models/User.swift` - User model with mock for testing
+- `ios/Selko/Features/Auth/Models/AuthState.swift` - Auth state enum (unknown/authenticated/unauthenticated)
+- `ios/Selko/Features/Auth/Models/AppAuthError.swift` - App-specific auth error types
+
+Auth Services:
+- `ios/Selko/Features/Auth/Services/AuthService.swift` - Supabase auth wrapper with state publisher
+
+ViewModels:
+- `ios/Selko/Features/Auth/ViewModels/LoginViewModel.swift` - Login screen logic with validation
+- `ios/Selko/Features/Auth/ViewModels/RegisterViewModel.swift` - Registration logic with password confirmation
+- `ios/Selko/Features/Home/ViewModels/HomeViewModel.swift` - Home screen with user info and logout
+
+Views:
+- `ios/Selko/Features/Auth/Views/LoginView.swift` - Login form with email/password fields
+- `ios/Selko/Features/Auth/Views/RegisterView.swift` - Registration sheet with form validation
+- `ios/Selko/Features/Home/Views/HomeView.swift` - "Hello, {email}!" with sign out button
+
+Navigation:
+- `ios/Selko/Navigation/AppRouter.swift` - Auth state-based navigation controller
+
+Test Mocks:
+- `ios/SelkoTests/Mocks/MockAuthService.swift` - Mock auth service for unit testing
+- `ios/SelkoTests/Mocks/MockKeychainManager.swift` - Mock keychain for testing
+
+Unit Tests:
+- `ios/SelkoTests/SelkoTests.swift` - User, AuthState, AppAuthError tests
+- `ios/SelkoTests/Features/Auth/LoginViewModelTests.swift` - 6 login validation tests
+- `ios/SelkoTests/Features/Auth/RegisterViewModelTests.swift` - 6 registration validation tests
+- `ios/SelkoTests/Features/Home/HomeViewModelTests.swift` - 4 home screen tests
+
+UI Tests:
+- `ios/SelkoUITests/SelkoUITests.swift` - UI tests for login screen elements and interactions
+
+**Files modified:**
+- `ios/Selko/SelkoApp.swift` - Updated to use AppRouter for auth-based navigation
+- `ios/iOS.xcodeproj/project.pbxproj` - Added Supabase Swift SDK package dependency
+
+**Files deleted:**
+- `ios/Selko/ContentView.swift` - Replaced by LoginView/HomeView
+
+**Architecture stack:**
+| Layer | Technology |
+|-------|------------|
+| UI | SwiftUI (Xcode 26.2) |
+| Architecture | MVVM + @Observable |
+| Auth | Supabase Swift SDK 2.x |
+| Secure Storage | iOS Keychain |
+| DI | Manual container (protocol-based) |
+| Navigation | Auth state-driven (Combine) |
+| Testing | Swift Testing framework |
+
+**Features implemented:**
+- Login with email/password via Supabase Auth
+- Registration with password confirmation
+- Automatic navigation based on auth state
+- Secure token storage via Supabase SDK (Keychain)
+- Sign out functionality
+- Input validation (email format, password length)
+- Error display for auth failures
+- Loading states during API calls
+
+**Test coverage:**
+- 20 unit tests covering all ViewModels
+- 6 UI tests for login screen interactions
+- All tests pass on iPhone 17 simulator (iOS 26.2)
+
+**Build requirements:**
+- Xcode 26.2+
+- iOS 26.2+ deployment target
+- Supabase Swift SDK 2.40.0
+
+**Reason:** Implements the iOS architecture plan with SwiftUI + MVVM pattern, matching the Android architecture approach. The app now has working authentication that integrates with the existing Selko backend via Supabase Auth.
+
 ## 2026-01-26 (2)
 
 ### Android Architecture Implementation (Koin + Ktor + Navigation Compose)
@@ -79,6 +164,42 @@ ALLOWED_ORIGINS=https://selko-web.onrender.com
 ```
 
 **Reason:** Required for deploying the SvelteKit frontend to Render. The backend needs to allow CORS from the frontend's deployed domain.
+
+### Add Comprehensive CORS Testing
+
+**Files modified:**
+- `backend/tests/test_config.py` - Added 14 new unit tests for CORS configuration
+- `backend/tests/integration/test_integration_api.py` - Added 10 new CORS integration tests
+
+**New test classes:**
+
+`TestParseAllowedOrigins` (9 tests):
+- Default origins when env var not set or empty
+- Single and multiple origin parsing
+- Whitespace trimming and empty entry handling
+- Render staging/production URL parsing
+- Mixed localhost and production origins
+
+`TestConfigAllowedOrigins` (3 tests):
+- Default allowed_origins on Config dataclass
+- Custom allowed_origins override
+- Empty allowed_origins list
+
+`TestLoadConfigAllowedOrigins` (2 tests):
+- load_config() uses ALLOWED_ORIGINS env var
+- load_config() falls back to defaults
+
+`TestCORSConfiguration` (10 integration tests):
+- CORS headers on allowed origins (localhost:3000, localhost:5173, 127.0.0.1)
+- Preflight (OPTIONS) requests with custom headers
+- CORS on authenticated endpoints
+- CORS on POST requests
+- Disallowed origins don't get CORS headers
+- Same-origin requests work without Origin header
+
+**Test count:** 216 tests total (up from 203)
+
+**Reason:** Ensure CORS configuration is robust and properly tested before frontend deployment.
 
 ## 2026-01-27
 
