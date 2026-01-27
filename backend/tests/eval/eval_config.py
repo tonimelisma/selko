@@ -1,5 +1,6 @@
 """Configuration for LLM evaluation suite."""
 
+import os
 from pathlib import Path
 
 # Paths
@@ -43,4 +44,4 @@ AUTO_SCORE_THRESHOLDS = {
 }
 
 # Model configuration
-DEFAULT_MODEL = "gemini-3-flash-preview"
+DEFAULT_MODEL = os.environ.get("SELKO_EVAL_MODEL", "gemini-3-flash-preview")

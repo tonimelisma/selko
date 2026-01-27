@@ -2,6 +2,211 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (17)
+
+### LLM Evaluation Framework Improvements
+
+**New Features:**
+- `--dry-run` flag for fixture validation without LLM calls
+  - Validates JSON structure (required fields: `input`, `expected`, `events_found`)
+  - Checks that referenced attachments exist
+  - Reports validation errors for invalid fixtures
+- Thread scenario evaluation (`--threads`)
+  - Processes multi-email sequences in order
+  - Tracks event state across emails in a thread
+  - Compares final state against expected outcome
+- Configurable model via `SELKO_EVAL_MODEL` environment variable
+  - Default remains `gemini-3-flash-preview`
+  - Override with e.g. `SELKO_EVAL_MODEL=gemini-2.0-flash`
+
+**Usage Examples:**
+```bash
+# Validate all fixtures without LLM calls
+uv run python -m backend.tests.eval.run_eval --all --dry-run
+
+# Run thread scenario evaluation
+uv run python -m backend.tests.eval.run_eval --threads --dry-run
+
+# Use different model
+SELKO_EVAL_MODEL=gemini-2.0-flash uv run python -m backend.tests.eval.run_eval --all
+```
+
+---
+
+## 2026-01-27 (16)
+
+### Email-to-Calendar Manual CLI Walkthrough
+
+**Purpose:** Create CLI tool for processing emails into saved events and comprehensive walkthrough documentation for the email-to-calendar flow.
+
+**Problem:**
+1. `cli_extract_events.py` only **previews** event extraction - it does NOT save events to database
+2. No CLI way to process emails and create actual events (had to use API)
+3. No end-to-end documentation for manually testing the email-to-calendar flow
+
+**Solution:**
+
+**Part 1: New CLI Tool**
+- Added `cli/cli_process_emails.py` - processes emails and saves extracted events to database
+- `--email-id <uuid>`: Process single email by ID
+- `--recent N`: Batch process N most recent pending emails
+- Calls `process_email_for_events()` from events service
+- Handles deduplication, sender rules, event-email linking
+- Updates email `processing_status` after processing
+
+**Part 2: Walkthrough Documentation**
+- Added `docs/manual-email-to-calendar-walkthrough.md` with:
+  - Prerequisites (Supabase, environment, OAuth credentials)
+  - Step-by-step walkthrough (8 steps from Gmail OAuth to Calendar sync)
+  - SQL verification queries for each step
+  - Additional CLI commands reference (calendar, sender rules, event management)
+  - Database tables reference
+  - Event status lifecycle diagram
+  - Troubleshooting section
+  - Quick reference table
+
+**Part 3: CLAUDE.md Updates**
+- Added new CLI commands to CLI Tools table
+- Added walkthrough document to Reference Index
+
+**Key distinction clarified:**
+- `cli_extract_events` = preview only (no database writes)
+- `cli_process_emails` = full processing with database writes
+
+**Files Added:**
+- `cli/cli_process_emails.py`
+- `docs/manual-email-to-calendar-walkthrough.md`
+
+**Files Modified:**
+- `CLAUDE.md`
+
+**Tests:** 285 passed, 11 skipped
+
+## 2026-01-27 (15)
+
+### Test Coverage Improvements
+
+**Purpose:** Address gaps in test coverage identified during code analysis, particularly for complex business logic in event and calendar services.
+
+**Changes:**
+
+**CI Configuration:**
+- Removed `--run-llm` flag from staging CI (`.github/workflows/test.yml`) to avoid LLM API costs
+- All CI environments now use mocked LLM; real LLM tests run manually via `--run-llm` flag
+
+**New Unit Tests:**
+- `backend/tests/test_events.py`: Unit tests for event service business logic
+  - `check_sender_rules()` - exact email and domain matching
+  - `find_matching_event()` - deduplication with date-based + LLM comparison
+  - `generate_source_attribution()` - natural language attribution generation
+  - `undo_email_contribution()` / `redo_email_contribution()` - snapshot restore
+
+- `backend/tests/test_calendars.py`: Unit tests for calendar service
+  - `_build_calendar_event_body()` - timed events, all-day events, invitees
+  - `sync_event_to_calendar()` - create, update, recreate deleted events
+  - `get_calendar_settings()` / `update_calendar_settings()` - settings CRUD
+  - `cancel_calendar_event()` - CANCELLED prefix handling
+
+- `backend/tests/test_gemini.py`: Added tests for Gemini comparison/merge
+  - `compare_events()` - event deduplication via LLM
+  - `merge_event_data()` - intelligent event data merging
+  - `generate_source_attribution()` - attribution string generation
+
+**New Integration Tests:**
+- `backend/tests/integration/test_integration_calendars.py`: Calendar sync integration
+  - Create/update/recreate Google Calendar events (mocked API)
+  - Settings CRUD with real Supabase
+  - Event cancellation flow
+
+- `backend/tests/integration/test_integration_workers.py`: Worker lifecycle tests
+  - `calendar_sync` worker with approved events
+  - `email_process` worker with mocked Gemini
+  - Job lifecycle: claim, complete, fail, retry
+  - Concurrent worker behavior
+
+- `backend/tests/integration/test_integration_events.py`: Added undo/redo tests
+  - Undo restores event snapshot
+  - Redo reactivates source
+  - Undo fails gracefully without snapshot
+  - Attribution excludes undone sources
+
+**Files Added:**
+- `backend/tests/unit/test_calendars.py`
+- `backend/tests/unit/test_events.py`
+- `backend/tests/integration/test_integration_calendars.py`
+- `backend/tests/integration/test_integration_workers.py`
+
+**Files Modified:**
+- `.github/workflows/test.yml`
+- `backend/tests/unit/test_gemini.py`
+- `backend/tests/integration/test_integration_events.py`
+
+**Test Results:** 285 passed, 11 skipped
+
+## 2026-01-27 (14)
+
+### Claude Code Source Protection Hook
+
+**Purpose:** Prevent accidental source code edits in the main Selko repository. Enforces worktree workflow for parallel agent development.
+
+**How it works:**
+1. Claude Code `post_tool_use` hook triggers after every tool call
+2. Checks if the tool modified a file (Edit, Write, NotebookEdit, MultiEdit)
+3. Extracts file path from tool input
+4. If file is in main repo → BLOCKED with instructions
+5. If file is in worktree → allowed
+
+**Protected paths (require worktree):**
+- `backend/**/*.py` - Python backend code
+- `frontend/src/**` - Svelte frontend code
+- `cli/**/*.py` - CLI tools
+- `ios/**/*.swift` - iOS app
+- `android/**/*.kt` - Android app
+
+**Allowed in main repo:**
+- `.env*` files
+- `docs/**`
+- `CLAUDE.md`
+- `CHANGELOG.md`
+- `supabase/**`
+- `scripts/**`
+
+**Files Added:**
+- `scripts/claude-source-guard-hook.sh` - The hook script
+
+**CLAUDE.md Updates:**
+- Added "Enforcement" section explaining hook behavior
+- Updated workflow to reference hook
+
+## 2026-01-27 (13)
+
+### Worktree Workflow and Definition of Done Improvements
+
+**Purpose:** Clarify the parallel agent workflow with git worktrees and strengthen the Definition of Done process.
+
+**Changes:**
+
+**CLAUDE.md Restructured:**
+- Moved "MANDATORY: Worktree Workflow" to top (right after Project Overview)
+- Added clear visual diagram showing which files require worktrees vs. direct edits
+- Added "Pre-Work Checklist" with step-by-step commands for starting any task
+- Updated Definition of Done to include "Working in a git worktree" and "On a feature branch" checks
+- Added "After PR Merges" section with cleanup commands
+- Simplified Reference Index with clearer descriptions
+
+**Naming Conventions:**
+- Branch: `<type>/<task-name>` (e.g., `feat/add-login`, `fix/api-timeout`)
+- Worktree: `selko-<type>-<task>` (e.g., `selko-feat-add-login`)
+- Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+
+**Auto-Merge Workflow:**
+- PRs should use `gh pr merge --auto --squash` to enable auto-merge
+- CI passes → PR merges automatically
+- No manual merge action required
+
+**Files Modified:**
+- `CLAUDE.md`
+
 ## 2026-01-27 (12)
 
 ### LLM Evaluation Test Data Framework

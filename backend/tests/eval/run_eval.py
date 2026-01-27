@@ -225,6 +225,7 @@ def run_single_eval(
     fixture_path: Path,
     use_cache: bool = False,
     verbose: bool = False,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     """Run evaluation for a single fixture."""
     # Check cache first
@@ -242,6 +243,7 @@ def run_single_eval(
 
     # Load attachments if specified
     attachments = []
+    attachment_errors = []
     for att_ref in input_data.get("attachments", []):
         if isinstance(att_ref, str):
             try:
@@ -252,7 +254,56 @@ def run_single_eval(
                     "mime_type": _guess_mime_type(name),
                 })
             except FileNotFoundError as e:
-                print(f"  Warning: {e}")
+                attachment_errors.append(str(e))
+                if not dry_run:
+                    print(f"  Warning: {e}")
+
+    # Dry-run mode: validate fixture without calling LLM
+    if dry_run:
+        validation_errors = []
+
+        # Check required fields
+        if "input" not in fixture:
+            validation_errors.append("Missing 'input' field")
+        if "expected" not in fixture:
+            validation_errors.append("Missing 'expected' field")
+
+        # Check input structure
+        if "body_text" not in input_data and "attachments" not in input_data:
+            validation_errors.append("Input must have 'body_text' or 'attachments'")
+
+        # Check expected structure
+        if "events_found" not in expected:
+            validation_errors.append("Expected must have 'events_found' field")
+
+        # Include attachment errors
+        validation_errors.extend(attachment_errors)
+
+        is_valid = len(validation_errors) == 0
+
+        result = {
+            "fixture_name": fixture_name,
+            "fixture_path": str(fixture_path),
+            "category": fixture.get("category", fixture_name.split("/")[0]),
+            "description": fixture.get("description", ""),
+            "difficulty": fixture.get("difficulty", "medium"),
+            "tags": fixture.get("tags", []),
+            "run_at": datetime.now(timezone.utc).isoformat(),
+            "model": DEFAULT_MODEL,
+            "duration_ms": 0,
+            "input_summary": {
+                "subject": input_data.get("subject", ""),
+                "from": input_data.get("from_email", ""),
+                "has_attachments": bool(input_data.get("attachments", [])),
+                "attachment_count": len(input_data.get("attachments", [])),
+            },
+            "expected": expected,
+            "actual": {"dry_run": True, "valid": is_valid, "errors": validation_errors},
+            "auto_score": {"dry_run": True, "valid": is_valid},
+            "manual_rating": None,
+            "manual_notes": None,
+        }
+        return result
 
     # Import here to avoid circular imports and allow running without deps
     try:
@@ -356,9 +407,204 @@ def _guess_mime_type(filename: str) -> str:
     return mime_map.get(ext, "application/octet-stream")
 
 
+def run_thread_eval(
+    scenario_name: str,
+    scenario_path: Path,
+    use_cache: bool = False,
+    verbose: bool = False,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Run evaluation for a thread scenario (multiple emails processed in sequence)."""
+    start_time = time.time()
+
+    # Load scenario
+    with open(scenario_path) as f:
+        scenario = json.load(f)
+
+    thread_emails = scenario.get("thread_emails", [])
+    expected_final = scenario.get("expected_final_state", {})
+
+    # Dry-run mode: validate scenario without calling LLM
+    if dry_run:
+        validation_errors = []
+
+        if not thread_emails:
+            validation_errors.append("No 'thread_emails' defined in scenario")
+        if not expected_final:
+            validation_errors.append("No 'expected_final_state' defined")
+
+        for i, email in enumerate(thread_emails):
+            if "body_text" not in email:
+                validation_errors.append(f"Email {i+1} missing 'body_text'")
+            if "date_sent" not in email:
+                validation_errors.append(f"Email {i+1} missing 'date_sent'")
+
+        is_valid = len(validation_errors) == 0
+
+        result = {
+            "scenario_name": scenario_name,
+            "scenario_path": str(scenario_path),
+            "description": scenario.get("description", ""),
+            "difficulty": scenario.get("difficulty", "medium"),
+            "tags": scenario.get("tags", []),
+            "run_at": datetime.now(timezone.utc).isoformat(),
+            "model": DEFAULT_MODEL,
+            "duration_ms": 0,
+            "email_count": len(thread_emails),
+            "expected_final_state": expected_final,
+            "actual": {"dry_run": True, "valid": is_valid, "errors": validation_errors},
+            "auto_score": {"dry_run": True, "valid": is_valid},
+            "email_results": [],
+        }
+        return result
+
+    # Import here to avoid circular imports
+    try:
+        from selko.config import Config
+        from selko.services.gemini import extract_calendar_events, get_gemini_client
+    except ImportError as e:
+        print(f"Error: Could not import required modules: {e}")
+        sys.exit(1)
+
+    # Initialize Gemini client
+    config = Config()
+    client = get_gemini_client(config)
+
+    # Process each email in sequence, tracking extracted events
+    email_results = []
+    all_events = []  # Track events across the thread
+
+    for i, email_data in enumerate(thread_emails):
+        email_metadata = {
+            "subject": email_data.get("subject", ""),
+            "from_name": email_data.get("from_name", ""),
+            "from_email": email_data.get("from_email", ""),
+            "date_sent": email_data.get("date_sent", ""),
+        }
+
+        try:
+            extraction = extract_calendar_events(
+                client=client,
+                email_text=email_data.get("body_text", ""),
+                email_metadata=email_metadata,
+                attachments=None,
+                model=DEFAULT_MODEL,
+            )
+
+            email_result = {
+                "email_index": i + 1,
+                "gmail_id": email_data.get("gmail_id", f"email-{i+1}"),
+                "subject": email_data.get("subject", ""),
+                "events_found": extraction.events_found,
+                "events": [
+                    {
+                        "title": e.title,
+                        "start_datetime": e.start_datetime.isoformat() if e.start_datetime else None,
+                        "end_datetime": e.end_datetime.isoformat() if e.end_datetime else None,
+                        "location": e.location,
+                        "confidence": e.confidence,
+                    }
+                    for e in extraction.events
+                ],
+            }
+
+            # Track events - in a real scenario, we'd merge/update based on thread context
+            # For now, we just collect the latest extraction
+            if extraction.events:
+                all_events = email_result["events"]  # Latest events override
+
+            email_results.append(email_result)
+
+        except Exception as e:
+            email_results.append({
+                "email_index": i + 1,
+                "gmail_id": email_data.get("gmail_id", f"email-{i+1}"),
+                "error": str(e),
+            })
+
+    duration_ms = int((time.time() - start_time) * 1000)
+
+    # Compare final state with expected
+    final_event_count = len(all_events)
+    expected_count = expected_final.get("event_count", 0)
+    count_match = final_event_count == expected_count
+
+    # Score final event if expected
+    final_event_score = None
+    if expected_final.get("final_event") and all_events:
+        final_event_score = auto_score_event(expected_final["final_event"], all_events[0])
+
+    auto_score = {
+        "event_count_match": count_match,
+        "final_event_score": final_event_score,
+        "all_match": count_match and (
+            final_event_score is None or final_event_score.get("overall_match", False)
+        ),
+    }
+
+    result = {
+        "scenario_name": scenario_name,
+        "scenario_path": str(scenario_path),
+        "description": scenario.get("description", ""),
+        "difficulty": scenario.get("difficulty", "medium"),
+        "tags": scenario.get("tags", []),
+        "run_at": datetime.now(timezone.utc).isoformat(),
+        "model": DEFAULT_MODEL,
+        "duration_ms": duration_ms,
+        "email_count": len(thread_emails),
+        "expected_final_state": expected_final,
+        "actual_final_state": {
+            "event_count": final_event_count,
+            "events": all_events,
+        },
+        "auto_score": auto_score,
+        "email_results": email_results,
+    }
+
+    return result
+
+
+def print_thread_result_summary(result: dict[str, Any]) -> None:
+    """Print a summary of a thread evaluation result."""
+    auto_score = result.get("auto_score", {})
+    is_dry_run = auto_score.get("dry_run", False)
+
+    if is_dry_run:
+        valid = auto_score.get("valid", False)
+        status = "VALID" if valid else "INVALID"
+    else:
+        status = "PASS" if auto_score.get("all_match") else "FAIL"
+
+    email_count = result.get("email_count", 0)
+    duration = result.get("duration_ms", 0)
+
+    print(
+        f"  {result['scenario_name']:40} "
+        f"[{status:7}] "
+        f"Emails:{email_count} "
+        f"({duration}ms)"
+    )
+
+
 def print_result_summary(result: dict[str, Any]) -> None:
     """Print a summary of a single result."""
     auto_score = result.get("auto_score", {})
+
+    # Handle dry-run results
+    if auto_score.get("dry_run"):
+        valid = result.get("actual", {}).get("valid", False)
+        errors = result.get("actual", {}).get("errors", [])
+        status = "VALID" if valid else "INVALID"
+        print(
+            f"  {result['fixture_name']:40} "
+            f"[{status:7}] "
+            f"(dry-run)"
+        )
+        if errors:
+            for err in errors:
+                print(f"      - {err}")
+        return
+
     auto_rating = auto_score.get("auto_rating", "?")
     manual_rating = result.get("manual_rating", "-")
 
@@ -667,6 +913,11 @@ Examples:
 
     # Output options
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate fixtures without calling LLM",
+    )
 
     args = parser.parse_args()
 
@@ -752,7 +1003,40 @@ Examples:
             print(f"Fixture not found: {args.fixture}")
             sys.exit(1)
     elif args.threads:
-        print("Thread scenario evaluation not yet implemented")
+        # Run thread scenario evaluations
+        threads = get_thread_scenarios()
+        if not threads:
+            print("No thread scenarios found")
+            sys.exit(0)
+
+        use_cache = args.use_cache and not args.no_cache
+        dry_run = args.dry_run
+
+        print(f"\nRunning {len(threads)} thread scenarios...")
+        if dry_run:
+            print("(dry-run mode - validating fixtures only)")
+        print("-" * 60)
+
+        thread_results = []
+        for name, path in threads:
+            if args.verbose:
+                print(f"\nProcessing thread: {name}")
+            try:
+                result = run_thread_eval(
+                    name, path, use_cache=use_cache, verbose=args.verbose, dry_run=dry_run
+                )
+                thread_results.append(result)
+                print_thread_result_summary(result)
+            except Exception as e:
+                print(f"  {name:40} [ERROR] {e}")
+                if args.verbose:
+                    import traceback
+                    traceback.print_exc()
+
+        # Summary
+        print("-" * 60)
+        passed = sum(1 for r in thread_results if r.get("auto_score", {}).get("all_match") or r.get("auto_score", {}).get("valid"))
+        print(f"Thread scenarios: {passed}/{len(thread_results)} passed")
         sys.exit(0)
     else:
         parser.print_help()
@@ -772,7 +1056,10 @@ Examples:
         sys.exit(0)
 
     # Run evaluations
+    dry_run = args.dry_run
     print(f"\nRunning {len(fixtures_to_run)} fixtures...")
+    if dry_run:
+        print("(dry-run mode - validating fixtures only)")
     print("-" * 60)
 
     use_cache = args.use_cache and not args.no_cache
@@ -782,7 +1069,9 @@ Examples:
         if args.verbose:
             print(f"\nProcessing: {name}")
         try:
-            result = run_single_eval(name, path, use_cache=use_cache, verbose=args.verbose)
+            result = run_single_eval(
+                name, path, use_cache=use_cache, verbose=args.verbose, dry_run=dry_run
+            )
             results.append(result)
             print_result_summary(result)
         except Exception as e:
@@ -791,8 +1080,14 @@ Examples:
                 import traceback
                 traceback.print_exc()
 
-    # Show summary
-    generate_report(results)
+    # Show summary (skip for dry-run as results are not saved)
+    if not dry_run:
+        generate_report(results)
+    else:
+        print("-" * 60)
+        valid = sum(1 for r in results if r.get("actual", {}).get("valid", False))
+        invalid = len(results) - valid
+        print(f"Dry-run complete: {valid} valid, {invalid} invalid fixtures")
 
 
 if __name__ == "__main__":
