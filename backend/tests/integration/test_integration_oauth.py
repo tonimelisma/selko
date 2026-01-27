@@ -5,6 +5,7 @@ Tests storing and retrieving OAuth credentials from the database.
 
 import pytest
 
+from selko.services.auth import get_current_user_id
 from selko.services.integrations import (
     IntegrationError,
     get_oauth_credentials,
@@ -30,8 +31,10 @@ class TestOAuthIntegrations:
         temp_user_client,
     ):
         """Can save OAuth credentials to database."""
+        user_id = get_current_user_id(temp_user_client)
         save_oauth_credentials(
             temp_user_client,
+            user_id,
             "gmail",
             sample_oauth_credentials,
             provider_email="test@gmail.com",
@@ -58,8 +61,9 @@ class TestOAuthIntegrations:
         temp_user_client,
     ):
         """Saving credentials again updates existing record."""
+        user_id = get_current_user_id(temp_user_client)
         # First save
-        save_oauth_credentials(temp_user_client, "gmail", sample_oauth_credentials)
+        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
 
         # Second save with different token
         from google.oauth2.credentials import Credentials
@@ -72,7 +76,7 @@ class TestOAuthIntegrations:
             client_secret=sample_oauth_credentials.client_secret,
             scopes=sample_oauth_credentials.scopes,
         )
-        save_oauth_credentials(temp_user_client, "gmail", updated_creds)
+        save_oauth_credentials(temp_user_client, user_id, "gmail", updated_creds)
 
         # Verify update
         creds = get_oauth_credentials(temp_user_client, config, "gmail")
@@ -85,7 +89,8 @@ class TestOAuthIntegrations:
         temp_user_client,
     ):
         """Can update integration status."""
-        save_oauth_credentials(temp_user_client, "gmail", sample_oauth_credentials)
+        user_id = get_current_user_id(temp_user_client)
+        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
 
         # Update status to expired
         update_integration_status(temp_user_client, "gmail", "expired")
@@ -101,7 +106,8 @@ class TestOAuthIntegrations:
         temp_user_client,
     ):
         """Can update OAuth tokens after refresh."""
-        save_oauth_credentials(temp_user_client, "gmail", sample_oauth_credentials)
+        user_id = get_current_user_id(temp_user_client)
+        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
 
         # Simulate token refresh
         from datetime import datetime, timedelta, timezone
@@ -132,7 +138,8 @@ class TestOAuthIntegrations:
         temp_user_client,
     ):
         """Scopes are stored and retrieved as array."""
-        save_oauth_credentials(temp_user_client, "gmail", sample_oauth_credentials)
+        user_id = get_current_user_id(temp_user_client)
+        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
 
         creds = get_oauth_credentials(temp_user_client, config, "gmail")
         assert creds.scopes == list(sample_oauth_credentials.scopes)
@@ -146,9 +153,10 @@ class TestOAuthIntegrations:
     ):
         """Provider email is stored with credentials."""
         user_id, email, password = temp_user
-        
+
         save_oauth_credentials(
             temp_user_client,
+            user_id,
             "gmail",
             sample_oauth_credentials,
             provider_email="myemail@gmail.com",
@@ -172,8 +180,9 @@ class TestOAuthIntegrations:
         temp_user_client,
     ):
         """Can store credentials for multiple providers."""
+        user_id = get_current_user_id(temp_user_client)
         # Save Gmail
-        save_oauth_credentials(temp_user_client, "gmail", sample_oauth_credentials)
+        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
 
         # Save Calendar with different token
         from google.oauth2.credentials import Credentials
@@ -187,7 +196,7 @@ class TestOAuthIntegrations:
             scopes=["https://www.googleapis.com/auth/calendar"],
         )
         save_oauth_credentials(
-            temp_user_client, "google_calendar", calendar_creds
+            temp_user_client, user_id, "google_calendar", calendar_creds
         )
 
         # Verify both exist

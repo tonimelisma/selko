@@ -39,8 +39,6 @@ All notable changes to this project are documented in this file.
 
 ### OAuth Callback Security Fix + Refactor to Explicit user_id
 
-**Commit:** TBD
-
 **Issue:** Critical security vulnerability - OAuth callback endpoint required JWT authentication, but Google OAuth redirects don't include authentication headers. This caused OAuth flows to fail with 401 errors.
 
 **Design Flaw:** `save_oauth_credentials()` had implicit user_id extraction via `get_current_user_id(client)`, leading to unclear code flow, fragile test mocking, and potential wrong-user saves if RLS failed.
