@@ -8,7 +8,7 @@ This guide covers running multiple AI coding agents simultaneously on the same r
 |-----------|--------|-----|
 | Isolation | Git Worktrees | Disk-efficient, shared .git |
 | Branching | Feature branches | Required by worktrees, enables PRs |
-| Merging | Auto-merge PRs | No manual review required, merges after CI passes |
+| Merging | Manual after CI | Wait for CI to pass, then squash merge |
 | Alerts | Email notifications | Know immediately if CI fails |
 
 ## Naming Conventions
@@ -22,12 +22,10 @@ This guide covers running multiple AI coding agents simultaneously on the same r
 
 ## GitHub Setup (One-Time)
 
-**Auto-Merge** (already enabled via `gh repo edit --enable-auto-merge`):
-- Allows PRs to auto-merge after CI passes
-- Use `gh pr merge --auto --squash` after creating PR to enable auto-merge
-
 **Notifications** (Personal Settings → Notifications):
 - ✅ Actions: Send notifications for failed workflows only
+
+> **Note:** Auto-merge requires GitHub Pro for private repos. This project uses manual merge after CI passes instead.
 
 ## Pre-Work Checklist
 
@@ -86,7 +84,7 @@ git commit -m "feat: add new capability"
 git push -u origin feat/add-login
 ```
 
-### Creating PR with Auto-Merge
+### Creating PR and Merging
 
 ```bash
 # Create the PR
@@ -94,11 +92,8 @@ gh pr create \
   --title "feat: add new capability" \
   --body "Description of changes"
 
-# Enable auto-merge (PR will merge automatically after CI passes)
-gh pr merge --auto --squash
-
-# Monitor CI status (optional)
-gh pr checks
+# Wait for CI to pass, then merge
+gh pr checks --watch && gh pr merge --squash
 ```
 
 ### When Another Agent's PR Merges
@@ -127,23 +122,32 @@ After your task is complete:
 - [ ] Committed with conventional commit format
 - [ ] Pushed to feature branch
 - [ ] PR created with `gh pr create`
-- [ ] Auto-merge enabled with `gh pr merge --auto --squash`
+- [ ] Wait for CI and merge with `gh pr checks --watch && gh pr merge --squash`
 
-## After PR Merges
+## After PR: Wait for CI, Merge, and Cleanup
 
-Auto-merge happens automatically after CI passes. No manual merge action is required.
+### MANDATORY: AI agents MUST follow all steps
 
 ```bash
-# Return to main repo
+# 1. Wait for CI checks to pass
+echo "Waiting for CI checks..."
+gh pr checks --watch
+
+# 2. Merge the PR (manual since auto-merge requires GitHub Pro)
+gh pr merge --squash
+
+# 3. Return to main repo
 cd ~/Development/selko
 
-# Remove your worktree and branch
+# 4. Remove worktree and branch
 git worktree remove ../selko-<type>-<task>
 git branch -D <type>/<task-name>
 
-# Sync main
+# 5. Sync main
 git fetch origin && git merge --ff-only origin/main
 ```
+
+> **CRITICAL FOR AI AGENTS:** You MUST complete ALL steps including cleanup. Failure to clean up leaves stale branches and worktrees that block other agents.
 
 ## Task Assignment Guidelines
 
@@ -211,7 +215,7 @@ git merge origin/main
 | Delete branch | `git branch -D <type>/<task>` |
 | Prune refs | `git worktree prune` |
 | Create PR | `gh pr create` |
-| Enable auto-merge | `gh pr merge --auto --squash` |
+| Wait for CI + merge | `gh pr checks --watch && gh pr merge --squash` |
 | Check CI status | `gh pr checks` |
 | Rebase | `git fetch origin main && git rebase origin/main` |
 | Force push | `git push --force-with-lease` |
