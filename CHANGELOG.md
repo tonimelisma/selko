@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (12)
+
+### Claude Code Worktree Enforcement Hook
+
+**Purpose:** Enforce mandatory worktree workflow for AI coding agents by adding a Claude Code PreToolUse hook that blocks file edits in the main repository directory.
+
+**Problem:** Multiple AI agents working simultaneously can cause merge conflicts and lost work when committing directly to main. The instructions in CLAUDE.md were being ignored.
+
+**Solution:**
+- Added Claude Code hook that intercepts Edit/Write/NotebookEdit tool calls
+- Hook checks if the target file is in the main repo (`/Users/tonimelisma/Development/selko/`)
+- Blocks the operation with exit code 2 and displays instructions to create a worktree
+- Allows edits to files in worktree directories (e.g., `../selko-feature/`)
+
+**Files Added:**
+- `.claude/hooks/block-main-repo-edits.sh` - PreToolUse hook script
+
+**Files Modified:**
+- `.claude/settings.json` - Added hooks configuration
+- `CLAUDE.md` - Added prominent "MANDATORY FOR ALL AI CODING AGENTS" section at top, updated Definition of Done checklist, documented hook enforcement
+
+**How It Works:**
+1. AI agent tries to edit a file
+2. Hook extracts `file_path` from tool input
+3. If file is in main repo → BLOCKED with instructions
+4. If file is in worktree → allowed
+
 ## 2026-01-27 (11)
 
 ### Code Quality Fixes and Refactoring

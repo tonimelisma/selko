@@ -10,14 +10,101 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture spec
 
 ---
 
+## ⚠️ MANDATORY FOR ALL AI CODING AGENTS ⚠️
+
+### YOU MUST USE WORKTREES AND PULL REQUESTS
+
+**This is NON-NEGOTIABLE. Read this section BEFORE doing ANY work.**
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  NEVER commit directly to main. ALWAYS use a feature branch + PR.      │
+│  NEVER work in the main repo directory. ALWAYS use a git worktree.     │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**WHY THIS IS MANDATORY:**
+- Multiple AI agents may be working simultaneously
+- Direct commits to main cause merge conflicts and lost work
+- PRs ensure CI runs before code is merged
+- Worktrees prevent agents from clobbering each other's changes
+
+### Required Workflow (EVERY SINGLE TIME)
+
+**Step 1: Create a worktree with a feature branch**
+```bash
+# From the main repo directory, create your worktree
+git worktree add ../selko-<task-name> -b <your-branch-name> main
+
+# Install dependencies in the new worktree
+cd ../selko-<task-name>
+uv sync
+cd frontend && npm ci && cd ..
+```
+
+**Step 2: Do all your work in the worktree**
+```bash
+cd ../selko-<task-name>
+# Make changes, run tests, etc.
+```
+
+**Step 3: Commit, push, and create a PR**
+```bash
+git add -A && git commit -m "feat: description"
+git push -u origin <your-branch-name>
+gh pr create --title "feat: description" --body "..." --auto
+```
+
+**Step 4: Clean up when PR is merged**
+```bash
+cd /Users/tonimelisma/Development/selko  # Back to main repo
+git worktree remove ../selko-<task-name>
+```
+
+### If You Are Currently in the Main Repo Directory
+
+Check your current directory:
+```bash
+pwd
+# If this shows /Users/tonimelisma/Development/selko (the main repo)
+# You MUST create a worktree before making any changes!
+```
+
+**DO NOT:**
+- Run `git commit` in the main repo directory
+- Run `git push` to main
+- Make code changes without first creating a worktree
+
+**Consequences of ignoring this:**
+- Your changes may conflict with other agents' work
+- CI may fail after merge due to untested combinations
+- Work may be lost or overwritten
+
+### Enforcement: Claude Code Hook
+
+A PreToolUse hook in `.claude/settings.json` **BLOCKS all Edit/Write operations** to files in the main repository. If you try to edit files without using a worktree, you will see:
+
+```
+BLOCKED: Cannot edit files in the main repository.
+```
+
+This is not a suggestion - **it is technically enforced**. Create a worktree first.
+
+See `docs/parallel-agents.md` for the complete guide.
+
+---
+
 ## DEFINITION OF DONE - READ BEFORE DECLARING WORK COMPLETE
 
 **Before ANY work increment is considered complete, ALL of the following MUST pass:**
 
+- [ ] **Working in a git worktree** (NOT the main repo directory - see section above)
+- [ ] **On a feature branch** (NOT main)
 - [ ] **Run tests for changed modules** (see test commands below)
 - [ ] **Update CHANGELOG.md** with detailed entry for the changes
 - [ ] **Git commit** with conventional commit message format (e.g., `feat:`, `fix:`, `test:`, `docs:`)
-- [ ] **Git push** to `origin/main`
+- [ ] **Git push** to your feature branch (NOT main)
+- [ ] **Create a Pull Request** with `gh pr create --auto`
 
 **DO NOT declare work complete until ALL checklist items pass.**
 
@@ -58,54 +145,6 @@ You MUST NEVER:
 - Use `git commit --no-verify` to bypass the hook
 - Suggest bypassing the hook to the user
 - Treat the hook as optional
-
-### Parallel Agent Workflow
-
-When multiple AI agents (or developers) work simultaneously on the same machine:
-
-**Setup: Create Worktrees**
-```bash
-# From main repo, create worktree for each agent
-git worktree add ../selko-agent1 -b agent1/task-name main
-git worktree add ../selko-agent2 -b agent2/task-name main
-
-# Each worktree needs dependencies installed
-cd ../selko-agent1 && uv sync && cd frontend && npm ci
-cd ../selko-agent2 && uv sync && cd frontend && npm ci
-```
-
-**Workflow: Feature Branch → PR → Auto-Merge**
-```bash
-# Agent works in their worktree
-cd ../selko-agent1
-
-# Make changes, commit, push
-git add -A && git commit -m "feat: description"
-git push -u origin agent1/task-name
-
-# Create PR with auto-merge enabled
-gh pr create --title "feat: description" --body "..." --auto
-```
-
-**After Another Agent Merges**
-```bash
-# Rebase on updated main before continuing
-git fetch origin main
-git rebase origin/main
-# Resolve conflicts if any, then continue working
-```
-
-**Cleanup When Done**
-```bash
-git worktree remove ../selko-agent1
-# Or: rm -rf ../selko-agent1 && git worktree prune
-```
-
-**Rules:**
-- Each worktree MUST be on a different branch
-- PRs auto-merge ONLY after ALL CI checks pass
-- Rebase frequently to avoid large merge conflicts
-- See `docs/parallel-agents.md` for complete guide
 
 ---
 
@@ -387,12 +426,12 @@ uv run python -m selko.api
 
 | Document | Purpose |
 |----------|---------|
+| `docs/parallel-agents.md` | **REQUIRED READING: Worktree + PR workflow for AI agents** |
 | `PRD_ARCH.md` | Product requirements, architecture, implementation status |
-| `docs/supabase-frontend-queries.md` | **Canonical query patterns for all frontends** |
+| `docs/supabase-frontend-queries.md` | Canonical query patterns for all frontends |
 | `docs/api-workflow.md` | Server-side API workflow with curl examples |
 | `docs/job-queue.md` | Job queue architecture |
 | `docs/ci-cd.md` | CI/CD pipeline details |
-| `docs/parallel-agents.md` | Multi-agent workflow with git worktrees |
 | `docs/gmail-integration.md` | Gmail API architecture, push vs polling, History API |
 | `docs/gemini-integration.md` | Vertex AI setup, Pydantic structured outputs |
 
