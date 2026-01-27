@@ -4,6 +4,7 @@ These fixtures connect to real Supabase instances and require proper configurati
 Development tests use local Supabase (Docker), staging tests use cloud Supabase.
 """
 
+import logging
 import os
 from uuid import uuid4
 
@@ -13,6 +14,53 @@ from supabase import create_client
 from selko.config import Config, load_config
 from selko.services.auth import get_authenticated_client, get_current_user_id
 from selko.services.users import create_user, delete_user, get_admin_client
+
+logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(autouse=True, scope="function")
+def reset_fastapi_config_cache(request):
+    """Clear FastAPI config cache and reset ENVIRONMENT before each test.
+
+    This ensures that FastAPI's get_config() dependency uses the same
+    configuration as the test fixtures, preventing JWT validation failures
+    due to config mismatch between different Supabase instances.
+
+    The problem:
+    1. @lru_cache on get_config() persists across tests
+    2. Test fixtures load different .env files which pollute os.environ
+    3. .env.test sets ENVIRONMENT=staging, polluting os.environ["ENVIRONMENT"]
+    4. get_config() then loads wrong config based on polluted ENVIRONMENT
+
+    The fix:
+    1. Clear the lru_cache
+    2. Reset ENVIRONMENT to match the test's expected environment
+    3. Reload the correct .env file
+    """
+    from selko.api.deps import get_config
+    from selko.config import load_config, ENV_FILES, PROJECT_ROOT
+    from dotenv import load_dotenv
+
+    # Determine expected environment from test markers
+    env = _get_env_for_markers(request)
+
+    # Clear cache before test
+    get_config.cache_clear()
+
+    # Reset ENVIRONMENT variable and reload correct .env file
+    os.environ["ENVIRONMENT"] = env
+    env_file = ENV_FILES.get(env)
+    env_path = PROJECT_ROOT / env_file
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+
+    logger.debug(f"[CACHE] Reset config cache and ENVIRONMENT={env}")
+
+    yield
+
+    # Clear after test
+    get_config.cache_clear()
+    logger.debug("[CACHE] Cleared get_config cache after test")
 
 
 def _get_env_for_markers(request) -> str:
@@ -190,6 +238,12 @@ def sample_oauth_credentials():
 @pytest.fixture
 def sample_email_data():
     """Sample parsed email data for testing."""
+    from datetime import datetime, timezone
+
+    # Use current time to ensure test email appears first in results
+    # (emails are sorted by date_sent DESC)
+    current_time = datetime.now(timezone.utc).isoformat()
+
     return {
         "gmail_id": f"test_msg_{uuid4().hex[:8]}",
         "thread_id": f"test_thread_{uuid4().hex[:8]}",
@@ -197,7 +251,7 @@ def sample_email_data():
         "from_email": "sender@example.com",
         "from_name": "Test Sender",
         "to_emails": ["recipient@example.com"],
-        "date_sent": "2026-01-22T10:00:00+00:00",
+        "date_sent": current_time,
         "snippet": "This is a test email snippet",
         "gmail_label_ids": ["INBOX", "UNREAD"],
         "has_attachments": False,
