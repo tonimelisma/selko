@@ -1,0 +1,35 @@
+{
+  "name": "salon_appointment_04",
+  "category": "appointments",
+  "description": "Hair salon appointment booking",
+  "difficulty": "easy",
+  "tags": ["salon", "haircut", "personal-care"],
+  "input": {
+    "gmail_id": "eval-appt-004",
+    "thread_id": "thread-appt-004",
+    "subject": "Your Appointment at Style Studio",
+    "from_email": "bookings@stylestudio.com",
+    "from_name": "Style Studio Salon",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-05T11:20:00Z",
+    "snippet": "Your appointment has been booked...",
+    "body_text": "Hi Sarah,\n\nYour appointment has been booked!\n\n📅 APPOINTMENT DETAILS\n\nStylist: Amanda Torres\nService: Haircut & Color\nDate: Thursday, Feb 12, 2026\nTime: 3:30 PM\nDuration: ~2 hours\n\nStyle Studio Salon\n890 University Avenue\nPalo Alto, CA 94301\n(650) 555-7890\n\nCancellation Policy: Please provide at least 24 hours notice for cancellations to avoid a fee.\n\nNeed to change your appointment? Click here or call us.\n\nSee you soon!\nStyle Studio Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hair Appointment - Style Studio",
+        "start_datetime": "2026-02-12T15:30:00",
+        "end_datetime": "2026-02-12T17:30:00",
+        "location": "Style Studio Salon, 890 University Avenue, Palo Alto, CA 94301",
+        "description": "Haircut and color with Amanda Torres",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Salon appointment with approximate duration (~2 hours)"
+}

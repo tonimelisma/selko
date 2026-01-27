@@ -1,0 +1,25 @@
+{
+  "name": "terms_update_08",
+  "category": "no_events",
+  "description": "Terms of service update notification",
+  "difficulty": "medium",
+  "tags": ["legal", "terms", "policy", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-008",
+    "thread_id": "thread-noev-008",
+    "subject": "Important: Updates to our Terms of Service (Effective March 1)",
+    "from_email": "legal@platform.com",
+    "from_name": "Platform Legal Team",
+    "to_emails": ["user@example.com"],
+    "date_sent": "2026-02-01T12:00:00Z",
+    "snippet": "We're updating our Terms of Service...",
+    "body_text": "PLATFORM\n\nImportant Updates to Our Terms\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDear User,\n\nWe're writing to inform you about upcoming changes to our Terms of Service and Privacy Policy.\n\nEffective Date: March 1, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nKEY CHANGES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n1. DATA PRIVACY\nWe've enhanced our data protection measures in compliance with new regulations.\n\n2. USER CONTENT\nClarified guidelines around content ownership and licensing.\n\n3. ACCOUNT SECURITY\nAdded two-factor authentication requirements for certain features.\n\n4. DISPUTE RESOLUTION\nUpdated arbitration procedures.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n[Review Full Terms of Service]\n[Review Privacy Policy]\n\nBy continuing to use our service after March 1, 2026, you agree to these updated terms.\n\nIf you have questions, please contact legal@platform.com\n\nThank you for being a valued user.\n\nThe Platform Legal Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Policy update - effective date is not a calendar event"
+}

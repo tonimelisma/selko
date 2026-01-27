@@ -1,0 +1,25 @@
+{
+  "name": "social_notification_05",
+  "category": "no_events",
+  "description": "Social media notification",
+  "difficulty": "easy",
+  "tags": ["social", "notification", "linkedin", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-005",
+    "thread_id": "thread-noev-005",
+    "subject": "Sarah Johnson and 5 others viewed your profile",
+    "from_email": "notifications@linkedin.com",
+    "from_name": "LinkedIn",
+    "to_emails": ["user@example.com"],
+    "date_sent": "2026-02-15T17:30:00Z",
+    "snippet": "See who's looking at your profile this week...",
+    "body_text": "LinkedIn\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYOUR WEEKLY UPDATE\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHi John,\n\n6 people viewed your profile this week.\n\n📊 Profile Views\n• Sarah Johnson, Recruiter at TechCorp\n• Michael Chen, Engineering Manager\n• +4 others\n\n[See all viewers]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n💼 Jobs you may be interested in\n\n• Senior Software Engineer at StartupX\n• Full Stack Developer at BigTech\n• Tech Lead at Innovation Inc.\n\n[See all jobs]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📰 Trending in your network\n\n• \"How AI is Changing Hiring\" - 2,345 reactions\n• \"Remote Work Trends 2026\" - 1,892 reactions\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nManage notifications | Unsubscribe\n\n© 2026 LinkedIn Corporation",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Social media notification - no calendar events"
+}

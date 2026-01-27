@@ -1,0 +1,35 @@
+{
+  "name": "baby_shower_04",
+  "category": "invitations",
+  "description": "Baby shower invitation with brunch timing",
+  "difficulty": "easy",
+  "tags": ["baby-shower", "brunch", "weekend"],
+  "input": {
+    "gmail_id": "eval-inv-004",
+    "thread_id": "thread-inv-004",
+    "subject": "Baby Shower for Amanda!",
+    "from_email": "kelly.martinez@yahoo.com",
+    "from_name": "Kelly Martinez",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-01-20T16:45:00Z",
+    "snippet": "Please join us for a baby shower brunch...",
+    "body_text": "You're Invited!\n\nPlease join us for a baby shower brunch\nhonoring mom-to-be\n\nAMANDA RODRIGUEZ\n\nSunday, March 15, 2026\n11:00 AM - 2:00 PM\n\nHosted at Kelly's home\n789 Maple Street\nAustin, TX 78701\n\nLight brunch will be served\nRegistry: Amazon & Target\n\nRSVP to Kelly at kelly.martinez@yahoo.com\nor (512) 555-8910 by March 8th\n\nIt's a BOY! 💙",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amanda's Baby Shower",
+        "start_datetime": "2026-03-15T11:00:00",
+        "end_datetime": "2026-03-15T14:00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch for Amanda Rodriguez",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Baby shower with standard time format"
+}

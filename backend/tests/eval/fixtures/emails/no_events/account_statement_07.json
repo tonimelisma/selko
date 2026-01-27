@@ -1,0 +1,25 @@
+{
+  "name": "account_statement_07",
+  "category": "no_events",
+  "description": "Bank account statement notification",
+  "difficulty": "medium",
+  "tags": ["bank", "statement", "financial", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-007",
+    "thread_id": "thread-noev-007",
+    "subject": "Your January 2026 Statement is Ready",
+    "from_email": "statements@firstbank.com",
+    "from_name": "First Bank",
+    "to_emails": ["customer@example.com"],
+    "date_sent": "2026-02-01T05:00:00Z",
+    "snippet": "Your monthly statement for account ending in 4567 is now available...",
+    "body_text": "FIRST BANK\n\nYour Statement is Ready\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDear Valued Customer,\n\nYour monthly statement for January 2026 is now available.\n\nAccount: Checking ****4567\nStatement Period: January 1-31, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nACCOUNT SUMMARY\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nBeginning Balance:     $5,432.10\nTotal Deposits:        +$4,500.00\nTotal Withdrawals:     -$3,245.67\nEnding Balance:        $6,686.43\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMPORTANT DATES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nPayment Due Date: N/A (Checking account)\nStatement Closing Date: January 31, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n[View Full Statement]\n[Download PDF]\n\nGo paperless and help the environment!\n[Enroll in Paperless Statements]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nQuestions? Call 1-800-FIRST-BANK\n\n© 2026 First Bank. FDIC Insured.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Bank statement - dates are informational, not events"
+}

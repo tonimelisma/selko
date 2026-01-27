@@ -1,0 +1,35 @@
+{
+  "name": "ics_calendar_invite",
+  "category": "meetings",
+  "description": "Meeting with ICS calendar file attachment",
+  "difficulty": "medium",
+  "tags": ["meeting", "attachment", "ics", "calendar"],
+  "input": {
+    "gmail_id": "eval-attach-002",
+    "thread_id": "thread-attach-002",
+    "subject": "Meeting Invitation: Product Launch Planning",
+    "from_email": "john.smith@example.com",
+    "from_name": "John Smith",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-03-01T10:00:00Z",
+    "snippet": "You have been invited to a meeting...",
+    "body_text": "You have been invited to a meeting.\n\nPlease see the attached calendar invitation for details.\n\nLooking forward to your participation.\n\nJohn Smith\nProduct Manager",
+    "attachments": ["event_invite.ics"]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Product Launch Planning Meeting",
+        "start_datetime": "2026-03-15T14:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "Innovation Hub, Room 501",
+        "description": "Meeting to finalize Q2 product launch strategy",
+        "is_all_day": false,
+        "confidence_min": 0.9
+      }
+    ]
+  },
+  "notes": "Calendar invite with ICS attachment - tests ICS parsing"
+}

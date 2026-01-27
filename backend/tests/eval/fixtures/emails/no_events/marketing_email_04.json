@@ -1,0 +1,25 @@
+{
+  "name": "marketing_email_04",
+  "category": "no_events",
+  "description": "Promotional marketing email with sale dates",
+  "difficulty": "medium",
+  "tags": ["marketing", "sale", "promo", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-004",
+    "thread_id": "thread-noev-004",
+    "subject": "🎉 Presidents Day Sale - Up to 50% Off!",
+    "from_email": "deals@bigstore.com",
+    "from_name": "BigStore",
+    "to_emails": ["customer@example.com"],
+    "date_sent": "2026-02-12T08:00:00Z",
+    "snippet": "Don't miss our biggest sale of the season...",
+    "body_text": "BIGSTORE\n\n🇺🇸 PRESIDENTS DAY SALE 🇺🇸\n\nUP TO 50% OFF EVERYTHING!\n\n═══════════════════════════════════════\n\nDon't miss our biggest sale of the season!\n\nSale Dates: February 14-17, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTOP DEALS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🛋️ FURNITURE - 50% off select sofas\n🛏️ BEDDING - Buy 2, get 1 free\n🍳 KITCHEN - 40% off cookware sets\n📺 ELECTRONICS - Up to $200 off TVs\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXTRA SAVINGS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nUse code PRES20 for extra 20% off!\n*Online only. Some exclusions apply.\n\nFree shipping on orders over $49\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n[SHOP NOW]\n\nStores open regular hours:\nMon-Sat: 10AM-9PM\nSun: 11AM-6PM\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nUnsubscribe | Privacy Policy\n© 2026 BigStore",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Marketing email with sale dates - not personal calendar events"
+}

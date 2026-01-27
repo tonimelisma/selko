@@ -1,0 +1,35 @@
+{
+  "name": "interview_05",
+  "category": "meetings",
+  "description": "Job interview scheduling",
+  "difficulty": "easy",
+  "tags": ["interview", "job", "hr", "hiring"],
+  "input": {
+    "gmail_id": "eval-mtg-005",
+    "thread_id": "thread-mtg-005",
+    "subject": "Interview Confirmation - Senior Software Engineer Position",
+    "from_email": "recruiting@innovatetech.com",
+    "from_name": "InnovateTech Recruiting",
+    "to_emails": ["candidate@example.com"],
+    "date_sent": "2026-02-06T11:30:00Z",
+    "snippet": "We're pleased to invite you for an interview...",
+    "body_text": "Dear Candidate,\n\nThank you for your interest in the Senior Software Engineer position at InnovateTech. We're pleased to invite you for an interview!\n\nINTERVIEW DETAILS\n-----------------\nDate: Thursday, February 12, 2026\nTime: 1:00 PM - 3:00 PM PST\nFormat: On-site interview\n\nLocation:\nInnovateTech Headquarters\n500 Innovation Drive, Building A\nSan Jose, CA 95110\n\nCheck in at the front desk and ask for Emily Rodriguez.\n\nINTERVIEW SCHEDULE:\n- 1:00 PM - Technical Interview (coding)\n- 2:00 PM - System Design Discussion\n- 2:45 PM - Team Fit / Q&A\n\nWhat to Bring:\n- Government-issued photo ID\n- Portfolio or examples of work (optional)\n\nParking is available in the visitor lot.\n\nPlease confirm your attendance by replying to this email.\n\nWe look forward to meeting you!\n\nBest regards,\nEmily Rodriguez\nTalent Acquisition\nInnovateTech",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Interview - InnovateTech Senior Software Engineer",
+        "start_datetime": "2026-02-12T13:00:00",
+        "end_datetime": "2026-02-12T15:00:00",
+        "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
+        "description": "On-site interview for Senior Software Engineer position",
+        "is_all_day": false,
+        "confidence_min": 0.9
+      }
+    ]
+  },
+  "notes": "Job interview with detailed schedule breakdown"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "one_on_one_01",
+  "category": "meetings",
+  "description": "Manager 1:1 meeting invitation",
+  "difficulty": "easy",
+  "tags": ["1:1", "manager", "work", "calendar-invite"],
+  "input": {
+    "gmail_id": "eval-mtg-001",
+    "thread_id": "thread-mtg-001",
+    "subject": "1:1 with Alex - Weekly Sync",
+    "from_email": "alex.rivera@company.com",
+    "from_name": "Alex Rivera",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-01-26T14:00:00Z",
+    "snippet": "Hi, I'd like to set up our weekly 1:1...",
+    "body_text": "Hi,\n\nI'd like to set up our weekly 1:1 meeting. How about:\n\nWhen: Every Tuesday, starting February 3rd\nTime: 2:00 PM - 2:30 PM\nWhere: My office (Room 401) or Zoom\n\nAgenda:\n- Project updates\n- Blockers and support needed\n- Career development\n- Open discussion\n\nLet me know if this time works for you or suggest an alternative.\n\nBest,\nAlex\n\n--\nAlex Rivera\nEngineering Manager\nCompany Inc.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Alex Rivera",
+        "start_datetime": "2026-02-03T14:00:00",
+        "end_datetime": "2026-02-03T14:30:00",
+        "location": "Room 401 or Zoom",
+        "description": "Weekly 1:1 sync meeting",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "1:1 meeting request - tests extracting first occurrence of recurring meeting"
+}

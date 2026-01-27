@@ -1,0 +1,35 @@
+{
+  "name": "engagement_party_10",
+  "category": "invitations",
+  "description": "Engagement celebration at winery",
+  "difficulty": "medium",
+  "tags": ["engagement", "winery", "afternoon", "outdoor"],
+  "input": {
+    "gmail_id": "eval-inv-010",
+    "thread_id": "thread-inv-010",
+    "subject": "Join Us! Rachel & David's Engagement Celebration",
+    "from_email": "susan.miller@gmail.com",
+    "from_name": "Susan Miller",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-03-01T11:45:00Z",
+    "snippet": "We're engaged! Come celebrate with us...",
+    "body_text": "✨ We're Engaged! ✨\n\nRachel & David\n\ninvite you to celebrate their engagement!\n\nSaturday, April 4th, 2026\nFour o'clock in the afternoon\n\nStonegate Winery\n7801 Silverado Trail\nNapa, CA 94558\n\nJoin us for wine tasting, hors d'oeuvres,\nand sunset views in the vineyard.\n\nPlease RSVP to susan.miller@gmail.com\nby March 25th\n\nWe can't wait to celebrate with you!\n\n— Rachel & David",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Rachel & David's Engagement Party",
+        "start_datetime": "2026-04-04T16:00:00",
+        "end_datetime": null,
+        "location": "Stonegate Winery, 7801 Silverado Trail, Napa, CA 94558",
+        "description": "Engagement celebration with wine tasting and hors d'oeuvres at winery",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Engagement party with 'Four o'clock in the afternoon' written-out time format"
+}

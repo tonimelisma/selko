@@ -1,0 +1,35 @@
+{
+  "name": "wedding_03",
+  "category": "invitations",
+  "description": "Formal wedding invitation with ceremony and reception times",
+  "difficulty": "medium",
+  "tags": ["wedding", "formal", "multi-part", "all-day"],
+  "input": {
+    "gmail_id": "eval-inv-003",
+    "thread_id": "thread-inv-003",
+    "subject": "Save the Date: Sarah & Michael's Wedding",
+    "from_email": "sarah.johnson@gmail.com",
+    "from_name": "Sarah Johnson",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-01-10T11:00:00Z",
+    "snippet": "Together with their families...",
+    "body_text": "Together with their families,\n\nSarah Elizabeth Johnson\nand\nMichael David Thompson\n\nrequest the pleasure of your company\nat their wedding celebration\n\nSaturday, the twenty-first of June\nTwo thousand and twenty-six\n\nCeremony: 4:00 in the afternoon\nReception to follow at 6:00 PM\n\nRosewood Estate\n2500 Vineyard Road\nNapa Valley, California 94558\n\nDinner and dancing until midnight\n\nBlack tie optional\n\nKindly respond by May 15th, 2026\nRSVP online at sarahandmichael2026.com\n\nWith love,\nSarah & Michael",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Sarah & Michael's Wedding",
+        "start_datetime": "2026-06-21T16:00:00",
+        "end_datetime": "2026-06-22T00:00:00",
+        "location": "Rosewood Estate, 2500 Vineyard Road, Napa Valley, California 94558",
+        "description": "Wedding ceremony at 4:00 PM, reception at 6:00 PM, dinner and dancing until midnight",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Wedding with ceremony time and 'until midnight' end - tests understanding of event spanning to next day"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "client_call_04",
+  "category": "meetings",
+  "description": "Client project kickoff call",
+  "difficulty": "easy",
+  "tags": ["client", "call", "kickoff", "project"],
+  "input": {
+    "gmail_id": "eval-mtg-004",
+    "thread_id": "thread-mtg-004",
+    "subject": "Re: Project Kickoff Call - GlobalTech Partnership",
+    "from_email": "james.wong@globaltech.com",
+    "from_name": "James Wong",
+    "to_emails": ["recipient@example.com", "team@company.com"],
+    "date_sent": "2026-02-04T17:20:00Z",
+    "snippet": "Thanks for confirming. Here are the call details...",
+    "body_text": "Hi team,\n\nThanks for confirming. Here are the call details for our project kickoff:\n\nProject Kickoff: GlobalTech Partnership\nDate: Monday, February 10, 2026\nTime: 11:00 AM - 12:30 PM PST\n\nMicrosoft Teams Meeting\nJoin link: https://teams.microsoft.com/l/meetup-join/xyz123\nMeeting ID: 456 789 0123\nPasscode: kickoff\n\nDial-in: +1 (800) 555-0199\nConference ID: 789 456#\n\nAttendees:\n- GlobalTech: James Wong, Sarah Kim, Michael Chen\n- Your Team: TBD\n\nAgenda:\n1. Introductions (10 min)\n2. Project scope review (30 min)\n3. Timeline and milestones (20 min)\n4. Q&A and next steps (30 min)\n\nPlease send over your attendee list by Friday.\n\nLooking forward to it!\n\nBest,\nJames Wong\nDirector of Partnerships\nGlobalTech Inc.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Kickoff - GlobalTech Partnership",
+        "start_datetime": "2026-02-10T11:00:00",
+        "end_datetime": "2026-02-10T12:30:00",
+        "location": "Microsoft Teams",
+        "description": "Project kickoff call with GlobalTech",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Client kickoff call with detailed agenda and dial-in info"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "promotional_offer_10",
+  "category": "no_events",
+  "description": "Limited time promotional offer with deadline",
+  "difficulty": "hard",
+  "tags": ["promo", "offer", "deadline", "tricky", "negative-test"],
+  "input": {
+    "gmail_id": "eval-noev-010",
+    "thread_id": "thread-noev-010",
+    "subject": "Your Exclusive Offer Expires Tomorrow at Midnight!",
+    "from_email": "offers@subscription.com",
+    "from_name": "Subscription Service",
+    "to_emails": ["member@example.com"],
+    "date_sent": "2026-02-19T08:00:00Z",
+    "snippet": "Don't miss out! Your exclusive 40% off offer expires soon...",
+    "body_text": "SUBSCRIPTION SERVICE\n\n⏰ TIME IS RUNNING OUT! ⏰\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHi Member,\n\nThis is your FINAL REMINDER!\n\nYour exclusive offer of 40% OFF annual subscription expires:\n\nTOMORROW - February 20, 2026\nat 11:59 PM PST\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYOUR EXCLUSIVE OFFER\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nPremium Annual Plan\nRegular Price: $199/year\nYour Price: $119/year\n\nYou Save: $80!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n[CLAIM YOUR OFFER NOW]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nWhat you get with Premium:\n✓ Unlimited access to all features\n✓ Priority customer support\n✓ Early access to new features\n✓ Ad-free experience\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDon't miss this opportunity!\n\nOffer expires: February 20, 2026 at 11:59 PM PST\n\n[UPGRADE NOW]\n\nQuestions? Reply to this email.\n\n© 2026 Subscription Service",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Tricky promotional email with deadline - NOT a personal calendar event despite urgency"
+}

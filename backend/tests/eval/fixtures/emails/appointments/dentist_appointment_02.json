@@ -1,0 +1,35 @@
+{
+  "name": "dentist_appointment_02",
+  "category": "appointments",
+  "description": "Dental cleaning appointment reminder",
+  "difficulty": "easy",
+  "tags": ["dental", "cleaning", "reminder"],
+  "input": {
+    "gmail_id": "eval-appt-002",
+    "thread_id": "thread-appt-002",
+    "subject": "Reminder: Dental Appointment Tomorrow",
+    "from_email": "reminder@brightsmile.com",
+    "from_name": "Bright Smile Dental",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-09T14:00:00Z",
+    "snippet": "This is a reminder of your upcoming dental appointment...",
+    "body_text": "Hello,\n\nThis is a friendly reminder of your upcoming dental appointment:\n\nAPPOINTMENT DETAILS\n-------------------\nPatient: John Doe\nService: Routine Cleaning & Exam\nDate: Tuesday, February 10, 2026\nTime: 2:00 PM\n\nDentist: Dr. Michael Chen, DDS\n\nBright Smile Dental\n250 First Street, Suite 100\nSan Francisco, CA 94105\nPhone: (415) 555-9876\n\nIf you need to reschedule, please reply to this email or call us.\n\nWe look forward to seeing you!\n\nBright Smile Dental Team",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Dental Appointment - Bright Smile Dental",
+        "start_datetime": "2026-02-10T14:00:00",
+        "end_datetime": null,
+        "location": "Bright Smile Dental, 250 First Street, Suite 100, San Francisco, CA 94105",
+        "description": "Routine cleaning and exam with Dr. Michael Chen",
+        "is_all_day": false,
+        "confidence_min": 0.9
+      }
+    ]
+  },
+  "notes": "Dental appointment reminder with 'tomorrow' relative reference in subject"
+}
