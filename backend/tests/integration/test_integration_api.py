@@ -1,13 +1,16 @@
 """Integration tests for FastAPI endpoints.
 
 Tests API endpoints with real Supabase and JWT authentication.
+
+Note: Tests for data query endpoints (emails, integrations, attachments, etc.)
+have been removed as these are now accessed directly via Supabase from frontends.
+Only server-side endpoints (OAuth, sync, process) are tested here.
 """
 
 import pytest
 from fastapi.testclient import TestClient
 
 from selko.api.app import app
-from selko.services.emails import save_emails
 
 
 @pytest.fixture
@@ -56,247 +59,46 @@ class TestHealthEndpoints:
 class TestAuthenticationRequired:
     """Test that authenticated endpoints require valid JWT."""
 
-    def test_emails_no_auth(self, test_client):
-        """GET /emails without auth returns 401."""
-        response = test_client.get("/emails")
+    def test_emails_sync_no_auth(self, test_client):
+        """POST /emails/sync without auth returns 401."""
+        response = test_client.post("/emails/sync", json={"max_results": 10})
 
         assert response.status_code == 401
         assert "Missing Authorization header" in response.json()["detail"]
 
-    def test_emails_invalid_auth(self, test_client):
-        """GET /emails with invalid token returns 401."""
-        response = test_client.get(
-            "/emails", headers={"Authorization": "Bearer invalid_token"}
+    def test_emails_sync_invalid_auth(self, test_client):
+        """POST /emails/sync with invalid token returns 401."""
+        response = test_client.post(
+            "/emails/sync",
+            json={"max_results": 10},
+            headers={"Authorization": "Bearer invalid_token"}
         )
 
         assert response.status_code == 401
         assert "Invalid or expired token" in response.json()["detail"]
 
-    def test_emails_malformed_auth(self, test_client):
-        """GET /emails with malformed header returns 401."""
-        response = test_client.get("/emails", headers={"Authorization": "NotBearer"})
+    def test_emails_sync_malformed_auth(self, test_client):
+        """POST /emails/sync with malformed header returns 401."""
+        response = test_client.post(
+            "/emails/sync",
+            json={"max_results": 10},
+            headers={"Authorization": "NotBearer"}
+        )
 
         assert response.status_code == 401
         assert "Invalid Authorization header format" in response.json()["detail"]
 
-    def test_integrations_no_auth(self, test_client):
-        """GET /integrations without auth returns 401."""
-        response = test_client.get("/integrations")
+    def test_calendars_no_auth(self, test_client):
+        """GET /calendars without auth returns 401."""
+        response = test_client.get("/calendars")
 
         assert response.status_code == 401
 
 
 @pytest.mark.integration
 @pytest.mark.development
-class TestEmailEndpoints:
-    """Test email endpoints with authentication."""
-
-    def test_list_emails_empty(self, test_client, auth_headers):
-        """GET /emails returns empty list when no emails."""
-        response = test_client.get("/emails", headers=auth_headers)
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "items" in data
-        assert "total" in data
-        assert "offset" in data
-        assert "limit" in data
-        assert data["offset"] == 0
-        assert data["limit"] == 20
-
-    def test_list_emails_with_data(
-        self,
-        test_client,
-        auth_headers,
-        authenticated_client,
-        sample_email_data,
-        cleanup_emails,
-    ):
-        """GET /emails returns emails for authenticated user."""
-        # Save test email
-        cleanup_emails.append(sample_email_data["gmail_id"])
-        saved = save_emails(authenticated_client, [sample_email_data])
-        email_id = saved[0]["id"]
-
-        # Verify list endpoint works and returns data
-        response = test_client.get("/emails", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["total"] >= 1
-        assert len(data["items"]) >= 1
-
-        # Verify we can fetch the specific email by ID
-        response = test_client.get(f"/emails/{email_id}", headers=auth_headers)
-        assert response.status_code == 200
-        email_data = response.json()
-        assert email_data["gmail_id"] == sample_email_data["gmail_id"]
-        assert email_data["subject"] == sample_email_data["subject"]
-
-    def test_list_emails_pagination(
-        self,
-        test_client,
-        auth_headers,
-        authenticated_client,
-        cleanup_emails,
-    ):
-        """GET /emails with pagination parameters."""
-        from uuid import uuid4
-
-        # Create multiple emails
-        for i in range(5):
-            gmail_id = f"test_page_{uuid4().hex[:8]}"
-            cleanup_emails.append(gmail_id)
-            save_emails(
-                authenticated_client,
-                [
-                    {
-                        "gmail_id": gmail_id,
-                        "thread_id": f"thread_{i}",
-                        "subject": f"Pagination test {i}",
-                        "from_email": "test@example.com",
-                        "gmail_label_ids": ["INBOX"],
-                        "date_sent": f"2026-01-22T{10+i:02d}:00:00+00:00",
-                    }
-                ],
-            )
-
-        # Test pagination
-        response = test_client.get(
-            "/emails?offset=0&limit=2", headers=auth_headers
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["offset"] == 0
-        assert data["limit"] == 2
-        assert len(data["items"]) <= 2
-
-    def test_get_email_by_id(
-        self,
-        test_client,
-        auth_headers,
-        authenticated_client,
-        sample_email_data,
-        cleanup_emails,
-    ):
-        """GET /emails/{id} returns specific email."""
-        cleanup_emails.append(sample_email_data["gmail_id"])
-        saved = save_emails(authenticated_client, [sample_email_data])
-        email_id = saved[0]["id"]
-
-        response = test_client.get(f"/emails/{email_id}", headers=auth_headers)
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == email_id
-        assert data["subject"] == sample_email_data["subject"]
-
-    def test_get_email_not_found(self, test_client, auth_headers):
-        """GET /emails/{id} returns 404 for non-existent email."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        response = test_client.get(f"/emails/{fake_id}", headers=auth_headers)
-
-        assert response.status_code == 404
-        assert "Email not found" in response.json()["detail"]
-
-
-@pytest.mark.integration
-@pytest.mark.development
-class TestIntegrationEndpoints:
-    """Test integration endpoints with authentication."""
-
-    def test_list_integrations_empty(self, test_client, auth_headers):
-        """GET /integrations returns empty list when no integrations."""
-        response = test_client.get("/integrations", headers=auth_headers)
-
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-
-    def test_list_integrations_with_data(
-        self,
-        test_client,
-        config,
-        sample_oauth_credentials,
-        temp_user_client,
-    ):
-        """GET /integrations returns integrations for user."""
-        from selko.services.auth import get_current_user_id
-        from selko.services.integrations import save_oauth_credentials
-
-        # Use temp user to avoid interfering with seeded credentials
-        # Get auth token for temp user
-        session = temp_user_client.auth.get_session()
-        headers = {"Authorization": f"Bearer {session.access_token}"}
-
-        # Save test integration
-        user_id = get_current_user_id(temp_user_client)
-        save_oauth_credentials(
-            temp_user_client, user_id, "gmail", sample_oauth_credentials, "test@gmail.com"
-        )
-
-        response = test_client.get("/integrations", headers=headers)
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) >= 1
-
-        integration = next((i for i in data if i["provider"] == "gmail"), None)
-        assert integration is not None
-        assert integration["status"] == "active"
-        assert integration["provider_email"] == "test@gmail.com"
-
-        # Verify sensitive fields are excluded
-        assert "access_token" not in integration
-        assert "refresh_token" not in integration
-
-    def test_get_integration_by_provider(
-        self,
-        test_client,
-        config,
-        sample_oauth_credentials,
-        temp_user_client,
-    ):
-        """GET /integrations/{provider} returns specific integration."""
-        from selko.services.auth import get_current_user_id
-        from selko.services.integrations import save_oauth_credentials
-
-        # Use temp user to avoid interfering with seeded credentials
-        # Get auth token for temp user
-        session = temp_user_client.auth.get_session()
-        headers = {"Authorization": f"Bearer {session.access_token}"}
-
-        user_id = get_current_user_id(temp_user_client)
-        save_oauth_credentials(
-            temp_user_client, user_id, "gmail", sample_oauth_credentials, "test@gmail.com"
-        )
-
-        response = test_client.get("/integrations/gmail", headers=headers)
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["provider"] == "gmail"
-        assert data["status"] == "active"
-
-    def test_get_integration_not_found(self, test_client, auth_headers):
-        """GET /integrations/{provider} returns 404 for non-existent."""
-        response = test_client.get("/integrations/google_photos", headers=auth_headers)
-
-        assert response.status_code == 404
-        assert "No google_photos integration found" in response.json()["detail"]
-
-    def test_get_integration_invalid_provider(self, test_client, auth_headers):
-        """GET /integrations/{provider} returns 400 for invalid provider."""
-        response = test_client.get("/integrations/invalid_provider", headers=auth_headers)
-
-        assert response.status_code == 400
-        assert "Invalid provider" in response.json()["detail"]
-
-
-@pytest.mark.integration
-@pytest.mark.development
-class TestNewEmailEndpoints:
-    """Test new email operation endpoints (Phase 1)."""
+class TestEmailSyncEndpoints:
+    """Test email sync and process endpoints (server-side operations)."""
 
     def test_email_sync_no_integration(self, test_client, temp_user_client):
         """POST /emails/sync returns error when no Gmail integration."""
@@ -345,8 +147,8 @@ class TestNewEmailEndpoints:
 
 @pytest.mark.integration
 @pytest.mark.development
-class TestIntegrationManagementEndpoints:
-    """Test integration management endpoints (Phase 2)."""
+class TestOAuthEndpoints:
+    """Test OAuth integration endpoints."""
 
     def test_gmail_auth_requires_authentication(self, test_client):
         """GET /integrations/gmail/auth requires authentication."""
@@ -362,23 +164,6 @@ class TestIntegrationManagementEndpoints:
 
         # Should redirect to Google OAuth or return error if credentials missing
         assert response.status_code in [302, 500]
-
-    def test_disconnect_integration_invalid_provider(self, test_client, auth_headers):
-        """DELETE /integrations/{provider} validates provider."""
-        response = test_client.delete(
-            "/integrations/invalid_provider", headers=auth_headers
-        )
-
-        assert response.status_code == 400
-        assert "Invalid provider" in response.json()["detail"]
-
-    def test_disconnect_integration_not_found(self, test_client, auth_headers):
-        """DELETE /integrations/{provider} succeeds even if not found."""
-        # Deleting non-existent integration should be idempotent
-        response = test_client.delete("/integrations/google_photos", headers=auth_headers)
-
-        # Should return 204 No Content
-        assert response.status_code == 204
 
 
 @pytest.mark.integration
@@ -494,29 +279,8 @@ class TestOAuthCallback:
 
 @pytest.mark.integration
 @pytest.mark.development
-class TestAttachmentEndpoints:
-    """Test attachment endpoints (Phase 3)."""
-
-    def test_get_attachment_not_found(self, test_client, auth_headers):
-        """GET /attachments/{id} returns 404 for non-existent attachment."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        response = test_client.get(f"/attachments/{fake_id}", headers=auth_headers)
-
-        assert response.status_code == 404
-        assert "Attachment not found" in response.json()["detail"]
-
-    def test_download_attachment_not_found(self, test_client, auth_headers):
-        """GET /attachments/{id}/download returns 404 for non-existent attachment."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        response = test_client.get(f"/attachments/{fake_id}/download", headers=auth_headers)
-
-        assert response.status_code == 404
-
-
-@pytest.mark.integration
-@pytest.mark.development
 class TestEventSyncEndpoint:
-    """Test event sync endpoint (Phase 4)."""
+    """Test event sync endpoint (server-side Calendar API)."""
 
     def test_event_sync_not_found(self, test_client, auth_headers):
         """POST /events/{id}/sync returns 404 for non-existent event."""
@@ -531,54 +295,6 @@ class TestEventSyncEndpoint:
         response = test_client.post(f"/events/{fake_id}/sync")
 
         assert response.status_code == 401
-
-
-@pytest.mark.integration
-@pytest.mark.development
-class TestRLSSecurity:
-    """Test that RLS properly isolates user data via API."""
-
-    def test_cannot_access_other_users_emails(
-        self,
-        test_client,
-        auth_headers,
-        admin_client,
-        test_user_id,
-        temp_user,
-    ):
-        """API enforces RLS - cannot access emails from other users."""
-        from uuid import uuid4
-
-        # Use temp_user (a real user) for the other user
-        other_user_id, _, _ = temp_user
-        gmail_id = f"test_rls_api_{uuid4().hex[:8]}"
-
-        # Create an email belonging to the other user via admin client
-        admin_client.table("emails").insert(
-            {
-                "user_id": other_user_id,
-                "gmail_id": gmail_id,
-                "thread_id": "other_thread",
-                "subject": "Other user email",
-                "from_email": "other@example.com",
-                "gmail_label_ids": ["INBOX"],
-            }
-        ).execute()
-
-        try:
-            # Try to access via API - should not find it
-            response = test_client.get("/emails", headers=auth_headers)
-
-            assert response.status_code == 200
-            data = response.json()
-
-            # Our user should not see the other user's email
-            found_emails = [e for e in data["items"] if e["gmail_id"] == gmail_id]
-            assert len(found_emails) == 0
-
-        finally:
-            # Cleanup via admin
-            admin_client.table("emails").delete().eq("gmail_id", gmail_id).execute()
 
 
 @pytest.mark.integration
@@ -636,10 +352,10 @@ class TestCORSConfiguration:
     def test_cors_preflight_with_custom_headers(self, test_client):
         """OPTIONS preflight allows Authorization header."""
         response = test_client.options(
-            "/emails",
+            "/emails/sync",
             headers={
                 "Origin": "http://localhost:5173",
-                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Method": "POST",
                 "Access-Control-Request-Headers": "Authorization, Content-Type",
             }
         )
@@ -651,9 +367,13 @@ class TestCORSConfiguration:
     def test_cors_on_authenticated_endpoint(self, test_client, auth_headers):
         """CORS headers present on authenticated endpoints."""
         headers = {**auth_headers, "Origin": "http://localhost:3000"}
-        response = test_client.get("/emails", headers=headers)
+        response = test_client.post(
+            "/emails/sync",
+            json={"max_results": 10},
+            headers=headers
+        )
 
-        assert response.status_code == 200
+        # Response may fail (no Gmail integration) but CORS headers should be present
         assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
         assert response.headers.get("access-control-allow-credentials") == "true"
 
@@ -664,7 +384,7 @@ class TestCORSConfiguration:
         response = test_client.post(
             "/emails/sync",
             headers=headers,
-            json={"max_emails": 1}
+            json={"max_results": 1}
         )
 
         # Response may fail (no Gmail integration) but CORS headers should be present
