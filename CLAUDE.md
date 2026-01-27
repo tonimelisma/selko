@@ -12,99 +12,99 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture spec
 
 ## ⚠️ MANDATORY FOR ALL AI CODING AGENTS ⚠️
 
-### YOU MUST USE WORKTREES AND PULL REQUESTS
+### WORKTREES AND PULL REQUESTS
 
-**This is NON-NEGOTIABLE. Read this section BEFORE doing ANY work.**
+**Source code changes require worktrees. Config/docs edits are allowed in main.**
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  NEVER commit directly to main. ALWAYS use a feature branch + PR.      │
-│  NEVER work in the main repo directory. ALWAYS use a git worktree.     │
+│  Source code (backend/, frontend/src/, ios/, android/, cli/)           │
+│    → MUST use worktree + feature branch + PR                           │
+│                                                                         │
+│  Config files (.env, docs/, CLAUDE.md, scripts/, supabase/)            │
+│    → CAN edit directly in main repo                                    │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**WHY THIS IS MANDATORY:**
-- Multiple AI agents may be working simultaneously
-- Direct commits to main cause merge conflicts and lost work
-- PRs ensure CI runs before code is merged
-- Worktrees prevent agents from clobbering each other's changes
+**WHY:**
+- Multiple AI agents work simultaneously on different features
+- Worktrees provide isolated environments per task
+- PRs ensure CI runs before code merges
+- Config/docs don't conflict, so they're allowed in main
 
-### Required Workflow (EVERY SINGLE TIME)
+### Naming Conventions
 
-**Step 1: Create a worktree with a feature branch**
+| Type | Format | Example |
+|------|--------|---------|
+| **Branch** | `<type>/<task-name>` | `feat/add-login`, `fix/api-timeout`, `docs/readme` |
+| **Worktree** | `selko-<type>-<task>` | `selko-feat-add-login`, `selko-fix-api-timeout` |
+
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+
+### Pre-Work Checklist (BEFORE starting any task)
+
+Run these commands from the main repo (`/Users/tonimelisma/Development/selko`):
+
 ```bash
-# From the main repo directory, create your worktree
-git worktree add ../selko-<task-name> -b <your-branch-name> main
+# 1. Sync main with GitHub
+git fetch origin && git merge --ff-only origin/main
 
-# Install dependencies in the new worktree
-cd ../selko-<task-name>
-uv sync
-cd frontend && npm ci && cd ..
+# 2. Clean up stale worktrees (merged PRs)
+git worktree list
+# For each worktree whose branch has been merged:
+git worktree remove ../selko-<type>-<old-task>
+git branch -D <type>/<old-task>
+
+# 3. Prune any orphaned worktree refs
+git worktree prune
+
+# 4. Create your new worktree
+git worktree add ../selko-<type>-<task> -b <type>/<task-name> main
+
+# 5. Move to worktree and install dependencies (if needed)
+cd ../selko-<type>-<task>
+uv sync                      # Python deps
+cd frontend && npm ci && cd ..  # JS deps (if changing frontend)
 ```
-
-**Step 2: Do all your work in the worktree**
-```bash
-cd ../selko-<task-name>
-# Make changes, run tests, etc.
-```
-
-**Step 3: Commit, push, and create a PR**
-```bash
-git add -A && git commit -m "feat: description"
-git push -u origin <your-branch-name>
-gh pr create --title "feat: description" --body "..." --auto
-```
-
-**Step 4: Clean up when PR is merged**
-```bash
-cd /Users/tonimelisma/Development/selko  # Back to main repo
-git worktree remove ../selko-<task-name>
-```
-
-### If You Are Currently in the Main Repo Directory
-
-Check your current directory:
-```bash
-pwd
-# If this shows /Users/tonimelisma/Development/selko (the main repo)
-# You MUST create a worktree before making any changes!
-```
-
-**DO NOT:**
-- Run `git commit` in the main repo directory
-- Run `git push` to main
-- Make code changes without first creating a worktree
-
-**Consequences of ignoring this:**
-- Your changes may conflict with other agents' work
-- CI may fail after merge due to untested combinations
-- Work may be lost or overwritten
 
 ### Enforcement: Claude Code Hook
 
-A PreToolUse hook in `.claude/settings.json` **BLOCKS all Edit/Write operations** to files in the main repository. If you try to edit files without using a worktree, you will see:
+A PreToolUse hook **BLOCKS source code edits** in the main repository:
 
 ```
-BLOCKED: Cannot edit files in the main repository.
+BLOCKED: Cannot edit source code in the main repository.
 ```
 
-This is not a suggestion - **it is technically enforced**. Create a worktree first.
-
-See `docs/parallel-agents.md` for the complete guide.
+**Blocked in main:** `backend/`, `frontend/src/`, `ios/*.swift`, `android/*.kt`, `cli/`
+**Allowed in main:** `docs/`, `.env*`, `CLAUDE.md`, `.claude/*`, `scripts/`, `supabase/`, `*.md`
 
 ---
 
-## DEFINITION OF DONE - READ BEFORE DECLARING WORK COMPLETE
+## DEFINITION OF DONE (DOD)
 
 **Before ANY work increment is considered complete, ALL of the following MUST pass:**
 
-- [ ] **Working in a git worktree** (NOT the main repo directory - see section above)
+- [ ] **Working in a git worktree** (NOT the main repo directory)
 - [ ] **On a feature branch** (NOT main)
 - [ ] **Run tests for changed modules** (see test commands below)
 - [ ] **Update CHANGELOG.md** with detailed entry for the changes
-- [ ] **Git commit** with conventional commit message format (e.g., `feat:`, `fix:`, `test:`, `docs:`)
-- [ ] **Git push** to your feature branch (NOT main)
+- [ ] **Git commit** with conventional commit message format
+- [ ] **Git push** to your feature branch
 - [ ] **Create a Pull Request** with `gh pr create --auto`
+
+### After PR Merges
+
+```bash
+# Return to main repo
+cd /Users/tonimelisma/Development/selko
+
+# Remove your worktree and branch
+git worktree remove ../selko-<type>-<task>
+git branch -D <type>/<task-name>
+
+# Sync main
+git fetch origin && git merge --ff-only origin/main
+```
 
 **DO NOT declare work complete until ALL checklist items pass.**
 
