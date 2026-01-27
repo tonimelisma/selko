@@ -528,7 +528,8 @@ def generate_source_attribution(sources: list[dict[str, Any]]) -> str:
         else:
             dt = email_date
         date_str = dt.strftime("%B %d, %Y at %I:%M%p").replace(' 0', ' ').replace('AM', 'am').replace('PM', 'pm')
-    except:
+    except Exception as e:
+        logger.debug(f"Date format failed for original email: {e}")
         date_str = str(email_date)
     
     attribution = f"This event was automatically created from an email from {sender_name} on {date_str}"
@@ -546,7 +547,8 @@ def generate_source_attribution(sources: list[dict[str, Any]]) -> str:
                 else:
                     dt = update_date
                 date_str = dt.strftime("%B %d").replace(' 0', ' ')
-            except:
+            except Exception as e:
+                logger.debug(f"Date format failed for update email: {e}")
                 date_str = str(update_date)
                 
             if sender not in update_senders:

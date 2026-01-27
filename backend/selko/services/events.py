@@ -176,7 +176,8 @@ def find_matching_event(
             start_date = datetime.fromisoformat(start_dt.replace('Z', '+00:00')).date()
         else:
             start_date = start_dt.date()
-    except:
+    except (ValueError, AttributeError) as e:
+        logger.debug(f"Date parse failed: {e}")
         return None
     
     # Query events on same date

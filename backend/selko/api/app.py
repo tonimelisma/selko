@@ -1,6 +1,7 @@
 """FastAPI application factory."""
 
 import logging
+from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
@@ -48,16 +49,79 @@ def get_user_id_or_ip(request: Request) -> str:
     """
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        # Extract user_id from JWT (we just use a hash of the token for simplicity)
-        # The actual user validation happens in the endpoint
         token = auth_header[7:]
-        # Use first 32 chars of token as key (unique per session)
-        return f"user:{token[:32]}"
+        # Extract actual user ID from JWT for consistent rate limiting
+        try:
+            from jose import jwt
+            payload = jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get("sub", token[:32])
+            return f"user:{user_id}"
+        except Exception:
+            # Fall back to token prefix if JWT decode fails
+            return f"user:{token[:32]}"
     return f"ip:{get_remote_address(request)}"
 
 
 # Create limiter with user/IP key function
 limiter = Limiter(key_func=get_user_id_or_ip, default_limits=["60/minute"])
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events.
+
+    This implements the Async Monolith pattern where the API server,
+    background workers, and cron jobs all run in the same process.
+
+    - Worker pool: Continuously processes jobs from the queue
+    - APScheduler: Runs periodic tasks (e.g., email fetch scheduling)
+    """
+    global worker_pool
+
+    # Startup
+    logger.info("Starting Selko API")
+
+    # Load configuration
+    config = load_config()
+
+    # Start worker pool for job processing
+    logger.info("Starting worker pool for background job processing")
+    worker_pool = WorkerPool(
+        num_workers=config.worker_pool_size,
+        idle_sleep_seconds=config.worker_idle_sleep_seconds,
+        error_backoff_seconds=config.worker_error_backoff_seconds,
+    )
+    await worker_pool.start()
+
+    # Start APScheduler for cron-like periodic tasks
+    logger.info("Starting APScheduler for periodic tasks")
+
+    # Email fetch scheduler - creates email_fetch jobs every 5 minutes
+    scheduler.add_job(
+        schedule_email_fetches,
+        "interval",
+        minutes=5,
+        id="email_fetch_scheduler",
+        name="Email Fetch Scheduler",
+        max_instances=1,
+    )
+
+    scheduler.start()
+    logger.info("Background workers started successfully")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down Selko API")
+
+    # Stop worker pool first (workers complete current jobs)
+    if worker_pool:
+        await worker_pool.stop()
+
+    # Then stop scheduler
+    scheduler.shutdown(wait=True)
+
+    logger.info("Background workers shutdown complete")
 
 
 def create_app() -> FastAPI:
@@ -87,6 +151,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     # Store limiter in app state for access in routes
@@ -179,64 +244,6 @@ def create_app() -> FastAPI:
                 "resets_at": "midnight UTC",
             },
         )
-
-    # Startup event: Initialize worker pool and scheduler
-    @app.on_event("startup")
-    async def start_background_workers():
-        """Start worker pool and APScheduler for background processing.
-
-        This implements the Async Monolith pattern where the API server,
-        background workers, and cron jobs all run in the same process.
-        
-        - Worker pool: Continuously processes jobs from the queue
-        - APScheduler: Runs periodic tasks (e.g., email fetch scheduling)
-        """
-        global worker_pool
-
-        # Load configuration
-        config = load_config()
-
-        # Start worker pool for job processing
-        logger.info("Starting worker pool for background job processing")
-        worker_pool = WorkerPool(
-            num_workers=config.worker_pool_size,
-            idle_sleep_seconds=config.worker_idle_sleep_seconds,
-            error_backoff_seconds=config.worker_error_backoff_seconds,
-        )
-        await worker_pool.start()
-
-        # Start APScheduler for cron-like periodic tasks
-        logger.info("Starting APScheduler for periodic tasks")
-
-        # Email fetch scheduler - creates email_fetch jobs every 5 minutes
-        scheduler.add_job(
-            schedule_email_fetches,
-            "interval",
-            minutes=5,
-            id="email_fetch_scheduler",
-            name="Email Fetch Scheduler",
-            max_instances=1,
-        )
-
-        scheduler.start()
-        logger.info("Background workers started successfully")
-
-    # Shutdown event: Clean shutdown of worker pool and scheduler
-    @app.on_event("shutdown")
-    async def shutdown_background_workers():
-        """Gracefully shutdown worker pool and scheduler."""
-        global worker_pool
-
-        logger.info("Shutting down background workers")
-
-        # Stop worker pool first (workers complete current jobs)
-        if worker_pool:
-            await worker_pool.stop()
-
-        # Then stop scheduler
-        scheduler.shutdown(wait=True)
-
-        logger.info("Background workers shutdown complete")
 
     return app
 
