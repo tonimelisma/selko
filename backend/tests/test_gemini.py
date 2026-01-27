@@ -10,8 +10,11 @@ from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResp
 from selko.config import Config
 from selko.services.gemini import (
     GeminiError,
+    compare_events,
     extract_calendar_events,
+    generate_source_attribution,
     get_gemini_client,
+    merge_event_data,
 )
 
 
@@ -319,3 +322,319 @@ class TestExtractCalendarEvents:
         contents = call_args.kwargs["contents"]
         # Should only have text parts, no attachment part
         assert len(contents) == 2
+
+
+class TestCompareEvents:
+    """Test event comparison for deduplication."""
+
+    def test_returns_none_when_no_candidates(self):
+        """Test that empty candidate list returns None."""
+        mock_client = MagicMock()
+
+        new_event = {
+            "title": "Birthday Party",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "location": "123 Main St",
+        }
+
+        result = compare_events(mock_client, new_event, [])
+
+        assert result is None
+        # Should not call LLM
+        mock_client.models.generate_content.assert_not_called()
+
+    def test_returns_matched_event_id(self):
+        """Test that matching event ID is returned."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "event-123"
+        mock_client.models.generate_content.return_value = mock_response
+
+        new_event = {
+            "title": "Jake's Birthday Party",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T16:00:00Z",
+            "location": "123 Main St",
+            "description": "Come celebrate!",
+        }
+
+        candidates = [{
+            "id": "event-123",
+            "title": "Birthday Party",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T16:00:00Z",
+            "location": "123 Main St",
+            "description": "Party time!",
+        }]
+
+        result = compare_events(mock_client, new_event, candidates)
+
+        assert result == "event-123"
+        mock_client.models.generate_content.assert_called_once()
+
+    def test_returns_none_for_no_match(self):
+        """Test that NO_MATCH response returns None."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "NO_MATCH"
+        mock_client.models.generate_content.return_value = mock_response
+
+        new_event = {
+            "title": "Doctor Appointment",
+            "start_datetime": "2026-03-15T09:00:00Z",
+        }
+
+        candidates = [{
+            "id": "event-456",
+            "title": "Dentist Appointment",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }]
+
+        result = compare_events(mock_client, new_event, candidates)
+
+        assert result is None
+
+    def test_returns_none_for_unknown_event_id(self):
+        """Test that unknown event ID from LLM returns None."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "unknown-event-999"  # Not in candidates
+        mock_client.models.generate_content.return_value = mock_response
+
+        new_event = {
+            "title": "Test Event",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }
+
+        candidates = [{
+            "id": "event-123",
+            "title": "Test",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }]
+
+        result = compare_events(mock_client, new_event, candidates)
+
+        assert result is None
+
+    def test_raises_error_on_llm_failure(self):
+        """Test that LLM failure raises GeminiError."""
+        mock_client = MagicMock()
+        mock_client.models.generate_content.side_effect = Exception("API Error")
+
+        new_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
+        candidates = [{"id": "event-1", "title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}]
+
+        with pytest.raises(GeminiError) as exc_info:
+            compare_events(mock_client, new_event, candidates)
+
+        assert "comparison failed" in str(exc_info.value).lower()
+
+
+class TestMergeEventData:
+    """Test event data merging."""
+
+    def test_merges_event_data(self):
+        """Test that event data is properly merged."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "title": "Updated Meeting",
+            "start_datetime": "2026-03-15T15:00:00Z",  # Changed time
+            "end_datetime": "2026-03-15T16:00:00Z",
+            "all_day": False,
+            "location": "Conference Room B",  # New location
+            "description": "Original info. Updated: new agenda.",
+        })
+        mock_client.models.generate_content.return_value = mock_response
+
+        existing_event = {
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": "Conference Room A",
+            "description": "Original info.",
+        }
+
+        new_extraction = {
+            "title": "Updated Meeting",
+            "start_datetime": "2026-03-15T15:00:00Z",
+            "end_datetime": "2026-03-15T16:00:00Z",
+            "all_day": False,
+            "location": "Conference Room B",
+            "description": "new agenda",
+        }
+
+        result = merge_event_data(mock_client, existing_event, new_extraction, "update")
+
+        assert result["title"] == "Updated Meeting"
+        assert result["start_datetime"] == "2026-03-15T15:00:00Z"
+        assert result["location"] == "Conference Room B"
+        mock_client.models.generate_content.assert_called_once()
+
+    def test_handles_cancellation_source_type(self):
+        """Test that cancellation source type triggers CANCELLED prefix."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "title": "CANCELLED: Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": "Conference Room A",
+            "description": "Event has been cancelled.",
+        })
+        mock_client.models.generate_content.return_value = mock_response
+
+        existing_event = {
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": "Conference Room A",
+            "description": "Weekly sync.",
+        }
+
+        new_extraction = {
+            "title": "Meeting Cancelled",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }
+
+        result = merge_event_data(mock_client, existing_event, new_extraction, "cancellation")
+
+        assert "CANCELLED" in result["title"]
+
+    def test_raises_error_on_llm_failure(self):
+        """Test that LLM failure raises GeminiError."""
+        mock_client = MagicMock()
+        mock_client.models.generate_content.side_effect = Exception("API Error")
+
+        existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
+        new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
+
+        with pytest.raises(GeminiError) as exc_info:
+            merge_event_data(mock_client, existing_event, new_extraction, "update")
+
+        assert "merge failed" in str(exc_info.value).lower()
+
+    def test_raises_error_on_invalid_json(self):
+        """Test that invalid JSON response raises GeminiError."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "not valid json"
+        mock_client.models.generate_content.return_value = mock_response
+
+        existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
+        new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
+
+        with pytest.raises(GeminiError):
+            merge_event_data(mock_client, existing_event, new_extraction, "update")
+
+
+class TestGenerateSourceAttribution:
+    """Test source attribution generation."""
+
+    def test_empty_sources_returns_empty_string(self):
+        """Test that empty sources list returns empty string."""
+        result = generate_source_attribution([])
+
+        assert result == ""
+
+    def test_single_invitation_source(self):
+        """Test attribution for single invitation source."""
+        sources = [{
+            "source_type": "new_invitation",
+            "email_sender": "organizer@example.com",
+            "email_sender_name": "Event Organizer",
+            "email_date": "2026-01-25T13:30:00Z",
+            "created_at": "2026-01-25T13:35:00Z",
+            "is_undone": False,
+        }]
+
+        result = generate_source_attribution(sources)
+
+        assert "Event Organizer" in result
+        assert "January" in result or "Jan" in result
+        assert "automatically created" in result
+
+    def test_invitation_with_updates(self):
+        """Test attribution for invitation with subsequent updates."""
+        sources = [
+            {
+                "source_type": "new_invitation",
+                "email_sender": "organizer@example.com",
+                "email_sender_name": "Event Organizer",
+                "email_date": "2026-01-25T13:30:00Z",
+                "created_at": "2026-01-25T13:35:00Z",
+                "is_undone": False,
+            },
+            {
+                "source_type": "update",
+                "email_sender": "organizer@example.com",
+                "email_sender_name": "Event Organizer",
+                "email_date": "2026-01-26T10:00:00Z",
+                "created_at": "2026-01-26T10:05:00Z",
+                "is_undone": False,
+            },
+        ]
+
+        result = generate_source_attribution(sources)
+
+        assert "automatically created" in result
+        assert "updated" in result
+
+    def test_skips_undone_sources(self):
+        """Test that undone sources are excluded."""
+        sources = [
+            {
+                "source_type": "new_invitation",
+                "email_sender": "old@example.com",
+                "email_sender_name": "Old Sender",
+                "email_date": "2026-01-20T10:00:00Z",
+                "created_at": "2026-01-20T10:05:00Z",
+                "is_undone": True,  # Undone - should be skipped
+            },
+            {
+                "source_type": "new_invitation",
+                "email_sender": "active@example.com",
+                "email_sender_name": "Active Sender",
+                "email_date": "2026-01-25T13:30:00Z",
+                "created_at": "2026-01-25T13:35:00Z",
+                "is_undone": False,
+            },
+        ]
+
+        result = generate_source_attribution(sources)
+
+        assert "Active Sender" in result
+        assert "Old Sender" not in result
+
+    def test_uses_email_address_when_no_name(self):
+        """Test that email address is used when sender name is missing."""
+        sources = [{
+            "source_type": "new_invitation",
+            "email_sender": "noreply@service.com",
+            "email_sender_name": None,  # No name
+            "email_date": "2026-01-25T13:30:00Z",
+            "created_at": "2026-01-25T13:35:00Z",
+            "is_undone": False,
+        }]
+
+        result = generate_source_attribution(sources)
+
+        assert "noreply@service.com" in result
+
+    def test_returns_empty_when_only_undone_sources(self):
+        """Test that empty string is returned when all sources are undone."""
+        sources = [{
+            "source_type": "new_invitation",
+            "email_sender": "test@example.com",
+            "email_sender_name": "Test",
+            "email_date": "2026-01-25T13:30:00Z",
+            "created_at": "2026-01-25T13:35:00Z",
+            "is_undone": True,  # All undone
+        }]
+
+        result = generate_source_attribution(sources)
+
+        assert result == ""

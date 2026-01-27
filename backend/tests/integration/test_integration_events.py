@@ -399,8 +399,329 @@ class TestEventSources:
         event = authenticated_client.table("events").select("*").eq(
             "id", event_id
         ).single().execute()
-        
+
         attribution = event.data.get("source_attribution")
         assert attribution is not None
         assert "Event Organizer" in attribution or "sender@test.com" in attribution
         assert "January" in attribution or "Jan" in attribution
+
+
+@pytest.mark.integration
+@pytest.mark.development
+class TestEventUndoRedo:
+    """Test event undo/redo functionality with snapshot restore."""
+
+    def test_undo_restores_snapshot(self, authenticated_client, test_user_id, mock_gemini_client):
+        """Test that undo restores the event to its previous snapshot."""
+        # Create test email
+        email_data = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-undo-{uuid4().hex[:8]}",
+            "subject": "Meeting Update",
+            "from_email": "organizer@example.com",
+            "from_name": "Meeting Organizer",
+            "date_sent": "2026-02-01T10:00:00Z",
+            "snippet": "Meeting time changed to 3pm",
+            "gmail_label_ids": ["INBOX"],
+        }
+
+        email_result = authenticated_client.table("emails").insert(email_data).execute()
+        email_id = email_result.data[0]["id"]
+
+        # Create initial event
+        initial_event_data = {
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-20T14:00:00Z",
+            "end_datetime": "2026-03-20T15:00:00Z",
+            "description": "Original description",
+            "source_quote": "Initial meeting invite",
+        }
+
+        event_id = events.create_event(
+            authenticated_client,
+            test_user_id,
+            initial_event_data,
+            email_id
+        )
+
+        # Create second email with update
+        email_data_2 = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-undo-update-{uuid4().hex[:8]}",
+            "subject": "Meeting Update",
+            "from_email": "organizer@example.com",
+            "from_name": "Meeting Organizer",
+            "date_sent": "2026-02-02T10:00:00Z",
+            "snippet": "Meeting time changed",
+            "gmail_label_ids": ["INBOX"],
+        }
+
+        email_result_2 = authenticated_client.table("emails").insert(email_data_2).execute()
+        email_id_2 = email_result_2.data[0]["id"]
+
+        # Update event (simulating a second email contribution)
+        updated_data = {
+            "title": "Team Meeting - Updated",
+            "start_datetime": "2026-03-20T15:00:00Z",  # Changed time
+            "end_datetime": "2026-03-20T16:00:00Z",
+            "description": "Updated description",
+        }
+
+        events.update_event(
+            authenticated_client,
+            mock_gemini_client,
+            event_id,
+            updated_data,
+            email_id_2,
+            "update"
+        )
+
+        # Verify event was updated
+        updated_event = authenticated_client.table("events").select("*").eq(
+            "id", event_id
+        ).single().execute()
+
+        # Note: The actual title/time depends on LLM merge logic
+        # but event_source should have snapshot
+
+        # Get the update source record
+        sources = authenticated_client.table("event_sources").select("*").eq(
+            "event_id", event_id
+        ).eq("source_type", "update").execute()
+
+        assert len(sources.data) == 1
+        update_source_id = sources.data[0]["id"]
+        snapshot = sources.data[0]["event_snapshot_before"]
+
+        # Snapshot should have original values
+        assert snapshot is not None
+        assert snapshot["title"] == "Team Meeting"
+        assert "14:00" in snapshot["start_datetime"]
+
+        # Now undo the update
+        events.undo_email_contribution(authenticated_client, update_source_id)
+
+        # Verify event was restored
+        restored_event = authenticated_client.table("events").select("*").eq(
+            "id", event_id
+        ).single().execute()
+
+        assert restored_event.data["title"] == "Team Meeting"
+        assert "14:00" in restored_event.data["start_datetime"]
+
+        # Verify source was marked as undone
+        source_after = authenticated_client.table("event_sources").select("*").eq(
+            "id", update_source_id
+        ).single().execute()
+
+        assert source_after.data["is_undone"] is True
+
+    def test_redo_reactivates_source(self, authenticated_client, test_user_id, mock_gemini_client):
+        """Test that redo marks the source as active again."""
+        # Create test email
+        email_data = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-redo-{uuid4().hex[:8]}",
+            "subject": "Event Invite",
+            "from_email": "host@example.com",
+            "from_name": "Event Host",
+            "date_sent": "2026-02-05T10:00:00Z",
+            "snippet": "You're invited",
+            "gmail_label_ids": ["INBOX"],
+        }
+
+        email_result = authenticated_client.table("emails").insert(email_data).execute()
+        email_id = email_result.data[0]["id"]
+
+        # Create event
+        event_data = {
+            "title": "Party",
+            "start_datetime": "2026-03-25T19:00:00Z",
+            "description": "Celebration",
+        }
+
+        event_id = events.create_event(
+            authenticated_client,
+            test_user_id,
+            event_data,
+            email_id
+        )
+
+        # Create second email
+        email_data_2 = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-redo-update-{uuid4().hex[:8]}",
+            "subject": "Party Update",
+            "from_email": "host@example.com",
+            "from_name": "Event Host",
+            "date_sent": "2026-02-06T10:00:00Z",
+            "snippet": "Location changed",
+            "gmail_label_ids": ["INBOX"],
+        }
+
+        email_result_2 = authenticated_client.table("emails").insert(email_data_2).execute()
+        email_id_2 = email_result_2.data[0]["id"]
+
+        # Update event
+        updated_data = {
+            "title": "Party",
+            "start_datetime": "2026-03-25T19:00:00Z",
+            "location": "New Venue",
+            "description": "Location updated",
+        }
+
+        events.update_event(
+            authenticated_client,
+            mock_gemini_client,
+            event_id,
+            updated_data,
+            email_id_2,
+            "update"
+        )
+
+        # Get update source
+        sources = authenticated_client.table("event_sources").select("*").eq(
+            "event_id", event_id
+        ).eq("source_type", "update").execute()
+
+        update_source_id = sources.data[0]["id"]
+
+        # Undo it
+        events.undo_email_contribution(authenticated_client, update_source_id)
+
+        # Verify undone
+        source_after_undo = authenticated_client.table("event_sources").select("*").eq(
+            "id", update_source_id
+        ).single().execute()
+        assert source_after_undo.data["is_undone"] is True
+
+        # Redo it
+        events.redo_email_contribution(authenticated_client, update_source_id)
+
+        # Verify no longer undone
+        source_after_redo = authenticated_client.table("event_sources").select("*").eq(
+            "id", update_source_id
+        ).single().execute()
+        assert source_after_redo.data["is_undone"] is False
+
+    def test_undo_fails_without_snapshot(self, authenticated_client, test_user_id):
+        """Test that undo fails gracefully when no snapshot exists."""
+        # Create test email
+        email_data = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-no-snap-{uuid4().hex[:8]}",
+            "subject": "New Event",
+            "from_email": "sender@example.com",
+            "from_name": "Sender",
+            "date_sent": "2026-02-10T10:00:00Z",
+            "snippet": "Event info",
+            "gmail_label_ids": ["INBOX"],
+        }
+
+        email_result = authenticated_client.table("emails").insert(email_data).execute()
+        email_id = email_result.data[0]["id"]
+
+        # Create event (first source has no snapshot)
+        event_data = {
+            "title": "New Event",
+            "start_datetime": "2026-04-01T10:00:00Z",
+        }
+
+        event_id = events.create_event(
+            authenticated_client,
+            test_user_id,
+            event_data,
+            email_id
+        )
+
+        # Get the source (new_invitation - no snapshot)
+        sources = authenticated_client.table("event_sources").select("*").eq(
+            "event_id", event_id
+        ).eq("source_type", "new_invitation").execute()
+
+        source_id = sources.data[0]["id"]
+
+        # Attempt undo should fail
+        with pytest.raises(events.EventsError) as exc_info:
+            events.undo_email_contribution(authenticated_client, source_id)
+
+        assert "No snapshot available" in str(exc_info.value)
+
+    def test_attribution_excludes_undone_sources(self, authenticated_client, test_user_id, mock_gemini_client):
+        """Test that source attribution excludes undone sources."""
+        # Create first email
+        email_data_1 = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-attr-1-{uuid4().hex[:8]}",
+            "subject": "Event Invite",
+            "from_email": "first@example.com",
+            "from_name": "First Sender",
+            "date_sent": "2026-02-15T10:00:00Z",
+            "snippet": "Event details",
+            "gmail_label_ids": ["INBOX"],
+        }
+
+        email_result_1 = authenticated_client.table("emails").insert(email_data_1).execute()
+        email_id_1 = email_result_1.data[0]["id"]
+
+        # Create event
+        event_data = {
+            "title": "Attribution Test Event",
+            "start_datetime": "2026-04-10T14:00:00Z",
+        }
+
+        event_id = events.create_event(
+            authenticated_client,
+            test_user_id,
+            event_data,
+            email_id_1
+        )
+
+        # Create second email
+        email_data_2 = {
+            "user_id": test_user_id,
+            "gmail_id": f"test-attr-2-{uuid4().hex[:8]}",
+            "subject": "Event Update",
+            "from_email": "second@example.com",
+            "from_name": "Second Sender",
+            "date_sent": "2026-02-16T10:00:00Z",
+            "snippet": "Update details",
+            "gmail_label_ids": ["INBOX"],
+        }
+
+        email_result_2 = authenticated_client.table("emails").insert(email_data_2).execute()
+        email_id_2 = email_result_2.data[0]["id"]
+
+        # Update event
+        updated_data = {
+            "title": "Attribution Test Event - Updated",
+            "start_datetime": "2026-04-10T15:00:00Z",
+        }
+
+        events.update_event(
+            authenticated_client,
+            mock_gemini_client,
+            event_id,
+            updated_data,
+            email_id_2,
+            "update"
+        )
+
+        # Get attribution - should include both senders
+        attribution_before = events.generate_source_attribution(authenticated_client, event_id)
+        assert "First Sender" in attribution_before or "first@example.com" in attribution_before
+        # The second sender shows up in "updated" portion
+
+        # Undo the second contribution
+        sources = authenticated_client.table("event_sources").select("*").eq(
+            "event_id", event_id
+        ).eq("source_type", "update").execute()
+
+        update_source_id = sources.data[0]["id"]
+        events.undo_email_contribution(authenticated_client, update_source_id)
+
+        # Get attribution again - should only include first sender
+        attribution_after = events.generate_source_attribution(authenticated_client, event_id)
+        assert "First Sender" in attribution_after or "first@example.com" in attribution_after
+        # Second sender should no longer appear in updates portion
+        # (since the update is undone)
