@@ -2,6 +2,53 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-26 (4)
+
+### Android: Refactor to Supabase Kotlin SDK + Add Comprehensive Testing
+
+**Refactored to Supabase Kotlin SDK 3.3.0:**
+- Replaced manual Ktor-based auth with official Supabase Kotlin SDK
+- Automatic session management and token refresh handled by SDK
+- Simplified AuthRepository using SDK's auth extension
+- Removed manual TokenStorage (SDK handles persistence)
+
+**Files created:**
+- `android/app/src/main/java/net/melisma/selko/data/api/SupabaseClientFactory.kt` - SDK client factory
+
+**Files deleted (replaced by SDK):**
+- `android/app/src/main/java/net/melisma/selko/data/api/HttpClientFactory.kt`
+- `android/app/src/main/java/net/melisma/selko/data/api/SupabaseAuthApi.kt`
+- `android/app/src/main/java/net/melisma/selko/data/repository/TokenStorage.kt`
+
+**Unit tests created:**
+- `AuthViewModelTest.kt` - 18 tests covering state management, validation, auth flows
+- `HomeViewModelTest.kt` - 7 tests covering email display, logout flow
+- `AuthRepositoryTest.kt` - 7 tests for AuthResult sealed class
+
+**UI tests created:**
+- `AuthScreenTest.kt` - 15 Compose UI tests for login/register screen interactions
+- `HomeScreenTest.kt` - 8 Compose UI tests for home screen
+
+**Dependencies added (testing):**
+- MockK 1.13.13 - Mocking library
+- Turbine 1.2.0 - Flow testing
+- Coroutines Test 1.9.0 - Coroutine testing utilities
+- Koin Test - DI testing support
+- Navigation Testing - Navigation Compose testing
+
+**Test coverage:**
+- 42 unit tests total
+- 23 UI tests total
+- All tests pass with `./gradlew testDebugUnitTest`
+
+**Build verified:** `./gradlew assembleDebug` passes successfully
+
+**Reason:** Using the official Supabase SDK provides better token management, automatic session refresh, and less custom code to maintain. Added comprehensive testing to ensure reliability.
+
+Sources:
+- [Supabase Kotlin SDK Documentation](https://supabase.com/docs/reference/kotlin/installing)
+- [supabase-kt GitHub](https://github.com/supabase-community/supabase-kt)
+
 ## 2026-01-26 (3)
 
 ### iOS App Architecture Implementation (SwiftUI + Supabase Swift SDK)

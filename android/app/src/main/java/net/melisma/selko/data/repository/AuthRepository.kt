@@ -1,8 +1,11 @@
 package net.melisma.selko.data.repository
 
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.Flow
-import net.melisma.selko.data.api.AuthResponse
-import net.melisma.selko.data.api.SupabaseAuthApi
+import kotlinx.coroutines.flow.map
 
 sealed class AuthResult {
     data class Success(val email: String?) : AuthResult()
@@ -10,52 +13,60 @@ sealed class AuthResult {
 }
 
 class AuthRepository(
-    private val authApi: SupabaseAuthApi,
-    private val tokenStorage: TokenStorage
+    private val supabaseClient: SupabaseClient
 ) {
-    val isLoggedIn: Flow<Boolean> = tokenStorage.isLoggedIn
-    val userEmail: Flow<String?> = tokenStorage.userEmail
+    val sessionStatus: Flow<SessionStatus> = supabaseClient.auth.sessionStatus
+
+    val isLoggedIn: Flow<Boolean> = sessionStatus.map { status ->
+        status is SessionStatus.Authenticated
+    }
+
+    val userEmail: Flow<String?> = sessionStatus.map { status ->
+        when (status) {
+            is SessionStatus.Authenticated -> status.session.user?.email
+            else -> null
+        }
+    }
 
     suspend fun signUp(email: String, password: String): AuthResult {
-        val result = authApi.signUp(email, password)
-        return result.fold(
-            onSuccess = { response ->
-                saveAuthResponse(response)
-                AuthResult.Success(response.user.email)
-            },
-            onFailure = { exception ->
-                AuthResult.Error(exception.message ?: "Sign up failed")
+        return try {
+            supabaseClient.auth.signUpWith(Email) {
+                this.email = email
+                this.password = password
             }
-        )
+            val currentUser = supabaseClient.auth.currentUserOrNull()
+            AuthResult.Success(currentUser?.email)
+        } catch (e: Exception) {
+            AuthResult.Error(e.message ?: "Sign up failed")
+        }
     }
 
     suspend fun signIn(email: String, password: String): AuthResult {
-        val result = authApi.signIn(email, password)
-        return result.fold(
-            onSuccess = { response ->
-                saveAuthResponse(response)
-                AuthResult.Success(response.user.email)
-            },
-            onFailure = { exception ->
-                AuthResult.Error(exception.message ?: "Sign in failed")
+        return try {
+            supabaseClient.auth.signInWith(Email) {
+                this.email = email
+                this.password = password
             }
-        )
+            val currentUser = supabaseClient.auth.currentUserOrNull()
+            AuthResult.Success(currentUser?.email)
+        } catch (e: Exception) {
+            AuthResult.Error(e.message ?: "Sign in failed")
+        }
     }
 
     suspend fun signOut() {
-        tokenStorage.clearTokens()
+        try {
+            supabaseClient.auth.signOut()
+        } catch (e: Exception) {
+            // Ignore errors during sign out
+        }
     }
 
     suspend fun getAccessToken(): String? {
-        return tokenStorage.getAccessToken()
+        return supabaseClient.auth.currentAccessTokenOrNull()
     }
 
-    private suspend fun saveAuthResponse(response: AuthResponse) {
-        tokenStorage.saveTokens(
-            accessToken = response.accessToken,
-            refreshToken = response.refreshToken,
-            userEmail = response.user.email,
-            userId = response.user.id
-        )
+    fun getCurrentUserEmail(): String? {
+        return supabaseClient.auth.currentUserOrNull()?.email
     }
 }
