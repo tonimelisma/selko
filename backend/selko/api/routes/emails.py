@@ -85,7 +85,11 @@ async def sync_emails(
             fetch_attachments=request.fetch_attachments,
         )
 
-        return EmailSyncResponse(**result)
+        return EmailSyncResponse(
+            fetched=result["fetched"],
+            saved=result["saved"],
+            attachments_downloaded=result["attachments_downloaded"],
+        )
 
     except EmailError as e:
         logger.error(f"Failed to sync emails: {e}")

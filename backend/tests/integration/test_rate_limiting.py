@@ -159,9 +159,9 @@ class TestAPIRateLimitHeaders:
     ):
         """Test successful response includes rate limit headers."""
         mock_fetch.return_value = {
-            "num_fetched": 5,
-            "num_saved": 5,
-            "num_attachments_downloaded": 0,
+            "fetched": 5,
+            "saved": 5,
+            "attachments_downloaded": 0,
         }
 
         response = api_client.post("/emails/sync", json={"max_results": 10})
