@@ -384,27 +384,47 @@ Selko is an AI-powered assistant that automates personal organization by analyzi
 
 ### **3. Key Architectural Principles**
 
-#### **3.1 End-to-End First**
+#### **3.1 Direct Supabase Access (No Proxy Layers)**
+**CRITICAL:** Frontends query Supabase directly. No superfluous API layers.
+
+All frontends (Web, Android, iOS) must:
+1. **Query Supabase directly** for all data operations (emails, events, integrations, etc.)
+2. **Use RLS (Row Level Security)** for access control - enforced at database level
+3. **Only call Python API** for operations requiring server-side secrets:
+   - OAuth flows (client secrets)
+   - Gmail sync (API credentials)
+   - LLM processing (Gemini API key)
+   - Google Calendar sync (API credentials)
+
+**Why:**
+- Reduced latency (Frontend → Supabase vs Frontend → Python → Supabase)
+- Simpler backend (9 endpoints instead of 35)
+- RLS provides consistent security across all access paths
+- Each frontend uses its native Supabase SDK
+
+**The Python API is NOT a general-purpose REST API.** See `docs/supabase-frontend-queries.md` for frontend query patterns.
+
+#### **3.2 End-to-End First**
 Complete full journeys before expanding scope:
 - Do NOT add Google Photos until Email→Calendar works end-to-end
 - Do NOT add Task Management until Calendar integration is complete
 - Each input→output path must be fully functional before adding more
 
-#### **3.2 LLM-Centric Intelligence**
+#### **3.4 LLM-Centric Intelligence**
 All intelligence features use the same multimodal LLM (Gemini):
 - OCR & text extraction → LLM reads images/PDFs directly
 - Entity extraction → LLM extracts dates, times, locations
 - Document classification → LLM categorizes content
 - No separate OCR service needed - the LLM is multimodal
 
-#### **3.3 Human-in-the-Loop**
+#### **3.5 Human-in-the-Loop**
 Every automated action goes through review:
 - Side-by-side view of source vs. extracted data
 - User can approve, edit, or reject
 - Automation rules can bypass review for trusted sources
 - Undo/Redo for all actions
 
-#### **3.4 Simplified Stack (YAGNI)**
+#### **3.6 Simplified Stack (YAGNI)**
 Add complexity only when measured need exists:
 - POC: CLI + Supabase (2 components, $0/mo)
 - MVP: Add FastAPI (still 2 components)

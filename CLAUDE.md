@@ -63,6 +63,28 @@ You MUST NEVER:
 
 ## Development Philosophy
 
+### Direct Supabase Access (No Proxy Layers)
+**CRITICAL ARCHITECTURAL PRINCIPLE:** Frontends query Supabase directly. No superfluous layers.
+
+All frontends (Web, Android, iOS) must:
+1. **Query Supabase directly** for all data operations (emails, events, integrations, etc.)
+2. **Use RLS (Row Level Security)** for access control - enforced at database level
+3. **Only call Python API** for operations requiring server-side secrets:
+   - OAuth flows (client secrets)
+   - Gmail sync (API credentials)
+   - LLM processing (Gemini API key)
+   - Google Calendar sync (API credentials)
+
+**Why this matters:**
+- Reduced latency (Frontend → Supabase vs Frontend → Python → Supabase)
+- Simpler backend (9 endpoints instead of 35)
+- RLS provides consistent security across all access paths
+- Each frontend uses its native Supabase SDK
+
+**The Python API is NOT a general-purpose REST API.** It only handles operations that cannot be done client-side due to secrets or server-side processing requirements.
+
+See `docs/supabase-frontend-queries.md` for canonical query patterns.
+
 ### End-to-End First
 **CRITICAL PRINCIPLE:** Complete full end-to-end journeys before expanding scope.
 
@@ -285,18 +307,31 @@ No more `--user-id` flag needed - the CLI signs in as the configured test user.
 
 ## API Server
 
+The Python API only handles **server-side operations** requiring secrets. Data queries go directly to Supabase.
+
 ```bash
 # Start development server
 uv run python -m selko.api
 
 # Server: http://localhost:8000
 # API docs: http://localhost:8000/docs (Swagger UI)
-# ReDoc: http://localhost:8000/redoc
 ```
 
-For complete API documentation, see **Swagger UI at `/docs`**.
+### Available Endpoints (9 total)
 
-For manual API workflow examples with curl commands, see `docs/api-workflow.md`.
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | Health check |
+| `GET /health/db` | Database connectivity check |
+| `GET /integrations/gmail/auth` | Initiate Gmail OAuth flow |
+| `GET /integrations/gmail/callback` | Handle OAuth callback (public) |
+| `POST /emails/sync` | Sync emails from Gmail API |
+| `POST /emails/{id}/process` | Extract events using LLM |
+| `POST /emails/batch-process` | Process multiple emails with LLM |
+| `GET /calendars` | List user's Google Calendars |
+| `POST /events/{id}/sync` | Sync event to Google Calendar |
+
+**All other data access** (listing emails, viewing events, updating status, etc.) goes **directly to Supabase** from frontends. See `docs/supabase-frontend-queries.md` for query patterns.
 
 ---
 
@@ -305,7 +340,8 @@ For manual API workflow examples with curl commands, see `docs/api-workflow.md`.
 | Document | Purpose |
 |----------|---------|
 | `PRD_ARCH.md` | Product requirements, architecture, implementation status |
-| `docs/api-workflow.md` | Manual API workflow with curl examples |
+| `docs/supabase-frontend-queries.md` | **Canonical query patterns for all frontends** |
+| `docs/api-workflow.md` | Server-side API workflow with curl examples |
 | `docs/job-queue.md` | Job queue architecture |
 | `docs/ci-cd.md` | CI/CD pipeline details |
 | `docs/gmail-integration.md` | Gmail API architecture, push vs polling, History API |

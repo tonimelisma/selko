@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (7)
+
+### Documentation Update - Establish Direct Supabase Access Architecture
+
+**Purpose:** Update all documentation to reflect and establish the architectural principle that frontends query Supabase directly with no superfluous API proxy layers.
+
+**Key Architectural Principle:**
+```
+Frontend (Web/Android/iOS)
+    │
+    ├─── Data queries ──→ Supabase (direct, RLS-protected)
+    │
+    └─── Server-side ops ──→ Python API (9 endpoints only)
+                              └── OAuth, Gmail sync, LLM, Calendar sync
+```
+
+**Files Updated:**
+- `CLAUDE.md` - Added "Direct Supabase Access (No Proxy Layers)" as first development philosophy principle, updated API Server section to list all 9 endpoints
+- `PRD_ARCH.md` - Added section 3.1 "Direct Supabase Access (No Proxy Layers)" to Key Architectural Principles
+- `docs/api-workflow.md` - Completely rewritten to show server-side API workflow with clear separation from data queries
+- `docs/supabase-frontend-queries.md` - Enhanced introduction with architecture diagram and emphasis as canonical reference
+- `README.md` - Updated Tech Stack and API Server sections to reflect architecture
+
+**Files Created:**
+- `frontend/README.md` - Frontend architecture and data access documentation
+- `ios/README.md` - iOS app architecture and data access documentation
+
+**Files Enhanced:**
+- `android/README.md` - Expanded with architecture details and data access examples
+
+**Why This Architecture:**
+1. Reduced latency (Frontend → Supabase vs Frontend → Python → Supabase)
+2. Simpler backend (9 endpoints instead of 35)
+3. RLS provides consistent security across all access paths
+4. Each frontend uses its native optimized Supabase SDK
+
 ## 2026-01-27 (6)
 
 ### Fix Frontend CI svelte-check Type Errors

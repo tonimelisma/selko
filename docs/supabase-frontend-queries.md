@@ -1,16 +1,44 @@
 # Supabase Frontend Query Patterns
 
-This document provides the canonical query patterns for all frontends (Web/JS, Android/Kotlin, iOS/Swift) to use when accessing Supabase directly.
+**This is the canonical reference for all frontend data access.**
+
+All frontends (Web/JS, Android/Kotlin, iOS/Swift) **MUST** use these patterns when accessing data. There is no alternative API for data queries.
 
 ## Architecture Overview
 
-**Direct Supabase Access** - Frontends call Supabase directly for all data operations. RLS (Row Level Security) automatically filters to the authenticated user.
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    SELKO DATA ACCESS ARCHITECTURE                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │   ALL DATA QUERIES → Supabase Direct (this document)         │  │
+│   │   - List/view emails, events, integrations, attachments      │  │
+│   │   - Update event status (approve, reject)                    │  │
+│   │   - Download attachments from storage                        │  │
+│   │   - Read user settings                                       │  │
+│   │                                                              │  │
+│   │   RLS (Row Level Security) handles authorization             │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │   SERVER-SIDE ONLY → Python API (9 endpoints)                │  │
+│   │   - OAuth flows (secrets)                                    │  │
+│   │   - Gmail sync (API credentials)                             │  │
+│   │   - LLM processing (Gemini key)                              │  │
+│   │   - Calendar sync (API credentials)                          │  │
+│   │                                                              │  │
+│   │   See docs/api-workflow.md for these endpoints               │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-**Python API** - Only needed for operations requiring server-side secrets:
-- OAuth flows (client secrets)
-- Gmail sync (API credentials)
-- LLM processing (Gemini API key)
-- Google Calendar sync (API credentials)
+**Why Direct Supabase Access?**
+- **No proxy layers** - Reduced latency, simpler architecture
+- **RLS enforcement** - Security at database level, consistent across all access paths
+- **Native SDKs** - Each platform uses its optimized Supabase client
+- **Simpler backend** - Python API is 9 endpoints, not 35
 
 ## Authentication
 
