@@ -83,15 +83,15 @@ CREATE POLICY "Service role can manage quotas"
 CREATE INDEX idx_usage_quotas_user_date ON public.usage_quotas(user_id, date);
 
 -- Add updated_at trigger
-CREATE TRIGGER update_usage_quotas_updated_at
+CREATE TRIGGER set_usage_quotas_updated_at
     BEFORE UPDATE ON public.usage_quotas
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE FUNCTION public.set_updated_at();
 
-CREATE TRIGGER update_global_limits_updated_at
+CREATE TRIGGER set_global_limits_updated_at
     BEFORE UPDATE ON public.global_limits
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE FUNCTION public.set_updated_at();
 
 -- Create function for atomic check-and-increment
 -- Returns: allowed (bool), current_count, limit, remaining

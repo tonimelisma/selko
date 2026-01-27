@@ -186,7 +186,8 @@ class TestOAuthCallback:
             "/integrations/gmail/callback?code=test&state=invalid123"
         )
         assert response.status_code == 400
-        assert "Invalid or expired state" in response.json()["detail"]
+        # Error message is sanitized to not leak internal details
+        assert "invalid" in response.json()["detail"].lower() or "expired" in response.json()["detail"].lower()
 
     def test_callback_expired_state(self, test_client):
         """Callback rejects expired state (>10 min)."""
