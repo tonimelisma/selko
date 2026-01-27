@@ -21,3 +21,8 @@ selko-cli = { workspace = true }
 
 [tool.uv.workspace]
 members = ["backend", "cli"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
