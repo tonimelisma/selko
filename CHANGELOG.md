@@ -2,6 +2,56 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (15)
+
+### Test Coverage Improvements
+
+**Purpose:** Address gaps in test coverage identified during code analysis, particularly for complex business logic in event and calendar services.
+
+**Changes:**
+
+**CI Configuration:**
+- Removed `--run-llm` flag from staging CI (`.github/workflows/test.yml`) to avoid LLM API costs
+- All CI environments now use mocked LLM; real LLM tests run manually via `--run-llm` flag
+
+**New Unit Tests:**
+- `backend/tests/test_events.py`: Unit tests for event service business logic
+  - `check_sender_rules()` - exact email and domain matching
+  - `find_matching_event()` - deduplication with date-based + LLM comparison
+  - `generate_source_attribution()` - natural language attribution generation
+  - `undo_email_contribution()` / `redo_email_contribution()` - snapshot restore
+
+- `backend/tests/test_calendars.py`: Unit tests for calendar service
+  - `_build_calendar_event_body()` - timed events, all-day events, invitees
+  - `sync_event_to_calendar()` - create, update, recreate deleted events
+  - `get_calendar_settings()` / `update_calendar_settings()` - settings CRUD
+  - `cancel_calendar_event()` - CANCELLED prefix handling
+
+- `backend/tests/test_gemini.py`: Added tests for Gemini comparison/merge
+  - `compare_events()` - event deduplication via LLM
+  - `merge_event_data()` - intelligent event data merging
+  - `generate_source_attribution()` - attribution string generation
+
+**New Integration Tests:**
+- `backend/tests/integration/test_integration_calendars.py`: Calendar sync integration
+  - Create/update/recreate Google Calendar events (mocked API)
+  - Settings CRUD with real Supabase
+  - Event cancellation flow
+
+- `backend/tests/integration/test_integration_workers.py`: Worker lifecycle tests
+  - `calendar_sync` worker with approved events
+  - `email_process` worker with mocked Gemini
+  - Job lifecycle: claim, complete, fail, retry
+  - Concurrent worker behavior
+
+- `backend/tests/integration/test_integration_events.py`: Added undo/redo tests
+  - Undo restores event snapshot
+  - Redo reactivates source
+  - Undo fails gracefully without snapshot
+  - Attribution excludes undone sources
+
+**Test Count:** Added ~50 new tests covering previously untested business logic.
+
 ## 2026-01-27 (14)
 
 ### Documentation: Auto-Merge Workflow Clarification
