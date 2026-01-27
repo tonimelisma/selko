@@ -30,3 +30,8 @@ __pycache__/
 .claude/
 
 .cursor/
+
+# Frontend (SvelteKit)
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
