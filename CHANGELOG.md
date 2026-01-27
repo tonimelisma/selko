@@ -2,6 +2,64 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27
+
+### Add Web Frontend Scaffolding (SvelteKit + Tailwind + DaisyUI)
+
+**Files created:**
+- `frontend/package.json` - Dependencies and build scripts
+- `frontend/svelte.config.js` - SvelteKit config with static adapter
+- `frontend/vite.config.js` - Vite build configuration
+- `frontend/tailwind.config.js` - Tailwind + DaisyUI config with auto dark mode
+- `frontend/postcss.config.js` - PostCSS configuration
+- `frontend/jsconfig.json` - JavaScript/Svelte type checking config
+- `frontend/src/app.html` - HTML shell
+- `frontend/src/app.css` - Tailwind imports
+- `frontend/src/lib/supabase.js` - Supabase client initialization
+- `frontend/src/lib/stores.js` - Auth state store with session management
+- `frontend/src/routes/+layout.svelte` - Root layout with auth initialization
+- `frontend/src/routes/+page.svelte` - Home page (redirects based on auth)
+- `frontend/src/routes/login/+page.svelte` - Login form with Supabase auth
+- `frontend/src/routes/register/+page.svelte` - Registration form
+- `frontend/src/routes/app/+page.svelte` - Authenticated "Hello World" page
+- `frontend/static/favicon.png` - Placeholder favicon
+- `frontend/.env.example` - Environment template for Supabase credentials
+- `frontend/.env` - Local development credentials (gitignored)
+
+**Files modified:**
+- `.gitignore` - Added frontend build artifacts (node_modules, .svelte-kit, build)
+
+**Stack:**
+- **Framework:** SvelteKit with static adapter (SPA mode)
+- **Styling:** Tailwind CSS + DaisyUI component library
+- **Auth:** Supabase JS client (email/password)
+- **Build output:** Static files for Render deployment
+
+**Features implemented:**
+- Auto dark/light mode via CSS `prefers-color-scheme` (no toggle, no JavaScript)
+- Register page with email/password via Supabase `signUp()`
+- Login page with email/password via Supabase `signInWithPassword()`
+- Authenticated "Hello, {email}!" page with logout button
+- Auth state persistence and redirect guards
+- Responsive mobile-first design with DaisyUI components
+
+**Not implemented (requires UI specs):**
+- Review interface
+- Dashboard
+- Settings
+- File upload
+
+**Deployment:**
+- Build command: `npm run build`
+- Publish directory: `build`
+- Platform: Render Static Site (same platform as backend)
+
+**Environment variables:**
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+
+**Reason:** Implement minimal frontend scaffolding with authentication flows as foundation for future UI development. Stack chosen for minimal bundle size (~2KB runtime), pre-built components, and deployment simplicity.
+
 ## 2026-01-26
 
 ### Documentation Restructuring
