@@ -8,7 +8,7 @@ import argparse
 import logging
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -57,6 +57,14 @@ class Config:
     worker_idle_sleep_seconds: float = 1.0
     worker_error_backoff_seconds: float = 5.0
 
+    # CORS configuration
+    allowed_origins: list[str] = field(default_factory=lambda: [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ])
+
     # Paths (derived, not from env)
     credentials_file: Path = CLI_DIR / "credentials.json"
 
@@ -80,6 +88,20 @@ def get_environment(override: Optional[str] = None) -> str:
             f"Valid environments: {', '.join(ENV_FILES.keys())}"
         )
     return env
+
+
+def _parse_allowed_origins() -> list[str]:
+    """Parse ALLOWED_ORIGINS from env, fall back to localhost defaults."""
+    defaults = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
+    origins_str = os.getenv("ALLOWED_ORIGINS", "")
+    if origins_str:
+        return [o.strip() for o in origins_str.split(",") if o.strip()]
+    return defaults
 
 
 def load_config(env_override: Optional[str] = None) -> Config:
@@ -151,6 +173,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         worker_pool_size=int(os.getenv("WORKER_POOL_SIZE", "3")),
         worker_idle_sleep_seconds=float(os.getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
         worker_error_backoff_seconds=float(os.getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
+        allowed_origins=_parse_allowed_origins(),
     )
 
 

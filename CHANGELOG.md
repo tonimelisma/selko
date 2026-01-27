@@ -2,6 +2,34 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-26
+
+### Add CORS Configuration from Environment
+
+**Files modified:**
+- `backend/selko/config.py` - Added `allowed_origins` field to Config dataclass with `_parse_allowed_origins()` helper function
+- `backend/selko/api/app.py` - Load config early and use `config.allowed_origins` for CORS middleware instead of hardcoded list
+- `.env.example` - Added ALLOWED_ORIGINS configuration section with documentation
+
+**Changes:**
+- CORS origins are now configurable via `ALLOWED_ORIGINS` environment variable (comma-separated list)
+- Default origins for localhost development servers (ports 3000, 5173) when env var not set
+- Enables frontend deployment to Render with proper CORS configuration
+
+**Usage:**
+```bash
+# Development (default - localhost origins)
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+
+# Staging
+ALLOWED_ORIGINS=https://selko-web-staging.onrender.com
+
+# Production
+ALLOWED_ORIGINS=https://selko-web.onrender.com
+```
+
+**Reason:** Required for deploying the SvelteKit frontend to Render. The backend needs to allow CORS from the frontend's deployed domain.
+
 ## 2026-01-27
 
 ### Add Web Frontend Scaffolding (SvelteKit + Tailwind + DaisyUI)
