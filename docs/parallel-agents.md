@@ -1,6 +1,6 @@
 # Parallel Agent Workflow Guide
 
-This guide covers running multiple AI coding agents (or developers) simultaneously on the same repository.
+This guide covers running multiple AI coding agents simultaneously on the same repository using Git worktrees.
 
 ## Overview
 
@@ -11,116 +11,123 @@ This guide covers running multiple AI coding agents (or developers) simultaneous
 | Merging | Auto-merge PRs | Hands-off after CI passes |
 | Alerts | Email notifications | Know immediately if CI fails |
 
-## Initial Setup
+## Naming Conventions
 
-### 1. Configure GitHub (One-Time)
+| Type | Format | Example |
+|------|--------|---------|
+| **Branch** | `<type>/<task-name>` | `feat/add-login`, `fix/api-timeout` |
+| **Worktree** | `selko-<type>-<task>` | `selko-feat-add-login`, `selko-fix-api-timeout` |
+
+**Types:** `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+
+## GitHub Setup (One-Time)
 
 **Auto-Merge** (already enabled via `gh repo edit --enable-auto-merge`):
 - Allows PRs to auto-merge after CI passes
-- MUST always use `gh pr merge --auto` to ensure CI passes first
+- MUST always use `gh pr create --auto` to ensure CI passes first
 
 **Notifications** (Personal Settings → Notifications):
 - ✅ Actions: Send notifications for failed workflows only
 
-**Note:** Branch protection (blocking manual merge) requires GitHub Pro for private repos. Without it, agents must use `--auto` flag to ensure CI passes before merge.
+## Pre-Work Checklist
 
-### 2. Create Worktrees
+**Run these commands from the main repo BEFORE starting any task:**
 
 ```bash
-# From your main repository
 cd ~/Development/selko
 
-# Create worktree for each parallel agent
-git worktree add ../selko-agent1 -b agent1/feature-name main
-git worktree add ../selko-agent2 -b agent2/feature-name main
-git worktree add ../selko-agent3 -b agent3/feature-name main
+# 1. Sync main with GitHub
+git fetch origin && git merge --ff-only origin/main
 
-# Verify
+# 2. List existing worktrees
 git worktree list
+
+# 3. Clean up stale worktrees (whose branches have been merged)
+#    For each finished worktree:
+git worktree remove ../selko-<type>-<old-task>
+git branch -D <type>/<old-task>
+
+# 4. Prune orphaned worktree refs
+git worktree prune
+
+# 5. Create new worktree for your task
+git worktree add ../selko-<type>-<task> -b <type>/<task-name> main
+
+# 6. Move to worktree
+cd ../selko-<type>-<task>
+
+# 7. Install dependencies (if needed)
+uv sync                         # Python deps
+cd frontend && npm ci && cd ..  # JS deps (if changing frontend)
 ```
 
-### 3. Install Dependencies (Each Worktree)
-
-```bash
-cd ../selko-agent1
-uv sync
-cd frontend && npm ci
-cd ..
-
-# Repeat for each worktree
-```
-
-## Daily Workflow
-
-### Starting Work
-
-```bash
-# Navigate to your worktree
-cd ~/Development/selko-agent1
-
-# Ensure you're on your feature branch
-git branch  # Should show agent1/feature-name
-
-# Pull latest main and rebase
-git fetch origin main
-git rebase origin/main
-```
+## Working in a Worktree
 
 ### Making Changes
 
 ```bash
-# Work normally - edit files, run tests
+# You're in ~/Development/selko-feat-add-login/
+
+# Edit files, run tests
 uv run pytest backend/tests/ -v
-cd frontend && npm run test:unit
+cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json
 
 # Commit with conventional commit format
 git add specific-files.py
 git commit -m "feat: add new capability"
 
 # Push to remote
-git push -u origin agent1/feature-name
+git push -u origin feat/add-login
 ```
 
 ### Creating PR with Auto-Merge
 
 ```bash
-# Create PR that auto-merges after CI passes
 gh pr create \
   --title "feat: add new capability" \
   --body "Description of changes" \
   --auto
-
-# Or if PR already exists, enable auto-merge
-gh pr merge --auto --squash
-```
-
-### After PR Merges
-
-```bash
-# Your worktree branch was merged - create new branch for next task
-git fetch origin main
-git checkout -b agent1/next-task origin/main
-
-# Or delete worktree and create fresh one
-cd ~/Development/selko
-git worktree remove ../selko-agent1
-git worktree add ../selko-agent1 -b agent1/next-task main
 ```
 
 ### When Another Agent's PR Merges
 
+If your worktree is based on an older main, rebase:
+
 ```bash
-# Rebase your work on updated main
 git fetch origin main
 git rebase origin/main
 
-# If conflicts occur:
+# If conflicts:
 # 1. Resolve conflicts in files
 # 2. git add resolved-files
 # 3. git rebase --continue
 
-# Push updated branch (force push needed after rebase)
+# Push updated branch
 git push --force-with-lease
+```
+
+## Definition of Done (DOD)
+
+After your task is complete:
+
+- [ ] Tests pass for changed modules
+- [ ] CHANGELOG.md updated
+- [ ] Committed with conventional commit format
+- [ ] Pushed to feature branch
+- [ ] PR created with `gh pr create --auto`
+
+## After PR Merges
+
+```bash
+# Return to main repo
+cd ~/Development/selko
+
+# Remove your worktree and branch
+git worktree remove ../selko-<type>-<task>
+git branch -D <type>/<task-name>
+
+# Sync main
+git fetch origin && git merge --ff-only origin/main
 ```
 
 ## Task Assignment Guidelines
@@ -134,64 +141,60 @@ To minimize conflicts, assign agents to **non-overlapping areas**:
 | Agent 3 | Tests/Docs | `backend/tests/`, `docs/` |
 
 **High-conflict files** to avoid parallel edits:
-- `CLAUDE.md`
 - `CHANGELOG.md`
 - `pyproject.toml` / `package.json`
 - Migration files
+
+## What's Allowed in Main Repo
+
+The Claude Code hook **blocks source code** but **allows config/docs**:
+
+| Blocked | Allowed |
+|---------|---------|
+| `backend/` | `docs/` |
+| `frontend/src/` | `.env*` |
+| `ios/*.swift` | `CLAUDE.md` |
+| `android/*.kt` | `.claude/*` |
+| `cli/` | `scripts/`, `supabase/` |
 
 ## Troubleshooting
 
 ### "Branch already checked out"
 ```bash
 # Can't checkout same branch in two worktrees
-# Solution: Use different branch names per agent
-git worktree add ../selko-agent2 -b agent2/different-name main
+# Solution: Use different branch names
+git worktree add ../selko-feat-other -b feat/other-task main
 ```
 
 ### CI Fails, PR Won't Merge
 ```bash
-# Check CI status
-gh pr checks
-
-# View logs
-gh run view --log-failed
-
-# Fix issues, push again
-git push
-# Auto-merge will retry automatically
+gh pr checks        # Check CI status
+gh run view --log-failed  # View logs
+git push            # Push fix, auto-merge retries
 ```
 
 ### Merge Conflicts on Rebase
 ```bash
-# See which files conflict
-git status
-
-# After resolving each file
+git status                    # See conflicting files
+# ... resolve conflicts ...
 git add resolved-file.py
 git rebase --continue
 
-# If too messy, abort and try merge instead
+# If too messy:
 git rebase --abort
 git merge origin/main
-```
-
-### Stale Worktree References
-```bash
-# Clean up deleted worktree references
-git worktree prune
-
-# List all worktrees
-git worktree list
 ```
 
 ## Quick Reference
 
 | Task | Command |
 |------|---------|
-| Create worktree | `git worktree add ../path -b branch main` |
+| Sync main | `git fetch origin && git merge --ff-only origin/main` |
+| Create worktree | `git worktree add ../selko-<type>-<task> -b <type>/<task> main` |
 | List worktrees | `git worktree list` |
-| Remove worktree | `git worktree remove ../path` |
-| Create PR + auto-merge | `gh pr create --auto` |
-| Check PR status | `gh pr checks` |
-| Rebase on main | `git fetch origin main && git rebase origin/main` |
-| Force push after rebase | `git push --force-with-lease` |
+| Remove worktree | `git worktree remove ../selko-<type>-<task>` |
+| Delete branch | `git branch -D <type>/<task>` |
+| Prune refs | `git worktree prune` |
+| Create PR | `gh pr create --auto` |
+| Rebase | `git fetch origin main && git rebase origin/main` |
+| Force push | `git push --force-with-lease` |
