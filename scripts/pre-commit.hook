@@ -6,12 +6,8 @@ set -e
 
 echo "Pre-commit: Checking test status for changed modules..."
 
-# Get the project root
-if [[ "$0" == *".git/hooks"* ]]; then
-    PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-else
-    PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-fi
+# Get the project root (works in both main repo and worktrees)
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 
 # Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only)
@@ -50,22 +46,29 @@ MODULES_NEEDING_TESTS=""
 
 # Check backend using pytest cache
 check_backend() {
-    local cache_file="$PROJECT_ROOT/backend/.pytest_cache/v/cache/lastfailed"
+    local cache_dir="$PROJECT_ROOT/backend/.pytest_cache/v/cache"
+    local nodeids_file="$cache_dir/nodeids"
+    local lastfailed_file="$cache_dir/lastfailed"
 
-    # Check cache exists
-    if [ ! -f "$cache_file" ]; then
-        return 1
+    # Check nodeids exists (created on every pytest run)
+    if [ ! -f "$nodeids_file" ]; then
+        return 1  # Tests haven't been run
     fi
 
-    # Check all tests passed (empty JSON object = no failures)
-    local content=$(cat "$cache_file" 2>/dev/null | tr -d '[:space:]')
-    if [ "$content" != "{}" ] && [ -n "$content" ]; then
-        return 1
+    # Check no source files newer than nodeids
+    if [ -n "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/cli" -name '*.py' -newer "$nodeids_file" 2>/dev/null | head -1)" ]; then
+        return 1  # Tests are stale
     fi
 
-    # Check no source files newer than cache
-    if [ -n "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/cli" -name '*.py' -newer "$cache_file" 2>/dev/null | head -1)" ]; then
-        return 1
+    # Check for failures:
+    # - If lastfailed doesn't exist: all passed on first run
+    # - If lastfailed is {} (empty JSON): all passed after prior failures
+    # - If lastfailed has content: failures exist
+    if [ -f "$lastfailed_file" ]; then
+        local content=$(cat "$lastfailed_file" 2>/dev/null | tr -d '[:space:]')
+        if [ "$content" != "{}" ] && [ -n "$content" ]; then
+            return 1  # Has failures
+        fi
     fi
 
     return 0

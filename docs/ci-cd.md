@@ -150,49 +150,47 @@ git tag -a v1.0.0 -m "Release 1.0.0"
 git push origin v1.0.0
 ```
 
-## Auto-Merge & CI Checks
+## Manual Merge After CI
 
-### How Auto-Merge Works
+### Why Not Auto-Merge?
 
-Auto-merge requires two steps:
+Auto-merge requires branch protection rules, which require GitHub Pro for private repositories. This project uses manual merge after CI passes instead.
+
+### Merge Workflow
 
 ```bash
 # Step 1: Create the PR
 gh pr create --title "..." --body "..."
 
-# Step 2: Enable auto-merge
-gh pr merge --auto --squash
+# Step 2: Wait for CI to pass, then merge
+gh pr checks --watch && gh pr merge --squash
 ```
 
-**Note:** The `--auto` flag on `gh pr create` only sets the PR to ready/draft status - it does NOT enable auto-merge. You must use `gh pr merge --auto --squash` to enable automatic merging after CI passes.
-
-The PR will automatically merge once all required status checks pass:
+The `gh pr checks --watch` command will wait until all status checks complete:
 - `unit-tests`
 - `integration-tests-development`
 - `android-unit-tests`
 
-**No manual merge action is required.** Once auto-merge is enabled and CI passes, the PR merges automatically.
+Once checks pass, the merge command executes immediately.
 
-**Important:** Without GitHub Pro, there's no branch protection. Manual merge is still possible before CI completes. Always enable auto-merge to ensure CI passes first.
+### Troubleshooting
 
-### Auto-Merge Troubleshooting
-
-If PR doesn't auto-merge after CI passes:
+If CI fails:
 
 ```bash
 # Check CI status
 gh pr checks
 
-# Verify auto-merge is enabled
-gh pr view --json autoMergeRequest
+# View failed workflow logs
+gh run view --log-failed
 
-# Re-enable if needed
-gh pr merge --auto --squash
+# After fixing, push and wait again
+git push
+gh pr checks --watch && gh pr merge --squash
 ```
 
 Common issues:
-- **Auto-merge not enabled:** Run `gh pr merge --auto --squash` after creating PR
-- **CI still running:** Wait for all checks to complete
+- **CI still running:** `gh pr checks --watch` will wait for completion
 - **Merge conflicts:** Rebase your branch and force-push
 
 ### Email Notifications
