@@ -23,12 +23,26 @@ AI-powered assistant that automates personal organization by analyzing digital i
 - Undo/Redo with compensating transactions
 - Automation rules for trusted sources
 
+## Architecture
+
+**Direct Supabase Access** - All frontends query Supabase directly for data operations. The Python API only handles server-side operations requiring secrets (OAuth, Gmail sync, LLM processing, Calendar sync).
+
+```
+Frontend (Web/Android/iOS)
+    │
+    ├─── Data queries ──→ Supabase (direct, RLS-protected)
+    │
+    └─── Server-side ops ──→ Python API (9 endpoints)
+                              └── OAuth, Gmail, LLM, Calendar
+```
+
 ## Tech Stack
 
-- **Backend**: Python, FastAPI, Supabase (PostgreSQL + Auth + Storage)
+- **Data Layer**: Supabase (PostgreSQL + Auth + Storage + RLS)
+- **Server-Side API**: Python, FastAPI (only for operations requiring secrets)
 - **AI**: Google Gemini (multimodal LLM)
+- **Frontends**: Svelte (Web), Kotlin (Android), Swift (iOS)
 - **Package Manager**: [uv](https://github.com/astral-sh/uv)
-- **Integrations**: Gmail API, Google Calendar API
 
 See [PRD_ARCH.md](PRD_ARCH.md) for complete architecture details.
 
@@ -147,35 +161,46 @@ selko/
 
 ## API Server
 
+The Python API handles **server-side operations only** (OAuth, Gmail sync, LLM processing, Calendar sync). Data queries go directly to Supabase.
+
 ```bash
 # Start development server
 uv run python -m selko.api
 
 # Server: http://localhost:8000
 # API docs: http://localhost:8000/docs (Swagger UI)
-# ReDoc: http://localhost:8000/redoc
 ```
 
-### Authentication
+### Available Endpoints (9 total)
 
-The API uses Supabase Auth. Register/login to get a JWT token:
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | Health check |
+| `GET /integrations/gmail/auth` | Initiate Gmail OAuth |
+| `POST /emails/sync` | Sync emails from Gmail |
+| `POST /emails/{id}/process` | Extract events with LLM |
+| `GET /calendars` | List Google Calendars |
+| `POST /events/{id}/sync` | Sync event to Calendar |
+
+### Data Access
+
+All data queries (emails, events, integrations) go **directly to Supabase** from frontends:
 
 ```bash
-SUPABASE_URL="http://localhost:54321"
-SUPABASE_ANON_KEY="<from supabase start output>"
-
-# Login and save token
-curl -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+# Login via Supabase Auth
+TOKEN=$(curl -s "$SUPABASE_URL/auth/v1/token?grant_type=password" \
   -H "apikey: $SUPABASE_ANON_KEY" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"testpass123"}' \
-  | jq -r '.access_token' > token.txt
+  | jq -r '.access_token')
 
-TOKEN=$(cat token.txt)
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/emails
+# Query Supabase directly (not the Python API)
+curl "$SUPABASE_URL/rest/v1/emails?select=id,subject,from_email&limit=10" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-For complete API workflow examples with curl commands, see [docs/api-workflow.md](docs/api-workflow.md).
+See [docs/supabase-frontend-queries.md](docs/supabase-frontend-queries.md) for query patterns and [docs/api-workflow.md](docs/api-workflow.md) for server-side API usage.
 
 ## CLI Commands
 
@@ -217,7 +242,8 @@ See [CLAUDE.md](CLAUDE.md) for detailed test configuration and markers.
 |----------|---------|
 | [CLAUDE.md](CLAUDE.md) | Development guidelines, database schema, test configuration |
 | [PRD_ARCH.md](PRD_ARCH.md) | Product requirements and architecture specification |
-| [docs/api-workflow.md](docs/api-workflow.md) | Manual API workflow with curl examples |
+| [docs/supabase-frontend-queries.md](docs/supabase-frontend-queries.md) | **Canonical query patterns for all frontends** |
+| [docs/api-workflow.md](docs/api-workflow.md) | Server-side API workflow (OAuth, sync, LLM) |
 | [docs/job-queue.md](docs/job-queue.md) | Job queue architecture |
 | [docs/ci-cd.md](docs/ci-cd.md) | CI/CD pipeline details |
 | [docs/gmail-integration.md](docs/gmail-integration.md) | Gmail API integration |
