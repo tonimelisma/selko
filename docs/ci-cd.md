@@ -17,11 +17,11 @@ The CI/CD pipeline ensures code quality and manages deployments across three env
 ```
 PR opened/updated
     |
-Unit Tests (no external dependencies)
+    +-- Unit Tests (no external dependencies)
+    +-- Integration Tests (local Supabase via Docker)
+    +-- Android Unit Tests (Gradle)
     |
-Integration Tests (local Supabase via Docker)
-    |
-PR ready for review (no deployment)
+All tests pass -> PR ready for review (no deployment)
 ```
 
 ### On Push to Main
@@ -29,14 +29,19 @@ PR ready for review (no deployment)
 ```
 Code merged to main
     |
-Unit Tests + Integration Tests (local Supabase)
+    +-- Unit Tests (backend)
+    +-- Integration Tests (local Supabase)
+    +-- Android Unit Tests
+    |
+All tests pass
     |
 Deploy to Staging (ATOMIC)
     |-- 1. Deploy database migrations (supabase db push)
     |-- 2. Deploy FastAPI to Render (auto-deploys via GitHub integration)
+    |-- 3. Deploy frontend to Render (auto-deploys via GitHub integration)
     |
-Integration Tests (Staging)
-    |-- Tests the DEPLOYED code with real Gmail API
+    +-- Integration Tests (Staging backend) - real Gmail API + real LLM
+    +-- Frontend E2E Tests (Staging) - tests deployed frontend
     |
 Staging environment running latest code
 ```
@@ -69,10 +74,12 @@ Production environment updated
 
 | Job | Runs On | Dependencies | Purpose |
 |-----|---------|--------------|---------|
-| `unit-tests` | Every push/PR | None | Fast validation, no external services |
+| `unit-tests` | Every push/PR | None | Fast backend validation, no external services |
 | `integration-tests-development` | Every push/PR | None | Spins up local Supabase in Docker |
-| `deploy-staging` | Main push only | unit-tests, integration-tests-development | Deploy DB + API to staging |
-| `integration-tests-staging` | Main push only | deploy-staging | Validate deployed staging environment |
+| `android-unit-tests` | Every push/PR | None | Android unit tests via Gradle |
+| `deploy-staging` | Main push only | unit-tests, integration-tests-development, android-unit-tests | Deploy DB + API + frontend to staging |
+| `integration-tests-staging` | Main push only | deploy-staging | Validate deployed staging backend with real LLM |
+| `frontend-e2e-staging` | Main push only | deploy-staging | E2E tests against deployed staging frontend |
 | `deploy-production` | Manual/tag only | None | Deploy DB + API to production |
 
 ## Required GitHub Secrets

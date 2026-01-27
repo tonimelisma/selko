@@ -8,14 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from selko.api.routes import (
-    attachments_router,
     calendars_router,
     emails_router,
     events_router,
     health_router,
     integrations_router,
-    jobs_router,
-    sender_rules_router,
 )
 from selko.services.auth import AuthenticationError
 from selko.services.calendars import CalendarsError
@@ -23,7 +20,6 @@ from selko.services.emails import EmailError
 from selko.services.events import EventsError
 from selko.services.integrations import IntegrationError
 from selko.config import load_config
-from selko.services.jobs import JobsError
 from selko.workers.email_fetch import schedule_email_fetches
 from selko.workers.pool import WorkerPool
 
@@ -74,15 +70,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Include routers
+    # Include routers (server-side endpoints only)
+    # For direct database queries, frontends use Supabase client
     app.include_router(health_router)
     app.include_router(emails_router)
     app.include_router(integrations_router)
     app.include_router(events_router)
     app.include_router(calendars_router)
-    app.include_router(sender_rules_router)
-    app.include_router(jobs_router)
-    app.include_router(attachments_router)
 
     # Exception handlers for service errors
     @app.exception_handler(AuthenticationError)
@@ -123,14 +117,6 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={"error": "calendars_error", "detail": str(exc)},
-        )
-
-    @app.exception_handler(JobsError)
-    async def jobs_error_handler(request: Request, exc: JobsError):
-        logger.error(f"Jobs service error: {exc}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": "jobs_error", "detail": str(exc)},
         )
 
     # Startup event: Initialize worker pool and scheduler

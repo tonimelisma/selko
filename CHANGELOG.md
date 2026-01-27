@@ -2,6 +2,73 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (5)
+
+### Add Cross-Platform Staging Tests to CI
+
+**Purpose:** Extend CI pipeline with Android unit tests and frontend E2E staging tests for comprehensive cross-platform validation.
+
+**Files Modified:**
+- `.github/workflows/test.yml` - Added `android-unit-tests` job (runs in parallel on every push/PR), added `frontend-e2e-staging` job (runs after deploy-staging on main)
+- `frontend/playwright.config.js` - Support `STAGING_FRONTEND_URL` env var for testing against deployed staging frontend
+- `docs/ci-cd.md` - Documented new jobs and updated pipeline flow diagrams
+
+**New CI Jobs:**
+| Job | Trigger | Purpose |
+|-----|---------|---------|
+| `android-unit-tests` | Every push/PR | Android unit tests via Gradle (parallel with other tests) |
+| `frontend-e2e-staging` | Main push only | E2E tests against deployed staging frontend |
+
+**Pipeline Changes:**
+- `deploy-staging` now depends on `android-unit-tests` in addition to existing dependencies
+- After staging deployment, both `integration-tests-staging` and `frontend-e2e-staging` run in parallel
+
+**Skipped for Now:**
+- iOS CI (macOS runners are expensive)
+- Android instrumented tests (can add later)
+
+## 2026-01-27 (4)
+
+### Simplify Python API - Remove Supabase Proxy Endpoints
+
+**Purpose:** Complete the architectural refactor by removing Python API endpoints that were pure Supabase proxies. Frontends now query Supabase directly for data operations.
+
+**Files Deleted (pure Supabase proxies):**
+- `backend/selko/api/routes/attachments.py` - GET /attachments endpoints
+- `backend/selko/api/routes/sender_rules.py` - GET/POST/DELETE /sender-rules endpoints
+- `backend/selko/api/routes/jobs.py` - GET /jobs endpoints
+
+**Files Simplified:**
+- `backend/selko/api/routes/emails.py` - Removed GET /emails, GET /emails/{id}, GET /emails/{id}/attachments. Kept POST /sync, POST /process, POST /batch-process
+- `backend/selko/api/routes/integrations.py` - Removed GET /integrations, GET /integrations/{provider}, DELETE /integrations/{provider}. Kept OAuth endpoints
+- `backend/selko/api/routes/events.py` - Removed all GET endpoints and POST approve/reject/restore/undo/redo. Kept POST /events/{id}/sync
+- `backend/selko/api/routes/calendars.py` - Removed GET/PUT /calendars/settings. Kept GET /calendars
+- `backend/selko/api/routes/__init__.py` - Updated imports
+- `backend/selko/api/app.py` - Removed deleted routers and JobsError handler
+
+**Tests Updated:**
+- `backend/tests/integration/test_integration_api.py` - Removed tests for deleted endpoints, updated auth tests to use /emails/sync instead of /emails
+
+**Endpoint Summary:**
+| Before | After | Change |
+|--------|-------|--------|
+| 35 endpoints | 9 endpoints | -74% |
+
+**Remaining Endpoints (server-side only):**
+- `GET /health` - Health check
+- `GET /health/db` - Database health check
+- `GET /integrations/gmail/auth` - OAuth initiation
+- `GET /integrations/gmail/callback` - OAuth callback
+- `POST /emails/sync` - Gmail fetch
+- `POST /emails/{id}/process` - LLM processing
+- `POST /emails/batch-process` - Batch LLM processing
+- `GET /calendars` - List Google Calendars
+- `POST /events/{id}/sync` - Sync to Google Calendar
+
+**Test Results:** 201 passed, 11 skipped
+
+**Reason:** Frontends now query Supabase directly using RLS for security. The Python API only handles operations requiring server-side secrets.
+
 ## 2026-01-27 (3)
 
 ### Fix Render CI Build Failures for Frontend
