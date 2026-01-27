@@ -73,6 +73,10 @@ async def lifespan(app: FastAPI):
     This implements the Async Monolith pattern where the API server,
     background workers, and cron jobs all run in the same process.
 
+    Background processing (workers + scheduler) is OFF by default and requires
+    ENABLE_BACKGROUND_PROCESSING=true to enable. This allows running the API
+    without background workers for development, testing, or lightweight deployments.
+
     - Worker pool: Continuously processes jobs from the queue
     - APScheduler: Runs periodic tasks (e.g., email fetch scheduling)
     """
@@ -84,44 +88,52 @@ async def lifespan(app: FastAPI):
     # Load configuration
     config = load_config()
 
-    # Start worker pool for job processing
-    logger.info("Starting worker pool for background job processing")
-    worker_pool = WorkerPool(
-        num_workers=config.worker_pool_size,
-        idle_sleep_seconds=config.worker_idle_sleep_seconds,
-        error_backoff_seconds=config.worker_error_backoff_seconds,
-    )
-    await worker_pool.start()
+    if config.enable_background_processing:
+        # Start worker pool for job processing
+        logger.info("Starting worker pool for background job processing")
+        worker_pool = WorkerPool(
+            num_workers=config.worker_pool_size,
+            idle_sleep_seconds=config.worker_idle_sleep_seconds,
+            error_backoff_seconds=config.worker_error_backoff_seconds,
+        )
+        await worker_pool.start()
 
-    # Start APScheduler for cron-like periodic tasks
-    logger.info("Starting APScheduler for periodic tasks")
+        # Start APScheduler for cron-like periodic tasks
+        logger.info("Starting APScheduler for periodic tasks")
 
-    # Email fetch scheduler - creates email_fetch jobs every 5 minutes
-    scheduler.add_job(
-        schedule_email_fetches,
-        "interval",
-        minutes=5,
-        id="email_fetch_scheduler",
-        name="Email Fetch Scheduler",
-        max_instances=1,
-    )
+        # Email fetch scheduler - creates email_fetch jobs every 5 minutes
+        scheduler.add_job(
+            schedule_email_fetches,
+            "interval",
+            minutes=5,
+            id="email_fetch_scheduler",
+            name="Email Fetch Scheduler",
+            max_instances=1,
+        )
 
-    scheduler.start()
-    logger.info("Background workers started successfully")
+        scheduler.start()
+        logger.info("Background workers started successfully")
+    else:
+        logger.info(
+            "Background processing disabled "
+            "(set ENABLE_BACKGROUND_PROCESSING=true to enable)"
+        )
 
     yield
 
     # Shutdown
     logger.info("Shutting down Selko API")
 
-    # Stop worker pool first (workers complete current jobs)
-    if worker_pool:
-        await worker_pool.stop()
+    # Only stop background workers if they were started
+    if config.enable_background_processing:
+        # Stop worker pool first (workers complete current jobs)
+        if worker_pool:
+            await worker_pool.stop()
 
-    # Then stop scheduler
-    scheduler.shutdown(wait=True)
+        # Then stop scheduler
+        scheduler.shutdown(wait=True)
 
-    logger.info("Background workers shutdown complete")
+        logger.info("Background workers shutdown complete")
 
 
 def create_app() -> FastAPI:

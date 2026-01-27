@@ -2,6 +2,38 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (18)
+
+### Opt-in Background Processing
+
+**Change:** Background processing (worker pool + APScheduler) is now OFF by default and requires explicit opt-in.
+
+**Why:** Allows running the API without background workers for development, testing, or lightweight deployments where automatic email fetching isn't needed.
+
+**Configuration:**
+- New environment variable: `ENABLE_BACKGROUND_PROCESSING`
+- Default: `false` (disabled)
+- Set to `true` to enable automatic email fetching and job processing
+
+**Files Changed:**
+- `backend/selko/config.py` - Added `enable_background_processing` config field
+- `backend/selko/api/app.py` - Conditional startup of workers and scheduler
+- `.env.example` - Documented the new variable
+- `.env.production` - Enabled for production deployments
+
+**Usage:**
+```bash
+# Development (background processing disabled by default)
+uv run python -m selko.api
+
+# Production or when you want background workers
+ENABLE_BACKGROUND_PROCESSING=true uv run python -m selko.api
+```
+
+**Note:** CLI tools (`cli_fetch_emails`, `cli_process_emails`) continue to work regardless of this setting since they don't depend on background workers.
+
+---
+
 ## 2026-01-27 (17)
 
 ### LLM Evaluation Framework Improvements

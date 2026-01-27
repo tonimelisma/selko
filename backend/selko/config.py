@@ -57,6 +57,9 @@ class Config:
     worker_idle_sleep_seconds: float = 1.0
     worker_error_backoff_seconds: float = 5.0
 
+    # Background processing (workers + scheduler)
+    enable_background_processing: bool = False
+
     # CORS configuration
     allowed_origins: list[str] = field(default_factory=lambda: [
         "http://localhost:3000",
@@ -173,6 +176,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         worker_pool_size=int(os.getenv("WORKER_POOL_SIZE", "3")),
         worker_idle_sleep_seconds=float(os.getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
         worker_error_backoff_seconds=float(os.getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
+        enable_background_processing=os.getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true",
         allowed_origins=_parse_allowed_origins(),
     )
 
