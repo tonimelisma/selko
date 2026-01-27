@@ -42,8 +42,20 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application instance.
     """
-    # Load config early for CORS configuration
-    config = load_config()
+    # Try to load config for CORS, fall back to defaults if not available
+    # This allows app creation during test collection when env vars aren't set
+    try:
+        config = load_config()
+        allowed_origins = config.allowed_origins
+    except SystemExit:
+        # Config not available (e.g., during test collection without env vars)
+        # Use default localhost origins for CORS
+        allowed_origins = [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+        ]
 
     app = FastAPI(
         title="Selko API",
@@ -56,7 +68,7 @@ def create_app() -> FastAPI:
     # Configure CORS from environment
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=config.allowed_origins,
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
