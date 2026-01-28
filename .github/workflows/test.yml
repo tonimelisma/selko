@@ -106,6 +106,13 @@ jobs:
         with:
           version: latest
 
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /var/lib/docker
+          key: docker-${{ runner.os }}-supabase-${{ hashFiles('supabase/config.toml') }}
+          restore-keys: docker-${{ runner.os }}-supabase-
+
       - name: Start Supabase
         run: supabase start
 
