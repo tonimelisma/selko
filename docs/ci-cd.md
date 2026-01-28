@@ -163,15 +163,27 @@ Auto-merge requires branch protection rules, which require GitHub Pro for privat
 gh pr create --title "..." --body "..."
 
 # Step 2: Wait for CI to pass, then merge
-gh pr checks --watch && gh pr merge --squash
+# Exit codes: 0=pass, 8=pending, other=failed
+while true; do
+  gh pr checks
+  status=$?
+  if [ $status -eq 0 ]; then
+    gh pr merge --squash
+    break
+  elif [ $status -ne 8 ]; then
+    echo "CI checks failed"
+    exit 1
+  fi
+  sleep 10
+done
 ```
 
-The `gh pr checks --watch` command will wait until all status checks complete:
-- `unit-tests`
-- `integration-tests-development`
-- `android-unit-tests`
+The loop polls `gh pr checks` and handles three cases:
+- **Exit 0:** All checks passed → merge the PR and exit
+- **Exit 8:** Checks still pending → wait 10 seconds and retry
+- **Other exit codes:** Checks failed → report failure and exit with error
 
-Once checks pass, the merge command executes immediately.
+Required checks: `unit-tests`, `integration-tests-development`, `android-unit-tests`
 
 ### Troubleshooting
 
@@ -184,13 +196,13 @@ gh pr checks
 # View failed workflow logs
 gh run view --log-failed
 
-# After fixing, push and wait again
+# After fixing, push and run the polling loop again
 git push
-gh pr checks --watch && gh pr merge --squash
+# (run the polling loop from Step 2 above)
 ```
 
 Common issues:
-- **CI still running:** `gh pr checks --watch` will wait for completion
+- **CI still pending:** The polling loop will wait (exit code 8 = pending)
 - **Merge conflicts:** Rebase your branch and force-push
 
 ### Email Notifications

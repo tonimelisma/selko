@@ -108,8 +108,19 @@ gh pr create \
   --title "feat: add new capability" \
   --body "Description of changes"
 
-# Wait for CI to pass, then merge
-gh pr checks --watch && gh pr merge --squash
+# Wait for CI to pass, then merge (handles both pending and failed states)
+while true; do
+  gh pr checks
+  status=$?
+  if [ $status -eq 0 ]; then
+    gh pr merge --squash
+    break
+  elif [ $status -ne 8 ]; then
+    echo "CI checks failed"
+    exit 1
+  fi
+  sleep 10
+done
 ```
 
 ### When Another Agent's PR Merges
@@ -138,19 +149,27 @@ After your task is complete:
 - [ ] Committed with conventional commit format
 - [ ] Pushed to feature branch
 - [ ] PR created with `gh pr create`
-- [ ] Wait for CI and merge with `gh pr checks --watch && gh pr merge --squash`
+- [ ] Wait for CI and merge (see "After PR" section for polling loop)
 
 ## After PR: Wait for CI, Merge, and Cleanup
 
 ### MANDATORY: AI agents MUST follow all steps
 
 ```bash
-# 1. Wait for CI checks to pass
-echo "Waiting for CI checks..."
-gh pr checks --watch
-
-# 2. Merge the PR (manual since auto-merge requires GitHub Pro)
-gh pr merge --squash
+# 1. Wait for CI checks to pass and merge
+# Exit codes: 0=pass, 8=pending, other=failed
+while true; do
+  gh pr checks
+  status=$?
+  if [ $status -eq 0 ]; then
+    gh pr merge --squash
+    break
+  elif [ $status -ne 8 ]; then
+    echo "CI checks failed"
+    exit 1
+  fi
+  sleep 10
+done
 
 # 3. Return to main repo
 cd ~/Development/selko
@@ -233,7 +252,7 @@ git merge origin/main
 | Delete branch | `git branch -D <type>/<task>` |
 | Prune refs | `git worktree prune` |
 | Create PR | `gh pr create` |
-| Wait for CI + merge | `gh pr checks --watch && gh pr merge --squash` |
+| Wait for CI + merge | See "After PR" section for polling loop |
 | Check CI status | `gh pr checks` |
 | Rebase | `git fetch origin main && git rebase origin/main` |
 | Force push | `git push --force-with-lease` |

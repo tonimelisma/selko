@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (24)
+
+### Fix CI Polling to Handle Failures
+
+**Problem:** The documented `while ! gh pr checks; do sleep 10; done` pattern loops forever if CI fails because `gh pr checks` returns non-zero for both pending (exit 8) and failed (exit 1) states.
+
+**Solution:** Replace with a loop that checks exit codes:
+- Exit 0 → checks passed → merge PR
+- Exit 8 → checks pending → keep polling
+- Any other code → checks failed → stop with error
+
+**Files Changed:**
+- `CLAUDE.md` - Updated polling pattern (4 locations)
+- `docs/parallel-agents.md` - Updated polling pattern (4 locations)
+- `docs/ci-cd.md` - Updated polling pattern (3 locations)
+- `.claude/hooks/block-interactive-commands.sh` - Updated suggested alternative
+
+---
+
 ## 2026-01-27 (23)
 
 ### CI Speed Optimization
