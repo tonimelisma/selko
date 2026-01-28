@@ -12,6 +12,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
       android: ${{ steps.filter.outputs.android }}
@@ -47,7 +48,9 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --extra test
+        run: |
+          uv sync --extra test
+          uv pip install pytest-xdist
 
       - name: Run unit tests
         run: uv run pytest backend/tests/ -m "not integration" -v --tb=short -n auto
@@ -75,7 +78,9 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --extra test
+        run: |
+          uv sync --extra test
+          uv pip install pytest-xdist
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
@@ -250,7 +255,9 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --extra test
+        run: |
+          uv sync --extra test
+          uv pip install pytest-xdist
 
       - name: Run staging integration tests (mocked LLM)
         run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short -n auto
