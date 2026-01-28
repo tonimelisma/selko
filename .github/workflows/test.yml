@@ -148,7 +148,8 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: Run integration tests (mocked LLM)
-        run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short -n auto
+        # Run sequentially - integration tests have shared DB state that breaks with parallel execution
+        run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short
         env:
           ENVIRONMENT: development
           TEST_USER_EMAIL: test@selko.local
@@ -260,7 +261,8 @@ jobs:
           uv pip install pytest-xdist
 
       - name: Run staging integration tests (mocked LLM)
-        run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short -n auto
+        # Run sequentially - integration tests have shared DB state that breaks with parallel execution
+        run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short
         env:
           ENVIRONMENT: staging
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
