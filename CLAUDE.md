@@ -115,6 +115,8 @@ git branch -D <type>/<task-name>
 git fetch origin && git merge --ff-only origin/main
 ```
 
+> **Note:** Remote branches are auto-deleted by GitHub when PRs merge. Only local cleanup is needed.
+
 ### Pre-Commit Hook
 
 Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`
