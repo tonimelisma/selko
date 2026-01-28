@@ -1,9 +1,11 @@
-"""Email fetch worker - fetches emails from Gmail and creates process jobs.
+"""Email fetch worker - fetches emails from Gmail.
 
 This worker:
 1. Fetches new emails from Gmail for a user
-2. Stores them in the emails table
-3. Creates email_process jobs for each email
+2. Stores them in the emails table with processing_status='pending'
+
+Emails are automatically picked up by the worker pool for LLM processing
+because they're saved with processing_status='pending'.
 """
 
 import logging
@@ -19,24 +21,22 @@ from selko.services.gmail import (
     fetch_messages,
     get_credentials,
 )
-from selko.services.jobs import enqueue_job
+from selko.services.scheduled_tasks import enqueue_scheduled_task
 
 logger = logging.getLogger(__name__)
 
 
-async def process_email_fetch_job(
+async def process_email_fetch_task(
     client: Client,
     config: Config,
-    job_id: str,
     payload: dict[str, Any],
 ) -> None:
-    """Process an email_fetch job.
+    """Process an email_fetch scheduled task.
 
     Args:
         client: Supabase client (with service role).
         config: Application configuration.
-        job_id: UUID of the job being processed.
-        payload: Job payload with {user_id: str, max_emails: int}.
+        payload: Task payload with {user_id: str, max_emails: int}.
 
     Raises:
         GmailError: If Gmail API calls fail.
@@ -69,38 +69,39 @@ async def process_email_fetch_job(
         return
 
     # Parse and save emails
+    # Emails are saved with processing_status='pending' (default)
+    # The worker pool will automatically pick them up for LLM processing
     try:
         parsed = [parse_gmail_message(msg) for msg in messages]
         saved_records = save_emails(client, parsed, user_id=user_id)
-        logger.info(f"Saved {len(saved_records)} emails for user {user_id}")
+        logger.info(
+            f"Saved {len(saved_records)} emails for user {user_id} "
+            f"(will be auto-processed by workers)"
+        )
     except EmailError as e:
         logger.error(f"Error saving emails for user {user_id}: {e}")
         raise
 
-    # Create email_process jobs for each saved email
-    jobs_created = 0
-    for record in saved_records:
-        email_id = record["id"]
 
-        try:
-            enqueue_job(
-                client,
-                user_id=user_id,
-                job_type="email_process",
-                payload={"email_id": email_id},
-                priority=0,
-            )
-            jobs_created += 1
-        except Exception as e:
-            logger.error(f"Failed to enqueue email_process job for {email_id}: {e}")
+# Keep old function signature for backwards compatibility
+async def process_email_fetch_job(
+    client: Client,
+    config: Config,
+    job_id: str,
+    payload: dict[str, Any],
+) -> None:
+    """Legacy function for processing email_fetch jobs.
 
-    logger.info(f"Created {jobs_created} email_process jobs for user {user_id}")
+    This function is kept for backwards compatibility during the transition.
+    New code should use process_email_fetch_task() directly.
+    """
+    await process_email_fetch_task(client, config, payload)
 
 
 async def schedule_email_fetches() -> None:
-    """Scheduler function that creates email_fetch jobs for all users.
+    """Scheduler function that creates email_fetch tasks for all users.
 
-    Called by APScheduler every 5 minutes. Creates one email_fetch job
+    Called by APScheduler every 5 minutes. Creates one email_fetch scheduled task
     per user who has an active Gmail integration.
     """
     from selko.config import load_config
@@ -121,22 +122,21 @@ async def schedule_email_fetches() -> None:
             logger.debug("No users with active Gmail integrations")
             return
 
-        # Create email_fetch job for each user
-        jobs_created = 0
+        # Create email_fetch scheduled task for each user
+        tasks_created = 0
         for user_id in users:
             try:
-                enqueue_job(
+                enqueue_scheduled_task(
                     client,
                     user_id=user_id,
-                    job_type="email_fetch",
+                    task_type="email_fetch",
                     payload={"user_id": user_id, "max_emails": 50},
-                    priority=0,
                 )
-                jobs_created += 1
+                tasks_created += 1
             except Exception as e:
                 logger.error(f"Failed to enqueue email_fetch for user {user_id}: {e}")
 
-        logger.info(f"Scheduled email fetch for {jobs_created} users")
+        logger.info(f"Scheduled email fetch for {tasks_created} users")
 
     except Exception as e:
         logger.error(f"Failed to schedule email fetches: {e}", exc_info=True)
