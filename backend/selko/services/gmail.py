@@ -131,8 +131,16 @@ def get_user_profile(service) -> dict:
 
     Returns:
         Profile dict with emailAddress, messagesTotal, etc.
+
+    Raises:
+        GmailError: If profile fetch fails or credentials are invalid.
     """
-    return service.users().getProfile(userId="me").execute()
+    try:
+        return service.users().getProfile(userId="me").execute()
+    except RefreshError as e:
+        raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+    except HttpError as e:
+        raise GmailError(f"Gmail API error: {e}") from e
 
 
 def extract_attachments(email: dict) -> list[dict]:
@@ -201,16 +209,24 @@ def fetch_messages(
 
     Returns:
         List of full message objects.
+
+    Raises:
+        GmailError: If credentials are invalid or API calls fail.
     """
     if label_ids is None:
         label_ids = ["INBOX"]
 
-    results = (
-        service.users()
-        .messages()
-        .list(userId="me", labelIds=label_ids, maxResults=max_results)
-        .execute()
-    )
+    try:
+        results = (
+            service.users()
+            .messages()
+            .list(userId="me", labelIds=label_ids, maxResults=max_results)
+            .execute()
+        )
+    except RefreshError as e:
+        raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+    except HttpError as e:
+        raise GmailError(f"Gmail API error listing messages: {e}") from e
 
     messages = results.get("messages", [])
     if not messages:
@@ -232,6 +248,8 @@ def fetch_messages(
                 )
                 full_messages.append(full_msg)
                 break
+            except RefreshError as e:
+                raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
             except HttpError as e:
                 if e.resp.status == 429:  # Rate limited
                     wait_time = (2**attempt) + 1  # 1, 3, 5 seconds
@@ -241,7 +259,7 @@ def fetch_messages(
                     )
                     time.sleep(wait_time)
                 else:
-                    raise
+                    raise GmailError(f"Gmail API error fetching message: {e}") from e
 
         # Small delay between requests to avoid hitting rate limits
         if i < len(messages) - 1:
