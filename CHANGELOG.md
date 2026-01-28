@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (23)
+
+### CI Speed Optimization
+
+**Optimizations:**
+- Skip Android tests on backend-only PRs using `dorny/paths-filter`
+- Add parallel test execution with `pytest-xdist` for unit tests only
+- Integration tests run sequentially (shared DB state prevents parallelization)
+
+**Fixes Required:**
+- Added `contents: read` permission (required for checkout when permissions block exists)
+- Added `pull-requests: read` permission (required for paths-filter to access PR files)
+- Explicitly install pytest-xdist (workspace structure prevented automatic install)
+
+**Expected Savings:**
+- Backend-only PR: ~1.5 min saved (no Android tests)
+- Unit tests: ~30% faster (parallel execution)
+
+**Files Changed:**
+- `.github/workflows/test.yml` - Path filter, permissions, parallel unit tests
+- `backend/pyproject.toml` - Added `pytest-xdist>=3.0`
+- `CLAUDE.md` - Reduced CI polling interval from 30s to 10s
+
+---
+
 ## 2026-01-27 (22)
 
 ### Reset Stale Jobs on Startup

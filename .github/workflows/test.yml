@@ -8,6 +8,23 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      android: ${{ steps.filter.outputs.android }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            android:
+              - 'android/**'
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -31,10 +48,12 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --extra test
+        run: |
+          uv sync --extra test
+          uv pip install pytest-xdist
 
       - name: Run unit tests
-        run: uv run pytest backend/tests/ -m "not integration" -v --tb=short
+        run: uv run pytest backend/tests/ -m "not integration" -v --tb=short -n auto
 
   integration-tests-development:
     name: Integration Tests (Development)
@@ -59,7 +78,9 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --extra test
+        run: |
+          uv sync --extra test
+          uv pip install pytest-xdist
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
@@ -127,6 +148,7 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: Run integration tests (mocked LLM)
+        # Run sequentially - integration tests have shared DB state that breaks with parallel execution
         run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short
         env:
           ENVIRONMENT: development
@@ -143,6 +165,8 @@ jobs:
 
   android-unit-tests:
     name: Android Unit Tests
+    needs: changes
+    if: ${{ needs.changes.outputs.android == 'true' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -232,9 +256,12 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --extra test
+        run: |
+          uv sync --extra test
+          uv pip install pytest-xdist
 
       - name: Run staging integration tests (mocked LLM)
+        # Run sequentially - integration tests have shared DB state that breaks with parallel execution
         run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short
         env:
           ENVIRONMENT: staging

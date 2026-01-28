@@ -98,7 +98,7 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] Git commit with conventional message
 - [ ] Git push to feature branch
 - [ ] PR created with `gh pr create`
-- [ ] Poll CI and merge with `while ! gh pr checks; do sleep 30; done && gh pr merge --squash`
+- [ ] Poll CI and merge with `while ! gh pr checks; do sleep 10; done && gh pr merge --squash`
 
 ### After PR: Wait, Merge, and Cleanup
 
@@ -106,7 +106,7 @@ BLOCKED: Cannot edit source code in the main repository.
 
 ```bash
 # 1. Poll CI status and merge when ready
-while ! gh pr checks; do sleep 30; done && gh pr merge --squash
+while ! gh pr checks; do sleep 10; done && gh pr merge --squash
 
 # 2. Return to main repo and cleanup
 cd ~/Development/selko
@@ -135,7 +135,7 @@ Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/
 | `cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json` | Run frontend tests |
 | `uv run python -m selko.api` | Start FastAPI server |
 | `gh pr create` | Create PR |
-| `while ! gh pr checks; do sleep 30; done && gh pr merge --squash` | Poll CI status, then merge |
+| `while ! gh pr checks; do sleep 10; done && gh pr merge --squash` | Poll CI status, then merge |
 
 ### CLI Tools
 
@@ -162,7 +162,7 @@ These commands are blocked by hooks because they don't work with Claude Code:
 
 | Command | Why Blocked | Alternative |
 |---------|-------------|-------------|
-| `gh pr checks --watch` | Interactive output, unparsable | `while ! gh pr checks; do sleep 30; done` |
+| `gh pr checks --watch` | Interactive output, unparsable | `while ! gh pr checks; do sleep 10; done` |
 
 ---
 
