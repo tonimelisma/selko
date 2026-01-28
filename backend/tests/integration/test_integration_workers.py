@@ -5,8 +5,7 @@ external APIs (Gmail, Google Calendar, Gemini).
 """
 
 import logging
-import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -215,9 +214,10 @@ class TestEmailStatusBasedClaiming:
     ):
         """Test that expired email locks can be recovered."""
         # Create and claim an email with short lock
+        gmail_id = f"expiry-test-{uuid4().hex[:8]}"
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"expiry-test-{uuid4().hex[:8]}",
+            "gmail_id": gmail_id,
             "subject": "Test Email",
             "from_email": "test@example.com",
             "processing_status": "pending",
@@ -228,8 +228,11 @@ class TestEmailStatusBasedClaiming:
 
         claim_pending_email(service_client, "worker-1", lock_duration_seconds=1)
 
-        # Wait for lock to expire
-        time.sleep(2)
+        # Set lock_until to past directly instead of waiting
+        past_time = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
+        service_client.table("emails").update({
+            "locked_until": past_time
+        }).eq("gmail_id", gmail_id).execute()
 
         # Unlock expired locks
         count = unlock_expired_email_locks(service_client)
