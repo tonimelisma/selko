@@ -106,13 +106,14 @@ BLOCKED: Cannot edit source code in the main repository.
 
 ```bash
 # 1. Poll CI status and merge when ready
+# NOTE: Don't use "status" as variable name - it's read-only in zsh
 while true; do
   gh pr checks
-  status=$?
-  if [ $status -eq 0 ]; then
+  ec=$?
+  if [ $ec -eq 0 ]; then
     gh pr merge --squash
     break
-  elif [ $status -ne 8 ]; then
+  elif [ $ec -ne 8 ]; then
     echo "CI checks failed"
     exit 1
   fi

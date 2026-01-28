@@ -164,13 +164,14 @@ gh pr create --title "..." --body "..."
 
 # Step 2: Wait for CI to pass, then merge
 # Exit codes: 0=pass, 8=pending, other=failed
+# NOTE: Don't use "status" as variable name - it's read-only in zsh
 while true; do
   gh pr checks
-  status=$?
-  if [ $status -eq 0 ]; then
+  ec=$?
+  if [ $ec -eq 0 ]; then
     gh pr merge --squash
     break
-  elif [ $status -ne 8 ]; then
+  elif [ $ec -ne 8 ]; then
     echo "CI checks failed"
     exit 1
   fi
