@@ -26,6 +26,8 @@ This guide covers running multiple AI coding agents simultaneously on the same r
 - ✅ Actions: Send notifications for failed workflows only
 
 > **Note:** Auto-merge requires GitHub Pro for private repos. This project uses manual merge after CI passes instead.
+>
+> **Note:** The repo has "Automatically delete head branches" enabled. Remote branches are deleted by GitHub when PRs merge.
 
 ## Pre-Work Checklist
 
@@ -161,7 +163,9 @@ git branch -D <type>/<task-name>
 git fetch origin && git merge --ff-only origin/main
 ```
 
-> **CRITICAL FOR AI AGENTS:** You MUST complete ALL steps including cleanup. Failure to clean up leaves stale branches and worktrees that block other agents.
+> **CRITICAL FOR AI AGENTS:** You MUST complete ALL steps including cleanup. Failure to clean up leaves stale worktrees that block other agents.
+>
+> **Note:** Remote branches are auto-deleted by GitHub when PRs merge. Only local worktree and branch cleanup is needed.
 
 ## Task Assignment Guidelines
 
