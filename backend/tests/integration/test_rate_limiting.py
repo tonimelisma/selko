@@ -255,7 +255,7 @@ class TestOAuthRedirectValidation:
         """Test valid localhost redirect URI is accepted."""
         response = api_client.get(
             "/integrations/gmail/auth",
-            params={"redirect_uri": "http://localhost:8000/integrations/gmail/callback"},
+            params={"redirect_uri": "http://localhost:8000/integrations/google/callback"},
             follow_redirects=False,
         )
 

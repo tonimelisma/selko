@@ -93,10 +93,16 @@ async def sync_emails(
 
     except EmailError as e:
         logger.error(f"Failed to sync emails: {e}")
-        if "No Gmail integration" in str(e):
+        error_msg = str(e)
+        if "No Gmail integration" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No Gmail integration found. Connect Gmail first.",
+            )
+        if "expired or revoked" in error_msg or "unauthorized_client" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Gmail credentials expired or revoked. Please reconnect Gmail.",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

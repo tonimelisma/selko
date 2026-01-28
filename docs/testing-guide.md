@@ -101,6 +101,20 @@ uv run python -m cli.cli_user create --email test@selko.local --password testpas
 uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
 ```
 
+### Refreshing Expired OAuth Tokens
+
+If Gmail tests fail with `unauthorized_client` or `credentials expired or revoked`:
+
+```bash
+# Step 1: Run OAuth flow to get fresh tokens (stores in staging)
+ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
+
+# Step 2: Seed fresh tokens to development
+uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+```
+
+This stores tokens in staging (persistent) so they can be seeded to development later.
+
 ## Token Persistence Rules
 
 ### Development (Local Supabase)

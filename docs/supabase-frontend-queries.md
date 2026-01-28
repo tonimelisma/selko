@@ -530,10 +530,13 @@ These operations require server-side secrets and MUST go through the Python API.
 
 ```
 GET /integrations/gmail/auth?redirect_uri={uri}
-  -> Redirects to Google OAuth consent screen
+  -> Redirects to Google OAuth consent screen (Gmail)
 
-GET /integrations/gmail/callback?code={code}&state={state}
-  -> Handles OAuth callback (public endpoint)
+GET /integrations/calendar/auth?redirect_uri={uri}
+  -> Redirects to Google OAuth consent screen (Calendar)
+
+GET /integrations/google/callback?code={code}&state={state}
+  -> Unified callback for all Google OAuth flows (public endpoint)
 ```
 
 ### Email Sync
