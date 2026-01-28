@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (27)
+
+### Docker Layer Caching for CI
+
+**Problem:** The `supabase start` command in CI takes ~182 seconds, primarily due to Docker image pulls. While path filtering (implemented in entry 26) skips this for non-backend changes, backend/supabase PRs still pay this cost.
+
+**Solution:** Added `actions/cache@v4` to cache `/var/lib/docker` between CI runs. Cache key is based on `supabase/config.toml` to invalidate when Supabase configuration changes.
+
+**Expected Behavior:**
+- First run after cache miss: Full 182 seconds (builds cache)
+- Subsequent runs with cache hit: 10-30 seconds faster (skipped image pulls)
+- Cache invalidates when `supabase/config.toml` changes
+
+**Caveats:**
+- GitHub's 5 GB cache limit may cause eviction on busy repos
+- Cache upload adds overhead but happens in parallel with other steps
+
+**Files Changed:**
+- `.github/workflows/test.yml` - Added Docker layer cache step before `supabase start`
+
+---
+
 ## 2026-01-27 (26)
 
 ### CI Path Filtering Optimization
