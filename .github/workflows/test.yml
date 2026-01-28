@@ -199,9 +199,12 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      # TODO: Deploy FastAPI to Render (uncomment when Render is set up)
-      # Render deploys automatically via GitHub integration - no manual step needed here
-      # See RENDER_MIGRATION_PLAN.md for setup instructions
+      - name: Deploy to Render (Staging)
+        run: |
+          echo "Triggering Render deployments..."
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}" || echo "App deploy hook failed or not configured"
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB_STAGING }}" || echo "Web deploy hook failed or not configured"
+          echo "Deploy hooks triggered. Builds will complete asynchronously."
 
   integration-tests-staging:
     name: Integration Tests (Staging)
@@ -270,6 +273,9 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      # TODO: Deploy FastAPI to Render (uncomment when Render is set up)
-      # Render deploys automatically via GitHub integration - no manual step needed here
-      # See RENDER_MIGRATION_PLAN.md for setup instructions
+      - name: Deploy to Render (Production)
+        run: |
+          echo "Triggering Render deployments..."
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_APP_PRODUCTION }}" || echo "App deploy hook failed or not configured"
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB_PRODUCTION }}" || echo "Web deploy hook failed or not configured"
+          echo "Deploy hooks triggered. Builds will complete asynchronously."
