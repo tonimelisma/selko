@@ -1,5 +1,11 @@
 name: Tests
 
+# CI Optimization: Path filtering skips jobs when irrelevant files change.
+# - Markdown-only changes: No test jobs run
+# - Backend changes: Unit tests + integration tests
+# - Supabase changes: Integration tests only
+# - Android changes: Android tests only
+
 on:
   push:
     branches: [main]
@@ -15,6 +21,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      supabase: ${{ steps.filter.outputs.supabase }}
       android: ${{ steps.filter.outputs.android }}
     steps:
       - uses: actions/checkout@v4
@@ -22,11 +30,20 @@ jobs:
         id: filter
         with:
           filters: |
+            backend:
+              - 'backend/**'
+              - 'cli/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+            supabase:
+              - 'supabase/**'
             android:
               - 'android/**'
 
   unit-tests:
     name: Unit Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +74,8 @@ jobs:
 
   integration-tests-development:
     name: Integration Tests (Development)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -166,7 +185,7 @@ jobs:
   android-unit-tests:
     name: Android Unit Tests
     needs: changes
-    if: ${{ needs.changes.outputs.android == 'true' || github.event_name == 'push' }}
+    if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -201,9 +220,17 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    # Only run on main branch pushes (not PRs, not manual trigger)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [unit-tests, integration-tests-development, android-unit-tests]
+    # Only run on main branch pushes when backend/supabase files changed
+    # Note: always() required because skipped dependencies would fail this job otherwise
+    # We check that required jobs either succeeded or were skipped (not failed)
+    if: |
+      always() &&
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true') &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests-development.result == 'success' || needs.integration-tests-development.result == 'skipped') &&
+      (needs.android-unit-tests.result == 'success' || needs.android-unit-tests.result == 'skipped')
+    needs: [changes, unit-tests, integration-tests-development, android-unit-tests]
     steps:
       - uses: actions/checkout@v4
 
@@ -233,8 +260,12 @@ jobs:
   integration-tests-staging:
     name: Integration Tests (Staging)
     runs-on: ubuntu-latest
-    # Only run on main branch pushes (after deployment)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Only run on main branch pushes (after deployment succeeds)
+    # Skipped when deploy-staging is skipped (no backend/supabase changes)
+    if: |
+      always() &&
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.deploy-staging.result == 'success'
     needs: [deploy-staging]  # Run AFTER deployment to test deployed code
     steps:
       - uses: actions/checkout@v4
