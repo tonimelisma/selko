@@ -73,7 +73,7 @@ curl -X GET "http://localhost:8000/integrations/gmail/auth" \
   -H "Authorization: Bearer $TOKEN" \
   -L  # Follow redirects
 
-# After you approve, Google redirects back to /integrations/gmail/callback
+# After you approve, Google redirects back to /integrations/google/callback
 # Callback automatically saves credentials to database
 
 # Verify integration connected (via Supabase direct)
@@ -210,9 +210,14 @@ Response: {"status": "ok", "database": "connected"}
 ```
 GET /integrations/gmail/auth
   Requires: Bearer token
-  Returns: Redirect to Google OAuth consent screen
+  Returns: Redirect to Google OAuth consent screen (Gmail)
 
-GET /integrations/gmail/callback?code={code}&state={state}
+GET /integrations/calendar/auth
+  Requires: Bearer token
+  Returns: Redirect to Google OAuth consent screen (Calendar)
+
+GET /integrations/google/callback?code={code}&state={state}
+  Unified callback for all Google OAuth flows
   Public endpoint (no auth required)
   Returns: {"status": "success", "provider_email": "user@gmail.com"}
 ```

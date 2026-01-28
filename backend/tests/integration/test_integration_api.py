@@ -165,6 +165,21 @@ class TestOAuthEndpoints:
         # Should redirect to Google OAuth or return error if credentials missing
         assert response.status_code in [302, 500]
 
+    def test_calendar_auth_requires_authentication(self, test_client):
+        """GET /integrations/calendar/auth requires authentication."""
+        response = test_client.get("/integrations/calendar/auth")
+
+        assert response.status_code == 401
+
+    def test_calendar_auth_redirect(self, test_client, auth_headers):
+        """GET /integrations/calendar/auth returns redirect."""
+        response = test_client.get(
+            "/integrations/calendar/auth", headers=auth_headers, follow_redirects=False
+        )
+
+        # Should redirect to Google OAuth or return error if credentials missing
+        assert response.status_code in [302, 500]
+
 
 @pytest.mark.integration
 @pytest.mark.development
@@ -174,7 +189,7 @@ class TestOAuthCallback:
     def test_callback_no_auth_required(self, test_client):
         """Callback does not require JWT (security fix verification)."""
         response = test_client.get(
-            "/integrations/gmail/callback?code=test&state=invalid"
+            "/integrations/google/callback?code=test&state=invalid"
         )
         # Should return 400 (invalid state), NOT 401 (missing auth)
         assert response.status_code != 401
@@ -183,7 +198,7 @@ class TestOAuthCallback:
     def test_callback_invalid_state(self, test_client):
         """Callback rejects invalid state."""
         response = test_client.get(
-            "/integrations/gmail/callback?code=test&state=invalid123"
+            "/integrations/google/callback?code=test&state=invalid123"
         )
         assert response.status_code == 400
         # Error message is sanitized to not leak internal details
@@ -200,12 +215,12 @@ class TestOAuthCallback:
             "user_id": "test-user",
             "provider": "gmail",
             "created_at": datetime.utcnow() - timedelta(minutes=11),
-            "redirect_uri": "http://localhost:8000/integrations/gmail/callback",
+            "redirect_uri": "http://localhost:8000/integrations/google/callback",
         }
 
         try:
             response = test_client.get(
-                f"/integrations/gmail/callback?code=test&state={state}"
+                f"/integrations/google/callback?code=test&state={state}"
             )
             assert response.status_code == 400
             assert "expired" in response.json()["detail"].lower()
@@ -227,7 +242,7 @@ class TestOAuthCallback:
             "user_id": user_id,
             "provider": "gmail",
             "created_at": datetime.utcnow(),
-            "redirect_uri": "http://localhost:8000/integrations/gmail/callback",
+            "redirect_uri": "http://localhost:8000/integrations/google/callback",
         }
 
         # Mock token exchange
@@ -249,7 +264,7 @@ class TestOAuthCallback:
         ):
             try:
                 response = test_client.get(
-                    f"/integrations/gmail/callback?code=test_code&state={state}"
+                    f"/integrations/google/callback?code=test_code&state={state}"
                 )
 
                 assert response.status_code == 200
