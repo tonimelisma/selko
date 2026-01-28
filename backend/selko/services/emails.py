@@ -242,3 +242,174 @@ def fetch_emails_for_user(
         "saved": len(saved_records),
         "attachments_downloaded": attachments_downloaded,
     }
+
+
+# --- Status-based worker claiming functions ---
+
+
+def claim_pending_email(
+    client: Client,
+    worker_id: str,
+    lock_duration_seconds: int = 300,
+) -> Optional[dict[str, Any]]:
+    """Atomically claim the next pending email for processing.
+
+    Uses PostgreSQL FOR UPDATE SKIP LOCKED to safely claim emails without
+    conflicts between multiple workers.
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+        worker_id: Unique identifier for this worker process.
+        lock_duration_seconds: How long to hold the lock (default: 5 minutes).
+
+    Returns:
+        Email dict if claimed, None if no pending emails available.
+
+    Raises:
+        EmailError: If claim operation fails.
+    """
+    try:
+        result = client.rpc('claim_unprocessed_email', {
+            'p_worker_id': worker_id,
+            'p_lock_duration_seconds': lock_duration_seconds,
+        }).execute()
+
+        if result.data and len(result.data) > 0:
+            email = result.data[0]
+            subject = email.get("subject", "(no subject)")[:50]
+            logger.info(
+                f"Worker {worker_id} claimed email {email['id']}: {subject} "
+                f"(attempt {email['attempts']}/{email['max_attempts']})"
+            )
+            return email
+
+        return None
+
+    except Exception as e:
+        raise EmailError(f"Failed to claim pending email: {e}") from e
+
+
+def complete_email_processing(client: Client, email_id: str) -> None:
+    """Mark email as processed successfully and clear the lock.
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+        email_id: UUID of email to mark as processed.
+
+    Raises:
+        EmailError: If update fails.
+    """
+    try:
+        client.table("emails").update({
+            "processing_status": "processed",
+            "processed_at": datetime.now().isoformat(),
+            "locked_by": None,
+            "locked_until": None,
+        }).eq("id", email_id).execute()
+
+        logger.info(f"Completed processing email {email_id}")
+
+    except Exception as e:
+        raise EmailError(f"Failed to complete email processing: {e}") from e
+
+
+def fail_email_processing(
+    client: Client,
+    email_id: str,
+    error: str,
+) -> None:
+    """Mark email processing as failed.
+
+    If attempts < max_attempts, sets status back to 'pending' for retry.
+    Otherwise, sets status to 'failed' permanently.
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+        email_id: UUID of email that failed processing.
+        error: Error message to store.
+
+    Raises:
+        EmailError: If update fails.
+    """
+    try:
+        # Fetch current email to check retry eligibility
+        result = client.table("emails").select(
+            "attempts, max_attempts"
+        ).eq("id", email_id).single().execute()
+
+        email = result.data
+        should_retry = email["attempts"] < email["max_attempts"]
+
+        update_data = {
+            "processing_status": "pending" if should_retry else "failed",
+            "processing_error": error,
+            "locked_by": None,
+            "locked_until": None,
+        }
+
+        client.table("emails").update(update_data).eq("id", email_id).execute()
+
+        if should_retry:
+            logger.warning(
+                f"Email {email_id} processing failed "
+                f"(attempt {email['attempts']}/{email['max_attempts']}): {error}. "
+                f"Will retry."
+            )
+        else:
+            logger.error(
+                f"Email {email_id} processing failed permanently "
+                f"after {email['attempts']} attempts: {error}"
+            )
+
+    except Exception as e:
+        raise EmailError(f"Failed to mark email as failed: {e}") from e
+
+
+def skip_email_processing(client: Client, email_id: str) -> None:
+    """Mark email as skipped (e.g., sender ignored).
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+        email_id: UUID of email to skip.
+
+    Raises:
+        EmailError: If update fails.
+    """
+    try:
+        client.table("emails").update({
+            "processing_status": "skipped",
+            "locked_by": None,
+            "locked_until": None,
+        }).eq("id", email_id).execute()
+
+        logger.info(f"Skipped email {email_id}")
+
+    except Exception as e:
+        raise EmailError(f"Failed to skip email: {e}") from e
+
+
+def unlock_expired_email_locks(client: Client) -> int:
+    """Reset expired email locks back to pending.
+
+    Handles the case where a worker crashes mid-processing and the lock expires.
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+
+    Returns:
+        Number of emails unlocked.
+
+    Raises:
+        EmailError: If unlock fails.
+    """
+    try:
+        result = client.rpc('unlock_expired_email_locks').execute()
+        count = result.data if result.data else 0
+
+        if count > 0:
+            logger.warning(f"Unlocked {count} expired email locks")
+
+        return count
+
+    except Exception as e:
+        raise EmailError(f"Failed to unlock expired email locks: {e}") from e

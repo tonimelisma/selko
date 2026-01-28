@@ -2,6 +2,49 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (20)
+
+### Replace Job Queue with Status-Based Workers
+
+**Architectural Change:** Replaced the `jobs` table with status-based workers that poll data tables directly. The data tables ARE the queue.
+
+**Why:**
+- Single source of truth (no job-data synchronization bugs)
+- Simpler debugging (query data tables directly to see pending work)
+- Natural idempotency (data state is always consistent)
+
+**Before:** `jobs` table → worker claims job → fetches data → updates both job and data
+**After:** Worker claims data via status → processes → updates data
+
+**Database Changes:**
+- Added claiming columns to `emails`: `locked_until`, `locked_by`, `attempts`, `max_attempts`
+- Added sync tracking columns to `events`: `locked_until`, `locked_by`, `sync_attempts`, `max_sync_attempts`, `sync_error`
+- Added `syncing` status to events for in-progress calendar sync
+- Created atomic claiming RPC functions: `claim_unprocessed_email()`, `claim_approved_event()`, `unlock_expired_email_locks()`, `unlock_expired_event_locks()`
+- Dropped `jobs` table entirely
+- Created `scheduled_tasks` table for periodic tasks only (email_fetch)
+
+**Service Changes:**
+- Deleted `backend/selko/services/jobs.py`
+- Created `backend/selko/services/scheduled_tasks.py` for periodic tasks
+- Added claiming functions to `emails.py`: `claim_pending_email()`, `complete_email_processing()`, `fail_email_processing()`
+- Added claiming functions to `events.py`: `claim_approved_event_for_sync()`, `complete_event_sync()`, `fail_event_sync()`
+
+**Worker Changes:**
+- `pool.py`: Polls three sources: scheduled_tasks, pending emails, approved events
+- `email_process.py`: Receives full email record (not job payload)
+- `calendar_sync.py`: Receives full event record (not job payload)
+- `email_fetch.py`: Removed job enqueueing (emails auto-picked up by status)
+
+**Data Flow:**
+```
+Cron (5 min) -> scheduled_tasks -> emails (status=pending)
+                                   -> Worker claims -> LLM -> events (status=pending_review)
+User approves -> status=approved -> Worker claims -> Calendar API -> status=synced
+```
+
+---
+
 ## 2026-01-27 (19)
 
 ### CI Fixes and Documentation Updates
