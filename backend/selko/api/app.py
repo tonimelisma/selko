@@ -98,6 +98,23 @@ async def lifespan(app: FastAPI):
         )
         await worker_pool.start()
 
+        # Recover any stale jobs from previous instance crash
+        from selko.services.auth import get_service_client
+        from selko.services.emails import unlock_expired_email_locks
+        from selko.services.events import unlock_expired_event_locks
+        from selko.services.scheduled_tasks import unlock_expired_scheduled_tasks
+
+        service_client = get_service_client(config)
+        emails_unlocked = unlock_expired_email_locks(service_client)
+        events_unlocked = unlock_expired_event_locks(service_client)
+        tasks_unlocked = unlock_expired_scheduled_tasks(service_client)
+
+        if emails_unlocked or events_unlocked or tasks_unlocked:
+            logger.info(
+                f"Recovered stale jobs on startup: "
+                f"{emails_unlocked} emails, {events_unlocked} events, {tasks_unlocked} tasks"
+            )
+
         # Start APScheduler for cron-like periodic tasks
         logger.info("Starting APScheduler for periodic tasks")
 
