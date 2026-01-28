@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (23)
+
+### CI Workflow Fixes
+
+**Problems Fixed:**
+1. Missing `pytest-xdist` dependency - The `-n auto` flag was added for parallel pytest execution but the required package wasn't in dependencies
+2. Missing permissions for `dorny/paths-filter@v3` - The path filtering action needs `pull-requests: read` permission for PR events
+
+**Changes:**
+- Added `pytest-xdist>=3.0` to test dependencies in `backend/pyproject.toml`
+- Added `permissions: pull-requests: read` to the `changes` job in `.github/workflows/test.yml`
+- Updated `CLAUDE.md` to reduce CI polling interval from 30s to 10s
+
+---
+
 ## 2026-01-27 (22)
 
 ### Reset Stale Jobs on Startup

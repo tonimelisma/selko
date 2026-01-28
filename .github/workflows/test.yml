@@ -8,6 +8,22 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      android: ${{ steps.filter.outputs.android }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            android:
+              - 'android/**'
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -34,7 +50,7 @@ jobs:
         run: uv sync --extra test
 
       - name: Run unit tests
-        run: uv run pytest backend/tests/ -m "not integration" -v --tb=short
+        run: uv run pytest backend/tests/ -m "not integration" -v --tb=short -n auto
 
   integration-tests-development:
     name: Integration Tests (Development)
@@ -127,7 +143,7 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: Run integration tests (mocked LLM)
-        run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short
+        run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short -n auto
         env:
           ENVIRONMENT: development
           TEST_USER_EMAIL: test@selko.local
@@ -143,6 +159,8 @@ jobs:
 
   android-unit-tests:
     name: Android Unit Tests
+    needs: changes
+    if: ${{ needs.changes.outputs.android == 'true' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -235,7 +253,7 @@ jobs:
         run: uv sync --extra test
 
       - name: Run staging integration tests (mocked LLM)
-        run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short
+        run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short -n auto
         env:
           ENVIRONMENT: staging
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
