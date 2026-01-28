@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (25)
+
+### Consolidate Google OAuth Callbacks
+
+**Problem:** Separate OAuth callback endpoints (`/gmail/callback`, `/google_calendar/callback`) required duplicate code and multiple redirect URIs in Google Cloud Console.
+
+**Solution:** Unified all Google OAuth callbacks to a single endpoint (`/integrations/google/callback`). The provider is determined from the `state` parameter that already tracked which provider initiated the flow.
+
+**Changes:**
+- Renamed `/integrations/gmail/callback` → `/integrations/google/callback`
+- Added `/integrations/calendar/auth` endpoint for Google Calendar OAuth initiation
+- Updated `ALLOWED_REDIRECT_PATHS` to only allow the unified callback path
+- Updated documentation to reflect the new endpoint structure
+
+**Files Changed:**
+- `backend/selko/api/routes/integrations.py` - Unified callback, added calendar auth
+- `backend/tests/integration/test_integration_api.py` - Updated callback URLs, added calendar auth tests
+- `backend/tests/integration/test_rate_limiting.py` - Updated callback URL
+- `docs/api-workflow.md` - Updated endpoint documentation
+- `docs/supabase-frontend-queries.md` - Updated endpoint documentation
+
+**Google Cloud Console:** Update authorized redirect URIs:
+- Remove: `*/integrations/gmail/callback`, `*/integrations/google_calendar/callback`
+- Add: `http://localhost:8000/integrations/google/callback`, `https://selko.onrender.com/integrations/google/callback`
+
+---
+
 ## 2026-01-27 (24)
 
 ### Fix CI Polling to Handle Failures

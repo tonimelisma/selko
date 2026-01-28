@@ -30,8 +30,7 @@ ALLOWED_REDIRECT_HOSTS = {
 }
 
 ALLOWED_REDIRECT_PATHS = {
-    "/integrations/gmail/callback",
-    "/integrations/google_calendar/callback",
+    "/integrations/google/callback",  # Unified for all Google providers
 }
 
 logger = logging.getLogger(__name__)
@@ -69,7 +68,7 @@ def _validate_redirect_uri(redirect_uri: str) -> bool:
 async def gmail_oauth_initiate(
     user: CurrentUser = Depends(get_current_user),
     config: Config = Depends(get_config),
-    redirect_uri: Annotated[str, Query(description="OAuth callback URI")] = "http://localhost:8000/integrations/gmail/callback",
+    redirect_uri: Annotated[str, Query(description="OAuth callback URI")] = "http://localhost:8000/integrations/google/callback",
 ) -> RedirectResponse:
     """Initiate Gmail OAuth flow.
 
@@ -113,13 +112,16 @@ async def gmail_oauth_initiate(
         )
 
 
-@router.get("/gmail/callback")
-async def gmail_oauth_callback(
+@router.get("/google/callback")
+async def google_oauth_callback(
     code: Annotated[str, Query(description="Authorization code from Google")],
     state: Annotated[str, Query(description="State parameter for CSRF validation")],
     config: Config = Depends(get_config),
 ) -> dict:
-    """Handle Gmail OAuth callback (public endpoint).
+    """Handle Google OAuth callback (public endpoint).
+
+    Unified callback for all Google integrations (Gmail, Calendar, etc.).
+    The provider is determined from the state parameter.
 
     Exchanges authorization code for access and refresh tokens.
     Stores tokens in the integrations table.
@@ -150,25 +152,34 @@ async def gmail_oauth_callback(
         from selko.services.auth import get_service_client
         client = get_service_client(config)
 
-        # Get Gmail profile to store provider email
-        gmail_address = None
-        try:
-            service = build_service(credentials)
-            profile = get_user_profile(service)
-            gmail_address = profile.get("emailAddress")
-        except Exception as e:
-            logger.warning(f"Could not get Gmail profile: {e}")
+        # Get provider-specific profile info
+        provider_email = None
+        if provider == "gmail":
+            try:
+                service = build_service(credentials)
+                profile = get_user_profile(service)
+                provider_email = profile.get("emailAddress")
+            except Exception as e:
+                logger.warning(f"Could not get Gmail profile: {e}")
+        # For google_calendar and other providers, we don't fetch profile info
+        # (Calendar API doesn't have a user profile endpoint)
 
         # Save credentials with EXPLICIT user_id
-        save_oauth_credentials(client, user_id, provider, credentials, gmail_address)
+        save_oauth_credentials(client, user_id, provider, credentials, provider_email)
 
-        logger.info(f"Gmail OAuth completed successfully for user {user_id}")
+        logger.info(f"{provider} OAuth completed successfully for user {user_id}")
+
+        # Build provider-specific success message
+        provider_display = {
+            "gmail": "Gmail",
+            "google_calendar": "Google Calendar",
+        }.get(provider, provider)
 
         return {
             "status": "success",
             "provider": provider,
-            "provider_email": gmail_address,
-            "message": "Gmail integration connected successfully",
+            "provider_email": provider_email,
+            "message": f"{provider_display} integration connected successfully",
         }
 
     except IntegrationError as e:
@@ -182,4 +193,52 @@ async def gmail_oauth_callback(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="OAuth callback failed",
+        )
+
+
+@router.get("/calendar/auth")
+async def calendar_oauth_initiate(
+    user: CurrentUser = Depends(get_current_user),
+    config: Config = Depends(get_config),
+    redirect_uri: Annotated[str, Query(description="OAuth callback URI")] = "http://localhost:8000/integrations/google/callback",
+) -> RedirectResponse:
+    """Initiate Google Calendar OAuth flow.
+
+    Redirects user to Google consent screen to authorize Calendar access.
+    After authorization, Google will redirect to the unified callback endpoint.
+
+    Args:
+        redirect_uri: URI to redirect to after authorization (defaults to local callback).
+
+    Returns:
+        Redirect to Google OAuth consent screen.
+
+    Raises:
+        400: Invalid redirect URI.
+        500: OAuth initiation failed.
+    """
+    # Validate redirect_uri to prevent open redirect attacks
+    if not _validate_redirect_uri(redirect_uri):
+        logger.warning(f"Invalid redirect_uri attempted: {redirect_uri}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid redirect URI",
+        )
+
+    try:
+        result = initiate_oauth_flow(
+            config=config,
+            provider="google_calendar",
+            user_id=user.id,
+            redirect_uri=redirect_uri,
+        )
+
+        # Redirect user to Google OAuth consent screen
+        return RedirectResponse(url=result["auth_url"], status_code=status.HTTP_302_FOUND)
+
+    except IntegrationError as e:
+        logger.error(f"Failed to initiate OAuth: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to initiate OAuth flow",
         )
