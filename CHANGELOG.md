@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (22)
+
+### Reset Stale Jobs on Startup
+
+**Problem:** When the API server crashes or is killed while jobs are in-progress, those jobs remain "locked" until their lock expires. This delays reprocessing by the lock timeout duration.
+
+**Solution:** On startup, immediately call the existing `unlock_expired_*` functions to recover any stale jobs from a previous instance crash.
+
+**Why It's Safe:**
+- All job types are idempotent (upsert-based, no duplicates)
+- Unlock functions already exist and are tested
+- Only resets jobs where `locked_until < now()` (truly stale)
+
+**Files Changed:**
+- `backend/selko/api/app.py` - Added stale job recovery after worker pool starts
+
+**Log Output:**
+```
+INFO: Recovered stale jobs on startup: 2 emails, 1 events, 0 tasks
+```
+(Only logs if any jobs were recovered)
+
+---
+
 ## 2026-01-27 (21)
 
 ### Block Interactive Commands in Claude Code
