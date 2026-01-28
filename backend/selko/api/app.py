@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
     ENABLE_BACKGROUND_PROCESSING=true to enable. This allows running the API
     without background workers for development, testing, or lightweight deployments.
 
-    - Worker pool: Continuously processes jobs from the queue
+    - Worker pool: Continuously processes pending emails and events from data tables
     - APScheduler: Runs periodic tasks (e.g., email fetch scheduling)
     """
     global worker_pool
@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
         # Start APScheduler for cron-like periodic tasks
         logger.info("Starting APScheduler for periodic tasks")
 
-        # Email fetch scheduler - creates email_fetch jobs every 5 minutes
+        # Email fetch scheduler - creates email_fetch tasks every 5 minutes
         scheduler.add_job(
             schedule_email_fetches,
             "interval",
@@ -126,7 +126,7 @@ async def lifespan(app: FastAPI):
 
     # Only stop background workers if they were started
     if config.enable_background_processing:
-        # Stop worker pool first (workers complete current jobs)
+        # Stop worker pool first (workers complete current work)
         if worker_pool:
             await worker_pool.stop()
 

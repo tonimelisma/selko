@@ -500,12 +500,12 @@ graph TD
     *   **Implementation:** Initialized in `app.on_event("startup")`. Runs inside the same event loop as the API.
     *   **Rationale:** Eliminates the need for external cron services (GitHub Actions, Cloud Scheduler) or separate "Clock" processes.
 
-3.  **Background Workers (PostgreSQL Job Queue):**
-    *   Handles async tasks triggered by API calls or the Scheduler (e.g., "Process this email content").
-    *   **Tech:** PostgreSQL-based job queue + asyncio worker pool.
-    *   **Implementation:** `jobs` table with atomic claiming via `FOR UPDATE SKIP LOCKED`. Worker pool with N long-running asyncio tasks continuously process jobs with ~1 second latency.
-    *   **Rationale:** Removes the need for Redis, Celery, or a separate worker process. Provides persistent queue with retry logic, priority ordering, and immediate job processing.
-    *   **Status:** ✅ IMPLEMENTED (2026-01-27) - Full job queue with asyncio worker pool and email_fetch, email_process, and calendar_sync workers.
+3.  **Background Workers (Status-Based Polling):**
+    *   Handles async tasks by polling data tables directly (e.g., "Process pending emails", "Sync approved events").
+    *   **Tech:** Status-based claiming from data tables + asyncio worker pool.
+    *   **Implementation:** Workers claim work directly from `emails` and `events` tables via `FOR UPDATE SKIP LOCKED`. No separate job queue - data tables ARE the queue. `scheduled_tasks` table only for periodic tasks (email_fetch).
+    *   **Rationale:** Single source of truth (data IS the queue), no job-data synchronization bugs, simpler debugging. Removes the need for Redis, Celery, or a separate worker process.
+    *   **Status:** ✅ IMPLEMENTED (2026-01-27) - Status-based worker pool for email processing and calendar sync.
 
 ### **5. Technology Stack Decisions**
 

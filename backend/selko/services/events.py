@@ -533,3 +533,154 @@ def generate_source_attribution(
         })
     
     return gemini.generate_source_attribution(sources_with_email_data)
+
+
+# --- Status-based worker claiming functions for calendar sync ---
+
+
+def claim_approved_event_for_sync(
+    client: Client,
+    worker_id: str,
+    lock_duration_seconds: int = 300,
+) -> Optional[dict[str, Any]]:
+    """Atomically claim the next approved event for calendar sync.
+
+    Uses PostgreSQL FOR UPDATE SKIP LOCKED to safely claim events without
+    conflicts between multiple workers.
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+        worker_id: Unique identifier for this worker process.
+        lock_duration_seconds: How long to hold the lock (default: 5 minutes).
+
+    Returns:
+        Event dict if claimed, None if no approved events available.
+
+    Raises:
+        EventsError: If claim operation fails.
+    """
+    try:
+        result = client.rpc('claim_approved_event', {
+            'p_worker_id': worker_id,
+            'p_lock_duration_seconds': lock_duration_seconds,
+        }).execute()
+
+        if result.data and len(result.data) > 0:
+            event = result.data[0]
+            title = event.get("title", "(no title)")[:50]
+            logger.info(
+                f"Worker {worker_id} claimed event {event['id']}: {title} "
+                f"(attempt {event['sync_attempts']}/{event['max_sync_attempts']})"
+            )
+            return event
+
+        return None
+
+    except Exception as e:
+        raise EventsError(f"Failed to claim approved event: {e}") from e
+
+
+def complete_event_sync(client: Client, event_id: str, google_event_id: str) -> None:
+    """Mark event as synced successfully and clear the lock.
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+        event_id: UUID of event to mark as synced.
+        google_event_id: ID of the created Google Calendar event.
+
+    Raises:
+        EventsError: If update fails.
+    """
+    try:
+        client.table("events").update({
+            "status": "synced",
+            "google_calendar_event_id": google_event_id,
+            "synced_at": datetime.now().isoformat(),
+            "sync_error": None,
+            "locked_by": None,
+            "locked_until": None,
+        }).eq("id", event_id).execute()
+
+        logger.info(f"Completed sync for event {event_id} -> {google_event_id}")
+
+    except Exception as e:
+        raise EventsError(f"Failed to complete event sync: {e}") from e
+
+
+def fail_event_sync(
+    client: Client,
+    event_id: str,
+    error: str,
+) -> None:
+    """Mark event sync as failed.
+
+    If sync_attempts < max_sync_attempts, sets status back to 'approved' for retry.
+    Otherwise, sets status to 'sync_failed' permanently.
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+        event_id: UUID of event that failed syncing.
+        error: Error message to store.
+
+    Raises:
+        EventsError: If update fails.
+    """
+    try:
+        # Fetch current event to check retry eligibility
+        result = client.table("events").select(
+            "sync_attempts, max_sync_attempts"
+        ).eq("id", event_id).single().execute()
+
+        event = result.data
+        should_retry = event["sync_attempts"] < event["max_sync_attempts"]
+
+        update_data = {
+            "status": "approved" if should_retry else "sync_failed",
+            "sync_error": error,
+            "locked_by": None,
+            "locked_until": None,
+        }
+
+        client.table("events").update(update_data).eq("id", event_id).execute()
+
+        if should_retry:
+            logger.warning(
+                f"Event {event_id} sync failed "
+                f"(attempt {event['sync_attempts']}/{event['max_sync_attempts']}): {error}. "
+                f"Will retry."
+            )
+        else:
+            logger.error(
+                f"Event {event_id} sync failed permanently "
+                f"after {event['sync_attempts']} attempts: {error}"
+            )
+
+    except Exception as e:
+        raise EventsError(f"Failed to mark event sync as failed: {e}") from e
+
+
+def unlock_expired_event_locks(client: Client) -> int:
+    """Reset expired event sync locks back to approved.
+
+    Handles the case where a worker crashes mid-sync and the lock expires.
+
+    Args:
+        client: Authenticated Supabase client (should use service role).
+
+    Returns:
+        Number of events unlocked.
+
+    Raises:
+        EventsError: If unlock fails.
+    """
+    try:
+        result = client.rpc('unlock_expired_event_locks').execute()
+        count = result.data if result.data else 0
+
+        if count > 0:
+            logger.warning(f"Unlocked {count} expired event sync locks")
+
+        return count
+
+    except Exception as e:
+        raise EventsError(f"Failed to unlock expired event locks: {e}") from e

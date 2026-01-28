@@ -1,8 +1,12 @@
-"""Worker pool for continuously processing background jobs.
+"""Worker pool for continuously processing background work.
 
 This module implements a pool of long-running asyncio tasks that continuously
-poll the job queue and process jobs as they become available, replacing the
-scheduled polling approach with immediate job processing.
+poll for work from three sources:
+1. Scheduled tasks (e.g., email_fetch)
+2. Pending emails (status-based claiming)
+3. Approved events (status-based claiming)
+
+This replaces the job queue with direct status-based polling of data tables.
 """
 
 import asyncio
@@ -12,19 +16,37 @@ from typing import Any, Optional
 
 from selko.config import Config, load_config
 from selko.services.auth import get_service_client
-from selko.services.jobs import JobsError, claim_job, complete_job, fail_job
+from selko.services.scheduled_tasks import (
+    ScheduledTasksError,
+    claim_scheduled_task,
+    complete_scheduled_task,
+    fail_scheduled_task,
+)
+from selko.services.emails import (
+    EmailError,
+    claim_pending_email,
+    complete_email_processing,
+    fail_email_processing,
+)
+from selko.services.events import (
+    EventsError,
+    claim_approved_event_for_sync,
+    complete_event_sync,
+    fail_event_sync,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class WorkerPool:
-    """Manages a pool of long-running worker tasks for background job processing.
-    
-    The worker pool creates multiple asyncio tasks that continuously poll the
-    job queue and process jobs as they become available. This provides:
-    - Low latency (jobs start processing within ~1 second)
-    - High throughput (multiple jobs processed concurrently)
-    - Graceful shutdown (workers complete current jobs before stopping)
+    """Manages a pool of long-running worker tasks for background processing.
+
+    The worker pool creates multiple asyncio tasks that continuously poll for
+    work from scheduled tasks and data tables. This provides:
+    - Low latency (work starts processing within ~1 second)
+    - High throughput (multiple items processed concurrently)
+    - Graceful shutdown (workers complete current work before stopping)
+    - Single source of truth (data tables ARE the queue)
     """
 
     def __init__(
@@ -34,10 +56,10 @@ class WorkerPool:
         error_backoff_seconds: float = 5.0,
     ):
         """Initialize the worker pool.
-        
+
         Args:
             num_workers: Number of concurrent worker tasks (default: 3).
-            idle_sleep_seconds: Time to sleep when no jobs available (default: 1.0).
+            idle_sleep_seconds: Time to sleep when no work available (default: 1.0).
             error_backoff_seconds: Time to sleep after errors (default: 5.0).
         """
         self.num_workers = num_workers
@@ -49,7 +71,7 @@ class WorkerPool:
 
     async def start(self) -> None:
         """Start the worker pool by spawning worker tasks.
-        
+
         Creates num_workers asyncio tasks that will run continuously
         until stop() is called.
         """
@@ -74,10 +96,10 @@ class WorkerPool:
 
     async def stop(self, timeout: float = 30.0) -> None:
         """Gracefully stop all workers.
-        
+
         Sets the running flag to False and cancels all worker tasks,
         waiting for them to complete or timeout.
-        
+
         Args:
             timeout: Maximum time to wait for workers to finish (default: 30 seconds).
         """
@@ -106,38 +128,25 @@ class WorkerPool:
         logger.info("Worker pool stopped")
 
     async def _worker_loop(self, worker_id: str) -> None:
-        """Main worker loop - continuously claim and process jobs.
-        
-        This loop runs until self.running becomes False. It:
-        1. Claims the next available job from the queue
-        2. Processes the job by dispatching to the appropriate handler
-        3. Marks the job as completed or failed
-        4. Sleeps briefly if no jobs available or on error
-        
+        """Main worker loop - continuously find and process work.
+
+        This loop runs until self.running becomes False. It polls three sources:
+        1. Scheduled tasks (email_fetch)
+        2. Pending emails (for LLM processing)
+        3. Approved events (for calendar sync)
+
         Args:
             worker_id: Unique identifier for this worker.
         """
         logger.info(f"{worker_id}: Started")
 
-        # Import worker functions here to avoid circular imports
-        from selko.workers.email_fetch import process_email_fetch_job
-        from selko.workers.email_process import process_email_process_job
-        from selko.workers.calendar_sync import process_calendar_sync_job
-
-        # Map job types to handler functions
-        handlers = {
-            "email_fetch": process_email_fetch_job,
-            "email_process": process_email_process_job,
-            "calendar_sync": process_calendar_sync_job,
-        }
-
         while self.running:
             try:
-                # Try to claim a job
-                job = await self._claim_and_process_job(worker_id, handlers)
+                # Try to find and process any work
+                processed = await self._process_any_work(worker_id)
 
-                if not job:
-                    # No jobs available, sleep briefly
+                if not processed:
+                    # No work available, sleep briefly
                     await asyncio.sleep(self.idle_sleep_seconds)
 
             except asyncio.CancelledError:
@@ -152,66 +161,151 @@ class WorkerPool:
 
         logger.info(f"{worker_id}: Stopped")
 
-    async def _claim_and_process_job(
-        self,
-        worker_id: str,
-        handlers: dict[str, Any],
-    ) -> Optional[dict[str, Any]]:
-        """Claim and process a single job.
-        
+    async def _process_any_work(self, worker_id: str) -> bool:
+        """Try to find and process work from any source.
+
+        Polls in priority order:
+        1. Scheduled tasks (periodic operations like email_fetch)
+        2. Pending emails (need LLM processing)
+        3. Approved events (need calendar sync)
+
         Args:
             worker_id: Unique identifier for this worker.
-            handlers: Dict mapping job_type to handler function.
-        
+
         Returns:
-            Job dict if processed, None if no jobs available.
+            True if work was processed, False if no work available.
         """
         if not self.config:
             raise RuntimeError("Worker pool config not initialized")
 
-        # Get service client for this job
         client = get_service_client(self.config)
 
+        # 1. Try scheduled tasks first (email_fetch)
         try:
-            # Atomically claim next job
-            job = claim_job(
-                client,
-                list(handlers.keys()),
-                worker_id,
-                lock_duration_seconds=300,  # 5 minute lock
-            )
+            task = claim_scheduled_task(client, ["email_fetch"], worker_id)
+            if task:
+                await self._process_scheduled_task(client, worker_id, task)
+                return True
+        except ScheduledTasksError as e:
+            logger.error(f"{worker_id}: Error claiming scheduled task: {e}")
 
-            if not job:
-                return None
+        # 2. Try pending emails
+        try:
+            email = claim_pending_email(client, worker_id)
+            if email:
+                await self._process_email(client, worker_id, email)
+                return True
+        except EmailError as e:
+            logger.error(f"{worker_id}: Error claiming email: {e}")
 
-            job_id = job["id"]
-            job_type = job["job_type"]
-            payload = job["payload"]
+        # 3. Try approved events
+        try:
+            event = claim_approved_event_for_sync(client, worker_id)
+            if event:
+                await self._process_event_sync(client, worker_id, event)
+                return True
+        except EventsError as e:
+            logger.error(f"{worker_id}: Error claiming event: {e}")
 
-            logger.info(f"{worker_id}: Processing job {job_id}: {job_type}")
+        return False
 
-            # Dispatch to appropriate handler
-            handler = handlers.get(job_type)
-            if not handler:
-                raise JobsError(f"Unknown job type: {job_type}")
+    async def _process_scheduled_task(
+        self,
+        client: Any,
+        worker_id: str,
+        task: dict[str, Any],
+    ) -> None:
+        """Process a scheduled task (e.g., email_fetch).
 
-            # Execute the job
-            await handler(client, self.config, job_id, payload)
+        Args:
+            client: Supabase client.
+            worker_id: Unique identifier for this worker.
+            task: The claimed scheduled task.
+        """
+        from selko.workers.email_fetch import process_email_fetch_task
 
-            # Mark as completed
-            complete_job(client, job_id)
-            logger.info(f"{worker_id}: Completed job {job_id}")
+        task_id = task["id"]
+        task_type = task["task_type"]
+        payload = task["payload"]
 
-            return job
+        logger.info(f"{worker_id}: Processing scheduled task {task_id}: {task_type}")
+
+        try:
+            if task_type == "email_fetch":
+                await process_email_fetch_task(client, self.config, payload)
+            else:
+                raise ValueError(f"Unknown scheduled task type: {task_type}")
+
+            complete_scheduled_task(client, task_id)
+            logger.info(f"{worker_id}: Completed scheduled task {task_id}")
 
         except Exception as e:
-            # Job failed - mark it and let retry logic handle it
-            logger.error(f"{worker_id}: Job {job_id} failed: {e}", exc_info=True)
+            logger.error(f"{worker_id}: Scheduled task {task_id} failed: {e}", exc_info=True)
             try:
-                fail_job(client, job_id, str(e), retry=True)
+                fail_scheduled_task(client, task_id, str(e))
             except Exception as fail_error:
-                logger.error(
-                    f"{worker_id}: Failed to mark job as failed: {fail_error}"
-                )
+                logger.error(f"{worker_id}: Failed to mark task as failed: {fail_error}")
 
-            return job  # Return job so we don't sleep
+    async def _process_email(
+        self,
+        client: Any,
+        worker_id: str,
+        email: dict[str, Any],
+    ) -> None:
+        """Process an email for event extraction.
+
+        Args:
+            client: Supabase client.
+            worker_id: Unique identifier for this worker.
+            email: The claimed email record.
+        """
+        from selko.workers.email_process import process_email
+
+        email_id = email["id"]
+        subject = email.get("subject", "(no subject)")[:50]
+
+        logger.info(f"{worker_id}: Processing email {email_id}: {subject}")
+
+        try:
+            await process_email(client, self.config, email)
+            complete_email_processing(client, email_id)
+            logger.info(f"{worker_id}: Completed email {email_id}")
+
+        except Exception as e:
+            logger.error(f"{worker_id}: Email {email_id} failed: {e}", exc_info=True)
+            try:
+                fail_email_processing(client, email_id, str(e))
+            except Exception as fail_error:
+                logger.error(f"{worker_id}: Failed to mark email as failed: {fail_error}")
+
+    async def _process_event_sync(
+        self,
+        client: Any,
+        worker_id: str,
+        event: dict[str, Any],
+    ) -> None:
+        """Sync an approved event to Google Calendar.
+
+        Args:
+            client: Supabase client.
+            worker_id: Unique identifier for this worker.
+            event: The claimed event record.
+        """
+        from selko.workers.calendar_sync import sync_event
+
+        event_id = event["id"]
+        title = event.get("title", "(no title)")[:50]
+
+        logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
+
+        try:
+            google_event_id = await sync_event(client, self.config, event)
+            complete_event_sync(client, event_id, google_event_id)
+            logger.info(f"{worker_id}: Completed event sync {event_id}")
+
+        except Exception as e:
+            logger.error(f"{worker_id}: Event {event_id} sync failed: {e}", exc_info=True)
+            try:
+                fail_event_sync(client, event_id, str(e))
+            except Exception as fail_error:
+                logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")

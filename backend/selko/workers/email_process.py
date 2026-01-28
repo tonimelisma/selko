@@ -1,10 +1,11 @@
 """Email process worker - extracts calendar events from emails using LLM.
 
 This worker:
-1. Fetches email and attachments from database
+1. Receives a full email record (claimed via status-based polling)
 2. Calls Gemini LLM to extract calendar events
 3. Creates events in the events table
-4. Marks email as processed
+
+Note: The worker pool handles status updates (processed/failed).
 """
 
 import logging
@@ -19,42 +20,29 @@ from selko.services.gemini import get_gemini_client
 logger = logging.getLogger(__name__)
 
 
-async def process_email_process_job(
+async def process_email(
     client: Client,
     config: Config,
-    job_id: str,
-    payload: dict[str, Any],
+    email: dict[str, Any],
 ) -> None:
-    """Process an email_process job.
+    """Process an email for calendar event extraction.
+
+    This is called by the worker pool after claiming an email.
+    Status updates are handled by the worker pool.
 
     Args:
         client: Supabase client (with service role).
         config: Application configuration.
-        job_id: UUID of the job being processed.
-        payload: Job payload with {email_id: str}.
+        email: Full email record (from claim_pending_email).
 
     Raises:
         EventsError: If event extraction/processing fails.
     """
-    email_id = payload.get("email_id")
+    email_id = email["id"]
+    user_id = email["user_id"]
+    subject = email.get("subject", "(no subject)")
 
-    if not email_id:
-        raise ValueError("Missing email_id in payload")
-
-    logger.info(f"Processing email {email_id} for calendar events")
-
-    # Get email metadata to determine user_id
-    try:
-        email_result = client.table("emails").select(
-            "user_id, subject"
-        ).eq("id", email_id).single().execute()
-
-        email = email_result.data
-        user_id = email["user_id"]
-        subject = email.get("subject", "(no subject)")
-
-    except Exception as e:
-        raise EventsError(f"Failed to fetch email {email_id}: {e}") from e
+    logger.info(f"Processing email {email_id} for calendar events: {subject[:50]}")
 
     # Initialize Gemini client
     try:
@@ -80,12 +68,53 @@ async def process_email_process_job(
             logger.info(f"Email {email_id} skipped (sender ignored)")
         elif num_events > 0:
             logger.info(
-                f"Extracted {num_events} events from email '{subject}': "
+                f"Extracted {num_events} events from email '{subject[:50]}': "
                 f"{num_new} new, {num_updated} updated"
             )
         else:
-            logger.info(f"No events found in email '{subject}'")
+            logger.info(f"No events found in email '{subject[:50]}'")
 
     except EventsError as e:
         logger.error(f"Failed to process email {email_id}: {e}")
         raise
+
+
+# Keep old function signature for backwards compatibility with existing tests
+async def process_email_process_job(
+    client: Client,
+    config: Config,
+    job_id: str,
+    payload: dict[str, Any],
+) -> None:
+    """Legacy function for processing email_process jobs.
+
+    This function is kept for backwards compatibility during the transition.
+    New code should use process_email() directly.
+
+    Args:
+        client: Supabase client (with service role).
+        config: Application configuration.
+        job_id: UUID of the job being processed (unused in new architecture).
+        payload: Job payload with {email_id: str}.
+
+    Raises:
+        EventsError: If event extraction/processing fails.
+    """
+    email_id = payload.get("email_id")
+
+    if not email_id:
+        raise ValueError("Missing email_id in payload")
+
+    # Fetch the full email record
+    try:
+        email_result = client.table("emails").select("*").eq(
+            "id", email_id
+        ).single().execute()
+
+        email = email_result.data
+
+    except Exception as e:
+        raise EventsError(f"Failed to fetch email {email_id}: {e}") from e
+
+    # Process using new function
+    await process_email(client, config, email)
