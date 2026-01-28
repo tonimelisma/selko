@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (21)
+
+### Block Interactive Commands in Claude Code
+
+**Problem:** `gh pr checks --watch` is an interactive command that Claude Code cannot parse properly. The output stream causes the agent to hang or produce unparsable results.
+
+**Solution:**
+- Created PreToolUse hook to block `gh pr checks --watch` commands
+- Updated CLAUDE.md to use polling approach instead: `while ! gh pr checks; do sleep 30; done`
+- Added "Blocked Commands" section documenting blocked commands and alternatives
+
+**Files Changed:**
+- `.claude/hooks/block-interactive-commands.sh` - New hook script
+- `.claude/settings.json` - Added Bash hook matcher
+- `CLAUDE.md` - Updated commands and added blocked commands section
+
+---
+
 ## 2026-01-27 (20)
 
 ### Replace Job Queue with Status-Based Workers
