@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-27 (26)
+
+### CI Path Filtering Optimization
+
+**Problem:** CI runs all tests on every push, even for documentation-only changes. Integration tests take 4+ minutes due to Supabase startup (182 seconds).
+
+**Solution:** Expanded `dorny/paths-filter` to detect backend, supabase, and android changes. Jobs now only run when relevant files change.
+
+**Path Filters:**
+- `backend`: `backend/**`, `cli/**`, `pyproject.toml`, `uv.lock`
+- `supabase`: `supabase/**`
+- `android`: `android/**`
+
+**Conditional Jobs:**
+- **Unit Tests**: Only run when backend files change
+- **Integration Tests**: Only run when backend OR supabase files change
+- **Android Tests**: Only run when android files change (removed `|| github.event_name == 'push'` that defeated filtering)
+- **Deploy Staging**: Only run when backend OR supabase files change
+
+**Expected Behavior:**
+- Markdown-only PR → No test jobs run (fast)
+- Backend-only PR → Unit tests + integration tests (skips Android)
+- Android-only PR → Android tests only (skips Supabase startup)
+- Supabase-only PR → Integration tests only
+
+**Files Changed:**
+- `.github/workflows/test.yml` - Added path filters and job conditions
+
+---
+
 ## 2026-01-27 (25)
 
 ### Consolidate Google OAuth Callbacks + Fix Error Handling
