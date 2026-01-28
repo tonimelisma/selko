@@ -24,7 +24,18 @@ BLOCKED: 'gh pr checks --watch' is interactive and cannot be used.
 The --watch flag creates streaming output that Claude Code cannot parse.
 
 Use polling instead:
-    while ! gh pr checks; do sleep 30; done && gh pr merge --squash
+    while true; do
+      gh pr checks
+      status=$?
+      if [ $status -eq 0 ]; then
+        gh pr merge --squash
+        break
+      elif [ $status -ne 8 ]; then
+        echo "CI checks failed"
+        exit 1
+      fi
+      sleep 10
+    done
 ================================================================================
 
 EOF
