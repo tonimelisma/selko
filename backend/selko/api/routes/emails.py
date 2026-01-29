@@ -14,6 +14,7 @@ from selko.api.deps import (
     CurrentUser,
     get_authenticated_client,
     get_current_user,
+    get_llm_gateway,
     get_quota_service,
 )
 from selko.api.schemas.emails import (
@@ -25,8 +26,8 @@ from selko.api.schemas.emails import (
 from selko.config import load_config
 from selko.services.emails import EmailError, fetch_emails_for_user
 from selko.services.events import EventsError, process_email_for_events
-from selko.services.gemini import get_gemini_client
-from selko.services.quotas import QuotaService
+from selko.services.llm_gateway import LLMGateway
+from selko.services.quotas import QuotaExceededError, QuotaService
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +117,7 @@ async def process_email(
     response: Response,
     client: Client = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
-    quota_service: QuotaService = Depends(get_quota_service),
+    gateway: LLMGateway = Depends(get_llm_gateway),
 ) -> EmailProcessResponse:
     """Process an email to extract calendar events.
 
@@ -135,26 +136,6 @@ async def process_email(
         429: LLM quota exceeded.
         500: Event extraction failed.
     """
-    # Check LLM quota BEFORE any expensive operations
-    quota_result = quota_service.check_and_increment(user.id, "llm_calls")
-    if not quota_result.allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Daily LLM processing quota exceeded",
-            headers={
-                "X-RateLimit-Limit": str(quota_result.limit),
-                "X-RateLimit-Remaining": "0",
-                "X-RateLimit-Reset": quota_result.resets_at,
-            },
-        )
-
-    # Add quota headers to response
-    response.headers["X-RateLimit-Limit"] = str(quota_result.limit)
-    response.headers["X-RateLimit-Remaining"] = str(quota_result.remaining)
-    response.headers["X-RateLimit-Reset"] = quota_result.resets_at
-
-    config = load_config()
-
     # Verify email exists and belongs to user
     try:
         result = (
@@ -181,12 +162,11 @@ async def process_email(
             detail="Failed to verify email",
         )
 
-    # Process email for events
+    # Process email for events (gateway handles rate limiting)
     try:
-        gemini_client = get_gemini_client(config)
         process_result = process_email_for_events(
             supabase_client=client,
-            gemini_client=gemini_client,
+            gateway=gateway,
             email_id=email_id,
             user_id=user.id,
         )
@@ -209,6 +189,15 @@ async def process_email(
             event_ids=event_ids,
         )
 
+    except QuotaExceededError as e:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(e),
+            headers={
+                "X-RateLimit-Limit": str(e.limit),
+                "X-RateLimit-Remaining": "0",
+            },
+        )
     except EventsError as e:
         logger.error(f"Failed to process email for events: {e}")
         raise HTTPException(
@@ -223,7 +212,7 @@ async def batch_process_emails(
     response: Response,
     client: Client = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
-    quota_service: QuotaService = Depends(get_quota_service),
+    gateway: LLMGateway = Depends(get_llm_gateway),
 ) -> EmailProcessResponse:
     """Process multiple recent emails to extract events.
 
@@ -240,9 +229,7 @@ async def batch_process_emails(
         429: LLM quota exceeded.
         500: Event extraction failed.
     """
-    config = load_config()
-
-    # Fetch recent emails first to know how many LLM calls we need
+    # Fetch recent emails first
     try:
         result = (
             client.table("emails")
@@ -271,40 +258,18 @@ async def batch_process_emails(
             detail="Failed to fetch emails for processing",
         )
 
-    # Check LLM quota for all emails BEFORE processing
-    # Each email requires 1 LLM call
-    num_emails = len(email_ids)
-    quota_result = quota_service.check_and_increment(user.id, "llm_calls", num_emails)
-    if not quota_result.allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Daily LLM quota exceeded. Requested {num_emails} calls, only {quota_result.remaining + num_emails} remaining.",
-            headers={
-                "X-RateLimit-Limit": str(quota_result.limit),
-                "X-RateLimit-Remaining": str(quota_result.remaining),
-                "X-RateLimit-Reset": quota_result.resets_at,
-            },
-        )
-
-    # Add quota headers to response
-    response.headers["X-RateLimit-Limit"] = str(quota_result.limit)
-    response.headers["X-RateLimit-Remaining"] = str(quota_result.remaining)
-    response.headers["X-RateLimit-Reset"] = quota_result.resets_at
-
-    # Process each email
+    # Process each email (gateway handles per-call rate limiting)
     try:
-        gemini_client = get_gemini_client(config)
-
         total_events = 0
         total_new = 0
         total_updated = 0
-        all_event_ids = []
+        all_event_ids: list[str] = []
 
         for email_id in email_ids:
             try:
                 process_result = process_email_for_events(
                     supabase_client=client,
-                    gemini_client=gemini_client,
+                    gateway=gateway,
                     email_id=email_id,
                     user_id=user.id,
                 )
@@ -325,6 +290,17 @@ async def batch_process_emails(
                 event_ids = [row["event_id"] for row in events_result.data]
                 all_event_ids.extend(event_ids)
 
+            except QuotaExceededError as e:
+                # Stop batch processing when quota is exceeded
+                logger.warning(f"Quota exceeded during batch processing: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Quota exceeded after processing some emails: {e}",
+                    headers={
+                        "X-RateLimit-Limit": str(e.limit),
+                        "X-RateLimit-Remaining": "0",
+                    },
+                )
             except EventsError as e:
                 logger.error(f"Failed to process email {email_id}: {e}")
                 continue
@@ -341,6 +317,8 @@ async def batch_process_emails(
             event_ids=list(set(all_event_ids)),  # Deduplicate
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Batch processing failed: {e}")
         raise HTTPException(

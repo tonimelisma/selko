@@ -16,6 +16,7 @@ from selko.services.gemini import (
     get_gemini_client,
     merge_event_data,
 )
+from selko.services.llm_gateway import LLMGateway, LLMGatewayError, LLMRateLimitError
 
 
 @pytest.fixture
@@ -53,12 +54,23 @@ def load_fixture(fixtures_dir: Path, fixture_name: str) -> dict:
         return json.load(f)
 
 
+@pytest.fixture
+def mock_gateway(mock_config):
+    """Create a mock LLMGateway."""
+    with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        gateway = LLMGateway(mock_config)
+        gateway._mock_client = mock_client  # Store for test access
+        return gateway
+
+
 class TestGetGeminiClient:
     """Test Gemini client initialization."""
 
     def test_success(self, mock_config):
         """Test successful client initialization."""
-        with patch("selko.services.gemini.genai.Client") as mock_client_class:
+        with patch("selko.services.llm_gateway.genai.Client") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -83,7 +95,7 @@ class TestGetGeminiClient:
 
     def test_client_initialization_failure(self, mock_config):
         """Test error handling when client initialization fails."""
-        with patch("selko.services.gemini.genai.Client") as mock_client_class:
+        with patch("selko.services.llm_gateway.genai.Client") as mock_client_class:
             mock_client_class.side_effect = Exception("API connection failed")
 
             with pytest.raises(GeminiError) as exc_info:
@@ -107,7 +119,7 @@ class TestExtractCalendarEvents:
         ],
     )
     def test_extraction_from_fixtures(
-        self, fixtures_dir, fixture_name, expected_found, expected_count
+        self, mock_config, fixtures_dir, fixture_name, expected_found, expected_count
     ):
         """Test event extraction using fixture files.
 
@@ -117,418 +129,485 @@ class TestExtractCalendarEvents:
         input_data = fixture["input"]
         expected_data = fixture["expected"]
 
-        # Mock Gemini client and response
-        mock_client = MagicMock()
-        mock_response = MagicMock()
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        # Build mock Gemini response (events only, no metadata)
-        mock_gemini_response = GeminiEventsResponse(
-            events_found=expected_data["events_found"],
-            events=expected_data["events"],
-        )
-        mock_response.parsed = mock_gemini_response
+            # Build mock Gemini response (events only, no metadata)
+            mock_response = MagicMock()
+            mock_gemini_response = GeminiEventsResponse(
+                events_found=expected_data["events_found"],
+                events=expected_data["events"],
+            )
+            mock_response.parsed = mock_gemini_response
+            mock_client.models.generate_content.return_value = mock_response
 
-        mock_client.models.generate_content.return_value = mock_response
+            # Create gateway
+            gateway = LLMGateway(mock_config)
 
-        # Extract email metadata
-        email_metadata = {
-            "gmail_id": input_data["gmail_id"],
-            "subject": input_data["subject"],
-            "from_name": input_data.get("from_name"),
-            "from_email": input_data["from_email"],
-            "date_sent": input_data["date_sent"],
-        }
+            # Extract email metadata
+            email_metadata = {
+                "gmail_id": input_data["gmail_id"],
+                "subject": input_data["subject"],
+                "from_name": input_data.get("from_name"),
+                "from_email": input_data["from_email"],
+                "date_sent": input_data["date_sent"],
+            }
 
-        # Call extraction
-        result = extract_calendar_events(
-            client=mock_client,
-            email_text=input_data["body_text"],
-            email_metadata=email_metadata,
-            attachments=input_data.get("attachments"),
-        )
-
-        # Verify results
-        assert result.events_found == expected_found
-        assert len(result.events) == expected_count
-        assert result.sender_email == input_data["from_email"]
-
-        # Verify Gemini was called
-        mock_client.models.generate_content.assert_called_once()
-
-    def test_rate_limit_retry(self):
-        """Test retry logic on rate limit errors."""
-        mock_client = MagicMock()
-
-        # First call raises rate limit error, second succeeds
-        mock_response = MagicMock()
-        mock_gemini_response = GeminiEventsResponse(
-            events_found=False,
-            events=[],
-        )
-        mock_response.parsed = mock_gemini_response
-
-        mock_client.models.generate_content.side_effect = [
-            Exception("429 Rate limit exceeded"),
-            mock_response,
-        ]
-
-        email_metadata = {
-            "gmail_id": "test-123",
-            "subject": "Test",
-            "from_email": "test@example.com",
-            "date_sent": "2026-01-20T10:00:00Z",
-        }
-
-        # Should succeed after retry
-        with patch("selko.services.gemini.time.sleep"):  # Skip actual sleep
+            # Call extraction
             result = extract_calendar_events(
-                client=mock_client,
-                email_text="Test email",
+                gateway=gateway,
+                email_text=input_data["body_text"],
                 email_metadata=email_metadata,
-                max_retries=3,
+                attachments=input_data.get("attachments"),
             )
 
-        assert result.events_found is False
-        assert mock_client.models.generate_content.call_count == 2
+            # Verify results
+            assert result.events_found == expected_found
+            assert len(result.events) == expected_count
+            assert result.sender_email == input_data["from_email"]
 
-    def test_rate_limit_exhausted(self):
-        """Test failure after exhausting retries."""
-        mock_client = MagicMock()
-        mock_client.models.generate_content.side_effect = Exception(
-            "429 Rate limit exceeded"
-        )
+            # Verify Gemini was called
+            mock_client.models.generate_content.assert_called_once()
 
-        email_metadata = {
-            "gmail_id": "test-123",
-            "subject": "Test",
-            "from_email": "test@example.com",
-            "date_sent": "2026-01-20T10:00:00Z",
-        }
+    def test_rate_limit_retry(self, mock_config):
+        """Test retry logic on rate limit errors."""
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        with patch("selko.services.gemini.time.sleep"):  # Skip actual sleep
-            with pytest.raises(GeminiError) as exc_info:
-                extract_calendar_events(
-                    client=mock_client,
+            # First call raises rate limit error, second succeeds
+            mock_response = MagicMock()
+            mock_gemini_response = GeminiEventsResponse(
+                events_found=False,
+                events=[],
+            )
+            mock_response.parsed = mock_gemini_response
+
+            mock_client.models.generate_content.side_effect = [
+                Exception("429 Rate limit exceeded"),
+                mock_response,
+            ]
+
+            gateway = LLMGateway(mock_config)
+
+            email_metadata = {
+                "gmail_id": "test-123",
+                "subject": "Test",
+                "from_email": "test@example.com",
+                "date_sent": "2026-01-20T10:00:00Z",
+            }
+
+            # Should succeed after retry
+            with patch("selko.services.llm_gateway.time.sleep"):  # Skip actual sleep
+                result = extract_calendar_events(
+                    gateway=gateway,
                     email_text="Test email",
                     email_metadata=email_metadata,
-                    max_retries=2,
+                    max_retries=3,
                 )
 
-        assert "rate limited" in str(exc_info.value).lower()
+            assert result.events_found is False
+            assert mock_client.models.generate_content.call_count == 2
 
-    def test_non_rate_limit_error(self):
-        """Test immediate failure on non-rate-limit errors."""
-        mock_client = MagicMock()
-        mock_client.models.generate_content.side_effect = Exception("Invalid API key")
-
-        email_metadata = {
-            "gmail_id": "test-123",
-            "subject": "Test",
-            "from_email": "test@example.com",
-            "date_sent": "2026-01-20T10:00:00Z",
-        }
-
-        with pytest.raises(GeminiError) as exc_info:
-            extract_calendar_events(
-                client=mock_client,
-                email_text="Test email",
-                email_metadata=email_metadata,
+    def test_rate_limit_exhausted(self, mock_config):
+        """Test failure after exhausting retries."""
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
+            mock_client.models.generate_content.side_effect = Exception(
+                "429 Rate limit exceeded"
             )
 
-        # Should fail immediately, not retry
-        assert mock_client.models.generate_content.call_count == 1
-        assert "Invalid API key" in str(exc_info.value)
+            gateway = LLMGateway(mock_config)
 
-    def test_attachment_handling(self):
+            email_metadata = {
+                "gmail_id": "test-123",
+                "subject": "Test",
+                "from_email": "test@example.com",
+                "date_sent": "2026-01-20T10:00:00Z",
+            }
+
+            with patch("selko.services.llm_gateway.time.sleep"):  # Skip actual sleep
+                with pytest.raises(LLMRateLimitError) as exc_info:
+                    extract_calendar_events(
+                        gateway=gateway,
+                        email_text="Test email",
+                        email_metadata=email_metadata,
+                        max_retries=2,
+                    )
+
+            assert "rate limited" in str(exc_info.value).lower()
+
+    def test_non_rate_limit_error(self, mock_config):
+        """Test immediate failure on non-rate-limit errors."""
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
+            mock_client.models.generate_content.side_effect = Exception("Invalid API key")
+
+            gateway = LLMGateway(mock_config)
+
+            email_metadata = {
+                "gmail_id": "test-123",
+                "subject": "Test",
+                "from_email": "test@example.com",
+                "date_sent": "2026-01-20T10:00:00Z",
+            }
+
+            with pytest.raises(GeminiError) as exc_info:
+                extract_calendar_events(
+                    gateway=gateway,
+                    email_text="Test email",
+                    email_metadata=email_metadata,
+                )
+
+            # Should fail immediately, not retry
+            assert mock_client.models.generate_content.call_count == 1
+            assert "Invalid API key" in str(exc_info.value)
+
+    def test_attachment_handling(self, mock_config):
         """Test that attachments are properly added to request."""
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_gemini_response = GeminiEventsResponse(
-            events_found=True,
-            events=[],
-        )
-        mock_response.parsed = mock_gemini_response
-        mock_client.models.generate_content.return_value = mock_response
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        email_metadata = {
-            "gmail_id": "test-123",
-            "subject": "Test with attachment",
-            "from_email": "test@example.com",
-            "date_sent": "2026-01-20T10:00:00Z",
-        }
+            mock_response = MagicMock()
+            mock_gemini_response = GeminiEventsResponse(
+                events_found=True,
+                events=[],
+            )
+            mock_response.parsed = mock_gemini_response
+            mock_client.models.generate_content.return_value = mock_response
 
-        attachments = [
-            {
-                "data": b"fake image data",
-                "mime_type": "image/jpeg",
-                "filename": "invite.jpg",
+            gateway = LLMGateway(mock_config)
+
+            email_metadata = {
+                "gmail_id": "test-123",
+                "subject": "Test with attachment",
+                "from_email": "test@example.com",
+                "date_sent": "2026-01-20T10:00:00Z",
             }
-        ]
 
-        result = extract_calendar_events(
-            client=mock_client,
-            email_text="See attached invitation",
-            email_metadata=email_metadata,
-            attachments=attachments,
-        )
+            attachments = [
+                {
+                    "data": b"fake image data",
+                    "mime_type": "image/jpeg",
+                    "filename": "invite.jpg",
+                }
+            ]
 
-        assert result.events_found is True
-        mock_client.models.generate_content.assert_called_once()
+            result = extract_calendar_events(
+                gateway=gateway,
+                email_text="See attached invitation",
+                email_metadata=email_metadata,
+                attachments=attachments,
+            )
 
-        # Verify attachments were included in call
-        call_args = mock_client.models.generate_content.call_args
-        contents = call_args.kwargs["contents"]
-        assert len(contents) > 2  # Should have text parts + attachment
+            assert result.events_found is True
+            mock_client.models.generate_content.assert_called_once()
 
-    def test_oversized_attachment_skipped(self):
+            # Verify attachments were included in call
+            call_args = mock_client.models.generate_content.call_args
+            contents = call_args.kwargs["contents"]
+            assert len(contents) > 2  # Should have text parts + attachment
+
+    def test_oversized_attachment_skipped(self, mock_config):
         """Test that oversized attachments are skipped."""
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_gemini_response = GeminiEventsResponse(
-            events_found=False,
-            events=[],
-        )
-        mock_response.parsed = mock_gemini_response
-        mock_client.models.generate_content.return_value = mock_response
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        email_metadata = {
-            "gmail_id": "test-123",
-            "subject": "Test with large attachment",
-            "from_email": "test@example.com",
-            "date_sent": "2026-01-20T10:00:00Z",
-        }
+            mock_response = MagicMock()
+            mock_gemini_response = GeminiEventsResponse(
+                events_found=False,
+                events=[],
+            )
+            mock_response.parsed = mock_gemini_response
+            mock_client.models.generate_content.return_value = mock_response
 
-        # 25MB attachment (over 20MB limit)
-        large_data = b"x" * (25 * 1024 * 1024)
-        attachments = [
-            {
-                "data": large_data,
-                "mime_type": "application/pdf",
-                "filename": "large.pdf",
+            gateway = LLMGateway(mock_config)
+
+            email_metadata = {
+                "gmail_id": "test-123",
+                "subject": "Test with large attachment",
+                "from_email": "test@example.com",
+                "date_sent": "2026-01-20T10:00:00Z",
             }
-        ]
 
-        result = extract_calendar_events(
-            client=mock_client,
-            email_text="See attached document",
-            email_metadata=email_metadata,
-            attachments=attachments,
-        )
+            # 25MB attachment (over 20MB limit)
+            large_data = b"x" * (25 * 1024 * 1024)
+            attachments = [
+                {
+                    "data": large_data,
+                    "mime_type": "application/pdf",
+                    "filename": "large.pdf",
+                }
+            ]
 
-        assert result.events_found is False
+            result = extract_calendar_events(
+                gateway=gateway,
+                email_text="See attached document",
+                email_metadata=email_metadata,
+                attachments=attachments,
+            )
 
-        # Verify call was made (but without the oversized attachment)
-        call_args = mock_client.models.generate_content.call_args
-        contents = call_args.kwargs["contents"]
-        # Should only have text parts, no attachment part
-        assert len(contents) == 2
+            assert result.events_found is False
+
+            # Verify call was made (but without the oversized attachment)
+            call_args = mock_client.models.generate_content.call_args
+            contents = call_args.kwargs["contents"]
+            # Should only have text parts, no attachment part
+            assert len(contents) == 2
 
 
 class TestCompareEvents:
     """Test event comparison for deduplication."""
 
-    def test_returns_none_when_no_candidates(self):
+    def test_returns_none_when_no_candidates(self, mock_config):
         """Test that empty candidate list returns None."""
-        mock_client = MagicMock()
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        new_event = {
-            "title": "Birthday Party",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "location": "123 Main St",
-        }
+            gateway = LLMGateway(mock_config)
 
-        result = compare_events(mock_client, new_event, [])
+            new_event = {
+                "title": "Birthday Party",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "location": "123 Main St",
+            }
 
-        assert result is None
-        # Should not call LLM
-        mock_client.models.generate_content.assert_not_called()
+            result = compare_events(gateway, new_event, [])
 
-    def test_returns_matched_event_id(self):
+            assert result is None
+            # Should not call LLM
+            mock_client.models.generate_content.assert_not_called()
+
+    def test_returns_matched_event_id(self, mock_config):
         """Test that matching event ID is returned."""
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.text = "event-123"
-        mock_client.models.generate_content.return_value = mock_response
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        new_event = {
-            "title": "Jake's Birthday Party",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T16:00:00Z",
-            "location": "123 Main St",
-            "description": "Come celebrate!",
-        }
+            mock_response = MagicMock()
+            mock_response.text = "event-123"
+            mock_client.models.generate_content.return_value = mock_response
 
-        candidates = [{
-            "id": "event-123",
-            "title": "Birthday Party",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T16:00:00Z",
-            "location": "123 Main St",
-            "description": "Party time!",
-        }]
+            gateway = LLMGateway(mock_config)
 
-        result = compare_events(mock_client, new_event, candidates)
+            new_event = {
+                "title": "Jake's Birthday Party",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "end_datetime": "2026-03-15T16:00:00Z",
+                "location": "123 Main St",
+                "description": "Come celebrate!",
+            }
 
-        assert result == "event-123"
-        mock_client.models.generate_content.assert_called_once()
+            candidates = [{
+                "id": "event-123",
+                "title": "Birthday Party",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "end_datetime": "2026-03-15T16:00:00Z",
+                "location": "123 Main St",
+                "description": "Party time!",
+            }]
 
-    def test_returns_none_for_no_match(self):
+            result = compare_events(gateway, new_event, candidates)
+
+            assert result == "event-123"
+            mock_client.models.generate_content.assert_called_once()
+
+    def test_returns_none_for_no_match(self, mock_config):
         """Test that NO_MATCH response returns None."""
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.text = "NO_MATCH"
-        mock_client.models.generate_content.return_value = mock_response
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        new_event = {
-            "title": "Doctor Appointment",
-            "start_datetime": "2026-03-15T09:00:00Z",
-        }
+            mock_response = MagicMock()
+            mock_response.text = "NO_MATCH"
+            mock_client.models.generate_content.return_value = mock_response
 
-        candidates = [{
-            "id": "event-456",
-            "title": "Dentist Appointment",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }]
+            gateway = LLMGateway(mock_config)
 
-        result = compare_events(mock_client, new_event, candidates)
+            new_event = {
+                "title": "Doctor Appointment",
+                "start_datetime": "2026-03-15T09:00:00Z",
+            }
 
-        assert result is None
+            candidates = [{
+                "id": "event-456",
+                "title": "Dentist Appointment",
+                "start_datetime": "2026-03-15T14:00:00Z",
+            }]
 
-    def test_returns_none_for_unknown_event_id(self):
+            result = compare_events(gateway, new_event, candidates)
+
+            assert result is None
+
+    def test_returns_none_for_unknown_event_id(self, mock_config):
         """Test that unknown event ID from LLM returns None."""
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.text = "unknown-event-999"  # Not in candidates
-        mock_client.models.generate_content.return_value = mock_response
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        new_event = {
-            "title": "Test Event",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
+            mock_response = MagicMock()
+            mock_response.text = "unknown-event-999"  # Not in candidates
+            mock_client.models.generate_content.return_value = mock_response
 
-        candidates = [{
-            "id": "event-123",
-            "title": "Test",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }]
+            gateway = LLMGateway(mock_config)
 
-        result = compare_events(mock_client, new_event, candidates)
+            new_event = {
+                "title": "Test Event",
+                "start_datetime": "2026-03-15T14:00:00Z",
+            }
 
-        assert result is None
+            candidates = [{
+                "id": "event-123",
+                "title": "Test",
+                "start_datetime": "2026-03-15T14:00:00Z",
+            }]
 
-    def test_raises_error_on_llm_failure(self):
+            result = compare_events(gateway, new_event, candidates)
+
+            assert result is None
+
+    def test_raises_error_on_llm_failure(self, mock_config):
         """Test that LLM failure raises GeminiError."""
-        mock_client = MagicMock()
-        mock_client.models.generate_content.side_effect = Exception("API Error")
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
+            mock_client.models.generate_content.side_effect = Exception("API Error")
 
-        new_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
-        candidates = [{"id": "event-1", "title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}]
+            gateway = LLMGateway(mock_config)
 
-        with pytest.raises(GeminiError) as exc_info:
-            compare_events(mock_client, new_event, candidates)
+            new_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
+            candidates = [{"id": "event-1", "title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}]
 
-        assert "comparison failed" in str(exc_info.value).lower()
+            with pytest.raises(GeminiError) as exc_info:
+                compare_events(gateway, new_event, candidates)
+
+            assert "api error" in str(exc_info.value).lower()
 
 
 class TestMergeEventData:
     """Test event data merging."""
 
-    def test_merges_event_data(self):
+    def test_merges_event_data(self, mock_config):
         """Test that event data is properly merged."""
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.text = json.dumps({
-            "title": "Updated Meeting",
-            "start_datetime": "2026-03-15T15:00:00Z",  # Changed time
-            "end_datetime": "2026-03-15T16:00:00Z",
-            "all_day": False,
-            "location": "Conference Room B",  # New location
-            "description": "Original info. Updated: new agenda.",
-        })
-        mock_client.models.generate_content.return_value = mock_response
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        existing_event = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Conference Room A",
-            "description": "Original info.",
-        }
+            mock_response = MagicMock()
+            mock_response.text = json.dumps({
+                "title": "Updated Meeting",
+                "start_datetime": "2026-03-15T15:00:00Z",  # Changed time
+                "end_datetime": "2026-03-15T16:00:00Z",
+                "all_day": False,
+                "location": "Conference Room B",  # New location
+                "description": "Original info. Updated: new agenda.",
+            })
+            mock_client.models.generate_content.return_value = mock_response
 
-        new_extraction = {
-            "title": "Updated Meeting",
-            "start_datetime": "2026-03-15T15:00:00Z",
-            "end_datetime": "2026-03-15T16:00:00Z",
-            "all_day": False,
-            "location": "Conference Room B",
-            "description": "new agenda",
-        }
+            gateway = LLMGateway(mock_config)
 
-        result = merge_event_data(mock_client, existing_event, new_extraction, "update")
+            existing_event = {
+                "title": "Team Meeting",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "end_datetime": "2026-03-15T15:00:00Z",
+                "all_day": False,
+                "location": "Conference Room A",
+                "description": "Original info.",
+            }
 
-        assert result["title"] == "Updated Meeting"
-        assert result["start_datetime"] == "2026-03-15T15:00:00Z"
-        assert result["location"] == "Conference Room B"
-        mock_client.models.generate_content.assert_called_once()
+            new_extraction = {
+                "title": "Updated Meeting",
+                "start_datetime": "2026-03-15T15:00:00Z",
+                "end_datetime": "2026-03-15T16:00:00Z",
+                "all_day": False,
+                "location": "Conference Room B",
+                "description": "new agenda",
+            }
 
-    def test_handles_cancellation_source_type(self):
+            result = merge_event_data(gateway, existing_event, new_extraction, "update")
+
+            assert result["title"] == "Updated Meeting"
+            assert result["start_datetime"] == "2026-03-15T15:00:00Z"
+            assert result["location"] == "Conference Room B"
+            mock_client.models.generate_content.assert_called_once()
+
+    def test_handles_cancellation_source_type(self, mock_config):
         """Test that cancellation source type triggers CANCELLED prefix."""
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.text = json.dumps({
-            "title": "CANCELLED: Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Conference Room A",
-            "description": "Event has been cancelled.",
-        })
-        mock_client.models.generate_content.return_value = mock_response
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        existing_event = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Conference Room A",
-            "description": "Weekly sync.",
-        }
+            mock_response = MagicMock()
+            mock_response.text = json.dumps({
+                "title": "CANCELLED: Team Meeting",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "end_datetime": "2026-03-15T15:00:00Z",
+                "all_day": False,
+                "location": "Conference Room A",
+                "description": "Event has been cancelled.",
+            })
+            mock_client.models.generate_content.return_value = mock_response
 
-        new_extraction = {
-            "title": "Meeting Cancelled",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
+            gateway = LLMGateway(mock_config)
 
-        result = merge_event_data(mock_client, existing_event, new_extraction, "cancellation")
+            existing_event = {
+                "title": "Team Meeting",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "end_datetime": "2026-03-15T15:00:00Z",
+                "all_day": False,
+                "location": "Conference Room A",
+                "description": "Weekly sync.",
+            }
 
-        assert "CANCELLED" in result["title"]
+            new_extraction = {
+                "title": "Meeting Cancelled",
+                "start_datetime": "2026-03-15T14:00:00Z",
+            }
 
-    def test_raises_error_on_llm_failure(self):
+            result = merge_event_data(gateway, existing_event, new_extraction, "cancellation")
+
+            assert "CANCELLED" in result["title"]
+
+    def test_raises_error_on_llm_failure(self, mock_config):
         """Test that LLM failure raises GeminiError."""
-        mock_client = MagicMock()
-        mock_client.models.generate_content.side_effect = Exception("API Error")
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
+            mock_client.models.generate_content.side_effect = Exception("API Error")
 
-        existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
-        new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
+            gateway = LLMGateway(mock_config)
 
-        with pytest.raises(GeminiError) as exc_info:
-            merge_event_data(mock_client, existing_event, new_extraction, "update")
+            existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
+            new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
 
-        assert "merge failed" in str(exc_info.value).lower()
+            with pytest.raises(GeminiError) as exc_info:
+                merge_event_data(gateway, existing_event, new_extraction, "update")
 
-    def test_raises_error_on_invalid_json(self):
+            assert "api error" in str(exc_info.value).lower()
+
+    def test_raises_error_on_invalid_json(self, mock_config):
         """Test that invalid JSON response raises GeminiError."""
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.text = "not valid json"
-        mock_client.models.generate_content.return_value = mock_response
+        with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value = mock_client
 
-        existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
-        new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
+            mock_response = MagicMock()
+            mock_response.text = "not valid json"
+            mock_client.models.generate_content.return_value = mock_response
 
-        with pytest.raises(GeminiError):
-            merge_event_data(mock_client, existing_event, new_extraction, "update")
+            gateway = LLMGateway(mock_config)
+
+            existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
+            new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
+
+            with pytest.raises(GeminiError):
+                merge_event_data(gateway, existing_event, new_extraction, "update")
 
 
 class TestGenerateSourceAttribution:

@@ -9,21 +9,24 @@ import argparse
 import logging
 import sys
 
+from supabase import create_client
+
 from selko.config import add_logging_arguments, load_config
 from selko.logging import setup_logging
 from selko.services.auth import AuthenticationError, get_authenticated_client, get_current_user_id
 from selko.services.events import EventsError, process_email_for_events
-from selko.services.gemini import GeminiError, get_gemini_client
+from selko.services.llm_gateway import LLMGateway, LLMGatewayError
+from selko.services.llm_logging import LLMLoggingService
 
 logger = logging.getLogger(__name__)
 
 
-def process_single_email(supabase_client, gemini_client, user_id: str, email_id: str):
+def process_single_email(supabase_client, gateway, user_id: str, email_id: str):
     """Process a single email by ID.
 
     Args:
         supabase_client: Authenticated Supabase client.
-        gemini_client: Initialized Gemini client.
+        gateway: LLMGateway instance.
         user_id: UUID of the authenticated user.
         email_id: UUID of the email to process.
     """
@@ -50,7 +53,7 @@ def process_single_email(supabase_client, gemini_client, user_id: str, email_id:
     try:
         result = process_email_for_events(
             supabase_client=supabase_client,
-            gemini_client=gemini_client,
+            gateway=gateway,
             email_id=email_id,
             user_id=user_id,
         )
@@ -67,12 +70,12 @@ def process_single_email(supabase_client, gemini_client, user_id: str, email_id:
         sys.exit(1)
 
 
-def process_recent_emails(supabase_client, gemini_client, user_id: str, max_emails: int):
+def process_recent_emails(supabase_client, gateway, user_id: str, max_emails: int):
     """Process recent emails in batch.
 
     Args:
         supabase_client: Authenticated Supabase client.
-        gemini_client: Initialized Gemini client.
+        gateway: LLMGateway instance.
         user_id: UUID of the authenticated user.
         max_emails: Maximum number of emails to process.
     """
@@ -108,7 +111,7 @@ def process_recent_emails(supabase_client, gemini_client, user_id: str, max_emai
         try:
             proc_result = process_email_for_events(
                 supabase_client=supabase_client,
-                gemini_client=gemini_client,
+                gateway=gateway,
                 email_id=email_id,
                 user_id=user_id,
             )
@@ -181,13 +184,6 @@ Note:
     setup_logging(verbose=args.verbose, quiet=args.quiet)
     config = load_config()
 
-    # Initialize Gemini client
-    try:
-        gemini_client = get_gemini_client(config)
-    except GeminiError as e:
-        logger.error(f"Failed to initialize Gemini: {e}")
-        sys.exit(1)
-
     # Authenticate with Supabase
     try:
         supabase_client = get_authenticated_client(config)
@@ -196,10 +192,26 @@ Note:
         logger.error(f"Authentication failed: {e}")
         sys.exit(1)
 
+    # Create LLM logging service with service role client
+    logging_service = None
+    if config.supabase_service_role_key:
+        service_client = create_client(config.supabase_url, config.supabase_service_role_key)
+        logging_service = LLMLoggingService(service_client)
+        logger.debug("LLM call logging enabled")
+    else:
+        logger.warning("Service role key not configured, LLM call logging disabled")
+
+    # Create LLM Gateway (no quota service for CLI - that's done at API level)
+    try:
+        gateway = LLMGateway(config, logging_service=logging_service, quota_service=None)
+    except LLMGatewayError as e:
+        logger.error(f"Failed to initialize LLM Gateway: {e}")
+        sys.exit(1)
+
     if args.email_id:
-        process_single_email(supabase_client, gemini_client, user_id, args.email_id)
+        process_single_email(supabase_client, gateway, user_id, args.email_id)
     elif args.recent:
-        process_recent_emails(supabase_client, gemini_client, user_id, args.recent)
+        process_recent_emails(supabase_client, gateway, user_id, args.recent)
 
     logger.info("\nDone!")
 

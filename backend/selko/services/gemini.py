@@ -2,53 +2,33 @@
 
 Uses Google's Gemini 3 Flash model to analyze email content and attachments,
 extracting structured calendar event data.
+
+All LLM calls go through the LLMGateway for unified logging, rate limiting,
+and retry handling.
 """
 
+import base64
+import json
 import logging
-import time
 from datetime import datetime
 from typing import Any, Optional
 
-from google import genai
 from google.genai import types
 from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResponse
-from selko.config import Config
+from selko.services.llm_gateway import LLMGateway, LLMGatewayError
+from selko.services.llm_logging import LLMOperationType
 
 logger = logging.getLogger(__name__)
 
 
-class GeminiError(Exception):
-    """Raised when Gemini operations fail."""
-
-    pass
+# Re-export for backwards compatibility
+GeminiError = LLMGatewayError
 
 
-def get_gemini_client(config: Config) -> genai.Client:
-    """Initialize Gemini client with API key.
-
-    Args:
-        config: Application configuration with gemini_api_key.
-
-    Returns:
-        Initialized Gemini client.
-
-    Raises:
-        GeminiError: If API key is missing or client initialization fails.
-    """
-    if not config.gemini_api_key:
-        raise GeminiError(
-            "GEMINI_API_KEY not configured. "
-            "Get your API key from https://aistudio.google.com/apikey"
-        )
-
-    try:
-        client = genai.Client(api_key=config.gemini_api_key)
-        logger.debug("Initialized Gemini client")
-        return client
-    except Exception as e:
-        raise GeminiError(f"Failed to initialize Gemini client: {e}") from e
+# Re-export get_gemini_client from llm_gateway for backwards compatibility
+from selko.services.llm_gateway import get_gemini_client  # noqa: E402, F401
 
 
 def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
@@ -107,36 +87,22 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
     return prompt
 
 
-def extract_calendar_events(
-    client: genai.Client,
+def _build_content_parts(
+    prompt: str,
     email_text: str,
-    email_metadata: dict[str, Any],
     attachments: Optional[list[dict[str, Any]]] = None,
-    model: str = "gemini-3-flash-preview",
-    max_retries: int = 3,
-) -> CalendarEventExtraction:
-    """Extract calendar events from email using Gemini.
+) -> list:
+    """Build multimodal content parts for Gemini.
 
     Args:
-        client: Initialized Gemini client.
-        email_text: Email body text (plain text or HTML).
-        email_metadata: Dict with keys: gmail_id, subject, from_name, from_email, date_sent.
-        attachments: Optional list of attachment dicts with keys: data (bytes), mime_type.
-        model: Gemini model to use (default: gemini-3-flash-preview).
-        max_retries: Maximum retries for rate-limited requests.
+        prompt: The system prompt.
+        email_text: Email body text.
+        attachments: Optional list of attachment dicts with data, mime_type, filename.
 
     Returns:
-        CalendarEventExtraction with structured event data.
-
-    Raises:
-        GeminiError: If extraction fails after retries.
+        List of content parts for Gemini.
     """
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    prompt = _build_prompt(email_metadata, current_date)
-
-    # Build multimodal content parts
-    # Use simple string format for text content
-    content_parts = [
+    content_parts: list[Any] = [
         prompt,
         f"\n**Email Body:**\n{email_text}",
     ]
@@ -150,12 +116,10 @@ def extract_calendar_events(
 
             if data and len(data) <= 20 * 1024 * 1024:  # 20MB limit
                 try:
-                    # Use inline_data dict format for attachments
-                    import base64
                     content_parts.append({
                         "inline_data": {
                             "mime_type": mime_type,
-                            "data": base64.b64encode(data).decode('utf-8')
+                            "data": base64.b64encode(data).decode("utf-8"),
                         }
                     })
                     logger.debug(f"Added attachment: {filename} ({mime_type})")
@@ -163,66 +127,76 @@ def extract_calendar_events(
                     logger.warning(f"Failed to add attachment {filename}: {e}")
             else:
                 logger.warning(
-                    f"Skipping oversized attachment: {filename} ({len(data) if data else 0} bytes)"
+                    f"Skipping oversized attachment: {filename} "
+                    f"({len(data) if data else 0} bytes)"
                 )
+
+    return content_parts
+
+
+def extract_calendar_events(
+    gateway: LLMGateway,
+    email_text: str,
+    email_metadata: dict[str, Any],
+    attachments: Optional[list[dict[str, Any]]] = None,
+    max_retries: int = 3,
+) -> CalendarEventExtraction:
+    """Extract calendar events from email using Gemini.
+
+    Args:
+        gateway: LLMGateway instance (with user/email context already set).
+        email_text: Email body text (plain text or HTML).
+        email_metadata: Dict with keys: gmail_id, subject, from_name, from_email, date_sent.
+        attachments: Optional list of attachment dicts with keys: data (bytes), mime_type.
+        max_retries: Maximum retries for rate-limited requests.
+
+    Returns:
+        CalendarEventExtraction with structured event data.
+
+    Raises:
+        GeminiError: If extraction fails after retries.
+    """
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    prompt = _build_prompt(email_metadata, current_date)
+    content_parts = _build_content_parts(prompt, email_text, attachments)
 
     # Configure generation with Gemini 3 best practices
     generate_config = types.GenerateContentConfig(
         response_mime_type="application/json",
-        response_schema=GeminiEventsResponse,  # Only events, not metadata
+        response_schema=GeminiEventsResponse,
         thinking_config=types.ThinkingConfig(thinking_level="low"),
-        # Note: Keep temperature at default 1.0 for Gemini 3
     )
 
-    # Retry loop for rate limiting
-    for attempt in range(max_retries):
-        try:
-            logger.info(f"Calling Gemini {model} for event extraction...")
-            response = client.models.generate_content(
-                model=model,
-                contents=content_parts,
-                config=generate_config,
-            )
+    try:
+        response = gateway.call(
+            operation=LLMOperationType.EXTRACT_EVENTS,
+            contents=content_parts,
+            config=generate_config,
+            max_retries=max_retries,
+        )
 
-            # Parse Gemini's response (events only)
-            gemini_result = response.parsed
-            logger.info(
-                f"Extraction complete: {len(gemini_result.events)} events found "
-                f"(events_found={gemini_result.events_found})"
-            )
-            
-            # Wrap with email metadata to create full extraction result
-            result = CalendarEventExtraction(
-                email_message_id=email_metadata.get("gmail_id", ""),
-                email_date=email_metadata.get("date_sent", datetime.now().isoformat()),
-                sender_name=email_metadata.get("from_name"),
-                sender_email=email_metadata.get("from_email", ""),
-                events_found=gemini_result.events_found,
-                events=gemini_result.events,
-            )
-            return result
+        # Parse Gemini's response (events only)
+        gemini_result = response.parsed
+        logger.info(
+            f"Extraction complete: {len(gemini_result.events)} events found "
+            f"(events_found={gemini_result.events_found})"
+        )
 
-        except Exception as e:
-            error_str = str(e).lower()
-            # Check for rate limiting
-            if "429" in error_str or "rate limit" in error_str or "quota" in error_str:
-                if attempt < max_retries - 1:
-                    wait_time = (2**attempt) + 1  # 1, 3, 5 seconds
-                    logger.warning(
-                        f"Rate limited by Gemini API, waiting {wait_time}s "
-                        f"(attempt {attempt + 1}/{max_retries})"
-                    )
-                    time.sleep(wait_time)
-                    continue
-                else:
-                    raise GeminiError(
-                        f"Failed to extract events after {max_retries} retries (rate limited)"
-                    ) from e
-            else:
-                # Other errors - fail immediately
-                raise GeminiError(f"Gemini API error: {e}") from e
+        # Wrap with email metadata to create full extraction result
+        result = CalendarEventExtraction(
+            email_message_id=email_metadata.get("gmail_id", ""),
+            email_date=email_metadata.get("date_sent", datetime.now().isoformat()),
+            sender_name=email_metadata.get("from_name"),
+            sender_email=email_metadata.get("from_email", ""),
+            events_found=gemini_result.events_found,
+            events=gemini_result.events,
+        )
+        return result
 
-    raise GeminiError(f"Failed to extract events after {max_retries} retries")
+    except LLMGatewayError:
+        raise
+    except Exception as e:
+        raise GeminiError(f"Failed to extract events: {e}") from e
 
 
 def fetch_email_with_attachments(
@@ -273,7 +247,7 @@ def fetch_email_with_attachments(
         email_text = email.get("snippet", "")
 
         # Fetch attachments if any
-        attachments = []
+        attachments: list[dict[str, Any]] = []
         if email.get("has_attachments"):
             att_result = (
                 supabase_client.table("attachments")
@@ -318,32 +292,30 @@ def fetch_email_with_attachments(
 
 
 def compare_events(
-    client: genai.Client,
+    gateway: LLMGateway,
     new_event: dict[str, Any],
     candidate_events: list[dict[str, Any]],
-    model: str = "gemini-3-flash-preview",
 ) -> Optional[str]:
     """Ask LLM if new_event matches any candidate events.
-    
-    Uses LLM to determine if a newly extracted event is the same as any 
+
+    Uses LLM to determine if a newly extracted event is the same as any
     existing events (for deduplication). This handles cases where the same
     event is mentioned in multiple emails.
-    
+
     Args:
-        client: Initialized Gemini client.
+        gateway: LLMGateway instance (with user context set).
         new_event: Dict with event details (title, start_datetime, location, etc).
         candidate_events: List of existing event dicts from DB with same date.
-        model: Gemini model to use.
-        
+
     Returns:
         Event ID of matched event, or None if no match found.
-        
+
     Raises:
         GeminiError: If comparison fails.
     """
     if not candidate_events:
         return None
-        
+
     prompt = f"""You are comparing calendar events to detect duplicates.
 
 **New Event:**
@@ -355,7 +327,7 @@ def compare_events(
 
 **Existing Events (same date):**
 """
-    
+
     for idx, candidate in enumerate(candidate_events):
         prompt += f"""
 {idx + 1}. Event ID: {candidate.get('id')}
@@ -365,7 +337,7 @@ def compare_events(
    - Location: {candidate.get('location', 'Not specified')}
    - Description: {candidate.get('description', '')}
 """
-    
+
     prompt += """
 **Question:** Is the new event the same as any of the existing events?
 
@@ -378,54 +350,54 @@ Return the Event ID of the matching event, or "NO_MATCH" if it's a different eve
 
 Output format: Just the Event ID or "NO_MATCH", nothing else.
 """
-    
+
     try:
-        response = client.models.generate_content(
-            model=model,
+        response = gateway.call(
+            operation=LLMOperationType.COMPARE_EVENTS,
             contents=prompt,
         )
-        
+
         result = response.text.strip()
         logger.info(f"Event comparison result: {result}")
-        
+
         if result == "NO_MATCH":
             return None
-            
+
         # Validate the returned ID exists in candidates
         for candidate in candidate_events:
-            if str(candidate.get('id')) == result:
+            if str(candidate.get("id")) == result:
                 return result
-                
+
         logger.warning(f"LLM returned unknown event ID: {result}")
         return None
-        
+
+    except LLMGatewayError:
+        raise
     except Exception as e:
         raise GeminiError(f"Event comparison failed: {e}") from e
 
 
 def merge_event_data(
-    client: genai.Client,
+    gateway: LLMGateway,
     existing_event: dict[str, Any],
     new_extraction: dict[str, Any],
     source_type: str,
-    model: str = "gemini-3-flash-preview",
 ) -> dict[str, Any]:
     """Ask LLM to merge new info into existing event.
-    
+
     Uses LLM to intelligently merge event data from a new email into an
     existing event. Follows rules like preferring specific times over all-day,
     combining descriptions, etc.
-    
+
     Args:
-        client: Initialized Gemini client.
+        gateway: LLMGateway instance (with user context set).
         existing_event: Current event data from DB.
         new_extraction: New event data from email.
         source_type: Type of update (update, cancellation, reminder, etc).
-        model: Gemini model to use.
-        
+
     Returns:
         Dict with merged event data.
-        
+
     Raises:
         GeminiError: If merge fails.
     """
@@ -464,105 +436,119 @@ Output JSON with merged event data:
     "description": "..."
 }}
 """
-    
+
+    generate_config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+    )
+
     try:
-        generate_config = types.GenerateContentConfig(
-            response_mime_type="application/json",
-        )
-        
-        response = client.models.generate_content(
-            model=model,
+        response = gateway.call(
+            operation=LLMOperationType.MERGE_EVENTS,
             contents=prompt,
             config=generate_config,
         )
-        
-        import json
+
         merged = json.loads(response.text)
         logger.info(f"Event merge complete: {merged.get('title')}")
         return merged
-        
+
+    except json.JSONDecodeError as e:
+        raise GeminiError(f"Event merge failed: invalid JSON response: {e}") from e
+    except LLMGatewayError:
+        raise
     except Exception as e:
         raise GeminiError(f"Event merge failed: {e}") from e
 
 
 def generate_source_attribution(sources: list[dict[str, Any]]) -> str:
     """Generate natural English source attribution for calendar event.
-    
-    Creates attribution like: "This event was automatically created from an email 
-    from WCSD on Jan 25th, 2026 at 1:30pm and updated based on emails from WC PTA 
+
+    Creates attribution like: "This event was automatically created from an email
+    from WCSD on Jan 25th, 2026 at 1:30pm and updated based on emails from WC PTA
     on Jan 26th and 28th."
-    
+
     Args:
         sources: List of event_source dicts with email metadata.
-        
+
     Returns:
         Natural English attribution string.
     """
     if not sources:
         return ""
-        
+
     # Find the original invitation (first non-undone source)
     original = None
     updates = []
-    
-    for source in sorted(sources, key=lambda s: s.get('created_at', '')):
-        if source.get('is_undone'):
+
+    for source in sorted(sources, key=lambda s: s.get("created_at", "")):
+        if source.get("is_undone"):
             continue
-            
-        if source.get('source_type') == 'new_invitation' and not original:
+
+        if source.get("source_type") == "new_invitation" and not original:
             original = source
-        elif source.get('source_type') in ['update', 'cancellation']:
+        elif source.get("source_type") in ["update", "cancellation"]:
             updates.append(source)
-    
+
     if not original:
         return ""
-        
+
     # Format original email
-    sender_name = original.get('email_sender_name') or original.get('email_sender', 'Unknown')
-    email_date = original.get('email_date')
-    
+    sender_name = original.get("email_sender_name") or original.get(
+        "email_sender", "Unknown"
+    )
+    email_date = original.get("email_date")
+
     try:
-        from datetime import datetime
         if isinstance(email_date, str):
-            dt = datetime.fromisoformat(email_date.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(email_date.replace("Z", "+00:00"))
         else:
             dt = email_date
-        date_str = dt.strftime("%B %d, %Y at %I:%M%p").replace(' 0', ' ').replace('AM', 'am').replace('PM', 'pm')
+        date_str = (
+            dt.strftime("%B %d, %Y at %I:%M%p")
+            .replace(" 0", " ")
+            .replace("AM", "am")
+            .replace("PM", "pm")
+        )
     except Exception as e:
         logger.debug(f"Date format failed for original email: {e}")
         date_str = str(email_date)
-    
-    attribution = f"This event was automatically created from an email from {sender_name} on {date_str}"
-    
+
+    attribution = (
+        f"This event was automatically created from an email from "
+        f"{sender_name} on {date_str}"
+    )
+
     # Add updates if any
     if updates:
         # Group updates by sender
-        update_senders = {}
+        update_senders: dict[str, list[str]] = {}
         for update in updates:
-            sender = update.get('email_sender_name') or update.get('email_sender', 'Unknown')
-            update_date = update.get('email_date')
+            sender = update.get("email_sender_name") or update.get(
+                "email_sender", "Unknown"
+            )
+            update_date = update.get("email_date")
             try:
                 if isinstance(update_date, str):
-                    dt = datetime.fromisoformat(update_date.replace('Z', '+00:00'))
+                    dt = datetime.fromisoformat(update_date.replace("Z", "+00:00"))
                 else:
                     dt = update_date
-                date_str = dt.strftime("%B %d").replace(' 0', ' ')
+                date_str = dt.strftime("%B %d").replace(" 0", " ")
             except Exception as e:
                 logger.debug(f"Date format failed for update email: {e}")
                 date_str = str(update_date)
-                
+
             if sender not in update_senders:
                 update_senders[sender] = []
             update_senders[sender].append(date_str)
-        
+
         # Format updates
         update_parts = []
         for sender, dates in update_senders.items():
             dates_str = " and ".join(dates)
             update_parts.append(f"{sender} on {dates_str}")
-        
+
         updates_str = " and ".join(update_parts)
         attribution += f" and updated based on emails from {updates_str}"
-    
+
     attribution += "."
     return attribution
