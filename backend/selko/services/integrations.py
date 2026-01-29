@@ -249,7 +249,7 @@ def initiate_oauth_flow(
         Dict with 'auth_url' and 'state' keys.
 
     Raises:
-        IntegrationError: If credentials file not found or invalid provider.
+        IntegrationError: If client credentials not configured or invalid provider.
     """
     # Determine scopes based on provider
     if provider == "gmail":
@@ -259,16 +259,25 @@ def initiate_oauth_flow(
     else:
         raise IntegrationError(f"Unsupported provider: {provider}")
 
-    if not config.credentials_file.exists():
+    if not config.google_client_id or not config.google_client_secret:
         raise IntegrationError(
-            f"Credentials file not found: {config.credentials_file}. "
-            "Download OAuth client credentials from Google Cloud Console."
+            "Google OAuth client credentials not configured. "
+            "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file."
         )
 
     try:
-        # Create flow from client secrets file
-        flow = Flow.from_client_secrets_file(
-            str(config.credentials_file),
+        # Create flow from client config
+        client_config = {
+            "web": {
+                "client_id": config.google_client_id,
+                "client_secret": config.google_client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [redirect_uri],
+            }
+        }
+        flow = Flow.from_client_config(
+            client_config,
             scopes=scopes,
             redirect_uri=redirect_uri,
         )
@@ -297,10 +306,8 @@ def initiate_oauth_flow(
         logger.info(f"Generated OAuth URL for {provider} (user {user_id})")
         return {"auth_url": auth_url, "state": state}
 
-    except FileNotFoundError as e:
-        raise IntegrationError(f"Credentials file not found: {e}") from e
     except ValueError as e:
-        raise IntegrationError(f"Invalid credentials file: {e}") from e
+        raise IntegrationError(f"Invalid OAuth configuration: {e}") from e
 
 
 def complete_oauth_flow(
@@ -346,8 +353,17 @@ def complete_oauth_flow(
 
     try:
         # Create flow with same redirect_uri
-        flow = Flow.from_client_secrets_file(
-            str(config.credentials_file),
+        client_config = {
+            "web": {
+                "client_id": config.google_client_id,
+                "client_secret": config.google_client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [redirect_uri],
+            }
+        }
+        flow = Flow.from_client_config(
+            client_config,
             scopes=scopes,
             redirect_uri=redirect_uri,
         )

@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 # Project root directory (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-CLI_DIR = PROJECT_ROOT / "cli"
 
 # Environment file mapping
 ENV_FILES = {
@@ -67,9 +66,6 @@ class Config:
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ])
-
-    # Paths (derived, not from env)
-    credentials_file: Path = CLI_DIR / "credentials.json"
 
 
 def get_environment(override: Optional[str] = None) -> str:

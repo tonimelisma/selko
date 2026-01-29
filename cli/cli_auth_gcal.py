@@ -30,25 +30,31 @@ def run_calendar_oauth_flow(config) -> "Credentials":
     Opens a browser window for the user to authenticate.
 
     Args:
-        config: Configuration with credentials file path.
+        config: Configuration with Google OAuth client credentials.
 
     Returns:
         Google Credentials object with tokens.
 
     Raises:
-        CalendarOAuthError: If credentials file not found or flow fails.
+        CalendarOAuthError: If client credentials not configured or flow fails.
     """
-    if not config.credentials_file.exists():
+    if not config.google_client_id or not config.google_client_secret:
         raise CalendarOAuthError(
-            f"Credentials file not found: {config.credentials_file}\n"
-            "Download OAuth client credentials from Google Cloud Console "
-            "and save as 'credentials.json' in the cli/ directory."
+            "Google OAuth client credentials not configured.\n"
+            "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file."
         )
 
     try:
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(config.credentials_file), CALENDAR_SCOPES
-        )
+        client_config = {
+            "installed": {
+                "client_id": config.google_client_id,
+                "client_secret": config.google_client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": ["http://localhost"],
+            }
+        }
+        flow = InstalledAppFlow.from_client_config(client_config, CALENDAR_SCOPES)
 
         logger.info("Opening browser for Google Calendar authentication...")
         logger.info("If browser doesn't open, visit the URL shown below.")
@@ -57,10 +63,8 @@ def run_calendar_oauth_flow(config) -> "Credentials":
         logger.info("OAuth flow completed successfully")
         return creds
 
-    except FileNotFoundError as e:
-        raise CalendarOAuthError(f"Credentials file not found: {e}") from e
     except ValueError as e:
-        raise CalendarOAuthError(f"Invalid credentials file format: {e}") from e
+        raise CalendarOAuthError(f"Invalid OAuth configuration: {e}") from e
 
 
 def main():

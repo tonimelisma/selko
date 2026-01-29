@@ -512,9 +512,9 @@ class TestEmailProcessWorker:
         result = authenticated_client.table("emails").insert(email_data).execute()
         email = result.data[0]
 
-        # Process with mocked Gemini
-        with patch("selko.workers.email_process.get_gemini_client") as mock_get_gemini:
-            mock_get_gemini.return_value = mock_gemini_client
+        # Process with mocked LLM Gateway
+        with patch("selko.workers.email_process.LLMGateway") as mock_gateway_class:
+            mock_gateway_class.return_value = mock_gemini_client
 
             await process_email(service_client, config, email)
 

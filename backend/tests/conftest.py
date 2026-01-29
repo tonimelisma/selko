@@ -1,6 +1,5 @@
 """Pytest fixtures for Selko tests."""
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -49,7 +48,6 @@ def mock_config():
         google_client_secret="test-client-secret",
         test_user_email="test@example.com",
         test_user_password="testpass",
-        credentials_file=Path("/tmp/credentials.json"),
     )
 
 

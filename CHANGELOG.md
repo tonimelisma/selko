@@ -2,6 +2,56 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-28 (28)
+
+### Remove credentials.json dependency
+
+**Problem:** OAuth client credentials were stored in `cli/credentials.json` file, separate from the `.env` files where other credentials are stored. This led to confusion and stale credentials causing "unauthorized_client" errors during token refresh.
+
+**Solution:** Removed `credentials.json` entirely. OAuth flows now use `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from `.env` files, matching all other credential storage.
+
+**Files Changed:**
+- `backend/selko/config.py` - Removed `credentials_file` field
+- `backend/selko/services/gmail.py` - Use `config.google_client_id/secret` instead of file
+- `backend/selko/services/integrations.py` - Use `config.google_client_id/secret` for OAuth flows
+- `cli/cli_auth_gcal.py` - Use `config.google_client_id/secret` instead of file
+- `docs/testing-guide.md` - Updated token refresh instructions
+
+---
+
+### Unified LLM Gateway
+
+**Problem:** LLM call concerns (rate limiting, retries, logging, error handling) were scattered across multiple modules. Each function in `gemini.py` had its own timing, retry logic, and error handling. Adding logging or quotas required modifying every function.
+
+**Solution:** Created `LLMGateway` class that centralizes all LLM execution concerns while keeping prompts in their domain-specific locations.
+
+**Key Features:**
+- **Per-call rate limiting**: Every LLM call checks user quota before execution
+- **Automatic retry with exponential backoff**: Rate limit errors (429) trigger automatic retry
+- **Unified logging**: All calls logged with operation type, timing, token counts, and cost estimates
+- **Error classification**: Errors categorized (rate_limit, api_error, timeout, invalid_response)
+- **Method chaining**: `gateway.for_user(id).for_email(id)` for context
+
+**Architecture:**
+- Gateway created per-request via FastAPI dependency injection
+- Callers use gateway directly (no wrapper functions)
+- Prompts stay in gemini.py - gateway only handles execution
+- Workers don't enforce quotas (that's done at API level)
+
+**Files Changed:**
+- `backend/selko/services/llm_gateway.py` - **New** gateway class
+- `backend/selko/services/llm_logging.py` - **New** logging service with cost estimation
+- `backend/selko/services/gemini.py` - Simplified to use gateway
+- `backend/selko/services/events.py` - Accept gateway parameter
+- `backend/selko/api/deps.py` - Added `get_llm_gateway()` dependency
+- `backend/selko/api/routes/emails.py` - Inject gateway
+- `backend/selko/workers/email_process.py` - Create gateway with logging
+- `cli/cli_process_emails.py` - Create gateway
+- `backend/tests/test_llm_gateway.py` - **New** 21 unit tests
+- `backend/tests/test_gemini.py` - Updated for gateway API
+
+---
+
 ## 2026-01-27 (27)
 
 ### Docker Layer Caching for CI

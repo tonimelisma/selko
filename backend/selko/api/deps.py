@@ -9,7 +9,11 @@ from fastapi import Depends, Header, HTTPException, Request, status
 from supabase import Client, create_client
 
 from selko.config import Config, load_config
-from selko.services.gemini import get_gemini_client as create_gemini_client
+from selko.services.llm_gateway import LLMGateway, get_gemini_client as create_gemini_client
+from selko.services.llm_logging import (
+    LLMLoggingService,
+    get_llm_logging_service as create_llm_logging_service,
+)
 from selko.services.quotas import QuotaService, get_quota_service as create_quota_service
 
 logger = logging.getLogger(__name__)
@@ -171,3 +175,40 @@ def get_quota_service(
         Configured QuotaService instance.
     """
     return create_quota_service(service_client)
+
+
+def get_llm_logging_service(
+    service_client: Client = Depends(get_service_role_client),
+) -> LLMLoggingService:
+    """Create LLMLoggingService for LLM call auditing.
+
+    Uses service role client to write logs regardless of RLS policies.
+
+    Args:
+        service_client: Supabase client with service role.
+
+    Returns:
+        Configured LLMLoggingService instance.
+    """
+    return create_llm_logging_service(service_client)
+
+
+def get_llm_gateway(
+    config: Config = Depends(get_config),
+    logging_service: LLMLoggingService = Depends(get_llm_logging_service),
+    quota_service: QuotaService = Depends(get_quota_service),
+) -> LLMGateway:
+    """Create LLMGateway for unified LLM operations.
+
+    The gateway handles rate limiting, logging, retries, and error handling
+    for all LLM calls.
+
+    Args:
+        config: Application configuration with Gemini API key.
+        logging_service: Service for logging LLM calls.
+        quota_service: Service for rate limiting.
+
+    Returns:
+        Configured LLMGateway instance.
+    """
+    return LLMGateway(config, logging_service, quota_service)

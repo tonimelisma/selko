@@ -8,6 +8,7 @@ from uuid import UUID
 from supabase import Client
 
 from selko.services import gemini
+from selko.services.llm_gateway import LLMGateway
 
 logger = logging.getLogger(__name__)
 
@@ -20,45 +21,48 @@ class EventsError(Exception):
 
 def process_email_for_events(
     supabase_client: Client,
-    gemini_client: Any,
+    gateway: LLMGateway,
     email_id: str,
     user_id: str,
 ) -> dict[str, Any]:
     """Main pipeline function to extract events from an email.
-    
+
     Steps:
     1. Check if sender is ignored
     2. Extract events from email using Gemini
     3. For each event, check if it matches existing events (dedup)
     4. Create new or update existing events
     5. Check sender rules for auto-approve
-    
+
     Args:
         supabase_client: Authenticated Supabase client.
-        gemini_client: Initialized Gemini client.
+        gateway: LLMGateway instance for LLM operations.
         email_id: UUID of email to process.
         user_id: UUID of user who owns the email.
-        
+
     Returns:
         Dict with processing results (num_events, num_new, num_updated).
-        
+
     Raises:
         EventsError: If processing fails.
     """
+    # Set gateway context for this email processing
+    gateway.for_user(user_id).for_email(email_id)
+
     try:
         # Mark email as processing
         supabase_client.table("emails").update({
             "processing_status": "processing",
             "processed_at": datetime.now().isoformat()
         }).eq("id", email_id).execute()
-        
+
         # Fetch email data
         email_metadata, email_text, attachments = gemini.fetch_email_with_attachments(
             supabase_client, email_id
         )
-        
+
         sender_email = email_metadata.get("from_email", "")
-        
+
         # Check if sender is ignored
         sender_rule = check_sender_rules(supabase_client, user_id, sender_email)
         if sender_rule and sender_rule.get("action") == "ignore":
@@ -67,25 +71,25 @@ def process_email_for_events(
                 "processing_status": "skipped",
             }).eq("id", email_id).execute()
             return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
-        
-        # Extract events using Gemini
+
+        # Extract events using Gemini via gateway
         extraction = gemini.extract_calendar_events(
-            gemini_client,
+            gateway,
             email_text,
             email_metadata,
             attachments
         )
-        
+
         if not extraction.events_found or not extraction.events:
             logger.info("No events found in email")
             supabase_client.table("emails").update({
                 "processing_status": "processed",
             }).eq("id", email_id).execute()
             return {"num_events": 0, "num_new": 0, "num_updated": 0}
-        
+
         num_new = 0
         num_updated = 0
-        
+
         # Process each extracted event
         for event in extraction.events:
             event_data = {
@@ -97,20 +101,20 @@ def process_email_for_events(
                 "description": event.description,
                 "source_quote": getattr(event, 'source_quote', ''),
             }
-            
+
             # Find matching event (date-based + LLM comparison)
             matched_event_id = find_matching_event(
                 supabase_client,
-                gemini_client,
+                gateway,
                 user_id,
                 event_data
             )
-            
+
             if matched_event_id:
                 # Update existing event
                 update_event(
                     supabase_client,
-                    gemini_client,
+                    gateway,
                     matched_event_id,
                     event_data,
                     email_id,
@@ -126,20 +130,20 @@ def process_email_for_events(
                     email_id
                 )
                 num_new += 1
-        
+
         # Mark email as processed
         supabase_client.table("emails").update({
             "processing_status": "processed",
         }).eq("id", email_id).execute()
-        
+
         logger.info(f"Processed email {email_id}: {num_new} new, {num_updated} updated events")
-        
+
         return {
             "num_events": len(extraction.events),
             "num_new": num_new,
             "num_updated": num_updated
         }
-        
+
     except Exception as e:
         # Mark email as failed
         supabase_client.table("emails").update({
@@ -151,25 +155,25 @@ def process_email_for_events(
 
 def find_matching_event(
     supabase_client: Client,
-    gemini_client: Any,
+    gateway: LLMGateway,
     user_id: str,
     event_data: dict[str, Any],
 ) -> Optional[str]:
     """Find if event matches any existing events (date-based + LLM).
-    
+
     Args:
         supabase_client: Authenticated Supabase client.
-        gemini_client: Initialized Gemini client.
+        gateway: LLMGateway instance for LLM operations.
         user_id: UUID of user.
         event_data: Extracted event data.
-        
+
     Returns:
         Event ID if match found, None otherwise.
     """
     start_dt = event_data.get("start_datetime")
     if not start_dt:
         return None
-    
+
     # Parse date
     try:
         if isinstance(start_dt, str):
@@ -179,7 +183,7 @@ def find_matching_event(
     except (ValueError, AttributeError) as e:
         logger.debug(f"Date parse failed: {e}")
         return None
-    
+
     # Query events on same date
     result = supabase_client.table("events").select("*").eq(
         "user_id", user_id
@@ -188,15 +192,15 @@ def find_matching_event(
     ).lte(
         "start_datetime", f"{start_date}T23:59:59Z"
     ).execute()
-    
+
     candidates = result.data
     if not candidates:
         return None
-    
+
     # Use LLM to compare
     try:
         matched_id = gemini.compare_events(
-            gemini_client,
+            gateway,
             event_data,
             candidates
         )
@@ -259,17 +263,17 @@ def create_event(
 
 def update_event(
     supabase_client: Client,
-    gemini_client: Any,
+    gateway: LLMGateway,
     event_id: str,
     new_data: dict[str, Any],
     email_id: str,
     source_type: str,
 ) -> None:
     """Auto-merge new data into existing event.
-    
+
     Args:
         supabase_client: Authenticated Supabase client.
-        gemini_client: Initialized Gemini client.
+        gateway: LLMGateway instance for LLM operations.
         event_id: UUID of event to update.
         new_data: New event data from email.
         email_id: UUID of source email.
@@ -278,7 +282,7 @@ def update_event(
     # Fetch current event
     result = supabase_client.table("events").select("*").eq("id", event_id).single().execute()
     existing_event = result.data
-    
+
     # Store snapshot before merge
     snapshot = {
         "title": existing_event.get("title"),
@@ -288,15 +292,15 @@ def update_event(
         "location": existing_event.get("location"),
         "description": existing_event.get("description"),
     }
-    
+
     # Use LLM to merge
     merged_data = gemini.merge_event_data(
-        gemini_client,
+        gateway,
         existing_event,
         new_data,
         source_type
     )
-    
+
     # Update event
     supabase_client.table("events").update({
         "title": merged_data.get("title"),
@@ -307,7 +311,7 @@ def update_event(
         "description": merged_data.get("description"),
         "updated_at": datetime.now().isoformat(),
     }).eq("id", event_id).execute()
-    
+
     # Create event_source link
     supabase_client.table("event_sources").insert({
         "event_id": event_id,
@@ -316,14 +320,14 @@ def update_event(
         "extracted_data": new_data,
         "event_snapshot_before": snapshot,
     }).execute()
-    
+
     # Update source attribution
     attribution = generate_source_attribution(supabase_client, event_id)
     if attribution:
         supabase_client.table("events").update({
             "source_attribution": attribution
         }).eq("id", event_id).execute()
-    
+
     logger.info(f"Updated event {event_id} from email {email_id}")
 
 

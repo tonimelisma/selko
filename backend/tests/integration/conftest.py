@@ -319,92 +319,131 @@ def sample_attachment_data():
 
 @pytest.fixture
 def gemini_client(config):
-    """Get Gemini client for real API calls.
-    
+    """Get LLM Gateway for real API calls.
+
     Requires GEMINI_API_KEY in environment.
     This fixture is for tests marked with @pytest.mark.llm.
+
+    Note: This now returns an LLMGateway (not a raw client) since the
+    codebase uses LLMGateway for all LLM operations.
     """
-    from selko.services.gemini import get_gemini_client
-    
+    from selko.services.llm_gateway import LLMGateway
+
     if not config.gemini_api_key:
         pytest.fail(
             "GEMINI_API_KEY not configured. "
             "Get your API key from https://aistudio.google.com/apikey"
         )
-    return get_gemini_client(config)
+    return LLMGateway(config)
 
 
 @pytest.fixture
 def mock_gemini_client():
-    """Get mocked Gemini client for integration tests without API costs.
-    
-    This fixture provides a mock client that returns realistic responses
+    """Get mocked LLM Gateway for integration tests without API costs.
+
+    This fixture provides a mock gateway that returns realistic responses
     without making actual LLM API calls. Use for integration tests that
     test service orchestration without LLM costs.
+
+    Note: This now returns a mock gateway (not a raw client) since the
+    codebase uses LLMGateway for all LLM operations.
     """
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, patch
     from selko.api.schemas.calendar import (
-        CalendarEventExtraction,
         CalendarEvent,
         GeminiEventsResponse,
     )
+    from selko.services.llm_gateway import LLMGateway
+    from selko.config import Config
     from datetime import datetime
-    
-    mock_client = MagicMock()
-    
-    # Default mock response: event found
-    def mock_generate_content(*args, **kwargs):
-        """Default mock: returns a birthday party event."""
-        mock_response = MagicMock()
-        
-        # Check if this is a comparison/merge request or extraction
-        contents = kwargs.get("contents", [])
-        prompt_text = str(contents)
-        
-        # Event comparison (returns event ID or NO_MATCH)
-        if "Is the new event the same" in prompt_text or "comparing calendar events" in prompt_text.lower():
-            mock_response.text = "NO_MATCH"
+
+    # Create a mock config
+    mock_config = Config(
+        environment="development",
+        supabase_url="http://localhost:54321",
+        supabase_key="test-key",
+        gemini_api_key="test-gemini-key",
+        gemini_model="gemini-3-flash-preview",
+    )
+
+    # Create gateway with mocked client
+    with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        # Default mock response: event found
+        def mock_generate_content(*args, **kwargs):
+            """Default mock: returns a birthday party event."""
+            mock_response = MagicMock()
+
+            # Check if this is a comparison/merge request or extraction
+            contents = kwargs.get("contents", [])
+            prompt_text = str(contents)
+
+            # Event comparison (returns event ID or NO_MATCH)
+            if "Is the new event the same" in prompt_text or "comparing calendar events" in prompt_text.lower():
+                mock_response.text = "NO_MATCH"
+                return mock_response
+
+            # Event merge (returns merged JSON)
+            if "merging calendar event data" in prompt_text.lower():
+                mock_response.text = '{"title": "Merged Event", "start_datetime": "2026-03-01T14:00:00Z", "end_datetime": "2026-03-01T15:00:00Z", "all_day": false, "location": "Merged Location", "description": "Merged description"}'
+                return mock_response
+
+            # Event extraction (returns structured response)
+            mock_gemini_response = GeminiEventsResponse(
+                events_found=True,
+                events=[
+                    CalendarEvent(
+                        title="Mock Event",
+                        start_datetime=datetime.fromisoformat("2026-03-01T14:00:00+00:00"),
+                        end_datetime=datetime.fromisoformat("2026-03-01T15:00:00+00:00"),
+                        all_day=False,
+                        location="Mock Location",
+                        description="This is a mock event for testing",
+                        confidence=0.9,
+                    )
+                ],
+            )
+            mock_response.parsed = mock_gemini_response
             return mock_response
-        
-        # Event merge (returns merged JSON)
-        if "merging calendar event data" in prompt_text.lower():
-            mock_response.text = '{"title": "Merged Event", "start_datetime": "2026-03-01T14:00:00Z", "end_datetime": "2026-03-01T15:00:00Z", "all_day": false, "location": "Merged Location", "description": "Merged description"}'
-            return mock_response
-        
-        # Event extraction (returns structured response)
-        mock_gemini_response = GeminiEventsResponse(
-            events_found=True,
-            events=[
-                CalendarEvent(
-                    title="Mock Event",
-                    start_datetime=datetime.fromisoformat("2026-03-01T14:00:00+00:00"),
-                    end_datetime=datetime.fromisoformat("2026-03-01T15:00:00+00:00"),
-                    all_day=False,
-                    location="Mock Location",
-                    description="This is a mock event for testing",
-                    confidence=0.9,
-                )
-            ],
-        )
-        mock_response.parsed = mock_gemini_response
-        return mock_response
-    
-    mock_client.models.generate_content.side_effect = mock_generate_content
-    return mock_client
+
+        mock_client.models.generate_content.side_effect = mock_generate_content
+
+        gateway = LLMGateway(mock_config)
+        # Store mock client for assertions in tests
+        gateway._mock_client = mock_client
+        return gateway
 
 
 @pytest.fixture
 def mock_gemini_no_events():
-    """Mock Gemini client that returns no events found."""
-    from unittest.mock import MagicMock
+    """Mock LLM Gateway that returns no events found."""
+    from unittest.mock import MagicMock, patch
     from selko.api.schemas.calendar import GeminiEventsResponse
-    
-    mock_client = MagicMock()
-    mock_response = MagicMock()
-    mock_gemini_response = GeminiEventsResponse(
-        events_found=False,
-        events=[],
+    from selko.services.llm_gateway import LLMGateway
+    from selko.config import Config
+
+    mock_config = Config(
+        environment="development",
+        supabase_url="http://localhost:54321",
+        supabase_key="test-key",
+        gemini_api_key="test-gemini-key",
+        gemini_model="gemini-3-flash-preview",
     )
-    mock_response.parsed = mock_gemini_response
-    mock_client.models.generate_content.return_value = mock_response
-    return mock_client
+
+    with patch("selko.services.llm_gateway.get_gemini_client") as mock_get_client:
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_response = MagicMock()
+        mock_gemini_response = GeminiEventsResponse(
+            events_found=False,
+            events=[],
+        )
+        mock_response.parsed = mock_gemini_response
+        mock_client.models.generate_content.return_value = mock_response
+
+        gateway = LLMGateway(mock_config)
+        gateway._mock_client = mock_client
+        return gateway
