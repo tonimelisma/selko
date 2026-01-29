@@ -14,8 +14,10 @@ from selko.api.deps import (
     CurrentUser,
     get_authenticated_client,
     get_current_user,
+    get_llm_logging_service,
     get_quota_service,
 )
+from selko.services.llm_logging import LLMLoggingService
 from selko.api.schemas.emails import (
     BatchProcessRequest,
     EmailProcessResponse,
@@ -117,6 +119,7 @@ async def process_email(
     client: Client = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
+    llm_logging_service: LLMLoggingService = Depends(get_llm_logging_service),
 ) -> EmailProcessResponse:
     """Process an email to extract calendar events.
 
@@ -189,6 +192,7 @@ async def process_email(
             gemini_client=gemini_client,
             email_id=email_id,
             user_id=user.id,
+            logging_service=llm_logging_service,
         )
 
         # Get event IDs from database (events created/updated for this email)
@@ -224,6 +228,7 @@ async def batch_process_emails(
     client: Client = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
+    llm_logging_service: LLMLoggingService = Depends(get_llm_logging_service),
 ) -> EmailProcessResponse:
     """Process multiple recent emails to extract events.
 
@@ -307,6 +312,7 @@ async def batch_process_emails(
                     gemini_client=gemini_client,
                     email_id=email_id,
                     user_id=user.id,
+                    logging_service=llm_logging_service,
                 )
 
                 total_events += process_result.get("num_events", 0)

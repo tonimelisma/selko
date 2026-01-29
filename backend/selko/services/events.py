@@ -8,6 +8,7 @@ from uuid import UUID
 from supabase import Client
 
 from selko.services import gemini
+from selko.services.llm_logging import LLMLoggingService
 
 logger = logging.getLogger(__name__)
 
@@ -23,25 +24,27 @@ def process_email_for_events(
     gemini_client: Any,
     email_id: str,
     user_id: str,
+    logging_service: Optional[LLMLoggingService] = None,
 ) -> dict[str, Any]:
     """Main pipeline function to extract events from an email.
-    
+
     Steps:
     1. Check if sender is ignored
     2. Extract events from email using Gemini
     3. For each event, check if it matches existing events (dedup)
     4. Create new or update existing events
     5. Check sender rules for auto-approve
-    
+
     Args:
         supabase_client: Authenticated Supabase client.
         gemini_client: Initialized Gemini client.
         email_id: UUID of email to process.
         user_id: UUID of user who owns the email.
-        
+        logging_service: Optional LLM logging service for call auditing.
+
     Returns:
         Dict with processing results (num_events, num_new, num_updated).
-        
+
     Raises:
         EventsError: If processing fails.
     """
@@ -73,7 +76,10 @@ def process_email_for_events(
             gemini_client,
             email_text,
             email_metadata,
-            attachments
+            attachments,
+            logging_service=logging_service,
+            user_id=user_id,
+            email_id=email_id,
         )
         
         if not extraction.events_found or not extraction.events:
@@ -103,7 +109,8 @@ def process_email_for_events(
                 supabase_client,
                 gemini_client,
                 user_id,
-                event_data
+                event_data,
+                logging_service=logging_service,
             )
             
             if matched_event_id:
@@ -114,7 +121,9 @@ def process_email_for_events(
                     matched_event_id,
                     event_data,
                     email_id,
-                    "update"
+                    "update",
+                    logging_service=logging_service,
+                    user_id=user_id,
                 )
                 num_updated += 1
             else:
@@ -154,15 +163,17 @@ def find_matching_event(
     gemini_client: Any,
     user_id: str,
     event_data: dict[str, Any],
+    logging_service: Optional[LLMLoggingService] = None,
 ) -> Optional[str]:
     """Find if event matches any existing events (date-based + LLM).
-    
+
     Args:
         supabase_client: Authenticated Supabase client.
         gemini_client: Initialized Gemini client.
         user_id: UUID of user.
         event_data: Extracted event data.
-        
+        logging_service: Optional LLM logging service for call auditing.
+
     Returns:
         Event ID if match found, None otherwise.
     """
@@ -198,7 +209,9 @@ def find_matching_event(
         matched_id = gemini.compare_events(
             gemini_client,
             event_data,
-            candidates
+            candidates,
+            logging_service=logging_service,
+            user_id=user_id,
         )
         return matched_id
     except Exception as e:
@@ -264,9 +277,11 @@ def update_event(
     new_data: dict[str, Any],
     email_id: str,
     source_type: str,
+    logging_service: Optional[LLMLoggingService] = None,
+    user_id: Optional[str] = None,
 ) -> None:
     """Auto-merge new data into existing event.
-    
+
     Args:
         supabase_client: Authenticated Supabase client.
         gemini_client: Initialized Gemini client.
@@ -274,6 +289,8 @@ def update_event(
         new_data: New event data from email.
         email_id: UUID of source email.
         source_type: Type of source (update, cancellation, etc).
+        logging_service: Optional LLM logging service for call auditing.
+        user_id: User UUID for logging.
     """
     # Fetch current event
     result = supabase_client.table("events").select("*").eq("id", event_id).single().execute()
@@ -294,7 +311,9 @@ def update_event(
         gemini_client,
         existing_event,
         new_data,
-        source_type
+        source_type,
+        logging_service=logging_service,
+        user_id=user_id,
     )
     
     # Update event

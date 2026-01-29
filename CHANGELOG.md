@@ -2,6 +2,59 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-29 (28)
+
+### LLM Call Logging and Auditing
+
+**Problem:** LLM calls to Gemini were not tracked or logged, making it difficult to audit usage, debug issues, analyze costs, and enforce per-user quotas effectively.
+
+**Solution:** Implemented comprehensive LLM call logging architecture that records all LLM calls (prompts, responses, timing, tokens, costs) to the database.
+
+**New Database Table:** `llm_call_log`
+- Stores all LLM API calls with full prompt text and response text
+- Tracks operation type (extract_events, compare_events, merge_events)
+- Records timing (started_at, completed_at, latency_ms)
+- Tracks token usage (prompt_tokens, completion_tokens, total_tokens)
+- Estimates cost based on Gemini pricing
+- Links to source email when applicable
+- Stores error details for failed calls
+
+**New Service:** `LLMLoggingService` (`backend/selko/services/llm_logging.py`)
+- `log_success()` - Log successful LLM calls with full details
+- `log_failure()` - Log failed calls with error classification
+- `get_user_usage_summary()` - Get aggregated usage stats for a user
+- Cost estimation based on current Gemini pricing
+- Error classification (rate_limit, api_error, timeout, invalid_response)
+
+**Integration Points:**
+- All three Gemini functions now support optional logging:
+  - `extract_calendar_events()` - Main event extraction
+  - `compare_events()` - Event deduplication
+  - `merge_event_data()` - Event merging for updates
+- API routes inject logging service via FastAPI dependency
+- CLI tools create logging service from service role client
+- Background workers automatically log all LLM calls
+
+**RLS Policies:**
+- Users can view their own LLM call history
+- Service role can write logs (bypasses RLS for backend writes)
+
+**SQL Functions:**
+- `get_llm_usage_summary(user_id, start_date, end_date)` - Returns aggregated usage stats
+
+**Files Changed:**
+- `supabase/migrations/20260129000001_create_llm_call_log.sql` - New migration
+- `backend/selko/services/llm_logging.py` - New logging service
+- `backend/selko/services/gemini.py` - Added logging to all LLM functions
+- `backend/selko/services/events.py` - Pass logging service through pipeline
+- `backend/selko/api/deps.py` - Added `get_llm_logging_service` dependency
+- `backend/selko/api/routes/emails.py` - Inject logging service
+- `backend/selko/workers/email_process.py` - Create logging service for workers
+- `cli/cli_process_emails.py` - Create logging service for CLI
+- `backend/tests/integration/test_llm_logging.py` - New integration tests
+
+---
+
 ## 2026-01-27 (27)
 
 ### Docker Layer Caching for CI

@@ -2,6 +2,8 @@
 
 Uses Google's Gemini 3 Flash model to analyze email content and attachments,
 extracting structured calendar event data.
+
+All LLM calls are logged to the database for auditing and analysis.
 """
 
 import logging
@@ -15,6 +17,12 @@ from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResponse
 from selko.config import Config
+from selko.services.llm_logging import (
+    LLMCallContext,
+    LLMErrorType,
+    LLMLoggingService,
+    LLMOperationType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +122,9 @@ def extract_calendar_events(
     attachments: Optional[list[dict[str, Any]]] = None,
     model: str = "gemini-3-flash-preview",
     max_retries: int = 3,
+    logging_service: Optional[LLMLoggingService] = None,
+    user_id: Optional[str] = None,
+    email_id: Optional[str] = None,
 ) -> CalendarEventExtraction:
     """Extract calendar events from email using Gemini.
 
@@ -124,6 +135,9 @@ def extract_calendar_events(
         attachments: Optional list of attachment dicts with keys: data (bytes), mime_type.
         model: Gemini model to use (default: gemini-3-flash-preview).
         max_retries: Maximum retries for rate-limited requests.
+        logging_service: Optional LLM logging service for call auditing.
+        user_id: User UUID for logging (required if logging_service provided).
+        email_id: Email UUID for logging correlation.
 
     Returns:
         CalendarEventExtraction with structured event data.
@@ -174,8 +188,14 @@ def extract_calendar_events(
         # Note: Keep temperature at default 1.0 for Gemini 3
     )
 
+    # Build full prompt text for logging
+    prompt_for_logging = prompt + f"\n**Email Body:**\n{email_text}"
+    if attachments:
+        prompt_for_logging += f"\n[{len(attachments)} attachment(s) included]"
+
     # Retry loop for rate limiting
     for attempt in range(max_retries):
+        start_time = time.time()
         try:
             logger.info(f"Calling Gemini {model} for event extraction...")
             response = client.models.generate_content(
@@ -184,13 +204,36 @@ def extract_calendar_events(
                 config=generate_config,
             )
 
+            latency_ms = int((time.time() - start_time) * 1000)
+
             # Parse Gemini's response (events only)
             gemini_result = response.parsed
             logger.info(
                 f"Extraction complete: {len(gemini_result.events)} events found "
                 f"(events_found={gemini_result.events_found})"
             )
-            
+
+            # Log successful call
+            if logging_service and user_id:
+                # Extract token counts if available
+                prompt_tokens = None
+                completion_tokens = None
+                if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                    prompt_tokens = getattr(response.usage_metadata, 'prompt_token_count', None)
+                    completion_tokens = getattr(response.usage_metadata, 'candidates_token_count', None)
+
+                logging_service.log_success(
+                    user_id=user_id,
+                    operation_type=LLMOperationType.EXTRACT_EVENTS,
+                    model=model,
+                    prompt_text=prompt_for_logging,
+                    response_text=response.text if hasattr(response, 'text') else str(gemini_result),
+                    latency_ms=latency_ms,
+                    email_id=email_id,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                )
+
             # Wrap with email metadata to create full extraction result
             result = CalendarEventExtraction(
                 email_message_id=email_metadata.get("gmail_id", ""),
@@ -203,7 +246,9 @@ def extract_calendar_events(
             return result
 
         except Exception as e:
+            latency_ms = int((time.time() - start_time) * 1000)
             error_str = str(e).lower()
+
             # Check for rate limiting
             if "429" in error_str or "rate limit" in error_str or "quota" in error_str:
                 if attempt < max_retries - 1:
@@ -215,11 +260,34 @@ def extract_calendar_events(
                     time.sleep(wait_time)
                     continue
                 else:
+                    # Log rate limit failure on final attempt
+                    if logging_service and user_id:
+                        logging_service.log_failure(
+                            user_id=user_id,
+                            operation_type=LLMOperationType.EXTRACT_EVENTS,
+                            model=model,
+                            prompt_text=prompt_for_logging,
+                            error_message=str(e),
+                            latency_ms=latency_ms,
+                            error_type=LLMErrorType.RATE_LIMIT,
+                            email_id=email_id,
+                        )
                     raise GeminiError(
                         f"Failed to extract events after {max_retries} retries (rate limited)"
                     ) from e
             else:
-                # Other errors - fail immediately
+                # Other errors - log and fail immediately
+                if logging_service and user_id:
+                    logging_service.log_failure(
+                        user_id=user_id,
+                        operation_type=LLMOperationType.EXTRACT_EVENTS,
+                        model=model,
+                        prompt_text=prompt_for_logging,
+                        error_message=str(e),
+                        latency_ms=latency_ms,
+                        error_type=LLMErrorType.API_ERROR,
+                        email_id=email_id,
+                    )
                 raise GeminiError(f"Gemini API error: {e}") from e
 
     raise GeminiError(f"Failed to extract events after {max_retries} retries")
@@ -322,22 +390,26 @@ def compare_events(
     new_event: dict[str, Any],
     candidate_events: list[dict[str, Any]],
     model: str = "gemini-3-flash-preview",
+    logging_service: Optional[LLMLoggingService] = None,
+    user_id: Optional[str] = None,
 ) -> Optional[str]:
     """Ask LLM if new_event matches any candidate events.
-    
-    Uses LLM to determine if a newly extracted event is the same as any 
+
+    Uses LLM to determine if a newly extracted event is the same as any
     existing events (for deduplication). This handles cases where the same
     event is mentioned in multiple emails.
-    
+
     Args:
         client: Initialized Gemini client.
         new_event: Dict with event details (title, start_datetime, location, etc).
         candidate_events: List of existing event dicts from DB with same date.
         model: Gemini model to use.
-        
+        logging_service: Optional LLM logging service for call auditing.
+        user_id: User UUID for logging (required if logging_service provided).
+
     Returns:
         Event ID of matched event, or None if no match found.
-        
+
     Raises:
         GeminiError: If comparison fails.
     """
@@ -379,27 +451,65 @@ Return the Event ID of the matching event, or "NO_MATCH" if it's a different eve
 Output format: Just the Event ID or "NO_MATCH", nothing else.
 """
     
+    start_time = time.time()
     try:
         response = client.models.generate_content(
             model=model,
             contents=prompt,
         )
-        
+
+        latency_ms = int((time.time() - start_time) * 1000)
         result = response.text.strip()
         logger.info(f"Event comparison result: {result}")
-        
+
+        # Log successful call
+        if logging_service and user_id:
+            prompt_tokens = None
+            completion_tokens = None
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                prompt_tokens = getattr(response.usage_metadata, 'prompt_token_count', None)
+                completion_tokens = getattr(response.usage_metadata, 'candidates_token_count', None)
+
+            logging_service.log_success(
+                user_id=user_id,
+                operation_type=LLMOperationType.COMPARE_EVENTS,
+                model=model,
+                prompt_text=prompt,
+                response_text=result,
+                latency_ms=latency_ms,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+
         if result == "NO_MATCH":
             return None
-            
+
         # Validate the returned ID exists in candidates
         for candidate in candidate_events:
             if str(candidate.get('id')) == result:
                 return result
-                
+
         logger.warning(f"LLM returned unknown event ID: {result}")
         return None
-        
+
     except Exception as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        # Log failure
+        if logging_service and user_id:
+            error_str = str(e).lower()
+            error_type = LLMErrorType.API_ERROR
+            if "429" in error_str or "rate limit" in error_str:
+                error_type = LLMErrorType.RATE_LIMIT
+
+            logging_service.log_failure(
+                user_id=user_id,
+                operation_type=LLMOperationType.COMPARE_EVENTS,
+                model=model,
+                prompt_text=prompt,
+                error_message=str(e),
+                latency_ms=latency_ms,
+                error_type=error_type,
+            )
         raise GeminiError(f"Event comparison failed: {e}") from e
 
 
@@ -409,23 +519,27 @@ def merge_event_data(
     new_extraction: dict[str, Any],
     source_type: str,
     model: str = "gemini-3-flash-preview",
+    logging_service: Optional[LLMLoggingService] = None,
+    user_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Ask LLM to merge new info into existing event.
-    
+
     Uses LLM to intelligently merge event data from a new email into an
     existing event. Follows rules like preferring specific times over all-day,
     combining descriptions, etc.
-    
+
     Args:
         client: Initialized Gemini client.
         existing_event: Current event data from DB.
         new_extraction: New event data from email.
         source_type: Type of update (update, cancellation, reminder, etc).
         model: Gemini model to use.
-        
+        logging_service: Optional LLM logging service for call auditing.
+        user_id: User UUID for logging (required if logging_service provided).
+
     Returns:
         Dict with merged event data.
-        
+
     Raises:
         GeminiError: If merge fails.
     """
@@ -465,23 +579,63 @@ Output JSON with merged event data:
 }}
 """
     
+    start_time = time.time()
     try:
         generate_config = types.GenerateContentConfig(
             response_mime_type="application/json",
         )
-        
+
         response = client.models.generate_content(
             model=model,
             contents=prompt,
             config=generate_config,
         )
-        
+
+        latency_ms = int((time.time() - start_time) * 1000)
+
         import json
         merged = json.loads(response.text)
         logger.info(f"Event merge complete: {merged.get('title')}")
+
+        # Log successful call
+        if logging_service and user_id:
+            prompt_tokens = None
+            completion_tokens = None
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                prompt_tokens = getattr(response.usage_metadata, 'prompt_token_count', None)
+                completion_tokens = getattr(response.usage_metadata, 'candidates_token_count', None)
+
+            logging_service.log_success(
+                user_id=user_id,
+                operation_type=LLMOperationType.MERGE_EVENTS,
+                model=model,
+                prompt_text=prompt,
+                response_text=response.text,
+                latency_ms=latency_ms,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+
         return merged
-        
+
     except Exception as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        # Log failure
+        if logging_service and user_id:
+            error_str = str(e).lower()
+            error_type = LLMErrorType.API_ERROR
+            if "429" in error_str or "rate limit" in error_str:
+                error_type = LLMErrorType.RATE_LIMIT
+
+            logging_service.log_failure(
+                user_id=user_id,
+                operation_type=LLMOperationType.MERGE_EVENTS,
+                model=model,
+                prompt_text=prompt,
+                error_message=str(e),
+                latency_ms=latency_ms,
+                error_type=error_type,
+            )
         raise GeminiError(f"Event merge failed: {e}") from e
 
 

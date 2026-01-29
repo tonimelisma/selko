@@ -9,16 +9,19 @@ import argparse
 import logging
 import sys
 
+from supabase import create_client
+
 from selko.config import add_logging_arguments, load_config
 from selko.logging import setup_logging
 from selko.services.auth import AuthenticationError, get_authenticated_client, get_current_user_id
 from selko.services.events import EventsError, process_email_for_events
 from selko.services.gemini import GeminiError, get_gemini_client
+from selko.services.llm_logging import LLMLoggingService
 
 logger = logging.getLogger(__name__)
 
 
-def process_single_email(supabase_client, gemini_client, user_id: str, email_id: str):
+def process_single_email(supabase_client, gemini_client, user_id: str, email_id: str, logging_service: LLMLoggingService = None):
     """Process a single email by ID.
 
     Args:
@@ -26,6 +29,7 @@ def process_single_email(supabase_client, gemini_client, user_id: str, email_id:
         gemini_client: Initialized Gemini client.
         user_id: UUID of the authenticated user.
         email_id: UUID of the email to process.
+        logging_service: Optional LLM logging service for call auditing.
     """
     # Fetch email details for display
     email_result = (
@@ -53,6 +57,7 @@ def process_single_email(supabase_client, gemini_client, user_id: str, email_id:
             gemini_client=gemini_client,
             email_id=email_id,
             user_id=user_id,
+            logging_service=logging_service,
         )
 
         if result.get("skipped"):
@@ -67,7 +72,7 @@ def process_single_email(supabase_client, gemini_client, user_id: str, email_id:
         sys.exit(1)
 
 
-def process_recent_emails(supabase_client, gemini_client, user_id: str, max_emails: int):
+def process_recent_emails(supabase_client, gemini_client, user_id: str, max_emails: int, logging_service: LLMLoggingService = None):
     """Process recent emails in batch.
 
     Args:
@@ -75,6 +80,7 @@ def process_recent_emails(supabase_client, gemini_client, user_id: str, max_emai
         gemini_client: Initialized Gemini client.
         user_id: UUID of the authenticated user.
         max_emails: Maximum number of emails to process.
+        logging_service: Optional LLM logging service for call auditing.
     """
     # Fetch recent emails that haven't been processed
     result = (
@@ -111,6 +117,7 @@ def process_recent_emails(supabase_client, gemini_client, user_id: str, max_emai
                 gemini_client=gemini_client,
                 email_id=email_id,
                 user_id=user_id,
+                logging_service=logging_service,
             )
 
             if proc_result.get("skipped"):
@@ -196,10 +203,19 @@ Note:
         logger.error(f"Authentication failed: {e}")
         sys.exit(1)
 
+    # Create LLM logging service with service role client
+    logging_service = None
+    if config.supabase_service_role_key:
+        service_client = create_client(config.supabase_url, config.supabase_service_role_key)
+        logging_service = LLMLoggingService(service_client)
+        logger.debug("LLM call logging enabled")
+    else:
+        logger.warning("Service role key not configured, LLM call logging disabled")
+
     if args.email_id:
-        process_single_email(supabase_client, gemini_client, user_id, args.email_id)
+        process_single_email(supabase_client, gemini_client, user_id, args.email_id, logging_service)
     elif args.recent:
-        process_recent_emails(supabase_client, gemini_client, user_id, args.recent)
+        process_recent_emails(supabase_client, gemini_client, user_id, args.recent, logging_service)
 
     logger.info("\nDone!")
 

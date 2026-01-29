@@ -16,6 +16,7 @@ from supabase import Client
 from selko.config import Config
 from selko.services.events import EventsError, process_email_for_events
 from selko.services.gemini import get_gemini_client
+from selko.services.llm_logging import LLMLoggingService
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,9 @@ async def process_email(
     except Exception as e:
         raise EventsError(f"Failed to initialize Gemini: {e}") from e
 
+    # Create LLM logging service (worker uses service role client)
+    logging_service = LLMLoggingService(client)
+
     # Process email for events (this handles everything)
     try:
         result = process_email_for_events(
@@ -57,6 +61,7 @@ async def process_email(
             gemini_client,
             email_id,
             user_id,
+            logging_service=logging_service,
         )
 
         num_events = result.get("num_events", 0)
