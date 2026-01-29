@@ -15,7 +15,8 @@ from supabase import Client
 
 from selko.config import Config
 from selko.services.events import EventsError, process_email_for_events
-from selko.services.gemini import get_gemini_client
+from selko.services.llm_gateway import LLMGateway
+from selko.services.llm_logging import LLMLoggingService
 
 logger = logging.getLogger(__name__)
 
@@ -44,17 +45,16 @@ async def process_email(
 
     logger.info(f"Processing email {email_id} for calendar events: {subject[:50]}")
 
-    # Initialize Gemini client
-    try:
-        gemini_client = get_gemini_client(config)
-    except Exception as e:
-        raise EventsError(f"Failed to initialize Gemini: {e}") from e
+    # Create gateway with logging service (worker uses service role client)
+    # Note: Workers don't enforce quotas (that's done at the API level)
+    logging_service = LLMLoggingService(client)
+    gateway = LLMGateway(config, logging_service=logging_service, quota_service=None)
 
     # Process email for events (this handles everything)
     try:
         result = process_email_for_events(
             client,
-            gemini_client,
+            gateway,
             email_id,
             user_id,
         )

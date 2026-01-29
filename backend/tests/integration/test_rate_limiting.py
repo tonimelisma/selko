@@ -204,8 +204,9 @@ class TestQuotaExceeded:
             remaining=0,
         )
 
+        # Use valid UUID format (non-existent email)
         response = api_client.post(
-            "/emails/test-email-id/process",
+            "/emails/00000000-0000-0000-0000-000000000000/process",
         )
 
         assert response.status_code in (429, 401, 404)  # 429 if quota hit, 401/404 if other checks fail first
@@ -230,7 +231,8 @@ class TestQuotaExceeded:
             remaining=0,
         )
 
-        api_client.post("/emails/test-email-id/process")
+        # Use valid UUID format (non-existent email)
+        api_client.post("/emails/00000000-0000-0000-0000-000000000000/process")
 
         # process_email_for_events should NOT have been called
         mock_process_email.assert_not_called()

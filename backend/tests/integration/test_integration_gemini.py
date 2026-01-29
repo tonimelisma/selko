@@ -29,13 +29,15 @@ def config():
 
 @pytest.fixture
 def gemini_client(config):
-    """Get Gemini client for real API calls."""
+    """Get LLM Gateway for real API calls."""
+    from selko.services.llm_gateway import LLMGateway
+
     if not config.gemini_api_key:
         pytest.fail(
             "GEMINI_API_KEY not configured. "
             "Get your API key from https://aistudio.google.com/apikey"
         )
-    return get_gemini_client(config)
+    return LLMGateway(config)
 
 
 @pytest.fixture
@@ -77,7 +79,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gemini_client,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -107,7 +109,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gemini_client,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -133,7 +135,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gemini_client,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -156,7 +158,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gemini_client,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -179,7 +181,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gemini_client,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -209,7 +211,7 @@ class TestGeminiRealAPI:
 
         # Should complete successfully with low thinking level
         result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gemini_client,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -263,7 +265,7 @@ class TestGeminiWithDatabase:
 
         # Extract events
         extraction_result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gemini_client,
             email_text=email_text,
             email_metadata=email_metadata,
             attachments=attachments,
