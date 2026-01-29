@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 ## 2026-01-28 (28)
 
+### Remove credentials.json dependency
+
+**Problem:** OAuth client credentials were stored in `cli/credentials.json` file, separate from the `.env` files where other credentials are stored. This led to confusion and stale credentials causing "unauthorized_client" errors during token refresh.
+
+**Solution:** Removed `credentials.json` entirely. OAuth flows now use `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from `.env` files, matching all other credential storage.
+
+**Files Changed:**
+- `backend/selko/config.py` - Removed `credentials_file` field
+- `backend/selko/services/gmail.py` - Use `config.google_client_id/secret` instead of file
+- `backend/selko/services/integrations.py` - Use `config.google_client_id/secret` for OAuth flows
+- `cli/cli_auth_gcal.py` - Use `config.google_client_id/secret` instead of file
+- `docs/testing-guide.md` - Updated token refresh instructions
+
+---
+
 ### Unified LLM Gateway
 
 **Problem:** LLM call concerns (rate limiting, retries, logging, error handling) were scattered across multiple modules. Each function in `gemini.py` had its own timing, retry logic, and error handling. Adding logging or quotas required modifying every function.
