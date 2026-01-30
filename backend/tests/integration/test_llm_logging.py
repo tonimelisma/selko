@@ -7,8 +7,8 @@ prompts, responses, metrics, and cost tracking.
 import pytest
 from datetime import date
 
-# Mark all tests in this module as integration tests
-pytestmark = pytest.mark.integration
+# Mark all tests in this module as integration tests (development uses local Supabase)
+pytestmark = [pytest.mark.integration, pytest.mark.development]
 
 from selko.services.llm_logging import (
     LLMLoggingService,
