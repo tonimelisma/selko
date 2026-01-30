@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-30 (30) - OAuth Redirect Port Fix
+
+### Fix: Use fixed port for CLI OAuth redirect
+
+**Problem:** CLI OAuth flows (`cli_auth_gmail`, `cli_auth_gcal`) used `port=0` (random port) for the local redirect server. This works with Desktop OAuth clients but fails with Web OAuth clients because Web clients require exact redirect URI matches including port.
+
+**Solution:** Changed both CLI OAuth flows to use fixed port 8080:
+- `http://localhost:8080` is now the redirect URI for CLI OAuth flows
+- Users must add `http://localhost:8080` to their Web OAuth client's authorized redirect URIs in GCP Console
+
+**Files Changed:**
+- `backend/selko/services/gmail.py` - Fixed `run_oauth_flow()` to use port 8080
+- `cli/cli_auth_gcal.py` - Fixed `run_calendar_oauth_flow()` to use port 8080
+
+---
+
 ## 2026-01-30 (30)
 
 ### Fix: Add missing LLM call logging database migration
