@@ -55,13 +55,16 @@ def run_oauth_flow(config: Config) -> Credentials:
         )
 
     try:
+        # Use fixed port 8080 for OAuth redirect so Web app clients work
+        # (Web app clients require exact redirect URI match including port)
+        redirect_uri = "http://localhost:8080"
         client_config = {
             "installed": {
                 "client_id": config.google_client_id,
                 "client_secret": config.google_client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": ["http://localhost"],
+                "redirect_uris": [redirect_uri],
             }
         }
         flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
@@ -69,7 +72,7 @@ def run_oauth_flow(config: Config) -> Credentials:
         logger.info("Opening browser for authentication...")
         logger.info("If browser doesn't open, visit the URL shown below.")
 
-        creds = flow.run_local_server(port=0)
+        creds = flow.run_local_server(port=8080)
         logger.info("OAuth flow completed successfully")
         return creds
 
