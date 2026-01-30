@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-01-30 (30)
+
+### Fix: Add missing LLM call logging database migration
+
+**Problem:** PR #17 (Unified LLM Gateway) merged the Python code for `LLMLoggingService` but forgot to include the database migration from PR #16. The logging service was silently failing because the `llm_call_log` table didn't exist.
+
+**Solution:** Added the missing migration and integration tests.
+
+**New Database Table:** `llm_call_log`
+- Stores all LLM API calls with full prompt and response text
+- Tracks operation type (extract_events, compare_events, merge_events)
+- Records timing (started_at, completed_at, latency_ms)
+- Tracks token usage (prompt_tokens, completion_tokens, total_tokens)
+- Estimates cost based on Gemini pricing
+- Links to source email when applicable
+- Stores error details for failed calls
+
+**New SQL Function:** `get_llm_usage_summary(user_id, start_date, end_date)`
+- Returns aggregated usage statistics for a user
+
+**RLS Policies:**
+- Users can view their own LLM call history
+- Service role can write logs (bypasses RLS for backend writes)
+
+**Files Added:**
+- `supabase/migrations/20260130000001_create_llm_call_log.sql` - Database migration
+- `backend/tests/integration/test_llm_logging.py` - 316 lines of integration tests
+
+---
+
 ## 2026-01-28 (28)
 
 ### Remove credentials.json dependency

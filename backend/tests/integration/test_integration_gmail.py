@@ -7,11 +7,28 @@ Development tests use local Supabase, staging tests use cloud Supabase.
 import pytest
 
 from selko.services.gmail import (
+    GmailError,
     build_service,
     fetch_messages,
     get_credentials,
     get_user_profile,
 )
+
+
+import functools
+
+
+def skip_if_token_expired(func):
+    """Decorator to skip test if Gmail tokens are expired/revoked."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except GmailError as e:
+            if "expired or revoked" in str(e) or "unauthorized_client" in str(e):
+                pytest.skip(f"Gmail tokens expired/revoked - re-authenticate in staging: {e}")
+            raise
+    return wrapper
 
 
 @pytest.mark.integration
@@ -46,6 +63,7 @@ class TestGmailStaging:
         service = build_service(creds)
         assert service is not None
 
+    @skip_if_token_expired
     def test_get_user_profile_real(self, authenticated_client, config):
         """Can get real user profile from Gmail."""
         creds = get_credentials(authenticated_client, config)
@@ -58,6 +76,7 @@ class TestGmailStaging:
         assert "emailAddress" in profile
         assert "@" in profile["emailAddress"]
 
+    @skip_if_token_expired
     def test_fetch_messages_real(self, authenticated_client, config):
         """Can fetch real messages from Gmail."""
         creds = get_credentials(authenticated_client, config)
@@ -126,6 +145,7 @@ class TestGmailDevelopment:
         service = build_service(creds)
         assert service is not None
 
+    @skip_if_token_expired
     def test_get_user_profile_real(self, authenticated_client, config):
         """Can get real user profile from Gmail."""
         creds = get_credentials(authenticated_client, config)
@@ -138,6 +158,7 @@ class TestGmailDevelopment:
         assert "emailAddress" in profile
         assert "@" in profile["emailAddress"]
 
+    @skip_if_token_expired
     def test_fetch_messages_real(self, authenticated_client, config):
         """Can fetch real messages from Gmail."""
         creds = get_credentials(authenticated_client, config)
