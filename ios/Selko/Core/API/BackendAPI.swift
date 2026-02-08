@@ -103,6 +103,7 @@ protocol BackendAPIProtocol: Sendable {
     func listCalendars() async throws -> [CalendarInfo]
     func syncEventToCalendar(eventId: UUID) async throws -> CalendarSyncResponse
     func getGmailAuthUrl(redirectUri: String?) -> String
+    func getCalendarAuthUrl(redirectUri: String?) -> String
     func checkHealth() async throws -> HealthResponse
 }
 
@@ -208,6 +209,14 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
 
     func getGmailAuthUrl(redirectUri: String? = nil) -> String {
         var urlString = "\(baseURL)/integrations/gmail/auth"
+        if let redirectUri = redirectUri {
+            urlString += "?redirect_uri=\(redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        }
+        return urlString
+    }
+
+    func getCalendarAuthUrl(redirectUri: String? = nil) -> String {
+        var urlString = "\(baseURL)/integrations/calendar/auth"
         if let redirectUri = redirectUri {
             urlString += "?redirect_uri=\(redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
         }
