@@ -7,6 +7,7 @@
 	import BottomNav from '$lib/components/BottomNav.svelte';
 
 	let { children } = $props();
+	/** @type {any} */
 	let currentUser = $state(null);
 	let isLoading = $state(true);
 

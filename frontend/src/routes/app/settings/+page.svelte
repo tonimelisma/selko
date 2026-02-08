@@ -10,7 +10,9 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 
+	/** @type {any[]} */
 	let integrationsList = $state([]);
+	/** @type {any[]} */
 	let calendars = $state([]);
 	let selectedCalendar = $state('');
 	let currentUserEmail = $state('');
@@ -77,6 +79,7 @@
 		isLoadingCalendars = false;
 	}
 
+	/** @param {any} event */
 	async function handleCalendarChange(event) {
 		const calendarId = event.target.value;
 		selectedCalendar = calendarId;
@@ -86,6 +89,7 @@
 		}
 	}
 
+	/** @param {string} integrationId */
 	function handleDisconnectRequest(integrationId) {
 		const integration = integrationsList.find((i) => i.id === integrationId);
 		disconnectTargetId = integrationId;
@@ -109,6 +113,7 @@
 		disconnectTargetId = '';
 	}
 
+	/** @param {string} provider */
 	function handleAuthorize(provider) {
 		if (provider === 'gmail') {
 			initiateGmailAuth();

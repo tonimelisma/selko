@@ -13,7 +13,9 @@
 	import EventCard from '$lib/components/EventCard.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 
+	/** @type {any[]} */
 	let integrationsList = $state([]);
+	/** @type {any[]} */
 	let events = $state([]);
 	let isLoadingIntegrations = $state(true);
 	let isLoadingEvents = $state(false);
@@ -92,6 +94,7 @@
 		isLoadingEvents = false;
 	}
 
+	/** @param {any} event */
 	async function handleApprove(event) {
 		const { error: updateError } = await updateEventStatus(event.id, 'approved');
 		if (updateError) {
@@ -103,6 +106,7 @@
 		syncEventToCalendar(event.id);
 	}
 
+	/** @param {any} event */
 	async function handleReject(event) {
 		const { error: updateError } = await updateEventStatus(event.id, 'rejected');
 		if (updateError) {
@@ -112,6 +116,7 @@
 		events = events.filter((e) => e.id !== event.id);
 	}
 
+	/** @param {any[]} eventsList */
 	async function handleApproveAll(eventsList) {
 		for (const event of eventsList) {
 			await handleApprove(event);
@@ -122,6 +127,7 @@
 		initiateGmailAuth();
 	}
 
+	/** @param {string} provider */
 	function handleAuthorize(provider) {
 		if (provider === 'gmail') {
 			initiateGmailAuth();

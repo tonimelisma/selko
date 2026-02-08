@@ -6,6 +6,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 
+	/** @type {any[]} */
 	let events = $state([]);
 	let totalCount = $state(0);
 	let isLoading = $state(true);
@@ -80,6 +81,7 @@
 		isLoadingMore = false;
 	}
 
+	/** @param {any} event */
 	function getActionDescription(event) {
 		const statusMap = {
 			approved: 'Approved',
@@ -88,9 +90,10 @@
 			rejected: 'Rejected',
 			cancelled: 'Cancelled'
 		};
-		return statusMap[event.status] || event.status;
+		return /** @type {Record<string, string>} */ (statusMap)[event.status] || event.status;
 	}
 
+	/** @param {any} event */
 	function getActionTime(event) {
 		try {
 			return new Date(event.updated_at).toLocaleTimeString(undefined, {
@@ -102,6 +105,7 @@
 		}
 	}
 
+	/** @param {any} event */
 	function getSourceInfo(event) {
 		const sources = event.event_sources || [];
 		const firstSource = sources[0];
@@ -112,6 +116,7 @@
 		return '';
 	}
 
+	/** @param {any} event */
 	async function handleUndo(event) {
 		const { error: updateError } = await updateEventStatus(event.id, 'pending_review');
 		if (updateError) {
@@ -122,6 +127,7 @@
 		totalCount--;
 	}
 
+	/** @param {any} event */
 	async function handleRetry(event) {
 		const result = await syncEventToCalendar(event.id);
 		if (result.error) {

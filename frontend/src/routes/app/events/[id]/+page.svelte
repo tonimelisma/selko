@@ -11,9 +11,13 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 
 	let eventId = $state('');
+	/** @type {any} */
 	let event = $state(null);
+	/** @type {any[]} */
 	let sources = $state([]);
+	/** @type {any} */
 	let sourceEmail = $state(null);
+	/** @type {any[]} */
 	let attachments = $state([]);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
@@ -95,11 +99,12 @@
 		if (!event) return;
 		isSaving = true;
 
+		/** @type {Record<string, any>} */
 		const updates = {
 			title,
 			all_day: allDay,
-			location: location || null,
-			description: description || null
+			location: location || undefined,
+			description: description || undefined
 		};
 
 		if (eventDate) {

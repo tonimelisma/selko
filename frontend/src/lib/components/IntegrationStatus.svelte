@@ -4,9 +4,9 @@
 	let {
 		integrations = [],
 		setupMode = false,
-		onconnect,
-		ondisconnect,
-		onauthorize
+		onconnect = undefined,
+		ondisconnect = undefined,
+		onauthorize = undefined
 	} = $props();
 
 	let gmailIntegration = $derived(integrations.find((i) => i.provider === 'gmail'));
@@ -26,6 +26,7 @@
 		}
 	];
 
+	/** @param {string} key */
 	function getIntegrationForService(key) {
 		return integrations.find((i) => i.provider === key);
 	}

@@ -1,5 +1,5 @@
 <script>
-	let { title, backHref = '', children } = $props();
+	let { title, backHref = '', children = undefined } = $props();
 </script>
 
 <div class="flex items-center justify-between mb-6">

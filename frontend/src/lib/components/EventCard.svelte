@@ -1,5 +1,5 @@
 <script>
-	let { event, onapprove, onreject, onedit } = $props();
+	let { event, onapprove, onreject, onedit = undefined } = $props();
 
 	let showFullDescription = $state(false);
 

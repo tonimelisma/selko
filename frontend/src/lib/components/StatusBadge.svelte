@@ -20,6 +20,7 @@
 	};
 
 	let badgeInfo = $derived(() => {
+		/** @type {Record<string, {class: string, label: string}>} */
 		const map = type === 'integration' ? integrationStatusMap : eventStatusMap;
 		return map[status] || { class: 'badge-ghost', label: status };
 	});
