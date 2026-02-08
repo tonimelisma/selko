@@ -56,6 +56,7 @@ struct EventDetailView: View {
                 } label: {
                     Text("Reject")
                         .foregroundStyle(.red)
+                        .accessibilityIdentifier("rejectButton")
                 }
             }
 
@@ -67,6 +68,7 @@ struct EventDetailView: View {
                 } label: {
                     Text("Approve")
                         .fontWeight(.semibold)
+                        .accessibilityIdentifier("approveButton")
                 }
                 .tint(.green)
             }
@@ -96,6 +98,7 @@ struct EventDetailView: View {
         Form {
             Section("Event Details") {
                 TextField("Title", text: $viewModel.title)
+                    .accessibilityIdentifier("eventDetailTitle")
                     .onChange(of: viewModel.title) { _, _ in
                         viewModel.scheduleSave()
                     }

@@ -2,6 +2,39 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-08 - iOS XCUITests
+
+### Test: Add XCUITests and accessibility identifiers for iOS screens
+
+**Accessibility Identifiers Added:**
+- ReviewQueueView: reviewQueueLoading, integrationSetupView, emptyStateView, eventList
+- EventCardView: eventCard, eventTitle
+- EventDetailView: eventDetailTitle, rejectButton, approveButton
+- HistoryView: historyLoading, historyEmptyState, historyList, undoButton, retryButton
+- SettingsView: connectedAccountsSection, signOutButton
+
+**XCUITest Files Added (4):**
+- `ReviewQueueUITests.swift` — Loading state, navigation title, states detection
+- `EventDetailUITests.swift` — Navigation structure
+- `HistoryUITests.swift` — Tab navigation, empty state, navigation title
+- `SettingsUITests.swift` — Tab navigation, sections display, sign out button
+
+**Files Modified:**
+- `ios/Selko/Features/Review/Views/ReviewQueueView.swift`
+- `ios/Selko/Features/Review/Views/IntegrationSetupView.swift`
+- `ios/Selko/Features/Review/Views/EventCardView.swift`
+- `ios/Selko/Features/Review/Views/EventDetailView.swift`
+- `ios/Selko/Features/History/Views/HistoryView.swift`
+- `ios/Selko/Features/Settings/Views/SettingsView.swift`
+
+**Files Added:**
+- `ios/SelkoUITests/ReviewQueueUITests.swift`
+- `ios/SelkoUITests/EventDetailUITests.swift`
+- `ios/SelkoUITests/HistoryUITests.swift`
+- `ios/SelkoUITests/SettingsUITests.swift`
+
+---
+
 ## 2026-02-08 - Fix CLI OAuth refresh token
 
 ### Fix: Force consent prompt in CLI OAuth flows
