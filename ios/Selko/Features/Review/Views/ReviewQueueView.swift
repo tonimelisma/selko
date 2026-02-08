@@ -12,11 +12,13 @@ struct ReviewQueueView: View {
         Group {
             if viewModel.isLoading {
                 ProgressView("Loading events...")
+                    .accessibilityIdentifier("reviewQueueLoading")
             } else if !viewModel.isConnected {
                 IntegrationSetupView(
                     gmailConnected: viewModel.gmailConnected,
                     calendarConnected: viewModel.calendarConnected
                 )
+                .accessibilityIdentifier("integrationSetupView")
             } else if viewModel.senderGroups.isEmpty {
                 emptyState
             } else {
@@ -47,6 +49,7 @@ struct ReviewQueueView: View {
         } description: {
             Text("No events need your review right now. New events from your emails will appear here.")
         }
+        .accessibilityIdentifier("emptyStateView")
     }
 
     private var eventList: some View {
@@ -86,6 +89,7 @@ struct ReviewQueueView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .accessibilityIdentifier("eventList")
         .navigationDestination(for: UUID.self) { eventId in
             EventDetailView(eventId: eventId)
         }

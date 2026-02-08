@@ -12,12 +12,14 @@ struct HistoryView: View {
         Group {
             if viewModel.isLoading && viewModel.dateGroups.isEmpty {
                 ProgressView("Loading history...")
+                    .accessibilityIdentifier("historyLoading")
             } else if viewModel.dateGroups.isEmpty {
                 ContentUnavailableView {
                     Label("No Activity", systemImage: "clock")
                 } description: {
                     Text("Your reviewed events will appear here.")
                 }
+                .accessibilityIdentifier("historyEmptyState")
             } else {
                 historyList
             }
@@ -69,6 +71,7 @@ struct HistoryView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .accessibilityIdentifier("historyList")
     }
 }
 
@@ -106,6 +109,7 @@ struct HistoryRowView: View {
                     .font(.caption)
                     .buttonStyle(.bordered)
                     .controlSize(.mini)
+                    .accessibilityIdentifier("retryButton")
                 }
 
                 if event.status != .cancelled {
@@ -115,6 +119,7 @@ struct HistoryRowView: View {
                     .font(.caption)
                     .buttonStyle(.bordered)
                     .controlSize(.mini)
+                    .accessibilityIdentifier("undoButton")
                 }
             }
         }

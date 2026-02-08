@@ -54,6 +54,7 @@ struct IntegrationSetupView: View {
             Spacer()
         }
         .padding()
+        .accessibilityIdentifier("integrationSetupView")
     }
 
     @ViewBuilder
