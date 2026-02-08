@@ -353,7 +353,7 @@ class TestEventUnsyncEndpoint:
             authenticated_client.table("events").delete().eq("id", event_id).execute()
 
     def test_event_unsync_wrong_user(self, test_client, authenticated_client, test_user_id, temp_user_client):
-        """POST /events/{id}/unsync returns 403 for another user's event."""
+        """POST /events/{id}/unsync returns 404 for another user's event (RLS hides it)."""
         # Create event owned by test_user
         event_data = {
             "user_id": test_user_id,
@@ -367,11 +367,13 @@ class TestEventUnsyncEndpoint:
 
         try:
             # Try to unsync with temp user's token
+            # RLS prevents the temp user from seeing the event at all,
+            # so the API returns 404 (not found) rather than 403 (forbidden)
             session = temp_user_client.auth.get_session()
             other_headers = {"Authorization": f"Bearer {session.access_token}"}
 
             response = test_client.post(f"/events/{event_id}/unsync", headers=other_headers)
-            assert response.status_code == 403
+            assert response.status_code == 404
         finally:
             # Cleanup
             authenticated_client.table("events").delete().eq("id", event_id).execute()
