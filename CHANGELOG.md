@@ -2,6 +2,62 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-08 - Web Frontend UI Screens
+
+### Feat: Implement web UI screens (Review Queue, Event Detail, History, Settings)
+
+**New Screens:**
+- **Review Queue** (`/app`): Rewritten to show pending events grouped by sender and email, with approve/reject actions. Shows integration setup mode when accounts not connected, empty state when caught up.
+- **Event Detail** (`/app/events/[id]`): Side-by-side source email and editable event form. Auto-save on blur, approve/reject with calendar sync. Responsive layout (desktop grid, mobile stacked with collapsible source).
+- **Activity History** (`/app/history`): Shows approved, synced, failed, rejected events grouped by date. Undo (back to pending) and retry (re-sync failed) actions. Paginated with Load More.
+- **Settings** (`/app/settings`): Integration management with disconnect confirmation modals, calendar target selection, read-only account email, mobile logout button.
+
+**New Shared Components:**
+- `Navbar.svelte` - Desktop navigation with Selko brand, Review/History/Settings links, logout button
+- `BottomNav.svelte` - Mobile bottom tab navigation with SVG icons
+- `EmptyState.svelte` - Centered heading + description for empty lists
+- `PageHeader.svelte` - Page title with optional back link and action slot
+- `StatusBadge.svelte` - DaisyUI badge mapping for event and integration statuses
+- `ConfirmModal.svelte` - DaisyUI dialog for destructive action confirmation
+- `IntegrationStatus.svelte` - Setup and settings mode for Gmail/Calendar connections
+- `SenderHeader.svelte` - Sender grouping header with "Approve All"
+- `EmailHeader.svelte` - Email subject/date with "Approve All"
+- `EventCard.svelte` - Event display with title, datetime, location, description toggle, approve/reject buttons
+
+**App Layout:**
+- `+layout.svelte` for `/app/*` routes with auth guard, navbar, bottom nav, page container
+- Auth redirect to `/login` when not authenticated
+
+**Service Layer Additions:**
+- `fetchPendingEventsWithSources()` - Events with joined source email data for Review Queue grouping
+- `fetchActivityEvents()` - Paginated activity history with status filters
+- `disconnectIntegration()` - Delete an integration
+- `getCalendarAuthUrl()` / `initiateCalendarAuth()` - Calendar OAuth flow
+
+**Test Coverage:**
+- 6 component test files: Navbar, BottomNav, EmptyState, StatusBadge, EventCard, IntegrationStatus
+- 5 route test files: app layout, app page (review queue), events/[id], history, settings
+- 7 new service tests for fetchPendingEventsWithSources and fetchActivityEvents
+- All 179 tests passing
+
+**Files Added:**
+- `frontend/src/lib/components/` - 10 new Svelte components
+- `frontend/src/routes/app/+layout.svelte` - App shell layout
+- `frontend/src/routes/app/events/[id]/+page.svelte` - Event detail page
+- `frontend/src/routes/app/history/+page.svelte` - Activity history page
+- `frontend/src/routes/app/settings/+page.svelte` - Settings page
+- Test files in `__tests__/` directories for all components and routes
+
+**Files Modified:**
+- `frontend/src/routes/app/+page.svelte` - Complete rewrite for Review Queue
+- `frontend/src/lib/api/backend.js` - Added Calendar OAuth functions
+- `frontend/src/lib/services/events.js` - Added fetchPendingEventsWithSources, fetchActivityEvents
+- `frontend/src/lib/services/integrations.js` - Added disconnectIntegration
+- `frontend/src/lib/services/index.js` - Added new exports
+- `frontend/src/routes/app/__tests__/page.test.js` - Rewritten for new Review Queue
+
+---
+
 ## 2026-02-08 - Android UI Screens
 
 ### Feat: Implement Android UI (Review Queue, Event Detail, History, Settings)
