@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-08 - Android Compose UI Tests
+
+### Test: Add Compose UI tests for Android screens
+
+**Test Files Added (4):**
+- `ReviewQueueScreenTest.kt` — Loading indicator, empty state, integration setup display
+- `EventDetailScreenTest.kt` — Top bar, back button, error for missing events
+- `HistoryScreenTest.kt` — Empty state display, description text
+- `SettingsScreenTest.kt` — Title, sections (Connected Accounts, Calendar Defaults, Account), sign out button, user email, integration rows
+
+**Pattern:** Follows existing AuthScreenTest.kt pattern with createComposeRule(), MockK repositories, and onNodeWithText() assertions.
+
+**Files Added:**
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/review/ReviewQueueScreenTest.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/review/EventDetailScreenTest.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/history/HistoryScreenTest.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/settings/SettingsScreenTest.kt`
+
+---
+
 ## 2026-02-08 - Playwright E2E Tests
 
 ### Feat: Add Playwright E2E test suite for web frontend
