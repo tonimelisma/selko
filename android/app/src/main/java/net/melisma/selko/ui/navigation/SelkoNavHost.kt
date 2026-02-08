@@ -12,10 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import io.github.jan.supabase.auth.status.SessionStatus
 import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.ui.screens.auth.AuthScreen
-import net.melisma.selko.ui.screens.home.HomeScreen
+import net.melisma.selko.ui.screens.review.EventDetailScreen
 import org.koin.compose.koinInject
 
 @Composable
@@ -70,11 +71,22 @@ fun SelkoNavHost(
         }
 
         composable<Home> {
-            HomeScreen(
+            MainScaffold(
+                parentNavController = navController,
                 onLogout = {
                     navController.navigate(Auth) {
                         popUpTo(Home) { inclusive = true }
                     }
+                }
+            )
+        }
+
+        composable<EventDetail> { backStackEntry ->
+            val eventDetail = backStackEntry.toRoute<EventDetail>()
+            EventDetailScreen(
+                eventId = eventDetail.eventId,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }

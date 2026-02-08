@@ -219,6 +219,15 @@ class BackendApiClient(
         return "$baseUrl/integrations/gmail/auth$params"
     }
 
+    /**
+     * Get the Google Calendar OAuth authorization URL.
+     * User should be redirected to this URL in a web browser.
+     */
+    fun getCalendarAuthUrl(redirectUri: String? = null): String {
+        val params = redirectUri?.let { "?redirect_uri=$it" } ?: ""
+        return "$baseUrl/integrations/calendar/auth$params"
+    }
+
     // ============================================================================
     // Health Check
     // ============================================================================
