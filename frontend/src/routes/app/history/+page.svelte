@@ -1,0 +1,224 @@
+<script>
+	import { onMount } from 'svelte';
+	import { fetchActivityEvents, updateEventStatus } from '$lib/services/events.js';
+	import { syncEventToCalendar } from '$lib/api/backend.js';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
+
+	/** @type {any[]} */
+	let events = $state([]);
+	let totalCount = $state(0);
+	let isLoading = $state(true);
+	let isLoadingMore = $state(false);
+	let error = $state('');
+	let offset = $state(0);
+	const limit = 20;
+
+	let hasMore = $derived(events.length < totalCount);
+
+	// Group events by date
+	let groupedByDate = $derived(() => {
+		const groups = new Map();
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const yesterday = new Date(today);
+		yesterday.setDate(yesterday.getDate() - 1);
+
+		for (const event of events) {
+			const eventDate = new Date(event.updated_at);
+			eventDate.setHours(0, 0, 0, 0);
+
+			let dateLabel;
+			if (eventDate.getTime() === today.getTime()) {
+				dateLabel = 'Today';
+			} else if (eventDate.getTime() === yesterday.getTime()) {
+				dateLabel = 'Yesterday';
+			} else {
+				dateLabel = eventDate.toLocaleDateString(undefined, {
+					weekday: 'long',
+					month: 'long',
+					day: 'numeric',
+					year: 'numeric'
+				});
+			}
+
+			if (!groups.has(dateLabel)) {
+				groups.set(dateLabel, []);
+			}
+			groups.get(dateLabel).push(event);
+		}
+		return groups;
+	});
+
+	onMount(async () => {
+		await loadEvents();
+	});
+
+	async function loadEvents() {
+		isLoading = true;
+		error = '';
+		const result = await fetchActivityEvents({ limit, offset: 0 });
+		if (result.error) {
+			error = result.error.message;
+		} else {
+			events = result.data;
+			totalCount = result.count || 0;
+			offset = result.data.length;
+		}
+		isLoading = false;
+	}
+
+	async function loadMore() {
+		isLoadingMore = true;
+		const result = await fetchActivityEvents({ limit, offset });
+		if (result.error) {
+			error = result.error.message;
+		} else {
+			events = [...events, ...result.data];
+			offset += result.data.length;
+		}
+		isLoadingMore = false;
+	}
+
+	/** @param {any} event */
+	function getActionDescription(event) {
+		const statusMap = {
+			approved: 'Approved',
+			synced: 'Synced to calendar',
+			sync_failed: 'Calendar sync failed',
+			rejected: 'Rejected',
+			cancelled: 'Cancelled'
+		};
+		return /** @type {Record<string, string>} */ (statusMap)[event.status] || event.status;
+	}
+
+	/** @param {any} event */
+	function getActionTime(event) {
+		try {
+			return new Date(event.updated_at).toLocaleTimeString(undefined, {
+				hour: 'numeric',
+				minute: '2-digit'
+			});
+		} catch {
+			return '';
+		}
+	}
+
+	/** @param {any} event */
+	function getSourceInfo(event) {
+		const sources = event.event_sources || [];
+		const firstSource = sources[0];
+		const email = firstSource?.emails;
+		if (email) {
+			return `From: ${email.from_name || email.from_email || 'Unknown'}`;
+		}
+		return '';
+	}
+
+	/** @param {any} event */
+	async function handleUndo(event) {
+		const { error: updateError } = await updateEventStatus(event.id, 'pending_review');
+		if (updateError) {
+			error = updateError.message;
+			return;
+		}
+		events = events.filter((e) => e.id !== event.id);
+		totalCount--;
+	}
+
+	/** @param {any} event */
+	async function handleRetry(event) {
+		const result = await syncEventToCalendar(event.id);
+		if (result.error) {
+			error = result.error.message;
+			return;
+		}
+		// Update local state
+		events = events.map((e) =>
+			e.id === event.id ? { ...e, status: 'synced' } : e
+		);
+	}
+</script>
+
+<PageHeader title="Activity History" />
+
+{#if isLoading}
+	<div class="space-y-4">
+		<div class="h-6 bg-base-200 rounded animate-pulse w-24"></div>
+		<div class="h-16 bg-base-200 rounded animate-pulse"></div>
+		<div class="h-16 bg-base-200 rounded animate-pulse"></div>
+		<div class="h-16 bg-base-200 rounded animate-pulse"></div>
+	</div>
+{:else if error}
+	<div class="alert alert-error mb-4">
+		<span>{error}</span>
+		<button class="btn btn-sm btn-ghost" onclick={loadEvents}>Retry</button>
+	</div>
+{:else if events.length === 0}
+	<EmptyState
+		heading="No activity yet"
+		description="Events you approve, reject, or sync will appear here."
+	/>
+{:else}
+	<div class="space-y-6">
+		{#each [...groupedByDate().entries()] as [dateLabel, dateEvents]}
+			<div>
+				<h2 class="text-sm font-semibold text-base-content/60 mb-3">{dateLabel}</h2>
+				<div class="space-y-2">
+					{#each dateEvents as event (event.id)}
+						<div class="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+							<div class="min-w-0 flex-1">
+								<div class="flex items-center gap-2 flex-wrap">
+									<span class="font-medium text-sm">{event.title}</span>
+									<StatusBadge status={event.status} />
+								</div>
+								<div class="flex items-center gap-2 mt-1 text-xs text-base-content/60">
+									<span>{getActionTime(event)}</span>
+									<span>{getActionDescription(event)}</span>
+									{#if getSourceInfo(event)}
+										<span>- {getSourceInfo(event)}</span>
+									{/if}
+								</div>
+							</div>
+							<div class="flex items-center gap-1 flex-shrink-0 ml-2">
+								{#if event.status === 'sync_failed'}
+									<button
+										class="btn btn-ghost btn-xs"
+										onclick={() => handleRetry(event)}
+									>
+										Retry
+									</button>
+								{/if}
+								{#if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
+									<button
+										class="btn btn-ghost btn-xs"
+										onclick={() => handleUndo(event)}
+									>
+										Undo
+									</button>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/each}
+
+		{#if hasMore}
+			<div class="text-center py-4">
+				<button
+					class="btn btn-ghost"
+					onclick={loadMore}
+					disabled={isLoadingMore}
+				>
+					{#if isLoadingMore}
+						<span class="loading loading-spinner loading-sm"></span>
+					{:else}
+						Load More
+					{/if}
+				</button>
+			</div>
+		{/if}
+	</div>
+{/if}

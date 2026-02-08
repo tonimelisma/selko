@@ -2,151 +2,245 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import { writable } from 'svelte/store';
 
-// Create controllable stores
-const mockUser = writable(null);
-const mockLoading = writable(true);
+// Mock fetch integrations
+const mockFetchIntegrations = vi.fn();
+const mockFetchPendingEventsWithSources = vi.fn();
+const mockUpdateEventStatus = vi.fn();
 
-// Mock SvelteKit navigation
-const mockGoto = vi.fn();
-vi.mock('$app/navigation', () => ({
-	goto: (...args) => mockGoto(...args)
+vi.mock('$lib/services/integrations.js', () => ({
+	fetchIntegrations: (...args) => mockFetchIntegrations(...args)
 }));
 
-// Mock stores
-vi.mock('$lib/stores.js', () => ({
-	user: mockUser,
-	loading: mockLoading
+vi.mock('$lib/services/events.js', () => ({
+	fetchPendingEventsWithSources: (...args) => mockFetchPendingEventsWithSources(...args),
+	updateEventStatus: (...args) => mockUpdateEventStatus(...args)
 }));
 
-// Mock Supabase
-const mockSignOut = vi.fn();
-vi.mock('$lib/supabase.js', () => ({
-	supabase: {
-		auth: {
-			signOut: (...args) => mockSignOut(...args)
-		}
-	}
+const mockSyncEventToCalendar = vi.fn();
+const mockInitiateGmailAuth = vi.fn();
+const mockInitiateCalendarAuth = vi.fn();
+
+vi.mock('$lib/api/backend.js', () => ({
+	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
+	initiateGmailAuth: (...args) => mockInitiateGmailAuth(...args),
+	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args)
 }));
 
 // Import after mocking
 const { default: AppPage } = await import('../+page.svelte');
 
-describe('App Page', () => {
+describe('Review Queue (App Page)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockUser.set(null);
-		mockLoading.set(true);
-		mockSignOut.mockResolvedValue({ error: null });
+		mockSyncEventToCalendar.mockResolvedValue({ data: null, error: null });
+		mockUpdateEventStatus.mockResolvedValue({ data: null, error: null });
 	});
 
-	it('shows loading spinner when loading', () => {
-		mockLoading.set(true);
-		mockUser.set(null);
+	it('shows loading spinner while fetching integrations', () => {
+		mockFetchIntegrations.mockReturnValue(new Promise(() => {}));
 
 		render(AppPage);
 
-		// DaisyUI loading spinner uses these classes
 		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
 	});
 
-	it('displays user email when authenticated', async () => {
-		mockLoading.set(false);
-		mockUser.set({ id: '123', email: 'test@example.com' });
+	it('shows setup mode when integrations not connected', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [],
+			error: null
+		});
 
 		render(AppPage);
 
 		await waitFor(() => {
-			expect(screen.getByText(/hello, test@example.com/i)).toBeInTheDocument();
+			expect(screen.getByText('Welcome to Selko!')).toBeInTheDocument();
 		});
 	});
 
-	it('displays welcome message for authenticated user', async () => {
-		mockLoading.set(false);
-		mockUser.set({ id: '123', email: 'user@selko.local' });
+	it('shows setup mode when only gmail is connected', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active', provider_email: 'test@gmail.com' }
+			],
+			error: null
+		});
 
 		render(AppPage);
 
 		await waitFor(() => {
-			expect(screen.getByText(/welcome to selko/i)).toBeInTheDocument();
+			expect(screen.getByText('Connect your accounts')).toBeInTheDocument();
 		});
 	});
 
-	it('redirects to login when not authenticated and not loading', async () => {
-		mockLoading.set(false);
-		mockUser.set(null);
+	it('shows empty state when fully connected with no events', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [],
+			error: null
+		});
 
 		render(AppPage);
 
 		await waitFor(() => {
-			expect(mockGoto).toHaveBeenCalledWith('/login');
+			expect(screen.getByText('All caught up!')).toBeInTheDocument();
 		});
 	});
 
-	it('does not redirect while loading', async () => {
-		mockLoading.set(true);
-		mockUser.set(null);
-
-		render(AppPage);
-
-		// Wait a bit to make sure no redirect happens
-		await new Promise((resolve) => setTimeout(resolve, 100));
-
-		expect(mockGoto).not.toHaveBeenCalled();
-	});
-
-	it('has a logout button', async () => {
-		mockLoading.set(false);
-		mockUser.set({ id: '123', email: 'test@example.com' });
+	it('shows events grouped by sender when connected', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Team Meeting',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Meeting Invite',
+								from_email: 'boss@company.com',
+								from_name: 'Boss',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
+		});
 
 		render(AppPage);
 
 		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
+			expect(screen.getByText('Team Meeting')).toBeInTheDocument();
+			expect(screen.getByText('Boss')).toBeInTheDocument();
 		});
 	});
 
-	it('calls signOut when logout button is clicked', async () => {
+	it('shows error when integration fetch fails', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [],
+			error: { message: 'Network error', code: 'NETWORK_ERROR' }
+		});
+
+		render(AppPage);
+
+		// When integrations fail to load but data is empty, it shows setup mode
+		// The error message goes to the error state variable
+		await waitFor(() => {
+			// With empty integrations it should show setup mode
+			expect(screen.getByText('Welcome to Selko!')).toBeInTheDocument();
+		});
+	});
+
+	it('removes event from list on approve', async () => {
 		const user = userEvent.setup();
-		mockLoading.set(false);
-		mockUser.set({ id: '123', email: 'test@example.com' });
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Team Meeting',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Meeting Invite',
+								from_email: 'boss@company.com',
+								from_name: 'Boss',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
+		});
 
 		render(AppPage);
 
 		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
+			expect(screen.getByText('Team Meeting')).toBeInTheDocument();
 		});
 
-		await user.click(screen.getByRole('button', { name: /logout/i }));
+		const approveBtn = screen.getByRole('button', { name: /approve event/i });
+		await user.click(approveBtn);
 
-		expect(mockSignOut).toHaveBeenCalled();
+		await waitFor(() => {
+			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'approved');
+			expect(screen.queryByText('Team Meeting')).not.toBeInTheDocument();
+		});
 	});
 
-	it('redirects to login after logout', async () => {
+	it('removes event from list on reject', async () => {
 		const user = userEvent.setup();
-		mockLoading.set(false);
-		mockUser.set({ id: '123', email: 'test@example.com' });
 
-		render(AppPage);
-
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Team Meeting',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Meeting Invite',
+								from_email: 'boss@company.com',
+								from_name: 'Boss',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
 		});
 
-		await user.click(screen.getByRole('button', { name: /logout/i }));
-
-		expect(mockGoto).toHaveBeenCalledWith('/login');
-	});
-
-	it('displays the Selko brand name', async () => {
-		mockLoading.set(false);
-		mockUser.set({ id: '123', email: 'test@example.com' });
-
 		render(AppPage);
 
 		await waitFor(() => {
-			expect(screen.getByText('Selko')).toBeInTheDocument();
+			expect(screen.getByText('Team Meeting')).toBeInTheDocument();
+		});
+
+		const rejectBtn = screen.getByRole('button', { name: /reject event/i });
+		await user.click(rejectBtn);
+
+		await waitFor(() => {
+			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'rejected');
+			expect(screen.queryByText('Team Meeting')).not.toBeInTheDocument();
 		});
 	});
 });

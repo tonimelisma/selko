@@ -74,6 +74,21 @@ export async function getIntegrationByProvider(provider) {
 }
 
 /**
+ * Disconnect (delete) an integration
+ * @param {string} integrationId - The integration UUID
+ * @returns {Promise<{data: boolean | null, error: import('$lib/errors.js').SupabaseError | null}>}
+ */
+export async function disconnectIntegration(integrationId) {
+	try {
+		const { error } = await supabase.from('integrations').delete().eq('id', integrationId);
+		if (error) throw error;
+		return { data: true, error: null };
+	} catch (error) {
+		return { data: null, error: parseSupabaseError(error) };
+	}
+}
+
+/**
  * Check if a provider is connected and active
  * @param {IntegrationProvider} provider - The provider name
  * @returns {Promise<boolean>}

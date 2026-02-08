@@ -11,9 +11,15 @@ vi.mock('$lib/supabase.js', () => ({
 }));
 
 // Import after mocking
-const { fetchPendingEvents, fetchEvents, getEvent, updateEventStatus, updateEvent } = await import(
-	'../events.js'
-);
+const {
+	fetchPendingEvents,
+	fetchPendingEventsWithSources,
+	fetchActivityEvents,
+	fetchEvents,
+	getEvent,
+	updateEventStatus,
+	updateEvent
+} = await import('../events.js');
 
 describe('events service', () => {
 	beforeEach(() => {
@@ -62,6 +68,153 @@ describe('events service', () => {
 			const result = await fetchPendingEvents();
 
 			expect(result.data).toEqual([]);
+			expect(result.error?.code).toBe('42501');
+		});
+	});
+
+	describe('fetchPendingEventsWithSources', () => {
+		it('fetches pending events with source email data', async () => {
+			const eventsWithSources = [
+				{
+					...mockEvents[0],
+					event_sources: [
+						{
+							id: 'src-1',
+							emails: { id: 'email-1', subject: 'Test', from_email: 'a@b.com' }
+						}
+					]
+				}
+			];
+			const mockQuery = {
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockResolvedValue({
+					data: eventsWithSources,
+					error: null
+				})
+			};
+
+			mockFrom.mockReturnValue(mockQuery);
+
+			const result = await fetchPendingEventsWithSources();
+
+			expect(mockFrom).toHaveBeenCalledWith('events');
+			expect(mockQuery.select).toHaveBeenCalledWith(
+				'*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))'
+			);
+			expect(mockQuery.eq).toHaveBeenCalledWith('status', 'pending_review');
+			expect(mockQuery.order).toHaveBeenCalledWith('start_datetime', { ascending: true });
+			expect(result.data).toEqual(eventsWithSources);
+			expect(result.error).toBeNull();
+		});
+
+		it('handles errors gracefully', async () => {
+			const mockQuery = {
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockResolvedValue({
+					data: null,
+					error: mockErrors.permissionDenied
+				})
+			};
+
+			mockFrom.mockReturnValue(mockQuery);
+
+			const result = await fetchPendingEventsWithSources();
+
+			expect(result.data).toEqual([]);
+			expect(result.error?.code).toBe('42501');
+		});
+
+		it('returns empty array when data is null', async () => {
+			const mockQuery = {
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockResolvedValue({
+					data: null,
+					error: null
+				})
+			};
+
+			mockFrom.mockReturnValue(mockQuery);
+
+			const result = await fetchPendingEventsWithSources();
+
+			expect(result.data).toEqual([]);
+			expect(result.error).toBeNull();
+		});
+	});
+
+	describe('fetchActivityEvents', () => {
+		it('fetches activity events with default options', async () => {
+			const activityEvents = mockEvents.filter((e) => e.status === 'approved');
+			const mockQuery = {
+				select: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				range: vi.fn().mockResolvedValue({
+					data: activityEvents,
+					error: null,
+					count: activityEvents.length
+				})
+			};
+
+			mockFrom.mockReturnValue(mockQuery);
+
+			const result = await fetchActivityEvents();
+
+			expect(mockFrom).toHaveBeenCalledWith('events');
+			expect(mockQuery.in).toHaveBeenCalledWith('status', [
+				'approved',
+				'synced',
+				'sync_failed',
+				'rejected',
+				'cancelled'
+			]);
+			expect(mockQuery.order).toHaveBeenCalledWith('updated_at', { ascending: false });
+			expect(mockQuery.range).toHaveBeenCalledWith(0, 19);
+			expect(result.data).toEqual(activityEvents);
+			expect(result.count).toBe(activityEvents.length);
+			expect(result.error).toBeNull();
+		});
+
+		it('applies custom limit and offset', async () => {
+			const mockQuery = {
+				select: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				range: vi.fn().mockResolvedValue({
+					data: [],
+					error: null,
+					count: 0
+				})
+			};
+
+			mockFrom.mockReturnValue(mockQuery);
+
+			await fetchActivityEvents({ limit: 10, offset: 20 });
+
+			expect(mockQuery.range).toHaveBeenCalledWith(20, 29);
+		});
+
+		it('handles errors gracefully', async () => {
+			const mockQuery = {
+				select: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				range: vi.fn().mockResolvedValue({
+					data: null,
+					error: mockErrors.permissionDenied,
+					count: null
+				})
+			};
+
+			mockFrom.mockReturnValue(mockQuery);
+
+			const result = await fetchActivityEvents();
+
+			expect(result.data).toEqual([]);
+			expect(result.count).toBeNull();
 			expect(result.error?.code).toBe('42501');
 		});
 	});
