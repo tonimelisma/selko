@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-08 - Fix CLI OAuth refresh token
+
+### Fix: Force consent prompt in CLI OAuth flows
+
+**Problem:** CLI OAuth tools (`cli_auth_gmail`, `cli_auth_gcal`) didn't pass `prompt="consent"` to Google's OAuth flow. On re-authentication, Google would reuse the existing grant without issuing a new refresh token, causing `refresh_token` to be `None`. This broke staging integration tests.
+
+**Fix:** Added `prompt="consent"` to `flow.run_local_server()` in both `gmail.py:run_oauth_flow()` and `cli_auth_gcal.py:run_calendar_oauth_flow()`. This matches the web app's OAuth routes which already had this parameter.
+
+**Files changed:**
+- `backend/selko/services/gmail.py` — `run_oauth_flow()`
+- `cli/cli_auth_gcal.py` — `run_calendar_oauth_flow()`
+
 ## 2026-02-08 - Backend Calendar Delete (Unsync)
 
 ### Feat: Add calendar event delete and unsync endpoint
