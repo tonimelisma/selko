@@ -310,6 +310,35 @@ export function initiateGmailAuth(redirectUri) {
 }
 
 // ============================================================================
+// Calendar OAuth Operations
+// ============================================================================
+
+/**
+ * Get the Google Calendar OAuth authorization URL
+ * Opens in a new window/tab for the user to authorize
+ * @param {string} [redirectUri] - Optional custom redirect URI
+ * @returns {string} The authorization URL
+ */
+export function getCalendarAuthUrl(redirectUri) {
+	const baseUrl = getApiBaseUrl();
+	const params = new URLSearchParams();
+	if (redirectUri) {
+		params.set('redirect_uri', redirectUri);
+	}
+	const queryString = params.toString();
+	return `${baseUrl}/integrations/calendar/auth${queryString ? `?${queryString}` : ''}`;
+}
+
+/**
+ * Initiate Google Calendar OAuth flow
+ * Opens OAuth consent screen in current window
+ * @param {string} [redirectUri] - Optional custom redirect URI
+ */
+export function initiateCalendarAuth(redirectUri) {
+	window.location.href = getCalendarAuthUrl(redirectUri);
+}
+
+// ============================================================================
 // Health Check
 // ============================================================================
 

@@ -19,7 +19,9 @@ export {
 // Event operations
 export {
 	fetchPendingEvents,
+	fetchPendingEventsWithSources,
 	fetchEvents,
+	fetchActivityEvents,
 	getEvent,
 	updateEventStatus,
 	updateEvent
@@ -38,7 +40,8 @@ export {
 	fetchIntegrations,
 	getIntegration,
 	getIntegrationByProvider,
-	isProviderConnected
+	isProviderConnected,
+	disconnectIntegration
 } from './integrations.js';
 
 // Attachment operations
