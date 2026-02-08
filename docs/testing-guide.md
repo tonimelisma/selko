@@ -173,6 +173,28 @@ For each module with staged changes, the hook verifies:
 
 **Never bypass the hook with `--no-verify`.**
 
+## UI & E2E Testing
+
+For full details, see `docs/ui-testing-guide.md`.
+
+### Quick Reference
+
+| Platform | Command | What It Tests |
+|----------|---------|---------------|
+| Web E2E | `cd frontend && npm run test:e2e -- --project=chromium` | Full user journeys in browser |
+| iOS XCUITest | `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 16' -resultBundlePath ios/TestResults.xcresult` | UI flows on iOS Simulator |
+| Android UI | `cd android && ./gradlew connectedAndroidTest` | Compose UI tests on emulator |
+
+### MCP Visual Verification
+
+Slash commands for on-demand visual checks (requires MCP servers configured in `.mcp.json`):
+
+| Command | Purpose |
+|---------|---------|
+| `/verify-web` | Screenshot web app at 3 viewports, analyze layout and accessibility |
+| `/verify-ios` | Build iOS app, screenshot each screen on simulator |
+| `/verify-android` | Install Android app, screenshot each screen on emulator |
+
 ## Continuous Integration
 
 Tests run automatically on pull requests. See `docs/ci-cd.md` for CI pipeline details.

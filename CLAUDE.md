@@ -146,6 +146,8 @@ Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/
 | `uv run pytest backend/tests/ -v` | Run backend tests |
 | `cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json` | Run frontend tests |
 | `uv run python -m selko.api` | Start FastAPI server |
+| `cd frontend && npm run test:e2e -- --project=chromium` | Run Playwright E2E tests |
+| `cd android && ./gradlew connectedAndroidTest` | Run Android Compose UI tests |
 | `gh pr create` | Create PR |
 | `while true; do gh pr checks; s=$?; [ $s -eq 0 ] && gh pr merge --squash && break; [ $s -ne 8 ] && exit 1; sleep 10; done` | Poll CI, merge on success, exit on failure |
 
@@ -178,6 +180,21 @@ These commands are blocked by hooks because they don't work with Claude Code:
 
 ---
 
+## UI Testing & Visual Verification
+
+Three MCP servers are configured in `.mcp.json` for visual verification:
+- **Playwright MCP** — browser automation, screenshots, accessibility tree
+- **XcodeBuildMCP** — iOS build + simulator control
+- **mobile-mcp** — iOS Simulator + Android Emulator interaction
+
+**Slash commands:** `/verify-web`, `/verify-ios`, `/verify-android` — use these after implementing UI changes.
+
+**Important:** For web visual verification, use Playwright MCP tools (not Bash-based Playwright CLI). The MCP tools provide `browser_navigate`, `browser_screenshot`, `browser_snapshot`, etc.
+
+**Full details:** `docs/ui-testing-guide.md`
+
+---
+
 ## Architecture Principles
 
 - **Direct Supabase Access:** Frontends query Supabase directly. Python API only for operations requiring secrets (OAuth, Gmail sync, LLM processing).
@@ -186,6 +203,31 @@ These commands are blocked by hooks because they don't work with Claude Code:
 - **YAGNI:** Add complexity only when measured need exists.
 
 **Details:** `PRD_ARCH.md`
+
+---
+
+## MANDATORY: Self-Maintenance Rule
+
+**This CLAUDE.md is the single source of truth for all AI agents working on Selko.** After every major change, update this file to reflect the current state.
+
+**Trigger updates when any of these change:**
+
+- New or renamed Supabase tables/columns/migrations → update Database schema link or add inline summary
+- New backend modules, services, or API endpoints → update Essential Commands or Reference Index
+- New frontend pages, components, or routes → update Reference Index
+- New CLI commands → update CLI Tools table
+- New or renamed test files/directories → update Essential Commands
+- New environment variables or config files → update Environment & Config
+- New docs created → add to Reference Index
+- Architectural shifts (new services, changed data flow, new integrations) → update Architecture Principles
+- New CI/CD workflows or deployment changes → update Reference Index or Essential Commands
+- New dependencies or tooling changes → update relevant sections
+
+**Rules:**
+1. Keep CLAUDE.md concise — link to detailed docs rather than duplicating content
+2. Every linked doc in Reference Index must actually exist; remove stale links
+3. If a new doc is created, it MUST be added to Reference Index with a clear "When to Read" description
+4. CLI tool table must match actual available commands in the `cli/` directory
 
 ---
 
@@ -217,6 +259,10 @@ These commands are blocked by hooks because they don't work with Claude Code:
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
 | **Gemini integration** | `docs/gemini-integration.md` | When working with LLM features |
 | **Architecture** | `PRD_ARCH.md` | For product requirements and architecture |
+| **UI user journeys** | `docs/ui/01-user-journeys.md` | When planning frontend work or understanding user flows |
+| **Screen specifications** | `docs/ui/02-screen-specs.md` | When implementing any web screen |
+| **UI patterns & components** | `docs/ui/03-patterns-and-components.md` | Before building any UI component, to follow conventions |
+| **UI testing** | `docs/ui-testing-guide.md` | When writing E2E tests or using MCP visual verification |
 
 ---
 
