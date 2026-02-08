@@ -49,6 +49,7 @@ struct SettingsView: View {
             integrationRow(provider: .gmail)
             integrationRow(provider: .googleCalendar)
         }
+        .accessibilityIdentifier("connectedAccountsSection")
     }
 
     @ViewBuilder
@@ -149,6 +150,7 @@ struct SettingsView: View {
                     Spacer()
                 }
             }
+            .accessibilityIdentifier("signOutButton")
         }
     }
 

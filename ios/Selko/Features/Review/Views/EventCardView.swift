@@ -13,6 +13,7 @@ struct EventCardView: View {
             Text(event.title)
                 .font(.headline)
                 .lineLimit(2)
+                .accessibilityIdentifier("eventTitle")
 
             if let startDatetime = event.startDatetime {
                 HStack(spacing: 4) {
@@ -38,6 +39,7 @@ struct EventCardView: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityIdentifier("eventCard")
     }
 
     private func formattedDateTime(_ date: Date, allDay: Bool) -> String {
