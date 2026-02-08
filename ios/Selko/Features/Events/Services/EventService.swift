@@ -8,6 +8,8 @@ import Supabase
 
 protocol EventServiceProtocol: Sendable {
     func fetchPendingEvents() async throws -> [CalendarEvent]
+    func fetchPendingEventsWithSources() async throws -> [CalendarEvent]
+    func fetchActivityEvents(limit: Int, offset: Int) async throws -> [CalendarEvent]
     func fetchEvents(
         limit: Int,
         offset: Int,
@@ -47,6 +49,10 @@ extension EventServiceProtocol {
             startBefore: startBefore
         )
     }
+
+    func fetchActivityEvents(limit: Int = 20, offset: Int = 0) async throws -> [CalendarEvent] {
+        try await fetchActivityEvents(limit: limit, offset: offset)
+    }
 }
 
 final class EventService: EventServiceProtocol, @unchecked Sendable {
@@ -64,6 +70,29 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
             .select()
             .eq("status", value: "pending_review")
             .order("start_datetime")
+            .execute()
+            .value
+
+        return events
+    }
+
+    func fetchPendingEventsWithSources() async throws -> [CalendarEvent] {
+        let events: [CalendarEvent] = try await supabase.from("events")
+            .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")
+            .eq("status", value: "pending_review")
+            .order("start_datetime")
+            .execute()
+            .value
+
+        return events
+    }
+
+    func fetchActivityEvents(limit: Int = 20, offset: Int = 0) async throws -> [CalendarEvent] {
+        let events: [CalendarEvent] = try await supabase.from("events")
+            .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")
+            .in("status", values: ["approved", "synced", "sync_failed", "rejected", "cancelled"])
+            .order("updated_at", ascending: false)
+            .range(from: offset, to: offset + limit - 1)
             .execute()
             .value
 

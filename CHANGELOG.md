@@ -2,6 +2,70 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-08 - iOS UI Screens
+
+### Feat: Implement iOS UI screens (Review Queue, Event Detail, History, Settings)
+
+**TabView Navigation:**
+- Added `MainTabView` with three tabs: Review, History, Settings
+- Updated `SelkoApp.swift` to show `MainTabView` instead of `HomeView` when authenticated
+
+**Review Queue:**
+- `ReviewQueueView` displays pending events grouped by sender email
+- `IntegrationSetupView` shown when Gmail or Google Calendar are not connected, with Connect buttons
+- `SenderGroupView` shows sender name/email with "Approve All" button for batch approval
+- `EventCardView` displays event title, date/time, location with swipe-to-approve/reject
+- `ReviewQueueViewModel` handles loading integrations, fetching pending events with sources, grouping, and approve/reject actions
+
+**Event Detail:**
+- `EventDetailView` with adaptive layout: side-by-side on iPad (source email + form), stacked on iPhone
+- Editable form fields: title, all-day toggle, date/time pickers, location, description
+- Auto-save with 1-second debounce on field changes
+- Source email display with sender info, subject, and extracted quote
+- Toolbar actions for Approve and Reject
+
+**Activity History:**
+- `HistoryView` shows non-pending events grouped by date (Today, Yesterday, older dates)
+- Status icons and descriptions for approved, synced, sync_failed, rejected, cancelled
+- Undo button to revert events back to pending_review
+- Retry button for sync failures
+- Pagination with "Load More" button
+
+**Settings:**
+- `SettingsView` with Connected Accounts, Calendar Defaults, and Account sections
+- Integration status display with Connect/Disconnect actions
+- Calendar picker for default calendar selection
+- Sign Out button
+- `CalendarSettingsService` for managing `user_calendar_settings` Supabase table
+
+**Service Additions:**
+- `EventService`: Added `fetchPendingEventsWithSources()` and `fetchActivityEvents(limit:offset:)`
+- `BackendAPI`: Added `getCalendarAuthUrl(redirectUri:)` for Google Calendar OAuth
+- `DependencyContainer`: Added `calendarSettingsService`
+
+**Files Added:**
+- `ios/Selko/Navigation/MainTabView.swift`
+- `ios/Selko/Features/Review/ViewModels/ReviewQueueViewModel.swift`
+- `ios/Selko/Features/Review/ViewModels/EventDetailViewModel.swift`
+- `ios/Selko/Features/Review/Views/ReviewQueueView.swift`
+- `ios/Selko/Features/Review/Views/IntegrationSetupView.swift`
+- `ios/Selko/Features/Review/Views/SenderGroupView.swift`
+- `ios/Selko/Features/Review/Views/EventCardView.swift`
+- `ios/Selko/Features/Review/Views/EventDetailView.swift`
+- `ios/Selko/Features/History/ViewModels/HistoryViewModel.swift`
+- `ios/Selko/Features/History/Views/HistoryView.swift`
+- `ios/Selko/Features/Settings/ViewModels/SettingsViewModel.swift`
+- `ios/Selko/Features/Settings/Views/SettingsView.swift`
+- `ios/Selko/Features/Settings/Services/CalendarSettingsService.swift`
+
+**Files Modified:**
+- `ios/Selko/SelkoApp.swift` - Show `MainTabView` instead of `HomeView`
+- `ios/Selko/Features/Events/Services/EventService.swift` - Added two new methods
+- `ios/Selko/Core/API/BackendAPI.swift` - Added `getCalendarAuthUrl`
+- `ios/Selko/Core/DI/DependencyContainer.swift` - Added `calendarSettingsService`
+
+---
+
 ## 2026-01-30 (30) - OAuth Redirect Port Fix
 
 ### Fix: Use fixed port for CLI OAuth redirect

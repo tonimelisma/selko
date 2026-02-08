@@ -17,7 +17,7 @@ struct SelkoApp: App {
                 if router.isLoading {
                     ProgressView("Loading...")
                 } else if router.isAuthenticated {
-                    HomeView()
+                    MainTabView()
                 } else {
                     LoginView()
                 }

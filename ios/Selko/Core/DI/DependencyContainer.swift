@@ -44,4 +44,8 @@ final class DependencyContainer {
     lazy var backendAPI: BackendAPIProtocol = {
         BackendAPI(supabase: supabase)
     }()
+
+    lazy var calendarSettingsService: CalendarSettingsServiceProtocol = {
+        CalendarSettingsService(supabase: supabase)
+    }()
 }
