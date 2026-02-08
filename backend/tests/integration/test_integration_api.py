@@ -315,6 +315,70 @@ class TestEventSyncEndpoint:
 
 @pytest.mark.integration
 @pytest.mark.development
+class TestEventUnsyncEndpoint:
+    """Test event unsync endpoint (server-side Calendar API delete)."""
+
+    def test_event_unsync_not_found(self, test_client, auth_headers):
+        """POST /events/{id}/unsync returns 404 for non-existent event."""
+        fake_id = "00000000-0000-0000-0000-000000000000"
+        response = test_client.post(f"/events/{fake_id}/unsync", headers=auth_headers)
+
+        assert response.status_code == 404
+
+    def test_event_unsync_requires_authentication(self, test_client):
+        """POST /events/{id}/unsync requires authentication."""
+        fake_id = "00000000-0000-0000-0000-000000000000"
+        response = test_client.post(f"/events/{fake_id}/unsync")
+
+        assert response.status_code == 401
+
+    def test_event_unsync_not_synced(self, test_client, auth_headers, authenticated_client, test_user_id):
+        """POST /events/{id}/unsync returns 400 when event is not synced."""
+        # Create a pending_review event
+        event_data = {
+            "user_id": test_user_id,
+            "title": "Not Synced Event",
+            "start_datetime": "2026-04-01T10:00:00Z",
+            "status": "pending_review",
+        }
+        result = authenticated_client.table("events").insert(event_data).execute()
+        event_id = result.data[0]["id"]
+
+        try:
+            response = test_client.post(f"/events/{event_id}/unsync", headers=auth_headers)
+            assert response.status_code == 400
+            assert "synced" in response.json()["detail"].lower()
+        finally:
+            # Cleanup
+            authenticated_client.table("events").delete().eq("id", event_id).execute()
+
+    def test_event_unsync_wrong_user(self, test_client, authenticated_client, test_user_id, temp_user_client):
+        """POST /events/{id}/unsync returns 403 for another user's event."""
+        # Create event owned by test_user
+        event_data = {
+            "user_id": test_user_id,
+            "title": "Other User Event",
+            "start_datetime": "2026-04-01T10:00:00Z",
+            "status": "synced",
+            "google_calendar_event_id": "google-abc",
+        }
+        result = authenticated_client.table("events").insert(event_data).execute()
+        event_id = result.data[0]["id"]
+
+        try:
+            # Try to unsync with temp user's token
+            session = temp_user_client.auth.get_session()
+            other_headers = {"Authorization": f"Bearer {session.access_token}"}
+
+            response = test_client.post(f"/events/{event_id}/unsync", headers=other_headers)
+            assert response.status_code == 403
+        finally:
+            # Cleanup
+            authenticated_client.table("events").delete().eq("id", event_id).execute()
+
+
+@pytest.mark.integration
+@pytest.mark.development
 class TestCORSConfiguration:
     """Test CORS middleware configuration."""
 

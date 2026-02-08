@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from supabase import Client
 
 from selko.api.deps import CurrentUser, get_authenticated_client, get_current_user, get_quota_service
-from selko.api.schemas.events import CalendarSyncResponse
-from selko.services.calendars import CalendarsError, sync_event_to_calendar
+from selko.api.schemas.events import CalendarSyncResponse, EventUnsyncResponse
+from selko.services.calendars import CalendarsError, delete_calendar_event, sync_event_to_calendar
 from selko.services.quotas import QuotaService
 
 logger = logging.getLogger(__name__)
@@ -115,3 +115,72 @@ async def sync_event(
     except Exception as e:
         logger.error(f"Failed to sync event: {e}")
         raise HTTPException(status_code=500, detail="Event sync failed")
+
+
+@router.post("/{event_id}/unsync", response_model=EventUnsyncResponse)
+async def unsync_event(
+    event_id: UUID,
+    client: Annotated[Client, Depends(get_authenticated_client)],
+    user: CurrentUser = Depends(get_current_user),
+) -> EventUnsyncResponse:
+    """Remove a synced event from Google Calendar and revert to pending_review.
+
+    Deletes the event from the user's Google Calendar and clears the sync
+    fields. The event is reverted to pending_review status so the user can
+    re-approve and re-sync if desired.
+
+    Args:
+        event_id: UUID of the event to unsync.
+
+    Returns:
+        Unsync result with event_id and new status.
+
+    Raises:
+        400: Event is not in synced status.
+        403: Not authorized to unsync this event.
+        404: Event not found or no calendar integration.
+        500: Calendar unsync failed.
+    """
+    try:
+        # Verify ownership and status
+        event_result = client.table("events").select("user_id, status").eq(
+            "id", str(event_id)
+        ).maybe_single().execute()
+
+        if event_result is None or event_result.data is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        if event_result.data["user_id"] != user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        # Validate event is synced
+        if event_result.data["status"] != "synced":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only synced events can be unsynced (current status: {event_result.data['status']})"
+            )
+
+        # Delete from Google Calendar and revert status
+        delete_calendar_event(client, user.id, str(event_id))
+
+        return EventUnsyncResponse(
+            event_id=str(event_id),
+            status="pending_review",
+        )
+
+    except HTTPException:
+        raise
+    except CalendarsError as e:
+        logger.error(f"Calendar unsync failed: {e}")
+        if "No Google Calendar credentials" in str(e):
+            raise HTTPException(
+                status_code=404,
+                detail="No Google Calendar integration found. Connect Calendar first."
+            )
+        raise HTTPException(
+            status_code=500,
+            detail="Calendar unsync failed"
+        )
+    except Exception as e:
+        logger.error(f"Failed to unsync event: {e}")
+        raise HTTPException(status_code=500, detail="Event unsync failed")
