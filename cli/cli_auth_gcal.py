@@ -62,7 +62,7 @@ def run_calendar_oauth_flow(config) -> "Credentials":
         logger.info("Opening browser for Google Calendar authentication...")
         logger.info("If browser doesn't open, visit the URL shown below.")
 
-        creds = flow.run_local_server(port=8080)
+        creds = flow.run_local_server(port=8080, prompt="consent")
         logger.info("OAuth flow completed successfully")
         return creds
 
