@@ -590,3 +590,80 @@ def cancel_calendar_event(
 
     except Exception as e:
         raise CalendarsError(f"Failed to cancel event: {e}") from e
+
+
+def delete_calendar_event(
+    supabase_client: Client, user_id: str, event_id: str
+) -> None:
+    """Delete event from Google Calendar.
+
+    Removes the event from Google Calendar and reverts the local event
+    to pending_review status. If the event was already deleted from
+    Google Calendar (404), the local cleanup still proceeds.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        user_id: UUID of user.
+        event_id: UUID of event to unsync.
+
+    Raises:
+        CalendarsError: If deletion fails.
+    """
+    try:
+        # Fetch event
+        event_result = supabase_client.table("events").select("*").eq(
+            "id", event_id
+        ).single().execute()
+        event = event_result.data
+
+        google_event_id = event.get("google_calendar_event_id")
+        if not google_event_id:
+            raise CalendarsError("Event is not synced to Google Calendar")
+
+        # Get credentials and settings
+        creds = get_credentials(supabase_client, user_id, "google_calendar")
+        if not creds:
+            raise CalendarsError("No Google Calendar credentials found")
+
+        settings = get_calendar_settings(supabase_client, user_id)
+        calendar_id = settings.get("target_calendar_id") or "primary"
+
+        # Build Calendar API client
+        service = build("calendar", "v3", credentials=creds)
+
+        # Delete from Google Calendar
+        try:
+            service.events().delete(
+                calendarId=calendar_id, eventId=google_event_id
+            ).execute()
+        except HttpError as e:
+            if e.resp.status == 404:
+                logger.warning(
+                    f"Calendar event {google_event_id} already deleted from Google Calendar"
+                )
+            else:
+                raise
+
+        # Update event record: clear sync fields, revert to pending_review
+        supabase_client.table("events").update({
+            "google_calendar_event_id": None,
+            "synced_at": None,
+            "status": "pending_review",
+        }).eq("id", event_id).execute()
+
+        # Log the sync operation
+        _log_sync(
+            supabase_client,
+            user_id,
+            event_id,
+            google_event_id,
+            "deleted",
+            {"deleted_google_event_id": google_event_id},
+        )
+
+        logger.info(f"Deleted calendar event for {event_id}, reverted to pending_review")
+
+    except CalendarsError:
+        raise
+    except Exception as e:
+        raise CalendarsError(f"Failed to delete calendar event: {e}") from e

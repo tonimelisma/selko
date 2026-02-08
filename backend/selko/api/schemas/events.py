@@ -99,3 +99,10 @@ class CalendarSyncResponse(BaseModel):
     google_calendar_event_id: str
     synced_at: datetime
     status: Literal["synced"]
+
+
+class EventUnsyncResponse(BaseModel):
+    """Calendar unsync result."""
+
+    event_id: str
+    status: Literal["pending_review"]

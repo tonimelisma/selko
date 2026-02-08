@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-08 - Backend Calendar Delete (Unsync)
+
+### Feat: Add calendar event delete and unsync endpoint
+
+**Problem:** Once an event was synced to Google Calendar, there was no way to remove it from the calendar and revert the event back to pending_review status for re-editing.
+
+**Solution:** Added `delete_calendar_event()` service function and `POST /events/{event_id}/unsync` API endpoint.
+
+**New Service Function:** `delete_calendar_event()`
+- Deletes the event from Google Calendar using `events().delete()`
+- Handles 404 gracefully (event already deleted from Google Calendar)
+- Clears `google_calendar_event_id` and `synced_at` fields
+- Reverts event status to `pending_review`
+- Logs the deletion to `calendar_sync_log` with action="deleted"
+
+**New API Endpoint:** `POST /events/{event_id}/unsync`
+- Validates event exists, belongs to user, and is in `synced` status
+- Returns 400 if event is not synced, 403 if not authorized, 404 if not found
+- Returns `EventUnsyncResponse` with event_id and new status
+
+**New Schema:** `EventUnsyncResponse`
+- Fields: `event_id` (str), `status` (Literal["pending_review"])
+
+**Tests Added:**
+- 6 unit tests for `delete_calendar_event` (success, 404 graceful handling, no credentials, no google_event_id, sync logging, non-404 API error)
+- 4 integration tests for `POST /events/{id}/unsync` (not found, auth required, not synced, wrong user)
+
+**Files Changed:**
+- `backend/selko/services/calendars.py` - Added `delete_calendar_event()`
+- `backend/selko/api/routes/events.py` - Added `POST /{event_id}/unsync` endpoint
+- `backend/selko/api/schemas/events.py` - Added `EventUnsyncResponse`
+- `backend/tests/test_calendars.py` - Added `TestDeleteCalendarEvent` (6 tests)
+- `backend/tests/integration/test_integration_api.py` - Added `TestEventUnsyncEndpoint` (4 tests)
+
+---
+
 ## 2026-02-08 - Web Frontend UI Screens
 
 ### Feat: Implement web UI screens (Review Queue, Event Detail, History, Settings)

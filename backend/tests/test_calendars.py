@@ -11,6 +11,7 @@ import pytest
 from selko.services.calendars import (
     CalendarsError,
     _build_calendar_event_body,
+    delete_calendar_event,
     get_calendar_settings,
     list_calendars,
     sync_event_to_calendar,
@@ -569,3 +570,274 @@ class TestCancelCalendarEvent:
 
         # Should not add another CANCELLED prefix
         # The function should short-circuit when title already has prefix
+
+
+class TestDeleteCalendarEvent:
+    """Tests for deleting calendar events from Google Calendar."""
+
+    def test_successful_delete(self):
+        """Test successful deletion of a synced event."""
+        mock_client = MagicMock()
+
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "title": "Meeting",
+            "google_calendar_event_id": "google-event-abc",
+        }
+
+        with patch("selko.services.calendars.get_credentials") as mock_creds, \
+             patch("selko.services.calendars.build") as mock_build, \
+             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+
+            mock_creds.return_value = MagicMock()
+            mock_settings.return_value = {
+                "target_calendar_id": "primary",
+                "default_invitees": None,
+            }
+
+            mock_service = MagicMock()
+            mock_build.return_value = mock_service
+
+            # Delete succeeds
+            mock_service.events.return_value.delete.return_value.execute.return_value = None
+
+            # Setup Supabase mocks
+            mock_table = MagicMock()
+            mock_client.table.return_value = mock_table
+
+            mock_select = MagicMock()
+            mock_table.select.return_value = mock_select
+            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+
+            mock_update = MagicMock()
+            mock_table.update.return_value = mock_update
+            mock_update.eq.return_value.execute.return_value = MagicMock()
+
+            mock_insert = MagicMock()
+            mock_table.insert.return_value = mock_insert
+            mock_insert.execute.return_value = MagicMock()
+
+            delete_calendar_event(mock_client, "user-456", "event-123")
+
+            # Verify Google Calendar delete was called
+            mock_service.events.return_value.delete.assert_called_once_with(
+                calendarId="primary", eventId="google-event-abc"
+            )
+
+            # Verify event record was updated
+            update_calls = mock_table.update.call_args_list
+            assert len(update_calls) > 0
+            update_data = update_calls[0][0][0]
+            assert update_data["google_calendar_event_id"] is None
+            assert update_data["synced_at"] is None
+            assert update_data["status"] == "pending_review"
+
+    def test_delete_already_deleted_from_google(self):
+        """Test that 404 from Google Calendar is handled gracefully."""
+        mock_client = MagicMock()
+
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "title": "Meeting",
+            "google_calendar_event_id": "google-event-gone",
+        }
+
+        with patch("selko.services.calendars.get_credentials") as mock_creds, \
+             patch("selko.services.calendars.build") as mock_build, \
+             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+
+            from googleapiclient.errors import HttpError
+
+            mock_creds.return_value = MagicMock()
+            mock_settings.return_value = {
+                "target_calendar_id": "primary",
+                "default_invitees": None,
+            }
+
+            mock_service = MagicMock()
+            mock_build.return_value = mock_service
+
+            # Delete returns 404 (already deleted)
+            mock_resp = MagicMock()
+            mock_resp.status = 404
+            mock_service.events.return_value.delete.return_value.execute.side_effect = HttpError(
+                mock_resp, b"Not found"
+            )
+
+            # Setup Supabase mocks
+            mock_table = MagicMock()
+            mock_client.table.return_value = mock_table
+
+            mock_select = MagicMock()
+            mock_table.select.return_value = mock_select
+            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+
+            mock_update = MagicMock()
+            mock_table.update.return_value = mock_update
+            mock_update.eq.return_value.execute.return_value = MagicMock()
+
+            mock_insert = MagicMock()
+            mock_table.insert.return_value = mock_insert
+            mock_insert.execute.return_value = MagicMock()
+
+            # Should NOT raise - 404 is handled gracefully
+            delete_calendar_event(mock_client, "user-456", "event-123")
+
+            # Verify event record was still updated
+            update_calls = mock_table.update.call_args_list
+            assert len(update_calls) > 0
+            update_data = update_calls[0][0][0]
+            assert update_data["status"] == "pending_review"
+
+    def test_delete_no_credentials(self):
+        """Test that error is raised when no credentials found."""
+        mock_client = MagicMock()
+
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "title": "Meeting",
+            "google_calendar_event_id": "google-event-abc",
+        }
+
+        with patch("selko.services.calendars.get_credentials") as mock_creds, \
+             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+
+            mock_creds.return_value = None
+            mock_settings.return_value = {
+                "target_calendar_id": "primary",
+                "default_invitees": None,
+            }
+
+            mock_table = MagicMock()
+            mock_client.table.return_value = mock_table
+
+            mock_select = MagicMock()
+            mock_table.select.return_value = mock_select
+            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+
+            with pytest.raises(CalendarsError) as exc_info:
+                delete_calendar_event(mock_client, "user-456", "event-123")
+
+            assert "No Google Calendar credentials found" in str(exc_info.value)
+
+    def test_delete_no_google_event_id(self):
+        """Test that error is raised when event has no google_calendar_event_id."""
+        mock_client = MagicMock()
+
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "title": "Meeting",
+            "google_calendar_event_id": None,
+        }
+
+        mock_table = MagicMock()
+        mock_client.table.return_value = mock_table
+
+        mock_select = MagicMock()
+        mock_table.select.return_value = mock_select
+        mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+
+        with pytest.raises(CalendarsError) as exc_info:
+            delete_calendar_event(mock_client, "user-456", "event-123")
+
+        assert "not synced" in str(exc_info.value)
+
+    def test_delete_logs_sync_operation(self):
+        """Test that delete operation is logged to calendar_sync_log."""
+        mock_client = MagicMock()
+
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "title": "Meeting",
+            "google_calendar_event_id": "google-event-abc",
+        }
+
+        with patch("selko.services.calendars.get_credentials") as mock_creds, \
+             patch("selko.services.calendars.build") as mock_build, \
+             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+
+            mock_creds.return_value = MagicMock()
+            mock_settings.return_value = {
+                "target_calendar_id": "primary",
+                "default_invitees": None,
+            }
+
+            mock_service = MagicMock()
+            mock_build.return_value = mock_service
+            mock_service.events.return_value.delete.return_value.execute.return_value = None
+
+            # Setup Supabase mocks
+            mock_table = MagicMock()
+            mock_client.table.return_value = mock_table
+
+            mock_select = MagicMock()
+            mock_table.select.return_value = mock_select
+            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+
+            mock_update = MagicMock()
+            mock_table.update.return_value = mock_update
+            mock_update.eq.return_value.execute.return_value = MagicMock()
+
+            mock_insert = MagicMock()
+            mock_table.insert.return_value = mock_insert
+            mock_insert.execute.return_value = MagicMock()
+
+            delete_calendar_event(mock_client, "user-456", "event-123")
+
+            # Verify sync log was written
+            insert_calls = mock_table.insert.call_args_list
+            assert len(insert_calls) > 0
+            log_data = insert_calls[0][0][0]
+            assert log_data["action"] == "deleted"
+            assert log_data["google_calendar_event_id"] == "google-event-abc"
+            assert log_data["event_id"] == "event-123"
+
+    def test_delete_google_api_error_raises(self):
+        """Test that non-404 Google API errors are re-raised."""
+        mock_client = MagicMock()
+
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "title": "Meeting",
+            "google_calendar_event_id": "google-event-abc",
+        }
+
+        with patch("selko.services.calendars.get_credentials") as mock_creds, \
+             patch("selko.services.calendars.build") as mock_build, \
+             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+
+            from googleapiclient.errors import HttpError
+
+            mock_creds.return_value = MagicMock()
+            mock_settings.return_value = {
+                "target_calendar_id": "primary",
+                "default_invitees": None,
+            }
+
+            mock_service = MagicMock()
+            mock_build.return_value = mock_service
+
+            # Delete returns 403 (forbidden)
+            mock_resp = MagicMock()
+            mock_resp.status = 403
+            mock_service.events.return_value.delete.return_value.execute.side_effect = HttpError(
+                mock_resp, b"Forbidden"
+            )
+
+            mock_table = MagicMock()
+            mock_client.table.return_value = mock_table
+
+            mock_select = MagicMock()
+            mock_table.select.return_value = mock_select
+            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+
+            with pytest.raises(CalendarsError) as exc_info:
+                delete_calendar_event(mock_client, "user-456", "event-123")
+
+            assert "Failed to delete calendar event" in str(exc_info.value)
