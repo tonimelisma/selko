@@ -161,6 +161,37 @@ class EventRepository(
         }
     }
 
+    suspend fun fetchPendingEventsWithSources(): EventResult<List<CalendarEvent>> {
+        return try {
+            val events = supabaseClient.from("events")
+                .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")) {
+                    filter { eq("status", "pending_review") }
+                    order("start_datetime", Order.ASCENDING)
+                }
+                .decodeList<CalendarEvent>()
+            EventResult.Success(events)
+        } catch (e: Exception) {
+            EventResult.Error(e.message ?: "Failed to fetch pending events with sources")
+        }
+    }
+
+    suspend fun fetchActivityEvents(limit: Int = 20, offset: Int = 0): EventResult<List<CalendarEvent>> {
+        return try {
+            val events = supabaseClient.from("events")
+                .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")) {
+                    filter {
+                        isIn("status", listOf("approved", "synced", "sync_failed", "rejected", "cancelled"))
+                    }
+                    order("updated_at", Order.DESCENDING)
+                    range(offset.toLong(), (offset + limit - 1).toLong())
+                }
+                .decodeList<CalendarEvent>()
+            EventResult.Success(events)
+        } catch (e: Exception) {
+            EventResult.Error(e.message ?: "Failed to fetch activity events")
+        }
+    }
+
     suspend fun approveEvent(eventId: String): EventResult<CalendarEvent> =
         updateEventStatus(eventId, EventStatus.APPROVED)
 

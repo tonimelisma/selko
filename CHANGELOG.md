@@ -58,6 +58,59 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## 2026-02-08 - Android UI Screens
+
+### Feat: Implement Android UI (Review Queue, Event Detail, History, Settings)
+
+**New Screens:**
+- **Review Queue** - Displays pending events grouped by sender email. Supports approve/reject individual events and approve-all for a sender group. Shows integration setup prompt when Gmail/Calendar not connected.
+- **Event Detail** - Full event editor with source email display, editable form fields (title, datetime, location, description, all-day toggle), and approve/reject from bottom bar.
+- **Activity History** - Shows non-pending events (approved, synced, rejected, cancelled, sync_failed) grouped by date. Supports undo (back to pending_review) and retry (for sync failures). Paginated with "Load More".
+- **Settings** - Connected accounts management (Gmail, Google Calendar), calendar defaults (target calendar picker, default invitees), and sign-out.
+
+**Navigation:**
+- Material3 bottom navigation bar with Review, History, Settings tabs
+- MainScaffold wraps tab navigation with nested NavHost
+- EventDetail navigated from parent NavHost (full-screen overlay)
+
+**New Repository:**
+- `CalendarSettingsRepository` - Read/write `user_calendar_settings` table for target calendar and default invitees
+
+**Repository Additions:**
+- `EventRepository.fetchPendingEventsWithSources()` - Fetch pending events with joined event_sources and emails
+- `EventRepository.fetchActivityEvents()` - Fetch non-pending events with pagination
+- `BackendApiClient.getCalendarAuthUrl()` - Google Calendar OAuth URL
+
+**New ViewModels:**
+- `ReviewQueueViewModel` - Integration checking, event grouping by sender, approve/reject
+- `EventDetailViewModel` - Event loading, form editing, save/approve/reject
+- `HistoryViewModel` - Paginated history with date grouping, undo/retry
+- `SettingsViewModel` - Integration management, calendar settings, sign-out
+
+**Files Added:**
+- `android/app/src/main/java/net/melisma/selko/data/repository/CalendarSettingsRepository.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/components/SelkoBottomNavigation.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/navigation/MainScaffold.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/ReviewQueueViewModel.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/ReviewQueueScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/IntegrationSetupContent.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventCardContent.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventDetailViewModel.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventDetailScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/history/HistoryViewModel.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/history/HistoryScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/settings/SettingsViewModel.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/settings/SettingsScreen.kt`
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/data/repository/EventRepository.kt` - Added 2 methods
+- `android/app/src/main/java/net/melisma/selko/data/api/BackendApiClient.kt` - Added getCalendarAuthUrl
+- `android/app/src/main/java/net/melisma/selko/ui/navigation/NavRoutes.kt` - Added Review, History, Settings, EventDetail routes
+- `android/app/src/main/java/net/melisma/selko/ui/navigation/SelkoNavHost.kt` - Replaced Home with MainScaffold, added EventDetail route
+- `android/app/src/main/java/net/melisma/selko/di/AppModule.kt` - Registered new repositories and ViewModels
+
+---
+
 ## 2026-02-08 - iOS UI Screens
 
 ### Feat: Implement iOS UI screens (Review Queue, Event Detail, History, Settings)
