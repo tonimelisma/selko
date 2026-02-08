@@ -35,6 +35,61 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## 2026-02-08 - Android Compose UI Tests
+
+### Test: Add Compose UI tests for Android screens
+
+**Test Files Added (4):**
+- `ReviewQueueScreenTest.kt` — Loading indicator, empty state, integration setup display
+- `EventDetailScreenTest.kt` — Top bar, back button, error for missing events
+- `HistoryScreenTest.kt` — Empty state display, description text
+- `SettingsScreenTest.kt` — Title, sections (Connected Accounts, Calendar Defaults, Account), sign out button, user email, integration rows
+
+**Pattern:** Follows existing AuthScreenTest.kt pattern with createComposeRule(), MockK repositories, and onNodeWithText() assertions.
+
+**Files Added:**
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/review/ReviewQueueScreenTest.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/review/EventDetailScreenTest.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/history/HistoryScreenTest.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/settings/SettingsScreenTest.kt`
+
+---
+
+## 2026-02-08 - Playwright E2E Tests
+
+### Feat: Add Playwright E2E test suite for web frontend
+
+**Setup:**
+- Added `@playwright/test` to devDependencies
+- Created `playwright.config.ts` with 5 browser/viewport projects (chromium, webkit, mobile-chrome, mobile-safari, tablet)
+- Auth fixture for Supabase login reuse across tests
+- Web server auto-start configuration
+
+**Test Specs (6 files):**
+- `auth.spec.ts` — Login form, register page, invalid credentials, form validation
+- `navigation.spec.ts` — Desktop navbar, mobile bottom nav, auth guard, route navigation
+- `review-queue.spec.ts` — Page loading, integration setup vs queue states
+- `event-detail.spec.ts` — Non-existent event handling
+- `history.spec.ts` — History page loading, empty state
+- `settings.spec.ts` — Settings sections display
+
+**Files Added:**
+- `frontend/playwright.config.ts`
+- `frontend/tests/e2e/auth.setup.ts`
+- `frontend/tests/e2e/fixtures/auth.ts`
+- `frontend/tests/e2e/auth.spec.ts`
+- `frontend/tests/e2e/navigation.spec.ts`
+- `frontend/tests/e2e/review-queue.spec.ts`
+- `frontend/tests/e2e/event-detail.spec.ts`
+- `frontend/tests/e2e/history.spec.ts`
+- `frontend/tests/e2e/settings.spec.ts`
+- `frontend/.gitignore`
+
+**Files Modified:**
+- `frontend/package.json` — Added test:e2e, test:e2e:ui, test:e2e:headed scripts
+
+---
+
 ## 2026-02-08 - Fix CLI OAuth refresh token
 
 ### Fix: Force consent prompt in CLI OAuth flows
