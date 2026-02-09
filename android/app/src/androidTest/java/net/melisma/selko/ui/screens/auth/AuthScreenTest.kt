@@ -59,7 +59,7 @@ class AuthScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Sign In").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Clear your mind.").assertIsDisplayed()
     }
 
     @Test
@@ -88,7 +88,7 @@ class AuthScreenTest {
             }
         }
 
-        composeTestRule.onNode(hasText("Sign In") and !hasText("Don't")).assertIsDisplayed()
+        composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).assertIsDisplayed()
     }
 
     @Test
@@ -102,7 +102,7 @@ class AuthScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Don't have an account? Sign Up").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Don't have an account? Sign up").assertIsDisplayed()
     }
 
     @Test
@@ -116,10 +116,10 @@ class AuthScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Don't have an account? Sign Up").performClick()
+        composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
 
-        composeTestRule.onNodeWithText("Create Account").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Already have an account? Sign In").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sign up").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Already have an account? Log in").assertIsDisplayed()
     }
 
     @Test
@@ -134,11 +134,11 @@ class AuthScreenTest {
         }
 
         // Toggle to sign up
-        composeTestRule.onNodeWithText("Don't have an account? Sign Up").performClick()
+        composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
         // Toggle back to sign in
-        composeTestRule.onNodeWithText("Already have an account? Sign In").performClick()
+        composeTestRule.onNodeWithText("Already have an account? Log in").performClick()
 
-        composeTestRule.onNodeWithText("Sign In").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Clear your mind.").assertIsDisplayed()
     }
 
     @Test
@@ -153,7 +153,7 @@ class AuthScreenTest {
         }
 
         // Click sign in without entering anything
-        composeTestRule.onNode(hasText("Sign In") and !hasText("Don't")).performClick()
+        composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
 
         composeTestRule.onNodeWithText("Email and password are required").assertIsDisplayed()
     }
@@ -207,7 +207,7 @@ class AuthScreenTest {
 
         composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
         composeTestRule.onNodeWithText("Password").performTextInput("wrongpassword")
-        composeTestRule.onNode(hasText("Sign In") and !hasText("Don't")).performClick()
+        composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
 
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Invalid credentials").assertIsDisplayed()
@@ -229,7 +229,7 @@ class AuthScreenTest {
 
         composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
         composeTestRule.onNodeWithText("Password").performTextInput("password123")
-        composeTestRule.onNode(hasText("Sign In") and !hasText("Don't")).performClick()
+        composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
 
         composeTestRule.waitForIdle()
         assert(authSuccessCalled) { "onAuthSuccess callback should have been called" }
@@ -247,7 +247,7 @@ class AuthScreenTest {
         }
 
         // Trigger error
-        composeTestRule.onNode(hasText("Sign In") and !hasText("Don't")).performClick()
+        composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
         composeTestRule.onNodeWithText("Email and password are required").assertIsDisplayed()
 
         // Type in email field
@@ -269,7 +269,7 @@ class AuthScreenTest {
         }
 
         // Trigger error
-        composeTestRule.onNode(hasText("Sign In") and !hasText("Don't")).performClick()
+        composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
         composeTestRule.onNodeWithText("Email and password are required").assertIsDisplayed()
 
         // Type in password field
@@ -291,11 +291,11 @@ class AuthScreenTest {
         }
 
         // Trigger error
-        composeTestRule.onNode(hasText("Sign In") and !hasText("Don't")).performClick()
+        composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
         composeTestRule.onNodeWithText("Email and password are required").assertIsDisplayed()
 
         // Toggle to sign up
-        composeTestRule.onNodeWithText("Don't have an account? Sign Up").performClick()
+        composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
 
         // Error should be cleared
         composeTestRule.onNodeWithText("Email and password are required").assertDoesNotExist()
