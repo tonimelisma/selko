@@ -49,7 +49,7 @@ describe('Navbar', () => {
 
 	it('renders logout button', () => {
 		render(Navbar, { props: { onLogout: vi.fn() } });
-		expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
 	});
 
 	it('calls onLogout when logout button is clicked', async () => {
@@ -57,7 +57,7 @@ describe('Navbar', () => {
 		const mockLogout = vi.fn();
 		render(Navbar, { props: { onLogout: mockLogout } });
 
-		await user.click(screen.getByRole('button', { name: /logout/i }));
+		await user.click(screen.getByRole('button', { name: /log out/i }));
 		expect(mockLogout).toHaveBeenCalled();
 	});
 

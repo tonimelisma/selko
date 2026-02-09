@@ -26,4 +26,4 @@
 	});
 </script>
 
-<span class="badge {badgeInfo().class}">{badgeInfo().label}</span>
+<span class="badge {badgeInfo().class}" role="status">{badgeInfo().label}</span>

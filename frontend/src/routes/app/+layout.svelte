@@ -36,13 +36,14 @@
 </svelte:head>
 
 {#if isLoading}
-	<div class="flex items-center justify-center min-h-screen">
-		<span class="loading loading-spinner loading-lg"></span>
+	<div class="flex items-center justify-center min-h-screen" aria-busy="true">
+		<span class="loading loading-spinner loading-lg" aria-hidden="true"></span>
+		<span class="sr-only">Loading</span>
 	</div>
 {:else if currentUser}
 	<div class="min-h-screen flex flex-col">
 		<Navbar onLogout={handleLogout} />
-		<main class="flex-1 pb-20 lg:pb-0">
+		<main id="main-content" class="flex-1 pb-20 lg:pb-0">
 			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 				{@render children?.()}
 			</div>

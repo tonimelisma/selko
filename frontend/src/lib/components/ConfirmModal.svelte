@@ -23,10 +23,10 @@
 	});
 </script>
 
-<dialog bind:this={dialogEl} class="modal" onclose={oncancel}>
+<dialog bind:this={dialogEl} class="modal" onclose={oncancel} aria-labelledby="modal-title" aria-describedby="modal-description">
 	<div class="modal-box">
-		<h3 class="font-bold text-lg">{title}</h3>
-		<p class="py-4">{description}</p>
+		<h3 id="modal-title" class="font-bold text-lg">{title}</h3>
+		<p id="modal-description" class="py-4">{description}</p>
 		<div class="modal-action">
 			<button class="btn" onclick={oncancel}>Cancel</button>
 			<button class="btn {confirmClass}" onclick={onconfirm}>{confirmText}</button>

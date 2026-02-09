@@ -10,6 +10,6 @@
 		</p>
 	</div>
 	{#if eventCount > 1}
-		<button class="btn btn-ghost btn-sm" onclick={onapproveAll}>Approve All</button>
+		<button class="btn btn-ghost btn-sm" onclick={onapproveAll} aria-label="Approve all events from {sender}">Approve All</button>
 	{/if}
 </div>

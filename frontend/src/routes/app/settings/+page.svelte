@@ -205,7 +205,7 @@
 					/>
 				</div>
 				<div class="lg:hidden">
-					<button class="btn btn-ghost" onclick={handleLogout}>Logout</button>
+					<button class="btn btn-ghost" onclick={handleLogout}>Log out</button>
 				</div>
 			</div>
 		</section>

@@ -137,9 +137,14 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Home - Selko</title>
+</svelte:head>
+
 {#if isLoadingIntegrations}
-	<div class="flex items-center justify-center py-16">
-		<span class="loading loading-spinner loading-lg"></span>
+	<div class="flex items-center justify-center py-16" aria-busy="true" aria-live="polite">
+		<span class="loading loading-spinner loading-lg" aria-hidden="true"></span>
+		<span class="sr-only">Loading</span>
 	</div>
 {:else if !fullyConnected}
 	<IntegrationStatus
@@ -149,14 +154,15 @@
 		onauthorize={handleAuthorize}
 	/>
 {:else if isLoadingEvents}
-	<div class="space-y-4">
+	<div class="space-y-4" aria-busy="true" aria-live="polite">
+		<span class="sr-only">Loading events</span>
 		<div class="h-8 bg-base-200 rounded animate-pulse w-48"></div>
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 	</div>
 {:else if error}
-	<div class="alert alert-error mb-4">
+	<div class="alert alert-error mb-4" role="alert" aria-live="polite">
 		<span>{error}</span>
 		<button class="btn btn-sm btn-ghost" onclick={loadEvents}>Retry</button>
 	</div>
