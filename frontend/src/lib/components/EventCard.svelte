@@ -58,6 +58,7 @@
 						<button
 							class="btn btn-ghost btn-xs mt-1 px-0"
 							onclick={() => (showFullDescription = !showFullDescription)}
+							aria-expanded={showFullDescription}
 						>
 							{showFullDescription ? 'Less' : 'More'}
 						</button>

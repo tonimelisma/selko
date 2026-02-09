@@ -40,6 +40,79 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## 2026-02-09 - Web Accessibility Improvements
+
+### Fix: Improve web accessibility (ARIA labels, roles, landmarks, heading hierarchy)
+
+**Login page (`login/+page.svelte`):**
+- Added `role="alert"` and `aria-live="polite"` to error alert
+- Added `aria-busy` to submit button during loading
+- Added `aria-hidden="true"` and sr-only text to loading spinner
+
+**Register page (`register/+page.svelte`):**
+- Added `role="alert"` and `aria-live="polite"` to error and success alerts
+- Added `aria-invalid` and `aria-describedby` to inputs when validation fails
+- Added `aria-busy` to submit button during loading
+- Added sr-only text for loading spinner
+
+**App home page (`app/+page.svelte`):**
+- Added `<title>Home - Selko</title>` page title
+- Added `role="alert"` and `aria-live="polite"` to error alert
+- Added `aria-busy` and sr-only text to loading regions
+
+**Navbar (`Navbar.svelte`):**
+- Added `aria-label="Main navigation"` to nav element
+- Added `aria-current="page"` to active navigation link
+- Changed "Logout" to "Log out" per brand guide
+
+**BottomNav (`BottomNav.svelte`):**
+- Wrapped navigation in `<nav aria-label="Main navigation">`
+- Added `aria-current="page"` to active link
+- Added `aria-hidden="true"` to decorative SVG icons
+
+**EventCard (`EventCard.svelte`):**
+- Added `aria-expanded` to description toggle button
+
+**ConfirmModal (`ConfirmModal.svelte`):**
+- Added `aria-labelledby` pointing to title element
+- Added `aria-describedby` pointing to description element
+
+**Root layout (`+layout.svelte`):**
+- Added skip-to-content link for keyboard navigation
+
+**App layout (`app/+layout.svelte`):**
+- Added `id="main-content"` to main element for skip link target
+- Added `aria-busy` and sr-only text to loading spinner
+
+**SenderHeader (`SenderHeader.svelte`):**
+- Added descriptive `aria-label` to "Approve All" button
+
+**EmailHeader (`EmailHeader.svelte`):**
+- Added descriptive `aria-label` to "Approve All" button
+
+**StatusBadge (`StatusBadge.svelte`):**
+- Added `role="status"` to badge element
+
+**Settings page (`app/settings/+page.svelte`):**
+- Changed "Logout" to "Log out" per brand guide (mobile logout button)
+
+**Files Modified:**
+- `frontend/src/routes/login/+page.svelte`
+- `frontend/src/routes/register/+page.svelte`
+- `frontend/src/routes/app/+page.svelte`
+- `frontend/src/routes/app/+layout.svelte`
+- `frontend/src/routes/+layout.svelte`
+- `frontend/src/lib/components/Navbar.svelte`
+- `frontend/src/lib/components/BottomNav.svelte`
+- `frontend/src/lib/components/EventCard.svelte`
+- `frontend/src/lib/components/ConfirmModal.svelte`
+- `frontend/src/lib/components/SenderHeader.svelte`
+- `frontend/src/lib/components/EmailHeader.svelte`
+- `frontend/src/lib/components/StatusBadge.svelte`
+- `frontend/src/routes/app/settings/+page.svelte`
+
+---
+
 ## 2026-02-09 - Android Auth Accessibility Fix
 
 ### Fix: Add confirm password field and brand corners on Android
