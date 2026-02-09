@@ -35,7 +35,7 @@
 	<div class="card w-full max-w-sm bg-base-200" style="box-shadow: 0 1px 3px rgba(0,0,0,0.06)">
 		<div class="card-body">
 			<h1 class="text-4xl font-semibold text-center tracking-tight">Selko</h1>
-			<p class="text-center text-base-content/60 text-sm mt-1">Clear your mind.</p>
+			<p class="text-center text-base-content/70 text-sm mt-1">Clear your mind.</p>
 
 			<form onsubmit={handleLogin} class="space-y-4 mt-6">
 				{#if error}
