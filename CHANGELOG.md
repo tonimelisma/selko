@@ -2,6 +2,38 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - Android Brand Design System
+
+### Feat: Implement Selko brand identity for Android
+
+**Colors:**
+- Full Material3 color scheme with Selko Blue primary (#5B63D3 light, #8B91D6 dark)
+- Disabled dynamic color (Material You) — brand colors always used
+- Semantic colors: success, error, warning for both light and dark themes
+- Cool-toned neutral grays matching brand guide
+
+**Typography:**
+- Inter font family (Regular, Medium, SemiBold) bundled as resources
+- All Material3 typography styles using Inter with brand type scale
+
+**Auth Screen:**
+- Added "Clear your mind." tagline on sign-in view
+- Updated terminology: "Sign in" / "Sign up" (sentence case)
+- Toggle text: "Log in" / "Sign up" links
+
+**Files Added:**
+- `android/app/src/main/res/font/inter_regular.ttf`
+- `android/app/src/main/res/font/inter_medium.ttf`
+- `android/app/src/main/res/font/inter_semibold.ttf`
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/ui/theme/Color.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/theme/Type.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/theme/Theme.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/auth/AuthScreen.kt`
+
+---
+
 ## 2026-02-09 - iOS Brand Design System
 
 ### Feat: Implement Selko brand identity for iOS

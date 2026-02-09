@@ -58,7 +58,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = if (uiState.isSignUp) "Create Account" else "Sign In",
+                text = if (uiState.isSignUp) "Sign up" else "Clear your mind.",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -117,7 +117,7 @@ fun AuthScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text(if (uiState.isSignUp) "Sign Up" else "Sign In")
+                    Text(if (uiState.isSignUp) "Sign up" else "Sign in")
                 }
             }
 
@@ -129,9 +129,9 @@ fun AuthScreen(
             ) {
                 Text(
                     if (uiState.isSignUp) {
-                        "Already have an account? Sign In"
+                        "Already have an account? Log in"
                     } else {
-                        "Don't have an account? Sign Up"
+                        "Don't have an account? Sign up"
                     }
                 )
             }
