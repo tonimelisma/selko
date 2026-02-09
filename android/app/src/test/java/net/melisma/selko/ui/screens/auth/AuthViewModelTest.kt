@@ -45,6 +45,7 @@ class AuthViewModelTest {
             val state = awaitItem()
             assertEquals("", state.email)
             assertEquals("", state.password)
+            assertEquals("", state.confirmPassword)
             assertFalse(state.isSignUp)
             assertFalse(state.isLoading)
             assertNull(state.errorMessage)
@@ -55,7 +56,7 @@ class AuthViewModelTest {
     @Test
     fun `onEmailChange updates email in state`() = runTest {
         viewModel.uiState.test {
-            skipItems(1) // Skip initial state
+            skipItems(1)
 
             viewModel.onEmailChange("test@example.com")
 
@@ -66,7 +67,6 @@ class AuthViewModelTest {
 
     @Test
     fun `onEmailChange clears error message`() = runTest {
-        // First trigger an error
         viewModel.submit()
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -84,7 +84,7 @@ class AuthViewModelTest {
     @Test
     fun `onPasswordChange updates password in state`() = runTest {
         viewModel.uiState.test {
-            skipItems(1) // Skip initial state
+            skipItems(1)
 
             viewModel.onPasswordChange("password123")
 
@@ -95,7 +95,6 @@ class AuthViewModelTest {
 
     @Test
     fun `onPasswordChange clears error message`() = runTest {
-        // First trigger an error
         viewModel.submit()
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -104,6 +103,37 @@ class AuthViewModelTest {
             assertEquals("Email and password are required", errorState.errorMessage)
 
             viewModel.onPasswordChange("password123")
+
+            val clearedState = awaitItem()
+            assertNull(clearedState.errorMessage)
+        }
+    }
+
+    @Test
+    fun `onConfirmPasswordChange updates state`() = runTest {
+        viewModel.uiState.test {
+            skipItems(1)
+
+            viewModel.onConfirmPasswordChange("password123")
+
+            val state = awaitItem()
+            assertEquals("password123", state.confirmPassword)
+        }
+    }
+
+    @Test
+    fun `onConfirmPasswordChange clears error message`() = runTest {
+        viewModel.toggleAuthMode()
+        viewModel.onEmailChange("test@example.com")
+        viewModel.onPasswordChange("password123")
+        viewModel.submit()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val errorState = awaitItem()
+            assertEquals("Please confirm your password", errorState.errorMessage)
+
+            viewModel.onConfirmPasswordChange("password123")
 
             val clearedState = awaitItem()
             assertNull(clearedState.errorMessage)
@@ -130,7 +160,6 @@ class AuthViewModelTest {
 
     @Test
     fun `toggleAuthMode clears error message`() = runTest {
-        // First trigger an error
         viewModel.submit()
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -146,8 +175,24 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun `toggleAuthMode clears confirmPassword`() = runTest {
+        viewModel.toggleAuthMode()
+        viewModel.onConfirmPasswordChange("password123")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals("password123", state.confirmPassword)
+
+            viewModel.toggleAuthMode()
+
+            val toggledState = awaitItem()
+            assertEquals("", toggledState.confirmPassword)
+        }
+    }
+
+    @Test
     fun `clearError removes error message`() = runTest {
-        // First trigger an error
         viewModel.submit()
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -168,7 +213,7 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
-            skipItems(1) // Skip password change state
+            skipItems(1)
 
             viewModel.submit()
             testDispatcher.scheduler.advanceUntilIdle()
@@ -185,7 +230,7 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
-            skipItems(1) // Skip email change state
+            skipItems(1)
 
             viewModel.submit()
             testDispatcher.scheduler.advanceUntilIdle()
@@ -203,13 +248,52 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
-            skipItems(1) // Skip previous state changes
+            skipItems(1)
 
             viewModel.submit()
             testDispatcher.scheduler.advanceUntilIdle()
 
             val errorState = awaitItem()
             assertEquals("Email and password are required", errorState.errorMessage)
+        }
+    }
+
+    @Test
+    fun `submit signUp with empty confirmPassword shows error`() = runTest {
+        viewModel.toggleAuthMode()
+        viewModel.onEmailChange("test@example.com")
+        viewModel.onPasswordChange("password123")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            viewModel.submit()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val errorState = awaitItem()
+            assertEquals("Please confirm your password", errorState.errorMessage)
+            assertFalse(errorState.isLoading)
+        }
+    }
+
+    @Test
+    fun `submit signUp with mismatched passwords shows error`() = runTest {
+        viewModel.toggleAuthMode()
+        viewModel.onEmailChange("test@example.com")
+        viewModel.onPasswordChange("password123")
+        viewModel.onConfirmPasswordChange("differentpassword")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            skipItems(1)
+
+            viewModel.submit()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val errorState = awaitItem()
+            assertEquals("Passwords do not match", errorState.errorMessage)
+            assertFalse(errorState.isLoading)
         }
     }
 
@@ -222,7 +306,7 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
-            skipItems(1) // Skip input changes
+            skipItems(1)
 
             viewModel.submit()
 
@@ -244,13 +328,14 @@ class AuthViewModelTest {
     fun `submit signUp success updates state correctly`() = runTest {
         coEvery { authRepository.signUp(any(), any()) } returns AuthResult.Success("test@example.com")
 
-        viewModel.toggleAuthMode() // Switch to signup
+        viewModel.toggleAuthMode()
         viewModel.onEmailChange("test@example.com")
         viewModel.onPasswordChange("password123")
+        viewModel.onConfirmPasswordChange("password123")
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
-            skipItems(1) // Skip input changes
+            skipItems(1)
 
             viewModel.submit()
 
@@ -276,7 +361,7 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
-            skipItems(1) // Skip input changes
+            skipItems(1)
 
             viewModel.submit()
 
@@ -296,13 +381,14 @@ class AuthViewModelTest {
     fun `submit signUp failure shows error`() = runTest {
         coEvery { authRepository.signUp(any(), any()) } returns AuthResult.Error("Email already registered")
 
-        viewModel.toggleAuthMode() // Switch to signup
+        viewModel.toggleAuthMode()
         viewModel.onEmailChange("existing@example.com")
         viewModel.onPasswordChange("password123")
+        viewModel.onConfirmPasswordChange("password123")
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
-            skipItems(1) // Skip input changes
+            skipItems(1)
 
             viewModel.submit()
 

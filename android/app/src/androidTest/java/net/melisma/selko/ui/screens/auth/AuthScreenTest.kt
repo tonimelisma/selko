@@ -133,9 +133,7 @@ class AuthScreenTest {
             }
         }
 
-        // Toggle to sign up
         composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
-        // Toggle back to sign in
         composeTestRule.onNodeWithText("Already have an account? Log in").performClick()
 
         composeTestRule.onNodeWithText("Clear your mind.").assertIsDisplayed()
@@ -152,7 +150,6 @@ class AuthScreenTest {
             }
         }
 
-        // Click sign in without entering anything
         composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
 
         composeTestRule.onNodeWithText("Email and password are required").assertIsDisplayed()
@@ -187,8 +184,6 @@ class AuthScreenTest {
 
         composeTestRule.onNodeWithText("Password").performTextInput("password123")
 
-        // Password is obscured, so we can't check the text directly
-        // But we can verify no error is shown
         composeTestRule.onNodeWithText("Email and password are required").assertDoesNotExist()
     }
 
@@ -246,14 +241,11 @@ class AuthScreenTest {
             }
         }
 
-        // Trigger error
         composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
         composeTestRule.onNodeWithText("Email and password are required").assertIsDisplayed()
 
-        // Type in email field
         composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
 
-        // Error should be cleared
         composeTestRule.onNodeWithText("Email and password are required").assertDoesNotExist()
     }
 
@@ -268,14 +260,11 @@ class AuthScreenTest {
             }
         }
 
-        // Trigger error
         composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
         composeTestRule.onNodeWithText("Email and password are required").assertIsDisplayed()
 
-        // Type in password field
         composeTestRule.onNodeWithText("Password").performTextInput("password123")
 
-        // Error should be cleared
         composeTestRule.onNodeWithText("Email and password are required").assertDoesNotExist()
     }
 
@@ -290,14 +279,85 @@ class AuthScreenTest {
             }
         }
 
-        // Trigger error
         composeTestRule.onNode(hasText("Sign in") and !hasText("Don't")).performClick()
         composeTestRule.onNodeWithText("Email and password are required").assertIsDisplayed()
 
-        // Toggle to sign up
         composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
 
-        // Error should be cleared
         composeTestRule.onNodeWithText("Email and password are required").assertDoesNotExist()
+    }
+
+    @Test
+    fun authScreen_displaysConfirmPasswordField_whenSignUp() {
+        composeTestRule.setContent {
+            SelkoTheme {
+                AuthScreen(
+                    onAuthSuccess = {},
+                    viewModel = AuthViewModel(authRepository)
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
+
+        composeTestRule.onNodeWithText("Confirm password").assertIsDisplayed()
+    }
+
+    @Test
+    fun authScreen_hidesConfirmPasswordField_whenSignIn() {
+        composeTestRule.setContent {
+            SelkoTheme {
+                AuthScreen(
+                    onAuthSuccess = {},
+                    viewModel = AuthViewModel(authRepository)
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Confirm password").assertDoesNotExist()
+    }
+
+    @Test
+    fun authScreen_showsError_whenPasswordsMismatchOnSignUp() {
+        composeTestRule.setContent {
+            SelkoTheme {
+                AuthScreen(
+                    onAuthSuccess = {},
+                    viewModel = AuthViewModel(authRepository)
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
+        composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
+        composeTestRule.onNodeWithText("Password").performTextInput("password123")
+        composeTestRule.onNodeWithText("Confirm password").performTextInput("different")
+        composeTestRule.onNode(hasText("Sign up") and !hasText("Already") and !hasText("Don't")).performClick()
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Passwords do not match").assertIsDisplayed()
+    }
+
+    @Test
+    fun authScreen_clearsError_whenTypingInConfirmPasswordField() {
+        composeTestRule.setContent {
+            SelkoTheme {
+                AuthScreen(
+                    onAuthSuccess = {},
+                    viewModel = AuthViewModel(authRepository)
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
+        composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
+        composeTestRule.onNodeWithText("Password").performTextInput("password123")
+        composeTestRule.onNode(hasText("Sign up") and !hasText("Already") and !hasText("Don't")).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Please confirm your password").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Confirm password").performTextInput("password123")
+
+        composeTestRule.onNodeWithText("Please confirm your password").assertDoesNotExist()
     }
 }

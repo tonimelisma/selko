@@ -13,6 +13,7 @@ import net.melisma.selko.data.repository.AuthResult
 data class AuthUiState(
     val email: String = "",
     val password: String = "",
+    val confirmPassword: String = "",
     val isSignUp: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -34,8 +35,12 @@ class AuthViewModel(
         _uiState.update { it.copy(password = password, errorMessage = null) }
     }
 
+    fun onConfirmPasswordChange(confirmPassword: String) {
+        _uiState.update { it.copy(confirmPassword = confirmPassword, errorMessage = null) }
+    }
+
     fun toggleAuthMode() {
-        _uiState.update { it.copy(isSignUp = !it.isSignUp, errorMessage = null) }
+        _uiState.update { it.copy(isSignUp = !it.isSignUp, confirmPassword = "", errorMessage = null) }
     }
 
     fun clearError() {
@@ -47,6 +52,17 @@ class AuthViewModel(
         if (state.email.isBlank() || state.password.isBlank()) {
             _uiState.update { it.copy(errorMessage = "Email and password are required") }
             return
+        }
+
+        if (state.isSignUp) {
+            if (state.confirmPassword.isBlank()) {
+                _uiState.update { it.copy(errorMessage = "Please confirm your password") }
+                return
+            }
+            if (state.password != state.confirmPassword) {
+                _uiState.update { it.copy(errorMessage = "Passwords do not match") }
+                return
+            }
         }
 
         viewModelScope.launch {
