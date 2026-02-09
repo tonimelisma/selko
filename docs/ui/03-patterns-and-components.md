@@ -426,9 +426,11 @@ Confirmation dialog for destructive Settings actions.
 
 ## Color & Theme
 
+> **Full brand specification:** See `docs/brand-guide.md` for the complete color palette, typography, and visual rules across all platforms.
+
 ### DaisyUI Semantic Colors Only
 
-Use DaisyUI's semantic color classes exclusively. **Never use raw Tailwind colors** (no `text-blue-500`, `bg-red-100`, etc.). DaisyUI handles light/dark theme switching automatically based on the user's system preference.
+Use DaisyUI's semantic color classes exclusively. **Never use raw Tailwind colors** (no `text-blue-500`, `bg-red-100`, etc.). Custom `selko-light` and `selko-dark` themes are defined in `tailwind.config.js` with the brand color palette. DaisyUI handles light/dark theme switching automatically based on the user's system preference.
 
 **Correct:**
 ```html
