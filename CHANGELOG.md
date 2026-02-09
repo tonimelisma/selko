@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - iOS Brand Design System
+
+### Feat: Implement Selko brand identity for iOS
+
+**Accent Color:**
+- Set AccentColor to Selko Blue (#5B63D3 light, #8B91D6 dark) in asset catalog
+- Supports automatic light/dark mode switching
+
+**Brand Colors:**
+- Created BrandColors.swift with semantic color extensions
+- Colors: selkoPrimary, selkoSuccess, selkoError, selkoWarning
+- Helper initializers for hex colors and light/dark adaptive colors
+
+**Auth Screens Updated:**
+- LoginView: tagline changed to "Clear your mind.", button to "Sign in", link to "Sign up"
+- RegisterView: title to "Sign up", button to "Sign up", sentence case labels
+
+**Files Added:**
+- `ios/Selko/BrandColors.swift`
+
+**Files Modified:**
+- `ios/Selko/Assets.xcassets/AccentColor.colorset/Contents.json`
+- `ios/Selko/Features/Auth/Views/LoginView.swift`
+- `ios/Selko/Features/Auth/Views/RegisterView.swift`
+
+---
+
 ## 2026-02-08 - iOS XCUITests
 
 ### Test: Add XCUITests and accessibility identifiers for iOS screens
