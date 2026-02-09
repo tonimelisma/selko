@@ -41,23 +41,24 @@
 </script>
 
 <svelte:head>
-	<title>Register - Selko</title>
+	<title>Sign up - Selko</title>
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-screen px-4">
-	<div class="card w-full max-w-sm bg-base-200 shadow-xl">
+	<div class="card w-full max-w-sm bg-base-200" style="box-shadow: 0 1px 3px rgba(0,0,0,0.06)">
 		<div class="card-body">
-			<h1 class="card-title text-2xl font-bold justify-center">Create Account</h1>
+			<h1 class="text-4xl font-semibold text-center tracking-tight">Selko</h1>
+			<p class="text-center text-base-content/60 text-sm mt-1">Clear your mind.</p>
 
 			{#if success}
 				<div class="alert alert-success mt-4">
-					<span>Registration successful! Check your email to confirm your account.</span>
+					<span>Check your email to confirm your account.</span>
 				</div>
 				<p class="text-center mt-4">
-					<a href="/login" class="link link-primary">Go to Login</a>
+					<a href="/login" class="link link-primary">Sign in</a>
 				</p>
 			{:else}
-				<form onsubmit={handleRegister} class="space-y-4 mt-4">
+				<form onsubmit={handleRegister} class="space-y-4 mt-6">
 					{#if error}
 						<div class="alert alert-error">
 							<span>{error}</span>
@@ -94,7 +95,7 @@
 
 					<div class="form-control">
 						<label class="label" for="confirmPassword">
-							<span class="label-text">Confirm Password</span>
+							<span class="label-text">Confirm password</span>
 						</label>
 						<input
 							id="confirmPassword"
@@ -110,16 +111,14 @@
 						{#if isLoading}
 							<span class="loading loading-spinner loading-sm"></span>
 						{:else}
-							Register
+							Sign up
 						{/if}
 					</button>
 				</form>
 
-				<div class="divider">OR</div>
-
-				<p class="text-center text-sm">
+				<p class="text-center text-sm mt-4">
 					Already have an account?
-					<a href="/login" class="link link-primary">Login</a>
+					<a href="/login" class="link link-primary">Log in</a>
 				</p>
 			{/if}
 		</div>

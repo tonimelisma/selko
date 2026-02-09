@@ -28,15 +28,16 @@
 </script>
 
 <svelte:head>
-	<title>Login - Selko</title>
+	<title>Sign in - Selko</title>
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-screen px-4">
-	<div class="card w-full max-w-sm bg-base-200 shadow-xl">
+	<div class="card w-full max-w-sm bg-base-200" style="box-shadow: 0 1px 3px rgba(0,0,0,0.06)">
 		<div class="card-body">
-			<h1 class="card-title text-2xl font-bold justify-center">Login to Selko</h1>
+			<h1 class="text-4xl font-semibold text-center tracking-tight">Selko</h1>
+			<p class="text-center text-base-content/60 text-sm mt-1">Clear your mind.</p>
 
-			<form onsubmit={handleLogin} class="space-y-4 mt-4">
+			<form onsubmit={handleLogin} class="space-y-4 mt-6">
 				{#if error}
 					<div class="alert alert-error">
 						<span>{error}</span>
@@ -75,16 +76,14 @@
 					{#if isLoading}
 						<span class="loading loading-spinner loading-sm"></span>
 					{:else}
-						Login
+						Sign in
 					{/if}
 				</button>
 			</form>
 
-			<div class="divider">OR</div>
-
-			<p class="text-center text-sm">
+			<p class="text-center text-sm mt-4">
 				Don't have an account?
-				<a href="/register" class="link link-primary">Register</a>
+				<a href="/register" class="link link-primary">Sign up</a>
 			</p>
 		</div>
 	</div>

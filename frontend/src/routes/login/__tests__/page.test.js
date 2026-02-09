@@ -30,16 +30,16 @@ describe('Login Page', () => {
 	it('renders the login form', () => {
 		render(LoginPage);
 
-		expect(screen.getByRole('heading', { name: /login to selko/i })).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: /selko/i })).toBeInTheDocument();
 		expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
 		expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
 	});
 
 	it('has a link to the registration page', () => {
 		render(LoginPage);
 
-		const registerLink = screen.getByRole('link', { name: /register/i });
+		const registerLink = screen.getByRole('link', { name: /sign up/i });
 		expect(registerLink).toBeInTheDocument();
 		expect(registerLink).toHaveAttribute('href', '/register');
 	});
@@ -55,7 +55,7 @@ describe('Login Page', () => {
 
 		await user.type(screen.getByLabelText(/email/i), 'test@example.com');
 		await user.type(screen.getByLabelText(/password/i), 'password123');
-		await user.click(screen.getByRole('button', { name: /login/i }));
+		await user.click(screen.getByRole('button', { name: /sign in/i }));
 
 		expect(mockSignInWithPassword).toHaveBeenCalledWith({
 			email: 'test@example.com',
@@ -74,7 +74,7 @@ describe('Login Page', () => {
 
 		await user.type(screen.getByLabelText(/email/i), 'test@example.com');
 		await user.type(screen.getByLabelText(/password/i), 'password123');
-		await user.click(screen.getByRole('button', { name: /login/i }));
+		await user.click(screen.getByRole('button', { name: /sign in/i }));
 
 		expect(mockGoto).toHaveBeenCalledWith('/app');
 	});
@@ -90,7 +90,7 @@ describe('Login Page', () => {
 
 		await user.type(screen.getByLabelText(/email/i), 'test@example.com');
 		await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
-		await user.click(screen.getByRole('button', { name: /login/i }));
+		await user.click(screen.getByRole('button', { name: /sign in/i }));
 
 		expect(await screen.findByText('Invalid login credentials')).toBeInTheDocument();
 	});
@@ -106,7 +106,7 @@ describe('Login Page', () => {
 
 		await user.type(screen.getByLabelText(/email/i), 'test@example.com');
 		await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
-		await user.click(screen.getByRole('button', { name: /login/i }));
+		await user.click(screen.getByRole('button', { name: /sign in/i }));
 
 		// Wait for error to appear to ensure async operation completed
 		await screen.findByText('Invalid login credentials');
@@ -129,7 +129,7 @@ describe('Login Page', () => {
 		await user.type(screen.getByLabelText(/email/i), 'test@example.com');
 		await user.type(screen.getByLabelText(/password/i), 'password123');
 
-		const submitButton = screen.getByRole('button', { name: /login/i });
+		const submitButton = screen.getByRole('button', { name: /sign in/i });
 		await user.click(submitButton);
 
 		// Button should be disabled while loading
