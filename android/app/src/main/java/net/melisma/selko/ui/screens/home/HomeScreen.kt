@@ -54,7 +54,8 @@ fun HomeScreen(
 
             Button(
                 onClick = { viewModel.logout(onLogout) },
-                enabled = !uiState.isLoggingOut
+                enabled = !uiState.isLoggingOut,
+                shape = MaterialTheme.shapes.medium
             ) {
                 if (uiState.isLoggingOut) {
                     CircularProgressIndicator(
@@ -63,7 +64,7 @@ fun HomeScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Sign Out")
+                    Text("Log out")
                 }
             }
         }

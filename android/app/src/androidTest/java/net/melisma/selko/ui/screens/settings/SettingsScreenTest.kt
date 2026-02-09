@@ -102,7 +102,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun settingsScreen_showsSignOutButton() {
+    fun settingsScreen_showsLogOutButton() {
         setupMocks()
 
         composeTestRule.setContent {
@@ -115,7 +115,7 @@ class SettingsScreenTest {
         }
 
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Sign Out").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Log out").assertIsDisplayed()
     }
 
     @Test

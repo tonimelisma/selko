@@ -156,10 +156,13 @@ fun EventCardContent(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    OutlinedButton(onClick = onReject) {
+                    OutlinedButton(
+                        onClick = onReject,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = null,
+                            contentDescription = "Reject",
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -173,10 +176,13 @@ fun EventCardContent(
                         )
                     }
 
-                    FilledTonalButton(onClick = onApprove) {
+                    FilledTonalButton(
+                        onClick = onApprove,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Check,
-                            contentDescription = null,
+                            contentDescription = "Approve",
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))

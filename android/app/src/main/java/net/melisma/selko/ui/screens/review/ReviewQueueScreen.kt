@@ -125,7 +125,10 @@ fun ReviewQueueScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
                 action = {
-                    TextButton(onClick = { viewModel.clearError() }) {
+                    TextButton(
+                        onClick = { viewModel.clearError() },
+                        shape = MaterialTheme.shapes.medium
+                    ) {
                         Text("Dismiss")
                     }
                 }
@@ -161,10 +164,13 @@ private fun SenderGroupHeader(
         }
 
         if (group.events.size > 1) {
-            TextButton(onClick = onApproveAll) {
+            TextButton(
+                onClick = onApproveAll,
+                shape = MaterialTheme.shapes.medium
+            ) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
+                    contentDescription = "Approve all",
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
@@ -187,7 +193,7 @@ private fun EmptyReviewContent() {
     ) {
         Icon(
             imageVector = Icons.Filled.Inbox,
-            contentDescription = null,
+            contentDescription = "No events",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )

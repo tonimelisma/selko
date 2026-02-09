@@ -2,6 +2,44 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - Android Accessibility and Brand Compliance
+
+### Fix: Improve Android accessibility (content descriptions, button shapes, brand compliance)
+
+**Button Shapes (all screens):**
+- Added explicit `shape = MaterialTheme.shapes.medium` to all `Button`, `OutlinedButton`, `FilledTonalButton`, and `TextButton` composables. Material3 buttons default to pill shape (`ShapeKeyTokens.CornerFull`) which bypasses `MaterialTheme.shapes`, so explicit shapes are required for the 2dp brand corners.
+
+**OutlinedTextField Shapes (all screens):**
+- Added explicit `shape = MaterialTheme.shapes.small` to all `OutlinedTextField` composables for consistent 2dp brand corners.
+
+**Icon Content Descriptions (accessibility):**
+- EventDetailScreen: Reject/Approve button icons, source email icon
+- EventCardContent: Reject/Approve button icons
+- ReviewQueueScreen: Approve All icon, empty state Inbox icon
+- IntegrationSetupContent: Email setup icon
+- SettingsScreen: Service icons (Gmail/Calendar), Person icon, Log out icon
+- HistoryScreen: Empty state History icon
+
+**Terminology:**
+- Changed "Sign Out" to "Log out" in SettingsScreen and HomeScreen (brand guide compliance)
+- Updated corresponding UI test assertions
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/ui/screens/auth/AuthScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/ReviewQueueScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventCardContent.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventDetailScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/IntegrationSetupContent.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/settings/SettingsScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/history/HistoryScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/home/HomeScreen.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/home/HomeScreenTest.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/settings/SettingsScreenTest.kt`
+
+**Note:** Date/time picker dialogs for EventDetailScreen are a follow-up item.
+
+---
+
 ## 2026-02-09 - Android Auth Accessibility Fix
 
 ### Fix: Add confirm password field and brand corners on Android
