@@ -19,7 +19,7 @@ struct LoginView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
 
-            Text("Your AI-powered personal assistant")
+            Text("Clear your mind.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -57,7 +57,7 @@ struct LoginView: View {
                             .progressViewStyle(.circular)
                             .tint(.white)
                     } else {
-                        Text("Sign In")
+                        Text("Sign in")
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -67,7 +67,7 @@ struct LoginView: View {
 
             Spacer()
 
-            Button("Create Account") {
+            Button("Sign up") {
                 showRegister = true
             }
             .accessibilityIdentifier("createAccountButton")

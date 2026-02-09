@@ -40,7 +40,7 @@ final class SelkoUITests: XCTestCase {
         app.buttons["createAccountButton"].tap()
 
         // Verify register sheet appears
-        XCTAssertTrue(app.staticTexts["Create Account"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Sign up"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["registerEmailField"].exists)
         XCTAssertTrue(app.secureTextFields["registerPasswordField"].exists)
         XCTAssertTrue(app.secureTextFields["confirmPasswordField"].exists)
@@ -84,7 +84,7 @@ final class SelkoUITests: XCTestCase {
         app.buttons["createAccountButton"].tap()
 
         // Wait for sheet to appear
-        XCTAssertTrue(app.staticTexts["Create Account"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Sign up"].waitForExistence(timeout: 5))
 
         // Enter email
         let emailField = app.textFields["registerEmailField"]

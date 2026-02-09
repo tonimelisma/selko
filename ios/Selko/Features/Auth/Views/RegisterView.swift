@@ -16,7 +16,7 @@ struct RegisterView: View {
             VStack(spacing: 24) {
                 Spacer()
 
-                Text("Create Account")
+                Text("Sign up")
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
@@ -34,7 +34,7 @@ struct RegisterView: View {
                         .textContentType(.newPassword)
                         .accessibilityIdentifier("registerPasswordField")
 
-                    SecureField("Confirm Password", text: $viewModel.confirmPassword)
+                    SecureField("Confirm password", text: $viewModel.confirmPassword)
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.newPassword)
                         .accessibilityIdentifier("confirmPasswordField")
@@ -57,7 +57,7 @@ struct RegisterView: View {
                                 .progressViewStyle(.circular)
                                 .tint(.white)
                         } else {
-                            Text("Create Account")
+                            Text("Sign up")
                         }
                     }
                     .buttonStyle(.borderedProminent)
