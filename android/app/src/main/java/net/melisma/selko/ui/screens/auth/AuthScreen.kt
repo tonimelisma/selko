@@ -88,11 +88,29 @@ fun AuthScreen(
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
+                    imeAction = if (uiState.isSignUp) ImeAction.Next else ImeAction.Done
                 ),
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isLoading
             )
+
+            if (uiState.isSignUp) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = uiState.confirmPassword,
+                    onValueChange = viewModel::onConfirmPasswordChange,
+                    label = { Text("Confirm password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isLoading
+                )
+            }
 
             uiState.errorMessage?.let { error ->
                 Spacer(modifier = Modifier.height(8.dp))

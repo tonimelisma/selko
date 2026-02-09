@@ -2,6 +2,37 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - Android Auth Accessibility Fix
+
+### Fix: Add confirm password field and brand corners on Android
+
+**AuthViewModel.kt:**
+- Added `confirmPassword` field to `AuthUiState`
+- Added `onConfirmPasswordChange()` function that updates state and clears errors
+- Updated `toggleAuthMode()` to clear confirm password when switching modes
+- Added sign-up validation: checks confirm password is not blank and matches password
+
+**AuthScreen.kt:**
+- Added conditional "Confirm password" `OutlinedTextField` (shown only in sign-up mode)
+- Password field `imeAction` is now dynamic: `Next` in sign-up mode, `Done` in sign-in mode
+
+**Theme.kt:**
+- Added `SelkoShapes` with 2dp `RoundedCornerShape` for all Material3 shape sizes
+- Passed `shapes = SelkoShapes` to `MaterialTheme` — all components now use brand-spec 2dp corners
+
+**Tests:**
+- 6 new unit tests in `AuthViewModelTest.kt` (confirm password state, validation, error clearing)
+- 4 new UI tests in `AuthScreenTest.kt` (confirm password field visibility, validation, error clearing)
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/ui/screens/auth/AuthViewModel.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/auth/AuthScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/theme/Theme.kt`
+- `android/app/src/test/java/net/melisma/selko/ui/screens/auth/AuthViewModelTest.kt`
+- `android/app/src/androidTest/java/net/melisma/selko/ui/screens/auth/AuthScreenTest.kt`
+
+---
+
 ## 2026-02-09 - Web Tagline Contrast Fix
 
 ### Fix: Improve tagline text contrast on login and register pages
