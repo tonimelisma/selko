@@ -40,7 +40,7 @@ fun IntegrationSetupContent(
     ) {
         Icon(
             imageVector = Icons.Filled.Email,
-            contentDescription = null,
+            contentDescription = "Email setup",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary
         )
@@ -70,7 +70,8 @@ fun IntegrationSetupContent(
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
                     context.startActivity(intent)
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text("Connect Google Account")
             }
@@ -98,7 +99,8 @@ fun IntegrationSetupContent(
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
                     context.startActivity(intent)
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text("Connect Google Calendar")
             }

@@ -76,7 +76,7 @@ class HomeScreenTest {
     }
 
     @Test
-    fun homeScreen_displaysSignOutButton() {
+    fun homeScreen_displaysLogOutButton() {
         composeTestRule.setContent {
             SelkoTheme {
                 HomeScreen(
@@ -86,11 +86,11 @@ class HomeScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Sign Out").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Log out").assertIsDisplayed()
     }
 
     @Test
-    fun homeScreen_callsOnLogout_whenSignOutClicked() {
+    fun homeScreen_callsOnLogout_whenLogOutClicked() {
         var logoutCalled = false
 
         composeTestRule.setContent {
@@ -102,14 +102,14 @@ class HomeScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Sign Out").performClick()
+        composeTestRule.onNodeWithText("Log out").performClick()
         composeTestRule.waitForIdle()
 
         assert(logoutCalled) { "onLogout callback should have been called" }
     }
 
     @Test
-    fun homeScreen_callsRepositorySignOut_whenSignOutClicked() {
+    fun homeScreen_callsRepositorySignOut_whenLogOutClicked() {
         composeTestRule.setContent {
             SelkoTheme {
                 HomeScreen(
@@ -119,7 +119,7 @@ class HomeScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Sign Out").performClick()
+        composeTestRule.onNodeWithText("Log out").performClick()
         composeTestRule.waitForIdle()
 
         coVerify { authRepository.signOut() }

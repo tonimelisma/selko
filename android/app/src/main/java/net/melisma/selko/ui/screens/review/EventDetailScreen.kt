@@ -98,7 +98,8 @@ fun EventDetailScreen(
                     ) {
                         OutlinedButton(
                             onClick = { viewModel.rejectEvent() },
-                            enabled = !uiState.isRejecting && !uiState.isApproving
+                            enabled = !uiState.isRejecting && !uiState.isApproving,
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             if (uiState.isRejecting) {
                                 CircularProgressIndicator(
@@ -108,7 +109,7 @@ fun EventDetailScreen(
                             } else {
                                 Icon(
                                     imageVector = Icons.Filled.Close,
-                                    contentDescription = null,
+                                    contentDescription = "Reject",
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -118,7 +119,8 @@ fun EventDetailScreen(
 
                         Button(
                             onClick = { viewModel.approveEvent() },
-                            enabled = !uiState.isApproving && !uiState.isRejecting
+                            enabled = !uiState.isApproving && !uiState.isRejecting,
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             if (uiState.isApproving) {
                                 CircularProgressIndicator(
@@ -129,7 +131,7 @@ fun EventDetailScreen(
                             } else {
                                 Icon(
                                     imageVector = Icons.Filled.Check,
-                                    contentDescription = null,
+                                    contentDescription = "Approve",
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -184,7 +186,10 @@ fun EventDetailScreen(
                         .align(Alignment.BottomCenter)
                         .padding(16.dp),
                     action = {
-                        TextButton(onClick = { viewModel.clearError() }) {
+                        TextButton(
+                            onClick = { viewModel.clearError() },
+                            shape = MaterialTheme.shapes.medium
+                        ) {
                             Text("Dismiss")
                         }
                     }
@@ -224,7 +229,8 @@ private fun EventDetailContent(
             onValueChange = onTitleChange,
             label = { Text("Title") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            shape = MaterialTheme.shapes.small
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -235,7 +241,8 @@ private fun EventDetailContent(
             label = { Text("Start Date/Time") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            placeholder = { Text("e.g. 2026-02-15T10:00:00Z") }
+            placeholder = { Text("e.g. 2026-02-15T10:00:00Z") },
+            shape = MaterialTheme.shapes.small
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -246,7 +253,8 @@ private fun EventDetailContent(
             label = { Text("End Date/Time") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            placeholder = { Text("e.g. 2026-02-15T11:00:00Z") }
+            placeholder = { Text("e.g. 2026-02-15T11:00:00Z") },
+            shape = MaterialTheme.shapes.small
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -273,7 +281,8 @@ private fun EventDetailContent(
             onValueChange = onLocationChange,
             label = { Text("Location") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            shape = MaterialTheme.shapes.small
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -284,7 +293,8 @@ private fun EventDetailContent(
             label = { Text("Description") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
-            maxLines = 6
+            maxLines = 6,
+            shape = MaterialTheme.shapes.small
         )
 
         // Source attribution
@@ -327,7 +337,7 @@ private fun SourceEmailCard(email: net.melisma.selko.data.model.Email) {
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Email,
-                        contentDescription = null,
+                        contentDescription = "Email",
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
