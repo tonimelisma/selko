@@ -147,9 +147,14 @@ Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/
 | `cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json` | Run frontend tests |
 | `uv run python -m selko.api` | Start FastAPI server |
 | `cd frontend && npm run test:e2e -- --project=chromium` | Run Playwright E2E tests |
-| `cd android && ./gradlew connectedAndroidTest` | Run Android Compose UI tests |
+| `cd android && ./gradlew testDebugUnitTest` | Run Android unit tests |
+| `cd android && ./gradlew connectedAndroidTest` | Run Android Compose UI tests (needs emulator) |
+| `xcodebuild -project ios/iOS.xcodeproj -scheme iOS -destination 'generic/platform=iOS Simulator' build` | Build iOS |
+| `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult` | Run iOS tests |
 | `gh pr create` | Create PR |
 | `while true; do gh pr checks; s=$?; [ $s -eq 0 ] && gh pr merge --squash && break; [ $s -ne 8 ] && exit 1; sleep 10; done` | Poll CI, merge on success, exit on failure |
+
+> **iOS gotcha:** Project is `iOS.xcodeproj` and scheme is `iOS` (not "Selko"). Remove old `ios/TestResults.xcresult` before re-running tests.
 
 ### CLI Tools
 
@@ -180,6 +185,34 @@ These commands are blocked by hooks because they don't work with Claude Code:
 
 ---
 
+## Platform Preferences
+
+### iOS — Pure SwiftUI
+- **Never import UIKit** unless absolutely unavoidable (e.g., `UIApplication` for opening URLs)
+- For adaptive light/dark colors: use **asset catalog color sets**, not `UIColor { traits in ... }`
+- SF Pro is the system font — do NOT bundle or override it
+- Project is `ios/iOS.xcodeproj`, scheme is `iOS` (not "Selko" — common mistake)
+- Uses `PBXFileSystemSynchronizedRootGroup` — Swift files in `Selko/` are auto-discovered, no `project.pbxproj` edits needed for new files
+- `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES` — color sets (e.g., `SelkoSuccess.colorset`) auto-generate `Color.selkoSuccess` extensions. Do NOT create manual Color extensions that duplicate asset catalog names (causes "invalid redeclaration")
+- Available simulators: iPhone 17 Pro, iPhone 17, iPhone Air (no iPhone 16)
+- Must `rm -rf ios/TestResults.xcresult` before re-running tests
+
+### Android — Pure Jetpack Compose
+- **No legacy View system** — no XML layouts, no `android.widget` imports
+- Material3 (`androidx.compose.material3`) exclusively
+- Koin for dependency injection (`koinViewModel()`)
+- `dynamicColor = false` — brand colors always override Material You
+- Font resources must be **lowercase with underscores** (e.g., `inter_regular.ttf` in `res/font/`)
+- For icons beyond basics, add `material-icons-extended` dependency
+
+### Web — SvelteKit + DaisyUI
+- SvelteKit 2 with Svelte 5 (runes syntax)
+- DaisyUI semantic colors only — never use raw Tailwind colors (`text-blue-500` etc.)
+- Custom themes `selko-light` and `selko-dark` in `tailwind.config.js`
+- `svelte-check` CI is strict about types — use JSDoc annotations where needed
+
+---
+
 ## UI Testing & Visual Verification
 
 Three MCP servers are configured in `.mcp.json` for visual verification:
@@ -189,7 +222,23 @@ Three MCP servers are configured in `.mcp.json` for visual verification:
 
 **Slash commands:** `/verify-web`, `/verify-ios`, `/verify-android` — use these after implementing UI changes.
 
-**Important:** For web visual verification, use Playwright MCP tools (not Bash-based Playwright CLI). The MCP tools provide `browser_navigate`, `browser_screenshot`, `browser_snapshot`, etc.
+### Playwright MCP (Web)
+1. Start dev server first: `cd frontend && npm run dev`
+2. Use `browser_navigate` to open pages (e.g., `http://localhost:5173/login`)
+3. Use `browser_snapshot` for accessibility tree, `browser_take_screenshot` for visual checks
+4. Test at desktop (1280x800) and mobile (390x844) viewports
+
+### XcodeBuildMCP (iOS)
+1. Call `session-show-defaults` first to see current config
+2. Use `discover_projs` to find projects, `list_schemes` for schemes
+3. `build_sim` to build, `test_sim` for tests, `screenshot` for visual verification
+4. `list_sims` to find available simulators
+
+### mobile-mcp (iOS Simulator / Android Emulator)
+1. `mobile_take_screenshot` for visual captures
+2. `mobile_list_elements_on_screen` for UI hierarchy
+3. `mobile_click_on_screen_at_coordinates` for interaction
+4. Works with both iOS Simulator and Android Emulator
 
 **Full details:** `docs/ui-testing-guide.md`
 
@@ -262,6 +311,7 @@ Three MCP servers are configured in `.mcp.json` for visual verification:
 | **UI user journeys** | `docs/ui/01-user-journeys.md` | When planning frontend work or understanding user flows |
 | **Screen specifications** | `docs/ui/02-screen-specs.md` | When implementing any web screen |
 | **UI patterns & components** | `docs/ui/03-patterns-and-components.md` | Before building any UI component, to follow conventions |
+| **Brand guide** | `docs/brand-guide.md` | When implementing any UI, choosing colors, fonts, or terminology |
 | **UI testing** | `docs/ui-testing-guide.md` | When writing E2E tests or using MCP visual verification |
 
 ---
