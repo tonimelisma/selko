@@ -39,7 +39,7 @@
 
 			<form onsubmit={handleLogin} class="space-y-4 mt-6">
 				{#if error}
-					<div class="alert alert-error">
+					<div class="alert alert-error" role="alert" aria-live="polite">
 						<span>{error}</span>
 					</div>
 				{/if}
@@ -72,9 +72,10 @@
 					/>
 				</div>
 
-				<button type="submit" class="btn btn-primary w-full" disabled={isLoading}>
+				<button type="submit" class="btn btn-primary w-full" disabled={isLoading} aria-busy={isLoading}>
 					{#if isLoading}
-						<span class="loading loading-spinner loading-sm"></span>
+						<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+						<span class="sr-only">Loading</span>
 					{:else}
 						Sign in
 					{/if}

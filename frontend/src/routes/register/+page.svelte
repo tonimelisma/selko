@@ -51,7 +51,7 @@
 			<p class="text-center text-base-content/70 text-sm mt-1">Clear your mind.</p>
 
 			{#if success}
-				<div class="alert alert-success mt-4">
+				<div class="alert alert-success mt-4" role="alert" aria-live="polite">
 					<span>Check your email to confirm your account.</span>
 				</div>
 				<p class="text-center mt-4">
@@ -60,7 +60,7 @@
 			{:else}
 				<form onsubmit={handleRegister} class="space-y-4 mt-6">
 					{#if error}
-						<div class="alert alert-error">
+						<div id="register-error" class="alert alert-error" role="alert" aria-live="polite">
 							<span>{error}</span>
 						</div>
 					{/if}
@@ -76,6 +76,8 @@
 							class="input input-bordered w-full"
 							placeholder="you@example.com"
 							required
+							aria-invalid={!!error}
+							aria-describedby={error ? 'register-error' : undefined}
 						/>
 					</div>
 
@@ -90,6 +92,8 @@
 							class="input input-bordered w-full"
 							placeholder="At least 6 characters"
 							required
+							aria-invalid={!!error}
+							aria-describedby={error ? 'register-error' : undefined}
 						/>
 					</div>
 
@@ -104,12 +108,15 @@
 							class="input input-bordered w-full"
 							placeholder="Confirm your password"
 							required
+							aria-invalid={!!error}
+							aria-describedby={error ? 'register-error' : undefined}
 						/>
 					</div>
 
-					<button type="submit" class="btn btn-primary w-full" disabled={isLoading}>
+					<button type="submit" class="btn btn-primary w-full" disabled={isLoading} aria-busy={isLoading}>
 						{#if isLoading}
-							<span class="loading loading-spinner loading-sm"></span>
+							<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+							<span class="sr-only">Loading</span>
 						{:else}
 							Sign up
 						{/if}
