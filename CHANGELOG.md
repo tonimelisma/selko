@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - Web Tagline Contrast Fix
+
+### Fix: Improve tagline text contrast on login and register pages
+
+Changed tagline "Clear your mind." opacity from `text-base-content/60` to `text-base-content/70` on both login and register pages. This aligns with the project's secondary text convention defined in `docs/ui/03-patterns-and-components.md`.
+
+**Files Modified:**
+- `frontend/src/routes/login/+page.svelte`
+- `frontend/src/routes/register/+page.svelte`
+
+---
+
 ## 2026-02-09 - iOS Auth Accessibility Fix
 
 ### Fix: Improve auth screen accessibility and usability on iOS
