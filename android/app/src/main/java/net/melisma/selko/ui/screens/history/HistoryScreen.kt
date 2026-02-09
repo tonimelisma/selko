@@ -109,7 +109,10 @@ fun HistoryScreen(
                                 if (uiState.isLoadingMore) {
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 } else {
-                                    TextButton(onClick = { viewModel.loadMore() }) {
+                                    TextButton(
+                                        onClick = { viewModel.loadMore() },
+                                        shape = MaterialTheme.shapes.medium
+                                    ) {
                                         Text("Load More")
                                     }
                                 }
@@ -131,7 +134,10 @@ fun HistoryScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
                 action = {
-                    TextButton(onClick = { viewModel.clearError() }) {
+                    TextButton(
+                        onClick = { viewModel.clearError() },
+                        shape = MaterialTheme.shapes.medium
+                    ) {
                         Text("Dismiss")
                     }
                 }
@@ -264,7 +270,7 @@ private fun EmptyHistoryContent() {
     ) {
         Icon(
             imageVector = Icons.Filled.History,
-            contentDescription = null,
+            contentDescription = "No activity",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )

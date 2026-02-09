@@ -124,7 +124,10 @@ fun SettingsScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
                 action = {
-                    TextButton(onClick = { viewModel.clearError() }) {
+                    TextButton(
+                        onClick = { viewModel.clearError() },
+                        shape = MaterialTheme.shapes.medium
+                    ) {
                         Text("Dismiss")
                     }
                 }
@@ -214,7 +217,7 @@ private fun IntegrationRow(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = label,
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -245,7 +248,8 @@ private fun IntegrationRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 TextButton(
                     onClick = onDisconnect,
-                    enabled = !isDisconnecting
+                    enabled = !isDisconnecting,
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     if (isDisconnecting) {
                         CircularProgressIndicator(
@@ -258,7 +262,10 @@ private fun IntegrationRow(
                 }
             }
         } else {
-            OutlinedButton(onClick = onConnect) {
+            OutlinedButton(
+                onClick = onConnect,
+                shape = MaterialTheme.shapes.medium
+            ) {
                 Text("Connect")
             }
         }
@@ -300,7 +307,8 @@ private fun CalendarDefaultsSection(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        shape = MaterialTheme.shapes.small
                     )
 
                     ExposedDropdownMenu(
@@ -347,14 +355,16 @@ private fun CalendarDefaultsSection(
                 label = { Text("Default Invitees") },
                 placeholder = { Text("email1@example.com, email2@example.com") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                shape = MaterialTheme.shapes.small
             )
 
             if (uiState.defaultInvitees.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(
                     onClick = onSaveInvitees,
-                    enabled = !uiState.isSavingCalendarSettings
+                    enabled = !uiState.isSavingCalendarSettings,
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     if (uiState.isSavingCalendarSettings) {
                         CircularProgressIndicator(
@@ -386,7 +396,7 @@ private fun AccountSection(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Person,
-                    contentDescription = null,
+                    contentDescription = "Account",
                     modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -406,14 +416,15 @@ private fun AccountSection(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Sign out button
+            // Log out button
             Button(
                 onClick = onSignOut,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isSigningOut,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
-                )
+                ),
+                shape = MaterialTheme.shapes.medium
             ) {
                 if (uiState.isSigningOut) {
                     CircularProgressIndicator(
@@ -424,12 +435,12 @@ private fun AccountSection(
                 } else {
                     Icon(
                         imageVector = Icons.Filled.Logout,
-                        contentDescription = null,
+                        contentDescription = "Log out",
                         modifier = Modifier.size(18.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Sign Out")
+                Text("Log out")
             }
         }
     }

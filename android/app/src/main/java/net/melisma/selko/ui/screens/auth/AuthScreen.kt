@@ -75,7 +75,8 @@ fun AuthScreen(
                     imeAction = ImeAction.Next
                 ),
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
+                enabled = !uiState.isLoading,
+                shape = MaterialTheme.shapes.small
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -91,7 +92,8 @@ fun AuthScreen(
                     imeAction = if (uiState.isSignUp) ImeAction.Next else ImeAction.Done
                 ),
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
+                enabled = !uiState.isLoading,
+                shape = MaterialTheme.shapes.small
             )
 
             if (uiState.isSignUp) {
@@ -108,7 +110,8 @@ fun AuthScreen(
                         imeAction = ImeAction.Done
                     ),
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading
+                    enabled = !uiState.isLoading,
+                    shape = MaterialTheme.shapes.small
                 )
             }
 
@@ -126,7 +129,8 @@ fun AuthScreen(
             Button(
                 onClick = viewModel::submit,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
+                enabled = !uiState.isLoading,
+                shape = MaterialTheme.shapes.medium
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
@@ -143,7 +147,8 @@ fun AuthScreen(
 
             TextButton(
                 onClick = viewModel::toggleAuthMode,
-                enabled = !uiState.isLoading
+                enabled = !uiState.isLoading,
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text(
                     if (uiState.isSignUp) {
