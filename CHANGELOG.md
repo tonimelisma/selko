@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - iOS Brand Colors Fix
+
+### Fix: Use asset catalog color sets instead of UIColor for brand colors
+
+**Problem:** BrandColors.swift used UIColor initializers for adaptive light/dark colors, requiring UIKit. This broke the iOS build and went against the goal of staying within SwiftUI.
+
+**Solution:** Defined SelkoSuccess, SelkoError, and SelkoWarning as color sets in the asset catalog (like AccentColor). Xcode auto-generates SwiftUI Color extensions via `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS`. BrandColors.swift now contains only documentation.
+
+**Files Added:**
+- `ios/Selko/Assets.xcassets/SelkoSuccess.colorset/Contents.json`
+- `ios/Selko/Assets.xcassets/SelkoError.colorset/Contents.json`
+- `ios/Selko/Assets.xcassets/SelkoWarning.colorset/Contents.json`
+
+**Files Modified:**
+- `ios/Selko/BrandColors.swift` — Removed UIColor code, now documentation-only
+
+---
+
 ## 2026-02-09 - Android Brand Design System
 
 ### Feat: Implement Selko brand identity for Android
