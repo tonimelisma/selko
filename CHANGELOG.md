@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - Web Brand Design System
+
+### Feat: Implement Selko brand design system for web frontend
+
+**Brand Colors:**
+- Custom DaisyUI themes `selko-light` and `selko-dark` replacing default themes
+- Selko Blue primary (#5B63D3 light, #8B91D6 dark)
+- Cool-toned neutral grays with blue undertone
+- Semantic colors for success, error, warning, info
+
+**Typography:**
+- Inter font (400, 500, 600 weights) loaded from Google Fonts
+- Applied as base font-family
+
+**Visual System:**
+- 2px border radius everywhere (buttons, inputs, cards, badges)
+- System-preference dark mode detection via inline script
+- Login card shadow: 0 1px 3px rgba(0,0,0,0.06)
+
+**Auth Pages Restyled:**
+- Login: "Selko" display heading + "Clear your mind." tagline + "Sign in" button
+- Register: "Selko" display heading + "Clear your mind." tagline + "Sign up" button
+- Removed "OR" divider from both pages
+- Updated terminology: "Sign in", "Sign up", "Log in"
+
+**Files Modified:**
+- `frontend/tailwind.config.js` — Custom selko-light and selko-dark DaisyUI themes
+- `frontend/src/app.css` — Inter font import and base font-family
+- `frontend/src/app.html` — System theme detection script, selko-light default
+- `frontend/src/routes/login/+page.svelte` — Brand styling and terminology
+- `frontend/src/routes/register/+page.svelte` — Brand styling and terminology
+- `frontend/src/routes/login/__tests__/page.test.js` — Updated for new terminology
+- `frontend/tests/e2e/auth.spec.ts` — Updated for new terminology
+
+---
+
 ## 2026-02-08 - iOS XCUITests
 
 ### Test: Add XCUITests and accessibility identifiers for iOS screens
