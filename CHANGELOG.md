@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - iOS Auth Accessibility Fix
+
+### Fix: Improve auth screen accessibility and usability on iOS
+
+**LoginView.swift:**
+- Added persistent labels above email and password fields (placeholder text now shows hints)
+- Full-width Sign in button with 44pt minimum height and 2px rounded corners
+- Better "Sign up" link: full sentence "Don't have an account? Sign up" with larger touch target
+- Reduced excessive whitespace (removed 2 of 4 Spacer elements, spacing 24->20)
+- Tagline contrast bumped from .secondary to .primary.opacity(0.7)
+
+**RegisterView.swift:**
+- Added persistent labels above all fields (Email, Password, Confirm password)
+- Full-width Sign up button with 44pt minimum height and 2px rounded corners
+- Tightened spacing to match LoginView (24->20)
+
+**Files Modified:**
+- `ios/Selko/Features/Auth/Views/LoginView.swift`
+- `ios/Selko/Features/Auth/Views/RegisterView.swift`
+
+---
+
 ## 2026-02-09 - iOS Brand Colors Fix
 
 ### Fix: Use asset catalog color sets instead of UIColor for brand colors

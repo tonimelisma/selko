@@ -12,7 +12,7 @@ struct LoginView: View {
     @State private var showRegister = false
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             Spacer()
 
             Text("Selko")
@@ -21,23 +21,33 @@ struct LoginView: View {
 
             Text("Clear your mind.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary.opacity(0.7))
 
             Spacer()
 
             VStack(spacing: 16) {
-                TextField("Email", text: $viewModel.email)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .accessibilityIdentifier("emailField")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Email")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    TextField("you@example.com", text: $viewModel.email)
+                        .textFieldStyle(.roundedBorder)
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .accessibilityIdentifier("emailField")
+                }
 
-                SecureField("Password", text: $viewModel.password)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.password)
-                    .accessibilityIdentifier("passwordField")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Password")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    SecureField("Your password", text: $viewModel.password)
+                        .textFieldStyle(.roundedBorder)
+                        .textContentType(.password)
+                        .accessibilityIdentifier("passwordField")
+                }
 
                 if let error = viewModel.errorMessage {
                     Text(error)
@@ -60,17 +70,25 @@ struct LoginView: View {
                         Text("Sign in")
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .fontWeight(.medium)
+                .clipShape(RoundedRectangle(cornerRadius: 2))
                 .disabled(viewModel.isLoading)
                 .accessibilityIdentifier("signInButton")
             }
 
-            Spacer()
-
-            Button("Sign up") {
-                showRegister = true
+            HStack(spacing: 4) {
+                Text("Don't have an account?")
+                    .font(.subheadline)
+                Button("Sign up") {
+                    showRegister = true
+                }
+                .font(.subheadline)
+                .accessibilityIdentifier("createAccountButton")
             }
-            .accessibilityIdentifier("createAccountButton")
+            .padding(.vertical, 8)
 
             Spacer()
         }
