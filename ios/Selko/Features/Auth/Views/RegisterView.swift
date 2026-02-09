@@ -13,7 +13,7 @@ struct RegisterView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 Spacer()
 
                 Text("Sign up")
@@ -21,23 +21,38 @@ struct RegisterView: View {
                     .fontWeight(.bold)
 
                 VStack(spacing: 16) {
-                    TextField("Email", text: $viewModel.email)
-                        .textFieldStyle(.roundedBorder)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .accessibilityIdentifier("registerEmailField")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Email")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        TextField("you@example.com", text: $viewModel.email)
+                            .textFieldStyle(.roundedBorder)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .accessibilityIdentifier("registerEmailField")
+                    }
 
-                    SecureField("Password", text: $viewModel.password)
-                        .textFieldStyle(.roundedBorder)
-                        .textContentType(.newPassword)
-                        .accessibilityIdentifier("registerPasswordField")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Password")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        SecureField("Choose a password", text: $viewModel.password)
+                            .textFieldStyle(.roundedBorder)
+                            .textContentType(.newPassword)
+                            .accessibilityIdentifier("registerPasswordField")
+                    }
 
-                    SecureField("Confirm password", text: $viewModel.confirmPassword)
-                        .textFieldStyle(.roundedBorder)
-                        .textContentType(.newPassword)
-                        .accessibilityIdentifier("confirmPasswordField")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Confirm password")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        SecureField("Confirm your password", text: $viewModel.confirmPassword)
+                            .textFieldStyle(.roundedBorder)
+                            .textContentType(.newPassword)
+                            .accessibilityIdentifier("confirmPasswordField")
+                    }
 
                     if let error = viewModel.errorMessage {
                         Text(error)
@@ -60,7 +75,11 @@ struct RegisterView: View {
                             Text("Sign up")
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .fontWeight(.medium)
+                    .clipShape(RoundedRectangle(cornerRadius: 2))
                     .disabled(viewModel.isLoading)
                     .accessibilityIdentifier("registerButton")
                 }
