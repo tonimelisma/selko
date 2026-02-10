@@ -20,10 +20,10 @@
 </script>
 
 <nav class="navbar bg-base-200" aria-label="Main navigation">
-	<div class="navbar-start">
+	<div class="flex-1">
 		<a href="/app" class="text-xl font-bold px-4">Selko</a>
 	</div>
-	<div class="navbar-center hidden md:flex">
+	<div class="flex-none hidden md:flex items-center gap-2">
 		<ul class="menu menu-horizontal px-1">
 			{#each navLinks as link}
 				<li>
@@ -37,8 +37,6 @@
 				</li>
 			{/each}
 		</ul>
-	</div>
-	<div class="navbar-end hidden md:flex">
 		<button class="btn btn-ghost" onclick={onLogout}>Log out</button>
 	</div>
 </nav>

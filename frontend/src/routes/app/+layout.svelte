@@ -41,7 +41,7 @@
 		<span class="sr-only">Loading</span>
 	</div>
 {:else if currentUser}
-	<div class="min-h-screen flex flex-col">
+	<div class="min-h-screen flex flex-col overflow-x-hidden">
 		<Navbar onLogout={handleLogout} />
 		<main id="main-content" class="flex-1 pb-20 md:pb-0">
 			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

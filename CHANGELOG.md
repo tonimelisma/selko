@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - Fix Web Horizontal Overflow
+
+### Fix: Fix navbar causing horizontal overflow at all viewport widths
+
+**Root cause:** DaisyUI's `navbar-start`/`navbar-center`/`navbar-end` pattern uses `width: 50%` for start and end, plus `flex-shrink: 0` for center. This totals >100% width, causing the navbar (and entire page body) to overflow horizontally.
+
+**Navbar fix:**
+- Replaced `navbar-start`/`navbar-center`/`navbar-end` with `flex-1`/`flex-none` layout
+- `flex-1` gives the logo section flexible space, `flex-none` keeps nav links and logout at their natural size
+- No more width overflow at any viewport size
+
+**Safety net:**
+- Added `overflow-x-hidden` to root app layout wrapper
+
+**Regression test:**
+- Added `responsiveness.spec.ts` E2E test that checks `scrollWidth <= clientWidth` (no horizontal overflow) at 10 viewport widths (375–1440px) across login, app, history, and settings pages
+
+**Files Modified:**
+- `frontend/src/lib/components/Navbar.svelte`
+- `frontend/src/routes/app/+layout.svelte`
+
+**Files Added:**
+- `frontend/tests/e2e/responsiveness.spec.ts`
+
+---
+
 ## 2026-02-09 - iOS Brand Colors Round 2
 
 ### Fix: Replace remaining hardcoded colors and improve touch targets on iOS
