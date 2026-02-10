@@ -34,7 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,6 +42,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
+import net.melisma.selko.ui.theme.SelkoSuccess
+import net.melisma.selko.ui.theme.SelkoSuccessDark
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -234,7 +236,7 @@ private fun HistoryEventItem(
 private fun StatusIcon(status: EventStatus) {
     val (icon, tint) = when (status) {
         EventStatus.APPROVED -> Icons.Filled.CheckCircle to MaterialTheme.colorScheme.primary
-        EventStatus.SYNCED -> Icons.Filled.CheckCircle to Color(0xFF4CAF50)
+        EventStatus.SYNCED -> Icons.Filled.CheckCircle to (if (isSystemInDarkTheme()) SelkoSuccessDark else SelkoSuccess)
         EventStatus.SYNC_FAILED -> Icons.Filled.Error to MaterialTheme.colorScheme.error
         EventStatus.REJECTED -> Icons.Filled.Cancel to MaterialTheme.colorScheme.onSurfaceVariant
         EventStatus.CANCELLED -> Icons.Filled.Cancel to MaterialTheme.colorScheme.onSurfaceVariant
