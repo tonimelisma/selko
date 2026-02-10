@@ -131,22 +131,28 @@ struct HistoryRowView: View {
         switch event.status {
         case .approved:
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.blue)
+                .foregroundStyle(Color.accentColor)
+                .accessibilityLabel("Approved")
         case .synced:
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.selkoSuccess)
+                .accessibilityLabel("Synced")
         case .syncFailed:
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
+                .foregroundStyle(Color.selkoWarning)
+                .accessibilityLabel("Sync failed")
         case .rejected:
             Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(Color.selkoError)
+                .accessibilityLabel("Rejected")
         case .cancelled:
             Image(systemName: "minus.circle.fill")
                 .foregroundStyle(.gray)
+                .accessibilityLabel("Cancelled")
         default:
             Image(systemName: "circle")
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Pending")
         }
     }
 

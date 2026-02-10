@@ -69,6 +69,7 @@ struct ReviewQueueView: View {
                                 Label("Approve", systemImage: "checkmark")
                             }
                             .tint(.green)
+                            .accessibilityLabel("Approve event")
 
                             Button(role: .destructive) {
                                 Task {
@@ -77,6 +78,7 @@ struct ReviewQueueView: View {
                             } label: {
                                 Label("Reject", systemImage: "xmark")
                             }
+                            .accessibilityLabel("Reject event")
                         }
                     }
                 } header: {

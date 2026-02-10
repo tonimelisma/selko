@@ -94,7 +94,7 @@ struct IntegrationSetupView: View {
         }
         .padding()
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 2))
     }
 
     private func openGmailAuth() {

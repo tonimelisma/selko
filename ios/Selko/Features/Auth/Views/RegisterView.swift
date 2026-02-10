@@ -31,6 +31,7 @@ struct RegisterView: View {
                             .keyboardType(.emailAddress)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
+                            .accessibilityLabel("Email address")
                             .accessibilityIdentifier("registerEmailField")
                     }
 
@@ -41,6 +42,7 @@ struct RegisterView: View {
                         SecureField("Choose a password", text: $viewModel.password)
                             .textFieldStyle(.roundedBorder)
                             .textContentType(.newPassword)
+                            .accessibilityLabel("Password")
                             .accessibilityIdentifier("registerPasswordField")
                     }
 
@@ -51,6 +53,7 @@ struct RegisterView: View {
                         SecureField("Confirm your password", text: $viewModel.confirmPassword)
                             .textFieldStyle(.roundedBorder)
                             .textContentType(.newPassword)
+                            .accessibilityLabel("Confirm password")
                             .accessibilityIdentifier("confirmPasswordField")
                     }
 
@@ -81,6 +84,7 @@ struct RegisterView: View {
                     .fontWeight(.medium)
                     .clipShape(RoundedRectangle(cornerRadius: 2))
                     .disabled(viewModel.isLoading)
+                    .accessibilityHint("Creates your account")
                     .accessibilityIdentifier("registerButton")
                 }
 

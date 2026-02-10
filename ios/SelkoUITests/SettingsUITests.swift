@@ -80,14 +80,14 @@ final class SettingsUITests: XCTestCase {
         let settingsTab = app.tabBars.buttons["Settings"]
         if settingsTab.exists {
             settingsTab.tap()
-            // Look for Sign Out button (may need to scroll)
-            let signOutButton = app.buttons["Sign Out"].firstMatch
-            if !signOutButton.waitForExistence(timeout: 3) {
+            // Look for Log out button (may need to scroll)
+            let logOutButton = app.buttons["Log out"].firstMatch
+            if !logOutButton.waitForExistence(timeout: 3) {
                 // Try scrolling down
                 app.swipeUp()
             }
-            XCTAssertTrue(signOutButton.waitForExistence(timeout: 3) ||
-                           app.buttons.matching(NSPredicate(format: "label CONTAINS 'Sign Out'")).firstMatch.waitForExistence(timeout: 3))
+            XCTAssertTrue(logOutButton.waitForExistence(timeout: 3) ||
+                           app.buttons.matching(NSPredicate(format: "label CONTAINS 'Log out'")).firstMatch.waitForExistence(timeout: 3))
         }
     }
 }

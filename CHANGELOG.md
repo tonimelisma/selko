@@ -2,6 +2,55 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - iOS Accessibility and Brand Compliance
+
+### Fix: Improve iOS accessibility (VoiceOver labels, touch targets, brand colors)
+
+**Auth screens (LoginView, RegisterView):**
+- Added `accessibilityLabel` to email, password, and confirm password fields for VoiceOver
+- Added `accessibilityHint` to Sign up button (login) and register button
+- Increased Sign up link touch target to 44pt minimum (was 51x18pt)
+
+**HomeView:**
+- Added `accessibilityLabel("Welcome")` to hand wave emoji image
+- Changed "Sign Out" to "Log out" per brand guide
+
+**HistoryView:**
+- Added `accessibilityLabel` to all status icons (Approved, Synced, Sync failed, Rejected, Cancelled, Pending)
+- Replaced system colors with brand semantic colors: `.blue` -> `Color.accentColor`, `.green` -> `Color.selkoSuccess`, `.orange` -> `Color.selkoWarning`, `.red` -> `Color.selkoError`
+
+**EventDetailView:**
+- Changed corner radius from 8/12 to 2 on source quote box and source card (brand spec)
+
+**IntegrationSetupView:**
+- Changed corner radius from 12 to 2 on integration cards (brand spec)
+
+**SettingsView:**
+- Changed "Sign Out" to "Log out" per brand guide
+
+**ReviewQueueView:**
+- Added `accessibilityLabel` to swipe action buttons (Approve event, Reject event)
+
+**EventCardView:**
+- Added `accessibilityHint("Double tap to view details")` to event cards
+
+**SettingsUITests:**
+- Updated test to match renamed "Log out" button text
+
+**Files Modified:**
+- `ios/Selko/Features/Auth/Views/LoginView.swift`
+- `ios/Selko/Features/Auth/Views/RegisterView.swift`
+- `ios/Selko/Features/Home/Views/HomeView.swift`
+- `ios/Selko/Features/History/Views/HistoryView.swift`
+- `ios/Selko/Features/Review/Views/EventDetailView.swift`
+- `ios/Selko/Features/Review/Views/IntegrationSetupView.swift`
+- `ios/Selko/Features/Review/Views/ReviewQueueView.swift`
+- `ios/Selko/Features/Review/Views/EventCardView.swift`
+- `ios/Selko/Features/Settings/Views/SettingsView.swift`
+- `ios/SelkoUITests/SettingsUITests.swift`
+
+---
+
 ## 2026-02-09 - Android Accessibility and Brand Compliance
 
 ### Fix: Improve Android accessibility (content descriptions, button shapes, brand compliance)

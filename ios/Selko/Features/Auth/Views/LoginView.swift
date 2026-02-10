@@ -36,6 +36,7 @@ struct LoginView: View {
                         .keyboardType(.emailAddress)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .accessibilityLabel("Email address")
                         .accessibilityIdentifier("emailField")
                 }
 
@@ -46,6 +47,7 @@ struct LoginView: View {
                     SecureField("Your password", text: $viewModel.password)
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.password)
+                        .accessibilityLabel("Password")
                         .accessibilityIdentifier("passwordField")
                 }
 
@@ -86,6 +88,8 @@ struct LoginView: View {
                     showRegister = true
                 }
                 .font(.subheadline)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityHint("Opens sign up form")
                 .accessibilityIdentifier("createAccountButton")
             }
             .padding(.vertical, 8)
