@@ -2,6 +2,41 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - iOS Brand Colors Round 2
+
+### Fix: Replace remaining hardcoded colors and improve touch targets on iOS
+
+**IntegrationSetupView:**
+- Replaced `.green` with `Color.selkoSuccess` for connected state icon and checkmark
+- Removed `.controlSize(.small)` from Connect button for 44pt touch target
+
+**SenderGroupView:**
+- Replaced `.tint(.green)` with `.tint(.accentColor)` on Approve All button (brand blue)
+- Removed `.controlSize(.mini)` for 44pt touch target
+- Added `accessibilityLabel("Approve all events from this sender")`
+
+**EventDetailView:**
+- Replaced `.foregroundStyle(.red)` with `Color.selkoError` on Reject button
+- Replaced `.tint(.green)` with `.tint(.accentColor)` on Approve button (brand blue)
+
+**SettingsView:**
+- Replaced `.green` with `Color.selkoSuccess` for status text and checkmark icon
+- Added `accessibilityLabel("Connected")` to checkmark icon
+- Added `accessibilityLabel("Connect <provider>")` to Connect buttons
+
+**HistoryView:**
+- Removed `.controlSize(.mini)` from Retry and Undo buttons for 44pt touch targets
+- Replaced `.gray` with `Color.secondary` for cancelled status icon
+
+**Files Modified:**
+- `ios/Selko/Features/Review/Views/IntegrationSetupView.swift`
+- `ios/Selko/Features/Review/Views/SenderGroupView.swift`
+- `ios/Selko/Features/Review/Views/EventDetailView.swift`
+- `ios/Selko/Features/Settings/Views/SettingsView.swift`
+- `ios/Selko/Features/History/Views/HistoryView.swift`
+
+---
+
 ## 2026-02-09 - Android Semantic Colors Round 2
 
 ### Fix: Replace hardcoded color and improve content descriptions on Android

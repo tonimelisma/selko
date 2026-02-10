@@ -69,7 +69,7 @@ struct SettingsView: View {
                 } else if let integration = integration {
                     Text(integration.status.rawValue.capitalized)
                         .font(.caption)
-                        .foregroundStyle(integration.isActive ? .green : .orange)
+                        .foregroundStyle(integration.isActive ? Color.selkoSuccess : .orange)
                 }
             }
 
@@ -84,14 +84,15 @@ struct SettingsView: View {
                     }
                 } label: {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Color.selkoSuccess)
+                        .accessibilityLabel("Connected")
                 }
             } else {
                 Button("Connect") {
                     connectProvider(provider)
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .accessibilityLabel("Connect \(viewModel.providerDisplayName(provider))")
             }
         }
     }

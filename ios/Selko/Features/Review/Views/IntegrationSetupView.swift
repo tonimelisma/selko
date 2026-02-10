@@ -68,7 +68,7 @@ struct IntegrationSetupView: View {
         HStack(spacing: 16) {
             Image(systemName: systemImage)
                 .font(.title2)
-                .foregroundStyle(isConnected ? .green : .secondary)
+                .foregroundStyle(isConnected ? Color.selkoSuccess : .secondary)
                 .frame(width: 40)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -83,13 +83,12 @@ struct IntegrationSetupView: View {
 
             if isConnected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color.selkoSuccess)
             } else {
                 Button("Connect") {
                     action()
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
             }
         }
         .padding()
