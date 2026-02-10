@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-09 - Android Semantic Colors Round 2
+
+### Fix: Replace hardcoded color and improve content descriptions on Android
+
+**HistoryScreen:**
+- Replaced hardcoded `Color(0xFF4CAF50)` with theme-aware `SelkoSuccess`/`SelkoSuccessDark` for synced status icon
+
+**EventCardContent:**
+- Added `contentDescription = "Event time"` to Schedule icon
+- Added `contentDescription = "Event location"` to LocationOn icon
+- Improved expand/collapse icon descriptions: "Expand" -> "Expand description", "Collapse" -> "Collapse description"
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/ui/screens/history/HistoryScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventCardContent.kt`
+
+---
+
 ## 2026-02-09 - Web Responsiveness Fix
 
 ### Fix: Fix navbar overflow and content clipping at ~1024px viewport
