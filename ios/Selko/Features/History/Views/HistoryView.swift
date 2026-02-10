@@ -108,7 +108,6 @@ struct HistoryRowView: View {
                     }
                     .font(.caption)
                     .buttonStyle(.bordered)
-                    .controlSize(.mini)
                     .accessibilityIdentifier("retryButton")
                 }
 
@@ -118,7 +117,6 @@ struct HistoryRowView: View {
                     }
                     .font(.caption)
                     .buttonStyle(.bordered)
-                    .controlSize(.mini)
                     .accessibilityIdentifier("undoButton")
                 }
             }
@@ -147,7 +145,7 @@ struct HistoryRowView: View {
                 .accessibilityLabel("Rejected")
         case .cancelled:
             Image(systemName: "minus.circle.fill")
-                .foregroundStyle(.gray)
+                .foregroundStyle(Color.secondary)
                 .accessibilityLabel("Cancelled")
         default:
             Image(systemName: "circle")

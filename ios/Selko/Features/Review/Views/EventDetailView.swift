@@ -55,7 +55,7 @@ struct EventDetailView: View {
                     }
                 } label: {
                     Text("Reject")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color.selkoError)
                         .accessibilityIdentifier("rejectButton")
                 }
             }
@@ -70,7 +70,7 @@ struct EventDetailView: View {
                         .fontWeight(.semibold)
                         .accessibilityIdentifier("approveButton")
                 }
-                .tint(.green)
+                .tint(.accentColor)
             }
         }
         .task {
