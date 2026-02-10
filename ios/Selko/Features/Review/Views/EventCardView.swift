@@ -39,6 +39,7 @@ struct EventCardView: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityHint("Double tap to view details")
         .accessibilityIdentifier("eventCard")
     }
 

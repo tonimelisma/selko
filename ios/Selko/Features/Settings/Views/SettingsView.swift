@@ -146,7 +146,7 @@ struct SettingsView: View {
             } label: {
                 HStack {
                     Spacer()
-                    Text("Sign Out")
+                    Text("Log out")
                     Spacer()
                 }
             }

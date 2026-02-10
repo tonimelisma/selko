@@ -230,7 +230,7 @@ struct EventDetailView: View {
                     .foregroundStyle(.secondary)
                     .padding(8)
                     .background(Color(.tertiarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 2))
             }
 
             HStack {
@@ -242,7 +242,7 @@ struct EventDetailView: View {
         }
         .padding()
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 2))
         .padding(.horizontal)
     }
 }

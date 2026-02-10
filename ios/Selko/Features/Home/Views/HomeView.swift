@@ -18,6 +18,7 @@ struct HomeView: View {
                 Image(systemName: "hand.wave.fill")
                     .font(.system(size: 60))
                     .foregroundStyle(.tint)
+                    .accessibilityLabel("Welcome")
 
                 if viewModel.isLoading {
                     ProgressView()
@@ -44,7 +45,7 @@ struct HomeView: View {
             .navigationTitle("Home")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Sign Out") {
+                    Button("Log out") {
                         Task {
                             await viewModel.signOut()
                         }
