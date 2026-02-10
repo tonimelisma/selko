@@ -54,7 +54,7 @@ describe('Review Queue (App Page)', () => {
 		render(AppPage);
 
 		await waitFor(() => {
-			expect(screen.getByText('Welcome to Selko!')).toBeInTheDocument();
+			expect(screen.getByText('Welcome to Selko')).toBeInTheDocument();
 		});
 	});
 
@@ -144,7 +144,7 @@ describe('Review Queue (App Page)', () => {
 		// The error message goes to the error state variable
 		await waitFor(() => {
 			// With empty integrations it should show setup mode
-			expect(screen.getByText('Welcome to Selko!')).toBeInTheDocument();
+			expect(screen.getByText('Welcome to Selko')).toBeInTheDocument();
 		});
 	});
 
