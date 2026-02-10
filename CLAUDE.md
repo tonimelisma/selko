@@ -94,6 +94,7 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] Working in a git worktree (NOT main repo)
 - [ ] On a feature branch (NOT main)
 - [ ] Tests pass for changed modules
+- [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI was changed). Save screenshots to `docs/screenshots/` and include in commit.
 - [ ] CHANGELOG.md updated
 - [ ] Git commit with conventional message
 - [ ] Git push to feature branch
