@@ -23,7 +23,7 @@
 	<div class="navbar-start">
 		<a href="/app" class="text-xl font-bold px-4">Selko</a>
 	</div>
-	<div class="navbar-center hidden lg:flex">
+	<div class="navbar-center hidden md:flex">
 		<ul class="menu menu-horizontal px-1">
 			{#each navLinks as link}
 				<li>
@@ -38,7 +38,7 @@
 			{/each}
 		</ul>
 	</div>
-	<div class="navbar-end hidden lg:flex">
+	<div class="navbar-end hidden md:flex">
 		<button class="btn btn-ghost" onclick={onLogout}>Log out</button>
 	</div>
 </nav>

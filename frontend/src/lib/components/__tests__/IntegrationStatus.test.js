@@ -20,7 +20,7 @@ describe('IntegrationStatus', () => {
 			props: { integrations: [], setupMode: true }
 		});
 
-		expect(screen.getByText('Welcome to Selko!')).toBeInTheDocument();
+		expect(screen.getByText('Welcome to Selko')).toBeInTheDocument();
 		expect(screen.getByText('Connect Google Account')).toBeInTheDocument();
 	});
 
