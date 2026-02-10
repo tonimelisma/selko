@@ -34,7 +34,7 @@
 
 {#if setupMode && !partiallyConnected}
 	<div class="flex flex-col items-center justify-center py-16 px-4 text-center">
-		<h2 class="text-2xl font-bold mb-2">Welcome to Selko!</h2>
+		<h2 class="text-2xl font-bold mb-2">Welcome to Selko</h2>
 		<p class="text-base-content/70 max-w-md mb-6">
 			Connect your Google account to get started. Selko will read your emails to find calendar
 			events and sync them to your Google Calendar.

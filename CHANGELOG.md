@@ -20,6 +20,23 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## 2026-02-09 - Web Responsiveness Fix
+
+### Fix: Fix navbar overflow and content clipping at ~1024px viewport
+
+- Changed navbar breakpoint from `lg` (1024px) to `md` (768px) so nav links and logout appear earlier
+- Updated BottomNav to hide at `md` breakpoint (matching navbar)
+- Updated app layout bottom padding to match new breakpoint
+- Removed exclamation mark from welcome heading ("Welcome to Selko!" -> "Welcome to Selko")
+
+**Files Modified:**
+- `frontend/src/lib/components/Navbar.svelte`
+- `frontend/src/lib/components/BottomNav.svelte`
+- `frontend/src/routes/app/+layout.svelte`
+- `frontend/src/lib/components/IntegrationStatus.svelte`
+
+---
+
 ## 2026-02-09 - iOS Accessibility and Brand Compliance
 
 ### Fix: Improve iOS accessibility (VoiceOver labels, touch targets, brand colors)
