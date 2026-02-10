@@ -35,8 +35,8 @@ struct SenderGroupView: View {
                         .fontWeight(.medium)
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.mini)
-                .tint(.green)
+                .tint(.accentColor)
+                .accessibilityLabel("Approve all events from this sender")
             }
         }
         .textCase(nil)
