@@ -95,7 +95,7 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] On a feature branch (NOT main)
 - [ ] Tests pass for changed modules
 - [ ] **Bug fixes MUST include a regression test** that would have caught the bug
-- [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI was changed). Save screenshots to `docs/screenshots/` and include in commit.
+- [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI was changed). Save screenshots to `docs/screenshots/` and include in commit. **Close all browser windows, simulators, and emulators when done.**
 - [ ] CHANGELOG.md updated
 - [ ] Git commit with conventional message
 - [ ] Git push to feature branch
@@ -229,18 +229,21 @@ Three MCP servers are configured in `.mcp.json` for visual verification:
 2. Use `browser_navigate` to open pages (e.g., `http://localhost:5173/login`)
 3. Use `browser_snapshot` for accessibility tree, `browser_take_screenshot` for visual checks
 4. Test at desktop (1280x800) and mobile (390x844) viewports
+5. **When done:** Call `browser_close` to close the browser, then stop the dev server
 
 ### XcodeBuildMCP (iOS)
 1. Call `session-show-defaults` first to see current config
 2. Use `discover_projs` to find projects, `list_schemes` for schemes
 3. `build_sim` to build, `test_sim` for tests, `screenshot` for visual verification
 4. `list_sims` to find available simulators
+5. **When done:** Call `stop_app_sim` to stop the app, then shut down the simulator
 
 ### mobile-mcp (iOS Simulator / Android Emulator)
 1. `mobile_take_screenshot` for visual captures
 2. `mobile_list_elements_on_screen` for UI hierarchy
 3. `mobile_click_on_screen_at_coordinates` for interaction
 4. Works with both iOS Simulator and Android Emulator
+5. **When done:** Call `mobile_terminate_app` to stop the app
 
 **Full details:** `docs/ui-testing-guide.md`
 
