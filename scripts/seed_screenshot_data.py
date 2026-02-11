@@ -12,7 +12,7 @@ Usage:
 
 import argparse
 import hashlib
-import json
+
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -243,6 +243,7 @@ def do_seed(config):
             "status": "synced",
             "google_calendar_event_id": "fake_gcal_id_1",
             "synced_at": (now - timedelta(hours=1)).isoformat(),
+            "updated_at": (now - timedelta(hours=8)).isoformat(),
             "source_attribution": "From email: Appointment Confirmation",
         },
         {
@@ -254,6 +255,7 @@ def do_seed(config):
             "location": "",
             "description": "Daily team sync.",
             "status": "approved",
+            "updated_at": (now - timedelta(hours=2)).isoformat(),
             "source_attribution": "",
         },
         {
@@ -265,6 +267,7 @@ def do_seed(config):
             "location": "Zoom",
             "description": "Q1 marketing results review.",
             "status": "rejected",
+            "updated_at": (now - timedelta(hours=4)).isoformat(),
             "source_attribution": "",
         },
         {
@@ -277,6 +280,7 @@ def do_seed(config):
             "description": "Weekly yoga class.",
             "status": "sync_failed",
             "sync_error": "Failed to connect to Google Calendar API",
+            "updated_at": (now - timedelta(hours=6)).isoformat(),
             "source_attribution": "",
         },
     ]
@@ -294,7 +298,7 @@ def do_seed(config):
             "event_id": event_ids["Parent-Teacher Conference"],
             "email_id": email_ids["msg_screenshot_1"],
             "source_type": "new_invitation",
-            "extracted_data": json.dumps({
+            "extracted_data": {
                 "source_quote": (
                     "Dear Parents, This is a reminder about the upcoming "
                     "parent-teacher conferences scheduled for next week. Your "
@@ -302,13 +306,13 @@ def do_seed(config):
                 ),
                 "title": "Parent-Teacher Conference",
                 "start_datetime": make_dt(3, 15),
-            }),
+            },
         },
         {
             "event_id": event_ids["Spring Concert"],
             "email_id": email_ids["msg_screenshot_2"],
             "source_type": "new_invitation",
-            "extracted_data": json.dumps({
+            "extracted_data": {
                 "source_quote": (
                     "We are excited to announce the annual Spring Concert! "
                     "Students from grades K-5 will be performing musical "
@@ -316,13 +320,13 @@ def do_seed(config):
                 ),
                 "title": "Spring Concert",
                 "start_datetime": make_dt(10, 18),
-            }),
+            },
         },
         {
             "event_id": event_ids["Q2 Planning Offsite"],
             "email_id": email_ids["msg_screenshot_4"],
             "source_type": "new_invitation",
-            "extracted_data": json.dumps({
+            "extracted_data": {
                 "source_quote": (
                     "Hi team, Here are the details for our upcoming Q2 Planning "
                     "Offsite. We'll be meeting at Building 5 to discuss roadmap "
@@ -330,20 +334,20 @@ def do_seed(config):
                 ),
                 "title": "Q2 Planning Offsite",
                 "start_datetime": make_dt(7, 9),
-            }),
+            },
         },
         {
             "event_id": event_ids["Dentist - Dr. Martinez"],
             "email_id": email_ids["msg_screenshot_3"],
             "source_type": "new_invitation",
-            "extracted_data": json.dumps({
+            "extracted_data": {
                 "source_quote": (
                     "This is a confirmation of your appointment with Dr. Martinez "
                     "on the scheduled date. Please arrive 15 minutes early."
                 ),
                 "title": "Dentist - Dr. Martinez",
                 "start_datetime": make_dt(5, 10),
-            }),
+            },
         },
     ]
 
