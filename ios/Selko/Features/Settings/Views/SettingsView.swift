@@ -114,7 +114,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     } else {
-                        Text("No calendars available")
+                        Text("Connect Google Calendar to configure calendar defaults.")
                             .foregroundStyle(.secondary)
                     }
                 } else {
