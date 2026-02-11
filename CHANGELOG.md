@@ -2,6 +2,35 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-10 - Screenshot Data Seed Script
+
+### Feat: Add seed script for screenshot test data
+
+Created `scripts/seed_screenshot_data.py` that seeds and cleans up realistic fake data for capturing product screenshots.
+
+**Usage:**
+```bash
+uv run python scripts/seed_screenshot_data.py seed            # Create user + data
+uv run python scripts/seed_screenshot_data.py cleanup         # Remove everything
+uv run python scripts/seed_screenshot_data.py seed --cleanup-first  # Clean + re-seed
+```
+
+**Test user:** `screenshots@selko.local` / `screenshotpass123` (display name: "Sarah Johnson")
+
+**Seeded data:**
+- 2 integrations (Gmail + Google Calendar, both active)
+- 4 emails (school notices, dental appointment, work offsite)
+- 7 events across all statuses (3 pending_review, 1 synced, 1 approved, 1 rejected, 1 sync_failed)
+- 4 event sources linking events to their source emails with extracted quotes
+- 1 calendar settings record (target calendar: primary)
+
+**Cleanup** deletes the auth user; all related records are removed via ON DELETE CASCADE.
+
+**Files Added:**
+- `scripts/seed_screenshot_data.py`
+
+---
+
 ## 2026-02-09 - Fix Web Horizontal Overflow
 
 ### Fix: Fix navbar causing horizontal overflow at all viewport widths
