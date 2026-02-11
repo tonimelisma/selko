@@ -31,7 +31,7 @@ struct LoginView: View {
                     Text("Email")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    TextField("", text: $viewModel.email, prompt: Text("you@example.com").foregroundStyle(.secondary))
+                    TextField("", text: $viewModel.email, prompt: Text("you@example.com").foregroundStyle(Color(.placeholderText)))
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)

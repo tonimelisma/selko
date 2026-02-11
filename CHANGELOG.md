@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-11 - Fix iOS Email Placeholder Color
+
+### Fix: Use correct placeholder text color on login and register screens
+
+**Issue:** Email field placeholders ("you@example.com") appeared in blue/accent color instead of standard grey on iOS login and register screens. SwiftUI's `.foregroundStyle(.secondary)` renders as a hierarchical style (not grey) inside TextField prompts.
+
+**Fix:** Changed placeholder styling to use `Color(.placeholderText)` which correctly renders the system placeholder grey color.
+
+**Files Modified:**
+- `ios/Selko/Features/Auth/Views/LoginView.swift`
+- `ios/Selko/Features/Auth/Views/RegisterView.swift`
+
+---
+
 ## 2026-02-11 - Fix Android Screenshot Review Issues
 
 ### Fix: Resolve 2 Android UI issues found during screenshot review
