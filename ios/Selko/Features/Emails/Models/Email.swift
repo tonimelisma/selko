@@ -7,9 +7,9 @@ import Foundation
 
 struct Email: Identifiable, Codable, Sendable, Equatable {
     let id: UUID
-    let userId: UUID
+    let userId: UUID?
     let integrationId: UUID?
-    let gmailId: String
+    let gmailId: String?
     let threadId: String?
     let subject: String?
     let fromEmail: String?
@@ -17,18 +17,18 @@ struct Email: Identifiable, Codable, Sendable, Equatable {
     let toEmails: [String]?
     let dateSent: Date?
     let snippet: String?
-    let gmailLabelIds: [String]
-    let isSpam: Bool
-    let isTrash: Bool
-    let isPromotions: Bool
-    let isSocial: Bool
-    let isUpdates: Bool
-    let isForums: Bool
-    let isPrimary: Bool
-    let isImportant: Bool
-    let isStarred: Bool
-    let isUnread: Bool
-    let hasAttachments: Bool
+    let gmailLabelIds: [String]?
+    let isSpam: Bool?
+    let isTrash: Bool?
+    let isPromotions: Bool?
+    let isSocial: Bool?
+    let isUpdates: Bool?
+    let isForums: Bool?
+    let isPrimary: Bool?
+    let isImportant: Bool?
+    let isStarred: Bool?
+    let isUnread: Bool?
+    let hasAttachments: Bool?
     let createdAt: Date?
 
     enum CodingKeys: String, CodingKey {

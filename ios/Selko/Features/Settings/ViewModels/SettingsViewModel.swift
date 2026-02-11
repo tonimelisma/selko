@@ -43,7 +43,7 @@ final class SettingsViewModel {
 
             // Load calendar settings
             calendarSettings = try await calendarSettingsService.getSettings()
-            selectedCalendarId = calendarSettings?.defaultCalendarId ?? ""
+            selectedCalendarId = calendarSettings?.targetCalendarId ?? ""
 
             // Try to load calendars if Google Calendar is connected
             let calendarConnected = integrations.contains { $0.provider == .googleCalendar && $0.isActive }
