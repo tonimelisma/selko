@@ -2,6 +2,7 @@ package net.melisma.selko.ui.screens.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -417,20 +418,21 @@ private fun AccountSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Log out button
-            Button(
+            OutlinedButton(
                 onClick = onSignOut,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isSigningOut,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
                 ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                 shape = MaterialTheme.shapes.medium
             ) {
                 if (uiState.isSigningOut) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onError
+                        color = MaterialTheme.colorScheme.error
                     )
                 } else {
                     Icon(
