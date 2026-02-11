@@ -25,7 +25,7 @@ struct RegisterView: View {
                         Text("Email")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        TextField("you@example.com", text: $viewModel.email)
+                        TextField("", text: $viewModel.email, prompt: Text("you@example.com").foregroundStyle(Color(.placeholderText)))
                             .textFieldStyle(.roundedBorder)
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
