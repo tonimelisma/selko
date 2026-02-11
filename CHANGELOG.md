@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-10 - Fix Android Model Deserialization
+
+### Fix: Make Android Email model tolerant of partial data from nested Supabase joins
+
+**Problem:** Supabase nested joins (e.g., `events(emails(id, subject, from_email, from_name, date_sent))`) only return selected fields, but the Android `Email` model required `userId` and `gmailId` to be non-null — causing deserialization failures and empty screens.
+
+**Solution:** Made `userId` and `gmailId` optional with null defaults so partial selects decode correctly.
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/data/model/Email.kt` — Made `userId` and `gmailId` optional with defaults
+
+---
+
 ## 2026-02-10 - Fix Screenshot Infrastructure
 
 ### Fix: Fix screenshot spec path and storageState, add Android cleartext config
