@@ -18,6 +18,7 @@ struct LoginView: View {
             Text("Selko")
                 .font(.largeTitle)
                 .fontWeight(.bold)
+                .foregroundStyle(Color.accentColor)
 
             Text("Clear your mind.")
                 .font(.subheadline)
@@ -30,7 +31,7 @@ struct LoginView: View {
                     Text("Email")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    TextField("you@example.com", text: $viewModel.email)
+                    TextField("", text: $viewModel.email, prompt: Text("you@example.com").foregroundStyle(.secondary))
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
@@ -97,7 +98,7 @@ struct LoginView: View {
             Spacer()
         }
         .padding()
-        .sheet(isPresented: $showRegister) {
+        .fullScreenCover(isPresented: $showRegister) {
             RegisterView()
         }
     }

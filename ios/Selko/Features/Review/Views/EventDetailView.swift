@@ -29,12 +29,10 @@ struct EventDetailView: View {
                             .frame(maxWidth: .infinity)
                     }
                 } else {
-                    // iPhone: stacked layout
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            formPanel
-                            sourceDisclosure
-                        }
+                    // iPhone: Form as root scrollable container
+                    Form {
+                        formSections
+                        sourceDisclosureSection
                     }
                 }
             } else if let error = viewModel.errorMessage {
@@ -94,61 +92,66 @@ struct EventDetailView: View {
 
     // MARK: - Form
 
+    @ViewBuilder
+    private var formSections: some View {
+        Section("Event Details") {
+            TextField("Title", text: $viewModel.title)
+                .accessibilityIdentifier("eventDetailTitle")
+                .onChange(of: viewModel.title) { _, _ in
+                    viewModel.scheduleSave()
+                }
+
+            Toggle("All Day", isOn: $viewModel.allDay)
+                .onChange(of: viewModel.allDay) { _, _ in
+                    viewModel.scheduleSave()
+                }
+
+            if viewModel.allDay {
+                DatePicker("Date", selection: $viewModel.startDate, displayedComponents: .date)
+                    .onChange(of: viewModel.startDate) { _, _ in
+                        viewModel.scheduleSave()
+                    }
+            } else {
+                DatePicker("Start", selection: $viewModel.startDate)
+                    .onChange(of: viewModel.startDate) { _, _ in
+                        viewModel.scheduleSave()
+                    }
+                DatePicker("End", selection: $viewModel.endDate)
+                    .onChange(of: viewModel.endDate) { _, _ in
+                        viewModel.scheduleSave()
+                    }
+            }
+
+            TextField("Location", text: $viewModel.location)
+                .onChange(of: viewModel.location) { _, _ in
+                    viewModel.scheduleSave()
+                }
+        }
+
+        Section("Description") {
+            TextEditor(text: $viewModel.eventDescription)
+                .frame(minHeight: 100)
+                .onChange(of: viewModel.eventDescription) { _, _ in
+                    viewModel.scheduleSave()
+                }
+        }
+
+        if viewModel.isSaving {
+            Section {
+                HStack {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Saving...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
     private var formPanel: some View {
         Form {
-            Section("Event Details") {
-                TextField("Title", text: $viewModel.title)
-                    .accessibilityIdentifier("eventDetailTitle")
-                    .onChange(of: viewModel.title) { _, _ in
-                        viewModel.scheduleSave()
-                    }
-
-                Toggle("All Day", isOn: $viewModel.allDay)
-                    .onChange(of: viewModel.allDay) { _, _ in
-                        viewModel.scheduleSave()
-                    }
-
-                if viewModel.allDay {
-                    DatePicker("Date", selection: $viewModel.startDate, displayedComponents: .date)
-                        .onChange(of: viewModel.startDate) { _, _ in
-                            viewModel.scheduleSave()
-                        }
-                } else {
-                    DatePicker("Start", selection: $viewModel.startDate)
-                        .onChange(of: viewModel.startDate) { _, _ in
-                            viewModel.scheduleSave()
-                        }
-                    DatePicker("End", selection: $viewModel.endDate)
-                        .onChange(of: viewModel.endDate) { _, _ in
-                            viewModel.scheduleSave()
-                        }
-                }
-
-                TextField("Location", text: $viewModel.location)
-                    .onChange(of: viewModel.location) { _, _ in
-                        viewModel.scheduleSave()
-                    }
-            }
-
-            Section("Description") {
-                TextEditor(text: $viewModel.eventDescription)
-                    .frame(minHeight: 100)
-                    .onChange(of: viewModel.eventDescription) { _, _ in
-                        viewModel.scheduleSave()
-                    }
-            }
-
-            if viewModel.isSaving {
-                Section {
-                    HStack {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Saving...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
+            formSections
         }
     }
 
@@ -190,6 +193,23 @@ struct EventDetailView: View {
                     }
                 }
                 .padding()
+            }
+        }
+    }
+
+    // MARK: - Source Disclosure Section (iPhone, inside Form)
+
+    @ViewBuilder
+    private var sourceDisclosureSection: some View {
+        if let sources = viewModel.event?.eventSources, !sources.isEmpty {
+            Section {
+                DisclosureGroup("Source Email") {
+                    VStack(spacing: 12) {
+                        ForEach(sources) { source in
+                            sourceCard(source)
+                        }
+                    }
+                }
             }
         }
     }
