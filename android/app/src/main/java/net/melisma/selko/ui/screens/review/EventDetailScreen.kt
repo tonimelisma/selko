@@ -1,6 +1,7 @@
 package net.melisma.selko.ui.screens.review
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,18 +27,24 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +56,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -170,8 +180,10 @@ fun EventDetailScreen(
                     EventDetailContent(
                         uiState = uiState,
                         onTitleChange = viewModel::onTitleChange,
-                        onStartDatetimeChange = viewModel::onStartDatetimeChange,
-                        onEndDatetimeChange = viewModel::onEndDatetimeChange,
+                        onStartDateChange = viewModel::onStartDateChange,
+                        onStartTimeChange = viewModel::onStartTimeChange,
+                        onEndDateChange = viewModel::onEndDateChange,
+                        onEndTimeChange = viewModel::onEndTimeChange,
                         onLocationChange = viewModel::onLocationChange,
                         onDescriptionChange = viewModel::onDescriptionChange,
                         onAllDayChange = viewModel::onAllDayChange
@@ -201,16 +213,38 @@ fun EventDetailScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EventDetailContent(
     uiState: EventDetailUiState,
     onTitleChange: (String) -> Unit,
-    onStartDatetimeChange: (String) -> Unit,
-    onEndDatetimeChange: (String) -> Unit,
+    onStartDateChange: (Long) -> Unit,
+    onStartTimeChange: (Int, Int) -> Unit,
+    onEndDateChange: (Long) -> Unit,
+    onEndTimeChange: (Int, Int) -> Unit,
     onLocationChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onAllDayChange: (Boolean) -> Unit
 ) {
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
+
+    val tz = TimeZone.currentSystemDefault()
+
+    fun formatDate(instant: Instant?): String {
+        if (instant == null) return "Select date"
+        val local = instant.toLocalDateTime(tz)
+        return "${local.dayOfMonth} ${local.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${local.year}"
+    }
+
+    fun formatTime(instant: Instant?): String {
+        if (instant == null) return "Select time"
+        val local = instant.toLocalDateTime(tz)
+        return "${local.hour.toString().padStart(2, '0')}:${local.minute.toString().padStart(2, '0')}"
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -235,29 +269,81 @@ private fun EventDetailContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Start Date
         OutlinedTextField(
-            value = uiState.startDatetime,
-            onValueChange = onStartDatetimeChange,
-            label = { Text("Start Date/Time") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("e.g. 2026-02-15T10:00:00Z") },
+            value = formatDate(uiState.startInstant),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(if (uiState.allDay) "Date" else "Start Date") },
+            modifier = Modifier.fillMaxWidth().clickable { showStartDatePicker = true },
+            enabled = false,
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
             shape = MaterialTheme.shapes.small
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        if (!uiState.allDay) {
+            // Start Time
+            OutlinedTextField(
+                value = formatTime(uiState.startInstant),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Start Time") },
+                modifier = Modifier.fillMaxWidth().clickable { showStartTimePicker = true },
+                enabled = false,
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                shape = MaterialTheme.shapes.small
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        // End Date
         OutlinedTextField(
-            value = uiState.endDatetime,
-            onValueChange = onEndDatetimeChange,
-            label = { Text("End Date/Time") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("e.g. 2026-02-15T11:00:00Z") },
+            value = formatDate(uiState.endInstant),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("End Date") },
+            modifier = Modifier.fillMaxWidth().clickable { showEndDatePicker = true },
+            enabled = false,
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
             shape = MaterialTheme.shapes.small
         )
 
         Spacer(modifier = Modifier.height(12.dp))
+
+        if (!uiState.allDay) {
+            // End Time
+            OutlinedTextField(
+                value = formatTime(uiState.endInstant),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("End Time") },
+                modifier = Modifier.fillMaxWidth().clickable { showEndTimePicker = true },
+                enabled = false,
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                shape = MaterialTheme.shapes.small
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -308,6 +394,91 @@ private fun EventDetailContent(
         }
 
         Spacer(modifier = Modifier.height(80.dp)) // Space for bottom bar
+
+        // Date/Time Picker Dialogs
+        if (showStartDatePicker) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = uiState.startInstant?.toEpochMilliseconds()
+            )
+            DatePickerDialog(
+                onDismissRequest = { showStartDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { onStartDateChange(it) }
+                        showStartDatePicker = false
+                    }) { Text("OK") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
+        if (showStartTimePicker) {
+            val startLocal = uiState.startInstant?.toLocalDateTime(tz)
+            val timePickerState = rememberTimePickerState(
+                initialHour = startLocal?.hour ?: 9,
+                initialMinute = startLocal?.minute ?: 0
+            )
+            DatePickerDialog(
+                onDismissRequest = { showStartTimePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onStartTimeChange(timePickerState.hour, timePickerState.minute)
+                        showStartTimePicker = false
+                    }) { Text("OK") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showStartTimePicker = false }) { Text("Cancel") }
+                }
+            ) {
+                TimePicker(state = timePickerState)
+            }
+        }
+
+        if (showEndDatePicker) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = uiState.endInstant?.toEpochMilliseconds()
+            )
+            DatePickerDialog(
+                onDismissRequest = { showEndDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { onEndDateChange(it) }
+                        showEndDatePicker = false
+                    }) { Text("OK") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
+        if (showEndTimePicker) {
+            val endLocal = uiState.endInstant?.toLocalDateTime(tz)
+            val timePickerState = rememberTimePickerState(
+                initialHour = endLocal?.hour ?: 10,
+                initialMinute = endLocal?.minute ?: 0
+            )
+            DatePickerDialog(
+                onDismissRequest = { showEndTimePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onEndTimeChange(timePickerState.hour, timePickerState.minute)
+                        showEndTimePicker = false
+                    }) { Text("OK") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEndTimePicker = false }) { Text("Cancel") }
+                }
+            ) {
+                TimePicker(state = timePickerState)
+            }
+        }
     }
 }
 
