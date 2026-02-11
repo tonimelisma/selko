@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-10 - iOS Local Supabase Config
+
+### Feat: Add environment variable override for iOS Supabase URL
+
+**Problem:** The iOS `Config.supabaseURL` was hardcoded to staging (DEBUG) and production (RELEASE) URLs. When using XcodeBuildMCP to launch the app on the simulator for local development, there was no way to point it at a local Supabase instance (`http://localhost:54321`).
+
+**Solution:** Added `ProcessInfo.processInfo.environment["SUPABASE_URL"]` check at the top of `supabaseURL`, matching the existing pattern used by `apiURL` and `supabaseAnonKey`. When the environment variable is set, it takes priority over the hardcoded defaults. This allows XcodeBuildMCP to pass `SUPABASE_URL=http://localhost:54321` when launching the app.
+
+**Files Modified:**
+- `ios/Selko/Core/Config.swift`
+
+---
+
 ## 2026-02-09 - Fix Web Horizontal Overflow
 
 ### Fix: Fix navbar causing horizontal overflow at all viewport widths
