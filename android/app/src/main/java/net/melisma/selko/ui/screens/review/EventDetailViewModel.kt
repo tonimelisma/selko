@@ -8,6 +8,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.Email
 import net.melisma.selko.data.model.EventSource
@@ -20,8 +25,8 @@ data class EventDetailUiState(
     val sources: List<EventSource> = emptyList(),
     val sourceEmail: Email? = null,
     val title: String = "",
-    val startDatetime: String = "",
-    val endDatetime: String = "",
+    val startInstant: Instant? = null,
+    val endInstant: Instant? = null,
     val location: String = "",
     val description: String = "",
     val allDay: Boolean = false,
@@ -62,8 +67,8 @@ class EventDetailViewModel(
                             sources = sources,
                             sourceEmail = sourceEmail,
                             title = event.title,
-                            startDatetime = event.startDatetime?.toString() ?: "",
-                            endDatetime = event.endDatetime?.toString() ?: "",
+                            startInstant = event.startDatetime,
+                            endInstant = event.endDatetime,
                             location = event.location ?: "",
                             description = event.description ?: "",
                             allDay = event.allDay
@@ -94,12 +99,38 @@ class EventDetailViewModel(
         _uiState.update { it.copy(description = value, hasUnsavedChanges = true) }
     }
 
-    fun onStartDatetimeChange(value: String) {
-        _uiState.update { it.copy(startDatetime = value, hasUnsavedChanges = true) }
+    fun onStartDateChange(millis: Long) {
+        val current = _uiState.value.startInstant
+        val tz = TimeZone.currentSystemDefault()
+        val selectedDate = Instant.fromEpochMilliseconds(millis).toLocalDateTime(tz).date
+        val currentTime = current?.toLocalDateTime(tz)?.time ?: LocalTime(9, 0)
+        val newInstant = LocalDateTime(selectedDate, currentTime).toInstant(tz)
+        _uiState.update { it.copy(startInstant = newInstant, hasUnsavedChanges = true) }
     }
 
-    fun onEndDatetimeChange(value: String) {
-        _uiState.update { it.copy(endDatetime = value, hasUnsavedChanges = true) }
+    fun onStartTimeChange(hour: Int, minute: Int) {
+        val current = _uiState.value.startInstant ?: return
+        val tz = TimeZone.currentSystemDefault()
+        val currentDate = current.toLocalDateTime(tz).date
+        val newInstant = LocalDateTime(currentDate, LocalTime(hour, minute)).toInstant(tz)
+        _uiState.update { it.copy(startInstant = newInstant, hasUnsavedChanges = true) }
+    }
+
+    fun onEndDateChange(millis: Long) {
+        val current = _uiState.value.endInstant
+        val tz = TimeZone.currentSystemDefault()
+        val selectedDate = Instant.fromEpochMilliseconds(millis).toLocalDateTime(tz).date
+        val currentTime = current?.toLocalDateTime(tz)?.time ?: LocalTime(10, 0)
+        val newInstant = LocalDateTime(selectedDate, currentTime).toInstant(tz)
+        _uiState.update { it.copy(endInstant = newInstant, hasUnsavedChanges = true) }
+    }
+
+    fun onEndTimeChange(hour: Int, minute: Int) {
+        val current = _uiState.value.endInstant ?: return
+        val tz = TimeZone.currentSystemDefault()
+        val currentDate = current.toLocalDateTime(tz).date
+        val newInstant = LocalDateTime(currentDate, LocalTime(hour, minute)).toInstant(tz)
+        _uiState.update { it.copy(endInstant = newInstant, hasUnsavedChanges = true) }
     }
 
     fun onAllDayChange(value: Boolean) {
@@ -113,17 +144,8 @@ class EventDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
 
-            val startInstant = try {
-                Instant.parse(state.startDatetime)
-            } catch (e: Exception) {
-                null
-            }
-
-            val endInstant = try {
-                Instant.parse(state.endDatetime)
-            } catch (e: Exception) {
-                null
-            }
+            val startInstant = state.startInstant
+            val endInstant = state.endInstant
 
             when (val result = eventRepository.updateEvent(
                 eventId = eventId,
@@ -203,17 +225,8 @@ class EventDetailViewModel(
     private suspend fun saveChangesSync() {
         val state = _uiState.value
 
-        val startInstant = try {
-            Instant.parse(state.startDatetime)
-        } catch (e: Exception) {
-            null
-        }
-
-        val endInstant = try {
-            Instant.parse(state.endDatetime)
-        } catch (e: Exception) {
-            null
-        }
+        val startInstant = state.startInstant
+        val endInstant = state.endInstant
 
         eventRepository.updateEvent(
             eventId = eventId,

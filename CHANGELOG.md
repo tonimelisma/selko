@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-11 - Fix Android Screenshot Review Issues
+
+### Fix: Resolve 2 Android UI issues found during screenshot review
+
+**Issues Fixed:**
+1. **Event Detail date/time fields:** Replaced raw ISO text fields with Material3 DatePicker and TimePicker dialogs for proper date/time editing
+2. **Settings logout button:** Changed from filled red button to outlined button with error color for a less aggressive appearance
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventDetailViewModel.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventDetailScreen.kt`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/settings/SettingsScreen.kt`
+
+---
+
 ## 2026-02-11 - Fix iOS Screenshot Review Issues
 
 ### Fix: Resolve 6 iOS UI issues found during screenshot review
