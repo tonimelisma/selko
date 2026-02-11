@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-10 - Add Web Screenshot Capture Spec
+
+### Feat: Add Playwright test spec for capturing web screenshots
+
+Added `screenshots.spec.ts` — a Playwright E2E test that captures screenshots of all web screens at desktop (1280x800) and mobile (390x844) viewports.
+
+**Screens captured (12 screenshots = 6 screens x 2 viewports):**
+- Login page (`/login`)
+- Register page (`/register`)
+- Review Queue (`/app`) — requires login
+- Event Detail (`/app/events/[id]`) — navigated from review queue
+- Activity History (`/app/history`) — requires login
+- Settings (`/app/settings`) — requires login
+
+**Design decisions:**
+- Uses its own user (`screenshots@selko.local`) independent of the existing auth setup
+- Creates browser contexts manually via `browser.newContext()` so the chromium project's `storageState` does not interfere
+- Screenshots saved to `docs/screenshots/` at project root
+- Assumes seed data has been pre-inserted (by a separate seed script)
+
+**Files Added:**
+- `frontend/tests/e2e/screenshots.spec.ts`
+
+---
+
 ## 2026-02-09 - Fix Web Horizontal Overflow
 
 ### Fix: Fix navbar causing horizontal overflow at all viewport widths
