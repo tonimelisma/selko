@@ -252,7 +252,7 @@
 
 		<!-- Event form -->
 		<div class="{sourceEmail ? 'lg:col-span-3' : 'lg:col-span-5'} order-1 lg:order-2">
-			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-4">
+			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-4 pb-24 lg:pb-0">
 				<div class="form-control">
 					<label class="label" for="event-title">
 						<span class="label-text">Title</span>
