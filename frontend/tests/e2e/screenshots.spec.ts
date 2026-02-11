@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 
 /** Relative path from frontend/ to docs/screenshots/ at project root. */
-const SCREENSHOT_DIR = '../../docs/screenshots';
+const SCREENSHOT_DIR = '../docs/screenshots';
 const SCREENSHOT_USER = 'screenshots@selko.local';
 const SCREENSHOT_PASS = 'screenshotpass123';
 
@@ -19,7 +19,7 @@ async function createAuthContext(
   browser: Browser,
   viewport: { width: number; height: number }
 ): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext({ viewport });
+  const context = await browser.newContext({ viewport, storageState: undefined });
   const page = await context.newPage();
 
   await page.goto('/login');
@@ -38,6 +38,7 @@ test.describe('Screenshot capture', () => {
       test('login page', async ({ browser }) => {
         const context = await browser.newContext({
           viewport: { width: vp.width, height: vp.height },
+          storageState: undefined,
         });
         const page = await context.newPage();
         await page.goto('/login');
@@ -52,6 +53,7 @@ test.describe('Screenshot capture', () => {
       test('register page', async ({ browser }) => {
         const context = await browser.newContext({
           viewport: { width: vp.width, height: vp.height },
+          storageState: undefined,
         });
         const page = await context.newPage();
         await page.goto('/register');

@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-10 - Fix Screenshot Infrastructure
+
+### Fix: Fix screenshot spec path and storageState, add Android cleartext config
+
+**Frontend (screenshots.spec.ts):**
+- Fixed `SCREENSHOT_DIR` path from `../../docs/screenshots` to `../docs/screenshots` (was saving outside the repo)
+- Added `storageState: undefined` to all `browser.newContext()` calls to prevent the chromium project's saved auth state from interfering with the screenshot user's login
+
+**Android:**
+- Added `network_security_config.xml` allowing cleartext HTTP to `10.0.2.2` (emulator localhost alias)
+- Referenced config in `AndroidManifest.xml` — required for debug builds to connect to local Supabase
+
+**Files Changed:**
+- `frontend/tests/e2e/screenshots.spec.ts`
+- `android/app/src/main/AndroidManifest.xml`
+- `android/app/src/main/res/xml/network_security_config.xml` (new)
+
+---
+
 ## 2026-02-10 - Add Web Screenshot Capture Spec
 
 ### Feat: Add Playwright test spec for capturing web screenshots
