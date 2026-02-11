@@ -219,8 +219,17 @@ Configured in `.mcp.json`:
 | Server | Purpose | Key Tools |
 |--------|---------|-----------|
 | `playwright` | Browser automation + screenshots | `browser_navigate`, `browser_screenshot`, `browser_snapshot`, `browser_resize` |
-| `XcodeBuildMCP` | iOS build + simulator control | Build, launch, screenshot |
-| `mobile-mcp` | iOS Simulator + Android Emulator | `mobile_take_screenshot`, `mobile_tap`, `mobile_launch_app`, `mobile_list_elements_on_screen` |
+| `XcodeBuildMCP` | iOS build + simulator control + UI automation | `build_sim`, `launch_app_sim`, `screenshot`, `snapshot_ui`, `tap` |
+| `mobile-mcp` | Android Emulator (+ iOS backup) | `mobile_take_screenshot`, `mobile_tap`, `mobile_launch_app`, `mobile_list_elements_on_screen` |
+
+**XcodeBuildMCP UI automation** is configured in `.xcodebuildmcp/config.yaml`:
+```yaml
+schemaVersion: 1
+enabledWorkflows: ["simulator", "ui-automation"]
+```
+This enables `tap` (by accessibility `id` or `label`), `snapshot_ui`, and other interaction tools. If these tools are missing, check the config file exists and restart Claude Code.
+
+**For iOS, always prefer XcodeBuildMCP over mobile-mcp.** mobile-mcp's WebDriverAgent can time out. Use mobile-mcp primarily for Android Emulator interaction.
 
 ### Slash Commands
 

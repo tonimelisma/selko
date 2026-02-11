@@ -231,19 +231,34 @@ Three MCP servers are configured in `.mcp.json` for visual verification:
 4. Test at desktop (1280x800) and mobile (390x844) viewports
 5. **When done:** Call `browser_close` to close the browser, then stop the dev server
 
-### XcodeBuildMCP (iOS)
+### XcodeBuildMCP (iOS) — Primary tool for iOS simulator
 1. Call `session-show-defaults` first to see current config
 2. Use `discover_projs` to find projects, `list_schemes` for schemes
 3. `build_sim` to build, `test_sim` for tests, `screenshot` for visual verification
-4. `list_sims` to find available simulators
-5. **When done:** Call `stop_app_sim` to stop the app, then shut down the simulator
+4. `snapshot_ui` for accessibility hierarchy with coordinates
+5. `tap` to interact — use `id` (accessibility identifier) or `label` to tap elements
+6. `list_sims` to find available simulators
+7. **When done:** Call `stop_app_sim` to stop the app, then shut down the simulator
 
-### mobile-mcp (iOS Simulator / Android Emulator)
+> **UI automation is enabled** via `.xcodebuildmcp/config.yaml` (`enabledWorkflows: ["simulator", "ui-automation"]`). If `tap` or other UI automation tools are missing, check this config and restart Claude Code.
+
+### mobile-mcp (Android Emulator, iOS backup)
 1. `mobile_take_screenshot` for visual captures
 2. `mobile_list_elements_on_screen` for UI hierarchy
 3. `mobile_click_on_screen_at_coordinates` for interaction
 4. Works with both iOS Simulator and Android Emulator
 5. **When done:** Call `mobile_terminate_app` to stop the app
+6. **For iOS, prefer XcodeBuildMCP** — mobile-mcp's WebDriverAgent can be flaky
+
+### Screenshot Image Size Limits (Claude API)
+Screenshots saved to `docs/screenshots/` are read by Claude Code, which uses the Claude API with many images in context. **Both dimensions must be ≤ 2000 px** (the "many-image" limit). Larger images crash the conversation.
+
+- **Web desktop** (1280x800): OK
+- **Web mobile** (390x844): OK
+- **iOS Simulator**: Use `sips --resampleHeight 1920` to resize if height > 2000
+- **Android Emulator**: Use `sips --resampleHeight 1920` to resize if height > 2000
+- **Never use `fullPage: true`** in Playwright screenshots — can produce very tall images
+- Max file size: 5 MB per image
 
 **Full details:** `docs/ui-testing-guide.md`
 
