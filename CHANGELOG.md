@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-11 - Fix iOS Screenshot Review Issues
+
+### Fix: Resolve 6 iOS UI issues found during screenshot review
+
+**Issues Fixed:**
+1. **Event Detail blank form (P0):** Form nested inside ScrollView collapsed to zero height — made Form the root scrollable container on iPhone
+2. **Register dimmed overlay:** Changed `.sheet` to `.fullScreenCover` so register screen isn't dimmed
+3. **Settings calendar message:** Changed "No calendars available" to match web/Android wording
+4. **Login blue placeholder:** Used explicit prompt styling with `.secondary` foreground
+5. **Review Queue sort order:** Removed alphabetical sort to preserve database insertion order (matches web/Android)
+6. **Brand name color:** Added `.foregroundStyle(Color.accentColor)` to "Selko" heading on login
+
+**Files Modified:**
+- `ios/Selko/Features/Review/Views/EventDetailView.swift`
+- `ios/Selko/Features/Auth/Views/LoginView.swift`
+- `ios/Selko/Features/Settings/Views/SettingsView.swift`
+- `ios/Selko/Features/Review/ViewModels/ReviewQueueViewModel.swift`
+
+---
+
 ## 2026-02-11 - Fix Web Screenshot Review Issues
 
 ### Fix: Resolve 3 web UI issues found during screenshot review

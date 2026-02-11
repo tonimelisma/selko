@@ -111,7 +111,7 @@ final class ReviewQueueViewModel {
                 senderEmail: value.email,
                 events: value.events
             )
-        }.sorted { $0.senderName < $1.senderName }
+        }
     }
 
     private func removeEventFromGroups(_ eventId: UUID) async {
