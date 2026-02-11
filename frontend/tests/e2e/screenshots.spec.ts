@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 
+/** Relative path from frontend/ to docs/screenshots/ at project root */
 const SCREENSHOT_DIR = '../../docs/screenshots';
 const SCREENSHOT_USER = 'screenshots@selko.local';
 const SCREENSHOT_PASS = 'screenshotpass123';
