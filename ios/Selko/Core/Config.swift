@@ -9,8 +9,9 @@ import Foundation
 
 enum Config {
     static var supabaseURL: String {
-        // For development, use staging Supabase
-        // TODO: Switch to production URL for release builds
+        if let envURL = ProcessInfo.processInfo.environment["SUPABASE_URL"] {
+            return envURL
+        }
         #if DEBUG
         return "https://lxmysergoeaegxlyfzwk.supabase.co"
         #else
