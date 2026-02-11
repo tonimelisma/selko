@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-11 - Fix Web Review Queue Consistency
+
+### Fix: Improve web review queue button layout, add Edit button and email icon
+
+**Issues Fixed:**
+1. **EventCard button placement:** Moved buttons from top-right inline with title to a separate row at the bottom-right of the card
+2. **EventCard button order:** Changed from Reject + Approve to Approve + Edit + Reject (matching spec)
+3. **EventCard Edit button:** Added new Edit button with pencil icon that calls `onedit` callback
+4. **EventCard max width:** Added `max-w-3xl` to prevent cards from stretching full-width on desktop
+5. **EmailHeader envelope icon:** Added envelope SVG icon before the subject text for visual distinction
+
+**Files Modified:**
+- `frontend/src/lib/components/EventCard.svelte`
+- `frontend/src/lib/components/EmailHeader.svelte`
+
+---
+
 ## 2026-02-11 - Fix iOS Email Placeholder Color
 
 ### Fix: Use correct placeholder text color on login and register screens
