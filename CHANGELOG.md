@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-10 - Fix iOS Model Deserialization
+
+### Fix: Make iOS Email model tolerant of partial data from nested Supabase joins
+
+**Problem:** Supabase nested joins (e.g., `events(emails(id, subject, from_email, from_name, date_sent))`) only return selected fields, but the iOS `Email` model required all fields — causing deserialization failures and empty screens.
+
+**Solution:** Made all non-id fields in `Email` optional so partial selects decode correctly. Also fixed `UserCalendarSettings` to match the actual database schema (`user_id` PK, `target_calendar_id`, `default_invitees`).
+
+**Files Modified:**
+- `ios/Selko/Features/Emails/Models/Email.swift` — Made non-id fields optional
+- `ios/Selko/Features/Settings/Services/CalendarSettingsService.swift` — Fixed model to match DB schema
+- `ios/Selko/Features/Settings/ViewModels/SettingsViewModel.swift` — Updated field reference
+
+---
+
 ## 2026-02-10 - Fix Android Model Deserialization
 
 ### Fix: Make Android Email model tolerant of partial data from nested Supabase joins

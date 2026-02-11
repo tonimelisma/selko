@@ -7,19 +7,15 @@ import Foundation
 import Supabase
 
 struct UserCalendarSettings: Codable, Sendable {
-    let id: UUID
     let userId: UUID
-    let defaultCalendarId: String?
-    let defaultCalendarName: String?
-    let createdAt: Date?
+    let targetCalendarId: String?
+    let defaultInvitees: String?
     let updatedAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case id
         case userId = "user_id"
-        case defaultCalendarId = "default_calendar_id"
-        case defaultCalendarName = "default_calendar_name"
-        case createdAt = "created_at"
+        case targetCalendarId = "target_calendar_id"
+        case defaultInvitees = "default_invitees"
         case updatedAt = "updated_at"
     }
 }
@@ -50,10 +46,9 @@ final class CalendarSettingsService: CalendarSettingsServiceProtocol, @unchecked
         if let existing = try await getSettings() {
             let updated: UserCalendarSettings = try await supabase.from("user_calendar_settings")
                 .update([
-                    "default_calendar_id": calendarId,
-                    "default_calendar_name": calendarName
+                    "target_calendar_id": calendarId
                 ])
-                .eq("id", value: existing.id)
+                .eq("user_id", value: existing.userId)
                 .select()
                 .single()
                 .execute()
@@ -67,8 +62,7 @@ final class CalendarSettingsService: CalendarSettingsServiceProtocol, @unchecked
             let created: UserCalendarSettings = try await supabase.from("user_calendar_settings")
                 .insert([
                     "user_id": session.user.id.uuidString,
-                    "default_calendar_id": calendarId,
-                    "default_calendar_name": calendarName
+                    "target_calendar_id": calendarId
                 ])
                 .select()
                 .single()
