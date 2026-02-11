@@ -7,9 +7,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Email(
     val id: String,
-    @SerialName("user_id") val userId: String,
+    @SerialName("user_id") val userId: String? = null,
     @SerialName("integration_id") val integrationId: String? = null,
-    @SerialName("gmail_id") val gmailId: String,
+    @SerialName("gmail_id") val gmailId: String? = null,
     @SerialName("thread_id") val threadId: String? = null,
     val subject: String? = null,
     @SerialName("from_email") val fromEmail: String? = null,
