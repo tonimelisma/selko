@@ -48,15 +48,15 @@
 		{/if}
 		{#each services as service}
 			{@const integration = getIntegrationForService(service.key)}
-			<div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
-				<div>
+			<div class="flex items-center justify-between p-4 bg-base-200 rounded-lg gap-2">
+				<div class="min-w-0">
 					<h3 class="font-semibold">{service.label}</h3>
 					<p class="text-sm text-base-content/70">{service.description}</p>
 					{#if integration?.provider_email}
 						<p class="text-sm text-base-content/50 mt-1">{integration.provider_email}</p>
 					{/if}
 				</div>
-				<div class="flex items-center gap-3">
+				<div class="flex items-center gap-3 flex-shrink-0">
 					{#if integration}
 						<StatusBadge status={integration.status} type="integration" />
 						{#if !setupMode}

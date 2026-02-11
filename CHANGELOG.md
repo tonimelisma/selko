@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-11 - Fix Web Screenshot Review Issues
+
+### Fix: Resolve 3 web UI issues found during screenshot review
+
+**Issues Fixed:**
+1. **Settings mobile disconnect clipped:** Added flex-shrink-0 to buttons container and min-w-0 to text container to prevent button truncation
+2. **Event detail mobile description cut off:** Added bottom padding (pb-24) to form to account for fixed bottom action bar
+3. **Brand name color:** Added text-primary to "Selko" heading on login and register pages
+
+**Files Modified:**
+- `frontend/src/lib/components/IntegrationStatus.svelte`
+- `frontend/src/routes/app/events/[id]/+page.svelte`
+- `frontend/src/routes/login/+page.svelte`
+- `frontend/src/routes/register/+page.svelte`
+
+---
+
 ## 2026-02-10 - Fix iOS Model Deserialization
 
 ### Fix: Make iOS Email model tolerant of partial data from nested Supabase joins
