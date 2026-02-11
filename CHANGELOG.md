@@ -6,9 +6,9 @@ All notable changes to this project are documented in this file.
 
 ### Fix: Use correct placeholder text color on login and register screens
 
-**Issue:** Email field placeholders ("you@example.com") appeared in blue/accent color instead of standard grey on iOS login and register screens. SwiftUI's `.foregroundStyle(.secondary)` renders as a hierarchical style (not grey) inside TextField prompts.
+**Issue:** Email field placeholders ("you@example.com") appeared in blue instead of standard grey on iOS login and register screens. SwiftUI's TextField ignores all foreground styling on placeholder text (`.foregroundStyle()`, `.foregroundColor()`, `.tint()`, overlays, ZStacks, Canvas, `.drawingGroup()` — none work).
 
-**Fix:** Changed placeholder styling to use `Color(.placeholderText)` which correctly renders the system placeholder grey color.
+**Fix:** Replaced the SwiftUI TextField with a minimal `UIViewRepresentable` wrapper (`PlaceholderTextField`) that uses UITextField's `attributedPlaceholder` with `UIColor.placeholderText` for correct grey placeholder rendering.
 
 **Files Modified:**
 - `ios/Selko/Features/Auth/Views/LoginView.swift`

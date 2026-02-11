@@ -6,6 +6,60 @@
 //
 
 import SwiftUI
+import UIKit
+
+/// A TextField wrapper that correctly renders placeholder text in grey.
+/// SwiftUI's TextField ignores foreground styling on placeholder text,
+/// always rendering it in the accent/tint color. UITextField is the only
+/// way to control placeholder color on iOS.
+private struct PlaceholderTextField: UIViewRepresentable {
+    let placeholder: String
+    @Binding var text: String
+    var textContentType: UITextContentType?
+    var keyboardType: UIKeyboardType = .default
+    var accessibilityIdentifier: String?
+
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [.foregroundColor: UIColor.placeholderText]
+        )
+        field.font = .preferredFont(forTextStyle: .body)
+        field.borderStyle = .roundedRect
+        field.textContentType = textContentType
+        field.keyboardType = keyboardType
+        field.autocorrectionType = .no
+        field.autocapitalizationType = .none
+        field.accessibilityLabel = "Email address"
+        field.accessibilityIdentifier = accessibilityIdentifier
+        field.delegate = context.coordinator
+        field.setContentHuggingPriority(.defaultHigh, for: .vertical)
+        return field
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    class Coordinator: NSObject, UITextFieldDelegate {
+        var text: Binding<String>
+
+        init(text: Binding<String>) {
+            self.text = text
+        }
+
+        func textFieldDidChangeSelection(_ textField: UITextField) {
+            text.wrappedValue = textField.text ?? ""
+        }
+    }
+}
 
 struct RegisterView: View {
     @Environment(\.dismiss) private var dismiss
@@ -25,14 +79,14 @@ struct RegisterView: View {
                         Text("Email")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        TextField("", text: $viewModel.email, prompt: Text("you@example.com").foregroundStyle(Color(.placeholderText)))
-                            .textFieldStyle(.roundedBorder)
-                            .textContentType(.emailAddress)
-                            .keyboardType(.emailAddress)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                            .accessibilityLabel("Email address")
-                            .accessibilityIdentifier("registerEmailField")
+                        PlaceholderTextField(
+                            placeholder: "you@example.com",
+                            text: $viewModel.email,
+                            textContentType: .emailAddress,
+                            keyboardType: .emailAddress,
+                            accessibilityIdentifier: "registerEmailField"
+                        )
+                        .frame(height: 36)
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
