@@ -207,6 +207,7 @@ def do_seed(config):
             "location": "Lincoln Elementary School, Room 204",
             "description": "Meet with Ms. Thompson to discuss Emma's progress in 3rd grade.",
             "status": "pending_review",
+            "updated_at": (now - timedelta(minutes=30)).isoformat(),
             "source_attribution": "From email: Parent-Teacher Conference Reminder",
         },
         {
@@ -218,6 +219,7 @@ def do_seed(config):
             "location": "Lincoln Elementary Auditorium",
             "description": "Annual spring concert featuring performances by grades K-5.",
             "status": "pending_review",
+            "updated_at": (now - timedelta(minutes=45)).isoformat(),
             "source_attribution": "From email: Spring Concert Information",
         },
         {
@@ -229,6 +231,7 @@ def do_seed(config):
             "location": "TechCorp HQ, Building 5, Conference Room A",
             "description": "Full-day offsite to plan Q2 roadmap. Lunch will be provided.",
             "status": "pending_review",
+            "updated_at": (now - timedelta(minutes=60)).isoformat(),
             "source_attribution": "From email: Q2 Planning Offsite Details",
         },
         # Other status events (for History)
