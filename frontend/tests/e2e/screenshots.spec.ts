@@ -1,4 +1,5 @@
-import { test, expect, Browser, BrowserContext, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import type { Browser, BrowserContext, Page } from '@playwright/test';
 
 const SCREENSHOT_DIR = '../../docs/screenshots';
 const SCREENSHOT_USER = 'screenshots@selko.local';
