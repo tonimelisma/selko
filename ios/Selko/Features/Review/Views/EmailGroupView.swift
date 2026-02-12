@@ -1,42 +1,40 @@
 //
-//  SenderGroupView.swift
+//  EmailGroupView.swift
 //  Selko
 //
 
 import SwiftUI
 
-struct SenderGroupView: View {
-    let group: SenderGroup
+struct EmailGroupView: View {
+    let emailGroup: EmailGroup
     let onApproveAll: () -> Void
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(group.senderName)
+            Image(systemName: "envelope")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(emailGroup.subject)
                     .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
-
-                if group.senderName != group.senderEmail {
-                    Text(group.senderEmail)
+                    .fontWeight(.medium)
+                if let date = emailGroup.dateSent {
+                    Text(date, style: .date)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
-
             Spacer()
-
-            if group.allEvents.count > 1 {
+            if emailGroup.events.count > 1 {
                 Button {
                     onApproveAll()
                 } label: {
-                    Text("Approve All (\(group.allEvents.count))")
+                    Text("Approve All (\(emailGroup.events.count))")
                         .font(.caption)
                         .fontWeight(.medium)
                 }
                 .buttonStyle(.bordered)
                 .tint(.accentColor)
-                .accessibilityLabel("Approve all events from this sender")
             }
         }
         .textCase(nil)
