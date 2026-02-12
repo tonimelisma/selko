@@ -45,30 +45,36 @@ struct EventDetailView: View {
         }
         .navigationTitle("Event Detail")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button(role: .destructive) {
-                    Task {
-                        await viewModel.reject()
+        .safeAreaInset(edge: .bottom) {
+            if viewModel.event?.status == .pendingReview {
+                HStack(spacing: 12) {
+                    Button(role: .destructive) {
+                        Task {
+                            await viewModel.reject()
+                        }
+                    } label: {
+                        Text("Reject")
+                            .frame(maxWidth: .infinity)
                     }
-                } label: {
-                    Text("Reject")
-                        .foregroundStyle(Color.selkoError)
-                        .accessibilityIdentifier("rejectButton")
-                }
-            }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+                    .controlSize(.large)
+                    .accessibilityIdentifier("rejectButton")
 
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    Task {
-                        await viewModel.approve()
+                    Button {
+                        Task {
+                            await viewModel.approve()
+                        }
+                    } label: {
+                        Text("Approve")
+                            .frame(maxWidth: .infinity)
                     }
-                } label: {
-                    Text("Approve")
-                        .fontWeight(.semibold)
-                        .accessibilityIdentifier("approveButton")
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .accessibilityIdentifier("approveButton")
                 }
-                .tint(.accentColor)
+                .padding()
+                .background(.bar)
             }
         }
         .task {

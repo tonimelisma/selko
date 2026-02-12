@@ -48,6 +48,7 @@ struct EventCardView: View {
                     if let onApprove {
                         Button { onApprove() } label: {
                             Label("Approve", systemImage: "checkmark")
+                                .labelStyle(.iconOnly)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
@@ -55,6 +56,7 @@ struct EventCardView: View {
                     if let onEdit {
                         Button { onEdit() } label: {
                             Label("Edit", systemImage: "pencil")
+                                .labelStyle(.iconOnly)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -62,6 +64,7 @@ struct EventCardView: View {
                     if let onReject {
                         Button { onReject() } label: {
                             Label("Reject", systemImage: "xmark")
+                                .labelStyle(.iconOnly)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
