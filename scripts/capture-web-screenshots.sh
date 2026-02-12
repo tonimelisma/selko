@@ -9,5 +9,5 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT/frontend"
 
 echo "==> Capturing web screenshots with Playwright..."
-npx playwright test screenshots --project=chromium
+npx playwright test screenshots --project=screenshots
 echo "==> Web screenshots saved to docs/screenshots/"

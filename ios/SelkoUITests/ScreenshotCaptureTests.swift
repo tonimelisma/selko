@@ -5,7 +5,7 @@
 //  Navigates through all 6 screens and saves PNG screenshots to docs/screenshots/.
 //  Run with: xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \
 //    -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-//    -only-testing:SelkoUITests/ScreenshotCaptureTests
+//    -only-testing:iOSUITests/ScreenshotCaptureTests
 //
 
 import XCTest
@@ -29,7 +29,6 @@ final class ScreenshotCaptureTests: XCTestCase {
         // Keep going after a failure so we capture as many screenshots as possible
         continueAfterFailure = true
         app = XCUIApplication()
-        app.launchArguments = ["--uitesting"]
     }
 
     override func tearDownWithError() throws {
@@ -38,30 +37,11 @@ final class ScreenshotCaptureTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// Take a screenshot, resize to ≤1920px height, and save to docs/screenshots/.
+    /// Take a screenshot and save to docs/screenshots/.
+    /// The wrapper script handles resizing to ≤1920px after the test completes.
     private func saveScreenshot(named name: String) {
         let screenshot = app.screenshot()
-        let image = screenshot.image
-
-        // Resize if taller than 1920px (iPhone 17 Pro is 2796px native)
-        let maxHeight: CGFloat = 1920
-        let resized: Data? = {
-            guard image.size.height > maxHeight else {
-                return screenshot.pngRepresentation
-            }
-            let scale = maxHeight / image.size.height
-            let newSize = CGSize(width: image.size.width * scale, height: maxHeight)
-            let renderer = UIGraphicsImageRenderer(size: newSize)
-            let resizedImage = renderer.image { _ in
-                image.draw(in: CGRect(origin: .zero, size: newSize))
-            }
-            return resizedImage.pngData()
-        }()
-
-        guard let pngData = resized else {
-            XCTFail("Failed to create PNG data for \(name)")
-            return
-        }
+        let pngData = screenshot.pngRepresentation
 
         // Ensure output directory exists
         try? FileManager.default.createDirectory(
@@ -77,15 +57,36 @@ final class ScreenshotCaptureTests: XCTestCase {
         }
     }
 
+    /// If the app is already logged in, sign out first.
+    @MainActor
+    private func ensureLoggedOut() {
+        let settingsTab = app.tabBars.buttons["Settings"]
+        if settingsTab.waitForExistence(timeout: 3) {
+            settingsTab.tap()
+            sleep(1)
+            let signOutButton = app.buttons["signOutButton"]
+            if signOutButton.waitForExistence(timeout: 3) {
+                signOutButton.tap()
+                sleep(2)
+            }
+        }
+    }
+
     // MARK: - Test
 
     @MainActor
     func testCaptureAllScreenshots() throws {
         app.launch()
 
-        // 1. Login screen
+        // Handle case where app is already logged in from a previous run
         let emailField = app.textFields["emailField"]
-        XCTAssertTrue(emailField.waitForExistence(timeout: 10), "Login screen did not appear")
+        if !emailField.waitForExistence(timeout: 5) {
+            // Already logged in — sign out first
+            ensureLoggedOut()
+            XCTAssertTrue(emailField.waitForExistence(timeout: 10), "Login screen did not appear after sign out")
+        }
+
+        // 1. Login screen
         saveScreenshot(named: "ios-login")
 
         // 2. Register screen (modal)
@@ -95,7 +96,6 @@ final class ScreenshotCaptureTests: XCTestCase {
         saveScreenshot(named: "ios-register")
 
         // Dismiss register sheet
-        // Look for Cancel / close button in the navigation bar
         let cancelButton = app.buttons["Cancel"]
         if cancelButton.waitForExistence(timeout: 2) {
             cancelButton.tap()
@@ -122,24 +122,38 @@ final class ScreenshotCaptureTests: XCTestCase {
         XCTAssertTrue(reviewTab.waitForExistence(timeout: 15), "Main tab view did not appear after login")
 
         // Give data time to load
-        sleep(2)
+        sleep(3)
 
         // 4. Review queue
         saveScreenshot(named: "ios-review-queue")
 
-        // 5. Event detail — tap the first event card
-        let firstEventCard = app.buttons.matching(identifier: "eventCard").firstMatch
-        if firstEventCard.waitForExistence(timeout: 5) {
-            firstEventCard.tap()
-            // Wait for detail view to load
-            sleep(1)
+        // 5. Event detail — tap the "Edit" button on first event card
+        // The Edit button is inside a NavigationLink, tapping it navigates to detail
+        let editButton = app.buttons.matching(identifier: "eventCard").matching(NSPredicate(format: "label == 'Edit'")).firstMatch
+        if editButton.waitForExistence(timeout: 5) {
+            // Use coordinate-based tap to work around NavigationLink hit testing
+            let coordinate = editButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            coordinate.tap()
+            sleep(2)
             saveScreenshot(named: "ios-event-detail")
 
-            // Go back to review queue
-            app.navigationBars.buttons.firstMatch.tap()
+            // Go back to review queue — try Back button, then navigation bar button
+            let backButton = app.navigationBars.buttons["Back"]
+            if backButton.waitForExistence(timeout: 2) {
+                backButton.tap()
+            } else {
+                // Tap first button in navigation bar as fallback
+                let navButton = app.navigationBars.buttons.firstMatch
+                if navButton.waitForExistence(timeout: 2) {
+                    navButton.tap()
+                } else {
+                    // Swipe right to go back
+                    app.swipeRight()
+                }
+            }
             sleep(1)
         } else {
-            // No events — capture empty state as event detail placeholder
+            // No events — capture current state as placeholder
             saveScreenshot(named: "ios-event-detail")
         }
 

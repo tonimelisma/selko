@@ -42,6 +42,11 @@ export default defineConfig({
       },
       dependencies: ['setup'],
     },
+    {
+      name: 'screenshots',
+      testMatch: /screenshots\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
   webServer: {
     command: 'npm run dev',
