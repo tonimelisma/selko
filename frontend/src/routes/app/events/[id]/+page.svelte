@@ -167,7 +167,7 @@
 		<a href="/app" class="btn btn-sm btn-ghost">Back to Review</a>
 	</div>
 {:else if event}
-	<PageHeader title="Event Detail" backHref="/app">
+	<PageHeader title="Edit Event" backHref="/app">
 		{#snippet children()}
 			<StatusBadge status={event.status} />
 		{/snippet}
@@ -182,7 +182,7 @@
 	<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 		<!-- Source email - desktop sidebar -->
 		{#if sourceEmail}
-			<div class="lg:col-span-2 order-2 lg:order-1">
+			<div class="lg:col-span-2 order-1 lg:order-1">
 				<!-- Desktop: always visible -->
 				<div class="hidden lg:block">
 					<div class="card bg-base-200">
@@ -251,7 +251,7 @@
 		{/if}
 
 		<!-- Event form -->
-		<div class="{sourceEmail ? 'lg:col-span-3' : 'lg:col-span-5'} order-1 lg:order-2">
+		<div class="{sourceEmail ? 'lg:col-span-3' : 'lg:col-span-5'} order-2 lg:order-2">
 			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-4 pb-24 lg:pb-0">
 				<div class="form-control">
 					<label class="label" for="event-title">
