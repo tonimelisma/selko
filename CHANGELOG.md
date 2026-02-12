@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Fix: Android review queue icon-only buttons to prevent text truncation
+
+**Problem:** The three action buttons ("Approve", "Edit", "Reject") on review queue event cards didn't fit side-by-side on phone screens, causing "Reject" to wrap across two lines.
+
+**Solution:** Replaced labeled buttons with icon-only buttons using `FilledTonalIconButton` (Approve) and `IconButton` (Edit, Reject). Content descriptions on the icons provide accessibility. The Reject icon uses `MaterialTheme.colorScheme.error` tint for visual distinction.
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventCardContent.kt` - Replaced `FilledTonalButton`/`OutlinedButton` with `FilledTonalIconButton`/`IconButton`, removed text labels and spacers
+
+---
+
 ## 2026-02-11 - Fix iOS Config to Use Local Supabase in DEBUG
 
 ### Fix: iOS app now connects to local Supabase by default in debug builds
