@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-11 - Fix iOS Config to Use Local Supabase in DEBUG
+
+### Fix: iOS app now connects to local Supabase by default in debug builds
+
+**Changes:**
+
+1. **Local Supabase URL:** DEBUG builds now default to `http://localhost:54321` (was staging URL)
+2. **Local anon key:** DEBUG builds now include the standard local Supabase demo anon key (was empty string)
+3. **Env var override:** Both URL and key can still be overridden via `SUPABASE_URL` and `SUPABASE_ANON_KEY` environment variables
+
+This matches how Android (`build.gradle.kts`) and web (`frontend/.env`) already handle local development configuration.
+
+**Files Modified:**
+- `ios/Selko/Core/Config.swift` - Hardcode local Supabase URL and demo anon key as DEBUG defaults
+
 ## 2026-02-11 - Fix Android Review Queue Consistency
 
 ### Fix: Add email grouping and fix button order in Android review queue
