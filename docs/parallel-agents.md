@@ -146,7 +146,6 @@ git push --force-with-lease
 After your task is complete:
 
 - [ ] Tests pass for changed modules
-- [ ] CHANGELOG.md updated
 - [ ] Committed with conventional commit format
 - [ ] Pushed to feature branch
 - [ ] PR created with `gh pr create`
@@ -199,7 +198,6 @@ To minimize conflicts, assign agents to **non-overlapping areas**:
 | Agent 3 | Tests/Docs | `backend/tests/`, `docs/` |
 
 **High-conflict files** to avoid parallel edits:
-- `CHANGELOG.md`
 - `pyproject.toml` / `package.json`
 - Migration files
 
