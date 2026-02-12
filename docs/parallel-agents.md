@@ -44,6 +44,7 @@ git worktree list
 
 # 3. Clean up stale worktrees (whose branches have been merged)
 #    For each finished worktree:
+#    ⚠️  NEVER use --force! Inspect uncommitted work first with git status.
 git worktree remove ../selko-<type>-<old-task>
 git branch -D <type>/<old-task>
 
@@ -172,6 +173,9 @@ done
 cd ~/Development/selko
 
 # 4. Remove worktree and branch
+# ⚠️  NEVER use --force! If remove refuses, inspect uncommitted work first.
+#    Go back to the worktree, run `git status`, review any uncommitted files.
+#    --force DESTROYS uncommitted work with NO recovery.
 git worktree remove ../selko-<type>-<task>
 git branch -D <type>/<task-name>
 
@@ -180,6 +184,8 @@ git fetch origin && git merge --ff-only origin/main
 ```
 
 > **CRITICAL FOR AI AGENTS:** You MUST complete ALL steps including cleanup. Failure to clean up leaves stale worktrees that block other agents.
+>
+> **NEVER force-remove a worktree.** If `git worktree remove` refuses due to uncommitted/untracked files, go back to the worktree, run `git status`, and manually inspect what's there before deciding whether to discard it. `--force` is equivalent to `rm -rf` on uncommitted work.
 >
 > **Note:** Remote branches are auto-deleted by GitHub when PRs merge. Only local worktree and branch cleanup is needed.
 
@@ -244,7 +250,7 @@ git merge origin/main
 | Sync main | `git fetch origin && git merge --ff-only origin/main` |
 | Create worktree | `git worktree add ../selko-<type>-<task> -b <type>/<task> main` |
 | List worktrees | `git worktree list` |
-| Remove worktree | `git worktree remove ../selko-<type>-<task>` |
+| Remove worktree | `git worktree remove ../selko-<type>-<task>` (NEVER `--force` — inspect first) |
 | Delete branch | `git branch -D <type>/<task>` |
 | Prune refs | `git worktree prune` |
 | Create PR | `gh pr create` |

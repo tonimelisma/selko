@@ -62,11 +62,21 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] **Bug fixes MUST include a regression test**
 - [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI changed). Save screenshots to `docs/screenshots/`. **Close browsers/simulators when done.**
 - [ ] Commit, push, `gh pr create`
-- [ ] Poll CI and merge when green, then cleanup worktree
+- [ ] Poll CI and merge when green, then cleanup worktree (see cleanup rules below)
 
 **Config/docs edits on main** (no worktree needed): commit and `git push origin main`.
 
 See `docs/parallel-agents.md` for the CI polling script and post-merge cleanup steps. See `docs/ci-cd.md` for CI details.
+
+### MANDATORY: Worktree Cleanup Rules
+
+**NEVER force-remove a worktree (`--force`) without first inspecting uncommitted work.**
+
+Before removing any worktree:
+1. `cd` to the worktree and run `git status`
+2. If there are uncommitted/untracked files, **review them manually** — they may contain important work, test results, or artifacts
+3. Only use `git worktree remove` (without `--force`). If it refuses, that's a safety mechanism — inspect and resolve first
+4. **`git worktree remove --force` destroys uncommitted work with no recovery** — treat it like `rm -rf`
 
 ---
 
