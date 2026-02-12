@@ -33,8 +33,8 @@ class ScreenshotCaptureTest {
 
     companion object {
         private const val PACKAGE = "net.melisma.selko"
-        private const val TIMEOUT = 10_000L
-        private const val SHORT_TIMEOUT = 5_000L
+        private const val TIMEOUT = 15_000L
+        private const val SHORT_TIMEOUT = 10_000L
         private const val SCREENSHOT_USER = "screenshots@selko.local"
         private const val SCREENSHOT_PASS = "screenshotpass123"
     }
@@ -84,54 +84,65 @@ class ScreenshotCaptureTest {
         Thread.sleep(500)
 
         // 3. Log in with seed user
-        val emailField = device.wait(Until.findObject(By.text("Email")), SHORT_TIMEOUT)
+        // Find the EditText parent of each label — Compose OutlinedTextField renders the
+        // label as a child TextView inside an EditText node
+        val emailLabel = device.wait(Until.findObject(By.text("Email")), SHORT_TIMEOUT)
+        val emailField = emailLabel.parent
         emailField.click()
+        Thread.sleep(300)
         emailField.text = SCREENSHOT_USER
 
-        val passwordField = device.wait(Until.findObject(By.text("Password")), SHORT_TIMEOUT)
+        val passwordLabel = device.wait(Until.findObject(By.text("Password")), SHORT_TIMEOUT)
+        val passwordField = passwordLabel.parent
         passwordField.click()
+        Thread.sleep(300)
         passwordField.text = SCREENSHOT_PASS
+
+        // Dismiss keyboard before tapping Sign in
+        device.pressBack()
+        Thread.sleep(500)
 
         // Tap the Sign in button
         val signInButton = device.wait(Until.findObject(By.text("Sign in")), SHORT_TIMEOUT)
         signInButton.click()
 
-        // Wait for the bottom nav to appear (indicates successful login)
-        device.wait(Until.hasObject(By.text("Review")), TIMEOUT * 2)
-        Thread.sleep(2000)
+        // Wait for the review queue to load (indicates successful login)
+        device.wait(Until.hasObject(By.text("Review Queue")), TIMEOUT * 2)
+        Thread.sleep(3000)
 
         // 4. Review queue
         saveScreenshot("android-review-queue")
 
-        // 5. Event detail — tap the Edit button on the first event card
+        // 5. History tab — try by content description (icon), then by text
+        var historyTab = device.wait(Until.findObject(By.desc("History")), SHORT_TIMEOUT)
+        if (historyTab == null) {
+            historyTab = device.wait(Until.findObject(By.text("History")), SHORT_TIMEOUT)
+        }
+        requireNotNull(historyTab) { "Could not find History tab by desc or text" }
+        historyTab.click()
+        Thread.sleep(2000)
+        saveScreenshot("android-history")
+
+        // 6. Settings tab
+        val settingsTab = device.wait(Until.findObject(By.text("Settings")), SHORT_TIMEOUT)
+        requireNotNull(settingsTab) { "Could not find Settings tab" }
+        settingsTab.click()
+        Thread.sleep(1000)
+        saveScreenshot("android-settings")
+
+        // 7. Go back to Review tab, then navigate to event detail
+        val reviewTab = device.wait(Until.findObject(By.text("Review")), SHORT_TIMEOUT)
+        requireNotNull(reviewTab) { "Could not find Review tab" }
+        reviewTab.click()
+        Thread.sleep(2000)
+
         val editButton = device.wait(Until.findObject(By.desc("Edit")), SHORT_TIMEOUT)
         if (editButton != null) {
             editButton.click()
             device.wait(Until.hasObject(By.text("Event Details")), SHORT_TIMEOUT)
             Thread.sleep(1000)
-            saveScreenshot("android-event-detail")
-
-            // Go back
-            val backButton = device.wait(Until.findObject(By.desc("Back")), SHORT_TIMEOUT)
-            backButton?.click()
-            device.wait(Until.hasObject(By.text("Review Queue")), SHORT_TIMEOUT)
-            Thread.sleep(1000)
-        } else {
-            // No events — capture current state as placeholder
-            saveScreenshot("android-event-detail")
         }
-
-        // 6. History tab
-        val historyTab = device.wait(Until.findObject(By.text("History")), SHORT_TIMEOUT)
-        historyTab.click()
-        Thread.sleep(2000)
-        saveScreenshot("android-history")
-
-        // 7. Settings tab
-        val settingsTab = device.wait(Until.findObject(By.text("Settings")), SHORT_TIMEOUT)
-        settingsTab.click()
-        Thread.sleep(1000)
-        saveScreenshot("android-settings")
+        saveScreenshot("android-event-detail")
     }
 
     private fun saveScreenshot(name: String) {
