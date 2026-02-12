@@ -22,10 +22,10 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -155,41 +155,33 @@ fun EventCardContent(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    FilledTonalButton(
-                        onClick = onApprove,
-                        shape = MaterialTheme.shapes.medium
+                    FilledTonalIconButton(
+                        onClick = onApprove
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Check,
                             contentDescription = "Approve",
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Approve")
                     }
-                    OutlinedButton(
-                        onClick = onEdit,
-                        shape = MaterialTheme.shapes.medium
+                    IconButton(
+                        onClick = onEdit
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Edit,
                             contentDescription = "Edit",
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Edit")
                     }
-                    OutlinedButton(
-                        onClick = onReject,
-                        shape = MaterialTheme.shapes.medium
+                    IconButton(
+                        onClick = onReject
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "Reject",
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.error
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Reject")
                     }
                 }
             }
