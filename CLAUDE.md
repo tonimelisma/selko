@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## MANDATORY: Bash Command Rules
+
+- **Always `cd` to the worktree/project directory first** in a separate Bash call, then run commands with relative paths. Do NOT use absolute paths to files/directories.
+- **Never use `cd` as part of a command** (e.g., `cd foo && make`). Change directory in a separate Bash call first.
+- **Never chain unrelated commands with `&&`.** Run each command as a separate Bash tool call.
+- All three rules are required — violating them breaks Claude Code's permission system.
+
+---
+
 ## Project Overview
 
 **Selko** is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems. The system acts as a "Human-in-the-loop" filter, ensuring accuracy before committing changes to permanent records.
@@ -333,6 +342,7 @@ Screenshots saved to `docs/screenshots/` are read by Claude Code, which uses the
 | **UI patterns & components** | `docs/ui/03-patterns-and-components.md` | Before building any UI component, to follow conventions |
 | **Brand guide** | `docs/brand-guide.md` | When implementing any UI, choosing colors, fonts, or terminology |
 | **UI testing** | `docs/ui-testing-guide.md` | When writing E2E tests or using MCP visual verification |
+| **Screenshot capture** | `docs/screenshot-guide.md` | When capturing product screenshots across web, iOS, and Android |
 
 ---
 
