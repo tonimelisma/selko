@@ -26,11 +26,11 @@ struct SenderGroupView: View {
 
             Spacer()
 
-            if group.events.count > 1 {
+            if group.allEvents.count > 1 {
                 Button {
                     onApproveAll()
                 } label: {
-                    Text("Approve All (\(group.events.count))")
+                    Text("Approve All (\(group.allEvents.count))")
                         .font(.caption)
                         .fontWeight(.medium)
                 }

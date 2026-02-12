@@ -7,6 +7,9 @@ import SwiftUI
 
 struct EventCardView: View {
     let event: CalendarEvent
+    var onApprove: (() -> Void)? = nil
+    var onEdit: (() -> Void)? = nil
+    var onReject: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -36,6 +39,36 @@ struct EventCardView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+            }
+
+            // Action buttons at bottom-right
+            if onApprove != nil || onEdit != nil || onReject != nil {
+                HStack {
+                    Spacer()
+                    if let onApprove {
+                        Button { onApprove() } label: {
+                            Label("Approve", systemImage: "checkmark")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                    if let onEdit {
+                        Button { onEdit() } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    if let onReject {
+                        Button { onReject() } label: {
+                            Label("Reject", systemImage: "xmark")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(.red)
+                    }
+                }
+                .padding(.top, 4)
             }
         }
         .padding(.vertical, 4)

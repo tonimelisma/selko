@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-11 - Fix iOS Review Queue Consistency
+
+### Fix: Add email grouping and visible action buttons to iOS review queue
+
+**Changes:**
+
+1. **3-level hierarchy:** Review queue now groups events as Sender > Email > Events (was Sender > Events), matching web and Android
+2. **Email group header:** New `EmailGroupView` shows envelope icon, email subject, date, and "Approve All" button for multi-event emails
+3. **Visible action buttons:** Added Approve, Edit, and Reject buttons at the bottom of each event card (previously swipe-only)
+4. **Approve email group:** New `approveAllInEmailGroup()` method for batch-approving all events from a single email
+
+**Files Modified:**
+- `ios/Selko/Features/Review/ViewModels/ReviewQueueViewModel.swift` - Added `EmailGroup` struct, updated `SenderGroup` to use `emailGroups`, updated grouping and removal logic
+- `ios/Selko/Features/Review/Views/ReviewQueueView.swift` - Updated to nest email groups within sender sections, pass action callbacks
+- `ios/Selko/Features/Review/Views/EventCardView.swift` - Added `onApprove`, `onEdit`, `onReject` callbacks with visible button row
+- `ios/Selko/Features/Review/Views/SenderGroupView.swift` - Updated to use `allEvents.count`
+
+**Files Added:**
+- `ios/Selko/Features/Review/Views/EmailGroupView.swift` - New email group header view
+
+---
+
 ## 2026-02-11 - Fix Web Review Queue Consistency
 
 ### Fix: Improve web review queue button layout, add Edit button and email icon
