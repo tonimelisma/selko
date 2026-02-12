@@ -1,6 +1,6 @@
 //
 //  ScreenshotCaptureTests.swift
-//  SelkoUITests
+//  iOSUITests
 //
 //  Navigates through all 6 screens and saves PNG screenshots to docs/screenshots/.
 //  Run with: xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \
