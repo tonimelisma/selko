@@ -13,6 +13,15 @@ All notable changes to this project are documented in this file.
 **Files Modified:**
 - `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventCardContent.kt` - Replaced `FilledTonalButton`/`OutlinedButton` with `FilledTonalIconButton`/`IconButton`, removed text labels and spacers
 
+### Fix: Web event detail mobile source email ordering and title
+
+**Issues Fixed:**
+1. **Mobile source email ordering:** The collapsible "View Source Email" section appeared after the long event form on mobile, making it invisible without scrolling past the action bar. Changed CSS order classes so the source email section appears first on mobile (before the form).
+2. **Page title:** Changed "Event Detail" to "Edit Event" per spec.
+
+**Files Modified:**
+- `frontend/src/routes/app/events/[id]/+page.svelte` - Fixed CSS order classes and page title
+
 ---
 
 ## 2026-02-11 - Fix iOS Config to Use Local Supabase in DEBUG
