@@ -64,6 +64,8 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] Commit, push, `gh pr create`
 - [ ] Poll CI and merge when green, then cleanup worktree
 
+**Config/docs edits on main** (no worktree needed): commit and `git push origin main`.
+
 See `docs/parallel-agents.md` for the CI polling script and post-merge cleanup steps. See `docs/ci-cd.md` for CI details.
 
 ---
