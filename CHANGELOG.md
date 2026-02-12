@@ -22,6 +22,19 @@ All notable changes to this project are documented in this file.
 **Files Modified:**
 - `frontend/src/routes/app/events/[id]/+page.svelte` - Fixed CSS order classes and page title
 
+### Fix: iOS review queue icon-only buttons, event detail bottom bar, and settings disconnect buttons
+
+**Changes:**
+
+1. **Review queue icon-only buttons:** Changed EventCardView action buttons (Approve, Edit, Reject) to icon-only style using `.labelStyle(.iconOnly)` to prevent text truncation on iPhone. Accessibility labels are preserved.
+2. **Event detail bottom bar:** Moved Reject/Approve actions from the navigation bar toolbar to a sticky bottom bar using `.safeAreaInset(edge: .bottom)`. Only shown for events in `pendingReview` status.
+3. **Settings visible Disconnect buttons:** Replaced the hidden context menu on the green checkmark with a visible "Disconnect" button next to the connected status icon, making the action discoverable.
+
+**Files Modified:**
+- `ios/Selko/Features/Review/Views/EventCardView.swift` - Icon-only label style on action buttons
+- `ios/Selko/Features/Review/Views/EventDetailView.swift` - Bottom bar replaces toolbar for Reject/Approve
+- `ios/Selko/Features/Settings/Views/SettingsView.swift` - Visible Disconnect button replaces context menu
+
 ---
 
 ## 2026-02-11 - Fix iOS Config to Use Local Supabase in DEBUG
