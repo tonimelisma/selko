@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-11 - Fix Android Review Queue Consistency
+
+### Fix: Add email grouping and fix button order in Android review queue
+
+**Changes:**
+
+1. **3-level hierarchy:** Review queue now groups events as Sender > Email > Events (was Sender > Events), matching web and iOS behavior
+2. **Button order:** Changed event card action buttons from Reject/Edit/Approve to Approve/Edit/Reject, matching web and iOS order
+3. **Email group header:** New `EmailGroupHeader` composable shows email subject, date, and "Approve All" button for multi-event emails
+4. **Approve email group:** New `approveEmailGroup()` method in ViewModel for batch-approving all events from a single email
+
+**Files Modified:**
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/ReviewQueueViewModel.kt` - Added `EmailGroup` data class, updated `SenderGroup` to use `emailGroups`, updated `groupBySender()` for sub-grouping, added `approveEmailGroup()`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/ReviewQueueScreen.kt` - Added `EmailGroupHeader` composable, updated LazyColumn for 3-level hierarchy, updated `SenderGroupHeader` to use `allEvents`
+- `android/app/src/main/java/net/melisma/selko/ui/screens/review/EventCardContent.kt` - Reordered buttons to Approve/Edit/Reject, changed Edit from `IconButton` to `OutlinedButton`
+
+---
+
 ## 2026-02-11 - Fix iOS Review Queue Consistency
 
 ### Fix: Add email grouping and visible action buttons to iOS review queue
