@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,8 +30,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,14 +101,23 @@ fun ReviewQueueScreen(
                                 )
                             }
 
-                            items(group.events, key = { it.id }) { event ->
-                                EventCardContent(
-                                    event = event,
-                                    isProcessing = event.id in uiState.processingEventIds,
-                                    onApprove = { viewModel.approveEvent(event.id) },
-                                    onReject = { viewModel.rejectEvent(event.id) },
-                                    onEdit = { onNavigateToEventDetail(event.id) }
-                                )
+                            group.emailGroups.forEach { emailGroup ->
+                                item {
+                                    EmailGroupHeader(
+                                        emailGroup = emailGroup,
+                                        onApproveAll = { viewModel.approveEmailGroup(emailGroup.emailId) }
+                                    )
+                                }
+
+                                items(emailGroup.events, key = { it.id }) { event ->
+                                    EventCardContent(
+                                        event = event,
+                                        isProcessing = event.id in uiState.processingEventIds,
+                                        onApprove = { viewModel.approveEvent(event.id) },
+                                        onReject = { viewModel.rejectEvent(event.id) },
+                                        onEdit = { onNavigateToEventDetail(event.id) }
+                                    )
+                                }
                             }
 
                             item {
@@ -157,13 +172,74 @@ private fun SenderGroupHeader(
                 style = MaterialTheme.typography.titleSmall
             )
             Text(
-                text = "${group.events.size} event${if (group.events.size != 1) "s" else ""}",
+                text = "${group.allEvents.size} event${if (group.allEvents.size != 1) "s" else ""}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        if (group.events.size > 1) {
+        if (group.allEvents.size > 1) {
+            TextButton(
+                onClick = onApproveAll,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = "Approve all",
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = " Approve All",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmailGroupHeader(
+    emailGroup: EmailGroup,
+    onApproveAll: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp, horizontal = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Email,
+                contentDescription = "Email",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+                Text(
+                    text = emailGroup.subject,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                emailGroup.dateSent?.let { dateSent ->
+                    val tz = TimeZone.currentSystemDefault()
+                    val local = dateSent.toLocalDateTime(tz)
+                    Text(
+                        text = "${local.dayOfMonth} ${local.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${local.year}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        if (emailGroup.events.size > 1) {
             TextButton(
                 onClick = onApproveAll,
                 shape = MaterialTheme.shapes.medium

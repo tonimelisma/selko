@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.melisma.selko.data.api.BackendApiClient
+import kotlinx.datetime.Instant
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
@@ -16,11 +17,20 @@ import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
 
+data class EmailGroup(
+    val emailId: String,
+    val subject: String,
+    val dateSent: Instant?,
+    val events: List<CalendarEvent>
+)
+
 data class SenderGroup(
     val senderName: String,
     val senderEmail: String,
-    val events: List<CalendarEvent>
-)
+    val emailGroups: List<EmailGroup>
+) {
+    val allEvents: List<CalendarEvent> get() = emailGroups.flatMap { it.events }
+}
 
 data class ReviewQueueUiState(
     val isLoading: Boolean = true,
@@ -126,10 +136,22 @@ class ReviewQueueViewModel(
             val email = source?.emails
             Pair(email?.fromName ?: email?.fromEmail ?: "Unknown", email?.fromEmail ?: "unknown")
         }.map { (senderInfo, groupEvents) ->
+            // Sub-group by email ID
+            val emailGroups = groupEvents.groupBy { event ->
+                event.eventSources?.firstOrNull()?.emailId ?: "unknown"
+            }.map { (emailId, emailEvents) ->
+                val sourceEmail = emailEvents.firstOrNull()?.eventSources?.firstOrNull()?.emails
+                EmailGroup(
+                    emailId = emailId,
+                    subject = sourceEmail?.subject ?: "No subject",
+                    dateSent = sourceEmail?.dateSent,
+                    events = emailEvents
+                )
+            }
             SenderGroup(
                 senderName = senderInfo.first,
                 senderEmail = senderInfo.second,
-                events = groupEvents
+                emailGroups = emailGroups
             )
         }
     }
@@ -164,7 +186,7 @@ class ReviewQueueViewModel(
         viewModelScope.launch {
             val eventsToApprove = _uiState.value.senderGroups
                 .find { it.senderEmail == senderEmail }
-                ?.events ?: return@launch
+                ?.allEvents ?: return@launch
 
             val eventIds = eventsToApprove.map { it.id }.toSet()
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventIds) }
@@ -188,6 +210,40 @@ class ReviewQueueViewModel(
                 }
             } else {
                 // Refresh to get accurate state
+                _uiState.update { it.copy(processingEventIds = it.processingEventIds - eventIds) }
+                fetchPendingEvents()
+            }
+        }
+    }
+
+    fun approveEmailGroup(emailId: String) {
+        viewModelScope.launch {
+            val eventsToApprove = _uiState.value.senderGroups
+                .flatMap { it.emailGroups }
+                .find { it.emailId == emailId }
+                ?.events ?: return@launch
+
+            val eventIds = eventsToApprove.map { it.id }.toSet()
+            _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventIds) }
+
+            var allSucceeded = true
+            for (event in eventsToApprove) {
+                when (eventRepository.approveEvent(event.id)) {
+                    is EventResult.Success -> { /* continue */ }
+                    is EventResult.Error -> { allSucceeded = false }
+                }
+            }
+
+            if (allSucceeded) {
+                _uiState.update { state ->
+                    val updatedEvents = state.events.filter { it.id !in eventIds }
+                    state.copy(
+                        events = updatedEvents,
+                        senderGroups = groupBySender(updatedEvents),
+                        processingEventIds = state.processingEventIds - eventIds
+                    )
+                }
+            } else {
                 _uiState.update { it.copy(processingEventIds = it.processingEventIds - eventIds) }
                 fetchPendingEvents()
             }
