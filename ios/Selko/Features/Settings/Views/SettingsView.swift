@@ -76,16 +76,15 @@ struct SettingsView: View {
             Spacer()
 
             if isActive {
-                Menu {
-                    Button(role: .destructive) {
-                        viewModel.confirmDisconnect(provider: provider)
-                    } label: {
-                        Label("Disconnect", systemImage: "trash")
-                    }
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.selkoSuccess)
+                    .accessibilityLabel("Connected")
+
+                Button(role: .destructive) {
+                    viewModel.confirmDisconnect(provider: provider)
                 } label: {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.selkoSuccess)
-                        .accessibilityLabel("Connected")
+                    Text("Disconnect")
+                        .font(.subheadline)
                 }
             } else {
                 Button("Connect") {
