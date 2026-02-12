@@ -6,6 +6,26 @@ Screenshots live in `docs/screenshots/` and are used for documentation and visua
 
 ---
 
+## Quick Start (Scripted)
+
+Capture all 24 screenshots in ~3 minutes using automated scripts instead of manual MCP interaction.
+
+**Prerequisites:** Local Supabase running + seed data loaded (see below).
+
+```bash
+# All platforms (web + iOS + Android)
+./scripts/capture-all-screenshots.sh
+
+# Single platform
+./scripts/capture-all-screenshots.sh web       # 12 web screenshots via Playwright
+./scripts/capture-all-screenshots.sh ios       # 6 iOS screenshots via XCUITest
+./scripts/capture-all-screenshots.sh android   # 6 Android screenshots via UiAutomator
+```
+
+> **Android:** Requires a running emulator. **iOS:** Requires iPhone 17 Pro simulator. **Web:** Starts its own dev server via Playwright.
+
+---
+
 ## Prerequisites
 
 1. **Local Supabase running:** `supabase start`
