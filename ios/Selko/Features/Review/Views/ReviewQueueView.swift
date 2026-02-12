@@ -56,29 +56,42 @@ struct ReviewQueueView: View {
         List {
             ForEach(viewModel.senderGroups) { group in
                 Section {
-                    ForEach(group.events) { event in
-                        NavigationLink(value: event.id) {
-                            EventCardView(event: event)
+                    ForEach(group.emailGroups) { emailGroup in
+                        EmailGroupView(emailGroup: emailGroup) {
+                            Task {
+                                await viewModel.approveAllInEmailGroup(emailGroup)
+                            }
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button {
-                                Task {
-                                    await viewModel.approveEvent(event)
-                                }
-                            } label: {
-                                Label("Approve", systemImage: "checkmark")
-                            }
-                            .tint(.green)
-                            .accessibilityLabel("Approve event")
 
-                            Button(role: .destructive) {
-                                Task {
-                                    await viewModel.rejectEvent(event)
-                                }
-                            } label: {
-                                Label("Reject", systemImage: "xmark")
+                        ForEach(emailGroup.events) { event in
+                            NavigationLink(value: event.id) {
+                                EventCardView(
+                                    event: event,
+                                    onApprove: { Task { await viewModel.approveEvent(event) } },
+                                    onEdit: { /* Navigation handled by NavigationLink */ },
+                                    onReject: { Task { await viewModel.rejectEvent(event) } }
+                                )
                             }
-                            .accessibilityLabel("Reject event")
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button {
+                                    Task {
+                                        await viewModel.approveEvent(event)
+                                    }
+                                } label: {
+                                    Label("Approve", systemImage: "checkmark")
+                                }
+                                .tint(.green)
+                                .accessibilityLabel("Approve event")
+
+                                Button(role: .destructive) {
+                                    Task {
+                                        await viewModel.rejectEvent(event)
+                                    }
+                                } label: {
+                                    Label("Reject", systemImage: "xmark")
+                                }
+                                .accessibilityLabel("Reject event")
+                            }
                         }
                     }
                 } header: {
