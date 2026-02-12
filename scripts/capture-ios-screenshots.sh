@@ -16,11 +16,15 @@ xcodebuild test \
   -project "$PROJECT_ROOT/ios/iOS.xcodeproj" \
   -scheme iOS \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:SelkoUITests/ScreenshotCaptureTests \
+  -only-testing:iOSUITests/ScreenshotCaptureTests \
   -resultBundlePath "$RESULT_BUNDLE" \
   | tail -20
 
 # Clean up result bundle (screenshots are already saved to docs/screenshots/ by the test)
 rm -rf "$RESULT_BUNDLE"
+
+# Resize to ≤1920px height (iPhone 17 Pro captures at 2622px)
+echo "==> Resizing iOS screenshots..."
+sips --resampleHeight 1920 "$PROJECT_ROOT"/docs/screenshots/ios-*.png
 
 echo "==> iOS screenshots saved to docs/screenshots/"

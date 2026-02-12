@@ -23,6 +23,8 @@ async function createAuthContext(
   const page = await context.newPage();
 
   await page.goto('/login');
+  // Wait for SvelteKit hydration before interacting with form
+  await page.waitForLoadState('networkidle');
   await page.getByLabel('Email').fill(SCREENSHOT_USER);
   await page.getByLabel('Password').fill(SCREENSHOT_PASS);
   await page.getByRole('button', { name: 'Sign in' }).click();
