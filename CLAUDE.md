@@ -13,9 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Selko** is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems. The system acts as a "Human-in-the-loop" filter, ensuring accuracy before committing changes to permanent records.
-
-See `PRD_ARCH.md` for complete product requirements, technical architecture, and implementation details.
+**Selko** is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems. See `PRD_ARCH.md` for complete product requirements and architecture.
 
 ---
 
@@ -33,7 +31,7 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture, and
 
 **Why:** Multiple AI agents work simultaneously. Worktrees isolate each task. PRs ensure CI runs before merging.
 
-### Naming Conventions
+### Naming
 
 | Type | Branch | Worktree |
 |------|--------|----------|
@@ -42,50 +40,11 @@ See `PRD_ARCH.md` for complete product requirements, technical architecture, and
 
 Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
-### Pre-Work Checklist
+### Setup & Usage
 
-```bash
-cd ~/Development/selko
+See `docs/parallel-agents.md` for the full pre-work checklist (sync, create worktree, copy env files, install deps).
 
-# 1. Sync main
-git fetch origin && git merge --ff-only origin/main
-
-# 2. Clean up merged worktrees
-git worktree list
-git worktree remove ../selko-<type>-<old-task>  # for merged ones
-git branch -D <type>/<old-task>
-git worktree prune
-
-# 3. Create new worktree
-git worktree add ../selko-<type>-<task> -b <type>/<task-name> main
-
-# 4. Copy environment files
-cp .env ../selko-<type>-<task>/
-cp .env.test ../selko-<type>-<task>/
-cp .env.production ../selko-<type>-<task>/
-cp frontend/.env ../selko-<type>-<task>/frontend/ 2>/dev/null || true
-
-# 5. Move to worktree and install deps
-cd ../selko-<type>-<task>
-uv sync
-cd frontend && npm ci && cd ..  # if changing frontend
-```
-
-> **CRITICAL: After step 5, your working directory MUST be the worktree.**
->
-> All subsequent commands run from inside the worktree directory:
-> ```
-> ~/Development/selko-<type>-<task>/    ← CORRECT
-> ~/Development/selko/                  ← WRONG
-> ```
->
-> Do NOT use `git -C /path`, `cd /path && command`, or absolute paths to the worktree.
-> Just run commands normally - you're already in the right place.
->
-> **If a Bash command is rejected:** You're probably in the wrong directory.
-> Verify with `pwd` and change to the worktree if needed.
-
-**Full details:** `docs/parallel-agents.md`
+> **CRITICAL:** After setup, your working directory MUST be the worktree (`~/Development/selko-<type>-<task>/`). All commands run from there. If a Bash command is rejected, you're probably in the wrong directory — verify with `pwd`.
 
 ### Enforcement
 
@@ -98,53 +57,15 @@ BLOCKED: Cannot edit source code in the main repository.
 
 ## Definition of Done
 
-**Before declaring work complete, ALL must pass:**
-
-- [ ] Working in a git worktree (NOT main repo)
-- [ ] On a feature branch (NOT main)
+- [ ] Working in a git worktree on a feature branch
 - [ ] Tests pass for changed modules
-- [ ] **Bug fixes MUST include a regression test** that would have caught the bug
-- [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI was changed). Save screenshots to `docs/screenshots/` and include in commit. **Close all browser windows, simulators, and emulators when done.**
+- [ ] **Bug fixes MUST include a regression test**
+- [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI changed). Save screenshots to `docs/screenshots/`. **Close browsers/simulators when done.**
 - [ ] CHANGELOG.md updated
-- [ ] Git commit with conventional message
-- [ ] Git push to feature branch
-- [ ] PR created with `gh pr create`
-- [ ] Poll CI and merge (see code block below)
+- [ ] Commit, push, `gh pr create`
+- [ ] Poll CI and merge when green, then cleanup worktree
 
-### After PR: Wait, Merge, and Cleanup
-
-**AI agents MUST complete ALL steps:**
-
-```bash
-# 1. Poll CI status and merge when ready
-# NOTE: Don't use "status" as variable name - it's read-only in zsh
-while true; do
-  gh pr checks
-  ec=$?
-  if [ $ec -eq 0 ]; then
-    gh pr merge --squash
-    break
-  elif [ $ec -ne 8 ]; then
-    echo "CI checks failed"
-    exit 1
-  fi
-  sleep 10
-done
-
-# 2. Return to main repo and cleanup
-cd ~/Development/selko
-git worktree remove ../selko-<type>-<task>
-git branch -D <type>/<task-name>
-git fetch origin && git merge --ff-only origin/main
-```
-
-> **Note:** Remote branches are auto-deleted by GitHub when PRs merge. Only local cleanup is needed.
-
-### Pre-Commit Hook
-
-Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`
-
-**Full details:** `docs/testing-guide.md` and `docs/ci-cd.md`
+See `docs/parallel-agents.md` for the CI polling script and post-merge cleanup steps. See `docs/ci-cd.md` for CI details.
 
 ---
 
@@ -152,47 +73,16 @@ Blocks commits unless tests pass. Setup: `cp scripts/pre-commit.hook .git/hooks/
 
 | Command | Purpose |
 |---------|---------|
-| `supabase start` | Start local Supabase (Docker) |
-| `supabase db reset` | Reset local database |
-| `uv run pytest backend/tests/ -v` | Run backend tests |
-| `cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json` | Run frontend tests |
+| `supabase start` / `supabase db reset` | Local Supabase |
+| `uv run pytest backend/tests/ -v` | Backend tests |
+| `npm run test:unit -- --reporter=json --outputFile=test-results.json` | Frontend tests (from `frontend/`) |
 | `uv run python -m selko.api` | Start FastAPI server |
-| `cd frontend && npm run test:e2e -- --project=chromium` | Run Playwright E2E tests |
-| `cd android && ./gradlew testDebugUnitTest` | Run Android unit tests |
-| `cd android && ./gradlew connectedAndroidTest` | Run Android Compose UI tests (needs emulator) |
-| `xcodebuild -project ios/iOS.xcodeproj -scheme iOS -destination 'generic/platform=iOS Simulator' build` | Build iOS |
-| `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult` | Run iOS tests |
-| `gh pr create` | Create PR |
-| `while true; do gh pr checks; s=$?; [ $s -eq 0 ] && gh pr merge --squash && break; [ $s -ne 8 ] && exit 1; sleep 10; done` | Poll CI, merge on success, exit on failure |
+| `./gradlew testDebugUnitTest` | Android tests (from `android/`) |
+| `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult` | iOS tests |
 
-> **iOS gotcha:** Project is `iOS.xcodeproj` and scheme is `iOS` (not "Selko"). Remove old `ios/TestResults.xcresult` before re-running tests.
+> **iOS gotcha:** Scheme is `iOS` (not "Selko"). Remove old `ios/TestResults.xcresult` before re-running.
 
-### CLI Tools
-
-| Command | Purpose |
-|---------|---------|
-| `uv run python -m cli.cli_user create --email X --password Y` | Create user |
-| `uv run python -m cli.cli_auth_gmail` | Gmail OAuth flow |
-| `uv run python -m cli.cli_auth_gcal` | Google Calendar OAuth flow |
-| `uv run python -m cli.cli_fetch_emails --max 10` | Fetch emails |
-| `uv run python -m cli.cli_process_emails --recent 5` | Process emails into events |
-| `uv run python -m cli.cli_events new` | List pending events |
-| `uv run python -m cli.cli_events approve <id>` | Approve event |
-| `uv run python -m cli.cli_events sync <id>` | Sync event to Google Calendar |
-| `uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail` | Seed tokens |
-
-**Full walkthrough:** `docs/manual-email-to-calendar-walkthrough.md`
-**Full test guide:** `docs/testing-guide.md`
-
----
-
-## Blocked Commands
-
-These commands are blocked by hooks because they don't work with Claude Code:
-
-| Command | Why Blocked | Alternative |
-|---------|-------------|-------------|
-| `gh pr checks --watch` | Interactive output, unparsable | See "After PR" section for polling loop |
+See `docs/testing-guide.md` for the full test guide and `docs/manual-email-to-calendar-walkthrough.md` for CLI tools and end-to-end walkthrough.
 
 ---
 
@@ -226,48 +116,9 @@ These commands are blocked by hooks because they don't work with Claude Code:
 
 ## UI Testing & Visual Verification
 
-Three MCP servers are configured in `.mcp.json` for visual verification:
-- **Playwright MCP** — browser automation, screenshots, accessibility tree
-- **XcodeBuildMCP** — iOS build + simulator control
-- **mobile-mcp** — iOS Simulator + Android Emulator interaction
+Use `/verify-web`, `/verify-ios`, `/verify-android` after implementing UI changes. Three MCP servers: Playwright (web), XcodeBuildMCP (iOS), mobile-mcp (Android).
 
-**Slash commands:** `/verify-web`, `/verify-ios`, `/verify-android` — use these after implementing UI changes.
-
-### Playwright MCP (Web)
-1. Start dev server first: `cd frontend && npm run dev`
-2. Use `browser_navigate` to open pages (e.g., `http://localhost:5173/login`)
-3. Use `browser_snapshot` for accessibility tree, `browser_take_screenshot` for visual checks
-4. Test at desktop (1280x800) and mobile (390x844) viewports
-5. **When done:** Call `browser_close` to close the browser, then stop the dev server
-
-### XcodeBuildMCP (iOS) — Primary tool for iOS simulator
-1. Call `session-show-defaults` first to see current config
-2. Use `discover_projs` to find projects, `list_schemes` for schemes
-3. `build_sim` to build, `test_sim` for tests, `screenshot` for visual verification
-4. `snapshot_ui` for accessibility hierarchy with coordinates
-5. `tap` to interact — use `id` (accessibility identifier) or `label` to tap elements
-6. `list_sims` to find available simulators
-7. **When done:** Call `stop_app_sim` to stop the app, then shut down the simulator
-
-> **UI automation is enabled** via `.xcodebuildmcp/config.yaml` (`enabledWorkflows: ["simulator", "ui-automation"]`). If `tap` or other UI automation tools are missing, check this config and restart Claude Code.
-
-### mobile-mcp (Android Emulator, iOS backup)
-1. `mobile_take_screenshot` for visual captures
-2. `mobile_list_elements_on_screen` for UI hierarchy
-3. `mobile_click_on_screen_at_coordinates` for interaction
-4. Works with both iOS Simulator and Android Emulator
-5. **When done:** Call `mobile_terminate_app` to stop the app
-6. **For iOS, prefer XcodeBuildMCP** — mobile-mcp's WebDriverAgent can be flaky
-
-### Screenshot Image Size Limits (Claude API)
-Screenshots saved to `docs/screenshots/` are read by Claude Code, which uses the Claude API with many images in context. **Both dimensions must be ≤ 2000 px** (the "many-image" limit). Larger images crash the conversation.
-
-- **Web desktop** (1280x800): OK
-- **Web mobile** (390x844): OK
-- **iOS Simulator**: Use `sips --resampleHeight 1920` to resize if height > 2000
-- **Android Emulator**: Use `sips --resampleHeight 1920` to resize if height > 2000
-- **Never use `fullPage: true`** in Playwright screenshots — can produce very tall images
-- Max file size: 5 MB per image
+**Key warnings:** Screenshots must be **≤ 2000 px** in both dimensions (resize with `sips --resampleHeight 1920`). Never use `fullPage: true` in Playwright.
 
 **Full details:** `docs/ui-testing-guide.md`
 
@@ -284,28 +135,9 @@ Screenshots saved to `docs/screenshots/` are read by Claude Code, which uses the
 
 ---
 
-## MANDATORY: Self-Maintenance Rule
+## Self-Maintenance Rule
 
-**This CLAUDE.md is the single source of truth for all AI agents working on Selko.** After every major change, update this file to reflect the current state.
-
-**Trigger updates when any of these change:**
-
-- New or renamed Supabase tables/columns/migrations → update Database schema link or add inline summary
-- New backend modules, services, or API endpoints → update Essential Commands or Reference Index
-- New frontend pages, components, or routes → update Reference Index
-- New CLI commands → update CLI Tools table
-- New or renamed test files/directories → update Essential Commands
-- New environment variables or config files → update Environment & Config
-- New docs created → add to Reference Index
-- Architectural shifts (new services, changed data flow, new integrations) → update Architecture Principles
-- New CI/CD workflows or deployment changes → update Reference Index or Essential Commands
-- New dependencies or tooling changes → update relevant sections
-
-**Rules:**
-1. Keep CLAUDE.md concise — link to detailed docs rather than duplicating content
-2. Every linked doc in Reference Index must actually exist; remove stale links
-3. If a new doc is created, it MUST be added to Reference Index with a clear "When to Read" description
-4. CLI tool table must match actual available commands in the `cli/` directory
+**This CLAUDE.md is the single source of truth for all AI agents.** After major changes (new tables, endpoints, routes, CLI commands, docs, env vars, or architectural shifts), update this file. Keep it concise — link to detailed docs rather than duplicating content. Every linked doc must exist; remove stale links.
 
 ---
 
