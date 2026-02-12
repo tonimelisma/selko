@@ -168,49 +168,45 @@ Use `snapshot_ui()` to discover identifiers for other elements.
 
 ## Android Screenshots
 
-**Tools:** mobile-mcp (`mobile_take_screenshot`, `mobile_click_on_screen_at_coordinates`, `mobile_type_keys`, `mobile_list_elements_on_screen`)
+**Preferred: Use the automated script** (`./scripts/capture-android-screenshots.sh`). The manual MCP approach below is a fallback.
 
 ### Prerequisites
-- Android emulator running (start from Android Studio or `emulator -avd <name> -no-audio -no-boot-anim`)
-- App built and installed: `cd android && ./gradlew installDebug`
+- Android emulator running: `emulator -avd Pixel_8` (or start from Android Studio)
+- Local Supabase running with seed data
 
-> **Cold boot tip:** After a cold boot (`-no-snapshot-load`), the emulator may show "System UI isn't responding" dialogs for 1-2 minutes. Dismiss them with "Wait", then wait ~60s for the system to fully stabilize before taking screenshots. If the emulator fails to start with "snapshot operation pending", delete lock files in `~/.android/avd/<name>.avd/` (`*.lock`).
+> **Cold boot tip:** After a cold boot (`-no-snapshot-load`), wait ~60s for "System UI isn't responding" dialogs to stop. If the emulator won't start with "snapshot operation pending", delete `~/.android/avd/Pixel_8.avd/*.lock`.
 
-### Steps
+### Scripted Capture (Recommended)
 
-1. Load mobile-mcp tools (ToolSearch: `+mobile screenshot tap type`)
+```bash
+./scripts/capture-android-screenshots.sh
+```
 
-2. Launch the app:
-   ```
-   mobile_launch_app({ appId: "net.melisma.selko" })
-   ```
+This builds and installs the debug APK, runs the UiAutomator instrumented test (`ScreenshotCaptureTest.kt`), pulls screenshots from the device, and resizes them to ≤1920px.
 
-3. Take login screenshot:
-   ```
-   mobile_take_screenshot()
-   ```
-   Save to `docs/screenshots/android-login.png`
+### Key Implementation Details (for debugging)
 
-4. Navigate to register screen, screenshot → `android-register.png`
+The UiAutomator test (`android/app/src/androidTest/.../ScreenshotCaptureTest.kt`) has these important patterns:
 
-5. Go back and log in with `screenshots@selko.local` / `screenshotpass123`:
-   - Use `mobile_list_elements_on_screen()` to find element coordinates
-   - Use `mobile_click_on_screen_at_coordinates()` to tap fields
-   - Use `mobile_type_keys()` to enter text
+- **Compose text input:** `By.text("Email")` finds the label `TextView` inside a Compose `OutlinedTextField`, NOT the `EditText` itself. You must navigate to `label.parent` (the `EditText`) before calling `.text = value`. Setting text on the label is a **silent no-op**.
+- **Keyboard dismissal:** After entering text, call `device.pressBack()` to dismiss the soft keyboard before tapping buttons or looking for bottom nav items. The keyboard covers the bottom navigation bar.
+- **Screenshot order:** Capture History and Settings tabs BEFORE navigating to Event Detail. Back-navigation from Event Detail is unreliable on Android 16 (API 36) due to predictive back gesture changes.
+- **adb pull path:** `adb pull .../Pictures/ $DIR/` creates a `Pictures/` subdirectory inside `$DIR`. The script accounts for this.
 
-6. Capture authenticated pages:
-   - Review queue → `android-review-queue.png`
-   - Event detail → `android-event-detail.png`
-   - History → `android-history.png`
-   - Settings → `android-settings.png`
+### Manual MCP Capture (Fallback)
 
-7. **When done:** `mobile_terminate_app({ appId: "net.melisma.selko" })`, then `adb emu kill` to shut down the emulator
+**Tools:** mobile-mcp (`mobile_take_screenshot`, `mobile_click_on_screen_at_coordinates`, `mobile_type_keys`, `mobile_list_elements_on_screen`)
+
+1. Build and install: `cd android && ./gradlew installDebug`
+2. Load mobile-mcp tools (ToolSearch: `+mobile screenshot tap type`)
+3. Launch: `mobile_launch_app({ appId: "net.melisma.selko" })`
+4. Use `mobile_list_elements_on_screen()` to find coordinates, `mobile_click_on_screen_at_coordinates()` to tap, `mobile_type_keys()` to type
+5. Capture all 6 screens: login, register, review-queue, history, settings, event-detail
+6. **When done:** `mobile_terminate_app({ appId: "net.melisma.selko" })`
 
 ### Notes
 - Android emulator screenshots are 1080x2400 — **always resize** after capture: `sips --resampleHeight 1920 docs/screenshots/android-*.png`
-- Use `mobile_list_elements_on_screen()` to get exact coordinates before tapping — coordinates are in actual device pixels
 - If `mobile-mcp` loses the device, restart adb: `adb kill-server && adb start-server`
-- To navigate to event detail, tap the "Edit" button on an event card
 - The `mobile_launch_app` function may fail right after install — launch via adb instead: `adb shell am start -n net.melisma.selko/.MainActivity`
 
 ---
