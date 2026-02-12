@@ -61,7 +61,6 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] Tests pass for changed modules
 - [ ] **Bug fixes MUST include a regression test**
 - [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI changed). Save screenshots to `docs/screenshots/`. **Close browsers/simulators when done.**
-- [ ] CHANGELOG.md updated
 - [ ] Commit, push, `gh pr create`
 - [ ] Poll CI and merge when green, then cleanup worktree
 
