@@ -26,7 +26,7 @@ mkdir -p "$TMP_DIR"
 adb pull /sdcard/Android/data/net.melisma.selko/files/Pictures/ "$TMP_DIR/"
 
 echo "==> Copying and resizing screenshots..."
-cp "$TMP_DIR"/*.png "$SCREENSHOT_DIR/"
+cp "$TMP_DIR"/Pictures/*.png "$SCREENSHOT_DIR/"
 sips --resampleHeight 1920 "$SCREENSHOT_DIR"/android-*.png
 
 rm -rf "$TMP_DIR"
