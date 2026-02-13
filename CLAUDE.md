@@ -140,7 +140,7 @@ Use `/verify-web`, `/verify-ios`, `/verify-android` after implementing UI change
 
 **When to update:** Only when UI-visible code changed. Skip for backend-only, docs, or config changes.
 
-**Which platforms to capture:**
+**One command — do NOT manually seed data, run individual scripts, or use MCP tools:**
 
 | Changed files | Command |
 |---------------|---------|
@@ -149,7 +149,9 @@ Use `/verify-web`, `/verify-ios`, `/verify-android` after implementing UI change
 | `android/` | `./scripts/capture-all-screenshots.sh android` |
 | Shared code (Supabase schema, seed data) affecting all UIs | `./scripts/capture-all-screenshots.sh` |
 
-**Pre-warming:** When starting a UI task, boot the simulator/emulator early so startup overlaps with coding time. The capture scripts do this idempotently, but booting early saves time:
+The unified script handles seeding, booting, building, testing, pulling, and resizing. See `docs/screenshot-guide.md` for details.
+
+**Pre-warming:** Boot the simulator/emulator early so startup overlaps with coding time:
 
 ```bash
 # iOS
