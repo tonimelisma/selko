@@ -61,7 +61,7 @@
 						<StatusBadge status={integration.status} type="integration" />
 						{#if !setupMode}
 							<button
-								class="btn btn-ghost btn-sm"
+								class="btn btn-outline btn-error btn-sm"
 								onclick={() => ondisconnect?.(integration.id)}
 							>
 								Disconnect

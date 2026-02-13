@@ -161,14 +161,14 @@ describe('Event Detail Page', () => {
 		});
 	});
 
-	it('displays approve and reject buttons for pending events', async () => {
+	it('displays accept and reject buttons for pending events', async () => {
 		render(EventDetailPage);
 
 		await waitFor(() => {
 			// There are desktop and mobile versions, so use getAllBy
-			const approveButtons = screen.getAllByRole('button', { name: /approve/i });
+			const acceptButtons = screen.getAllByRole('button', { name: /accept/i });
 			const rejectButtons = screen.getAllByRole('button', { name: /reject/i });
-			expect(approveButtons.length).toBeGreaterThan(0);
+			expect(acceptButtons.length).toBeGreaterThan(0);
 			expect(rejectButtons.length).toBeGreaterThan(0);
 		});
 	});

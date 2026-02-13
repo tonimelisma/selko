@@ -187,7 +187,7 @@ describe('Review Queue (App Page)', () => {
 			expect(screen.getByText('Team Meeting')).toBeInTheDocument();
 		});
 
-		const approveBtn = screen.getByRole('button', { name: /approve event/i });
+		const approveBtn = screen.getByRole('button', { name: /accept event/i });
 		await user.click(approveBtn);
 
 		await waitFor(() => {

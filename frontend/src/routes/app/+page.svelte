@@ -9,7 +9,6 @@
 	import { initiateGmailAuth, initiateCalendarAuth } from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import SenderHeader from '$lib/components/SenderHeader.svelte';
-	import EmailHeader from '$lib/components/EmailHeader.svelte';
 	import EventCard from '$lib/components/EventCard.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 
@@ -29,7 +28,7 @@
 		gmailIntegration?.status === 'active' && gcalIntegration?.status === 'active'
 	);
 
-	// Group events by sender, then by email
+	// Group events by sender (flat — no email sub-grouping)
 	let groupedEvents = $derived(() => {
 		const senderMap = new Map();
 		for (const event of events) {
@@ -37,24 +36,16 @@
 			const firstSource = sources[0];
 			const email = firstSource?.emails;
 			const senderKey = email?.from_email || 'Unknown Sender';
-			const emailKey = email?.id || 'unknown';
 
 			if (!senderMap.has(senderKey)) {
 				senderMap.set(senderKey, {
 					sender: senderKey,
 					senderName: email?.from_name || senderKey,
-					emails: new Map()
-				});
-			}
-
-			const senderGroup = senderMap.get(senderKey);
-			if (!senderGroup.emails.has(emailKey)) {
-				senderGroup.emails.set(emailKey, {
-					email,
 					events: []
 				});
 			}
-			senderGroup.emails.get(emailKey).events.push(event);
+
+			senderMap.get(senderKey).events.push(event);
 		}
 		return senderMap;
 	});
@@ -123,6 +114,13 @@
 		}
 	}
 
+	/** @param {any[]} eventsList */
+	async function handleRejectAll(eventsList) {
+		for (const event of eventsList) {
+			await handleReject(event);
+		}
+	}
+
 	function handleConnect() {
 		initiateGmailAuth();
 	}
@@ -174,29 +172,16 @@
 			<div>
 				<SenderHeader
 					sender={senderGroup.senderName}
-					eventCount={[...senderGroup.emails.values()].reduce(
-						(acc, eg) => acc + eg.events.length,
-						0
-					)}
-					onapproveAll={() =>
-						handleApproveAll(
-							[...senderGroup.emails.values()].flatMap((eg) => eg.events)
-						)}
+					eventCount={senderGroup.events.length}
+					onapproveAll={() => handleApproveAll(senderGroup.events)}
+					onrejectAll={() => handleRejectAll(senderGroup.events)}
 				/>
-				{#each [...senderGroup.emails.entries()] as [emailKey, emailGroup]}
-					<EmailHeader
-						subject={emailGroup.email?.subject || ''}
-						date={emailGroup.email?.date_sent || ''}
-						eventCount={emailGroup.events.length}
-						onapproveAll={() => handleApproveAll(emailGroup.events)}
+				{#each senderGroup.events as event (event.id)}
+					<EventCard
+						{event}
+						onapprove={handleApprove}
+						onreject={handleReject}
 					/>
-					{#each emailGroup.events as event (event.id)}
-						<EventCard
-							{event}
-							onapprove={handleApprove}
-							onreject={handleReject}
-						/>
-					{/each}
 				{/each}
 			</div>
 		{/each}

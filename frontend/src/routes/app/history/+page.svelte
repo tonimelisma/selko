@@ -184,7 +184,7 @@
 							<div class="flex items-center gap-1 flex-shrink-0 ml-2">
 								{#if event.status === 'sync_failed'}
 									<button
-										class="btn btn-ghost btn-xs"
+										class="btn btn-outline btn-warning btn-xs"
 										onclick={() => handleRetry(event)}
 									>
 										Retry
@@ -192,7 +192,7 @@
 								{/if}
 								{#if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
 									<button
-										class="btn btn-ghost btn-xs"
+										class="btn btn-outline btn-xs"
 										onclick={() => handleUndo(event)}
 									>
 										Undo

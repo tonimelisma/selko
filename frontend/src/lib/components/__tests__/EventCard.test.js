@@ -44,20 +44,20 @@ describe('EventCard', () => {
 		expect(screen.getByText('All Day')).toBeInTheDocument();
 	});
 
-	it('has approve and reject buttons', () => {
+	it('has accept and reject buttons', () => {
 		render(EventCard, { props: { event: mockEvent } });
-		expect(screen.getByRole('button', { name: /approve event/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /accept event/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /reject event/i })).toBeInTheDocument();
 	});
 
-	it('calls onapprove when approve button is clicked', async () => {
+	it('calls onapprove when accept button is clicked', async () => {
 		const user = userEvent.setup();
 		const mockApprove = vi.fn();
 		render(EventCard, {
 			props: { event: mockEvent, onapprove: mockApprove }
 		});
 
-		await user.click(screen.getByRole('button', { name: /approve event/i }));
+		await user.click(screen.getByRole('button', { name: /accept event/i }));
 		expect(mockApprove).toHaveBeenCalledWith(mockEvent);
 	});
 
