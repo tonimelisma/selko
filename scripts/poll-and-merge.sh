@@ -24,8 +24,8 @@ for pr in "$@"; do
     echo "Polling CI for PR #${pr}..."
 
     while true; do
-        gh pr checks "$pr"
-        ec=$?
+        ec=0
+        gh pr checks "$pr" || ec=$?
 
         if [ $ec -eq 0 ]; then
             echo "CI passed for PR #${pr}, merging..."
