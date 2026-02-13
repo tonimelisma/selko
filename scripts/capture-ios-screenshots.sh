@@ -22,6 +22,10 @@ else
     sleep 3
 fi
 
+# --- Disable password autofill (idempotent, prevents "Save Password?" modal) ---
+
+xcrun simctl spawn "$SIMULATOR_NAME" defaults write -g AutoFillPasswords -bool false 2>/dev/null || true
+
 # Clean previous result bundle
 rm -rf "$RESULT_BUNDLE"
 

@@ -32,6 +32,11 @@ Capture all 24 screenshots in ~3 minutes using automated scripts instead of manu
 
 1. **Local Supabase running:** `supabase start`
 2. **Seed data exists:** Run `uv run python scripts/seed_screenshot_data.py seed --cleanup-first` to create the screenshot user and sample data
+3. **iOS simulator: disable password autofill** (one-time per simulator — persists across builds/reboots, only reset by `simctl erase`):
+   ```bash
+   xcrun simctl spawn "iPhone 17 Pro" defaults write -g AutoFillPasswords -bool false
+   ```
+   Without this, a "Save Password?" modal obscures iOS screenshots after login.
 
 **Screenshot user credentials:**
 - Email: `screenshots@selko.local`
