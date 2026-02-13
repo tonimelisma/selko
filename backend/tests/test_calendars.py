@@ -10,8 +10,10 @@ import pytest
 
 from selko.services.calendars import (
     CalendarsError,
+    SELKO_FOOTER,
     _build_calendar_event_body,
     delete_calendar_event,
+    fetch_calendar_events_for_date_range,
     get_calendar_settings,
     list_calendars,
     sync_event_to_calendar,
@@ -145,7 +147,7 @@ class TestBuildCalendarEventBody:
 
         body = _build_calendar_event_body(event, settings)
 
-        assert body["description"] == "Created from email"
+        assert body["description"] == "Created from email\n\n---\nThis event is managed by Selko."
 
 
 class TestGetCalendarSettings:
@@ -841,3 +843,142 @@ class TestDeleteCalendarEvent:
                 delete_calendar_event(mock_client, "user-456", "event-123")
 
             assert "Failed to delete calendar event" in str(exc_info.value)
+
+
+class TestFetchCalendarEventsForDateRange:
+    """Tests for Google Calendar read-back."""
+
+    def test_fetches_events_successfully(self):
+        """Test successful GCal events fetch."""
+        mock_client = MagicMock()
+
+        with patch("selko.services.calendars.get_credentials") as mock_creds, \
+             patch("selko.services.calendars.build") as mock_build, \
+             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+
+            mock_creds.return_value = MagicMock()
+            mock_settings.return_value = {"target_calendar_id": "primary"}
+
+            mock_service = MagicMock()
+            mock_build.return_value = mock_service
+            mock_service.events.return_value.list.return_value.execute.return_value = {
+                "items": [
+                    {"id": "gcal-1", "summary": "Meeting"},
+                    {"id": "gcal-2", "summary": "Lunch"},
+                ]
+            }
+
+            result = fetch_calendar_events_for_date_range(
+                mock_client, "user-123",
+                "2026-03-15T00:00:00Z", "2026-03-15T23:59:59Z"
+            )
+
+            assert len(result) == 2
+            assert result[0]["id"] == "gcal-1"
+
+            # Verify API called with correct parameters
+            mock_service.events.return_value.list.assert_called_once_with(
+                calendarId="primary",
+                timeMin="2026-03-15T00:00:00Z",
+                timeMax="2026-03-15T23:59:59Z",
+                singleEvents=True,
+                maxResults=50,
+            )
+
+    def test_returns_empty_no_credentials(self):
+        """Test that missing credentials return empty list."""
+        mock_client = MagicMock()
+
+        with patch("selko.services.calendars.get_credentials") as mock_creds:
+            mock_creds.return_value = None
+
+            result = fetch_calendar_events_for_date_range(
+                mock_client, "user-123",
+                "2026-03-15T00:00:00Z", "2026-03-15T23:59:59Z"
+            )
+
+        assert result == []
+
+    def test_returns_empty_on_api_error(self):
+        """Test that API errors return empty list (non-fatal)."""
+        mock_client = MagicMock()
+
+        with patch("selko.services.calendars.get_credentials") as mock_creds, \
+             patch("selko.services.calendars.build") as mock_build, \
+             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+
+            mock_creds.return_value = MagicMock()
+            mock_settings.return_value = {"target_calendar_id": "primary"}
+
+            mock_service = MagicMock()
+            mock_build.return_value = mock_service
+            mock_service.events.return_value.list.return_value.execute.side_effect = Exception("API error")
+
+            result = fetch_calendar_events_for_date_range(
+                mock_client, "user-123",
+                "2026-03-15T00:00:00Z", "2026-03-15T23:59:59Z"
+            )
+
+        assert result == []
+
+
+class TestSelkoFooter:
+    """Tests for Selko footer on calendar events."""
+
+    def test_footer_appended_to_description(self):
+        """Test that Selko footer is appended to event description."""
+        event = {
+            "id": "event-123",
+            "title": "Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": None,
+            "description": "Weekly sync",
+            "source_attribution": None,
+        }
+        settings = {"default_invitees": None}
+
+        body = _build_calendar_event_body(event, settings)
+
+        assert "This event is managed by Selko." in body["description"]
+        assert "Weekly sync" in body["description"]
+
+    def test_no_duplicate_footer(self):
+        """Test that footer is not duplicated on re-sync."""
+        # Description already contains the footer
+        event = {
+            "id": "event-123",
+            "title": "Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": None,
+            "description": "Weekly sync\n\n---\nThis event is managed by Selko.",
+            "source_attribution": None,
+        }
+        settings = {"default_invitees": None}
+
+        body = _build_calendar_event_body(event, settings)
+
+        # Count occurrences of footer
+        count = body["description"].count("This event is managed by Selko.")
+        assert count == 1
+
+    def test_footer_on_empty_description(self):
+        """Test footer works when description is empty."""
+        event = {
+            "id": "event-123",
+            "title": "Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": None,
+            "description": None,
+            "source_attribution": None,
+        }
+        settings = {"default_invitees": None}
+
+        body = _build_calendar_event_body(event, settings)
+
+        assert "This event is managed by Selko." in body["description"]

@@ -717,3 +717,92 @@ class TestGenerateSourceAttribution:
         result = generate_source_attribution(sources)
 
         assert result == ""
+
+
+class TestBuildContentPartsPerTypeLimits:
+    """Test per-type attachment size limits in _build_content_parts."""
+
+    def test_pdf_limit_skips_oversized(self):
+        """Test that a 6MB PDF is skipped with 5MB limit."""
+        from selko.services.gemini import _build_content_parts
+
+        config = Config(
+            environment="development",
+            supabase_url="http://localhost:54321",
+            supabase_key="test-key",
+            max_pdf_size_for_llm=5 * 1024 * 1024,  # 5 MB
+        )
+
+        # 6MB PDF (over 5MB limit)
+        attachments = [{
+            "data": b"x" * (6 * 1024 * 1024),
+            "mime_type": "application/pdf",
+            "filename": "large.pdf",
+        }]
+
+        parts = _build_content_parts("prompt", "email body", attachments, config=config)
+
+        # Should only have prompt + email body, no attachment
+        assert len(parts) == 2
+
+    def test_image_limit_skips_oversized(self):
+        """Test that an 11MB image is skipped with 10MB limit."""
+        from selko.services.gemini import _build_content_parts
+
+        config = Config(
+            environment="development",
+            supabase_url="http://localhost:54321",
+            supabase_key="test-key",
+            max_image_size_for_llm=10 * 1024 * 1024,  # 10 MB
+        )
+
+        # 11MB image (over 10MB limit)
+        attachments = [{
+            "data": b"x" * (11 * 1024 * 1024),
+            "mime_type": "image/jpeg",
+            "filename": "large.jpg",
+        }]
+
+        parts = _build_content_parts("prompt", "email body", attachments, config=config)
+
+        # Should only have prompt + email body, no attachment
+        assert len(parts) == 2
+
+    def test_no_config_fallback_20mb(self):
+        """Test that without config, 20MB default is used."""
+        from selko.services.gemini import _build_content_parts
+
+        # 15MB attachment (under 20MB default)
+        attachments = [{
+            "data": b"x" * (15 * 1024 * 1024),
+            "mime_type": "application/pdf",
+            "filename": "medium.pdf",
+        }]
+
+        parts = _build_content_parts("prompt", "email body", attachments, config=None)
+
+        # Should include the attachment (15MB < 20MB default)
+        assert len(parts) == 3
+
+    def test_small_attachment_within_limit(self):
+        """Test that small attachments within limit are included."""
+        from selko.services.gemini import _build_content_parts
+
+        config = Config(
+            environment="development",
+            supabase_url="http://localhost:54321",
+            supabase_key="test-key",
+            max_pdf_size_for_llm=5 * 1024 * 1024,
+        )
+
+        # 1MB PDF (well under 5MB limit)
+        attachments = [{
+            "data": b"x" * (1 * 1024 * 1024),
+            "mime_type": "application/pdf",
+            "filename": "small.pdf",
+        }]
+
+        parts = _build_content_parts("prompt", "email body", attachments, config=config)
+
+        # Should include the attachment
+        assert len(parts) == 3

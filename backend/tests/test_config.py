@@ -215,3 +215,72 @@ class TestLoadConfigAllowedOrigins:
         assert len(config.allowed_origins) == 4
         assert "http://localhost:3000" in config.allowed_origins
         assert "http://localhost:5173" in config.allowed_origins
+
+
+class TestAttachmentLimitsDefaults:
+    """Test per-type attachment size limit defaults."""
+
+    def test_defaults(self):
+        """Verify default values for per-type attachment limits."""
+        config = Config(
+            environment="development",
+            supabase_url="http://localhost:54321",
+            supabase_key="test-key",
+        )
+
+        assert config.max_pdf_size_for_llm == 5 * 1024 * 1024
+        assert config.max_image_size_for_llm == 10 * 1024 * 1024
+        assert config.max_other_size_for_llm == 20 * 1024 * 1024
+
+    def test_custom_values(self):
+        """Verify custom values can be set."""
+        config = Config(
+            environment="development",
+            supabase_url="http://localhost:54321",
+            supabase_key="test-key",
+            max_pdf_size_for_llm=1024,
+            max_image_size_for_llm=2048,
+            max_other_size_for_llm=4096,
+        )
+
+        assert config.max_pdf_size_for_llm == 1024
+        assert config.max_image_size_for_llm == 2048
+        assert config.max_other_size_for_llm == 4096
+
+
+class TestAttachmentLimitsFromEnv:
+    """Test per-type attachment limits loaded from environment variables."""
+
+    def test_from_env(self, monkeypatch):
+        """Verify env override for attachment limits."""
+        from selko.config import load_config
+
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("MAX_PDF_SIZE_FOR_LLM", "1000000")
+        monkeypatch.setenv("MAX_IMAGE_SIZE_FOR_LLM", "2000000")
+        monkeypatch.setenv("MAX_OTHER_SIZE_FOR_LLM", "3000000")
+
+        config = load_config()
+
+        assert config.max_pdf_size_for_llm == 1000000
+        assert config.max_image_size_for_llm == 2000000
+        assert config.max_other_size_for_llm == 3000000
+
+    def test_defaults_without_env(self, monkeypatch):
+        """Verify defaults when env vars not set."""
+        from selko.config import load_config
+
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.delenv("MAX_PDF_SIZE_FOR_LLM", raising=False)
+        monkeypatch.delenv("MAX_IMAGE_SIZE_FOR_LLM", raising=False)
+        monkeypatch.delenv("MAX_OTHER_SIZE_FOR_LLM", raising=False)
+
+        config = load_config()
+
+        assert config.max_pdf_size_for_llm == 5 * 1024 * 1024
+        assert config.max_image_size_for_llm == 10 * 1024 * 1024
+        assert config.max_other_size_for_llm == 20 * 1024 * 1024

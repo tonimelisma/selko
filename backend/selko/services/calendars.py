@@ -14,11 +14,59 @@ from selko.services.integrations import get_credentials
 
 logger = logging.getLogger(__name__)
 
+SELKO_FOOTER = "\n\n---\nThis event is managed by Selko."
+
 
 class CalendarsError(Exception):
     """Raised when calendar operations fail."""
 
     pass
+
+
+def fetch_calendar_events_for_date_range(
+    supabase_client: Client,
+    user_id: str,
+    time_min: str,
+    time_max: str,
+) -> list[dict[str, Any]]:
+    """Fetch user's Google Calendar events for a date range.
+
+    Used for deduplication: check if an event already exists on the user's
+    calendar before creating a new one.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        user_id: UUID of user.
+        time_min: ISO datetime string for range start.
+        time_max: ISO datetime string for range end.
+
+    Returns:
+        List of Google Calendar event dicts. Empty list on any error.
+    """
+    try:
+        creds = get_credentials(supabase_client, user_id, "google_calendar")
+        if not creds:
+            logger.debug("No Google Calendar credentials for GCal read-back")
+            return []
+
+        settings = get_calendar_settings(supabase_client, user_id)
+        calendar_id = settings.get("target_calendar_id") or "primary"
+
+        service = build("calendar", "v3", credentials=creds)
+
+        result = service.events().list(
+            calendarId=calendar_id,
+            timeMin=time_min,
+            timeMax=time_max,
+            singleEvents=True,
+            maxResults=50,
+        ).execute()
+
+        return result.get("items", [])
+
+    except Exception as e:
+        logger.warning(f"GCal read-back failed for user {user_id}: {e}")
+        return []
 
 
 def list_calendars(
@@ -148,11 +196,15 @@ def _build_calendar_event_body(
     Returns:
         Dict suitable for Google Calendar API.
     """
-    # Prepare description with attribution
+    # Prepare description with attribution and Selko footer
     description = event.get("description", "") or ""
     attribution = event.get("source_attribution", "") or ""
     if attribution:
         description = f"{description}\n\n{attribution}" if description else attribution
+
+    # Append Selko footer if not already present
+    if SELKO_FOOTER.strip() not in description:
+        description += SELKO_FOOTER
 
     calendar_event = {
         "summary": event.get("title"),

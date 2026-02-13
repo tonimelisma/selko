@@ -51,6 +51,11 @@ class Config:
     storage_bucket_attachments: str = "attachments"
     max_attachment_size: int = 50 * 1024 * 1024  # 50 MB
 
+    # Per-type attachment size limits for LLM processing
+    max_pdf_size_for_llm: int = 5 * 1024 * 1024      # 5 MB
+    max_image_size_for_llm: int = 10 * 1024 * 1024    # 10 MB
+    max_other_size_for_llm: int = 20 * 1024 * 1024    # 20 MB
+
     # Worker pool configuration
     worker_pool_size: int = 3
     worker_idle_sleep_seconds: float = 1.0
@@ -174,6 +179,9 @@ def load_config(env_override: Optional[str] = None) -> Config:
         worker_error_backoff_seconds=float(os.getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
         enable_background_processing=os.getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true",
         allowed_origins=_parse_allowed_origins(),
+        max_pdf_size_for_llm=int(os.getenv("MAX_PDF_SIZE_FOR_LLM", str(5 * 1024 * 1024))),
+        max_image_size_for_llm=int(os.getenv("MAX_IMAGE_SIZE_FOR_LLM", str(10 * 1024 * 1024))),
+        max_other_size_for_llm=int(os.getenv("MAX_OTHER_SIZE_FOR_LLM", str(20 * 1024 * 1024))),
     )
 
 

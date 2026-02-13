@@ -17,6 +17,7 @@ from google.genai import types
 from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResponse
+from selko.config import Config
 from selko.services.llm_gateway import LLMGateway, LLMGatewayError
 from selko.services.llm_logging import LLMOperationType
 
@@ -87,10 +88,31 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
     return prompt
 
 
+def _get_attachment_size_limit(mime_type: str, config: Optional[Config] = None) -> int:
+    """Get the size limit for an attachment based on its MIME type.
+
+    Args:
+        mime_type: MIME type of the attachment.
+        config: Optional Config with per-type limits.
+
+    Returns:
+        Maximum allowed size in bytes.
+    """
+    if config is None:
+        return 20 * 1024 * 1024  # fallback
+    if mime_type == "application/pdf":
+        return config.max_pdf_size_for_llm
+    elif mime_type.startswith("image/"):
+        return config.max_image_size_for_llm
+    else:
+        return config.max_other_size_for_llm
+
+
 def _build_content_parts(
     prompt: str,
     email_text: str,
     attachments: Optional[list[dict[str, Any]]] = None,
+    config: Optional[Config] = None,
 ) -> list:
     """Build multimodal content parts for Gemini.
 
@@ -98,6 +120,7 @@ def _build_content_parts(
         prompt: The system prompt.
         email_text: Email body text.
         attachments: Optional list of attachment dicts with data, mime_type, filename.
+        config: Optional Config for per-type attachment size limits.
 
     Returns:
         List of content parts for Gemini.
@@ -113,8 +136,9 @@ def _build_content_parts(
             data = att.get("data")
             mime_type = att.get("mime_type", "application/octet-stream")
             filename = att.get("filename", "attachment")
+            size_limit = _get_attachment_size_limit(mime_type, config)
 
-            if data and len(data) <= 20 * 1024 * 1024:  # 20MB limit
+            if data and len(data) <= size_limit:
                 try:
                     content_parts.append({
                         "inline_data": {
@@ -128,7 +152,8 @@ def _build_content_parts(
             else:
                 logger.warning(
                     f"Skipping oversized attachment: {filename} "
-                    f"({len(data) if data else 0} bytes)"
+                    f"({mime_type}, {len(data) if data else 0} bytes, "
+                    f"limit {size_limit} bytes)"
                 )
 
     return content_parts
@@ -140,6 +165,7 @@ def extract_calendar_events(
     email_metadata: dict[str, Any],
     attachments: Optional[list[dict[str, Any]]] = None,
     max_retries: int = 3,
+    config: Optional[Config] = None,
 ) -> CalendarEventExtraction:
     """Extract calendar events from email using Gemini.
 
@@ -149,6 +175,7 @@ def extract_calendar_events(
         email_metadata: Dict with keys: gmail_id, subject, from_name, from_email, date_sent.
         attachments: Optional list of attachment dicts with keys: data (bytes), mime_type.
         max_retries: Maximum retries for rate-limited requests.
+        config: Optional Config for per-type attachment size limits.
 
     Returns:
         CalendarEventExtraction with structured event data.
@@ -158,7 +185,7 @@ def extract_calendar_events(
     """
     current_date = datetime.now().strftime("%Y-%m-%d")
     prompt = _build_prompt(email_metadata, current_date)
-    content_parts = _build_content_parts(prompt, email_text, attachments)
+    content_parts = _build_content_parts(prompt, email_text, attachments, config=config)
 
     # Configure generation with Gemini 3 best practices
     generate_config = types.GenerateContentConfig(
