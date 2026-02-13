@@ -20,12 +20,15 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Undo
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +47,7 @@ import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.ui.theme.SelkoSuccess
 import net.melisma.selko.ui.theme.SelkoSuccessDark
+import net.melisma.selko.ui.theme.SelkoWarning
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -208,24 +212,58 @@ private fun HistoryEventItem(
             } else {
                 when (event.status) {
                     EventStatus.APPROVED, EventStatus.REJECTED, EventStatus.CANCELLED -> {
-                        IconButton(onClick = onUndo) {
+                        OutlinedButton(
+                            onClick = onUndo,
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Undo,
-                                contentDescription = "Undo",
-                                tint = MaterialTheme.colorScheme.primary
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Undo", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     EventStatus.SYNC_FAILED -> {
-                        IconButton(onClick = onRetry) {
+                        OutlinedButton(
+                            onClick = onRetry,
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = SelkoWarning
+                            ),
+                            border = BorderStroke(1.dp, SelkoWarning),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Refresh,
-                                contentDescription = "Retry",
-                                tint = MaterialTheme.colorScheme.primary
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Retry", style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    else -> { /* No action for SYNCED */ }
+                    EventStatus.SYNCED -> {
+                        OutlinedButton(
+                            onClick = onUndo,
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Undo,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Undo", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    else -> { }
                 }
             }
         }

@@ -247,15 +247,20 @@ private fun IntegrationRow(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                TextButton(
+                OutlinedButton(
                     onClick = onDisconnect,
                     enabled = !isDisconnecting,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     if (isDisconnecting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.error
                         )
                     } else {
                         Text("Disconnect")

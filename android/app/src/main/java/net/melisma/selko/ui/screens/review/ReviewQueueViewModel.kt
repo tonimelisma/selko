@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.melisma.selko.data.api.BackendApiClient
-import kotlinx.datetime.Instant
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
@@ -17,20 +16,11 @@ import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
 
-data class EmailGroup(
-    val emailId: String,
-    val subject: String,
-    val dateSent: Instant?,
-    val events: List<CalendarEvent>
-)
-
 data class SenderGroup(
     val senderName: String,
     val senderEmail: String,
-    val emailGroups: List<EmailGroup>
-) {
-    val allEvents: List<CalendarEvent> get() = emailGroups.flatMap { it.events }
-}
+    val events: List<CalendarEvent>
+)
 
 data class ReviewQueueUiState(
     val isLoading: Boolean = true,
@@ -136,22 +126,10 @@ class ReviewQueueViewModel(
             val email = source?.emails
             Pair(email?.fromName ?: email?.fromEmail ?: "Unknown", email?.fromEmail ?: "unknown")
         }.map { (senderInfo, groupEvents) ->
-            // Sub-group by email ID
-            val emailGroups = groupEvents.groupBy { event ->
-                event.eventSources?.firstOrNull()?.emailId ?: "unknown"
-            }.map { (emailId, emailEvents) ->
-                val sourceEmail = emailEvents.firstOrNull()?.eventSources?.firstOrNull()?.emails
-                EmailGroup(
-                    emailId = emailId,
-                    subject = sourceEmail?.subject ?: "No subject",
-                    dateSent = sourceEmail?.dateSent,
-                    events = emailEvents
-                )
-            }
             SenderGroup(
                 senderName = senderInfo.first,
                 senderEmail = senderInfo.second,
-                emailGroups = emailGroups
+                events = groupEvents
             )
         }
     }
@@ -186,7 +164,7 @@ class ReviewQueueViewModel(
         viewModelScope.launch {
             val eventsToApprove = _uiState.value.senderGroups
                 .find { it.senderEmail == senderEmail }
-                ?.allEvents ?: return@launch
+                ?.events ?: return@launch
 
             val eventIds = eventsToApprove.map { it.id }.toSet()
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventIds) }
@@ -216,19 +194,18 @@ class ReviewQueueViewModel(
         }
     }
 
-    fun approveEmailGroup(emailId: String) {
+    fun rejectGroup(senderEmail: String) {
         viewModelScope.launch {
-            val eventsToApprove = _uiState.value.senderGroups
-                .flatMap { it.emailGroups }
-                .find { it.emailId == emailId }
+            val eventsToReject = _uiState.value.senderGroups
+                .find { it.senderEmail == senderEmail }
                 ?.events ?: return@launch
 
-            val eventIds = eventsToApprove.map { it.id }.toSet()
+            val eventIds = eventsToReject.map { it.id }.toSet()
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventIds) }
 
             var allSucceeded = true
-            for (event in eventsToApprove) {
-                when (eventRepository.approveEvent(event.id)) {
+            for (event in eventsToReject) {
+                when (eventRepository.rejectEvent(event.id)) {
                     is EventResult.Success -> { /* continue */ }
                     is EventResult.Error -> { allSucceeded = false }
                 }

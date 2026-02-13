@@ -127,7 +127,7 @@ class ScreenshotCaptureTest {
         val settingsTab = device.wait(Until.findObject(By.text("Settings")), SHORT_TIMEOUT)
         requireNotNull(settingsTab) { "Could not find Settings tab" }
         settingsTab.click()
-        Thread.sleep(1000)
+        Thread.sleep(2000)
         saveScreenshot("android-settings")
 
         // 7. Go back to Review tab, then navigate to event detail
@@ -136,7 +136,7 @@ class ScreenshotCaptureTest {
         reviewTab.click()
         Thread.sleep(2000)
 
-        val editButton = device.wait(Until.findObject(By.desc("Edit")), SHORT_TIMEOUT)
+        val editButton = device.wait(Until.findObject(By.text("Edit")), SHORT_TIMEOUT)
         if (editButton != null) {
             editButton.click()
             device.wait(Until.hasObject(By.text("Event Details")), SHORT_TIMEOUT)
