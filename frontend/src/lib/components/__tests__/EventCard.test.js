@@ -72,25 +72,13 @@ describe('EventCard', () => {
 		expect(mockReject).toHaveBeenCalledWith(mockEvent);
 	});
 
-	it('truncates long descriptions', () => {
+	it('renders long descriptions with CSS truncation', () => {
 		const longEvent = {
 			...mockEvent,
 			description: 'A'.repeat(200)
 		};
 		render(EventCard, { props: { event: longEvent } });
-		expect(screen.getByText(/\.\.\.$/)).toBeInTheDocument();
-		expect(screen.getByText('More')).toBeInTheDocument();
-	});
-
-	it('toggles description expansion', async () => {
-		const user = userEvent.setup();
-		const longEvent = {
-			...mockEvent,
-			description: 'A'.repeat(200)
-		};
-		render(EventCard, { props: { event: longEvent } });
-
-		await user.click(screen.getByText('More'));
-		expect(screen.getByText('Less')).toBeInTheDocument();
+		// Description is rendered in full; CSS line-clamp-2 handles visual truncation
+		expect(screen.getByText('A'.repeat(200))).toBeInTheDocument();
 	});
 });
