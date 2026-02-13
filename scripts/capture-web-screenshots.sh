@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Capture all 12 web screenshots (6 desktop + 6 mobile) using Playwright.
-# Prerequisites: local Supabase running, seed data loaded.
+# INTERNAL HELPER — called by capture-all-screenshots.sh. Do not run directly.
+# Captures 12 web screenshots (6 desktop + 6 mobile) using Playwright.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
