@@ -7,7 +7,8 @@ from uuid import UUID
 
 from supabase import Client
 
-from selko.services import gemini
+from selko.config import Config
+from selko.services import calendars, gemini
 from selko.services.llm_gateway import LLMGateway
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ def process_email_for_events(
     gateway: LLMGateway,
     email_id: str,
     user_id: str,
+    config: Optional[Config] = None,
 ) -> dict[str, Any]:
     """Main pipeline function to extract events from an email.
 
@@ -39,6 +41,7 @@ def process_email_for_events(
         gateway: LLMGateway instance for LLM operations.
         email_id: UUID of email to process.
         user_id: UUID of user who owns the email.
+        config: Optional Config for per-type attachment limits.
 
     Returns:
         Dict with processing results (num_events, num_new, num_updated).
@@ -77,7 +80,8 @@ def process_email_for_events(
             gateway,
             email_text,
             email_metadata,
-            attachments
+            attachments,
+            config=config,
         )
 
         if not extraction.events_found or not extraction.events:
@@ -102,7 +106,7 @@ def process_email_for_events(
                 "source_quote": getattr(event, 'source_quote', ''),
             }
 
-            # Find matching event (date-based + LLM comparison)
+            # Find matching event (date-based + LLM comparison, including GCal)
             matched_event_id = find_matching_event(
                 supabase_client,
                 gateway,
@@ -111,16 +115,28 @@ def process_email_for_events(
             )
 
             if matched_event_id:
-                # Update existing event
-                update_event(
-                    supabase_client,
-                    gateway,
-                    matched_event_id,
-                    event_data,
-                    email_id,
-                    "update"
-                )
-                num_updated += 1
+                if matched_event_id.startswith("gcal:"):
+                    # Matched a Google Calendar event — adopt it
+                    gcal_id = matched_event_id[5:]
+                    create_event_from_gcal_match(
+                        supabase_client,
+                        user_id,
+                        event_data,
+                        email_id,
+                        gcal_id,
+                    )
+                    num_new += 1
+                else:
+                    # Update existing Selko event
+                    update_event(
+                        supabase_client,
+                        gateway,
+                        matched_event_id,
+                        event_data,
+                        email_id,
+                        "update"
+                    )
+                    num_updated += 1
             else:
                 # Create new event
                 create_event(
@@ -161,6 +177,10 @@ def find_matching_event(
 ) -> Optional[str]:
     """Find if event matches any existing events (date-based + LLM).
 
+    Checks both local Selko events and the user's Google Calendar.
+    Returns event ID for local matches, or "gcal:<google_event_id>" for
+    calendar-only matches.
+
     Args:
         supabase_client: Authenticated Supabase client.
         gateway: LLMGateway instance for LLM operations.
@@ -168,7 +188,7 @@ def find_matching_event(
         event_data: Extracted event data.
 
     Returns:
-        Event ID if match found, None otherwise.
+        Event ID if match found (or "gcal:<id>" for GCal matches), None otherwise.
     """
     start_dt = event_data.get("start_datetime")
     if not start_dt:
@@ -184,16 +204,49 @@ def find_matching_event(
         logger.debug(f"Date parse failed: {e}")
         return None
 
-    # Query events on same date
+    time_min = f"{start_date}T00:00:00Z"
+    time_max = f"{start_date}T23:59:59Z"
+
+    # Query local Selko events on same date
     result = supabase_client.table("events").select("*").eq(
         "user_id", user_id
     ).gte(
-        "start_datetime", f"{start_date}T00:00:00Z"
+        "start_datetime", time_min
     ).lte(
-        "start_datetime", f"{start_date}T23:59:59Z"
+        "start_datetime", time_max
     ).execute()
 
-    candidates = result.data
+    candidates = list(result.data) if result.data else []
+
+    # Also fetch GCal events for the same date range (non-fatal)
+    gcal_candidates = []
+    try:
+        gcal_events = calendars.fetch_calendar_events_for_date_range(
+            supabase_client, user_id, time_min, time_max
+        )
+        # Filter out Selko-managed events (already tracked locally)
+        for gcal_event in gcal_events:
+            ext_props = gcal_event.get("extendedProperties", {})
+            private_props = ext_props.get("private", {})
+            if private_props.get("selko_event_id"):
+                continue  # Already managed by Selko
+            # Convert to candidate format for LLM comparison
+            gcal_start = gcal_event.get("start", {})
+            gcal_end = gcal_event.get("end", {})
+            candidates.append({
+                "id": f"gcal:{gcal_event.get('id')}",
+                "title": gcal_event.get("summary", ""),
+                "start_datetime": gcal_start.get("dateTime") or gcal_start.get("date"),
+                "end_datetime": gcal_end.get("dateTime") or gcal_end.get("date"),
+                "location": gcal_event.get("location", ""),
+                "description": gcal_event.get("description", ""),
+                "_source": "google_calendar",
+                "_gcal_id": gcal_event.get("id"),
+            })
+            gcal_candidates.append(gcal_event)
+    except Exception as e:
+        logger.warning(f"GCal read-back failed during dedup, continuing with local only: {e}")
+
     if not candidates:
         return None
 
@@ -261,6 +314,75 @@ def create_event(
     return event_id
 
 
+def create_event_from_gcal_match(
+    supabase_client: Client,
+    user_id: str,
+    event_data: dict[str, Any],
+    email_id: str,
+    gcal_event_id: str,
+) -> str:
+    """Create a Selko event that adopts an existing Google Calendar event.
+
+    When dedup finds a match on the user's GCal (not managed by Selko),
+    we create a Selko event linked to it. The event starts as pending_review
+    so the user must approve before Selko modifies their calendar event.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        user_id: UUID of user.
+        event_data: Extracted event data from email.
+        email_id: UUID of source email.
+        gcal_event_id: Google Calendar event ID being adopted.
+
+    Returns:
+        UUID of created Selko event.
+    """
+    # Create event record with the GCal ID pre-filled
+    event_result = supabase_client.table("events").insert({
+        "user_id": user_id,
+        "title": event_data.get("title"),
+        "start_datetime": event_data.get("start_datetime"),
+        "end_datetime": event_data.get("end_datetime"),
+        "all_day": event_data.get("all_day", False),
+        "location": event_data.get("location"),
+        "description": event_data.get("description"),
+        "status": "pending_review",
+        "google_calendar_event_id": gcal_event_id,
+    }).execute()
+
+    event_id = event_result.data[0]["id"]
+
+    # Create GCal source (how we discovered this event)
+    supabase_client.table("event_sources").insert({
+        "event_id": event_id,
+        "source_origin": "google_calendar",
+        "google_calendar_source_event_id": gcal_event_id,
+        "source_type": "new_invitation",
+        "extracted_data": {"google_calendar_event_id": gcal_event_id},
+        "event_snapshot_before": None,
+    }).execute()
+
+    # Create email source (the email that triggered discovery)
+    supabase_client.table("event_sources").insert({
+        "event_id": event_id,
+        "email_id": email_id,
+        "source_origin": "email",
+        "source_type": "new_invitation",
+        "extracted_data": event_data,
+        "event_snapshot_before": None,
+    }).execute()
+
+    # Generate source attribution
+    attribution = generate_source_attribution(supabase_client, event_id)
+    if attribution:
+        supabase_client.table("events").update({
+            "source_attribution": attribution
+        }).eq("id", event_id).execute()
+
+    logger.info(f"Created event {event_id} adopting GCal event {gcal_event_id}")
+    return event_id
+
+
 def update_event(
     supabase_client: Client,
     gateway: LLMGateway,
@@ -270,6 +392,9 @@ def update_event(
     source_type: str,
 ) -> None:
     """Auto-merge new data into existing event.
+
+    If the event was previously synced (status='synced'), re-queues it for
+    sync so updated data reaches Google Calendar.
 
     Args:
         supabase_client: Authenticated Supabase client.
@@ -301,8 +426,8 @@ def update_event(
         source_type
     )
 
-    # Update event
-    supabase_client.table("events").update({
+    # Build update fields
+    update_fields = {
         "title": merged_data.get("title"),
         "start_datetime": merged_data.get("start_datetime"),
         "end_datetime": merged_data.get("end_datetime"),
@@ -310,7 +435,15 @@ def update_event(
         "location": merged_data.get("location"),
         "description": merged_data.get("description"),
         "updated_at": datetime.now().isoformat(),
-    }).eq("id", event_id).execute()
+    }
+
+    # Re-queue synced events for re-sync so updated data reaches Google Calendar
+    if existing_event.get("status") == "synced":
+        update_fields["status"] = "approved"
+        update_fields["sync_attempts"] = 0
+
+    # Update event
+    supabase_client.table("events").update(update_fields).eq("id", event_id).execute()
 
     # Create event_source link
     supabase_client.table("event_sources").insert({
@@ -526,16 +659,29 @@ def generate_source_attribution(
     # Build attribution using helper function
     sources_with_email_data = []
     for source in sources:
-        email = source.get("emails", {})
-        sources_with_email_data.append({
-            "source_type": source.get("source_type"),
-            "email_sender": email.get("from_email"),
-            "email_sender_name": email.get("from_name"),
-            "email_date": email.get("date_sent"),
-            "created_at": source.get("created_at"),
-            "is_undone": source.get("is_undone", False),
-        })
-    
+        source_origin = source.get("source_origin", "email")
+        email = source.get("emails") or {}
+
+        if source_origin == "google_calendar":
+            # Calendar-sourced entry — no email join
+            sources_with_email_data.append({
+                "source_type": source.get("source_type"),
+                "email_sender": "your Google Calendar",
+                "email_sender_name": "your Google Calendar",
+                "email_date": source.get("created_at"),
+                "created_at": source.get("created_at"),
+                "is_undone": source.get("is_undone", False),
+            })
+        else:
+            sources_with_email_data.append({
+                "source_type": source.get("source_type"),
+                "email_sender": email.get("from_email"),
+                "email_sender_name": email.get("from_name"),
+                "email_date": email.get("date_sent"),
+                "created_at": source.get("created_at"),
+                "is_undone": source.get("is_undone", False),
+            })
+
     return gemini.generate_source_attribution(sources_with_email_data)
 
 

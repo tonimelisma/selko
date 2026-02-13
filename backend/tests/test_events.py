@@ -11,8 +11,10 @@ import pytest
 from selko.services.events import (
     EventsError,
     check_sender_rules,
+    create_event_from_gcal_match,
     find_matching_event,
     generate_source_attribution,
+    update_event,
     undo_email_contribution,
     redo_email_contribution,
 )
@@ -151,7 +153,8 @@ class TestFindMatchingEvent:
             "start_datetime": "2026-03-15T14:00:00Z",
         }
 
-        result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
+            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
         assert result is None
 
@@ -174,14 +177,11 @@ class TestFindMatchingEvent:
             "start_datetime": "2026-03-15T14:00:00Z",
         }
 
-        with patch("selko.services.events.gemini.compare_events", return_value="event-123") as mock_compare:
+        with patch("selko.services.events.gemini.compare_events", return_value="event-123") as mock_compare, \
+             patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
             result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
-            mock_compare.assert_called_once_with(
-                mock_gemini,
-                event_data,
-                mock_result.data
-            )
+            mock_compare.assert_called_once()
             assert result == "event-123"
 
     def test_handles_llm_comparison_failure(self):
@@ -203,7 +203,8 @@ class TestFindMatchingEvent:
             "start_datetime": "2026-03-15T14:00:00Z",
         }
 
-        with patch("selko.services.events.gemini.compare_events", side_effect=Exception("LLM error")):
+        with patch("selko.services.events.gemini.compare_events", side_effect=Exception("LLM error")), \
+             patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
             result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
             # Should return None on failure, not raise
@@ -223,12 +224,13 @@ class TestFindMatchingEvent:
             "start_datetime": "2026-03-15T14:00:00+00:00",
         }
 
-        result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
+            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
         # Should parse without error
         assert result is None
         # Verify the date query was made
-        mock_client.table.assert_called_with("events")
+        mock_client.table.assert_any_call("events")
 
     def test_parses_datetime_with_z_suffix(self):
         """Test parsing of datetime string with Z suffix."""
@@ -244,7 +246,8 @@ class TestFindMatchingEvent:
             "start_datetime": "2026-03-15T14:00:00Z",
         }
 
-        result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
+            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
         # Should parse Z suffix correctly
         assert result is None
@@ -424,3 +427,275 @@ class TestRedoEmailContribution:
         # Verify update was called with is_undone: False
         update_calls = [call for call in mock_table.update.call_args_list]
         assert len(update_calls) >= 1
+
+
+class TestFindMatchingEventGCal:
+    """Tests for GCal read-back during deduplication."""
+
+    def test_includes_gcal_candidates(self):
+        """Test that GCal events are added to LLM comparison candidates."""
+        mock_client = MagicMock()
+        mock_gemini = MagicMock()
+
+        # No local events
+        mock_result = MagicMock()
+        mock_result.data = []
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+
+        event_data = {
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }
+
+        gcal_events = [{
+            "id": "gcal-abc",
+            "summary": "Team Meeting",
+            "start": {"dateTime": "2026-03-15T14:00:00Z"},
+            "end": {"dateTime": "2026-03-15T15:00:00Z"},
+            "location": "Room A",
+            "description": "Weekly sync",
+        }]
+
+        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=gcal_events), \
+             patch("selko.services.events.gemini.compare_events", return_value="gcal:gcal-abc") as mock_compare:
+            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+
+            # Should have called compare with the GCal candidate
+            mock_compare.assert_called_once()
+            candidates = mock_compare.call_args[0][2]
+            assert len(candidates) == 1
+            assert candidates[0]["id"] == "gcal:gcal-abc"
+            assert candidates[0]["_source"] == "google_calendar"
+            assert result == "gcal:gcal-abc"
+
+    def test_skips_selko_managed_gcal_events(self):
+        """Test that GCal events already managed by Selko are excluded."""
+        mock_client = MagicMock()
+        mock_gemini = MagicMock()
+
+        # No local events
+        mock_result = MagicMock()
+        mock_result.data = []
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+
+        event_data = {
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }
+
+        # GCal event has selko_event_id (already managed)
+        gcal_events = [{
+            "id": "gcal-abc",
+            "summary": "Team Meeting",
+            "start": {"dateTime": "2026-03-15T14:00:00Z"},
+            "end": {"dateTime": "2026-03-15T15:00:00Z"},
+            "extendedProperties": {
+                "private": {"selko_event_id": "event-123"}
+            },
+        }]
+
+        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=gcal_events):
+            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+
+        # No candidates after filtering, should return None
+        assert result is None
+
+    def test_graceful_gcal_failure(self):
+        """Test that GCal API failure doesn't break dedup."""
+        mock_client = MagicMock()
+        mock_gemini = MagicMock()
+
+        # Local events exist
+        mock_result = MagicMock()
+        mock_result.data = [{
+            "id": "event-123",
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }]
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+
+        event_data = {
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }
+
+        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", side_effect=Exception("API error")), \
+             patch("selko.services.events.gemini.compare_events", return_value="event-123"):
+            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+
+        # Should still match local event despite GCal failure
+        assert result == "event-123"
+
+
+class TestCreateEventFromGCalMatch:
+    """Tests for creating events from GCal matches."""
+
+    def test_creates_event_with_gcal_id_and_two_sources(self):
+        """Test that adopting a GCal event creates proper records."""
+        mock_client = MagicMock()
+
+        # Mock event insert
+        mock_table = MagicMock()
+        mock_client.table.return_value = mock_table
+
+        mock_insert = MagicMock()
+        mock_table.insert.return_value = mock_insert
+        mock_insert.execute.return_value = MagicMock(data=[{"id": "new-event-id"}])
+
+        # Mock update for attribution
+        mock_update = MagicMock()
+        mock_table.update.return_value = mock_update
+        mock_update.eq.return_value.execute.return_value = MagicMock()
+
+        # Mock select for attribution generation
+        mock_select = MagicMock()
+        mock_table.select.return_value = mock_select
+        mock_select.eq.return_value.eq.return_value.order.return_value.execute.return_value = MagicMock(data=[])
+
+        event_data = {
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }
+
+        result = create_event_from_gcal_match(
+            mock_client, "user-123", event_data, "email-456", "gcal-abc"
+        )
+
+        assert result == "new-event-id"
+
+        # Verify event was created with GCal ID
+        first_insert = mock_table.insert.call_args_list[0][0][0]
+        assert first_insert["google_calendar_event_id"] == "gcal-abc"
+        assert first_insert["status"] == "pending_review"
+
+        # Verify two event_sources were created (GCal + email)
+        insert_calls = mock_table.insert.call_args_list
+        assert len(insert_calls) >= 3  # event + 2 sources
+
+
+class TestUpdateEventResync:
+    """Tests for re-sync logic in update_event."""
+
+    def test_requeues_synced_for_resync(self):
+        """Test that updating a synced event sets status to approved."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+
+        # Existing event is synced
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "title": "Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": "Room A",
+            "description": "Weekly sync",
+            "status": "synced",
+        }
+
+        mock_table = MagicMock()
+        mock_client.table.return_value = mock_table
+
+        # First call: select existing event
+        mock_select = MagicMock()
+        mock_table.select.return_value = mock_select
+        mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+        mock_select.eq.return_value.eq.return_value.order.return_value.execute.return_value = MagicMock(data=[])
+
+        # Mock update
+        mock_update = MagicMock()
+        mock_table.update.return_value = mock_update
+        mock_update.eq.return_value.execute.return_value = MagicMock()
+
+        # Mock insert for event_source
+        mock_insert = MagicMock()
+        mock_table.insert.return_value = mock_insert
+        mock_insert.execute.return_value = MagicMock()
+
+        # Mock LLM merge
+        with patch("selko.services.events.gemini.merge_event_data", return_value={
+            "title": "Updated Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": "Room B",
+            "description": "Updated weekly sync",
+        }):
+            update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
+
+        # Verify update included status=approved and sync_attempts=0
+        first_update = mock_table.update.call_args_list[0][0][0]
+        assert first_update["status"] == "approved"
+        assert first_update["sync_attempts"] == 0
+
+    def test_preserves_pending_review(self):
+        """Test that updating a pending_review event doesn't change status."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+
+        # Existing event is pending_review
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "title": "Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": "Room A",
+            "description": "Weekly sync",
+            "status": "pending_review",
+        }
+
+        mock_table = MagicMock()
+        mock_client.table.return_value = mock_table
+
+        mock_select = MagicMock()
+        mock_table.select.return_value = mock_select
+        mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+        mock_select.eq.return_value.eq.return_value.order.return_value.execute.return_value = MagicMock(data=[])
+
+        mock_update = MagicMock()
+        mock_table.update.return_value = mock_update
+        mock_update.eq.return_value.execute.return_value = MagicMock()
+
+        mock_insert = MagicMock()
+        mock_table.insert.return_value = mock_insert
+        mock_insert.execute.return_value = MagicMock()
+
+        with patch("selko.services.events.gemini.merge_event_data", return_value={
+            "title": "Updated Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": "Room B",
+            "description": "Updated",
+        }):
+            update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
+
+        # Verify update did NOT include status change
+        first_update = mock_table.update.call_args_list[0][0][0]
+        assert "status" not in first_update
+
+
+class TestGenerateAttributionWithCalendarSource:
+    """Tests for attribution with calendar-sourced events."""
+
+    def test_handles_calendar_source(self):
+        """Test attribution for calendar-sourced event."""
+        mock_client = MagicMock()
+
+        mock_result = MagicMock()
+        mock_result.data = [{
+            "source_type": "new_invitation",
+            "source_origin": "google_calendar",
+            "created_at": "2026-01-25T13:30:00Z",
+            "is_undone": False,
+            "emails": None,  # No email for calendar sources
+        }]
+        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
+
+        attribution = generate_source_attribution(mock_client, "event-123")
+
+        assert "your Google Calendar" in attribution
+        assert "automatically created" in attribution
