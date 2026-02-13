@@ -22,8 +22,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +62,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import net.melisma.selko.ui.theme.SelkoOnSuccess
+import net.melisma.selko.ui.theme.SelkoSuccess
+import net.melisma.selko.ui.theme.SelkoSuccessDark
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -109,6 +115,10 @@ fun EventDetailScreen(
                         OutlinedButton(
                             onClick = { viewModel.rejectEvent() },
                             enabled = !uiState.isRejecting && !uiState.isApproving,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                             shape = MaterialTheme.shapes.medium
                         ) {
                             if (uiState.isRejecting) {
@@ -130,23 +140,27 @@ fun EventDetailScreen(
                         Button(
                             onClick = { viewModel.approveEvent() },
                             enabled = !uiState.isApproving && !uiState.isRejecting,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSystemInDarkTheme()) SelkoSuccessDark else SelkoSuccess,
+                                contentColor = SelkoOnSuccess
+                            ),
                             shape = MaterialTheme.shapes.medium
                         ) {
                             if (uiState.isApproving) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
                                     strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary
+                                    color = SelkoOnSuccess
                                 )
                             } else {
                                 Icon(
                                     imageVector = Icons.Filled.Check,
-                                    contentDescription = "Approve",
+                                    contentDescription = "Accept",
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Approve")
+                            Text("Accept")
                         }
                     }
                 }
