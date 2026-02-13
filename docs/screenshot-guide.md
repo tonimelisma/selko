@@ -22,7 +22,9 @@ Capture all 24 screenshots in ~3 minutes using automated scripts instead of manu
 ./scripts/capture-all-screenshots.sh android   # 6 Android screenshots via UiAutomator
 ```
 
-> **Android:** Requires a running emulator. **iOS:** Requires iPhone 17 Pro simulator. **Web:** Starts its own dev server via Playwright.
+> **Android:** Requires a running emulator (scripts start one if needed). **iOS:** Requires iPhone 17 Pro simulator (scripts boot it if needed). **Web:** Starts its own dev server via Playwright.
+>
+> **Keep simulators/emulators running** after capture — they're reused for testing and future screenshots.
 
 ---
 
@@ -91,8 +93,6 @@ All platforms support environment variable overrides (`SUPABASE_URL`, `SUPABASE_
    ```
    Repeat steps 4-6 with `-mobile` suffix (e.g., `web-login-mobile.png`)
 
-8. **When done:** `browser_close`, then stop the dev server
-
 ### Notes
 - Clear any stale form data before taking login/register screenshots
 - Never use `fullPage: true` — produces oversized images
@@ -147,8 +147,6 @@ All platforms support environment variable overrides (`SUPABASE_URL`, `SUPABASE_
    - Navigate back, tap "History" tab → `ios-history.png`
    - Tap "Settings" tab → `ios-settings.png`
 
-8. **When done:** `stop_app_sim()` to stop the app
-
 ### Accessibility Identifiers (for tap)
 
 | Element | Identifier |
@@ -202,8 +200,6 @@ The UiAutomator test (`android/app/src/androidTest/.../ScreenshotCaptureTest.kt`
 3. Launch: `mobile_launch_app({ appId: "net.melisma.selko" })`
 4. Use `mobile_list_elements_on_screen()` to find coordinates, `mobile_click_on_screen_at_coordinates()` to tap, `mobile_type_keys()` to type
 5. Capture all 6 screens: login, register, review-queue, history, settings, event-detail
-6. **When done:** `mobile_terminate_app({ appId: "net.melisma.selko" })`
-
 ### Notes
 - Android emulator screenshots are 1080x2400 — **always resize** after capture: `sips --resampleHeight 1920 docs/screenshots/android-*.png`
 - If `mobile-mcp` loses the device, restart adb: `adb kill-server && adb start-server`

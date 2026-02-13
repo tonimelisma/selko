@@ -62,6 +62,8 @@ Use `mobile_list_elements_on_screen` to enumerate UI elements. Check:
 
 ### 8. Report
 
+**Keep the emulator running** after verification — it's reused for screenshot capture.
+
 For each screen, report:
 - **PASS** — looks correct
 - **ISSUE** — describe the problem with a suggestion

@@ -5,7 +5,7 @@ Verify the Selko iOS app visually using XcodeBuildMCP and mobile-mcp tools.
 ## Prerequisites
 
 - Xcode installed with iOS Simulator
-- iPhone 16 simulator available
+- iPhone 17 Pro simulator available
 
 ## Steps
 
@@ -14,7 +14,7 @@ Verify the Selko iOS app visually using XcodeBuildMCP and mobile-mcp tools.
 Use XcodeBuildMCP tools to build:
 - Project: `ios/iOS.xcodeproj`
 - Scheme: `iOS`
-- Destination: `iPhone 16` simulator
+- Destination: `iPhone 17 Pro` simulator
 
 ### 2. Launch the simulator
 
@@ -59,6 +59,8 @@ Use `mobile_list_elements_on_screen` to enumerate UI elements. Check:
 - Navigation elements are properly identified
 
 ### 8. Report
+
+**Keep the simulator running** after verification — it's reused for screenshot capture.
 
 For each screen, report:
 - **PASS** — looks correct

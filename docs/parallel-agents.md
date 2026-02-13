@@ -62,6 +62,12 @@ cd ../selko-<type>-<task>
 # 7. Install dependencies (if needed)
 uv sync                         # Python deps
 cd frontend && npm ci && cd ..  # JS deps (if changing frontend)
+
+# 8. Pre-warm simulators/emulators (if UI task on these platforms)
+#    iOS:
+xcrun simctl boot "iPhone 17 Pro" 2>/dev/null || true
+#    Android (if no emulator running):
+adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 ```
 
 > **CRITICAL: You are now in the worktree directory.**
