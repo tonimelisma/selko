@@ -165,9 +165,9 @@
 		{#each [...groupedByDate().entries()] as [dateLabel, dateEvents]}
 			<div>
 				<h2 class="text-sm font-semibold text-base-content/60 mb-3">{dateLabel}</h2>
-				<div class="space-y-2">
+				<div>
 					{#each dateEvents as event (event.id)}
-						<div class="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+						<div class="flex items-center justify-between p-3 border-b border-base-200">
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2 flex-wrap">
 									<span class="font-medium text-sm">{event.title}</span>
