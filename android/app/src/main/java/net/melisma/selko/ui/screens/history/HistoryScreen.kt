@@ -1,9 +1,11 @@
 package net.melisma.selko.ui.screens.history
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,13 +22,10 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Undo
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Snackbar
@@ -37,7 +36,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -70,17 +68,18 @@ fun HistoryScreen(
 
             else -> {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Activity History",
                             style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(
+                                start = 16.dp,
+                                end = 16.dp,
+                                bottom = 8.dp
+                            )
                         )
                     }
 
@@ -90,7 +89,12 @@ fun HistoryScreen(
                                 text = group.dateLabel,
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                                modifier = Modifier.padding(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 12.dp,
+                                    bottom = 4.dp
+                                )
                             )
                         }
 
@@ -161,32 +165,17 @@ private fun HistoryEventItem(
     onUndo: () -> Unit,
     onRetry: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Status icon
-            StatusIcon(status = event.status)
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Event details
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = event.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+    ListItem(
+        leadingContent = { StatusIcon(status = event.status) },
+        headlineContent = {
+            Text(
+                text = event.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        supportingContent = {
+            Column {
                 Text(
                     text = getStatusDescription(event),
                     style = MaterialTheme.typography.bodySmall,
@@ -202,8 +191,8 @@ private fun HistoryEventItem(
                     )
                 }
             }
-
-            // Action button
+        },
+        trailingContent = {
             if (isProcessing) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
@@ -267,7 +256,7 @@ private fun HistoryEventItem(
                 }
             }
         }
-    }
+    )
 }
 
 @Composable

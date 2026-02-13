@@ -1,213 +1,281 @@
 package net.melisma.selko.ui.screens.review
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.data.model.CalendarEvent
-import net.melisma.selko.ui.theme.SelkoOnSuccessContainer
-import net.melisma.selko.ui.theme.SelkoOnSuccessContainerDark
-import net.melisma.selko.ui.theme.SelkoSuccessContainer
-import net.melisma.selko.ui.theme.SelkoSuccessContainerDark
+import net.melisma.selko.ui.theme.SelkoError
+import net.melisma.selko.ui.theme.SelkoErrorDark
+import net.melisma.selko.ui.theme.SelkoSuccess
+import net.melisma.selko.ui.theme.SelkoSuccessDark
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventCardContent(
+fun SwipeableEventItem(
     event: CalendarEvent,
     isProcessing: Boolean,
     onApprove: () -> Unit,
     onReject: () -> Unit,
     onEdit: () -> Unit
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onApprove()
+                    true
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onReject()
+                    true
+                }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        }
+    )
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = !isProcessing,
+        enableDismissFromEndToStart = !isProcessing,
+        backgroundContent = { SwipeBackground(dismissState = dismissState) }
     ) {
-        Column(
+        EventListItem(
+            event = event,
+            isProcessing = isProcessing,
+            onApprove = {
+                coroutineScope.launch {
+                    dismissState.dismiss(SwipeToDismissBoxValue.StartToEnd)
+                }
+            },
+            onReject = {
+                coroutineScope.launch {
+                    dismissState.dismiss(SwipeToDismissBoxValue.EndToStart)
+                }
+            },
+            onEdit = onEdit
+        )
+    }
+}
+
+@Composable
+fun EventListItem(
+    event: CalendarEvent,
+    isProcessing: Boolean,
+    onApprove: () -> Unit,
+    onReject: () -> Unit,
+    onEdit: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = event.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            supportingContent = {
+                Column {
+                    // Date/Time row
+                    event.startDatetime?.let { start ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Filled.Schedule,
+                                contentDescription = "Event time",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = formatDateTimeRange(start, event.endDatetime, event.allDay),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // Location row
+                    event.location?.let { location ->
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Filled.LocationOn,
+                                contentDescription = "Event location",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = location,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Description (truncated, no expand toggle)
+                    event.description?.let { description ->
+                        if (description.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        )
+
+        // Action buttons row
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
         ) {
-            // Title
-            Text(
-                text = event.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+            if (isProcessing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                // Accept button (icon-only)
+                FilledTonalButton(
+                    onClick = onApprove,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (isSystemInDarkTheme()) SelkoSuccessDark else SelkoSuccess,
+                        contentColor = Color.White
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = "Accept",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Edit button (icon + text)
+                FilledTonalButton(
+                    onClick = onEdit,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Edit")
+                }
+
+                // Reject button (icon-only)
+                FilledTonalButton(
+                    onClick = onReject,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Reject",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SwipeBackground(dismissState: SwipeToDismissBoxState) {
+    val color = when (dismissState.targetValue) {
+        SwipeToDismissBoxValue.StartToEnd -> if (isSystemInDarkTheme()) SelkoSuccessDark else SelkoSuccess
+        SwipeToDismissBoxValue.EndToStart -> if (isSystemInDarkTheme()) SelkoErrorDark else SelkoError
+        else -> Color.Transparent
+    }
+
+    val icon = when (dismissState.targetValue) {
+        SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.Check
+        SwipeToDismissBoxValue.EndToStart -> Icons.Filled.Close
+        else -> null
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(color),
+        contentAlignment = when (dismissState.targetValue) {
+            SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+            SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+            else -> Alignment.Center
+        }
+    ) {
+        icon?.let {
+            Icon(
+                imageVector = it,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Date/Time
-            event.startDatetime?.let { start ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Filled.Schedule,
-                        contentDescription = "Event time",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = formatDateTimeRange(start, event.endDatetime, event.allDay),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // Location
-            event.location?.let { location ->
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Event location",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = location,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // Expandable description
-            event.description?.let { description ->
-                if (description.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { isExpanded = !isExpanded },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Description",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                            contentDescription = if (isExpanded) "Collapse description" else "Expand description",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    AnimatedVisibility(visible = isExpanded) {
-                        Text(
-                            text = description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Action buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
-            ) {
-                if (isProcessing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    FilledTonalButton(
-                        onClick = onApprove,
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (isSystemInDarkTheme()) SelkoSuccessContainerDark else SelkoSuccessContainer,
-                            contentColor = if (isSystemInDarkTheme()) SelkoOnSuccessContainerDark else SelkoOnSuccessContainer
-                        ),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Accept")
-                    }
-                    OutlinedButton(
-                        onClick = onEdit,
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Edit")
-                    }
-                    OutlinedButton(
-                        onClick = onReject,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Reject")
-                    }
-                }
-            }
         }
     }
 }
