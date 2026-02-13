@@ -83,6 +83,9 @@ final class ScreenshotCaptureTests: XCTestCase {
 
     @MainActor
     func testCaptureAllScreenshots() throws {
+        // Force portrait orientation regardless of simulator state from previous test runs
+        XCUIDevice.shared.orientation = .portrait
+
         app.launch()
 
         // Handle case where app is already logged in from a previous run

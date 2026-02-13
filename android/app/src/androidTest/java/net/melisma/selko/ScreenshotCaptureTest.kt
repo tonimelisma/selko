@@ -57,12 +57,16 @@ class ScreenshotCaptureTest {
 
         // Wait for the app to appear
         device.wait(Until.hasObject(By.pkg(PACKAGE).depth(0)), TIMEOUT)
+
+        // Dismiss any "System UI isn't responding" dialogs from cold boot
+        dismissSystemDialogs()
     }
 
     @Test
     fun captureAllScreenshots() {
         // 1. Login screen
         device.wait(Until.hasObject(By.text("Sign in")), TIMEOUT)
+        dismissSystemDialogs()
         Thread.sleep(1000)
         saveScreenshot("android-login")
 
@@ -70,6 +74,7 @@ class ScreenshotCaptureTest {
         val signUpToggle = device.wait(
             Until.findObject(By.text("Don't have an account? Sign up")), SHORT_TIMEOUT
         )
+        requireNotNull(signUpToggle) { "Could not find 'Sign up' toggle on login screen" }
         signUpToggle.click()
         device.wait(Until.hasObject(By.text("Confirm password")), SHORT_TIMEOUT)
         Thread.sleep(500)
@@ -79,61 +84,66 @@ class ScreenshotCaptureTest {
         val loginToggle = device.wait(
             Until.findObject(By.text("Already have an account? Log in")), SHORT_TIMEOUT
         )
+        requireNotNull(loginToggle) { "Could not find 'Log in' toggle on register screen" }
         loginToggle.click()
         device.wait(Until.hasObject(By.text("Sign in")), SHORT_TIMEOUT)
         Thread.sleep(500)
 
-        // 3. Log in with seed user
-        // Find the EditText parent of each label — Compose OutlinedTextField renders the
-        // label as a child TextView inside an EditText node
-        val emailLabel = device.wait(Until.findObject(By.text("Email")), SHORT_TIMEOUT)
-        val emailField = emailLabel.parent
-        emailField.click()
-        Thread.sleep(300)
-        emailField.text = SCREENSHOT_USER
+        // 3. Log in with seed user (retry up to 3 times — cold-booted emulator networking
+        //    may not be ready, causing Supabase auth timeouts)
+        var loggedIn = false
+        for (attempt in 1..3) {
+            val emailLabel = device.wait(Until.findObject(By.text("Email")), SHORT_TIMEOUT)
+            requireNotNull(emailLabel) { "Could not find Email field on login screen (attempt $attempt)" }
+            val emailField = emailLabel.parent
+            emailField.click()
+            Thread.sleep(300)
+            emailField.text = SCREENSHOT_USER
 
-        val passwordLabel = device.wait(Until.findObject(By.text("Password")), SHORT_TIMEOUT)
-        val passwordField = passwordLabel.parent
-        passwordField.click()
-        Thread.sleep(300)
-        passwordField.text = SCREENSHOT_PASS
+            val passwordLabel = device.wait(Until.findObject(By.text("Password")), SHORT_TIMEOUT)
+            requireNotNull(passwordLabel) { "Could not find Password field on login screen (attempt $attempt)" }
+            val passwordField = passwordLabel.parent
+            passwordField.click()
+            Thread.sleep(300)
+            passwordField.text = SCREENSHOT_PASS
 
-        // Dismiss keyboard before tapping Sign in
-        device.pressBack()
-        Thread.sleep(500)
+            // Try to find Sign in button; dismiss keyboard first if it's blocking
+            Thread.sleep(500)
+            var signInButton = device.findObject(By.text("Sign in"))
+            if (signInButton == null) {
+                // Keyboard may be covering the button — dismiss it
+                device.pressBack()
+                Thread.sleep(500)
+                signInButton = device.wait(Until.findObject(By.text("Sign in")), SHORT_TIMEOUT)
+            }
+            requireNotNull(signInButton) { "Could not find Sign in button (attempt $attempt)" }
+            signInButton.click()
 
-        // Tap the Sign in button
-        val signInButton = device.wait(Until.findObject(By.text("Sign in")), SHORT_TIMEOUT)
-        signInButton.click()
+            // Wait for the review queue to load
+            loggedIn = device.wait(Until.hasObject(By.text("Review Queue")), TIMEOUT * 2)
+            if (loggedIn) break
 
-        // Wait for the review queue to load (indicates successful login)
-        device.wait(Until.hasObject(By.text("Review Queue")), TIMEOUT * 2)
+            // Login failed (likely network timeout) — wait and retry
+            Thread.sleep(3000)
+        }
+        require(loggedIn) { "Failed to log in after 3 attempts — check emulator networking and Supabase" }
         Thread.sleep(3000)
 
         // 4. Review queue
         saveScreenshot("android-review-queue")
 
-        // 5. History tab — try by content description (icon), then by text
-        var historyTab = device.wait(Until.findObject(By.desc("History")), SHORT_TIMEOUT)
-        if (historyTab == null) {
-            historyTab = device.wait(Until.findObject(By.text("History")), SHORT_TIMEOUT)
-        }
-        requireNotNull(historyTab) { "Could not find History tab by desc or text" }
-        historyTab.click()
+        // 5. History tab
+        clickTab("History")
         Thread.sleep(2000)
         saveScreenshot("android-history")
 
         // 6. Settings tab
-        val settingsTab = device.wait(Until.findObject(By.text("Settings")), SHORT_TIMEOUT)
-        requireNotNull(settingsTab) { "Could not find Settings tab" }
-        settingsTab.click()
+        clickTab("Settings")
         Thread.sleep(2000)
         saveScreenshot("android-settings")
 
         // 7. Go back to Review tab, then navigate to event detail
-        val reviewTab = device.wait(Until.findObject(By.text("Review")), SHORT_TIMEOUT)
-        requireNotNull(reviewTab) { "Could not find Review tab" }
-        reviewTab.click()
+        clickTab("Review")
         Thread.sleep(2000)
 
         val editButton = device.wait(Until.findObject(By.text("Edit")), SHORT_TIMEOUT)
@@ -143,6 +153,31 @@ class ScreenshotCaptureTest {
             Thread.sleep(1000)
         }
         saveScreenshot("android-event-detail")
+    }
+
+    private fun clickTab(label: String) {
+        // Use By.text() to find the label Text composable.  Clicking the Text child
+        // of a Compose NavigationBarItem propagates the click to the item's onClick.
+        // (By.desc() finds the Icon child, whose click does NOT propagate.)
+        val tab = device.wait(Until.findObject(By.text(label)), SHORT_TIMEOUT)
+        requireNotNull(tab) { "Could not find '$label' tab" }
+        tab.click()
+    }
+
+    private fun dismissSystemDialogs() {
+        // Repeatedly dismiss "System UI isn't responding" and similar dialogs
+        repeat(3) {
+            val waitButton = device.findObject(By.text("Wait"))
+            if (waitButton != null) {
+                waitButton.click()
+                Thread.sleep(1000)
+            }
+            val closeButton = device.findObject(By.text("Close app"))
+            if (closeButton != null) {
+                closeButton.click()
+                Thread.sleep(1000)
+            }
+        }
     }
 
     private fun saveScreenshot(name: String) {
