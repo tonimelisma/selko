@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { get } from 'svelte/store';
 	import { getEvent, updateEvent, updateEventStatus } from '$lib/services/events.js';
 	import { fetchEventSources } from '$lib/services/event-sources.js';
 	import { getEmail } from '$lib/services/emails.js';
@@ -33,16 +34,11 @@
 	let location = $state('');
 	let description = $state('');
 
-	$effect(() => {
-		const unsub = page.subscribe((p) => {
-			eventId = p.params.id || '';
-		});
-		return unsub;
-	});
-
 	onMount(async () => {
-		if (!eventId) return;
-		await loadEventData();
+		eventId = get(page).params.id || '';
+		if (eventId) {
+			await loadEventData();
+		}
 	});
 
 	async function loadEventData() {
@@ -356,9 +352,9 @@
 			<!-- Desktop action buttons -->
 			{#if event.status === 'pending_review'}
 				<div class="hidden lg:flex justify-end gap-3 mt-6">
-					<button class="btn btn-ghost" onclick={handleReject}>Reject</button>
-					<button class="btn btn-primary" onclick={handleApprove} disabled={!title}>
-						Approve
+					<button class="btn btn-outline btn-error" onclick={handleReject}>Reject</button>
+					<button class="btn btn-success" onclick={handleApprove} disabled={!title}>
+						Accept
 					</button>
 				</div>
 			{/if}
@@ -369,9 +365,9 @@
 	{#if event.status === 'pending_review'}
 		<div class="fixed bottom-20 left-0 right-0 bg-base-100 border-t border-base-300 p-4 lg:hidden">
 			<div class="flex justify-end gap-3 max-w-7xl mx-auto">
-				<button class="btn btn-ghost flex-1" onclick={handleReject}>Reject</button>
-				<button class="btn btn-primary flex-1" onclick={handleApprove} disabled={!title}>
-					Approve
+				<button class="btn btn-outline btn-error flex-1" onclick={handleReject}>Reject</button>
+				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title}>
+					Accept
 				</button>
 			</div>
 		</div>
