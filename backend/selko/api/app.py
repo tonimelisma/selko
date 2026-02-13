@@ -118,11 +118,11 @@ async def lifespan(app: FastAPI):
         # Start APScheduler for cron-like periodic tasks
         logger.info("Starting APScheduler for periodic tasks")
 
-        # Email fetch scheduler - creates email_fetch tasks every 5 minutes
+        # Email fetch scheduler - creates email_fetch tasks every 15 minutes
         scheduler.add_job(
             schedule_email_fetches,
             "interval",
-            minutes=5,
+            minutes=15,
             id="email_fetch_scheduler",
             name="Email Fetch Scheduler",
             max_instances=1,

@@ -101,8 +101,9 @@ async def process_email_fetch_job(
 async def schedule_email_fetches() -> None:
     """Scheduler function that creates email_fetch tasks for all users.
 
-    Called by APScheduler every 5 minutes. Creates one email_fetch scheduled task
-    per user who has an active Gmail integration.
+    Called by APScheduler every 15 minutes. Creates one email_fetch scheduled task
+    per user who has an active Gmail integration, skipping users who already have
+    a pending or processing task.
     """
     from selko.config import load_config
     from selko.services.auth import get_service_client
@@ -122,9 +123,24 @@ async def schedule_email_fetches() -> None:
             logger.debug("No users with active Gmail integrations")
             return
 
-        # Create email_fetch scheduled task for each user
+        # Find users who already have a pending or processing email_fetch task
+        existing_result = client.table("scheduled_tasks").select(
+            "user_id"
+        ).eq(
+            "task_type", "email_fetch"
+        ).in_(
+            "status", ["pending", "processing"]
+        ).execute()
+
+        users_with_existing_task = {row["user_id"] for row in existing_result.data}
+
+        # Create email_fetch scheduled task only for users without an existing one
         tasks_created = 0
+        tasks_skipped = 0
         for user_id in users:
+            if user_id in users_with_existing_task:
+                tasks_skipped += 1
+                continue
             try:
                 enqueue_scheduled_task(
                     client,
@@ -136,7 +152,13 @@ async def schedule_email_fetches() -> None:
             except Exception as e:
                 logger.error(f"Failed to enqueue email_fetch for user {user_id}: {e}")
 
-        logger.info(f"Scheduled email fetch for {tasks_created} users")
+        if tasks_skipped:
+            logger.info(
+                f"Scheduled email fetch for {tasks_created} users "
+                f"({tasks_skipped} skipped — already queued)"
+            )
+        else:
+            logger.info(f"Scheduled email fetch for {tasks_created} users")
 
     except Exception as e:
         logger.error(f"Failed to schedule email fetches: {e}", exc_info=True)
