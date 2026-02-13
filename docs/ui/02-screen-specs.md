@@ -19,76 +19,70 @@ Each spec follows a consistent template:
 
 ### Purpose
 
-Home screen of the app. Lists all events pending user review, grouped hierarchically by sender and email. When integrations are not connected or authorized, this screen is entirely replaced by an integration setup view.
+Home screen of the app. Lists all events pending user review, grouped by sender. When integrations are not connected or authorized, this screen is entirely replaced by an integration setup view.
 
 **UPDATE events** (time changes, cancellations from follow-up emails) are applied automatically and never appear here. They appear in Activity History where the user can undo them.
 
 ### Primary Actions
-- Approve event (individual or group)
+- Accept event (individual or all in sender group)
 - Edit event (navigate to Event Detail)
-- Reject event
+- Reject event (individual or all in sender group)
 
 ### Desktop Layout (lg:)
 
-Full-width list with hierarchical grouping. Page container: `max-w-7xl mx-auto`.
+Full-width list grouped by sender. Page container: `max-w-7xl mx-auto`.
 
 ```
 ┌─ Sender Group ──────────────────────────────────────────────────┐
-│ school@district.edu                              [Approve All] │
+│ School District                                                    │
+│ school@district.edu                                        [⋯]   │
 │                                                                   │
-│  ┌─ Email ─────────────────────────────────────────────────────┐ │
-│  │ "Party Invitation" — Oct 1, 2026              [Approve All] │ │
-│  │                                                               │ │
-│  │  ┌─ Event Card ────────────────────────────────────────────┐ │ │
-│  │  │ Birthday Party                                           │ │ │
-│  │  │ Oct 5, 2:00 PM – 5:00 PM · 123 Main St                 │ │ │
-│  │  │ Birthday party invitation from...      [▼ More]          │ │ │
-│  │  │                              [Approve] [Edit] [Reject]   │ │ │
-│  │  └────────────────────────────────────────────────────────┘ │ │
-│  │                                                               │ │
-│  │  ┌─ Event Card ────────────────────────────────────────────┐ │ │
-│  │  │ RSVP Reminder                                            │ │ │
-│  │  │ Oct 3 · All Day                                          │ │ │
-│  │  │ Please RSVP by October 3rd...          [▼ More]          │ │ │
-│  │  │                              [Approve] [Edit] [Reject]   │ │ │
-│  │  └────────────────────────────────────────────────────────┘ │ │
+│  ┌─ Event Card ────────────────────────────────────────────────┐ │
+│  │ Birthday Party                                               │ │
+│  │ 🕐 Oct 5, 2:00 PM – 5:00 PM                                │ │
+│  │ 📍 123 Main St                                               │ │
+│  │                              [Accept] [Edit] [Reject]        │ │
 │  └──────────────────────────────────────────────────────────────┘ │
 │                                                                   │
-│  ┌─ Email ─────────────────────────────────────────────────────┐ │
-│  │ "Field Trip Notice" — Oct 2, 2026             [Approve All] │ │
-│  │                                                               │ │
-│  │  ┌─ Event Card ────────────────────────────────────────────┐ │ │
-│  │  │ Field Trip                                               │ │ │
-│  │  │ Oct 15, 8:00 AM · City Museum                           │ │ │
-│  │  │ Annual field trip to the City Museum... [▼ More]          │ │ │
-│  │  │                              [Approve] [Edit] [Reject]   │ │ │
-│  │  └────────────────────────────────────────────────────────┘ │ │
+│  ┌─ Event Card ────────────────────────────────────────────────┐ │
+│  │ RSVP Reminder                                                │ │
+│  │ 🕐 Oct 3 · All Day                                          │ │
+│  │                              [Accept] [Edit] [Reject]        │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌─ Event Card ────────────────────────────────────────────────┐ │
+│  │ Field Trip                                                   │ │
+│  │ 🕐 Oct 15, 8:00 AM                                          │ │
+│  │ 📍 City Museum                                               │ │
+│  │                              [Accept] [Edit] [Reject]        │ │
 │  └──────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+The three-dot menu [⋯] on the sender header contains:
+- "Approve all" — approves all events from this sender
+- "Reject all" — rejects all events from this sender
+- "Ignore sender" — (disabled, future feature)
 
 Each event card shows:
 - Title
 - Date/time (or "All Day")
 - Location (if any)
-- Description blurb (truncated, expandable/collapsible via "More"/"Less" toggle)
-- Action buttons: Approve, Edit, Reject
+- Action buttons: Accept (green/success), Edit (outlined primary), Reject (outlined red/error)
 
-Group-level "Approve All" buttons on sender headers and email headers approve all events within that group.
+Events are grouped by sender only (no email sub-grouping). All events from a sender appear directly under that sender's header.
 
 ### Tablet Layout (md:)
 
-Same hierarchical structure. Action buttons use icons with `aria-label` instead of text labels to save horizontal space.
+Same sender-grouped structure. All action buttons retain text labels.
 
 ### Mobile Layout (default)
 
-Same hierarchy as stacked cards:
+Same sender-grouped structure as stacked cards:
 
-- **Sender**: section header with `text-lg font-semibold`, `bg-base-200` background, "Approve All" button right-aligned
-- **Email**: subject + date as a subheader, "Approve All" button right-aligned
-- **Events**: full-width cards stacked below each email
-- Action buttons: icon-only (`btn btn-sm btn-ghost`) — checkmark (approve), pencil (edit), X (reject), all with `aria-label`
-- Description blurb collapsed by default, expandable
+- **Sender**: section header with sender name, email, and three-dot menu (right-aligned)
+- **Events**: full-width cards stacked below each sender
+- Action buttons: text labels with icons — Accept (green), Edit (outlined), Reject (outlined red)
 
 ### Integration Setup State
 
@@ -127,7 +121,7 @@ This same layout handles: first-time setup, partial OAuth scopes, token expiry, 
 | **Loading** | Gray box skeleton placeholders matching card layout |
 | **Integration setup** | Setup screen replaces queue entirely (see above) |
 | **Empty (all caught up)** | Centered: "All caught up!" message |
-| **Populated** | Hierarchical event list as described |
+| **Populated** | Sender-grouped event list as described |
 | **Error (load failure)** | `alert alert-error` with automatic retry |
 
 ### Data Requirements
@@ -146,7 +140,7 @@ const bothOk = gmail?.status === 'active' && gcal?.status === 'active'
 // 2. If both OK, load pending events
 if (bothOk) {
   const { data: events } = await fetchPendingEvents()
-  // Group by sender, then by source email
+  // Group by sender
 }
 
 // Actions (no confirmation, immediate)
@@ -161,11 +155,11 @@ for (const event of groupEvents) {
 
 ### Key Interactions
 
-- **Approve (individual)**: calls `updateEventStatus(id, 'approved')`, triggers calendar sync. Event animates out of the list. No toast, no modal.
-- **Approve All (group)**: approves all events in the sender group or email group. Entire group animates out.
+- **Accept (individual)**: calls `updateEventStatus(id, 'approved')`, triggers calendar sync. Event animates out of the list. No toast, no modal.
+- **Approve all (sender menu)**: approves all events from that sender. Entire group animates out.
+- **Reject all (sender menu)**: rejects all events from that sender. Entire group animates out.
 - **Reject**: calls `updateEventStatus(id, 'rejected')`. Event animates out. No confirmation modal.
 - **Edit**: navigates to `/app/events/[id]`.
-- **Description expand/collapse**: click "More" to expand truncated description, "Less" to collapse.
 - **Animation**: approved/rejected events slide out (or simply disappear if smooth animation isn't achievable). Remaining events reflow upward.
 
 ---

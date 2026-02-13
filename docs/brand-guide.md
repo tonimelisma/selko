@@ -60,6 +60,24 @@ Cool-toned with subtle blue undertone.
 
 ---
 
+## Action Color Mapping
+
+Semantic colors for interactive actions, consistent across all platforms.
+
+| Action | Color | Token | Rationale |
+|--------|-------|-------|-----------|
+| **Accept/Approve** | Green | `success` | Confirmatory — positive outcome |
+| **Reject** | Red | `error` | Destructive — removal action |
+| **Edit** | Purple | `primary` | Neutral modification — brand color |
+| **Disconnect** | Red (outlined) | `error` | Destructive settings action |
+| **Log out** | Red (filled) | `error` | Destructive account action |
+| **Undo** | Default (outlined) | — | Neutral reversal |
+| **Retry** | Orange (outlined) | `warning` | Recovery action |
+
+See `docs/ui/03-patterns-and-components.md` for per-platform button style details.
+
+---
+
 ## Typography
 
 ### Font Families
@@ -119,7 +137,8 @@ All platforms use identical terminology:
 | Button (auth) | "Sign in" / "Sign up" |
 | Link (auth) | "Log in" / "Sign up" |
 | Menu action | "Log out" |
-| Event actions | "Approve" / "Reject" |
+| Event actions (card buttons) | "Accept" / "Reject" |
+| Event actions (detail / group) | "Approve" / "Reject" |
 | Button casing | Sentence case (not Title Case) |
 
 ---

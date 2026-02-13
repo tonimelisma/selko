@@ -277,32 +277,23 @@ Wraps all `/app/*` routes. Provides navbar (top) + bottom tab bar (mobile).
 
 ### `SenderHeader`
 
-Group header for a sender in the Review Queue. Shows sender email/domain and an "Approve All" button that approves all events from that sender.
+Group header for a sender in the Review Queue. Shows sender name, email, and a three-dot overflow menu with group actions.
 
 **Used by:** Review Queue
 
 **Props:**
 | Prop | Type | Description |
 |------|------|-------------|
-| `sender` | `string` | Sender email address |
+| `senderName` | `string` | Sender display name |
+| `senderEmail` | `string` | Sender email address |
 | `eventCount` | `number` | Number of events in this group |
 
-**Events dispatched:** `approveAll`
+**Events dispatched:** `approveAll`, `rejectAll`
 
-### `EmailHeader`
-
-Subgroup header for an email within a sender group. Shows email subject + date and an "Approve All" button for events from that specific email.
-
-**Used by:** Review Queue
-
-**Props:**
-| Prop | Type | Description |
-|------|------|-------------|
-| `subject` | `string` | Email subject line |
-| `date` | `string` | Email date |
-| `eventCount` | `number` | Number of events from this email |
-
-**Events dispatched:** `approveAll`
+**Three-dot menu items:**
+- "Approve all" — approves all events from this sender
+- "Reject all" — rejects all events from this sender (destructive)
+- "Ignore sender" — disabled (future feature)
 
 ### `EventCard`
 
@@ -319,9 +310,8 @@ Card for a single extracted event with inline actions and expandable description
 
 **Behavior:**
 - Shows title, date/time (or "All Day"), location
-- Description blurb truncated by default, expandable/collapsible via "More"/"Less" toggle
-- Action buttons: Approve, Edit, Reject
-- Desktop: text labels on buttons. Mobile: icon-only with `aria-label`.
+- Action buttons: Accept (green/success), Edit (outlined primary), Reject (outlined red/error)
+- All buttons show text labels on all screen sizes
 - On approve/reject: dispatches event, parent handles animation and removal
 
 ### `IntegrationStatus`
@@ -421,6 +411,39 @@ Confirmation dialog for destructive Settings actions.
 | `confirmClass` | `string` | Confirm button class (default: "btn-error") |
 
 **Events dispatched:** `confirm`, `cancel`
+
+---
+
+## Action Button Styling
+
+Consistent button styling for event actions across all platforms and screens.
+
+### Color Mapping
+
+| Action | Color | Rationale |
+|--------|-------|-----------|
+| **Accept/Approve** | Green (success) | Confirmatory — positive outcome |
+| **Reject** | Red (error) | Destructive — removal action |
+| **Edit** | Primary (purple) | Neutral modification — brand color |
+
+### Platform Styles
+
+| Platform | Accept | Edit | Reject |
+|----------|--------|------|--------|
+| **Web** | `btn btn-success` (filled green) | `btn btn-outline btn-primary` (outlined) | `btn btn-outline btn-error` (outlined red) |
+| **iOS** | `.borderedProminent` + `.tint(.selkoSuccess)` | `.bordered` | `.bordered` + `role: .destructive` |
+| **Android** | `FilledTonalButton` with success container color | `OutlinedButton` | `OutlinedButton` with error color + border |
+
+All action buttons show **text labels** (not icon-only). Icons are optional alongside text.
+
+### Other Button Patterns
+
+| Button | Web | iOS | Android |
+|--------|-----|-----|---------|
+| **Disconnect** | `btn btn-outline btn-error btn-sm` | `.bordered` + `.tint(.red)` | `OutlinedButton` with error color |
+| **Log out** | `btn btn-error` | `.borderedProminent` + `.tint(.red)` | `Button` with error color |
+| **Undo** | `btn btn-outline btn-sm` | `.bordered` | `OutlinedButton` |
+| **Retry** | `btn btn-outline btn-warning btn-sm` | `.bordered` + `.tint(.orange)` | `OutlinedButton` with warning color |
 
 ---
 
