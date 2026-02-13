@@ -95,6 +95,8 @@ test.describe('Screenshot capture', () => {
         const firstEventLink = page.locator('a[href*="/app/events/"]').first();
         await firstEventLink.click();
         await page.waitForLoadState('networkidle');
+        // Wait for form content to be visible (indicates data loaded)
+        await page.waitForSelector('#event-title', { timeout: 10000 });
         await page.waitForTimeout(500);
         await page.screenshot({
           path: `${SCREENSHOT_DIR}/web-event-detail-${vp.name}.png`,
