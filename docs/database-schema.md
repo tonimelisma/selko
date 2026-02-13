@@ -150,6 +150,47 @@ Scheduled/periodic background tasks (currently only `email_fetch`).
 
 See `docs/job-queue.md` for full status-based worker details.
 
+### `event_sources`
+
+Links events to their origin sources (emails, Google Calendar matches, etc.).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Event source ID |
+| `event_id` | uuid, FK | References `events.id` |
+| `email_id` | uuid, FK, nullable | References `emails.id` (required for email sources) |
+| `source_origin` | text | `email`, `google_calendar`, or `google_photos` |
+| `google_calendar_source_event_id` | text, nullable | Google Calendar event ID (required for calendar sources) |
+| `extracted_data` | jsonb | Raw extraction data from source |
+| `created_at` | timestamptz | Auto-set |
+
+**Constraints:**
+- `source_origin` must be one of: `email`, `google_calendar`, `google_photos`
+- Email sources require `email_id`; calendar sources require `google_calendar_source_event_id`
+- Partial unique indexes: `(event_id, email_id)` for email sources, `(event_id, google_calendar_source_event_id)` for calendar sources
+
+**RLS Policies:** Users manage own event sources only (via `events.user_id`).
+
+### `sender_rules`
+
+Per-user rules for handling emails from specific senders or domains.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Rule ID |
+| `user_id` | uuid, FK | References `users.id` |
+| `sender_email` | text, nullable | Exact sender email to match |
+| `sender_domain` | text, nullable | Domain to match (e.g., `example.com`) |
+| `action` | text | `ignore` (skip processing) |
+| `created_at` | timestamptz | Auto-set |
+| `updated_at` | timestamptz | Auto-updated |
+
+**Constraints:** At least one of `sender_email` or `sender_domain` must be set. Unique per `(user_id, sender_email)` and `(user_id, sender_domain)`.
+
+**RLS Policies:** Users manage own sender rules only.
+
+**Triggers:** `sender_rule_before_delete` — when an ignore rule is deleted (un-ignored), a BEFORE DELETE trigger resets matching `skipped` emails from the last 30 days back to `pending` for reprocessing.
+
 ## RPC Functions
 
 ### Claiming Functions
