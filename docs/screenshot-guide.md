@@ -1,19 +1,15 @@
 # Screenshot Capture Guide
 
-Step-by-step guide for capturing product screenshots across all platforms.
-
 Screenshots live in `docs/screenshots/` and are used for documentation and visual verification.
 
 ---
 
-## Quick Start (Scripted)
+## How to Capture Screenshots
 
-Capture all 24 screenshots in ~3 minutes using automated scripts instead of manual MCP interaction.
-
-**Prerequisites:** Local Supabase running + seed data loaded (see below).
+**There is ONE command.** Always use the unified script:
 
 ```bash
-# All platforms (web + iOS + Android)
+# All platforms (web + iOS + Android) — seeds data + runs all 3 in parallel
 ./scripts/capture-all-screenshots.sh
 
 # Single platform
@@ -22,25 +18,15 @@ Capture all 24 screenshots in ~3 minutes using automated scripts instead of manu
 ./scripts/capture-all-screenshots.sh android   # 6 Android screenshots via UiAutomator
 ```
 
-> **Android:** Requires a running emulator (scripts start one if needed). **iOS:** Requires iPhone 17 Pro simulator (scripts boot it if needed). **Web:** Starts its own dev server via Playwright.
+**That's it.** The script handles everything: seeding data, booting simulators/emulators, building, running tests, pulling screenshots, and resizing.
+
+> **Do NOT** manually seed data, run individual platform scripts (`capture-web-screenshots.sh` etc.), or use MCP tools for screenshot capture. Those are internal helpers called by the unified script.
+
+> **Android:** Requires emulator (script starts one if needed). **iOS:** Requires iPhone 17 Pro simulator (script boots it if needed). **Web:** Starts its own dev server via Playwright.
 >
 > **Keep simulators/emulators running** after capture — they're reused for testing and future screenshots.
 
----
-
-## Prerequisites
-
-1. **Local Supabase running:** `supabase start`
-2. **Seed data exists:** Run `uv run python scripts/seed_screenshot_data.py seed --cleanup-first` to create the screenshot user and sample data
-3. **iOS simulator: disable password autofill** (one-time per simulator — persists across builds/reboots, only reset by `simctl erase`):
-   ```bash
-   xcrun simctl spawn "iPhone 17 Pro" defaults write -g AutoFillPasswords -bool false
-   ```
-   Without this, a "Save Password?" modal obscures iOS screenshots after login.
-
-**Screenshot user credentials:**
-- Email: `screenshots@selko.local`
-- Password: `screenshotpass123`
+**Only prerequisite:** Local Supabase must be running (`supabase start`).
 
 ---
 
@@ -60,99 +46,26 @@ All platforms support environment variable overrides (`SUPABASE_URL`, `SUPABASE_
 
 ---
 
-## Web Screenshots
+## Appendix: Debugging Reference
 
-**Tools:** Playwright MCP (`browser_navigate`, `browser_take_screenshot`, `browser_resize`)
+> **You should NOT need this section for normal screenshot capture.** Use `./scripts/capture-all-screenshots.sh` above. This section is reference material for debugging test failures or understanding the implementation.
 
-### Steps
+### Screenshot User Credentials
+- Email: `screenshots@selko.local`
+- Password: `screenshotpass123`
 
-1. Start the dev server:
-   ```bash
-   cd frontend && npm run dev
-   ```
+### Web (Playwright)
 
-2. Load Playwright MCP tools (ToolSearch: `+playwright navigate screenshot`)
+The Playwright test (`frontend/tests/e2e/screenshots.spec.ts`) captures 12 screenshots (6 desktop at 1280x800 + 6 mobile at 390x844). It starts its own dev server.
 
-3. **Desktop viewport** (1280x800):
-   ```
-   browser_resize(1280, 800)
-   ```
-
-4. Capture unauthenticated pages:
-   - Navigate to `http://localhost:5173/login` → screenshot `web-login-desktop.png`
-   - Navigate to `http://localhost:5173/register` → screenshot `web-register-desktop.png`
-
-5. Log in:
-   - Fill email: `screenshots@selko.local`, password: `screenshotpass123`
-   - Click "Sign in"
-
-6. Capture authenticated pages:
-   - Review queue (landing page `/app`) → `web-review-queue-desktop.png`
-   - Click an event to view detail → `web-event-detail-desktop.png`
-   - Navigate to `/app/history` → `web-history-desktop.png`
-   - Navigate to `/app/settings` → `web-settings-desktop.png`
-
-7. **Mobile viewport** (390x844):
-   ```
-   browser_resize(390, 844)
-   ```
-   Repeat steps 4-6 with `-mobile` suffix (e.g., `web-login-mobile.png`)
-
-### Notes
-- Clear any stale form data before taking login/register screenshots
 - Never use `fullPage: true` — produces oversized images
 - Desktop and mobile viewports are both safe (under 2000px)
 
----
+### iOS (XCUITest)
 
-## iOS Screenshots
+The XCUITest (`ios/iOSUITests/ScreenshotCaptureTests.swift`) captures 6 screenshots on iPhone 17 Pro simulator.
 
-**Tools:** XcodeBuildMCP (`build_run_sim`, `screenshot`, `tap`, `type_text`, `snapshot_ui`)
-
-### Steps
-
-1. Load XcodeBuildMCP tools (ToolSearch: `+XcodeBuildMCP session build screenshot tap`)
-
-2. Set session defaults:
-   ```
-   session-set-defaults({
-     projectPath: "/absolute/path/to/selko/ios/iOS.xcodeproj",
-     scheme: "iOS",
-     simulatorName: "iPhone 17 Pro"
-   })
-   ```
-   > **Must use absolute path** for `projectPath`
-
-3. Build and run:
-   ```
-   build_run_sim()
-   ```
-   After build succeeds, set `simulatorId` and `bundleId` from the output:
-   ```
-   session-set-defaults({ simulatorId: "<id>", bundleId: "net.melisma.Selko" })
-   ```
-
-4. Take login screenshot:
-   ```
-   screenshot({ returnFormat: "path" })
-   ```
-   Read the image with Read tool, then copy to `docs/screenshots/ios-login.png`
-
-5. Tap "Sign up" → screenshot → save as `ios-register.png` → tap "Cancel" to go back
-
-6. Log in:
-   - `tap({ id: "emailField" })` → `type_text("screenshots@selko.local")`
-   - `tap({ id: "passwordField" })` → `type_text("screenshotpass123")`
-   - `tap({ id: "signInButton" })`
-   - Wait 2-3 seconds for navigation
-
-7. Capture authenticated pages:
-   - Review queue (initial screen) → `ios-review-queue.png`
-   - Tap an event card → `ios-event-detail.png`
-   - Navigate back, tap "History" tab → `ios-history.png`
-   - Tap "Settings" tab → `ios-settings.png`
-
-### Accessibility Identifiers (for tap)
+**Accessibility Identifiers:**
 
 | Element | Identifier |
 |---------|-----------|
@@ -161,54 +74,29 @@ All platforms support environment variable overrides (`SUPABASE_URL`, `SUPABASE_
 | Sign in button | `signInButton` |
 | Sign up button | `createAccountButton` |
 
-Use `snapshot_ui()` to discover identifiers for other elements.
+Use XcodeBuildMCP `snapshot_ui()` to discover identifiers for other elements.
 
-### Image Size
-- Check dimensions with `sips -g pixelHeight -g pixelWidth <file>`
-- If height > 2000px: `sips --resampleHeight 1920 <file>`
+**Image sizing:** iPhone 17 Pro captures at 2622px height. The script resizes to 1920px. Both dimensions must be ≤ 2000px for the Claude API.
 
----
+### Android (UiAutomator)
 
-## Android Screenshots
+The UiAutomator test (`android/app/src/androidTest/.../ScreenshotCaptureTest.kt`) captures 6 screenshots.
 
-**Preferred: Use the automated script** (`./scripts/capture-android-screenshots.sh`). The manual MCP approach below is a fallback.
-
-### Prerequisites
-- Android emulator running: `emulator -avd Pixel_8` (or start from Android Studio)
-- Local Supabase running with seed data
-
-> **Cold boot tip:** After a cold boot (`-no-snapshot-load`), wait ~60s for "System UI isn't responding" dialogs to stop. If the emulator won't start with "snapshot operation pending", delete `~/.android/avd/Pixel_8.avd/*.lock`.
-
-### Scripted Capture (Recommended)
-
-```bash
-./scripts/capture-android-screenshots.sh
-```
-
-This builds and installs the debug APK, runs the UiAutomator instrumented test (`ScreenshotCaptureTest.kt`), pulls screenshots from the device, and resizes them to ≤1920px.
-
-### Key Implementation Details (for debugging)
-
-The UiAutomator test (`android/app/src/androidTest/.../ScreenshotCaptureTest.kt`) has these important patterns:
+**Key implementation details:**
 
 - **Compose text input:** `By.text("Email")` finds the label `TextView` inside a Compose `OutlinedTextField`, NOT the `EditText` itself. You must navigate to `label.parent` (the `EditText`) before calling `.text = value`. Setting text on the label is a **silent no-op**.
 - **Keyboard dismissal:** After entering text, call `device.pressBack()` to dismiss the soft keyboard before tapping buttons or looking for bottom nav items. The keyboard covers the bottom navigation bar.
 - **Screenshot order:** Capture History and Settings tabs BEFORE navigating to Event Detail. Back-navigation from Event Detail is unreliable on Android 16 (API 36) due to predictive back gesture changes.
 - **adb pull path:** `adb pull .../Pictures/ $DIR/` creates a `Pictures/` subdirectory inside `$DIR`. The script accounts for this.
+- **Image sizing:** Emulator captures at 1080x2400. The script resizes to 1920px height.
 
-### Manual MCP Capture (Fallback)
+### Manual MCP Capture (Last Resort Fallback)
 
-**Tools:** mobile-mcp (`mobile_take_screenshot`, `mobile_click_on_screen_at_coordinates`, `mobile_type_keys`, `mobile_list_elements_on_screen`)
+Only use if the automated scripts are broken and you need screenshots urgently.
 
-1. Build and install: `cd android && ./gradlew installDebug`
-2. Load mobile-mcp tools (ToolSearch: `+mobile screenshot tap type`)
-3. Launch: `mobile_launch_app({ appId: "net.melisma.selko" })`
-4. Use `mobile_list_elements_on_screen()` to find coordinates, `mobile_click_on_screen_at_coordinates()` to tap, `mobile_type_keys()` to type
-5. Capture all 6 screens: login, register, review-queue, history, settings, event-detail
-### Notes
-- Android emulator screenshots are 1080x2400 — **always resize** after capture: `sips --resampleHeight 1920 docs/screenshots/android-*.png`
-- If `mobile-mcp` loses the device, restart adb: `adb kill-server && adb start-server`
-- The `mobile_launch_app` function may fail right after install — launch via adb instead: `adb shell am start -n net.melisma.selko/.MainActivity`
+- **Web:** Playwright MCP — `browser_navigate`, `browser_take_screenshot`, `browser_resize`
+- **iOS:** XcodeBuildMCP — `build_run_sim`, `screenshot`, `tap`, `type_text`
+- **Android:** mobile-mcp — `mobile_take_screenshot`, `mobile_click_on_screen_at_coordinates`, `mobile_type_keys`
 
 ---
 
@@ -260,6 +148,9 @@ Delete stale lock files: `rm ~/.android/avd/Pixel_8.avd/*.lock`, then retry with
 
 ### Android emulator can't reach Supabase
 The emulator uses `10.0.2.2` to reach the host's `localhost`. Ensure local Supabase is running on port 54321.
+
+### iOS test fails: "No matches found for createAccountButton"
+The app is already logged in from a previous test run. The test expects to start from the login screen. Fix: the screenshot test should log out first if it detects an authenticated state, or uninstall/reinstall the app before running.
 
 ### Screenshots too large for Claude API
 Both dimensions must be ≤ 2000px. Resize with:

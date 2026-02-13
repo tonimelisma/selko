@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Capture all 6 Android screenshots via UiAutomator instrumented test.
-# Prerequisites: local Supabase running, seed data loaded.
-# Idempotently starts an emulator if none is running.
+# INTERNAL HELPER — called by capture-all-screenshots.sh. Do not run directly.
+# Captures 6 Android screenshots via UiAutomator instrumented test.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
