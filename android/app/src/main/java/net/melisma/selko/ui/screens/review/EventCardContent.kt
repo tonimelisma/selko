@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -19,13 +21,14 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +43,10 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.data.model.CalendarEvent
+import net.melisma.selko.ui.theme.SelkoOnSuccessContainer
+import net.melisma.selko.ui.theme.SelkoOnSuccessContainerDark
+import net.melisma.selko.ui.theme.SelkoSuccessContainer
+import net.melisma.selko.ui.theme.SelkoSuccessContainerDark
 
 @Composable
 fun EventCardContent(
@@ -155,33 +162,49 @@ fun EventCardContent(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    FilledTonalIconButton(
-                        onClick = onApprove
+                    FilledTonalButton(
+                        onClick = onApprove,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (isSystemInDarkTheme()) SelkoSuccessContainerDark else SelkoSuccessContainer,
+                            contentColor = if (isSystemInDarkTheme()) SelkoOnSuccessContainerDark else SelkoOnSuccessContainer
+                        ),
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Check,
-                            contentDescription = "Approve",
-                            modifier = Modifier.size(20.dp)
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Accept")
                     }
-                    IconButton(
-                        onClick = onEdit
+                    OutlinedButton(
+                        onClick = onEdit,
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Edit,
-                            contentDescription = "Edit",
-                            modifier = Modifier.size(20.dp)
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Edit")
                     }
-                    IconButton(
-                        onClick = onReject
+                    OutlinedButton(
+                        onClick = onReject,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "Reject",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.error
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Reject")
                     }
                 }
             }
