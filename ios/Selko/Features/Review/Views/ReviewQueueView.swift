@@ -65,21 +65,18 @@ struct ReviewQueueView: View {
                                 onReject: { Task { await viewModel.rejectEvent(event) } }
                             )
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             Button {
-                                Task {
-                                    await viewModel.approveEvent(event)
-                                }
+                                Task { await viewModel.approveEvent(event) }
                             } label: {
                                 Label("Approve", systemImage: "checkmark")
                             }
-                            .tint(.green)
+                            .tint(.selkoSuccess)
                             .accessibilityLabel("Approve event")
-
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                Task {
-                                    await viewModel.rejectEvent(event)
-                                }
+                                Task { await viewModel.rejectEvent(event) }
                             } label: {
                                 Label("Reject", systemImage: "xmark")
                             }

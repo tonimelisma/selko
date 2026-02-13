@@ -83,43 +83,45 @@ struct HistoryRowView: View {
     let onRetry: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                statusIcon
-                Text(event.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                Spacer()
-                if let updatedAt = event.updatedAt {
-                    Text(updatedAt, style: .time)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        HStack(alignment: .center) {
+            statusIcon
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(event.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Spacer()
+                    if let updatedAt = event.updatedAt {
+                        Text(updatedAt, style: .time)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                Text(statusDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
-            Text(statusDescription)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 12) {
-                if event.status == .syncFailed {
-                    Button("Retry", systemImage: "arrow.clockwise") {
-                        onRetry()
-                    }
-                    .font(.caption)
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
-                    .accessibilityIdentifier("retryButton")
+            // Trailing action button
+            if event.status == .syncFailed {
+                Button {
+                    onRetry()
+                } label: {
+                    Label("Retry", systemImage: "arrow.clockwise")
                 }
-
-                if event.status != .cancelled {
-                    Button("Undo", systemImage: "arrow.uturn.backward") {
-                        onUndo()
-                    }
-                    .font(.caption)
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("undoButton")
+                .font(.caption)
+                .buttonStyle(.bordered)
+                .tint(.orange)
+                .accessibilityIdentifier("retryButton")
+            } else if event.status != .cancelled && event.status != .pendingReview {
+                Button {
+                    onUndo()
+                } label: {
+                    Label("Undo", systemImage: "arrow.uturn.backward")
                 }
+                .font(.caption)
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("undoButton")
             }
         }
         .padding(.vertical, 4)
