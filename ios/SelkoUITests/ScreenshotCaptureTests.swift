@@ -58,6 +58,8 @@ final class ScreenshotCaptureTests: XCTestCase {
     }
 
     /// If the app is already logged in, sign out first.
+    /// The "Log out" button is in the Account section at the bottom of the Settings Form,
+    /// so we may need to scroll down to find it.
     @MainActor
     private func ensureLoggedOut() {
         let settingsTab = app.tabBars.buttons["Settings"]
@@ -65,6 +67,11 @@ final class ScreenshotCaptureTests: XCTestCase {
             settingsTab.tap()
             sleep(1)
             let signOutButton = app.buttons["signOutButton"]
+            if !signOutButton.waitForExistence(timeout: 3) {
+                // Button may be below the fold — scroll down
+                app.swipeUp()
+                sleep(1)
+            }
             if signOutButton.waitForExistence(timeout: 3) {
                 signOutButton.tap()
                 sleep(2)
