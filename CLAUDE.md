@@ -60,7 +60,8 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] Working in a git worktree on a feature branch
 - [ ] Tests pass for changed modules
 - [ ] **Bug fixes MUST include a regression test**
-- [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI changed). Save screenshots to `docs/screenshots/`. **Close browsers/simulators when done.**
+- [ ] Visual verification with `/verify-web`, `/verify-ios`, or `/verify-android` (if UI changed). Save screenshots to `docs/screenshots/`. **Keep simulators/emulators running** — do NOT close them.
+- [ ] Update screenshots for changed platforms only (see "Screenshot Updates" section below).
 - [ ] Commit, push, `gh pr create`
 - [ ] Poll CI and merge when green, then cleanup worktree (see cleanup rules below)
 
@@ -132,6 +133,32 @@ Use `/verify-web`, `/verify-ios`, `/verify-android` after implementing UI change
 **Key warnings:** Screenshots must be **≤ 2000 px** in both dimensions (resize with `sips --resampleHeight 1920`). Never use `fullPage: true` in Playwright.
 
 **Full details:** `docs/ui-testing-guide.md`
+
+---
+
+## Screenshot Updates (DoD)
+
+**When to update:** Only when UI-visible code changed. Skip for backend-only, docs, or config changes.
+
+**Which platforms to capture:**
+
+| Changed files | Command |
+|---------------|---------|
+| `frontend/src/` | `./scripts/capture-all-screenshots.sh web` |
+| `ios/` | `./scripts/capture-all-screenshots.sh ios` |
+| `android/` | `./scripts/capture-all-screenshots.sh android` |
+| Shared code (Supabase schema, seed data) affecting all UIs | `./scripts/capture-all-screenshots.sh` |
+
+**Pre-warming:** When starting a UI task, boot the simulator/emulator early so startup overlaps with coding time. The capture scripts do this idempotently, but booting early saves time:
+
+```bash
+# iOS
+xcrun simctl boot "iPhone 17 Pro" 2>/dev/null || true
+# Android (if no emulator running)
+adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
+```
+
+**Keep running:** Do NOT close or terminate simulators/emulators between testing and screenshots — they're reused for both.
 
 ---
 
