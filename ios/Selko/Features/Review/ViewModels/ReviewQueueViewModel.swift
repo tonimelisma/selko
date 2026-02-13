@@ -5,21 +5,12 @@
 
 import Foundation
 
-/// Groups events by the source email they were extracted from.
-struct EmailGroup: Identifiable {
-    let id: String  // email UUID string
-    let subject: String
-    let dateSent: Date?
-    let events: [CalendarEvent]
-}
-
 /// Groups pending events by the sender email of their first source.
 struct SenderGroup: Identifiable {
     let id: String // sender email
     let senderName: String
     let senderEmail: String
-    let emailGroups: [EmailGroup]
-    var allEvents: [CalendarEvent] { emailGroups.flatMap { $0.events } }
+    let events: [CalendarEvent]
 }
 
 @MainActor
@@ -68,7 +59,7 @@ final class ReviewQueueViewModel {
     func approveEvent(_ event: CalendarEvent) async {
         do {
             _ = try await eventService.approveEvent(id: event.id)
-            await removeEventFromGroups(event.id)
+            removeEventFromGroups(event.id)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -77,14 +68,14 @@ final class ReviewQueueViewModel {
     func rejectEvent(_ event: CalendarEvent) async {
         do {
             _ = try await eventService.rejectEvent(id: event.id)
-            await removeEventFromGroups(event.id)
+            removeEventFromGroups(event.id)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
     func approveAllInGroup(_ group: SenderGroup) async {
-        for event in group.allEvents {
+        for event in group.events {
             do {
                 _ = try await eventService.approveEvent(id: event.id)
             } catch {
@@ -96,26 +87,17 @@ final class ReviewQueueViewModel {
         senderGroups.removeAll { $0.id == group.id }
     }
 
-    func approveAllInEmailGroup(_ emailGroup: EmailGroup) async {
-        for event in emailGroup.events {
+    func rejectAllInGroup(_ group: SenderGroup) async {
+        for event in group.events {
             do {
-                _ = try await eventService.approveEvent(id: event.id)
+                _ = try await eventService.rejectEvent(id: event.id)
             } catch {
                 errorMessage = error.localizedDescription
                 return
             }
         }
-        // Remove events and clean up empty groups
-        let eventIds = Set(emailGroup.events.map { $0.id })
-        senderGroups = senderGroups.compactMap { group in
-            let filteredEmailGroups = group.emailGroups.compactMap { eg -> EmailGroup? in
-                let filtered = eg.events.filter { !eventIds.contains($0.id) }
-                if filtered.isEmpty { return nil }
-                return EmailGroup(id: eg.id, subject: eg.subject, dateSent: eg.dateSent, events: filtered)
-            }
-            if filteredEmailGroups.isEmpty { return nil }
-            return SenderGroup(id: group.id, senderName: group.senderName, senderEmail: group.senderEmail, emailGroups: filteredEmailGroups)
-        }
+        // Remove the entire group
+        senderGroups.removeAll { $0.id == group.id }
     }
 
     // MARK: - Private
@@ -136,48 +118,20 @@ final class ReviewQueueViewModel {
         }
 
         return grouped.map { key, value in
-            // Sub-group by email ID
-            var emailGrouped: [String: (subject: String, dateSent: Date?, events: [CalendarEvent])] = [:]
-            for event in value.events {
-                let emailId = event.eventSources?.first?.emailId.uuidString ?? "unknown"
-                let subject = event.eventSources?.first?.emails?.subject ?? "No subject"
-                let dateSent = event.eventSources?.first?.emails?.dateSent
-
-                if var existing = emailGrouped[emailId] {
-                    existing.events.append(event)
-                    emailGrouped[emailId] = existing
-                } else {
-                    emailGrouped[emailId] = (subject: subject, dateSent: dateSent, events: [event])
-                }
-            }
-
-            let emailGroups = emailGrouped.map { emailKey, emailValue in
-                EmailGroup(
-                    id: emailKey,
-                    subject: emailValue.subject,
-                    dateSent: emailValue.dateSent,
-                    events: emailValue.events
-                )
-            }
-
-            return SenderGroup(
+            SenderGroup(
                 id: key,
                 senderName: value.name,
                 senderEmail: value.email,
-                emailGroups: emailGroups
+                events: value.events
             )
         }
     }
 
-    private func removeEventFromGroups(_ eventId: UUID) async {
+    private func removeEventFromGroups(_ eventId: UUID) {
         senderGroups = senderGroups.compactMap { group in
-            let filteredEmailGroups = group.emailGroups.compactMap { emailGroup -> EmailGroup? in
-                let filtered = emailGroup.events.filter { $0.id != eventId }
-                if filtered.isEmpty { return nil }
-                return EmailGroup(id: emailGroup.id, subject: emailGroup.subject, dateSent: emailGroup.dateSent, events: filtered)
-            }
-            if filteredEmailGroups.isEmpty { return nil }
-            return SenderGroup(id: group.id, senderName: group.senderName, senderEmail: group.senderEmail, emailGroups: filteredEmailGroups)
+            let filtered = group.events.filter { $0.id != eventId }
+            if filtered.isEmpty { return nil }
+            return SenderGroup(id: group.id, senderName: group.senderName, senderEmail: group.senderEmail, events: filtered)
         }
     }
 }
