@@ -83,6 +83,9 @@ final class ScreenshotCaptureTests: XCTestCase {
 
     @MainActor
     func testCaptureAllScreenshots() throws {
+        // Force portrait orientation regardless of simulator state from previous test runs
+        XCUIDevice.shared.orientation = .portrait
+
         app.launch()
 
         // Handle case where app is already logged in from a previous run
@@ -134,31 +137,33 @@ final class ScreenshotCaptureTests: XCTestCase {
         // 4. Review queue
         saveScreenshot(named: "ios-review-queue")
 
-        // 5. Event detail — tap the "Edit" button on first event card
-        // The Edit button is inside a NavigationLink, tapping it navigates to detail
-        let editButton = app.buttons.matching(identifier: "eventCard").matching(NSPredicate(format: "label == 'Edit'")).firstMatch
-        if editButton.waitForExistence(timeout: 5) {
-            // Use coordinate-based tap to work around NavigationLink hit testing
-            let coordinate = editButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            coordinate.tap()
+        // 5. Event detail — tap an event row to trigger the NavigationLink.
+        // NavigationLink rows are exposed as Buttons (not cells) in the accessibility hierarchy.
+        // Match by identifier containing "eventCard".
+        let eventButton = app.buttons.matching(
+            NSPredicate(format: "identifier CONTAINS %@", "eventCard")
+        ).firstMatch
+        if eventButton.waitForExistence(timeout: 5) {
+            eventButton.tap()
             sleep(2)
-            saveScreenshot(named: "ios-event-detail")
 
-            // Go back to review queue — try Back button, then navigation bar button
-            let backButton = app.navigationBars.buttons["Back"]
-            if backButton.waitForExistence(timeout: 2) {
-                backButton.tap()
-            } else {
-                // Tap first button in navigation bar as fallback
-                let navButton = app.navigationBars.buttons.firstMatch
-                if navButton.waitForExistence(timeout: 2) {
-                    navButton.tap()
+            // Verify we navigated to event detail
+            let detailTitle = app.staticTexts["eventDetailTitle"]
+            if detailTitle.waitForExistence(timeout: 3) {
+                saveScreenshot(named: "ios-event-detail")
+
+                // Go back to review queue
+                let backButton = app.navigationBars.buttons.firstMatch
+                if backButton.waitForExistence(timeout: 3) {
+                    backButton.tap()
                 } else {
-                    // Swipe right to go back
                     app.swipeRight()
                 }
+                sleep(1)
+            } else {
+                // Navigation didn't work — save current state
+                saveScreenshot(named: "ios-event-detail")
             }
-            sleep(1)
         } else {
             // No events — capture current state as placeholder
             saveScreenshot(named: "ios-event-detail")

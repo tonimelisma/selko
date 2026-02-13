@@ -9,6 +9,7 @@ SCREENSHOT_DIR="$PROJECT_ROOT/docs/screenshots"
 TMP_DIR="/tmp/android-screenshots"
 
 mkdir -p "$SCREENSHOT_DIR"
+rm -f "$SCREENSHOT_DIR"/android-*.png
 rm -rf "$TMP_DIR"
 
 # --- Idempotent emulator start ---
@@ -38,10 +39,13 @@ else
     done
     echo "==> Emulator booted (${ELAPSED}s)"
 
-    # Dismiss any "System UI isn't responding" dialogs
-    sleep 5
-    adb shell input keyevent KEYCODE_ENTER 2>/dev/null || true
-    adb shell input keyevent KEYCODE_ENTER 2>/dev/null || true
+    # Dismiss any "System UI isn't responding" dialogs after cold boot
+    echo "==> Waiting for system to settle after cold boot..."
+    sleep 15
+    for _ in 1 2 3; do
+        adb shell input keyevent KEYCODE_ENTER 2>/dev/null || true
+        sleep 2
+    done
 fi
 
 cd "$PROJECT_ROOT/android"
@@ -51,6 +55,9 @@ adb shell rm -f /sdcard/Android/data/net.melisma.selko/files/Pictures/*.png 2>/d
 
 echo "==> Installing debug APK and test APK..."
 ./gradlew installDebug installDebugAndroidTest
+
+echo "==> Clearing app data (removes stale Supabase sessions)..."
+adb shell pm clear net.melisma.selko 2>/dev/null || true
 
 echo "==> Running screenshot capture test..."
 adb shell am instrument -w \
