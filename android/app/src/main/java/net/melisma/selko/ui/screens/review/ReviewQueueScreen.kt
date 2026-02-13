@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -84,17 +83,18 @@ fun ReviewQueueScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "Review Queue",
                                 style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.padding(bottom = 8.dp)
+                                modifier = Modifier.padding(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    bottom = 8.dp
+                                )
                             )
                         }
 
@@ -108,17 +108,13 @@ fun ReviewQueueScreen(
                             }
 
                             items(group.events, key = { it.id }) { event ->
-                                EventCardContent(
+                                SwipeableEventItem(
                                     event = event,
                                     isProcessing = event.id in uiState.processingEventIds,
                                     onApprove = { viewModel.approveEvent(event.id) },
                                     onReject = { viewModel.rejectEvent(event.id) },
                                     onEdit = { onNavigateToEventDetail(event.id) }
                                 )
-                            }
-
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
                             }
                         }
 
@@ -162,7 +158,7 @@ private fun SenderGroupHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
