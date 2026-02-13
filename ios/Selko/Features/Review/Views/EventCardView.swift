@@ -11,6 +11,9 @@ struct EventCardView: View {
     var onEdit: (() -> Void)? = nil
     var onReject: (() -> Void)? = nil
 
+    @State private var slideOffset: CGFloat = 0
+    @State private var slideOpacity: Double = 1.0
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(event.title)
@@ -41,36 +44,64 @@ struct EventCardView: View {
                 }
             }
 
+            if let description = event.description, !description.isEmpty {
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(2)
+            }
+
             // Action buttons at bottom-right
             if onApprove != nil || onEdit != nil || onReject != nil {
                 HStack {
                     Spacer()
                     if let onApprove {
-                        Button { onApprove() } label: {
-                            Label("Accept", systemImage: "checkmark")
+                        Button {
+                            withAnimation(.easeIn(duration: 0.3)) {
+                                slideOffset = 500
+                                slideOpacity = 0
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                onApprove()
+                            }
+                        } label: {
+                            Image(systemName: "checkmark")
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.selkoSuccess)
+                        .foregroundStyle(.white)
                         .controlSize(.small)
                     }
                     if let onEdit {
                         Button { onEdit() } label: {
                             Label("Edit", systemImage: "pencil")
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                     }
                     if let onReject {
-                        Button(role: .destructive) { onReject() } label: {
-                            Label("Reject", systemImage: "xmark")
+                        Button(role: .destructive) {
+                            withAnimation(.easeIn(duration: 0.3)) {
+                                slideOffset = -500
+                                slideOpacity = 0
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                onReject()
+                            }
+                        } label: {
+                            Image(systemName: "xmark")
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
+                        .tint(.selkoError)
+                        .foregroundStyle(.white)
                         .controlSize(.small)
                     }
                 }
                 .padding(.top, 4)
             }
         }
+        .offset(x: slideOffset)
+        .opacity(slideOpacity)
         .padding(.vertical, 4)
         .accessibilityHint("Double tap to view details")
         .accessibilityIdentifier("eventCard")
