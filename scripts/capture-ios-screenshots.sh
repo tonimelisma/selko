@@ -29,31 +29,24 @@ xcrun simctl ui "$SIMULATOR_NAME" appearance light
 
 xcrun simctl spawn "$SIMULATOR_NAME" defaults write -g AutoFillPasswords -bool false 2>/dev/null || true
 
+# --- Uninstall app to ensure clean state (no stale login session) ---
+
+echo "==> Uninstalling app to ensure clean state..."
+xcrun simctl uninstall "$SIMULATOR_NAME" net.melisma.Selko 2>/dev/null || true
+
 # Clean previous result bundle
 rm -rf "$RESULT_BUNDLE"
 
-# --- Smart build: try test-without-building first ---
+# --- Build and test (always full build since we uninstalled above) ---
 
-echo "==> Trying fast test-without-building..."
-if xcodebuild test-without-building \
+echo "==> Building and running screenshot tests..."
+xcodebuild test \
     -project "$PROJECT_ROOT/ios/iOS.xcodeproj" \
     -scheme iOS \
     -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
     -only-testing:iOSUITests/ScreenshotCaptureTests \
     -resultBundlePath "$RESULT_BUNDLE" \
-    2>&1 | tail -20; then
-    echo "==> Fast test-without-building succeeded"
-else
-    echo "==> No existing build products. Falling back to full build+test..."
-    rm -rf "$RESULT_BUNDLE"
-    xcodebuild test \
-        -project "$PROJECT_ROOT/ios/iOS.xcodeproj" \
-        -scheme iOS \
-        -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
-        -only-testing:iOSUITests/ScreenshotCaptureTests \
-        -resultBundlePath "$RESULT_BUNDLE" \
-        | tail -20
-fi
+    | tail -20
 
 # Clean up result bundle (screenshots are already saved to docs/screenshots/ by the test)
 rm -rf "$RESULT_BUNDLE"
