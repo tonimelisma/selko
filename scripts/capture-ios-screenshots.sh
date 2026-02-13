@@ -22,6 +22,10 @@ else
     sleep 3
 fi
 
+# --- Force light appearance (idempotent) ---
+
+xcrun simctl ui "$SIMULATOR_NAME" appearance light
+
 # --- Disable password autofill (idempotent, prevents "Save Password?" modal) ---
 
 xcrun simctl spawn "$SIMULATOR_NAME" defaults write -g AutoFillPasswords -bool false 2>/dev/null || true
