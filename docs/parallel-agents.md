@@ -111,20 +111,11 @@ gh pr create \
   --title "feat: add new capability" \
   --body "Description of changes"
 
-# Wait for CI to pass, then merge (handles both pending and failed states)
-# NOTE: Don't use "status" as variable name - it's read-only in zsh
-while true; do
-  gh pr checks
-  ec=$?
-  if [ $ec -eq 0 ]; then
-    gh pr merge --squash
-    break
-  elif [ $ec -ne 8 ]; then
-    echo "CI checks failed"
-    exit 1
-  fi
-  sleep 10
-done
+# Wait for CI to pass, then merge
+./scripts/poll-and-merge.sh <pr_number>
+
+# Or poll multiple PRs sequentially:
+./scripts/poll-and-merge.sh 71 72
 ```
 
 ### When Another Agent's PR Merges
@@ -160,22 +151,9 @@ After your task is complete:
 
 ```bash
 # 1. Wait for CI checks to pass and merge
-# Exit codes: 0=pass, 8=pending, other=failed
-# NOTE: Don't use "status" as variable name - it's read-only in zsh
-while true; do
-  gh pr checks
-  ec=$?
-  if [ $ec -eq 0 ]; then
-    gh pr merge --squash
-    break
-  elif [ $ec -ne 8 ]; then
-    echo "CI checks failed"
-    exit 1
-  fi
-  sleep 10
-done
+./scripts/poll-and-merge.sh <pr_number>
 
-# 3. Return to main repo
+# 2. Return to main repo
 cd ~/Development/selko
 
 # 4. Remove worktree and branch
