@@ -56,50 +56,45 @@ struct ReviewQueueView: View {
         List {
             ForEach(viewModel.senderGroups) { group in
                 Section {
-                    ForEach(group.emailGroups) { emailGroup in
-                        EmailGroupView(emailGroup: emailGroup) {
-                            Task {
-                                await viewModel.approveAllInEmailGroup(emailGroup)
-                            }
+                    ForEach(group.events) { event in
+                        NavigationLink(value: event.id) {
+                            EventCardView(
+                                event: event,
+                                onApprove: { Task { await viewModel.approveEvent(event) } },
+                                onEdit: { /* Navigation handled by NavigationLink */ },
+                                onReject: { Task { await viewModel.rejectEvent(event) } }
+                            )
                         }
-
-                        ForEach(emailGroup.events) { event in
-                            NavigationLink(value: event.id) {
-                                EventCardView(
-                                    event: event,
-                                    onApprove: { Task { await viewModel.approveEvent(event) } },
-                                    onEdit: { /* Navigation handled by NavigationLink */ },
-                                    onReject: { Task { await viewModel.rejectEvent(event) } }
-                                )
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button {
-                                    Task {
-                                        await viewModel.approveEvent(event)
-                                    }
-                                } label: {
-                                    Label("Approve", systemImage: "checkmark")
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button {
+                                Task {
+                                    await viewModel.approveEvent(event)
                                 }
-                                .tint(.green)
-                                .accessibilityLabel("Approve event")
-
-                                Button(role: .destructive) {
-                                    Task {
-                                        await viewModel.rejectEvent(event)
-                                    }
-                                } label: {
-                                    Label("Reject", systemImage: "xmark")
-                                }
-                                .accessibilityLabel("Reject event")
+                            } label: {
+                                Label("Approve", systemImage: "checkmark")
                             }
+                            .tint(.green)
+                            .accessibilityLabel("Approve event")
+
+                            Button(role: .destructive) {
+                                Task {
+                                    await viewModel.rejectEvent(event)
+                                }
+                            } label: {
+                                Label("Reject", systemImage: "xmark")
+                            }
+                            .accessibilityLabel("Reject event")
                         }
                     }
                 } header: {
-                    SenderGroupView(group: group) {
-                        Task {
-                            await viewModel.approveAllInGroup(group)
+                    SenderGroupView(group: group,
+                        onApproveAll: {
+                            Task { await viewModel.approveAllInGroup(group) }
+                        },
+                        onRejectAll: {
+                            Task { await viewModel.rejectAllInGroup(group) }
                         }
-                    }
+                    )
                 }
             }
         }

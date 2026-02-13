@@ -86,6 +86,8 @@ struct SettingsView: View {
                     Text("Disconnect")
                         .font(.subheadline)
                 }
+                .buttonStyle(.bordered)
+                .tint(.red)
             } else {
                 Button("Connect") {
                     connectProvider(provider)
@@ -150,6 +152,8 @@ struct SettingsView: View {
                     Spacer()
                 }
             }
+            .buttonStyle(.borderedProminent)
+            .tint(.red)
             .accessibilityIdentifier("signOutButton")
         }
     }

@@ -108,6 +108,7 @@ struct HistoryRowView: View {
                     }
                     .font(.caption)
                     .buttonStyle(.bordered)
+                    .tint(.orange)
                     .accessibilityIdentifier("retryButton")
                 }
 

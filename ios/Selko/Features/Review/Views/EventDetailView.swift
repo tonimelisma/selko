@@ -70,6 +70,7 @@ struct EventDetailView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(.selkoSuccess)
                     .controlSize(.large)
                     .accessibilityIdentifier("approveButton")
                 }

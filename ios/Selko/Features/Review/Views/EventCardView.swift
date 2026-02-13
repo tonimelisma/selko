@@ -47,28 +47,25 @@ struct EventCardView: View {
                     Spacer()
                     if let onApprove {
                         Button { onApprove() } label: {
-                            Label("Approve", systemImage: "checkmark")
-                                .labelStyle(.iconOnly)
+                            Label("Accept", systemImage: "checkmark")
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(.selkoSuccess)
                         .controlSize(.small)
                     }
                     if let onEdit {
                         Button { onEdit() } label: {
                             Label("Edit", systemImage: "pencil")
-                                .labelStyle(.iconOnly)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
                     if let onReject {
-                        Button { onReject() } label: {
+                        Button(role: .destructive) { onReject() } label: {
                             Label("Reject", systemImage: "xmark")
-                                .labelStyle(.iconOnly)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .tint(.red)
                     }
                 }
                 .padding(.top, 4)
