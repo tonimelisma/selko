@@ -8,6 +8,7 @@ import SwiftUI
 struct SenderGroupView: View {
     let group: SenderGroup
     let onApproveAll: () -> Void
+    let onRejectAll: () -> Void
 
     var body: some View {
         HStack {
@@ -26,17 +27,34 @@ struct SenderGroupView: View {
 
             Spacer()
 
-            if group.allEvents.count > 1 {
-                Button {
-                    onApproveAll()
+            if group.events.count > 1 {
+                Menu {
+                    Button {
+                        onApproveAll()
+                    } label: {
+                        Label("Approve all", systemImage: "checkmark")
+                    }
+
+                    Button(role: .destructive) {
+                        onRejectAll()
+                    } label: {
+                        Label("Reject all", systemImage: "xmark")
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        // Not implemented yet
+                    } label: {
+                        Label("Ignore sender", systemImage: "nosign")
+                    }
+                    .disabled(true)
                 } label: {
-                    Text("Approve All (\(group.allEvents.count))")
-                        .font(.caption)
-                        .fontWeight(.medium)
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.bordered)
-                .tint(.accentColor)
-                .accessibilityLabel("Approve all events from this sender")
+                .accessibilityLabel("Actions for this sender")
             }
         }
         .textCase(nil)
