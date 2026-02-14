@@ -309,9 +309,9 @@ Card for a single extracted event with inline actions and expandable description
 **Events dispatched:** `approve`, `reject`, `edit`
 
 **Behavior:**
-- Shows title, date/time (or "All Day"), location
-- Action buttons: Accept (green/success), Edit (outlined primary), Reject (outlined red/error)
-- All buttons show text labels on all screen sizes
+- Shows title, date/time (or "All Day"), location, description (truncated)
+- Action buttons: Accept (green/success), Edit (primary), Reject (red/error)
+- Web: text-label buttons. Android: `OutlinedCard` container with `FilledTonalButton`s (Accept/Reject icon-only, Edit icon + text)
 - On approve/reject: dispatches event, parent handles animation and removal
 
 ### `IntegrationStatus`
@@ -432,9 +432,9 @@ Consistent button styling for event actions across all platforms and screens.
 |----------|--------|------|--------|
 | **Web** | `btn btn-success` (filled green) | `btn btn-outline btn-primary` (outlined) | `btn btn-outline btn-error` (outlined red) |
 | **iOS** | `.borderedProminent` + `.tint(.selkoSuccess)` | `.bordered` | `.bordered` + `role: .destructive` |
-| **Android** | `FilledTonalButton` with success container color | `OutlinedButton` | `OutlinedButton` with error color + border |
+| **Android** | `FilledTonalButton` green, icon-only | `FilledTonalButton` primary, icon + text | `FilledTonalButton` error, icon-only |
 
-All action buttons show **text labels** (not icon-only). Icons are optional alongside text.
+Web and iOS action buttons show **text labels**. Android Accept/Reject use icon-only (platform convention for compact action buttons).
 
 ### Other Button Patterns
 
@@ -444,6 +444,16 @@ All action buttons show **text labels** (not icon-only). Icons are optional alon
 | **Log out** | `btn btn-error` | `.borderedProminent` + `.tint(.red)` | `Button` with error color |
 | **Undo** | `btn btn-outline btn-sm` | `.bordered` | `OutlinedButton` |
 | **Retry** | `btn btn-outline btn-warning btn-sm` | `.bordered` + `.tint(.orange)` | `OutlinedButton` with warning color |
+
+## Android Review Queue Component
+
+**Chosen:** `OutlinedCard` — M3 recommends cards for content with multiple data types and multiple actions. OutlinedCard provides the crispest visual separation in dense grouped lists.
+
+**Alternative (plan B):** `ElevatedCard` — shadow-based separation; viable but shadows in dense lists create more visual noise.
+
+**Not suitable:** `ListItem` — M3 says lists are for "homogeneous content that doesn't have many actions"; 3-line max is too constrained.
+
+Each event card wraps in `SwipeToDismissBox` (swipe right = approve, swipe left = reject). Cards are grouped under sender headers in a `LazyColumn`.
 
 ---
 
