@@ -185,15 +185,9 @@ For full details, see `docs/ui-testing-guide.md`.
 | iOS XCUITest | `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 16' -resultBundlePath ios/TestResults.xcresult` | UI flows on iOS Simulator |
 | Android UI | `cd android && ./gradlew connectedAndroidTest` | Compose UI tests on emulator |
 
-### MCP Visual Verification
+### MCP Tools (Manual Debugging Only)
 
-Slash commands for on-demand visual checks (requires MCP servers configured in `.mcp.json`):
-
-| Command | Purpose |
-|---------|---------|
-| `/verify-web` | Screenshot web app at 3 viewports, analyze layout and accessibility |
-| `/verify-ios` | Build iOS app, screenshot each screen on simulator |
-| `/verify-android` | Install Android app, screenshot each screen on emulator |
+MCP servers (Playwright, XcodeBuildMCP, mobile-mcp) are available for **manual debugging only** — e.g., clicking a new button, testing a specific interaction, or investigating a visual bug. Do NOT use them as a standard verification step. Use `./scripts/capture-all-screenshots.sh <platform>` for standard visual verification.
 
 ## Continuous Integration
 

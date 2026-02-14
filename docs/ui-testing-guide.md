@@ -231,29 +231,25 @@ This enables `tap` (by accessibility `id` or `label`), `snapshot_ui`, and other 
 
 **For iOS, always prefer XcodeBuildMCP over mobile-mcp.** mobile-mcp's WebDriverAgent can time out. Use mobile-mcp primarily for Android Emulator interaction.
 
-### Slash Commands
+### Standard Visual Verification
 
-Three slash commands are available for visual verification:
+Use the screenshot capture script for standard visual verification:
 
-| Command | What It Does |
-|---------|-------------|
-| `/verify-web` | Screenshots web app at 3 viewports, checks layout, responsiveness, accessibility tree |
-| `/verify-ios` | Builds iOS app, launches simulator, screenshots each screen, checks accessibility |
-| `/verify-android` | Installs Android app, launches on emulator, screenshots each screen, checks accessibility |
+```bash
+./scripts/capture-all-screenshots.sh android   # or web, ios
+```
 
-### When to Use
+The script handles seeding, building, and capturing automatically. Review the resulting screenshots in `docs/screenshots/` to verify UI correctness.
 
-- **After implementing a new screen** — run the relevant `/verify-*` command to check your work
-- **After layout changes** — verify responsiveness across viewports
-- **Before creating a PR** — quick visual sanity check
-- **Debugging visual issues** — get screenshots without leaving the terminal
+### MCP Tools (Manual Debugging Only)
 
-### How It Works
+MCP tools (`/verify-web`, `/verify-ios`, `/verify-android`) are available for **manual debugging only**:
 
-1. Run the slash command (e.g., `/verify-web`)
-2. Claude uses MCP tools to navigate the app, capture screenshots, and inspect accessibility
-3. Claude analyzes each screenshot and reports PASS/ISSUE findings
-4. Fix any issues and re-run
+- Clicking a new button or testing a specific interaction
+- Investigating a visual bug that screenshots alone can't diagnose
+- Testing dynamic behavior (animations, swipe gestures, state transitions)
+
+Do NOT use MCP tools or `/verify-*` slash commands as a standard verification step in the Definition of Done.
 
 ---
 
