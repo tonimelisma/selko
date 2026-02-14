@@ -108,13 +108,15 @@ fun ReviewQueueScreen(
                             }
 
                             items(group.events, key = { it.id }) { event ->
-                                SwipeableEventItem(
-                                    event = event,
-                                    isProcessing = event.id in uiState.processingEventIds,
-                                    onApprove = { viewModel.approveEvent(event.id) },
-                                    onReject = { viewModel.rejectEvent(event.id) },
-                                    onEdit = { onNavigateToEventDetail(event.id) }
-                                )
+                                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                    SwipeableEventItem(
+                                        event = event,
+                                        isProcessing = event.id in uiState.processingEventIds,
+                                        onApprove = { viewModel.approveEvent(event.id) },
+                                        onReject = { viewModel.rejectEvent(event.id) },
+                                        onEdit = { onNavigateToEventDetail(event.id) }
+                                    )
+                                }
                             }
                         }
 
