@@ -447,9 +447,7 @@ Web and iOS action buttons show **text labels**. Android Accept/Reject use icon-
 
 ## Android Review Queue Component
 
-**Chosen:** `OutlinedCard` — M3 recommends cards for content with multiple data types and multiple actions. OutlinedCard provides the crispest visual separation in dense grouped lists.
-
-**Alternative (plan B):** `ElevatedCard` — shadow-based separation; viable but shadows in dense lists create more visual noise.
+**Chosen:** `ElevatedCard` — M3 recommends cards for content with multiple data types and multiple actions. ElevatedCard uses shadow-based separation for a softer visual hierarchy.
 
 **Not suitable:** `ListItem` — M3 says lists are for "homogeneous content that doesn't have many actions"; 3-line max is too constrained.
 
