@@ -1,0 +1,47 @@
+{
+  "name": "order_pickup_12",
+  "category": "no_events",
+  "description": "Real-world Target Drive Up order pickup confirmation - past event, not a calendar item",
+  "difficulty": "easy",
+  "tags": ["order", "receipt", "retail", "negative-test", "real-world", "images"],
+  "input": {
+    "gmail_id": "eval-noev-012",
+    "thread_id": "thread-noev-012",
+    "subject": "Beep beep! Your Drive Up order ending in 4284 was picked up.",
+    "from_email": "orders@oe.target.com",
+    "from_name": "Target",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-08T21:03:06Z",
+    "snippet": "Your order was picked up on Sun, Feb 8 at Walnut Creek",
+    "body_text": "Order #912003258284284\n\nYour order was picked up on Sun, Feb 8\n\nat Walnut Creek\n\nTotal paid\n\n$53.65\n\nScan for in-store returns:\n\n2-6039-3991-2671-9500-5\n\nVCD: 758-257-646\n\nAny issues with your order?\n\nSave time and fix issues like missing or incorrect items online. This order will be eligible for online support tomorrow.\n\nFix an issue\n\nItems picked up\n\nRed Cookie Icing - 7oz - Favorite Day\u2122\nQty: 3\n\nBarbie Eyewear\nQty: 1\n\nHot Dog Buns - 11oz/8ct - Market Pantry\u2122\nQty: 2\n\nApplegate Grassfed The Great Organic Uncured Beef Hot Dog - 10oz\nQty: 2\n\nFresh Banana - each - Good & Gather\u2122\nQty: 6\n\nFresh Sweet Corn - 18oz/4ct - Good & Gather\u2122\nQty: 1\n\nFresh Golden Potatoes - 5lb - Good & Gather\u2122\nQty: 1\n\nWhite Cookie Icing - 7oz - Favorite Day\u2122\nQty: 3\n\nBased on what you ordered\n\nPampers Cruisers 360 Trial Pack\nBeech-Nut Non-GMO Naturals Carrots\nGerber Non-GMO Baby Food Stage 2\nBounty Select-A-Size White Paper Towels",
+    "attachments": [
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_00.gif",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_01.png",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_03.png",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_04.png",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_05.png",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_06.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_07.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_08.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_09.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_10.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_11.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_12.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_13.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_14.png",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_15.png",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_16.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_17.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_18.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_19.jpg",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_20.png",
+      "Beep_beep__Your_Drive_Up_order_ending_in_4284_was/img_21.png"
+    ]
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Real-world Target Drive Up order pickup confirmation. The pickup already happened (past tense: 'was picked up on Sun, Feb 8'). Images include product photos, Target branding, Valentine's Day themed decorations, and a barcode. Should not extract any future calendar event."
+}
