@@ -55,7 +55,7 @@ class TestEventProcessingMocked:
         assert email_result.data["processing_status"] == "processed"
         
         # Verify mock was called (gateway stores mock client for testing)
-        assert mock_gemini_client._mock_client.models.generate_content.called
+        assert mock_gemini_client._mock_provider.generate.called
 
     def test_process_email_no_events_mocked(
         self, authenticated_client, test_user_id, mock_gemini_no_events
@@ -139,7 +139,7 @@ class TestEventProcessingMocked:
         assert email_result.data["processing_status"] == "skipped"
         
         # Mock should NOT be called (gateway stores mock client for testing)
-        assert not mock_gemini_client._mock_client.models.generate_content.called
+        assert not mock_gemini_client._mock_provider.generate.called
 
 
 @pytest.mark.integration

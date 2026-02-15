@@ -3,6 +3,7 @@
 Handles email parsing and database storage.
 """
 
+import base64
 import logging
 from datetime import datetime
 from email.utils import getaddresses, parseaddr
@@ -28,6 +29,45 @@ class EmailError(Exception):
     """Raised when email operations fail."""
 
     pass
+
+
+def _extract_body_from_payload(payload: dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
+    """Extract plain text and HTML body from Gmail MIME payload.
+
+    Recursively walks MIME parts to find text/plain and text/html bodies.
+
+    Args:
+        payload: Gmail message payload dict.
+
+    Returns:
+        Tuple of (body_text, body_html), either may be None.
+    """
+    body_text = None
+    body_html = None
+
+    def _extract_from_part(part: dict[str, Any]) -> None:
+        nonlocal body_text, body_html
+        mime_type = part.get("mimeType", "")
+        body = part.get("body", {})
+        data = body.get("data")
+
+        if data and mime_type == "text/plain" and body_text is None:
+            try:
+                body_text = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+            except Exception:
+                pass
+        elif data and mime_type == "text/html" and body_html is None:
+            try:
+                body_html = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+            except Exception:
+                pass
+
+        # Recurse into nested parts
+        for nested in part.get("parts", []):
+            _extract_from_part(nested)
+
+    _extract_from_part(payload)
+    return body_text, body_html
 
 
 def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
@@ -76,7 +116,11 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
         for part in email.get("payload", {}).get("parts", [])
     )
 
-    return {
+    # Extract body text and HTML from MIME payload
+    payload = email.get("payload", {})
+    body_text, body_html = _extract_body_from_payload(payload)
+
+    result = {
         "gmail_id": email["id"],
         "thread_id": email.get("threadId"),
         "subject": headers.get("subject"),
@@ -88,6 +132,14 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
         "gmail_label_ids": email.get("labelIds", []),
         "has_attachments": has_attachments,
     }
+
+    # Add body columns if content was found
+    if body_text:
+        result["body_text"] = body_text
+    if body_html:
+        result["body_html"] = body_html
+
+    return result
 
 
 def _log_email_subject(parsed: dict[str, Any], action: str) -> None:
