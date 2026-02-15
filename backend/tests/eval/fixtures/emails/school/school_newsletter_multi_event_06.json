@@ -36,14 +36,86 @@
   },
   "expected": {
     "events_found": true,
-    "event_count": 2,
+    "event_count": 10,
     "events": [
+      {
+        "title": "Staff Development Day - No School",
+        "start_datetime": "2026-02-12T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Staff development day, no school for students. Teachers learning about math curriculum updates and student writing.",
+        "is_all_day": true,
+        "confidence_min": 0.5
+      },
+      {
+        "title": "President's Day Weekend - No School",
+        "start_datetime": "2026-02-13T00:00:00",
+        "end_datetime": "2026-02-16T00:00:00",
+        "location": null,
+        "description": "President's Day weekend, no school Friday through Monday.",
+        "is_all_day": true,
+        "confidence_min": 0.5
+      },
+      {
+        "title": "PTA Meeting",
+        "start_datetime": "2026-02-19T19:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School",
+        "description": "PTA meeting.",
+        "is_all_day": false,
+        "confidence_min": 0.5
+      },
+      {
+        "title": "Hygiene Care Kits Assembly",
+        "start_datetime": "2026-02-22T16:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "location": "Lamorinda Music, 81 Lafayette Cr, Lafayette, CA 94549",
+        "description": "Free assembly event to build hygiene care kits for families in need, organized by Mindful Littles.",
+        "is_all_day": false,
+        "confidence_min": 0.5
+      },
+      {
+        "title": "Lunar New Year Activities",
+        "start_datetime": "2026-02-23T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School",
+        "description": "Lunar New Year activities at lunch.",
+        "is_all_day": true,
+        "confidence_min": 0.5
+      },
+      {
+        "title": "PTA Meeting",
+        "start_datetime": "2026-03-19T19:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School Cafe",
+        "description": "PTA meeting in the cafe.",
+        "is_all_day": false,
+        "confidence_min": 0.5
+      },
+      {
+        "title": "Taste & Toast",
+        "start_datetime": "2026-03-25T17:30:00",
+        "end_datetime": "2026-03-25T20:30:00",
+        "location": "Walnut Creek Downtown & Broadway Plaza",
+        "description": "WCEF fundraiser event.",
+        "is_all_day": false,
+        "confidence_min": 0.5
+      },
+      {
+        "title": "Spring Break",
+        "start_datetime": "2026-03-30T00:00:00",
+        "end_datetime": "2026-04-03T00:00:00",
+        "location": null,
+        "description": "Spring break, no school.",
+        "is_all_day": true,
+        "confidence_min": 0.5
+      },
       {
         "title": "WCI Parent Informational Night",
         "start_datetime": "2026-04-09T18:30:00",
         "end_datetime": "2026-04-09T19:30:00",
         "location": "WCI gym, Walnut Creek Intermediate",
-        "description": "Parent-only informational night about Walnut Creek Intermediate for incoming 6th graders",
+        "description": "Parent-only informational night about Walnut Creek Intermediate for incoming 6th graders.",
         "is_all_day": false,
         "confidence_min": 0.7
       },
@@ -52,11 +124,11 @@
         "start_datetime": "2026-05-21T18:30:00",
         "end_datetime": "2026-05-21T20:00:00",
         "location": "Walnut Creek Intermediate",
-        "description": "Annual Open House - families invited to walk the campus, visit classrooms",
+        "description": "Annual Open House - families invited to walk the campus, visit classrooms.",
         "is_all_day": false,
         "confidence_min": 0.7
       }
     ]
   },
-  "notes": "Real-world school newsletter digest with multiple events buried in lengthy text. Key events for parents: WCI Parent Info Night (Apr 9, 6:30-7:30pm) and WCI Open House (May 21, 6:30-8:00pm). Also mentions student-only visit (Apr 14, 1:45pm) which is NOT a parent event. The 'Upcoming Dates' calendar image (img_02.png) contains additional event information. Images include school logos, calendar graphics, event posters, lunch menu, and app store badges. Hard difficulty due to events buried deep in newsletter and needing to distinguish parent vs student events."
+  "notes": "Real-world school newsletter digest with many events from both text and images. Text-based events: Staff Development Day (Feb 12), President's Weekend (Feb 13-16), WCI Parent Info Night (Apr 9), WCI Open House (May 21). Image img_02.png ('Upcoming Dates' calendar) adds: PTA Meeting (Feb 19), Lunar New Year Activities (Feb 23), PTA Meeting (Mar 19), Spring Break (Mar 30-Apr 3). Image img_08.png adds: Taste & Toast WCEF fundraiser (Mar 25). Image img_12.png adds: Hygiene Care Kits Assembly (Feb 22). Hard difficulty due to 10 events across text and multiple images, requiring multimodal extraction."
 }
