@@ -19,6 +19,7 @@ from .eval_config import (
     ATTACHMENTS_DIR,
     AUTO_SCORE_THRESHOLDS,
     DEFAULT_MODEL,
+    DEFAULT_PROVIDER,
     DIFFICULTY_LEVELS,
     EMAIL_CATEGORIES,
     EMAILS_DIR,
@@ -307,16 +308,22 @@ def run_single_eval(
 
     # Import here to avoid circular imports and allow running without deps
     try:
-        from selko.config import Config
-        from selko.services.gemini import extract_calendar_events, get_gemini_client
+        from selko.config import load_config
+        from selko.services.gemini import extract_calendar_events
+        from selko.services.llm_gateway import LLMGateway
+        from selko.services.llm_provider import create_provider
     except ImportError as e:
         print(f"Error: Could not import required modules: {e}")
         print("Make sure you're running from the project root with uv run")
         sys.exit(1)
 
-    # Initialize Gemini client
-    config = Config()
-    client = get_gemini_client(config)
+    # Initialize provider and gateway
+    config = load_config()
+    # Allow env overrides for evals
+    config.llm_provider = DEFAULT_PROVIDER
+    config.llm_model = DEFAULT_MODEL
+    provider = create_provider(config)
+    gateway = LLMGateway(provider)
 
     # Prepare email metadata
     email_metadata = {
@@ -330,11 +337,10 @@ def run_single_eval(
     start_time = time.time()
     try:
         extraction = extract_calendar_events(
-            client=client,
+            gateway=gateway,
             email_text=input_data.get("body_text", ""),
             email_metadata=email_metadata,
             attachments=attachments if attachments else None,
-            model=DEFAULT_MODEL,
         )
         actual = {
             "events_found": extraction.events_found,
@@ -369,6 +375,7 @@ def run_single_eval(
         "difficulty": fixture.get("difficulty", "medium"),
         "tags": fixture.get("tags", []),
         "run_at": datetime.now(timezone.utc).isoformat(),
+        "provider": DEFAULT_PROVIDER,
         "model": DEFAULT_MODEL,
         "duration_ms": duration_ms,
         "input_summary": {
@@ -460,15 +467,20 @@ def run_thread_eval(
 
     # Import here to avoid circular imports
     try:
-        from selko.config import Config
-        from selko.services.gemini import extract_calendar_events, get_gemini_client
+        from selko.config import load_config
+        from selko.services.gemini import extract_calendar_events
+        from selko.services.llm_gateway import LLMGateway
+        from selko.services.llm_provider import create_provider
     except ImportError as e:
         print(f"Error: Could not import required modules: {e}")
         sys.exit(1)
 
-    # Initialize Gemini client
-    config = Config()
-    client = get_gemini_client(config)
+    # Initialize provider and gateway
+    config = load_config()
+    config.llm_provider = DEFAULT_PROVIDER
+    config.llm_model = DEFAULT_MODEL
+    provider = create_provider(config)
+    gateway = LLMGateway(provider)
 
     # Process each email in sequence, tracking extracted events
     email_results = []
@@ -484,11 +496,10 @@ def run_thread_eval(
 
         try:
             extraction = extract_calendar_events(
-                client=client,
+                gateway=gateway,
                 email_text=email_data.get("body_text", ""),
                 email_metadata=email_metadata,
                 attachments=None,
-                model=DEFAULT_MODEL,
             )
 
             email_result = {
@@ -911,6 +922,18 @@ Examples:
         "--rate", nargs="?", const="all", help="Rate results interactively"
     )
 
+    # Provider options
+    parser.add_argument(
+        "--provider",
+        type=str,
+        help="LLM provider (gemini, moonshot, zai, qwen, deepseek, minimax)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        help="LLM model ID (e.g., gemini-3-flash-preview, kimi-k2.5)",
+    )
+
     # Output options
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument(
@@ -920,6 +943,13 @@ Examples:
     )
 
     args = parser.parse_args()
+
+    # Apply provider/model overrides to eval_config globals
+    import backend.tests.eval.eval_config as eval_cfg
+    if args.provider:
+        eval_cfg.DEFAULT_PROVIDER = args.provider
+    if args.model:
+        eval_cfg.DEFAULT_MODEL = args.model
 
     # Handle list
     if args.list:

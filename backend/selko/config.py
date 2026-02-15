@@ -39,9 +39,18 @@ class Config:
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
 
-    # Gemini API configuration
+    # LLM provider configuration
+    llm_provider: str = "gemini"  # gemini|moonshot|zai|qwen|deepseek|minimax
+    llm_model: Optional[str] = None  # specific model ID (None = provider default)
+
+    # API keys (one per provider)
     gemini_api_key: Optional[str] = None
-    gemini_model: str = "gemini-3-flash-preview"
+    gemini_model: str = "gemini-3-flash-preview"  # backward compat
+    moonshot_api_key: Optional[str] = None
+    zai_api_key: Optional[str] = None
+    deepseek_api_key: Optional[str] = None
+    alibaba_api_key: Optional[str] = None
+    minimax_api_key: Optional[str] = None
 
     # Test user credentials for CLI authentication
     test_user_email: Optional[str] = None
@@ -171,7 +180,14 @@ def load_config(env_override: Optional[str] = None) -> Config:
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
         google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        llm_provider=os.getenv("LLM_PROVIDER", "gemini"),
+        llm_model=os.getenv("LLM_MODEL") or None,
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
+        moonshot_api_key=os.getenv("MOONSHOT_API_KEY"),
+        zai_api_key=os.getenv("ZAI_API_KEY"),
+        deepseek_api_key=os.getenv("DEEPSEEK_API_KEY"),
+        alibaba_api_key=os.getenv("ALIBABA_API_KEY"),
+        minimax_api_key=os.getenv("MINIMAX_API_KEY"),
         test_user_email=os.getenv("TEST_USER_EMAIL"),
         test_user_password=os.getenv("TEST_USER_PASSWORD"),
         worker_pool_size=int(os.getenv("WORKER_POOL_SIZE", "3")),

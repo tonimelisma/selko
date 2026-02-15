@@ -9,11 +9,12 @@ from fastapi import Depends, Header, HTTPException, Request, status
 from supabase import Client, create_client
 
 from selko.config import Config, load_config
-from selko.services.llm_gateway import LLMGateway, get_gemini_client as create_gemini_client
+from selko.services.llm_gateway import LLMGateway
 from selko.services.llm_logging import (
     LLMLoggingService,
     get_llm_logging_service as create_llm_logging_service,
 )
+from selko.services.llm_provider import create_provider
 from selko.services.quotas import QuotaService, get_quota_service as create_quota_service
 
 logger = logging.getLogger(__name__)
@@ -126,18 +127,6 @@ def get_authenticated_client(
     return client
 
 
-def get_gemini_client(config: Config = Depends(get_config)):
-    """Create Gemini client for LLM operations.
-
-    Args:
-        config: Application configuration with Gemini API key.
-
-    Returns:
-        Initialized Gemini client.
-    """
-    return create_gemini_client(config)
-
-
 def get_service_role_client(config: Config = Depends(get_config)) -> Client:
     """Create Supabase client with service role key.
 
@@ -204,11 +193,12 @@ def get_llm_gateway(
     for all LLM calls.
 
     Args:
-        config: Application configuration with Gemini API key.
+        config: Application configuration.
         logging_service: Service for logging LLM calls.
         quota_service: Service for rate limiting.
 
     Returns:
         Configured LLMGateway instance.
     """
-    return LLMGateway(config, logging_service, quota_service)
+    provider = create_provider(config)
+    return LLMGateway(provider, logging_service, quota_service)
