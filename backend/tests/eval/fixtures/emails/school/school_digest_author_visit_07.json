@@ -1,0 +1,42 @@
+{
+  "name": "school_digest_author_visit_07",
+  "category": "school",
+  "description": "Real-world school digest with Valentine's Day party photos (past) and newsletter with future author visit",
+  "difficulty": "medium",
+  "tags": ["school", "digest", "newsletter", "author-visit", "real-world", "images"],
+  "input": {
+    "gmail_id": "eval-school-007",
+    "thread_id": "thread-school-007",
+    "subject": "Feb 12, 2026 Digest: 2 new messages from Walnut Heights School today",
+    "from_email": "donotreply+b8892cdd-b853-59af-bbf0-af20434c9aeb@parentsquare.com",
+    "from_name": "Walnut Heights School via ParentSquare",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-13T02:34:28Z",
+    "snippet": "Daily digest - Vday Party Photos, Newsletter",
+    "body_text": "Daily digest created for Toni Melisma\n\n1. Vday Party Photos\n\nPosted by Brenda Dos Santos Szeto on Wednesday, Feb 11 at 7:19 PM in Kindergarten-Koeltl\n\nHi Room 102 Families Our Valentine\u2019s Day party was such a sweet success! The kids had an amazing time, and it truly wouldn\u2019t have been possible without all of you. A heartfelt THANK YOU to our wonder teacher ms Koeltl and everyone who volunteered their time, donated items, helped set up, or contributed in any way. Your generosity and support made the celebration extra special for the class. Here's a link of some photos we took today. Please let me know if you cant access it.\n\nSee you all next week! Wishing everyone a wonderful and safe super long weekend.\nArash, Brenda, & Renee\n\n2. Newsletter\n\nPosted by Reganne Koeltl on Thursday, Feb 12 at 11:16 AM in Kindergarten-Koeltl\n\nDouble Author Visit on March 12th\n\nIf students would like to order books and have them signed on the day of the visit, please place orders through Rakestraw Bookstore. The books will be delivered on the day of the visit, and the authors will sign them for students.\n\n*** Shipping Address when placing an order is the school\u2019s address:\n\n4064 Walnut Blvd, Walnut Creek, CA 94596",
+    "attachments": [
+      "Feb_12__2026_Digest__2_new_messages_from_Walnut_He/img_00.png",
+      "Feb_12__2026_Digest__2_new_messages_from_Walnut_He/img_01.png",
+      "Feb_12__2026_Digest__2_new_messages_from_Walnut_He/img_02.jpg",
+      "Feb_12__2026_Digest__2_new_messages_from_Walnut_He/img_03.png",
+      "Feb_12__2026_Digest__2_new_messages_from_Walnut_He/img_04.png",
+      "Feb_12__2026_Digest__2_new_messages_from_Walnut_He/img_05.gif"
+    ]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
+        "is_all_day": true,
+        "confidence_min": 0.6
+      }
+    ]
+  },
+  "notes": "Real-world school digest with 2 posts. Post 1 is Valentine's Day party photos (past event, should NOT be extracted). Post 2 is a class newsletter mentioning a Double Author Visit on March 12th - this is a future school event but no specific time given, so it should be all-day. The newsletter image (img_01.png) likely contains additional schedule information. Images include school logo, newsletter graphic, music-related image, and app store badges. Medium difficulty because LLM must distinguish past from future events."
+}

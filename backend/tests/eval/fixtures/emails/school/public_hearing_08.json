@@ -1,0 +1,41 @@
+{
+  "name": "public_hearing_08",
+  "category": "school",
+  "description": "Real-world school district public hearing notice with clear date, time, and location",
+  "difficulty": "easy",
+  "tags": ["school", "public-hearing", "government", "real-world", "images"],
+  "input": {
+    "gmail_id": "eval-school-008",
+    "thread_id": "thread-school-008",
+    "subject": "Feb 13, 2026 Digest: 1 new message from Walnut Creek School District today",
+    "from_email": "donotreply+f44b5b2b-0fe1-53bf-b5c1-2dada4954bce@parentsquare.com",
+    "from_name": "Walnut Creek School District via ParentSquare",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-14T02:15:35Z",
+    "snippet": "Notice of Public Hearing - 23rd February 2026",
+    "body_text": "Daily digest created for Toni Melisma\n\n1. Notice of Public Hearing - 23rd February 2026\n\nPosted by Walnut Creek School District on Friday, Feb 13 at 3:00 PM in Walnut Creek School District, Community - Governing Board\n\nNOTICE OF PUBLIC HEARING REGARDING CALLING AN ELECTION TO LEVY NEW EDUCATION PARCEL TAX\n\nNotice is hereby given pursuant to Government Code Section 50077 that a public hearing will be held by the governing board of the Walnut Creek School District at a board meeting on February 23, 2026, at 6:00 p.m., or as soon thereafter as convenient, at the District office, located at 960 Ygnacio Valley Road, Walnut Creek, CA 94596. The purpose of said hearing is to receive public comment regarding whether the District should call an election to create a new $98 parcel tax for nine years, with annual inflation, adjustments, pursuant to Government Code Section 50079.\n\nAny interested persons, including all persons owning lands in the District, may appear and be heard at the public hearing.\n\nWalnut Creek School District Governing Board\n960 Ygnacio Valley Road, Walnut Creek, CA 94596",
+    "attachments": [
+      "Feb_13__2026_Digest__1_new_message_from_Walnut_Cre/img_00.png",
+      "Feb_13__2026_Digest__1_new_message_from_Walnut_Cre/img_01.png",
+      "Feb_13__2026_Digest__1_new_message_from_Walnut_Cre/img_02.png",
+      "Feb_13__2026_Digest__1_new_message_from_Walnut_Cre/img_03.png",
+      "Feb_13__2026_Digest__1_new_message_from_Walnut_Cre/img_04.gif"
+    ]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Public Hearing - Education Parcel Tax",
+        "start_datetime": "2026-02-23T18:00:00",
+        "end_datetime": null,
+        "location": "960 Ygnacio Valley Road, Walnut Creek, CA 94596",
+        "description": "Public hearing by Walnut Creek School District governing board regarding calling an election to levy new $98 education parcel tax",
+        "is_all_day": false,
+        "confidence_min": 0.85
+      }
+    ]
+  },
+  "notes": "Real-world school district public hearing notice via ParentSquare. Clear event with specific date (February 23, 2026), time (6:00 p.m.), and location (960 Ygnacio Valley Road, Walnut Creek, CA 94596). The header image (img_01.png) also announces the public hearing. Easy difficulty - straightforward event extraction."
+}

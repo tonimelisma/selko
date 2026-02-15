@@ -1,0 +1,35 @@
+{
+  "name": "government_notice_13",
+  "category": "no_events",
+  "description": "Real-world city government notification about safety element update with comment period but no specific meeting dates",
+  "difficulty": "medium",
+  "tags": ["government", "city", "public-comment", "negative-test", "real-world", "images"],
+  "input": {
+    "gmail_id": "eval-noev-013",
+    "thread_id": "thread-noev-013",
+    "subject": "Walnut Creek is updating its safety element",
+    "from_email": "CityofWalnutCreek@public.govdelivery.com",
+    "from_name": "City of Walnut Creek",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-09T18:59:07Z",
+    "snippet": "Community welcome to provide feedback on the update of the safety element",
+    "body_text": "City of Walnut Creek\n\nCommunity welcome to provide feedback on the update of the safety element\n\nThe City of Walnut Creek is updating its Safety Element, a required component of the City\u2019s General Plan that guides development, growth, and decision-making based on a shared vision for the next 20-30 years.\n\nThe Safety Element focuses on protecting the community from natural and manmade hazards, such as fire, floods, earthquake and extreme weather. It establishes goals, policies and actions to reduce injury, loss of life and property damage, and seeks to improve community resilience.\n\nThe Safety Element was last updated in 2006. Since then, state laws have introduced new requirements for Safety Elements to address wildfire risk, climate change adaptation, flood and fire hazards, and emergency evacuation routes for residents in hazard areas. The update allows the City to protect residents, businesses, and infrastructure, while maintaining eligibility for state funding for hazard mitigation and preparedness.\n\nThe Safety Element is one of several elements to the General Plan, which also covers topics such as land use, housing, circulation, safety, open space, noise, and conservation. Some elements, such as the Housing Element, are updated more frequently. A comprehensive update of the General Plan is anticipated to start later this year, and will integrate recently updated elements.\n\nNext steps include posting the draft Safety Element and the associated environmental review on the City\u2019s website for a 30-day public review period. Residents may submit written comments during this period and will also have opportunities to comment when the draft is presented to the Planning Commission and later to the City Council. Community members may provide comments at both meetings. Written comments during the 30-day review period may be sent via email to rustick@walnutcreekca.gov. The public comment period will be February 9 through March 11.\n\nInformation about the Safety Element, including upcoming public meeting dates, is available on the City website.",
+    "attachments": [
+      "Walnut_Creek_is_updating_its_safety_element/img_00.png",
+      "Walnut_Creek_is_updating_its_safety_element/img_01.png",
+      "Walnut_Creek_is_updating_its_safety_element/img_02.png",
+      "Walnut_Creek_is_updating_its_safety_element/img_03.png",
+      "Walnut_Creek_is_updating_its_safety_element/img_04.png",
+      "Walnut_Creek_is_updating_its_safety_element/img_05.png",
+      "Walnut_Creek_is_updating_its_safety_element/img_06.png",
+      "Walnut_Creek_is_updating_its_safety_element/img_07.png",
+      "Walnut_Creek_is_updating_its_safety_element/img_08.gif"
+    ]
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Real-world city government notification about Safety Element update. Mentions a 30-day public comment period (Feb 9 - Mar 11) and future Planning Commission/City Council meetings, but no specific meeting dates or times are given. The comment period is a deadline range, not a calendar event. Images are city logo, social media icons, and GovDelivery branding. Should not extract a calendar event."
+}
