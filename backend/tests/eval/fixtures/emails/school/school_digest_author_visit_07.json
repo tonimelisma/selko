@@ -25,7 +25,7 @@
   },
   "expected": {
     "events_found": true,
-    "event_count": 1,
+    "event_count": 2,
     "events": [
       {
         "title": "Double Author Visit",
@@ -35,8 +35,17 @@
         "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
         "is_all_day": true,
         "confidence_min": 0.6
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00",
+        "end_datetime": null,
+        "location": "Walnut Heights MPR",
+        "description": "TK and K music showcase. Livestream available.",
+        "is_all_day": false,
+        "confidence_min": 0.5
       }
     ]
   },
-  "notes": "Real-world school digest with 2 posts. Post 1 is Valentine's Day party photos (past event, should NOT be extracted). Post 2 is a class newsletter mentioning a Double Author Visit on March 12th - this is a future school event but no specific time given, so it should be all-day. The newsletter image (img_01.png) likely contains additional schedule information. Images include school logo, newsletter graphic, music-related image, and app store badges. Medium difficulty because LLM must distinguish past from future events."
+  "notes": "Real-world school digest with 2 posts. Post 1 is Valentine's Day party photos (past event, should NOT be extracted). Post 2 is a class newsletter mentioning a Double Author Visit on March 12th - this is a future school event but no specific time given, so it should be all-day. Image img_02.jpg is a flyer for the Spring Music Showcase on March 24 at 9:30 AM in the Walnut Heights MPR (TK and K only) - this event is only discoverable from the image. Medium difficulty because LLM must distinguish past from future events and extract image-only events."
 }
