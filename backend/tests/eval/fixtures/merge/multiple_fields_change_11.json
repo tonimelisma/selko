@@ -1,0 +1,32 @@
+{
+  "description": "Multiple fields change simultaneously - time, location, and description all updated",
+  "difficulty": "hard",
+  "tags": ["merge", "multi-field-update", "complex"],
+  "input": {
+    "existing_event": {
+      "title": "Customer Workshop",
+      "start_datetime": "2026-04-22T10:00:00",
+      "end_datetime": "2026-04-22T12:00:00",
+      "all_day": false,
+      "location": "Office Building A",
+      "description": "Product training workshop for new customers"
+    },
+    "new_extraction": {
+      "title": "Customer Workshop",
+      "start_datetime": "2026-04-22T13:00:00",
+      "end_datetime": "2026-04-22T16:00:00",
+      "all_day": false,
+      "location": "Zoom: https://zoom.us/j/987654321",
+      "description": "Moved to afternoon and now virtual. Extended to 3 hours with Q&A session. Materials will be emailed beforehand."
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "Customer Workshop",
+    "start_datetime": "2026-04-22T13:00:00",
+    "end_datetime": "2026-04-22T16:00:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/987654321",
+    "description_contains": ["product training", "new customers", "virtual", "Q&A session", "materials"]
+  }
+}

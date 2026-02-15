@@ -1,0 +1,32 @@
+{
+  "description": "Update email adds dress code information to social event",
+  "difficulty": "easy",
+  "tags": ["merge", "description-enrichment", "dress-code"],
+  "input": {
+    "existing_event": {
+      "title": "Company Gala Dinner",
+      "start_datetime": "2026-08-15T18:00:00",
+      "end_datetime": "2026-08-15T22:00:00",
+      "all_day": false,
+      "location": "Grand Ballroom Hotel",
+      "description": "Annual company gala celebrating 10 years"
+    },
+    "new_extraction": {
+      "title": "Company Gala Dinner",
+      "start_datetime": "2026-08-15T18:00:00",
+      "end_datetime": "2026-08-15T22:00:00",
+      "all_day": false,
+      "location": "Grand Ballroom Hotel",
+      "description": "Dress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!"
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description_contains": ["10 years", "black tie", "cocktail hour", "plus-ones welcome"]
+  }
+}

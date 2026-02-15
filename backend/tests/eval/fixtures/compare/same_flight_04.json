@@ -1,0 +1,43 @@
+{
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": ["dedup", "match", "travel"],
+  "input": {
+    "new_event": {
+      "title": "Flight to Denver - UA 1234",
+      "start_datetime": "2026-05-10T08:15:00",
+      "end_datetime": "2026-05-10T11:45:00",
+      "location": "SFO to DEN",
+      "description": "United Airlines confirmation #ABC123XYZ. Seat 12A."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Pack for Trip",
+        "start_datetime": "2026-05-09T20:00:00",
+        "end_datetime": "2026-05-09T21:00:00",
+        "location": "Home",
+        "description": "Pack bags for Denver"
+      },
+      {
+        "id": "event-002",
+        "title": "UA1234 - San Francisco to Denver",
+        "start_datetime": "2026-05-10T08:15:00",
+        "end_datetime": "2026-05-10T11:45:00",
+        "location": "SFO Terminal 3",
+        "description": "Flight itinerary - departs 8:15am, arrives 11:45am MT"
+      },
+      {
+        "id": "event-003",
+        "title": "Hotel Check-in Denver",
+        "start_datetime": "2026-05-10T15:00:00",
+        "end_datetime": "2026-05-10T15:30:00",
+        "location": "Hyatt Regency Denver",
+        "description": "Reservation #456789"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-002"
+  }
+}

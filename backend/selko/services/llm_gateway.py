@@ -90,6 +90,9 @@ class LLMGateway:
         self.quota_service = quota_service
         self.user_id: Optional[str] = None
         self.email_id: Optional[str] = None
+        # Last call token counts (for eval/observability)
+        self._last_prompt_tokens: Optional[int] = None
+        self._last_completion_tokens: Optional[int] = None
 
     def for_user(self, user_id: str) -> "LLMGateway":
         """Set user context for logging and rate limiting.
@@ -171,6 +174,10 @@ class LLMGateway:
                 )
 
                 latency_ms = int((time.time() - start_time) * 1000)
+
+                # Store token counts for observability
+                self._last_prompt_tokens = response.prompt_tokens
+                self._last_completion_tokens = response.completion_tokens
 
                 # Log successful call
                 self._log_success(

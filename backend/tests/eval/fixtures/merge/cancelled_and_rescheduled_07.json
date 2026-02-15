@@ -1,0 +1,32 @@
+{
+  "description": "Event cancelled and rescheduled to new date - complex cancellation with new time",
+  "difficulty": "hard",
+  "tags": ["merge", "cancellation", "reschedule"],
+  "input": {
+    "existing_event": {
+      "title": "Webinar: Cloud Security Best Practices",
+      "start_datetime": "2026-06-10T15:00:00",
+      "end_datetime": "2026-06-10T16:00:00",
+      "all_day": false,
+      "location": "https://webinar.example.com/cloudsec",
+      "description": "Learn about latest cloud security practices and tools"
+    },
+    "new_extraction": {
+      "title": "Webinar: Cloud Security Best Practices",
+      "start_datetime": "2026-06-17T15:00:00",
+      "end_datetime": "2026-06-17T16:00:00",
+      "all_day": false,
+      "location": "https://webinar.example.com/cloudsec-new",
+      "description": "June 10 session cancelled. Rescheduled to June 17 with new guest speaker from AWS."
+    },
+    "source_type": "cancellation"
+  },
+  "expected": {
+    "title": "CANCELLED: Webinar: Cloud Security Best Practices",
+    "start_datetime": "2026-06-17T15:00:00",
+    "end_datetime": "2026-06-17T16:00:00",
+    "all_day": false,
+    "location": "https://webinar.example.com/cloudsec-new",
+    "description_contains": ["cloud security", "cancelled", "rescheduled", "June 17", "AWS"]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": ["dedup", "match", "social"],
+  "input": {
+    "new_event": {
+      "title": "Sarah & Michael's Wedding",
+      "start_datetime": "2026-06-20T16:00:00",
+      "end_datetime": "2026-06-20T22:00:00",
+      "location": "Sunset Gardens, Napa Valley",
+      "description": "Thank you for RSVPing! Ceremony at 4pm, reception to follow. Cocktail attire."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Wedding - Sarah and Michael",
+        "start_datetime": "2026-06-20T16:00:00",
+        "end_datetime": "2026-06-20T22:00:00",
+        "location": "Sunset Gardens, Napa",
+        "description": "You're invited to celebrate our special day!"
+      },
+      {
+        "id": "event-002",
+        "title": "Summer BBQ",
+        "start_datetime": "2026-06-21T12:00:00",
+        "end_datetime": "2026-06-21T16:00:00",
+        "location": "Central Park",
+        "description": "Annual neighborhood BBQ"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}

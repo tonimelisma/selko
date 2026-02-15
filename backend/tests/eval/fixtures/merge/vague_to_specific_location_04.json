@@ -1,0 +1,32 @@
+{
+  "description": "Vague location updated to specific address - prefer specific location",
+  "difficulty": "easy",
+  "tags": ["merge", "location-update", "specificity"],
+  "input": {
+    "existing_event": {
+      "title": "Team Dinner",
+      "start_datetime": "2026-05-22T19:00:00",
+      "end_datetime": "2026-05-22T21:00:00",
+      "all_day": false,
+      "location": "Italian restaurant downtown",
+      "description": "Team celebration dinner"
+    },
+    "new_extraction": {
+      "title": "Team Dinner",
+      "start_datetime": "2026-05-22T19:00:00",
+      "end_datetime": "2026-05-22T21:00:00",
+      "all_day": false,
+      "location": "Pasta Bella, 456 Main St",
+      "description": "Reservation confirmed at Pasta Bella for 8 people"
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "Team Dinner",
+    "start_datetime": "2026-05-22T19:00:00",
+    "end_datetime": "2026-05-22T21:00:00",
+    "all_day": false,
+    "location": "Pasta Bella, 456 Main St",
+    "description_contains": ["team celebration", "reservation confirmed", "8 people"]
+  }
+}
