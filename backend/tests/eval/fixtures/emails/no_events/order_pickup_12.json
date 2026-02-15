@@ -1,0 +1,47 @@
+{
+  "name": "order_pickup_12",
+  "category": "no_events",
+  "description": "Real-world Target Drive Up order pickup confirmation - past event, not a calendar item",
+  "difficulty": "easy",
+  "tags": ["order", "receipt", "retail", "negative-test", "real-world", "images"],
+  "input": {
+    "provider_message_id": "eval-noev-012",
+    "thread_id": "thread-noev-012",
+    "subject": "Beep beep! Your Drive Up order ending in 1234 was picked up.",
+    "from_email": "orders@oe.target.com",
+    "from_name": "Target",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-08T21:03:06Z",
+    "snippet": "Your order was picked up on Sun, Feb 8 at Riverside",
+    "body_text": "Order #900000000001234\n\nYour order was picked up on Sun, Feb 8\n\nat Riverside\n\nTotal paid\n\n$53.65\n\nScan for in-store returns:\n\n2-0000-1111-2222-3333-4\n\nVCD: 000-111-222\n\nAny issues with your order?\n\nSave time and fix issues like missing or incorrect items online. This order will be eligible for online support tomorrow.\n\nFix an issue\n\nItems picked up\n\nRed Cookie Icing - 7oz - Favorite Day\u2122\nQty: 3\n\nBarbie Eyewear\nQty: 1\n\nHot Dog Buns - 11oz/8ct - Market Pantry\u2122\nQty: 2\n\nApplegate Grassfed The Great Organic Uncured Beef Hot Dog - 10oz\nQty: 2\n\nFresh Banana - each - Good & Gather\u2122\nQty: 6\n\nFresh Sweet Corn - 18oz/4ct - Good & Gather\u2122\nQty: 1\n\nFresh Golden Potatoes - 5lb - Good & Gather\u2122\nQty: 1\n\nWhite Cookie Icing - 7oz - Favorite Day\u2122\nQty: 3\n\nBased on what you ordered\n\nPampers Cruisers 360 Trial Pack\nBeech-Nut Non-GMO Naturals Carrots\nGerber Non-GMO Baby Food Stage 2\nBounty Select-A-Size White Paper Towels",
+    "attachments": [
+      "drive_up_order_pickup/img_00.gif",
+      "drive_up_order_pickup/img_01.png",
+      "drive_up_order_pickup/img_03.png",
+      "drive_up_order_pickup/img_04.png",
+      "drive_up_order_pickup/img_05.png",
+      "drive_up_order_pickup/img_06.jpg",
+      "drive_up_order_pickup/img_07.jpg",
+      "drive_up_order_pickup/img_08.jpg",
+      "drive_up_order_pickup/img_09.jpg",
+      "drive_up_order_pickup/img_10.jpg",
+      "drive_up_order_pickup/img_11.jpg",
+      "drive_up_order_pickup/img_12.jpg",
+      "drive_up_order_pickup/img_13.jpg",
+      "drive_up_order_pickup/img_14.png",
+      "drive_up_order_pickup/img_15.png",
+      "drive_up_order_pickup/img_16.jpg",
+      "drive_up_order_pickup/img_17.jpg",
+      "drive_up_order_pickup/img_18.jpg",
+      "drive_up_order_pickup/img_19.jpg",
+      "drive_up_order_pickup/img_20.png",
+      "drive_up_order_pickup/img_21.png"
+    ]
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Real-world Target Drive Up order pickup confirmation. This is a receipt/order confirmation (NOT-events rule: transactional emails). Images include product photos, Target branding, Valentine's Day themed decorations, and a barcode. Should not extract any calendar event."
+}

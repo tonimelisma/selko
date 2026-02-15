@@ -1,0 +1,49 @@
+{
+  "name": "public_hearing_08",
+  "category": "school",
+  "description": "Real-world school district public hearing notice with clear date, time, and location",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "public-hearing",
+    "government",
+    "real-world",
+    "images"
+  ],
+  "input": {
+    "provider_message_id": "eval-school-008",
+    "thread_id": "thread-school-008",
+    "subject": "Feb 13, 2026 Digest: 1 new message from Riverside School District today",
+    "from_email": "donotreply+3f1c2a9e-0000-4000-8000-000000000006@parentsquare.example",
+    "from_name": "Riverside School District via ParentSquare",
+    "to_emails": [
+      "recipient@example.com"
+    ],
+    "date_sent": "2026-02-14T02:15:35Z",
+    "snippet": "Notice of Public Hearing - 23rd February 2026",
+    "body_text": "Daily digest created for Alex Parent\n\n1. Notice of Public Hearing - 23rd February 2026\n\nPosted by Riverside School District on Friday, Feb 13 at 3:00 PM in Riverside School District, Community - Governing Board\n\nNOTICE OF PUBLIC HEARING REGARDING CALLING AN ELECTION TO LEVY NEW EDUCATION PARCEL TAX\n\nNotice is hereby given pursuant to Government Code Section 50077 that a public hearing will be held by the governing board of the Riverside School District at a board meeting on February 23, 2026, at 6:00 p.m., or as soon thereafter as convenient, at the District office, located at 500 District Way, Riverside, CA 90000. The purpose of said hearing is to receive public comment regarding whether the District should call an election to create a new $98 parcel tax for nine years, with annual inflation, adjustments, pursuant to Government Code Section 50079.\n\nAny interested persons, including all persons owning lands in the District, may appear and be heard at the public hearing.\n\nRiverside School District Governing Board\n500 District Way, Riverside, CA 90000",
+    "attachments": [
+      "district_digest_public_hearing/img_00.png",
+      "district_digest_public_hearing/img_01.png",
+      "district_digest_public_hearing/img_02.png",
+      "district_digest_public_hearing/img_03.png",
+      "district_digest_public_hearing/img_04.gif"
+    ]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Public Hearing - Education Parcel Tax",
+        "start_datetime": "2026-02-23T18:00:00",
+        "end_datetime": null,
+        "location": "500 District Way, Riverside, CA 90000",
+        "description": "Public hearing by Riverside School District governing board regarding calling an election to levy new $98 education parcel tax",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Real-world school district public hearing notice via ParentSquare. Clear event with specific date (February 23, 2026), time (6:00 p.m.), and location (500 District Way, Riverside, CA 90000). The header image (img_01.png) also announces the public hearing. Easy difficulty - straightforward event extraction."
+}

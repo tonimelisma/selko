@@ -1,0 +1,43 @@
+{
+  "name": "government_comment_period_13",
+  "category": "school",
+  "description": "Real-world city government notification about safety element update with 30-day public comment period",
+  "difficulty": "medium",
+  "tags": ["government", "city", "public-comment", "real-world", "images"],
+  "input": {
+    "provider_message_id": "eval-noev-013",
+    "thread_id": "thread-noev-013",
+    "subject": "Riverside is updating its safety element",
+    "from_email": "CityofRiverside@public.govdelivery.example",
+    "from_name": "City of Riverside",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-02-09T18:59:07Z",
+    "snippet": "Community welcome to provide feedback on the update of the safety element",
+    "body_text": "City of Riverside\n\nCommunity welcome to provide feedback on the update of the safety element\n\nThe City of Riverside is updating its Safety Element, a required component of the City\u2019s General Plan that guides development, growth, and decision-making based on a shared vision for the next 20-30 years.\n\nThe Safety Element focuses on protecting the community from natural and manmade hazards, such as fire, floods, earthquake and extreme weather. It establishes goals, policies and actions to reduce injury, loss of life and property damage, and seeks to improve community resilience.\n\nThe Safety Element was last updated in 2006. Since then, state laws have introduced new requirements for Safety Elements to address wildfire risk, climate change adaptation, flood and fire hazards, and emergency evacuation routes for residents in hazard areas. The update allows the City to protect residents, businesses, and infrastructure, while maintaining eligibility for state funding for hazard mitigation and preparedness.\n\nThe Safety Element is one of several elements to the General Plan, which also covers topics such as land use, housing, circulation, safety, open space, noise, and conservation. Some elements, such as the Housing Element, are updated more frequently. A comprehensive update of the General Plan is anticipated to start later this year, and will integrate recently updated elements.\n\nNext steps include posting the draft Safety Element and the associated environmental review on the City\u2019s website for a 30-day public review period. Residents may submit written comments during this period and will also have opportunities to comment when the draft is presented to the Planning Commission and later to the City Council. Community members may provide comments at both meetings. Written comments during the 30-day review period may be sent via email to safetyelement@cityofriverside.example.org. The public comment period will be February 9 through March 11.\n\nInformation about the Safety Element, including upcoming public meeting dates, is available on the City website.",
+    "attachments": [
+      "city_safety_element_update/img_00.png",
+      "city_safety_element_update/img_01.png",
+      "city_safety_element_update/img_02.png",
+      "city_safety_element_update/img_03.png",
+      "city_safety_element_update/img_04.png",
+      "city_safety_element_update/img_05.png",
+      "city_safety_element_update/img_06.png",
+      "city_safety_element_update/img_07.png",
+      "city_safety_element_update/img_08.gif"
+    ]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Public Comment Period - Safety Element",
+        "start_datetime": "2026-02-09",
+        "end_datetime": "2026-03-11",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Real-world city government notification about Safety Element update. Has a 30-day public comment period (Feb 9 - Mar 11) which is a calendar-worthy deadline range. Residents may submit written comments via email to safetyelement@cityofriverside.example.org. Images are city logo, social media icons, and GovDelivery branding."
+}

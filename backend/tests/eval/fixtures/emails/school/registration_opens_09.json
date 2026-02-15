@@ -1,0 +1,60 @@
+{
+  "name": "registration_opens_09",
+  "category": "school",
+  "description": "Real-world city arts & rec spring registration announcement with specific open date/time - borderline calendar event",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "registration",
+    "community",
+    "borderline",
+    "real-world",
+    "images"
+  ],
+  "input": {
+    "provider_message_id": "eval-school-009",
+    "thread_id": "thread-school-009",
+    "subject": "Spring 2026 Registration Starts 2/18",
+    "from_email": "artsrec@riverside-artsrec.example.org",
+    "from_name": "Arts + Rec",
+    "to_emails": [
+      "recipient@example.com"
+    ],
+    "date_sent": "2026-02-13T19:30:56Z",
+    "snippet": "Registration Starts at 12PM! Classes are currently viewable online.",
+    "body_text": "Email from City of Riverside\n\nRegistration Starts at @ 12PM! Classes are currently viewable online.\n\nSpring 2026 Registration Starts February 18 at 12:00 PM!\n\nSpring registration is almost here! Now is the perfect time to plan spring activities for you and your family. Make a note of the 5-digit course numbers so signing up is a breeze!\n\nView Offerings and Register Online\n\nClick through all the exciting options available to you this Spring online. If you\u2019d like a printed copy of the Activity Guide, limited quantities will be available at the following locations for pick up, as supplies last:\n\nCivic Park Community Center (100 Civic Drive)\nOak Valley Gym (2000 Oak Valley Boulevard)\nRiverside Arts Center (200 Arts Lane)\nRiverside City Hall (1 Main Street)\n\nLook for NEW! classes this Spring marked by red throughout the Guide!\n\nReference Links\nAquatics Information\nRegistration Policies\nCommunity Workshops & Social Services\nPreschools\nScholarship Information\nView Classes Online\n\nTo register via phone, Contact Customer Support 555-010-1490 and reference the course number.\nEmail artsrec@cityofriverside.example.org with any questions.\n\nSection Highlights\n\nYouth Programs\nThis spring, child and teen programs include ceramics, dance classes, STEM, drama classes, and more!\n\nExplore Community Arts Preschool\nJoin Community Arts Preschool! Registration for Summer 2026 and School Year 2026\u201327 classes open on Wednesday, February 18 at 12:00 PM.\n\nExplore Intergenerational\nAttend art, music, or cooking classes with your family for these fun and educational intergenerational classes!\n\nExplore Adult Classes\nExplore adult programs like ceramics, culinary arts, dance, digital media, and more!\n\nExplore Spring Youth Events\nArts + Rec has tons of fun events for kids and teens this spring!\nFamily Art Day: Festivals of Spring\n\nContact Customer Support: artsrec@riverside-artsrec.example.org + (555) 010-1490\nAbout Arts + Rec | FAQs | Activity Guide | Registration Policies | Class Locations\n\nCity of Riverside | 1 Main Street 5550100000 | Riverside, CA 90000 US",
+    "attachments": [
+      "arts_rec_spring_registration/img_00.gif",
+      "arts_rec_spring_registration/img_01.png",
+      "arts_rec_spring_registration/img_02.png",
+      "arts_rec_spring_registration/img_03.jpg",
+      "arts_rec_spring_registration/img_04.gif",
+      "arts_rec_spring_registration/img_05.png",
+      "arts_rec_spring_registration/img_06.jpg",
+      "arts_rec_spring_registration/img_07.jpg",
+      "arts_rec_spring_registration/img_08.png",
+      "arts_rec_spring_registration/img_09.png",
+      "arts_rec_spring_registration/img_10.png",
+      "arts_rec_spring_registration/img_11.png",
+      "arts_rec_spring_registration/img_12.png",
+      "arts_rec_spring_registration/img_13.png"
+    ]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": false,
+    "event_count_min": 1,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Real-world-style City of Riverside Arts + Rec email announcing spring registration opening. Has a specific date and time (February 18 at 12:00 PM). Also mentions preschool registration opening separately on same date. Models may extract 1 combined event or 2 separate events \u2014 both are acceptable (event_count_min=1). Expected lists the combined event only: a second, separate preschool event is an extra, which the scorer accepts without penalty."
+}
