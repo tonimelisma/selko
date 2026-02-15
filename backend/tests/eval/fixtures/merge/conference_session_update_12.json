@@ -1,0 +1,32 @@
+{
+  "description": "Conference session: early-bird announcement has basic info, later update adds speaker and room details",
+  "difficulty": "medium",
+  "tags": ["merge", "description-enrichment", "conference"],
+  "input": {
+    "existing_event": {
+      "title": "DevCon 2026: Keynote - Future of AI",
+      "start_datetime": "2026-09-12T09:00:00",
+      "end_datetime": "2026-09-12T10:30:00",
+      "all_day": false,
+      "location": "Convention Center",
+      "description": "Opening keynote session about AI trends and predictions"
+    },
+    "new_extraction": {
+      "title": "DevCon 2026: Keynote - Future of AI",
+      "start_datetime": "2026-09-12T09:00:00",
+      "end_datetime": "2026-09-12T10:30:00",
+      "all_day": false,
+      "location": "Convention Center - Main Hall A",
+      "description": "Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am."
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description_contains": ["AI trends", "Dr. Jane Chen", "TechCorp", "Q&A", "coffee"]
+  }
+}

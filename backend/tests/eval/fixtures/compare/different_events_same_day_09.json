@@ -1,0 +1,43 @@
+{
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": ["dedup", "no-match", "different-event"],
+  "input": {
+    "new_event": {
+      "title": "Max's 5th Birthday Party",
+      "start_datetime": "2026-03-21T15:00:00",
+      "end_datetime": "2026-03-21T18:00:00",
+      "location": "Bounce House Adventure",
+      "description": "Celebrating Max turning 5! Bounce houses, pizza, and cake."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Daily Standup",
+        "start_datetime": "2026-03-21T09:00:00",
+        "end_datetime": "2026-03-21T09:15:00",
+        "location": "Office - Conference Room A",
+        "description": "Team sync meeting"
+      },
+      {
+        "id": "event-002",
+        "title": "Lunch with Client",
+        "start_datetime": "2026-03-21T12:00:00",
+        "end_datetime": "2026-03-21T13:30:00",
+        "location": "The Blue Bistro",
+        "description": "Quarterly business lunch"
+      },
+      {
+        "id": "event-003",
+        "title": "Gym Session",
+        "start_datetime": "2026-03-21T18:30:00",
+        "end_datetime": "2026-03-21T19:30:00",
+        "location": "24 Hour Fitness",
+        "description": "Evening workout"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

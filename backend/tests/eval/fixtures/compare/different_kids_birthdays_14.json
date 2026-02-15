@@ -1,0 +1,43 @@
+{
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": ["dedup", "no-match", "birthday"],
+  "input": {
+    "new_event": {
+      "title": "Sophie's 6th Birthday Party",
+      "start_datetime": "2026-08-15T13:00:00",
+      "end_datetime": "2026-08-15T16:00:00",
+      "location": "Rainbow Play Center",
+      "description": "Join us for Sophie's princess-themed birthday bash! Arts and crafts, games, and cake."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Lucas's 8th Birthday Celebration",
+        "start_datetime": "2026-08-22T14:00:00",
+        "end_datetime": "2026-08-22T17:00:00",
+        "location": "Laser Tag Arena",
+        "description": "Laser tag party for Lucas turning 8!"
+      },
+      {
+        "id": "event-002",
+        "title": "Swimming Lesson",
+        "start_datetime": "2026-08-15T10:00:00",
+        "end_datetime": "2026-08-15T11:00:00",
+        "location": "Community Pool",
+        "description": "Level 3 swimming class"
+      },
+      {
+        "id": "event-003",
+        "title": "Book Club",
+        "start_datetime": "2026-08-15T19:00:00",
+        "end_datetime": "2026-08-15T21:00:00",
+        "location": "Barnes & Noble Cafe",
+        "description": "Discussing 'The Midnight Library'"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "description": "Same location but different events - should NOT match",
+  "difficulty": "medium",
+  "tags": ["dedup", "no-match", "different-event"],
+  "input": {
+    "new_event": {
+      "title": "Yoga Workshop - Advanced Flow",
+      "start_datetime": "2026-05-18T10:00:00",
+      "end_datetime": "2026-05-18T12:00:00",
+      "location": "Zen Wellness Studio",
+      "description": "Two-hour intensive workshop on advanced vinyasa sequences"
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Meditation Class",
+        "start_datetime": "2026-05-18T08:00:00",
+        "end_datetime": "2026-05-18T09:00:00",
+        "location": "Zen Wellness Studio",
+        "description": "Morning meditation and breathing exercises"
+      },
+      {
+        "id": "event-002",
+        "title": "Pilates Session",
+        "start_datetime": "2026-05-18T14:00:00",
+        "end_datetime": "2026-05-18T15:00:00",
+        "location": "Zen Wellness Studio",
+        "description": "Core strengthening pilates class"
+      },
+      {
+        "id": "event-003",
+        "title": "Coffee with Maria",
+        "start_datetime": "2026-05-18T16:00:00",
+        "end_datetime": "2026-05-18T17:00:00",
+        "location": "Starbucks Downtown",
+        "description": "Catch up meeting"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

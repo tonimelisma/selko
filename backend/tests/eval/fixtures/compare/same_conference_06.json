@@ -1,0 +1,43 @@
+{
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": ["dedup", "match", "professional"],
+  "input": {
+    "new_event": {
+      "title": "TechSummit 2026",
+      "start_datetime": "2026-09-15T09:00:00",
+      "end_datetime": "2026-09-17T17:00:00",
+      "location": "Moscone Center, San Francisco",
+      "description": "Registration confirmed! Three days of cutting-edge tech talks and networking."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "TechSummit Conference",
+        "start_datetime": "2026-09-15T09:00:00",
+        "end_datetime": "2026-09-17T17:00:00",
+        "location": "Moscone Center, SF",
+        "description": "Early bird tickets available! Sept 15-17."
+      },
+      {
+        "id": "event-002",
+        "title": "Code Review Session",
+        "start_datetime": "2026-09-15T10:00:00",
+        "end_datetime": "2026-09-15T11:00:00",
+        "location": "Office",
+        "description": "Weekly code review"
+      },
+      {
+        "id": "event-003",
+        "title": "Dinner with Alex",
+        "start_datetime": "2026-09-15T19:00:00",
+        "end_datetime": "2026-09-15T21:00:00",
+        "location": "The Garden Restaurant",
+        "description": "Catch up dinner"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}

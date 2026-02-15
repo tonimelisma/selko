@@ -1,0 +1,43 @@
+{
+  "description": "Same birthday party with slightly different wording - should match",
+  "difficulty": "easy",
+  "tags": ["dedup", "match", "birthday"],
+  "input": {
+    "new_event": {
+      "title": "Emily's 7th Birthday Party",
+      "start_datetime": "2026-03-15T14:00:00",
+      "end_datetime": "2026-03-15T17:00:00",
+      "location": "Adventure Zone, 123 Main St",
+      "description": "Come celebrate Emily turning 7! Pizza, cake, and fun activities. Please RSVP by March 10th."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Emily's Birthday Celebration",
+        "start_datetime": "2026-03-15T14:00:00",
+        "end_datetime": "2026-03-15T17:00:00",
+        "location": "Adventure Zone",
+        "description": "Join us for Emily's 7th birthday! Pizza, cake, games."
+      },
+      {
+        "id": "event-002",
+        "title": "Team Standup",
+        "start_datetime": "2026-03-15T09:00:00",
+        "end_datetime": "2026-03-15T09:30:00",
+        "location": "Office",
+        "description": "Daily standup meeting"
+      },
+      {
+        "id": "event-003",
+        "title": "Dentist Appointment",
+        "start_datetime": "2026-03-14T10:00:00",
+        "end_datetime": "2026-03-14T11:00:00",
+        "location": "Bright Smiles Dental",
+        "description": "Regular checkup"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}

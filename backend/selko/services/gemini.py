@@ -384,29 +384,40 @@ Consider events the same if they refer to the same real-world event, even if:
 - One has more details than the other
 - Time changed slightly (updates)
 
-Return the Event ID of the matching event, or "NO_MATCH" if it's a different event.
-
-Output format: Just the Event ID or "NO_MATCH", nothing else.
+Return the matching Event ID (or null if no match) and brief reasoning.
 """
+
+    compare_schema = {
+        "type": "object",
+        "properties": {
+            "matched_event_id": {"type": ["string", "null"]},
+            "reasoning": {"type": "string"},
+        },
+        "required": ["matched_event_id", "reasoning"],
+    }
 
     try:
         response = gateway.call(
             operation=LLMOperationType.COMPARE_EVENTS,
             contents=[prompt],
+            json_schema=compare_schema,
         )
 
-        result = response.text.strip()
-        logger.info(f"Event comparison result: {result}")
+        parsed = json.loads(response.text)
+        matched_id = parsed.get("matched_event_id")
+        reasoning = parsed.get("reasoning", "")
+        logger.info(f"Event comparison result: {matched_id} ({reasoning})")
 
-        if result == "NO_MATCH":
+        if matched_id is None:
             return None
 
         # Validate the returned ID exists in candidates
+        matched_id_str = str(matched_id)
         for candidate in candidate_events:
-            if str(candidate.get("id")) == result:
-                return result
+            if str(candidate.get("id")) == matched_id_str:
+                return matched_id_str
 
-        logger.warning(f"LLM returned unknown event ID: {result}")
+        logger.warning(f"LLM returned unknown event ID: {matched_id_str}")
         return None
 
     except LLMGatewayError:

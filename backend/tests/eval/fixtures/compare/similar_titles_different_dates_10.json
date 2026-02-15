@@ -1,0 +1,35 @@
+{
+  "description": "Similar titles but different dates - weekly meetings - should NOT match",
+  "difficulty": "easy",
+  "tags": ["dedup", "no-match", "different-date"],
+  "input": {
+    "new_event": {
+      "title": "Team Retrospective",
+      "start_datetime": "2026-04-10T14:00:00",
+      "end_datetime": "2026-04-10T15:00:00",
+      "location": "Conference Room B",
+      "description": "Sprint 12 retrospective - discuss what went well and what to improve"
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Team Retrospective",
+        "start_datetime": "2026-04-03T14:00:00",
+        "end_datetime": "2026-04-03T15:00:00",
+        "location": "Conference Room B",
+        "description": "Sprint 11 retrospective meeting"
+      },
+      {
+        "id": "event-002",
+        "title": "Sprint Planning",
+        "start_datetime": "2026-04-10T10:00:00",
+        "end_datetime": "2026-04-10T12:00:00",
+        "location": "Conference Room A",
+        "description": "Plan sprint 13"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

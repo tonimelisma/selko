@@ -1,0 +1,35 @@
+{
+  "description": "Same parent-teacher conference with reminder vs original - should match",
+  "difficulty": "easy",
+  "tags": ["dedup", "match", "school"],
+  "input": {
+    "new_event": {
+      "title": "Parent-Teacher Conference",
+      "start_datetime": "2026-05-12T15:30:00",
+      "end_datetime": "2026-05-12T16:00:00",
+      "location": "Room 204, Lincoln Elementary",
+      "description": "Reminder: Conference with Mrs. Johnson tomorrow at 3:30pm to discuss Jake's progress."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Conference - Mrs. Johnson",
+        "start_datetime": "2026-05-12T15:30:00",
+        "end_datetime": "2026-05-12T16:00:00",
+        "location": "Lincoln Elementary, Room 204",
+        "description": "Parent-teacher conference for Jake"
+      },
+      {
+        "id": "event-002",
+        "title": "Pick up dry cleaning",
+        "start_datetime": "2026-05-12T17:00:00",
+        "end_datetime": "2026-05-12T17:30:00",
+        "location": "QuickClean",
+        "description": "Get suits before Friday"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}

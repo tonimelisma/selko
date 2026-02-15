@@ -1,0 +1,32 @@
+{
+  "description": "Reminder email adds parking instructions to existing event",
+  "difficulty": "easy",
+  "tags": ["merge", "description-enrichment", "logistics"],
+  "input": {
+    "existing_event": {
+      "title": "Medical Appointment - Dr. Smith",
+      "start_datetime": "2026-03-30T11:00:00",
+      "end_datetime": "2026-03-30T11:30:00",
+      "all_day": false,
+      "location": "Downtown Medical Center, Suite 405",
+      "description": "Annual checkup appointment"
+    },
+    "new_extraction": {
+      "title": "Medical Appointment - Dr. Smith",
+      "start_datetime": "2026-03-30T11:00:00",
+      "end_datetime": "2026-03-30T11:30:00",
+      "all_day": false,
+      "location": "Downtown Medical Center, Suite 405",
+      "description": "Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card."
+    },
+    "source_type": "reminder"
+  },
+  "expected": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description_contains": ["annual checkup", "15 min early", "parking", "insurance card"]
+  }
+}

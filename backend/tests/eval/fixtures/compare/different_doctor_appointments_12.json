@@ -1,0 +1,43 @@
+{
+  "description": "Two different doctor appointments in same week - should NOT match",
+  "difficulty": "hard",
+  "tags": ["dedup", "no-match", "medical"],
+  "input": {
+    "new_event": {
+      "title": "Dermatology Appointment",
+      "start_datetime": "2026-06-04T14:00:00",
+      "end_datetime": "2026-06-04T14:30:00",
+      "location": "Skin Health Clinic, Suite 301",
+      "description": "Annual skin check with Dr. Patel"
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Dentist - Dr. Lee",
+        "start_datetime": "2026-06-02T09:00:00",
+        "end_datetime": "2026-06-02T10:00:00",
+        "location": "Bright Smiles Dental",
+        "description": "6-month cleaning and checkup"
+      },
+      {
+        "id": "event-002",
+        "title": "Eye Exam",
+        "start_datetime": "2026-06-05T11:00:00",
+        "end_datetime": "2026-06-05T12:00:00",
+        "location": "Vision Care Center",
+        "description": "Annual eye examination with Dr. Wong"
+      },
+      {
+        "id": "event-003",
+        "title": "Team Lunch",
+        "start_datetime": "2026-06-04T12:00:00",
+        "end_datetime": "2026-06-04T13:00:00",
+        "location": "Italian Garden",
+        "description": "Monthly team lunch"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

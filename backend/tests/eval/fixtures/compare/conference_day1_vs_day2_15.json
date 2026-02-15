@@ -1,0 +1,43 @@
+{
+  "description": "Conference day 1 vs day 2 - multi-day event different days - should NOT match",
+  "difficulty": "hard",
+  "tags": ["dedup", "no-match", "conference"],
+  "input": {
+    "new_event": {
+      "title": "DevOps Summit - Day 2",
+      "start_datetime": "2026-10-16T09:00:00",
+      "end_datetime": "2026-10-16T18:00:00",
+      "location": "Convention Center, Hall B",
+      "description": "Second day of DevOps Summit. Featured talks on Kubernetes and CI/CD pipelines."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "DevOps Summit - Day 1",
+        "start_datetime": "2026-10-15T09:00:00",
+        "end_datetime": "2026-10-15T18:00:00",
+        "location": "Convention Center, Hall B",
+        "description": "Opening day of DevOps Summit with keynote speakers"
+      },
+      {
+        "id": "event-002",
+        "title": "Flight Home",
+        "start_datetime": "2026-10-17T14:30:00",
+        "end_datetime": "2026-10-17T17:15:00",
+        "location": "Airport",
+        "description": "Return flight after conference"
+      },
+      {
+        "id": "event-003",
+        "title": "Networking Dinner",
+        "start_datetime": "2026-10-16T19:00:00",
+        "end_datetime": "2026-10-16T22:00:00",
+        "location": "The Waterfront Restaurant",
+        "description": "Evening networking event for DevOps Summit attendees"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

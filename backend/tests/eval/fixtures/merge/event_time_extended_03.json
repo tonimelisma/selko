@@ -1,0 +1,32 @@
+{
+  "description": "Event end time extended - same start time but longer duration",
+  "difficulty": "easy",
+  "tags": ["merge", "duration-change", "time-update"],
+  "input": {
+    "existing_event": {
+      "title": "Workshop: Intro to Python",
+      "start_datetime": "2026-04-10T13:00:00",
+      "end_datetime": "2026-04-10T15:00:00",
+      "all_day": false,
+      "location": "Training Room 2",
+      "description": "Beginner-friendly Python workshop covering basics"
+    },
+    "new_extraction": {
+      "title": "Workshop: Intro to Python",
+      "start_datetime": "2026-04-10T13:00:00",
+      "end_datetime": "2026-04-10T16:30:00",
+      "all_day": false,
+      "location": "Training Room 2",
+      "description": "Extended session - now includes hands-on project time until 4:30pm"
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description_contains": ["Python workshop", "basics", "extended", "hands-on project"]
+  }
+}

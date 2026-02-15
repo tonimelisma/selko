@@ -1,0 +1,32 @@
+{
+  "description": "Follow-up email adds agenda details to existing meeting",
+  "difficulty": "easy",
+  "tags": ["merge", "description-enrichment", "agenda"],
+  "input": {
+    "existing_event": {
+      "title": "Board Meeting",
+      "start_datetime": "2026-05-05T09:00:00",
+      "end_datetime": "2026-05-05T12:00:00",
+      "all_day": false,
+      "location": "Executive Boardroom",
+      "description": "Quarterly board meeting"
+    },
+    "new_extraction": {
+      "title": "Board Meeting",
+      "start_datetime": "2026-05-05T09:00:00",
+      "end_datetime": "2026-05-05T12:00:00",
+      "all_day": false,
+      "location": "Executive Boardroom",
+      "description": "Agenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided."
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description_contains": ["quarterly", "financial review", "product roadmap", "breakfast provided"]
+  }
+}

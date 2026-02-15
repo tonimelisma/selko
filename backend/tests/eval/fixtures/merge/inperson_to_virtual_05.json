@@ -1,0 +1,32 @@
+{
+  "description": "In-person meeting changed to virtual with Zoom link",
+  "difficulty": "medium",
+  "tags": ["merge", "location-update", "virtual", "modality-change"],
+  "input": {
+    "existing_event": {
+      "title": "Client Presentation",
+      "start_datetime": "2026-03-25T10:00:00",
+      "end_datetime": "2026-03-25T11:30:00",
+      "all_day": false,
+      "location": "Client office - 789 Business Plaza",
+      "description": "Q1 results presentation for ABC Corp"
+    },
+    "new_extraction": {
+      "title": "Client Presentation (Virtual)",
+      "start_datetime": "2026-03-25T10:00:00",
+      "end_datetime": "2026-03-25T11:30:00",
+      "all_day": false,
+      "location": "Zoom: https://zoom.us/j/123456789",
+      "description": "Meeting moved to Zoom. Client requested virtual format. Same agenda."
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description_contains": ["Q1 results", "ABC Corp", "moved to Zoom", "virtual format"]
+  }
+}
