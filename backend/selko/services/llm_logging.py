@@ -37,27 +37,8 @@ class LLMErrorType(str, Enum):
     UNKNOWN = "unknown"
 
 
-# Gemini pricing per 1M tokens (as of Jan 2026)
-# These can be updated as pricing changes
-GEMINI_PRICING = {
-    "gemini-3-flash-preview": {
-        "input": 0.15,  # $0.15 per 1M input tokens
-        "output": 0.60,  # $0.60 per 1M output tokens
-    },
-    "gemini-2.5-flash": {
-        "input": 0.075,
-        "output": 0.30,
-    },
-    "gemini-2.0-flash": {
-        "input": 0.10,
-        "output": 0.40,
-    },
-    # Default fallback pricing
-    "default": {
-        "input": 0.15,
-        "output": 0.60,
-    },
-}
+# Default fallback pricing per 1M tokens in USD
+_DEFAULT_PRICING = {"input": 0.15, "output": 0.60}
 
 
 @dataclass
@@ -80,6 +61,7 @@ class LLMCallRecord:
     prompt_text: str
     response_text: Optional[str] = None
     email_id: Optional[str] = None
+    provider: Optional[str] = None
     metrics: LLMCallMetrics = field(default_factory=LLMCallMetrics)
     success: bool = True
     error_message: Optional[str] = None
@@ -106,7 +88,11 @@ def estimate_cost(
     if prompt_tokens is None or completion_tokens is None:
         return None
 
-    pricing = GEMINI_PRICING.get(model, GEMINI_PRICING["default"])
+    # Look up pricing from MODEL_REGISTRY, fall back to default
+    from selko.services.llm_provider import MODEL_REGISTRY
+
+    registry_entry = MODEL_REGISTRY.get(model)
+    pricing = registry_entry["pricing"] if registry_entry else _DEFAULT_PRICING
 
     input_cost = (prompt_tokens / 1_000_000) * pricing["input"]
     output_cost = (completion_tokens / 1_000_000) * pricing["output"]
@@ -168,6 +154,9 @@ class LLMLoggingService:
                 "estimated_cost_usd": estimated_cost,
             }
 
+            if record.provider:
+                data["provider"] = record.provider
+
             result = self.client.table("llm_call_log").insert(data).execute()
 
             if result.data:
@@ -197,6 +186,7 @@ class LLMLoggingService:
         email_id: Optional[str] = None,
         prompt_tokens: Optional[int] = None,
         completion_tokens: Optional[int] = None,
+        provider: Optional[str] = None,
     ) -> Optional[str]:
         """Convenience method to log a successful LLM call.
 
@@ -210,6 +200,7 @@ class LLMLoggingService:
             email_id: Optional linked email UUID.
             prompt_tokens: Optional input token count.
             completion_tokens: Optional output token count.
+            provider: Optional provider name (e.g., "gemini", "moonshot").
 
         Returns:
             UUID of the created log entry, or None on error.
@@ -225,6 +216,7 @@ class LLMLoggingService:
             prompt_text=prompt_text,
             response_text=response_text,
             email_id=email_id,
+            provider=provider,
             metrics=LLMCallMetrics(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
@@ -247,6 +239,7 @@ class LLMLoggingService:
         latency_ms: int,
         error_type: LLMErrorType = LLMErrorType.UNKNOWN,
         email_id: Optional[str] = None,
+        provider: Optional[str] = None,
     ) -> Optional[str]:
         """Log a failed LLM call.
 
@@ -259,6 +252,7 @@ class LLMLoggingService:
             latency_ms: Call duration until failure.
             error_type: Classification of the error.
             email_id: Optional linked email UUID.
+            provider: Optional provider name (e.g., "gemini", "moonshot").
 
         Returns:
             UUID of the created log entry, or None on error.
@@ -269,6 +263,7 @@ class LLMLoggingService:
             model=model,
             prompt_text=prompt_text,
             email_id=email_id,
+            provider=provider,
             metrics=LLMCallMetrics(latency_ms=latency_ms),
             success=False,
             error_message=error_message,

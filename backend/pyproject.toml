@@ -16,6 +16,8 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "apscheduler>=3.10.0",
     "slowapi>=0.1.9",
+    "openai>=2.21.0",
+    "pillow>=12.1.1",
 ]
 
 [project.optional-dependencies]

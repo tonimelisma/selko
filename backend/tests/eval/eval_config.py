@@ -43,5 +43,6 @@ AUTO_SCORE_THRESHOLDS = {
     "confidence_min": 0.5,  # Minimum acceptable confidence
 }
 
-# Model configuration
-DEFAULT_MODEL = os.environ.get("SELKO_EVAL_MODEL", "gemini-3-flash-preview")
+# Provider and model configuration (env overrides)
+DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", os.environ.get("SELKO_EVAL_PROVIDER", "gemini"))
+DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "gemini-3-flash-preview"))

@@ -17,8 +17,9 @@ from selko.services.gemini import (
     GeminiError,
     extract_calendar_events,
     fetch_email_with_attachments,
-    get_gemini_client,
 )
+from selko.services.llm_gateway import LLMGateway
+from selko.services.llm_provider import LLMProviderError, create_provider
 
 
 @pytest.fixture
@@ -30,14 +31,13 @@ def config():
 @pytest.fixture
 def gemini_client(config):
     """Get LLM Gateway for real API calls."""
-    from selko.services.llm_gateway import LLMGateway
-
     if not config.gemini_api_key:
         pytest.fail(
             "GEMINI_API_KEY not configured. "
             "Get your API key from https://aistudio.google.com/apikey"
         )
-    return LLMGateway(config)
+    provider = create_provider(config)
+    return LLMGateway(provider)
 
 
 @pytest.fixture
@@ -298,7 +298,6 @@ class TestGeminiErrorHandling:
 
     def test_invalid_api_key(self, config):
         """Test error handling with invalid API key."""
-        # Create config with fake API key
         from selko.config import Config
 
         bad_config = Config(
@@ -308,7 +307,8 @@ class TestGeminiErrorHandling:
             gemini_api_key="invalid-key-12345",
         )
 
-        client = get_gemini_client(bad_config)
+        provider = create_provider(bad_config)
+        gateway = LLMGateway(provider)
 
         email_metadata = {
             "gmail_id": "test-123",
@@ -320,7 +320,7 @@ class TestGeminiErrorHandling:
         # Should fail with invalid key
         with pytest.raises(GeminiError):
             extract_calendar_events(
-                client=client,
+                gateway=gateway,
                 email_text="Test email",
                 email_metadata=email_metadata,
             )
@@ -336,7 +336,5 @@ class TestGeminiErrorHandling:
             gemini_api_key=None,
         )
 
-        with pytest.raises(GeminiError) as exc_info:
-            get_gemini_client(config_no_key)
-
-        assert "GEMINI_API_KEY not configured" in str(exc_info.value)
+        with pytest.raises(LLMProviderError, match="API key not configured"):
+            create_provider(config_no_key)

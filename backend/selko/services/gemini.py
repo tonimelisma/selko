@@ -1,35 +1,30 @@
-"""Gemini service for AI-powered calendar event extraction.
+"""LLM service for AI-powered calendar event extraction.
 
-Uses Google's Gemini 3 Flash model to analyze email content and attachments,
-extracting structured calendar event data.
+Uses the LLMProvider abstraction to analyze email content and attachments,
+extracting structured calendar event data. Supports multiple LLM backends.
 
 All LLM calls go through the LLMGateway for unified logging, rate limiting,
 and retry handling.
 """
 
-import base64
 import json
 import logging
 from datetime import datetime
 from typing import Any, Optional
 
-from google.genai import types
 from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResponse
 from selko.config import Config
 from selko.services.llm_gateway import LLMGateway, LLMGatewayError
 from selko.services.llm_logging import LLMOperationType
+from selko.services.llm_provider import ContentPart, ImageContent
 
 logger = logging.getLogger(__name__)
 
 
 # Re-export for backwards compatibility
 GeminiError = LLMGatewayError
-
-
-# Re-export get_gemini_client from llm_gateway for backwards compatibility
-from selko.services.llm_gateway import get_gemini_client  # noqa: E402, F401
 
 
 def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
@@ -113,8 +108,8 @@ def _build_content_parts(
     email_text: str,
     attachments: Optional[list[dict[str, Any]]] = None,
     config: Optional[Config] = None,
-) -> list:
-    """Build multimodal content parts for Gemini.
+) -> list[ContentPart]:
+    """Build multimodal content parts for LLM.
 
     Args:
         prompt: The system prompt.
@@ -123,9 +118,9 @@ def _build_content_parts(
         config: Optional Config for per-type attachment size limits.
 
     Returns:
-        List of content parts for Gemini.
+        List of ContentPart for the LLM provider.
     """
-    content_parts: list[Any] = [
+    content_parts: list[ContentPart] = [
         prompt,
         f"\n**Email Body:**\n{email_text}",
     ]
@@ -140,12 +135,10 @@ def _build_content_parts(
 
             if data and len(data) <= size_limit:
                 try:
-                    content_parts.append({
-                        "inline_data": {
-                            "mime_type": mime_type,
-                            "data": base64.b64encode(data).decode("utf-8"),
-                        }
-                    })
+                    content_parts.append(ImageContent(
+                        data=data,
+                        mime_type=mime_type,
+                    ))
                     logger.debug(f"Added attachment: {filename} ({mime_type})")
                 except Exception as e:
                     logger.warning(f"Failed to add attachment {filename}: {e}")
@@ -167,7 +160,7 @@ def extract_calendar_events(
     max_retries: int = 3,
     config: Optional[Config] = None,
 ) -> CalendarEventExtraction:
-    """Extract calendar events from email using Gemini.
+    """Extract calendar events from email using LLM.
 
     Args:
         gateway: LLMGateway instance (with user/email context already set).
@@ -187,23 +180,21 @@ def extract_calendar_events(
     prompt = _build_prompt(email_metadata, current_date)
     content_parts = _build_content_parts(prompt, email_text, attachments, config=config)
 
-    # Configure generation with Gemini 3 best practices
-    generate_config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        response_schema=GeminiEventsResponse,
-        thinking_config=types.ThinkingConfig(thinking_level="low"),
-    )
+    # Use JSON schema for structured output
+    json_schema = GeminiEventsResponse.model_json_schema()
 
     try:
         response = gateway.call(
             operation=LLMOperationType.EXTRACT_EVENTS,
             contents=content_parts,
-            config=generate_config,
+            json_schema=json_schema,
             max_retries=max_retries,
         )
 
-        # Parse Gemini's response (events only)
-        gemini_result = response.parsed
+        # Parse response JSON
+        parsed = json.loads(response.text)
+        gemini_result = GeminiEventsResponse.model_validate(parsed)
+
         logger.info(
             f"Extraction complete: {len(gemini_result.events)} events found "
             f"(events_found={gemini_result.events_found})"
@@ -239,7 +230,7 @@ def fetch_email_with_attachments(
     Returns:
         Tuple of (email_metadata, email_text, attachments_list).
         - email_metadata: Dict with gmail_id, subject, from_name, from_email, date_sent
-        - email_text: Email snippet/body text
+        - email_text: Email body text (full body_text if available, else snippet)
         - attachments_list: List of dicts with keys: data (bytes), mime_type, filename
 
     Raises:
@@ -270,8 +261,8 @@ def fetch_email_with_attachments(
             "date_sent": email.get("date_sent", ""),
         }
 
-        # Use snippet as email text (for now - could fetch full body later)
-        email_text = email.get("snippet", "")
+        # Use full body text if available, otherwise fall back to snippet
+        email_text = email.get("body_text") or email.get("snippet", "")
 
         # Fetch attachments if any
         attachments: list[dict[str, Any]] = []
@@ -305,6 +296,26 @@ def fetch_email_with_attachments(
                         logger.warning(
                             f"Failed to download attachment {storage_path}: {e}"
                         )
+
+        # Extract linked images from HTML body if available
+        body_html = email.get("body_html")
+        if body_html:
+            try:
+                from selko.services.email_images import extract_linked_images
+
+                linked_images = extract_linked_images(body_html)
+                for img in linked_images:
+                    attachments.append({
+                        "data": img.data,
+                        "mime_type": img.mime_type,
+                        "filename": f"linked_image.{img.mime_type.split('/')[-1]}",
+                    })
+                if linked_images:
+                    logger.debug(
+                        f"Added {len(linked_images)} linked images from HTML body"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to extract linked images: {e}")
 
         return email_metadata, email_text, attachments
 
@@ -381,7 +392,7 @@ Output format: Just the Event ID or "NO_MATCH", nothing else.
     try:
         response = gateway.call(
             operation=LLMOperationType.COMPARE_EVENTS,
-            contents=prompt,
+            contents=[prompt],
         )
 
         result = response.text.strip()
@@ -464,15 +475,25 @@ Output JSON with merged event data:
 }}
 """
 
-    generate_config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-    )
+    # Use JSON schema for merge response
+    merge_schema = {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "start_datetime": {"type": "string"},
+            "end_datetime": {"type": ["string", "null"]},
+            "all_day": {"type": "boolean"},
+            "location": {"type": ["string", "null"]},
+            "description": {"type": ["string", "null"]},
+        },
+        "required": ["title", "start_datetime", "all_day"],
+    }
 
     try:
         response = gateway.call(
             operation=LLMOperationType.MERGE_EVENTS,
-            contents=prompt,
-            config=generate_config,
+            contents=[prompt],
+            json_schema=merge_schema,
         )
 
         merged = json.loads(response.text)
