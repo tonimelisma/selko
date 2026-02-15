@@ -331,7 +331,8 @@ class TestCompareEvents:
     def test_returns_matched_event_id(self, mock_provider):
         """Test that matching event ID is returned."""
         mock_provider.generate.return_value = LLMResponse(
-            text="event-123", prompt_tokens=10, completion_tokens=5
+            text=json.dumps({"matched_event_id": "event-123", "reasoning": "Same birthday party"}),
+            prompt_tokens=10, completion_tokens=5
         )
 
         gateway = LLMGateway(mock_provider)
@@ -359,9 +360,10 @@ class TestCompareEvents:
         mock_provider.generate.assert_called_once()
 
     def test_returns_none_for_no_match(self, mock_provider):
-        """Test that NO_MATCH response returns None."""
+        """Test that null matched_event_id returns None."""
         mock_provider.generate.return_value = LLMResponse(
-            text="NO_MATCH", prompt_tokens=10, completion_tokens=5
+            text=json.dumps({"matched_event_id": None, "reasoning": "Different events"}),
+            prompt_tokens=10, completion_tokens=5
         )
 
         gateway = LLMGateway(mock_provider)
@@ -384,7 +386,8 @@ class TestCompareEvents:
     def test_returns_none_for_unknown_event_id(self, mock_provider):
         """Test that unknown event ID from LLM returns None."""
         mock_provider.generate.return_value = LLMResponse(
-            text="unknown-event-999", prompt_tokens=10, completion_tokens=5
+            text=json.dumps({"matched_event_id": "unknown-event-999", "reasoning": "Seems similar"}),
+            prompt_tokens=10, completion_tokens=5
         )
 
         gateway = LLMGateway(mock_provider)

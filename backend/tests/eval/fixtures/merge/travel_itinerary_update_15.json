@@ -1,0 +1,32 @@
+{
+  "description": "Travel: booking confirmation has basic flight info, itinerary update adds gate and terminal details",
+  "difficulty": "hard",
+  "tags": ["merge", "description-enrichment", "travel", "logistics"],
+  "input": {
+    "existing_event": {
+      "title": "Flight to Seattle - UA 1847",
+      "start_datetime": "2026-06-08T07:30:00",
+      "end_datetime": "2026-06-08T10:15:00",
+      "all_day": false,
+      "location": "SFO → SEA",
+      "description": "United Airlines flight 1847. Confirmation #ABC123. Seat 12A."
+    },
+    "new_extraction": {
+      "title": "Flight to Seattle - UA 1847",
+      "start_datetime": "2026-06-08T07:30:00",
+      "end_datetime": "2026-06-08T10:15:00",
+      "all_day": false,
+      "location": "SFO Terminal 3, Gate 75 → SEA",
+      "description": "Boarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections."
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "Flight to Seattle - UA 1847",
+    "start_datetime": "2026-06-08T07:30:00",
+    "end_datetime": "2026-06-08T10:15:00",
+    "all_day": false,
+    "location": "SFO Terminal 3, Gate 75 → SEA",
+    "description_contains": ["United Airlines", "seat 12A", "boarding starts", "TSA PreCheck", "mobile boarding pass"]
+  }
+}

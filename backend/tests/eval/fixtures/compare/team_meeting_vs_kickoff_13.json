@@ -1,0 +1,43 @@
+{
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": ["dedup", "no-match", "work"],
+  "input": {
+    "new_event": {
+      "title": "Phoenix Project Kickoff",
+      "start_datetime": "2026-07-08T10:00:00",
+      "end_datetime": "2026-07-08T12:00:00",
+      "location": "Large Conference Room",
+      "description": "Initial kickoff for Phoenix redesign project. All stakeholders required."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Weekly Team Sync",
+        "start_datetime": "2026-07-08T09:00:00",
+        "end_datetime": "2026-07-08T09:30:00",
+        "location": "Conference Room B",
+        "description": "Regular Tuesday morning team standup"
+      },
+      {
+        "id": "event-002",
+        "title": "1:1 with Manager",
+        "start_datetime": "2026-07-08T14:00:00",
+        "end_datetime": "2026-07-08T14:30:00",
+        "location": "Manager's Office",
+        "description": "Bi-weekly check-in"
+      },
+      {
+        "id": "event-003",
+        "title": "Code Review",
+        "start_datetime": "2026-07-08T15:00:00",
+        "end_datetime": "2026-07-08T16:00:00",
+        "location": "Dev Room",
+        "description": "Review PRs for authentication module"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

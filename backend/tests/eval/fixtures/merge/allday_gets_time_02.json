@@ -1,0 +1,32 @@
+{
+  "description": "All-day event gets specific time - should prefer specific time over vague all-day",
+  "difficulty": "medium",
+  "tags": ["merge", "all-day-to-timed", "specificity"],
+  "input": {
+    "existing_event": {
+      "title": "Annual Company Picnic",
+      "start_datetime": "2026-07-20T00:00:00",
+      "end_datetime": "2026-07-20T23:59:59",
+      "all_day": true,
+      "location": "City Park",
+      "description": "Annual summer picnic for all employees and families"
+    },
+    "new_extraction": {
+      "title": "Annual Company Picnic",
+      "start_datetime": "2026-07-20T11:00:00",
+      "end_datetime": "2026-07-20T15:00:00",
+      "all_day": false,
+      "location": "City Park - Pavilion 3",
+      "description": "Annual summer picnic starts at 11am. Bring your family! BBQ lunch served at noon."
+    },
+    "source_type": "update"
+  },
+  "expected": {
+    "title": "Annual Company Picnic",
+    "start_datetime": "2026-07-20T11:00:00",
+    "end_datetime": "2026-07-20T15:00:00",
+    "all_day": false,
+    "location": "City Park - Pavilion 3",
+    "description_contains": ["summer picnic", "employees and families", "BBQ lunch", "noon"]
+  }
+}

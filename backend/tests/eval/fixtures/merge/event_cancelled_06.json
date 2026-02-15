@@ -1,0 +1,32 @@
+{
+  "description": "Event cancelled - title should get CANCELLED prefix",
+  "difficulty": "easy",
+  "tags": ["merge", "cancellation"],
+  "input": {
+    "existing_event": {
+      "title": "Sprint Review",
+      "start_datetime": "2026-04-18T14:00:00",
+      "end_datetime": "2026-04-18T15:00:00",
+      "all_day": false,
+      "location": "Conference Room A",
+      "description": "Bi-weekly sprint review and retrospective"
+    },
+    "new_extraction": {
+      "title": "Sprint Review",
+      "start_datetime": "2026-04-18T14:00:00",
+      "end_datetime": "2026-04-18T15:00:00",
+      "all_day": false,
+      "location": "Conference Room A",
+      "description": "Meeting cancelled due to team offsite. Will reschedule next week."
+    },
+    "source_type": "cancellation"
+  },
+  "expected": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description_contains": ["cancelled", "team offsite", "reschedule next week"]
+  }
+}

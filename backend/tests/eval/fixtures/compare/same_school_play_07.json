@@ -1,0 +1,43 @@
+{
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": ["dedup", "match", "school"],
+  "input": {
+    "new_event": {
+      "title": "Spring Musical: The Wizard of Oz",
+      "start_datetime": "2026-04-25T19:00:00",
+      "end_datetime": "2026-04-25T21:00:00",
+      "location": "Lincoln Elementary Auditorium",
+      "description": "Your child's class is performing! Tickets available at the door, $5 per person."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "School Play - Wizard of Oz",
+        "start_datetime": "2026-04-25T19:00:00",
+        "end_datetime": "2026-04-25T21:00:00",
+        "location": "Lincoln Elementary",
+        "description": "Annual spring performance by 3rd and 4th graders"
+      },
+      {
+        "id": "event-002",
+        "title": "PTA Meeting",
+        "start_datetime": "2026-04-24T18:30:00",
+        "end_datetime": "2026-04-24T20:00:00",
+        "location": "Lincoln Elementary Library",
+        "description": "Monthly PTA meeting - all parents welcome"
+      },
+      {
+        "id": "event-003",
+        "title": "Soccer Practice",
+        "start_datetime": "2026-04-25T16:00:00",
+        "end_datetime": "2026-04-25T17:30:00",
+        "location": "Community Field",
+        "description": "Regular Friday practice"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}

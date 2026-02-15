@@ -1,0 +1,43 @@
+{
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": ["dedup", "match", "work"],
+  "input": {
+    "new_event": {
+      "title": "Q2 Planning Session",
+      "start_datetime": "2026-03-30T13:00:00",
+      "end_datetime": "2026-03-30T15:00:00",
+      "location": "Conference Room B",
+      "description": "Quarterly planning for engineering team. Bring your roadmap ideas."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Coffee Chat with Sarah",
+        "start_datetime": "2026-03-30T10:00:00",
+        "end_datetime": "2026-03-30T10:30:00",
+        "location": "Starbucks",
+        "description": "Catch up"
+      },
+      {
+        "id": "event-002",
+        "title": "Engineering Q2 Planning",
+        "start_datetime": "2026-03-30T13:00:00",
+        "end_datetime": "2026-03-30T15:00:00",
+        "location": "",
+        "description": "Planning session for second quarter. All team members required."
+      },
+      {
+        "id": "event-003",
+        "title": "Yoga Class",
+        "start_datetime": "2026-03-30T18:00:00",
+        "end_datetime": "2026-03-30T19:00:00",
+        "location": "Zen Studio",
+        "description": "Evening yoga"
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-002"
+  }
+}
