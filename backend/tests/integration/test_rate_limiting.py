@@ -263,9 +263,10 @@ class TestOAuthRedirectValidation:
 
         # Should redirect to Google OAuth (302) or fail for other reasons
         # But should NOT be 400 for invalid redirect
-        detail = response.json().get("detail", "")
-        msg = detail["detail"] if isinstance(detail, dict) else detail
-        assert response.status_code != 400 or "redirect" not in msg.lower()
+        if response.status_code == 400:
+            detail = response.json().get("detail", "")
+            msg = detail["detail"] if isinstance(detail, dict) else detail
+            assert "redirect" not in msg.lower()
 
     def test_invalid_redirect_host_rejected(self, api_client):
         """Test invalid redirect host is rejected with 400."""
