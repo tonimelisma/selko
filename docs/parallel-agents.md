@@ -143,7 +143,7 @@ After your task is complete:
 - [ ] Committed with conventional commit format
 - [ ] Pushed to feature branch
 - [ ] PR created with `gh pr create`
-- [ ] Wait for CI and merge (see "After PR" section for polling loop)
+- [ ] Run `./scripts/poll-and-merge.sh <pr_number>` (polls PR CI, merges, verifies post-merge workflow)
 
 ## After PR: Wait for CI, Merge, and Cleanup
 
@@ -210,9 +210,12 @@ git worktree add ../selko-feat-other -b feat/other-task main
 
 ### CI Fails, PR Won't Merge
 ```bash
-gh pr checks        # Check CI status
-gh run view --log-failed  # View logs
-git push            # Push fix, auto-merge retries
+# poll-and-merge.sh will report the failure and exit code.
+# View failed workflow logs:
+gh run view --log-failed
+# Fix the issue, push, and re-run:
+git push
+./scripts/poll-and-merge.sh <pr_number>
 ```
 
 ### Merge Conflicts on Rebase
@@ -238,7 +241,6 @@ git merge origin/main
 | Delete branch | `git branch -D <type>/<task>` |
 | Prune refs | `git worktree prune` |
 | Create PR | `gh pr create` |
-| Wait for CI + merge | See "After PR" section for polling loop |
-| Check CI status | `gh pr checks` |
+| Wait for CI + merge + verify | `./scripts/poll-and-merge.sh <pr_number>` |
 | Rebase | `git fetch origin main && git rebase origin/main` |
 | Force push | `git push --force-with-lease` |

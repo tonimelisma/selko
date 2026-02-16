@@ -62,21 +62,24 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] **Bug fixes MUST include a regression test**
 - [ ] Update screenshots for changed platforms only (see "Screenshot Updates" section below). Review the captured screenshots to verify UI looks correct.
 - [ ] Commit, push, `gh pr create`
-- [ ] Poll CI and merge when green, then cleanup worktree (see cleanup rules below)
-- [ ] **Verify ALL CI jobs pass after merge** — including staging integration tests. You own CI health end-to-end.
+- [ ] Run `./scripts/poll-and-merge.sh <pr_number>` — this polls PR CI, merges, AND verifies the post-merge push workflow on main (including staging deploy + integration tests). This is the **one and only** way to track CI.
+- [ ] If the script reports post-merge failure, diagnose and fix immediately (see CI Ownership below)
+- [ ] Cleanup worktree (see cleanup rules below)
 
 **Config/docs edits on main** (no worktree needed): commit and `git push origin main`.
 
-See `docs/parallel-agents.md` for the CI polling script and post-merge cleanup steps. See `docs/ci-cd.md` for CI details.
+See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
 ### MANDATORY: CI Ownership
 
-**You are responsible for all CI passing — not just the PR checks, but also the post-merge push workflow including staging integration tests.** After merge, check the push workflow run on main. If staging tests fail:
+**You are responsible for all CI passing — PR checks AND the post-merge push workflow (staging deploy + integration tests).** The `poll-and-merge.sh` script handles both automatically. If the post-merge workflow fails:
 
 1. **Diagnose the failure** — read `gh run view <id> --log-failed`
 2. **If Google OAuth tokens expired** (`RefreshError: invalid_grant`): ask the user to run `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail` to refresh tokens, then re-run CI to verify
 3. **If it's a code issue**: fix it immediately with a follow-up PR
 4. **Never leave CI broken** — a red main branch blocks all other work
+
+**NEVER use `gh pr checks`, `gh run list`, `gh run watch`, or manual polling loops.** Always use `./scripts/poll-and-merge.sh`.
 
 ### MANDATORY: Worktree Cleanup Rules
 
