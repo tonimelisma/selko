@@ -336,3 +336,72 @@ class TestProcessEmailPipeline:
         fail_call = mock_mark.call_args_list[1]
         assert fail_call[0][2] == "failed"
         assert fail_call[1]["error"] == "DB connection lost"
+
+    def test_ics_attachment_skips_llm(self):
+        """When email has .ics attachment, LLM extraction is skipped."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        ics_data = b"""\
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:ICS Event
+DTSTART:20260315T140000Z
+DTEND:20260315T150000Z
+DESCRIPTION:From .ics
+END:VEVENT
+END:VCALENDAR"""
+
+        attachments = [
+            {"data": ics_data, "mime_type": "text/calendar", "filename": "invite.ics"},
+        ]
+
+        with patch("selko.services.events.mark_email_status"), \
+             patch("selko.services.events.event_processing.fetch_email_with_attachments",
+                   return_value=({"gmail_id": "msg-1", "from_email": "sender@example.com",
+                                  "date_sent": "2026-03-15T10:00:00Z"}, "text", attachments)), \
+             patch("selko.services.events.should_skip_email", return_value=False), \
+             patch("selko.services.events.event_processing.extract_calendar_events") as mock_llm, \
+             patch("selko.services.events.save_extracted_events", return_value=(1, 0)):
+            result = process_email_for_events(
+                mock_client, mock_gateway, "email-1", "user-1"
+            )
+
+        # LLM should NOT have been called
+        mock_llm.assert_not_called()
+        assert result["num_events"] == 1
+        assert result["num_new"] == 1
+
+    def test_ics_parse_failure_falls_back_to_llm(self):
+        """When .ics parsing fails, falls back to LLM extraction."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        # Malformed .ics data
+        attachments = [
+            {"data": b"not valid ics", "mime_type": "text/calendar", "filename": "bad.ics"},
+        ]
+
+        extraction = _make_extraction(
+            events=[_make_calendar_event()],
+            events_found=True,
+        )
+
+        with patch("selko.services.events.mark_email_status"), \
+             patch("selko.services.events.event_processing.fetch_email_with_attachments",
+                   return_value=({"gmail_id": "msg-1", "from_email": "sender@example.com",
+                                  "date_sent": "2026-03-15T10:00:00Z"}, "text", attachments)), \
+             patch("selko.services.events.should_skip_email", return_value=False), \
+             patch("selko.services.events.event_processing.extract_calendar_events",
+                   return_value=extraction) as mock_llm, \
+             patch("selko.services.events.save_extracted_events", return_value=(1, 0)):
+            result = process_email_for_events(
+                mock_client, mock_gateway, "email-1", "user-1"
+            )
+
+        # LLM SHOULD have been called as fallback
+        mock_llm.assert_called_once()
+        assert result["num_events"] == 1

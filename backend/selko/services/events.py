@@ -9,7 +9,7 @@ from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.config import Config
-from selko.services import calendars, event_processing
+from selko.services import calendars, event_processing, ics_parser
 from selko.services.llm_gateway import LLMGateway
 
 logger = logging.getLogger(__name__)
@@ -171,9 +171,15 @@ def process_email_for_events(
             mark_email_status(supabase_client, email_id, "skipped")
             return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
 
-        extraction = event_processing.extract_calendar_events(
-            gateway, email_text, email_metadata, attachments, config=config,
-        )
+        # Try .ics direct parsing first (skips LLM)
+        ics_extraction = ics_parser.parse_ics_attachments(attachments, email_metadata)
+        if ics_extraction and ics_extraction.events:
+            extraction = ics_extraction
+            logger.info(f"Parsed {len(extraction.events)} events from .ics (skipped LLM)")
+        else:
+            extraction = event_processing.extract_calendar_events(
+                gateway, email_text, email_metadata, attachments, config=config,
+            )
 
         if not extraction.events_found or not extraction.events:
             logger.info("No events found in email")
