@@ -101,7 +101,8 @@ def pdf_to_images(
         import fitz  # pymupdf
 
         doc = fitz.open(stream=data, filetype="pdf")
-        pages_to_render = min(len(doc), max_pages) if max_pages > 0 else len(doc)
+        total_pages = len(doc)
+        pages_to_render = min(total_pages, max_pages) if max_pages > 0 else total_pages
         results = []
 
         zoom = dpi / 72.0
@@ -119,9 +120,9 @@ def pdf_to_images(
 
         doc.close()
 
-        if len(doc) > pages_to_render:
+        if total_pages > pages_to_render:
             logger.info(
-                f"PDF has {len(doc)} pages, rendered first {pages_to_render}"
+                f"PDF has {total_pages} pages, rendered first {pages_to_render}"
             )
 
         return results

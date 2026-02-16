@@ -13,7 +13,8 @@ const mockEvent = {
 	all_day: false,
 	location: 'Room 101',
 	description: 'Discuss project updates and next steps for the quarterly review.',
-	status: 'pending_review'
+	status: 'pending_review',
+	importance: 'action_required'
 };
 
 describe('EventCard', () => {
@@ -80,5 +81,16 @@ describe('EventCard', () => {
 		render(EventCard, { props: { event: longEvent } });
 		// Description is rendered in full; CSS line-clamp-2 handles visual truncation
 		expect(screen.getByText('A'.repeat(200))).toBeInTheDocument();
+	});
+
+	it('does not show FYI badge for action_required events', () => {
+		render(EventCard, { props: { event: mockEvent } });
+		expect(screen.queryByText('FYI')).not.toBeInTheDocument();
+	});
+
+	it('shows FYI badge for fyi events', () => {
+		const fyiEvent = { ...mockEvent, importance: 'fyi' };
+		render(EventCard, { props: { event: fyiEvent } });
+		expect(screen.getByText('FYI')).toBeInTheDocument();
 	});
 });
