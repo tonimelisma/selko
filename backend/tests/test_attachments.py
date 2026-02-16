@@ -12,8 +12,9 @@ from selko.services.attachments import (
     AttachmentError,
     calculate_content_hash,
     download_gmail_attachment,
+    store_image_content,
 )
-from selko.services.gmail import extract_attachments
+from selko.services.gmail import extract_attachments, extract_inline_images
 
 
 class TestCalculateContentHash:
@@ -235,6 +236,253 @@ class TestDownloadGmailAttachment:
         result = download_gmail_attachment(mock_service, "msg123", "att123")
 
         assert result == binary_content
+
+
+class TestExtractInlineImages:
+    """Test inline/CID image extraction from Gmail messages."""
+
+    def test_extract_inline_image_with_cid(self):
+        """Extract image part with Content-ID header and no filename."""
+        msg = {
+            "id": "msg123",
+            "payload": {
+                "headers": [],
+                "parts": [
+                    {
+                        "mimeType": "text/html",
+                        "body": {"data": "html"},
+                    },
+                    {
+                        "filename": "",
+                        "mimeType": "image/png",
+                        "headers": [
+                            {"name": "Content-ID", "value": "<image001.png@01D6B7>"},
+                            {"name": "Content-Disposition", "value": "inline"},
+                        ],
+                        "body": {"attachmentId": "cid-att-123", "size": 5000},
+                    },
+                ],
+            },
+        }
+
+        result = extract_inline_images(msg)
+
+        assert len(result) == 1
+        assert result[0]["attachment_id"] == "cid-att-123"
+        assert result[0]["filename"] == "inline_0.png"
+        assert result[0]["mime_type"] == "image/png"
+        assert result[0]["size_bytes"] == 5000
+        assert result[0]["content_id"] == "image001.png@01D6B7"
+
+    def test_skips_non_image_parts(self):
+        """Skip parts with Content-ID but non-image MIME type."""
+        msg = {
+            "id": "msg123",
+            "payload": {
+                "headers": [],
+                "parts": [
+                    {
+                        "filename": "",
+                        "mimeType": "text/plain",
+                        "headers": [
+                            {"name": "Content-ID", "value": "<text001>"},
+                        ],
+                        "body": {"attachmentId": "att-text", "size": 100},
+                    },
+                ],
+            },
+        }
+
+        result = extract_inline_images(msg)
+
+        assert len(result) == 0
+
+    def test_skips_parts_with_filename(self):
+        """Skip image parts that have filenames (handled by extract_attachments)."""
+        msg = {
+            "id": "msg123",
+            "payload": {
+                "headers": [],
+                "parts": [
+                    {
+                        "filename": "photo.jpg",
+                        "mimeType": "image/jpeg",
+                        "headers": [
+                            {"name": "Content-ID", "value": "<photo001>"},
+                        ],
+                        "body": {"attachmentId": "att-photo", "size": 10000},
+                    },
+                ],
+            },
+        }
+
+        result = extract_inline_images(msg)
+
+        assert len(result) == 0
+
+    def test_extracts_inline_disposition_without_cid(self):
+        """Extract image with Content-Disposition: inline but no Content-ID."""
+        msg = {
+            "id": "msg123",
+            "payload": {
+                "headers": [],
+                "parts": [
+                    {
+                        "filename": "",
+                        "mimeType": "image/jpeg",
+                        "headers": [
+                            {"name": "Content-Disposition", "value": "inline"},
+                        ],
+                        "body": {"attachmentId": "att-inline", "size": 8000},
+                    },
+                ],
+            },
+        }
+
+        result = extract_inline_images(msg)
+
+        assert len(result) == 1
+        assert result[0]["content_id"] is None
+        assert result[0]["filename"] == "inline_0.jpg"
+
+    def test_skips_parts_without_cid_or_inline(self):
+        """Skip image parts that have neither CID nor inline disposition."""
+        msg = {
+            "id": "msg123",
+            "payload": {
+                "headers": [],
+                "parts": [
+                    {
+                        "filename": "",
+                        "mimeType": "image/png",
+                        "headers": [],
+                        "body": {"attachmentId": "att-unknown", "size": 3000},
+                    },
+                ],
+            },
+        }
+
+        result = extract_inline_images(msg)
+
+        assert len(result) == 0
+
+    def test_extracts_from_nested_multipart(self):
+        """Extract inline images from nested MIME parts."""
+        msg = {
+            "id": "msg123",
+            "payload": {
+                "headers": [],
+                "mimeType": "multipart/related",
+                "parts": [
+                    {
+                        "mimeType": "multipart/alternative",
+                        "parts": [
+                            {"mimeType": "text/plain", "body": {"data": "text"}},
+                            {"mimeType": "text/html", "body": {"data": "html"}},
+                        ],
+                    },
+                    {
+                        "filename": "",
+                        "mimeType": "image/gif",
+                        "headers": [
+                            {"name": "Content-ID", "value": "<anim.gif@01>"},
+                        ],
+                        "body": {"attachmentId": "att-gif", "size": 15000},
+                    },
+                ],
+            },
+        }
+
+        result = extract_inline_images(msg)
+
+        assert len(result) == 1
+        assert result[0]["filename"] == "inline_0.gif"
+        assert result[0]["mime_type"] == "image/gif"
+
+
+class TestStoreImageContent:
+    """Test storing raw image bytes as attachment records."""
+
+    @patch("selko.services.attachments.save_attachment_metadata")
+    @patch("selko.services.attachments.upload_to_storage")
+    @patch("selko.services.attachments.get_current_user_id")
+    @patch("selko.services.attachments.check_duplicate_attachment")
+    def test_stores_new_image(
+        self, mock_check_dup, mock_get_user, mock_upload, mock_save
+    ):
+        """Store a new image that has no duplicate."""
+        mock_check_dup.return_value = None
+        mock_get_user.return_value = "user-123"
+        mock_upload.return_value = "user-123/abc_linked_0.jpg"
+        mock_save.return_value = {"id": "att-new", "filename": "linked_0.jpg"}
+
+        config = MagicMock()
+        config.max_attachment_size = 10 * 1024 * 1024
+        config.storage_bucket_attachments = "attachments"
+
+        result = store_image_content(
+            client=MagicMock(),
+            email_id="email-123",
+            image_data=b"x" * 1000,
+            mime_type="image/jpeg",
+            filename="linked_0.jpg",
+            config=config,
+        )
+
+        assert result is not None
+        assert result["filename"] == "linked_0.jpg"
+        mock_upload.assert_called_once()
+        mock_save.assert_called_once()
+
+    @patch("selko.services.attachments.check_duplicate_attachment")
+    def test_skips_duplicate_image(self, mock_check_dup):
+        """Skip image that already exists (hash match)."""
+        mock_check_dup.return_value = {"id": "existing-att", "filename": "old.jpg"}
+
+        config = MagicMock()
+        config.max_attachment_size = 10 * 1024 * 1024
+
+        result = store_image_content(
+            client=MagicMock(),
+            email_id="email-123",
+            image_data=b"x" * 1000,
+            mime_type="image/jpeg",
+            filename="linked_0.jpg",
+            config=config,
+        )
+
+        assert result["id"] == "existing-att"
+
+    def test_skips_empty_data(self):
+        """Return None for empty image data."""
+        config = MagicMock()
+
+        result = store_image_content(
+            client=MagicMock(),
+            email_id="email-123",
+            image_data=b"",
+            mime_type="image/jpeg",
+            filename="empty.jpg",
+            config=config,
+        )
+
+        assert result is None
+
+    def test_skips_oversized_image(self):
+        """Skip images exceeding max_attachment_size."""
+        config = MagicMock()
+        config.max_attachment_size = 1000
+
+        result = store_image_content(
+            client=MagicMock(),
+            email_id="email-123",
+            image_data=b"x" * 2000,
+            mime_type="image/jpeg",
+            filename="huge.jpg",
+            config=config,
+        )
+
+        assert result is None
 
 
 class TestAttachmentError:

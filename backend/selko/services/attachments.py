@@ -305,6 +305,76 @@ def process_attachment(
     return record
 
 
+def store_image_content(
+    client: Client,
+    email_id: str,
+    image_data: bytes,
+    mime_type: str,
+    filename: str,
+    config: Config,
+) -> Optional[dict]:
+    """Store image data directly as an attachment (no Gmail API download needed).
+
+    For linked images and data URIs that are already downloaded/decoded.
+    Uses content hash deduplication like process_attachment().
+
+    Args:
+        client: Authenticated Supabase client.
+        email_id: UUID of parent email record.
+        image_data: Raw image bytes.
+        mime_type: Image MIME type.
+        filename: Filename for the stored image.
+        config: Application config.
+
+    Returns:
+        Attachment record (new or existing), or None if skipped.
+    """
+    if not image_data:
+        return None
+
+    # Check size limit
+    if len(image_data) > config.max_attachment_size:
+        logger.warning(
+            f"Skipping oversized image: {filename} "
+            f"({len(image_data) / 1024 / 1024:.1f} MB)"
+        )
+        return None
+
+    content_hash = calculate_content_hash(image_data)
+
+    # Check for duplicates
+    existing = check_duplicate_attachment(client, content_hash)
+    if existing:
+        logger.debug(f"Skipping duplicate image: {filename} (hash match)")
+        return existing
+
+    # Upload to storage
+    user_id = get_current_user_id(client)
+    storage_path = upload_to_storage(
+        client=client,
+        user_id=user_id,
+        filename=filename,
+        data=image_data,
+        mime_type=mime_type,
+        bucket=config.storage_bucket_attachments,
+    )
+
+    # Save metadata (no gmail_attachment_id for non-Gmail images)
+    record = save_attachment_metadata(
+        client=client,
+        email_id=email_id,
+        gmail_attachment_id="",
+        filename=filename,
+        mime_type=mime_type,
+        size_bytes=len(image_data),
+        storage_path=storage_path,
+        content_hash=content_hash,
+    )
+
+    logger.info(f"Stored image: {filename} ({len(image_data)} bytes)")
+    return record
+
+
 def delete_attachment(client: Client, attachment_id: str, config: Config) -> bool:
     """Delete an attachment from storage and database.
 

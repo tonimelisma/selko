@@ -1,10 +1,15 @@
-"""Extract linked images from email HTML bodies.
+"""Extract images from email HTML bodies.
 
-Parses HTML for <img> tags, filters out tracking pixels and non-image
-content, and downloads the images for LLM processing.
+Parses HTML for <img> tags to extract:
+- Linked images (http/https URLs) — downloaded via HTTP
+- Data URI images (base64-encoded inline) — decoded directly
+
+Also provides filtering for tracking pixels and non-image content.
 """
 
+import base64
 import logging
+import re
 from html.parser import HTMLParser
 from typing import Optional
 
@@ -159,5 +164,62 @@ def extract_linked_images(
 
     if results:
         logger.info(f"Extracted {len(results)} linked images from HTML body")
+
+    return results
+
+
+# Regex for data URI in img src: data:image/<subtype>;base64,<data>
+_DATA_URI_RE = re.compile(
+    r'<img[^>]+src=["\']data:(image/[a-zA-Z+]+);base64,([A-Za-z0-9+/=\s]+)["\']',
+    re.IGNORECASE,
+)
+
+
+def extract_data_uri_images(
+    html_body: str,
+    max_images: int = 10,
+    min_size: int = 100,
+) -> list[ImageContent]:
+    """Extract base64-encoded data URI images from HTML <img> tags.
+
+    Args:
+        html_body: HTML content of the email.
+        max_images: Maximum number of images to extract.
+        min_size: Minimum decoded size in bytes (skip tiny tracking pixels).
+
+    Returns:
+        List of ImageContent objects with decoded image data.
+    """
+    if not html_body:
+        return []
+
+    results: list[ImageContent] = []
+    for match in _DATA_URI_RE.finditer(html_body):
+        if len(results) >= max_images:
+            break
+
+        mime_type = match.group(1).lower()
+        b64_data = match.group(2)
+
+        # Only accept image MIME types
+        if mime_type not in _IMAGE_MIME_TYPES:
+            logger.debug(f"Skipping non-image data URI: {mime_type}")
+            continue
+
+        try:
+            data = base64.b64decode(b64_data)
+        except Exception as e:
+            logger.debug(f"Failed to decode data URI: {e}")
+            continue
+
+        if len(data) < min_size:
+            logger.debug(f"Skipping tiny data URI image: {len(data)} bytes")
+            continue
+
+        results.append(ImageContent(data=data, mime_type=mime_type))
+        logger.debug(f"Extracted data URI image: {mime_type}, {len(data)} bytes")
+
+    if results:
+        logger.info(f"Extracted {len(results)} data URI images from HTML body")
 
     return results
