@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request, status
 from supabase import Client, create_client
 
+from selko.api.schemas.common import ErrorCode, error_detail
 from selko.config import Config, load_config
 from selko.services.llm_gateway import LLMGateway
 from selko.services.llm_logging import (
@@ -57,7 +58,7 @@ def get_current_user(
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Authorization header",
+            detail=error_detail(ErrorCode.UNAUTHORIZED, "Missing Authorization header"),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -66,7 +67,7 @@ def get_current_user(
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Authorization header format. Use: Bearer <token>",
+            detail=error_detail(ErrorCode.UNAUTHORIZED, "Invalid Authorization header format. Use: Bearer <token>"),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -82,7 +83,7 @@ def get_current_user(
         if not user_response or not user_response.user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token",
+                detail=error_detail(ErrorCode.UNAUTHORIZED, "Invalid or expired token"),
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -98,7 +99,7 @@ def get_current_user(
         logger.warning(f"Token validation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail=error_detail(ErrorCode.UNAUTHORIZED, "Invalid or expired token"),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -144,7 +145,7 @@ def get_service_role_client(config: Config = Depends(get_config)) -> Client:
     if not config.supabase_service_role_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Server configuration error",
+            detail=error_detail(ErrorCode.SERVER_ERROR, "Server configuration error"),
         )
     return create_client(config.supabase_url, config.supabase_service_role_key)
 

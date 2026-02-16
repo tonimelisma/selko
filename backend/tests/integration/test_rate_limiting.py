@@ -263,7 +263,10 @@ class TestOAuthRedirectValidation:
 
         # Should redirect to Google OAuth (302) or fail for other reasons
         # But should NOT be 400 for invalid redirect
-        assert response.status_code != 400 or "redirect" not in response.json().get("detail", "").lower()
+        if response.status_code == 400:
+            detail = response.json().get("detail", "")
+            msg = detail["detail"] if isinstance(detail, dict) else detail
+            assert "redirect" not in msg.lower()
 
     def test_invalid_redirect_host_rejected(self, api_client):
         """Test invalid redirect host is rejected with 400."""
@@ -274,7 +277,9 @@ class TestOAuthRedirectValidation:
         )
 
         assert response.status_code == 400
-        assert "redirect" in response.json().get("detail", "").lower()
+        detail = response.json().get("detail", "")
+        msg = detail["detail"] if isinstance(detail, dict) else detail
+        assert "redirect" in msg.lower()
 
     def test_invalid_redirect_path_rejected(self, api_client):
         """Test invalid redirect path is rejected."""
@@ -307,7 +312,8 @@ class TestErrorSanitization:
         response = api_client.post("/emails/sync", json={"max_results": 10})
 
         if response.status_code >= 500:
-            detail = response.json().get("detail", "")
+            raw_detail = response.json().get("detail", "")
+            detail = raw_detail["detail"] if isinstance(raw_detail, dict) else raw_detail
             # Should not contain stack traces or internal paths
             assert "Traceback" not in detail
             assert "/Users/" not in detail
@@ -318,5 +324,6 @@ class TestErrorSanitization:
         response = api_client.post("/emails/nonexistent-id/process")
 
         if response.status_code >= 500:
-            detail = response.json().get("detail", "")
+            raw_detail = response.json().get("detail", "")
+            detail = raw_detail["detail"] if isinstance(raw_detail, dict) else raw_detail
             assert "Traceback" not in detail
