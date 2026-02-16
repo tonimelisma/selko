@@ -30,9 +30,9 @@ The 130-line function in `events.py` does sender validation, LLM extraction, ded
 
 ~~API routes use inconsistent error patterns: some return user-friendly messages, others pass raw exception text, others use generic strings. Create an `ErrorDetail` schema with `code`, `message`, `detail` fields and standardize all endpoints.~~ **Done** — added `ErrorCode` constants and `error_detail()` helper in `schemas/common.py`. All route files now use standardized `{"error": code, "detail": message}` responses. Security fix: replaced `str(e)` leaks in `calendars.py` and `health.py` with safe messages.
 
-## Add `body_text`/`body_html` to `EmailResponse` Schema
+## ~~Add `body_text`/`body_html` to `EmailResponse` Schema~~ **Won't do**
 
-Database stores `body_text` and `body_html` (migration `20260215000001`) and backend uses them for LLM processing, but `EmailResponse` schema omits them. API clients can't access full email bodies.
+~~Database stores `body_text` and `body_html` (migration `20260215000001`) and backend uses them for LLM processing, but `EmailResponse` schema omits them. API clients can't access full email bodies.~~ `EmailResponse` isn't used by any API endpoint — the 3 email routes return other schemas, and the frontend queries Supabase directly. Adding fields to an unused schema is a no-op.
 
 ## ~~Add `scheduled_tasks.py` Unit Tests~~ **Done**
 
