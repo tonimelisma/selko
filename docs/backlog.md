@@ -8,7 +8,7 @@ Scan Google Photos for event-related images (tickets, posters, flyers) and extra
 
 ## Embedded Images in Emails
 
-Extract inline images from HTML email bodies before sending to Gemini. Currently only standalone attachments are processed. Embedded images (e.g., event flyers in newsletters) may contain event details. (Note: linked image extraction from HTML body was added in PR #80.)
+~~Extract inline images from HTML email bodies before sending to Gemini.~~ **Done** — all image types (linked, inline/CID, data URI) are now downloaded and stored at sync time. LLM processing loads from local storage only.
 
 ## Two-Way Calendar Sync
 
@@ -17,10 +17,6 @@ Detect drift between Selko events and Google Calendar. If a user edits an event 
 ## .ics File Direct Parsing
 
 Parse `.ics` (iCalendar) file attachments directly without LLM. These files contain structured event data that can be parsed deterministically, saving LLM tokens and improving accuracy.
-
-## Configurable Per-User Reprocess Window
-
-Allow users to configure how far back to reprocess emails when un-ignoring a sender. Currently hardcoded to 30 days. Some users may want a longer window (e.g., 90 days) or shorter (7 days) depending on their email volume.
 
 ## Attachment Text Extraction
 
