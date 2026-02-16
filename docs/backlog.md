@@ -42,9 +42,9 @@ Database stores `body_text` and `body_html` (migration `20260215000001`) and bac
 
 `EmailResponse` includes boolean flags (`is_social`, `is_updates`, `is_forums`, `is_important`, `is_starred`, `is_unread`) that are computed by DB triggers but never queried or displayed. Remove from schema and optionally drop trigger computation.
 
-## Deprecate `gemini_model` Config Field
+## ~~Deprecate `gemini_model` Config Field~~ **Done**
 
-`config.py` has `gemini_model` (backward compat) alongside `llm_model` + `llm_provider`. Plan migration: rename env var, add deprecation warning, update all deployments.
+~~`config.py` has `gemini_model` (backward compat) alongside `llm_model` + `llm_provider`. Plan migration: rename env var, add deprecation warning, update all deployments.~~ Removed `gemini_model` field from `Config` and the backward-compat fallback in `create_provider()`. The `llm_model` + `llm_provider` fields with `PROVIDER_DEFAULT_MODEL` handle all cases.
 
 ## Document `llm_call_log` Table in Database Schema
 
