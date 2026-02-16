@@ -26,9 +26,9 @@ Pre-extract text from PDF attachments using OCR/text extraction before sending t
 
 The 130-line function in `events.py` does sender validation, LLM extraction, deduplication, and DB updates all in one. Break into smaller, testable steps: `should_skip_sender()`, `extract_and_deduplicate_events()`, `save_new_events()`.
 
-## Standardize API Error Responses
+## ~~Standardize API Error Responses~~
 
-API routes use inconsistent error patterns: some return user-friendly messages, others pass raw exception text, others use generic strings. Create an `ErrorDetail` schema with `code`, `message`, `detail` fields and standardize all endpoints.
+~~API routes use inconsistent error patterns: some return user-friendly messages, others pass raw exception text, others use generic strings. Create an `ErrorDetail` schema with `code`, `message`, `detail` fields and standardize all endpoints.~~ **Done** — added `ErrorCode` constants and `error_detail()` helper in `schemas/common.py`. All route files now use standardized `{"error": code, "detail": message}` responses. Security fix: replaced `str(e)` leaks in `calendars.py` and `health.py` with safe messages.
 
 ## Add `body_text`/`body_html` to `EmailResponse` Schema
 

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from supabase import create_client
 
 from selko.api.deps import get_config
-from selko.api.schemas.common import HealthDbResponse, HealthResponse
+from selko.api.schemas.common import ErrorCode, HealthDbResponse, HealthResponse, error_detail
 from selko.config import Config
 
 logger = logging.getLogger(__name__)
@@ -45,5 +45,5 @@ async def health_db_check(
         logger.error(f"Database health check failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database connection failed: {str(e)}",
+            detail=error_detail(ErrorCode.DATABASE_ERROR, "Database health check failed"),
         )
