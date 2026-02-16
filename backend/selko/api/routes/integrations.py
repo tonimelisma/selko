@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 
 from selko.api.deps import CurrentUser, get_config, get_current_user
+from selko.api.schemas.common import ErrorCode, error_detail
 from selko.config import Config
 from selko.services.gmail import build_service, get_user_profile
 from selko.services.integrations import (
@@ -90,7 +91,7 @@ async def gmail_oauth_initiate(
         logger.warning(f"Invalid redirect_uri attempted: {redirect_uri}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid redirect URI",
+            detail=error_detail(ErrorCode.INVALID_REQUEST, "Invalid redirect URI"),
         )
 
     try:
@@ -108,7 +109,7 @@ async def gmail_oauth_initiate(
         logger.error(f"Failed to initiate OAuth: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initiate OAuth flow",
+            detail=error_detail(ErrorCode.OAUTH_FAILED, "Failed to initiate OAuth flow"),
         )
 
 
@@ -188,11 +189,11 @@ async def google_oauth_callback(
         if "Invalid or expired state" in error_msg or "State parameter expired" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OAuth state invalid or expired. Please try again.",
+                detail=error_detail(ErrorCode.INVALID_REQUEST, "OAuth state invalid or expired. Please try again."),
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="OAuth callback failed",
+            detail=error_detail(ErrorCode.OAUTH_FAILED, "OAuth callback failed"),
         )
 
 
@@ -222,7 +223,7 @@ async def calendar_oauth_initiate(
         logger.warning(f"Invalid redirect_uri attempted: {redirect_uri}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid redirect URI",
+            detail=error_detail(ErrorCode.INVALID_REQUEST, "Invalid redirect URI"),
         )
 
     try:
@@ -240,5 +241,5 @@ async def calendar_oauth_initiate(
         logger.error(f"Failed to initiate OAuth: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initiate OAuth flow",
+            detail=error_detail(ErrorCode.OAUTH_FAILED, "Failed to initiate OAuth flow"),
         )

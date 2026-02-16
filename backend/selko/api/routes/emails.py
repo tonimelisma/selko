@@ -17,6 +17,7 @@ from selko.api.deps import (
     get_llm_gateway,
     get_quota_service,
 )
+from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.emails import (
     BatchProcessRequest,
     EmailProcessResponse,
@@ -63,7 +64,7 @@ async def sync_emails(
     if not quota_result.allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Daily email sync quota exceeded",
+            detail=error_detail(ErrorCode.QUOTA_EXCEEDED, "Daily email sync quota exceeded"),
             headers={
                 "X-RateLimit-Limit": str(quota_result.limit),
                 "X-RateLimit-Remaining": "0",
@@ -98,16 +99,16 @@ async def sync_emails(
         if "No Gmail integration" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No Gmail integration found. Connect Gmail first.",
+                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Gmail integration found. Connect Gmail first."),
             )
         if "expired or revoked" in error_msg or "unauthorized_client" in error_msg.lower():
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Gmail credentials expired or revoked. Please reconnect Gmail.",
+                detail=error_detail(ErrorCode.CREDENTIALS_EXPIRED, "Gmail credentials expired or revoked. Please reconnect Gmail."),
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to sync emails",
+            detail=error_detail(ErrorCode.SYNC_FAILED, "Failed to sync emails"),
         )
 
 
@@ -150,7 +151,7 @@ async def process_email(
         if result is None or not result.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Email not found",
+                detail=error_detail(ErrorCode.EMAIL_NOT_FOUND, "Email not found"),
             )
 
     except HTTPException:
@@ -159,7 +160,7 @@ async def process_email(
         logger.error(f"Failed to fetch email: {e.message}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to verify email",
+            detail=error_detail(ErrorCode.DATABASE_ERROR, "Failed to verify email"),
         )
 
     # Process email for events (gateway handles rate limiting)
@@ -192,7 +193,7 @@ async def process_email(
     except QuotaExceededError as e:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(e),
+            detail=error_detail(ErrorCode.QUOTA_EXCEEDED, "Processing quota exceeded"),
             headers={
                 "X-RateLimit-Limit": str(e.limit),
                 "X-RateLimit-Remaining": "0",
@@ -202,7 +203,7 @@ async def process_email(
         logger.error(f"Failed to process email for events: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to extract events from email",
+            detail=error_detail(ErrorCode.PROCESSING_FAILED, "Failed to extract events from email"),
         )
 
 
@@ -255,7 +256,7 @@ async def batch_process_emails(
         logger.error(f"Failed to fetch emails: {e.message}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch emails for processing",
+            detail=error_detail(ErrorCode.DATABASE_ERROR, "Failed to fetch emails for processing"),
         )
 
     # Process each email (gateway handles per-call rate limiting)
@@ -295,7 +296,7 @@ async def batch_process_emails(
                 logger.warning(f"Quota exceeded during batch processing: {e}")
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"Quota exceeded after processing some emails: {e}",
+                    detail=error_detail(ErrorCode.QUOTA_EXCEEDED, "Quota exceeded after processing some emails"),
                     headers={
                         "X-RateLimit-Limit": str(e.limit),
                         "X-RateLimit-Remaining": "0",
@@ -323,5 +324,5 @@ async def batch_process_emails(
         logger.error(f"Batch processing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Batch processing failed",
+            detail=error_detail(ErrorCode.PROCESSING_FAILED, "Batch processing failed"),
         )

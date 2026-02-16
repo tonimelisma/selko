@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 
 from selko.api.deps import get_authenticated_client
+from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.events import CalendarListResponse
 from selko.services import calendars
 
@@ -53,6 +54,9 @@ async def list_calendars(
         if "No Google Calendar credentials" in str(e):
             raise HTTPException(
                 status_code=404,
-                detail="No Google Calendar integration found. Connect Calendar first."
+                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Google Calendar integration found. Connect Calendar first."),
             )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail(ErrorCode.DATABASE_ERROR, "Failed to list calendars"),
+        )

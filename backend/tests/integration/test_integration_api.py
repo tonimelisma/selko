@@ -64,7 +64,9 @@ class TestAuthenticationRequired:
         response = test_client.post("/emails/sync", json={"max_results": 10})
 
         assert response.status_code == 401
-        assert "Missing Authorization header" in response.json()["detail"]
+        detail = response.json()["detail"]
+        msg = detail["detail"] if isinstance(detail, dict) else detail
+        assert "Missing Authorization header" in msg
 
     def test_emails_sync_invalid_auth(self, test_client):
         """POST /emails/sync with invalid token returns 401."""
@@ -75,7 +77,9 @@ class TestAuthenticationRequired:
         )
 
         assert response.status_code == 401
-        assert "Invalid or expired token" in response.json()["detail"]
+        detail = response.json()["detail"]
+        msg = detail["detail"] if isinstance(detail, dict) else detail
+        assert "Invalid or expired token" in msg
 
     def test_emails_sync_malformed_auth(self, test_client):
         """POST /emails/sync with malformed header returns 401."""
@@ -86,7 +90,9 @@ class TestAuthenticationRequired:
         )
 
         assert response.status_code == 401
-        assert "Invalid Authorization header format" in response.json()["detail"]
+        detail = response.json()["detail"]
+        msg = detail["detail"] if isinstance(detail, dict) else detail
+        assert "Invalid Authorization header format" in msg
 
     def test_calendars_no_auth(self, test_client):
         """GET /calendars without auth returns 401."""
@@ -202,7 +208,9 @@ class TestOAuthCallback:
         )
         assert response.status_code == 400
         # Error message is sanitized to not leak internal details
-        assert "invalid" in response.json()["detail"].lower() or "expired" in response.json()["detail"].lower()
+        detail = response.json()["detail"]
+        msg = detail["detail"] if isinstance(detail, dict) else detail
+        assert "invalid" in msg.lower() or "expired" in msg.lower()
 
     def test_callback_expired_state(self, test_client):
         """Callback rejects expired state (>10 min)."""
@@ -223,7 +231,9 @@ class TestOAuthCallback:
                 f"/integrations/google/callback?code=test&state={state}"
             )
             assert response.status_code == 400
-            assert "expired" in response.json()["detail"].lower()
+            detail = response.json()["detail"]
+            msg = detail["detail"] if isinstance(detail, dict) else detail
+            assert "expired" in msg.lower()
         finally:
             _oauth_states.pop(state, None)
 
@@ -347,7 +357,9 @@ class TestEventUnsyncEndpoint:
         try:
             response = test_client.post(f"/events/{event_id}/unsync", headers=auth_headers)
             assert response.status_code == 400
-            assert "synced" in response.json()["detail"].lower()
+            detail = response.json()["detail"]
+            msg = detail["detail"] if isinstance(detail, dict) else detail
+            assert "synced" in msg.lower()
         finally:
             # Cleanup
             authenticated_client.table("events").delete().eq("id", event_id).execute()

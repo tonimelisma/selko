@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from supabase import Client
 
 from selko.api.deps import CurrentUser, get_authenticated_client, get_current_user, get_quota_service
+from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.events import CalendarSyncResponse, EventUnsyncResponse
 from selko.services.calendars import CalendarsError, delete_calendar_event, sync_event_to_calendar
 from selko.services.quotas import QuotaService
@@ -51,7 +52,7 @@ async def sync_event(
     if not quota_result.allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Daily calendar sync quota exceeded",
+            detail=error_detail(ErrorCode.QUOTA_EXCEEDED, "Daily calendar sync quota exceeded"),
             headers={
                 "X-RateLimit-Limit": str(quota_result.limit),
                 "X-RateLimit-Remaining": "0",
@@ -72,16 +73,25 @@ async def sync_event(
 
         # maybe_single() returns result where .data is None when no rows found
         if event_result is None or event_result.data is None:
-            raise HTTPException(status_code=404, detail="Event not found")
+            raise HTTPException(
+                status_code=404,
+                detail=error_detail(ErrorCode.EVENT_NOT_FOUND, "Event not found"),
+            )
 
         if event_result.data["user_id"] != user.id:
-            raise HTTPException(status_code=403, detail="Not authorized")
+            raise HTTPException(
+                status_code=403,
+                detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
+            )
 
         # Validate event is approved
         if event_result.data["status"] not in ("approved", "synced"):
             raise HTTPException(
                 status_code=400,
-                detail=f"Event must be approved before syncing (current status: {event_result.data['status']})"
+                detail=error_detail(
+                    ErrorCode.INVALID_REQUEST,
+                    f"Event must be approved before syncing (current status: {event_result.data['status']})",
+                ),
             )
 
         # Sync to calendar
@@ -106,15 +116,18 @@ async def sync_event(
         if "No Google Calendar credentials" in str(e):
             raise HTTPException(
                 status_code=404,
-                detail="No Google Calendar integration found. Connect Calendar first."
+                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Google Calendar integration found. Connect Calendar first."),
             )
         raise HTTPException(
             status_code=500,
-            detail="Calendar sync failed"
+            detail=error_detail(ErrorCode.SYNC_FAILED, "Calendar sync failed"),
         )
     except Exception as e:
         logger.error(f"Failed to sync event: {e}")
-        raise HTTPException(status_code=500, detail="Event sync failed")
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail(ErrorCode.SYNC_FAILED, "Event sync failed"),
+        )
 
 
 @router.post("/{event_id}/unsync", response_model=EventUnsyncResponse)
@@ -148,16 +161,25 @@ async def unsync_event(
         ).maybe_single().execute()
 
         if event_result is None or event_result.data is None:
-            raise HTTPException(status_code=404, detail="Event not found")
+            raise HTTPException(
+                status_code=404,
+                detail=error_detail(ErrorCode.EVENT_NOT_FOUND, "Event not found"),
+            )
 
         if event_result.data["user_id"] != user.id:
-            raise HTTPException(status_code=403, detail="Not authorized")
+            raise HTTPException(
+                status_code=403,
+                detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
+            )
 
         # Validate event is synced
         if event_result.data["status"] != "synced":
             raise HTTPException(
                 status_code=400,
-                detail=f"Only synced events can be unsynced (current status: {event_result.data['status']})"
+                detail=error_detail(
+                    ErrorCode.INVALID_REQUEST,
+                    f"Only synced events can be unsynced (current status: {event_result.data['status']})",
+                ),
             )
 
         # Delete from Google Calendar and revert status
@@ -175,12 +197,15 @@ async def unsync_event(
         if "No Google Calendar credentials" in str(e):
             raise HTTPException(
                 status_code=404,
-                detail="No Google Calendar integration found. Connect Calendar first."
+                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Google Calendar integration found. Connect Calendar first."),
             )
         raise HTTPException(
             status_code=500,
-            detail="Calendar unsync failed"
+            detail=error_detail(ErrorCode.SYNC_FAILED, "Calendar unsync failed"),
         )
     except Exception as e:
         logger.error(f"Failed to unsync event: {e}")
-        raise HTTPException(status_code=500, detail="Event unsync failed")
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail(ErrorCode.SYNC_FAILED, "Event unsync failed"),
+        )
