@@ -593,6 +593,7 @@ def run_extract_eval(
                     "location": e.location,
                     "description": e.description,
                     "confidence": e.confidence,
+                    "importance": getattr(e, "importance", None),
                 }
                 for e in extraction.events
             ],
