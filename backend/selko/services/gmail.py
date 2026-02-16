@@ -200,6 +200,87 @@ def extract_attachments(email: dict) -> list[dict]:
     return attachments
 
 
+# Map MIME image subtypes to file extensions
+_MIME_EXT_MAP = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "image/bmp": "bmp",
+    "image/tiff": "tiff",
+}
+
+
+def extract_inline_images(email: dict) -> list[dict]:
+    """Extract inline image metadata from Gmail message MIME parts.
+
+    Finds image parts that have Content-ID headers (CID references) or
+    Content-Disposition: inline, but lack filenames — which causes
+    extract_attachments() to skip them.
+
+    Args:
+        email: Full Gmail message object from API.
+
+    Returns:
+        List of dicts with keys:
+        - attachment_id: Gmail attachment ID (for downloading)
+        - filename: Synthetic filename (e.g., "inline_0.png")
+        - mime_type: Image MIME type
+        - size_bytes: Size from Gmail metadata
+        - content_id: The CID value (without angle brackets), or None
+    """
+    inline_images = []
+    index = 0
+
+    def _extract_from_part(part: dict) -> None:
+        nonlocal index
+        body = part.get("body", {})
+        attachment_id = body.get("attachmentId")
+        mime_type = part.get("mimeType", "")
+        filename = part.get("filename", "")
+
+        # Only consider image parts with a downloadable attachment ID
+        if attachment_id and mime_type.startswith("image/"):
+            # Skip parts that extract_attachments() already handles (have filename)
+            if not filename:
+                headers = {
+                    h["name"].lower(): h["value"]
+                    for h in part.get("headers", [])
+                }
+                content_id = headers.get("content-id", "")
+                disposition = headers.get("content-disposition", "")
+
+                # Must have CID header or inline disposition
+                if content_id or "inline" in disposition.lower():
+                    # Strip angle brackets from Content-ID
+                    cid = content_id.strip("<>") if content_id else None
+                    ext = _MIME_EXT_MAP.get(mime_type, "bin")
+                    synthetic_name = f"inline_{index}.{ext}"
+
+                    inline_images.append({
+                        "attachment_id": attachment_id,
+                        "filename": synthetic_name,
+                        "mime_type": mime_type,
+                        "size_bytes": body.get("size", 0),
+                        "content_id": cid,
+                    })
+                    logger.debug(f"Found inline image: {synthetic_name} (CID: {cid})")
+                    index += 1
+
+        # Recurse into nested parts
+        for nested_part in part.get("parts", []):
+            _extract_from_part(nested_part)
+
+    payload = email.get("payload", {})
+    _extract_from_part(payload)
+
+    if inline_images:
+        logger.debug(
+            f"Extracted {len(inline_images)} inline images from message {email.get('id')}"
+        )
+    return inline_images
+
+
 def fetch_messages(
     service,
     max_results: int = 10,

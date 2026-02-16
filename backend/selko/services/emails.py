@@ -17,10 +17,12 @@ from selko.services.gmail import (
     GmailError,
     build_service,
     extract_attachments,
+    extract_inline_images,
     fetch_messages,
     get_credentials,
 )
-from selko.services.attachments import AttachmentError, process_attachment
+from selko.services.attachments import AttachmentError, process_attachment, store_image_content
+from selko.services.email_images import extract_data_uri_images, extract_linked_images
 
 logger = logging.getLogger(__name__)
 
@@ -247,12 +249,13 @@ def fetch_emails_for_user(
 
     attachments_downloaded = 0
 
-    # Process attachments if requested
+    # Process attachments and images if requested
     if fetch_attachments:
-        logger.info("Fetching attachments for saved emails...")
+        logger.info("Fetching attachments and images for saved emails...")
 
-        # Map gmail_id to saved record for lookup
+        # Map gmail_id to saved record and parsed data for lookup
         gmail_id_to_record = {r["gmail_id"]: r for r in saved_records}
+        gmail_id_to_parsed = {p["gmail_id"]: p for p in parsed}
 
         for msg in messages:
             gmail_id = msg["id"]
@@ -262,32 +265,118 @@ def fetch_emails_for_user(
                 logger.warning(f"No saved record for message {gmail_id}")
                 continue
 
+            email_id = email_record["id"]
+            images_stored = 0
+
+            # 1. Regular file attachments (existing logic)
             attachments = extract_attachments(msg)
-            if not attachments:
-                continue
+            if attachments:
+                logger.info(
+                    f"Processing {len(attachments)} attachments for: "
+                    f"{email_record.get('subject', '(no subject)')[:50]}"
+                )
 
-            logger.info(
-                f"Processing {len(attachments)} attachments for: "
-                f"{email_record.get('subject', '(no subject)')[:50]}"
-            )
+                for att_part in attachments:
+                    try:
+                        result = process_attachment(
+                            client=client,
+                            gmail_service=service,
+                            email_id=email_id,
+                            message_id=gmail_id,
+                            attachment_part=att_part,
+                            config=config,
+                        )
+                        if result:
+                            attachments_downloaded += 1
+                    except AttachmentError as e:
+                        logger.error(f"Failed to process attachment: {e}")
+                        continue
 
-            for att_part in attachments:
+            # 2. Inline/CID images (MIME parts without filenames)
+            inline_images = extract_inline_images(msg)
+            for inline_part in inline_images:
                 try:
                     result = process_attachment(
                         client=client,
                         gmail_service=service,
-                        email_id=email_record["id"],
+                        email_id=email_id,
                         message_id=gmail_id,
-                        attachment_part=att_part,
+                        attachment_part=inline_part,
                         config=config,
                     )
                     if result:
-                        attachments_downloaded += 1
+                        images_stored += 1
                 except AttachmentError as e:
-                    logger.error(f"Failed to process attachment: {e}")
+                    logger.error(f"Failed to process inline image: {e}")
                     continue
 
-        logger.info(f"Downloaded {attachments_downloaded} attachments")
+            # Get HTML body for linked and data URI extraction
+            parsed_email = gmail_id_to_parsed.get(gmail_id, {})
+            body_html = parsed_email.get("body_html")
+
+            if body_html:
+                # 3. Linked images (http/https URLs in HTML)
+                try:
+                    linked_images = extract_linked_images(body_html)
+                    for idx, img in enumerate(linked_images):
+                        ext = img.mime_type.split("/")[-1]
+                        filename = f"linked_{idx}.{ext}"
+                        try:
+                            result = store_image_content(
+                                client=client,
+                                email_id=email_id,
+                                image_data=img.data,
+                                mime_type=img.mime_type,
+                                filename=filename,
+                                config=config,
+                            )
+                            if result:
+                                images_stored += 1
+                        except AttachmentError as e:
+                            logger.error(f"Failed to store linked image: {e}")
+                            continue
+                except Exception as e:
+                    logger.warning(f"Failed to extract linked images: {e}")
+
+                # 4. Data URI images (base64-encoded in HTML)
+                try:
+                    data_uri_images = extract_data_uri_images(body_html)
+                    for idx, img in enumerate(data_uri_images):
+                        ext = img.mime_type.split("/")[-1]
+                        filename = f"data_uri_{idx}.{ext}"
+                        try:
+                            result = store_image_content(
+                                client=client,
+                                email_id=email_id,
+                                image_data=img.data,
+                                mime_type=img.mime_type,
+                                filename=filename,
+                                config=config,
+                            )
+                            if result:
+                                images_stored += 1
+                        except AttachmentError as e:
+                            logger.error(f"Failed to store data URI image: {e}")
+                            continue
+                except Exception as e:
+                    logger.warning(f"Failed to extract data URI images: {e}")
+
+            # Update has_attachments if we stored images for an email that
+            # didn't originally report having attachments
+            if images_stored > 0 and not email_record.get("has_attachments"):
+                try:
+                    client.table("emails").update(
+                        {"has_attachments": True}
+                    ).eq("id", email_id).execute()
+                    logger.debug(f"Updated has_attachments=True for email {email_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to update has_attachments: {e}")
+
+            if images_stored > 0:
+                attachments_downloaded += images_stored
+                logger.info(f"Stored {images_stored} images for email {email_id}")
+
+        logger.info(f"Downloaded {attachments_downloaded} attachments/images")
 
     return {
         "fetched": len(messages),

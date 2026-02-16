@@ -261,58 +261,37 @@ def fetch_email_with_attachments(
         # Use full body text if available, otherwise fall back to snippet
         email_text = email.get("body_text") or email.get("snippet", "")
 
-        # Fetch attachments if any
+        # Fetch attachments from storage (all image types are stored at sync time)
         attachments: list[dict[str, Any]] = []
-        if email.get("has_attachments"):
-            att_result = (
-                supabase_client.table("attachments")
-                .select("*")
-                .eq("email_id", email_id)
-                .execute()
-            )
+        att_result = (
+            supabase_client.table("attachments")
+            .select("*")
+            .eq("email_id", email_id)
+            .execute()
+        )
 
-            for att_record in att_result.data:
-                storage_path = att_record.get("storage_path")
-                if storage_path:
-                    try:
-                        # Download from Supabase Storage
-                        data = supabase_client.storage.from_("attachments").download(
-                            storage_path
-                        )
-                        attachments.append(
-                            {
-                                "data": data,
-                                "mime_type": att_record.get("mime_type"),
-                                "filename": att_record.get("filename"),
-                            }
-                        )
-                        logger.debug(
-                            f"Loaded attachment: {att_record.get('filename')}"
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to download attachment {storage_path}: {e}"
-                        )
-
-        # Extract linked images from HTML body if available
-        body_html = email.get("body_html")
-        if body_html:
-            try:
-                from selko.services.email_images import extract_linked_images
-
-                linked_images = extract_linked_images(body_html)
-                for img in linked_images:
-                    attachments.append({
-                        "data": img.data,
-                        "mime_type": img.mime_type,
-                        "filename": f"linked_image.{img.mime_type.split('/')[-1]}",
-                    })
-                if linked_images:
-                    logger.debug(
-                        f"Added {len(linked_images)} linked images from HTML body"
+        for att_record in att_result.data:
+            storage_path = att_record.get("storage_path")
+            if storage_path:
+                try:
+                    # Download from Supabase Storage
+                    data = supabase_client.storage.from_("attachments").download(
+                        storage_path
                     )
-            except Exception as e:
-                logger.warning(f"Failed to extract linked images: {e}")
+                    attachments.append(
+                        {
+                            "data": data,
+                            "mime_type": att_record.get("mime_type"),
+                            "filename": att_record.get("filename"),
+                        }
+                    )
+                    logger.debug(
+                        f"Loaded attachment: {att_record.get('filename')}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to download attachment {storage_path}: {e}"
+                    )
 
         return email_metadata, email_text, attachments
 
