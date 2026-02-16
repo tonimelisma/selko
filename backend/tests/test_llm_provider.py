@@ -69,7 +69,6 @@ class TestCreateProvider:
         config = MagicMock()
         config.llm_provider = "gemini"
         config.llm_model = None
-        config.gemini_model = "gemini-3-flash-preview"
         config.gemini_api_key = "test-key"
 
         with patch("google.genai.Client"):
@@ -109,7 +108,6 @@ class TestCreateProvider:
         config = MagicMock()
         config.llm_provider = "gemini"
         config.llm_model = "nonexistent-model"
-        config.gemini_model = None
 
         with pytest.raises(LLMProviderError, match="Unknown model"):
             create_provider(config)
@@ -134,19 +132,6 @@ class TestCreateProvider:
             provider = create_provider(config)
 
         assert provider.model == "deepseek-chat"
-
-    def test_gemini_backward_compat(self):
-        """Test backward compatibility with gemini_model config."""
-        config = MagicMock()
-        config.llm_provider = "gemini"
-        config.llm_model = None
-        config.gemini_model = "gemini-3-flash-preview"
-        config.gemini_api_key = "test-key"
-
-        with patch("google.genai.Client"):
-            provider = create_provider(config)
-
-        assert provider.model == "gemini-3-flash-preview"
 
 
 class TestImageContent:
