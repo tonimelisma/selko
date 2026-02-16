@@ -773,6 +773,19 @@ wheels = [
 ]
 
 [[package]]
+name = "icalendar"
+version = "7.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+    { name = "tzdata" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ab/69/0a221caa659c447a4a1f54be60d90a84119a20313f9e07d432cbb7d0d9ae/icalendar-7.0.0.tar.gz", hash = "sha256:5c69cf317177668748793bdecbe93d0850ceca8d450bbf27c8fa1a14e2e71223", size = 436350, upload-time = "2026-02-11T11:19:15.457Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/05/e23517fbce2b9d2359b8cd64c04b9e8e3db4e5bfd6de6ba71fee738e75cd/icalendar-7.0.0-py3-none-any.whl", hash = "sha256:ed874334e620a73b2cbf408706574f3e83210ae79f3960678c453131e465c1c7", size = 436889, upload-time = "2026-02-11T11:19:14.025Z" },
+]
+
+[[package]]
 name = "idna"
 version = "3.11"
 source = { registry = "https://pypi.org/simple" }
@@ -2036,6 +2049,7 @@ dependencies = [
     { name = "google-auth-httplib2" },
     { name = "google-auth-oauthlib" },
     { name = "google-genai" },
+    { name = "icalendar" },
     { name = "openai" },
     { name = "pillow" },
     { name = "python-dotenv" },
@@ -2065,6 +2079,7 @@ requires-dist = [
     { name = "google-auth-oauthlib", specifier = ">=1.2.4" },
     { name = "google-genai", specifier = ">=1.0.0" },
     { name = "httpx", marker = "extra == 'test'", specifier = ">=0.26.0" },
+    { name = "icalendar", specifier = ">=6.0.0" },
     { name = "openai", specifier = ">=2.21.0" },
     { name = "pillow", specifier = ">=12.1.1" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0" },

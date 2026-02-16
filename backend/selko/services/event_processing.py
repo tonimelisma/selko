@@ -128,6 +128,11 @@ def _build_content_parts(
             data = att.get("data")
             mime_type = att.get("mime_type", "application/octet-stream")
             filename = att.get("filename", "attachment")
+
+            # Skip .ics attachments — raw iCalendar bytes aren't useful to the LLM
+            if mime_type == "text/calendar" or filename.lower().endswith(".ics"):
+                logger.debug(f"Skipping .ics attachment from LLM: {filename}")
+                continue
             size_limit = _get_attachment_size_limit(mime_type, config)
 
             if data and len(data) <= size_limit:
