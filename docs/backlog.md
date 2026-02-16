@@ -34,9 +34,9 @@ API routes use inconsistent error patterns: some return user-friendly messages, 
 
 Database stores `body_text` and `body_html` (migration `20260215000001`) and backend uses them for LLM processing, but `EmailResponse` schema omits them. API clients can't access full email bodies.
 
-## Add `scheduled_tasks.py` Unit Tests
+## ~~Add `scheduled_tasks.py` Unit Tests~~ **Done**
 
-`scheduled_tasks.py` service lacks a dedicated unit test file — only tested indirectly via integration tests. Add unit tests for `enqueue_scheduled_task()`, `claim_scheduled_task()`, `complete_scheduled_task()`, `fail_scheduled_task()`.
+~~`scheduled_tasks.py` service lacks a dedicated unit test file — only tested indirectly via integration tests. Add unit tests for `enqueue_scheduled_task()`, `claim_scheduled_task()`, `complete_scheduled_task()`, `fail_scheduled_task()`.~~
 
 ## Remove Unused Email Flag Fields from Schema
 
