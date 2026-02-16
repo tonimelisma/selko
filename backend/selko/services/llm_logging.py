@@ -339,7 +339,7 @@ class LLMCallContext:
 
     Usage:
         with LLMCallContext(logging_service, user_id, operation, model, prompt) as ctx:
-            response = gemini_client.generate(...)
+            response = gateway.generate(...)
             ctx.set_response(response.text, tokens=...)
 
         # Automatically logged on exit

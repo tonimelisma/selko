@@ -32,7 +32,7 @@ cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.js
 ```bash
 # Run tests with result bundle (required for pre-commit hook)
 xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \
-  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -resultBundlePath ios/TestResults.xcresult
 ```
 
@@ -182,7 +182,7 @@ For full details, see `docs/ui-testing-guide.md`.
 | Platform | Command | What It Tests |
 |----------|---------|---------------|
 | Web E2E | `cd frontend && npm run test:e2e -- --project=chromium` | Full user journeys in browser |
-| iOS XCUITest | `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 16' -resultBundlePath ios/TestResults.xcresult` | UI flows on iOS Simulator |
+| iOS XCUITest | `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult` | UI flows on iOS Simulator |
 | Android UI | `cd android && ./gradlew connectedAndroidTest` | Compose UI tests on emulator |
 
 ### MCP Tools (Manual Debugging Only)

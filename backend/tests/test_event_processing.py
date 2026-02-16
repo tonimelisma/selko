@@ -6,15 +6,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResponse
+from selko.api.schemas.calendar import CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
-from selko.services.gemini import (
-    GeminiError,
+from selko.services.event_processing import (
     compare_events,
     extract_calendar_events,
     generate_source_attribution,
     merge_event_data,
 )
+from selko.services.llm_gateway import LLMGatewayError
 from selko.services.llm_gateway import LLMGateway, LLMGatewayError, LLMRateLimitError
 from selko.services.llm_provider import LLMProvider, LLMResponse
 
@@ -87,7 +87,7 @@ class TestExtractCalendarEvents:
         expected_data = fixture["expected"]
 
         # Build mock Gemini response as JSON
-        mock_gemini_response = GeminiEventsResponse(
+        mock_gemini_response = EventExtractionResponse(
             events_found=expected_data["events_found"],
             events=expected_data["events"],
         )
@@ -133,7 +133,7 @@ class TestExtractCalendarEvents:
         mock_provider.provider_name = "gemini"
         mock_provider.model = "gemini-3-flash-preview"
 
-        response_json = GeminiEventsResponse(
+        response_json = EventExtractionResponse(
             events_found=False, events=[]
         ).model_dump_json()
 
@@ -207,7 +207,7 @@ class TestExtractCalendarEvents:
             "date_sent": "2026-01-20T10:00:00Z",
         }
 
-        with pytest.raises(GeminiError) as exc_info:
+        with pytest.raises(LLMGatewayError) as exc_info:
             extract_calendar_events(
                 gateway=gateway,
                 email_text="Test email",
@@ -224,7 +224,7 @@ class TestExtractCalendarEvents:
         mock_provider.provider_name = "gemini"
         mock_provider.model = "gemini-3-flash-preview"
 
-        response_json = GeminiEventsResponse(
+        response_json = EventExtractionResponse(
             events_found=True, events=[]
         ).model_dump_json()
         mock_provider.generate.return_value = LLMResponse(
@@ -269,7 +269,7 @@ class TestExtractCalendarEvents:
         mock_provider.provider_name = "gemini"
         mock_provider.model = "gemini-3-flash-preview"
 
-        response_json = GeminiEventsResponse(
+        response_json = EventExtractionResponse(
             events_found=False, events=[]
         ).model_dump_json()
         mock_provider.generate.return_value = LLMResponse(
@@ -408,7 +408,7 @@ class TestCompareEvents:
         assert result is None
 
     def test_raises_error_on_llm_failure(self, mock_provider):
-        """Test that LLM failure raises GeminiError."""
+        """Test that LLM failure raises LLMGatewayError."""
         mock_provider.generate.side_effect = Exception("API Error")
 
         gateway = LLMGateway(mock_provider)
@@ -416,7 +416,7 @@ class TestCompareEvents:
         new_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
         candidates = [{"id": "event-1", "title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}]
 
-        with pytest.raises(GeminiError) as exc_info:
+        with pytest.raises(LLMGatewayError) as exc_info:
             compare_events(gateway, new_event, candidates)
 
         assert "api error" in str(exc_info.value).lower()
@@ -503,7 +503,7 @@ class TestMergeEventData:
         assert "CANCELLED" in result["title"]
 
     def test_raises_error_on_llm_failure(self, mock_provider):
-        """Test that LLM failure raises GeminiError."""
+        """Test that LLM failure raises LLMGatewayError."""
         mock_provider.generate.side_effect = Exception("API Error")
 
         gateway = LLMGateway(mock_provider)
@@ -511,13 +511,13 @@ class TestMergeEventData:
         existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
         new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
 
-        with pytest.raises(GeminiError) as exc_info:
+        with pytest.raises(LLMGatewayError) as exc_info:
             merge_event_data(gateway, existing_event, new_extraction, "update")
 
         assert "api error" in str(exc_info.value).lower()
 
     def test_raises_error_on_invalid_json(self, mock_provider):
-        """Test that invalid JSON response raises GeminiError."""
+        """Test that invalid JSON response raises LLMGatewayError."""
         mock_provider.generate.return_value = LLMResponse(
             text="not valid json", prompt_tokens=10, completion_tokens=5
         )
@@ -527,7 +527,7 @@ class TestMergeEventData:
         existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
         new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
 
-        with pytest.raises(GeminiError):
+        with pytest.raises(LLMGatewayError):
             merge_event_data(gateway, existing_event, new_extraction, "update")
 
 
@@ -645,7 +645,7 @@ class TestBuildContentPartsPerTypeLimits:
 
     def test_pdf_limit_skips_oversized(self):
         """Test that a 6MB PDF is skipped with 5MB limit."""
-        from selko.services.gemini import _build_content_parts
+        from selko.services.event_processing import _build_content_parts
 
         config = Config(
             environment="development",
@@ -666,7 +666,7 @@ class TestBuildContentPartsPerTypeLimits:
 
     def test_image_limit_skips_oversized(self):
         """Test that an 11MB image is skipped with 10MB limit."""
-        from selko.services.gemini import _build_content_parts
+        from selko.services.event_processing import _build_content_parts
 
         config = Config(
             environment="development",
@@ -687,7 +687,7 @@ class TestBuildContentPartsPerTypeLimits:
 
     def test_no_config_fallback_20mb(self):
         """Test that without config, 20MB default is used."""
-        from selko.services.gemini import _build_content_parts
+        from selko.services.event_processing import _build_content_parts
 
         attachments = [{
             "data": b"x" * (15 * 1024 * 1024),
@@ -701,7 +701,7 @@ class TestBuildContentPartsPerTypeLimits:
 
     def test_small_attachment_within_limit(self):
         """Test that small attachments within limit are included."""
-        from selko.services.gemini import _build_content_parts
+        from selko.services.event_processing import _build_content_parts
 
         config = Config(
             environment="development",

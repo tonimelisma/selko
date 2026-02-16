@@ -1,7 +1,7 @@
-"""Integration tests for Gemini calendar event extraction.
+"""Integration tests for LLM calendar event extraction.
 
-These tests make real calls to the Gemini API and require:
-- GEMINI_API_KEY in environment
+These tests make real calls to the LLM API and require:
+- GEMINI_API_KEY (or other provider key) in environment
 - Local Supabase running (for database tests)
 - TEST_USER_EMAIL and TEST_USER_PASSWORD configured
 """
@@ -13,11 +13,11 @@ import pytest
 
 from selko.api.schemas.calendar import CalendarEventExtraction
 from selko.config import load_config
-from selko.services.gemini import (
-    GeminiError,
+from selko.services.event_processing import (
     extract_calendar_events,
     fetch_email_with_attachments,
 )
+from selko.services.llm_gateway import LLMGatewayError
 from selko.services.llm_gateway import LLMGateway
 from selko.services.llm_provider import LLMProviderError, create_provider
 
@@ -281,7 +281,7 @@ class TestGeminiWithDatabase:
         """Test error handling for nonexistent email."""
         fake_uuid = "00000000-0000-0000-0000-000000000000"
 
-        with pytest.raises(GeminiError) as exc_info:
+        with pytest.raises(LLMGatewayError) as exc_info:
             fetch_email_with_attachments(authenticated_client, fake_uuid)
 
         assert "Email not found" in str(exc_info.value)
@@ -290,7 +290,7 @@ class TestGeminiWithDatabase:
 @pytest.mark.integration
 @pytest.mark.development
 @pytest.mark.llm
-class TestGeminiErrorHandling:
+class TestLLMGatewayErrorHandling:
     """Test Gemini API error handling.
     
     These tests require --run-llm flag to run (costs money).
@@ -318,7 +318,7 @@ class TestGeminiErrorHandling:
         }
 
         # Should fail with invalid key
-        with pytest.raises(GeminiError):
+        with pytest.raises(LLMGatewayError):
             extract_calendar_events(
                 gateway=gateway,
                 email_text="Test email",
