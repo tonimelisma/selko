@@ -193,6 +193,42 @@ Per-user rules for handling emails from specific senders or domains.
 
 **Triggers:** `sender_rule_before_delete` — when an ignore rule is deleted (un-ignored), a BEFORE DELETE trigger resets matching `skipped` emails from the last 30 days back to `pending` for reprocessing.
 
+### `llm_call_log`
+
+Audit log of all LLM API calls with prompts, responses, token usage, latency, and cost tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Log entry ID |
+| `user_id` | uuid, FK | References `users.id` (CASCADE delete) |
+| `operation_type` | llm_operation_type | Enum: `extract_events`, `compare_events`, `merge_events` |
+| `model` | text | Model name (e.g., `gemini-3-flash-preview`) |
+| `provider` | text, nullable | LLM provider (`gemini`, `moonshot`, `zai`, `qwen`, `deepseek`, `minimax`) |
+| `email_id` | uuid, FK, nullable | References `emails.id` (SET NULL on delete) |
+| `prompt_text` | text | Full prompt sent to the LLM |
+| `response_text` | text, nullable | Full response from LLM (null on error) |
+| `prompt_tokens` | integer, nullable | Input token count |
+| `completion_tokens` | integer, nullable | Output token count |
+| `total_tokens` | integer, nullable | Total token count |
+| `started_at` | timestamptz | When the LLM call started |
+| `completed_at` | timestamptz, nullable | When the LLM call completed (null if in-progress or failed) |
+| `latency_ms` | integer, nullable | API call duration in milliseconds |
+| `success` | boolean | Whether the call succeeded (default: true) |
+| `error_message` | text, nullable | Error details if failed |
+| `error_type` | text, nullable | Error classification (`rate_limit`, `api_error`, etc.) |
+| `estimated_cost_usd` | numeric(10,6), nullable | Estimated cost based on token pricing |
+| `created_at` | timestamptz | Auto-set |
+
+**RLS Policies:**
+- Users can view own LLM call history
+- Service role has full access (for backend writes)
+
+**Indexes:**
+- `(user_id, started_at DESC)` — user usage queries ordered by date
+- `(email_id) WHERE email_id IS NOT NULL` — lookup calls for a specific email
+- `(operation_type)` — filter by operation type
+- `(success) WHERE success = false` — quickly find failed calls
+
 ## RPC Functions
 
 ### Claiming Functions
@@ -210,6 +246,12 @@ Per-user rules for handling emails from specific senders or domains.
 | `unlock_expired_email_locks()` | Reset expired email locks to pending |
 | `unlock_expired_event_locks()` | Reset expired event locks to approved |
 | `unlock_expired_scheduled_tasks()` | Reset expired scheduled task locks |
+
+### Usage Summary
+
+| Function | Description |
+|----------|-------------|
+| `get_llm_usage_summary(p_user_id, p_start_date, p_end_date)` | Returns aggregated LLM usage stats for a user over a date range: total/successful/failed calls, token counts, latency stats, estimated cost, and per-operation breakdowns. Defaults to current day. Granted to `authenticated` role. |
 
 ## Supabase Storage
 
