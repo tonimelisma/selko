@@ -8,7 +8,7 @@ from uuid import UUID
 from supabase import Client
 
 from selko.config import Config
-from selko.services import calendars, gemini
+from selko.services import calendars, event_processing
 from selko.services.llm_gateway import LLMGateway
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ def process_email_for_events(
 
     Steps:
     1. Check if sender is ignored
-    2. Extract events from email using Gemini
+    2. Extract events from email using LLM
     3. For each event, check if it matches existing events (dedup)
     4. Create new or update existing events
     5. Check sender rules for auto-approve
@@ -60,7 +60,7 @@ def process_email_for_events(
         }).eq("id", email_id).execute()
 
         # Fetch email data
-        email_metadata, email_text, attachments = gemini.fetch_email_with_attachments(
+        email_metadata, email_text, attachments = event_processing.fetch_email_with_attachments(
             supabase_client, email_id
         )
 
@@ -75,8 +75,8 @@ def process_email_for_events(
             }).eq("id", email_id).execute()
             return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
 
-        # Extract events using Gemini via gateway
-        extraction = gemini.extract_calendar_events(
+        # Extract events using LLM via gateway
+        extraction = event_processing.extract_calendar_events(
             gateway,
             email_text,
             email_metadata,
@@ -252,7 +252,7 @@ def find_matching_event(
 
     # Use LLM to compare
     try:
-        matched_id = gemini.compare_events(
+        matched_id = event_processing.compare_events(
             gateway,
             event_data,
             candidates
@@ -419,7 +419,7 @@ def update_event(
     }
 
     # Use LLM to merge
-    merged_data = gemini.merge_event_data(
+    merged_data = event_processing.merge_event_data(
         gateway,
         existing_event,
         new_data,
@@ -682,7 +682,7 @@ def generate_source_attribution(
                 "is_undone": source.get("is_undone", False),
             })
 
-    return gemini.generate_source_attribution(sources_with_email_data)
+    return event_processing.generate_source_attribution(sources_with_email_data)
 
 
 # --- Status-based worker claiming functions for calendar sync ---

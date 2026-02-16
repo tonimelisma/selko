@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from selko.services import events, gemini
+from selko.services import events, event_processing
 
 
 @pytest.mark.integration

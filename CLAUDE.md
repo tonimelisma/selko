@@ -169,7 +169,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 
 - **Direct Supabase Access:** Frontends query Supabase directly. Python API only for operations requiring secrets (OAuth, Gmail sync, LLM processing).
 - **End-to-End First:** Complete full journeys before expanding scope. First journey: Email → Calendar Event.
-- **LLM-Centric AI:** All intelligence uses Gemini multimodal LLM (no separate OCR service).
+- **LLM-Centric AI:** All intelligence uses multimodal LLMs (6 providers supported, Gemini default).
 - **YAGNI:** Add complexity only when measured need exists.
 
 **Details:** `PRD_ARCH.md`
@@ -208,7 +208,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 | **CI/CD** | `docs/ci-cd.md` | When troubleshooting CI |
 | **Job queue** | `docs/job-queue.md` | When working with background jobs |
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
-| **Gemini integration** | `docs/gemini-integration.md` | When working with LLM features |
+| **LLM integration** | `docs/llm-integration.md` | When working with LLM features |
 | **Architecture** | `PRD_ARCH.md` | For product requirements and architecture |
 | **UI user journeys** | `docs/ui/01-user-journeys.md` | When planning frontend work or understanding user flows |
 | **Screen specifications** | `docs/ui/02-screen-specs.md` | When implementing any web screen |
@@ -216,6 +216,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 | **Brand guide** | `docs/brand-guide.md` | When implementing any UI, choosing colors, fonts, or terminology |
 | **UI testing** | `docs/ui-testing-guide.md` | When writing E2E tests or using MCP visual verification |
 | **Screenshot capture** | `docs/screenshot-guide.md` | When capturing product screenshots across web, iOS, and Android |
+| **LLM eval system** | `backend/tests/eval/README.md` | When working with LLM evaluation or benchmarking |
 
 ---
 

@@ -177,7 +177,7 @@ class TestFindMatchingEvent:
             "start_datetime": "2026-03-15T14:00:00Z",
         }
 
-        with patch("selko.services.events.gemini.compare_events", return_value="event-123") as mock_compare, \
+        with patch("selko.services.events.event_processing.compare_events", return_value="event-123") as mock_compare, \
              patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
             result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
@@ -203,7 +203,7 @@ class TestFindMatchingEvent:
             "start_datetime": "2026-03-15T14:00:00Z",
         }
 
-        with patch("selko.services.events.gemini.compare_events", side_effect=Exception("LLM error")), \
+        with patch("selko.services.events.event_processing.compare_events", side_effect=Exception("LLM error")), \
              patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
             result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
@@ -457,7 +457,7 @@ class TestFindMatchingEventGCal:
         }]
 
         with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=gcal_events), \
-             patch("selko.services.events.gemini.compare_events", return_value="gcal:gcal-abc") as mock_compare:
+             patch("selko.services.events.event_processing.compare_events", return_value="gcal:gcal-abc") as mock_compare:
             result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
             # Should have called compare with the GCal candidate
@@ -520,7 +520,7 @@ class TestFindMatchingEventGCal:
         }
 
         with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", side_effect=Exception("API error")), \
-             patch("selko.services.events.gemini.compare_events", return_value="event-123"):
+             patch("selko.services.events.event_processing.compare_events", return_value="event-123"):
             result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
         # Should still match local event despite GCal failure
@@ -614,7 +614,7 @@ class TestUpdateEventResync:
         mock_insert.execute.return_value = MagicMock()
 
         # Mock LLM merge
-        with patch("selko.services.events.gemini.merge_event_data", return_value={
+        with patch("selko.services.events.event_processing.merge_event_data", return_value={
             "title": "Updated Meeting",
             "start_datetime": "2026-03-15T14:00:00Z",
             "end_datetime": "2026-03-15T15:00:00Z",
@@ -663,7 +663,7 @@ class TestUpdateEventResync:
         mock_table.insert.return_value = mock_insert
         mock_insert.execute.return_value = MagicMock()
 
-        with patch("selko.services.events.gemini.merge_event_data", return_value={
+        with patch("selko.services.events.event_processing.merge_event_data", return_value={
             "title": "Updated Meeting",
             "start_datetime": "2026-03-15T14:00:00Z",
             "end_datetime": "2026-03-15T15:00:00Z",

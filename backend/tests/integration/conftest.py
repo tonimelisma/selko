@@ -328,13 +328,15 @@ def gemini_client(config):
     codebase uses LLMGateway for all LLM operations.
     """
     from selko.services.llm_gateway import LLMGateway
+    from selko.services.llm_provider import create_provider
 
     if not config.gemini_api_key:
         pytest.fail(
             "GEMINI_API_KEY not configured. "
             "Get your API key from https://aistudio.google.com/apikey"
         )
-    return LLMGateway(config)
+    provider = create_provider(config)
+    return LLMGateway(provider)
 
 
 @pytest.fixture
@@ -348,7 +350,7 @@ def mock_gemini_client():
     from unittest.mock import MagicMock
     from selko.api.schemas.calendar import (
         CalendarEvent,
-        GeminiEventsResponse,
+        EventExtractionResponse,
     )
     from selko.services.llm_gateway import LLMGateway
     from selko.services.llm_provider import LLMProvider, LLMResponse
@@ -377,7 +379,7 @@ def mock_gemini_client():
             )
 
         # Event extraction (returns structured JSON response)
-        mock_gemini_response = GeminiEventsResponse(
+        mock_llm_response = EventExtractionResponse(
             events_found=True,
             events=[
                 CalendarEvent(
@@ -392,7 +394,7 @@ def mock_gemini_client():
             ],
         )
         return LLMResponse(
-            text=mock_gemini_response.model_dump_json(),
+            text=mock_llm_response.model_dump_json(),
             prompt_tokens=500,
             completion_tokens=100,
         )
@@ -408,7 +410,7 @@ def mock_gemini_client():
 def mock_gemini_no_events():
     """Mock LLM Gateway that returns no events found."""
     from unittest.mock import MagicMock
-    from selko.api.schemas.calendar import GeminiEventsResponse
+    from selko.api.schemas.calendar import EventExtractionResponse
     from selko.services.llm_gateway import LLMGateway
     from selko.services.llm_provider import LLMProvider, LLMResponse
 
@@ -418,12 +420,12 @@ def mock_gemini_no_events():
     mock_provider.supports_vision = True
     mock_provider.supports_json_schema = True
 
-    mock_gemini_response = GeminiEventsResponse(
+    mock_llm_response = EventExtractionResponse(
         events_found=False,
         events=[],
     )
     mock_provider.generate.return_value = LLMResponse(
-        text=mock_gemini_response.model_dump_json(),
+        text=mock_llm_response.model_dump_json(),
         prompt_tokens=100,
         completion_tokens=20,
     )

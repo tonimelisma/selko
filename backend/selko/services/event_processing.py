@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 from supabase import Client
 
-from selko.api.schemas.calendar import CalendarEventExtraction, GeminiEventsResponse
+from selko.api.schemas.calendar import CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
 from selko.services.llm_gateway import LLMGateway, LLMGatewayError
 from selko.services.llm_logging import LLMOperationType
@@ -22,9 +22,6 @@ from selko.services.llm_provider import ContentPart, ImageContent
 
 logger = logging.getLogger(__name__)
 
-
-# Re-export for backwards compatibility
-GeminiError = LLMGatewayError
 
 
 def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
@@ -174,14 +171,14 @@ def extract_calendar_events(
         CalendarEventExtraction with structured event data.
 
     Raises:
-        GeminiError: If extraction fails after retries.
+        LLMGatewayError: If extraction fails after retries.
     """
     current_date = datetime.now().strftime("%Y-%m-%d")
     prompt = _build_prompt(email_metadata, current_date)
     content_parts = _build_content_parts(prompt, email_text, attachments, config=config)
 
     # Use JSON schema for structured output
-    json_schema = GeminiEventsResponse.model_json_schema()
+    json_schema = EventExtractionResponse.model_json_schema()
 
     try:
         response = gateway.call(
@@ -193,11 +190,11 @@ def extract_calendar_events(
 
         # Parse response JSON
         parsed = json.loads(response.text)
-        gemini_result = GeminiEventsResponse.model_validate(parsed)
+        llm_result = EventExtractionResponse.model_validate(parsed)
 
         logger.info(
-            f"Extraction complete: {len(gemini_result.events)} events found "
-            f"(events_found={gemini_result.events_found})"
+            f"Extraction complete: {len(llm_result.events)} events found "
+            f"(events_found={llm_result.events_found})"
         )
 
         # Wrap with email metadata to create full extraction result
@@ -206,15 +203,15 @@ def extract_calendar_events(
             email_date=email_metadata.get("date_sent", datetime.now().isoformat()),
             sender_name=email_metadata.get("from_name"),
             sender_email=email_metadata.get("from_email", ""),
-            events_found=gemini_result.events_found,
-            events=gemini_result.events,
+            events_found=llm_result.events_found,
+            events=llm_result.events,
         )
         return result
 
     except LLMGatewayError:
         raise
     except Exception as e:
-        raise GeminiError(f"Failed to extract events: {e}") from e
+        raise LLMGatewayError(f"Failed to extract events: {e}") from e
 
 
 def fetch_email_with_attachments(
@@ -234,7 +231,7 @@ def fetch_email_with_attachments(
         - attachments_list: List of dicts with keys: data (bytes), mime_type, filename
 
     Raises:
-        GeminiError: If email not found or attachment fetch fails.
+        LLMGatewayError: If email not found or attachment fetch fails.
     """
     try:
         # Fetch email record
@@ -247,7 +244,7 @@ def fetch_email_with_attachments(
         )
 
         if not email_result.data:
-            raise GeminiError(f"Email not found: {email_id}")
+            raise LLMGatewayError(f"Email not found: {email_id}")
 
         email = email_result.data
         logger.debug(f"Fetched email: {email.get('subject', '(no subject)')}")
@@ -323,10 +320,10 @@ def fetch_email_with_attachments(
         error_str = str(e)
         # Handle Supabase "no rows" error
         if "PGRST116" in error_str or "0 rows" in error_str:
-            raise GeminiError(f"Email not found: {email_id}") from e
+            raise LLMGatewayError(f"Email not found: {email_id}") from e
         if "Email not found" in error_str:
             raise
-        raise GeminiError(f"Failed to fetch email data: {e}") from e
+        raise LLMGatewayError(f"Failed to fetch email data: {e}") from e
 
 
 def compare_events(
@@ -349,7 +346,7 @@ def compare_events(
         Event ID of matched event, or None if no match found.
 
     Raises:
-        GeminiError: If comparison fails.
+        LLMGatewayError: If comparison fails.
     """
     if not candidate_events:
         return None
@@ -423,7 +420,7 @@ Return the matching Event ID (or null if no match) and brief reasoning.
     except LLMGatewayError:
         raise
     except Exception as e:
-        raise GeminiError(f"Event comparison failed: {e}") from e
+        raise LLMGatewayError(f"Event comparison failed: {e}") from e
 
 
 def merge_event_data(
@@ -448,7 +445,7 @@ def merge_event_data(
         Dict with merged event data.
 
     Raises:
-        GeminiError: If merge fails.
+        LLMGatewayError: If merge fails.
     """
     prompt = f"""You are merging calendar event data from multiple emails.
 
@@ -512,11 +509,11 @@ Output JSON with merged event data:
         return merged
 
     except json.JSONDecodeError as e:
-        raise GeminiError(f"Event merge failed: invalid JSON response: {e}") from e
+        raise LLMGatewayError(f"Event merge failed: invalid JSON response: {e}") from e
     except LLMGatewayError:
         raise
     except Exception as e:
-        raise GeminiError(f"Event merge failed: {e}") from e
+        raise LLMGatewayError(f"Event merge failed: {e}") from e
 
 
 def generate_source_attribution(sources: list[dict[str, Any]]) -> str:

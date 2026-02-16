@@ -1,4 +1,4 @@
-"""Calendar event Pydantic schemas for Gemini extraction."""
+"""Calendar event Pydantic schemas for LLM extraction."""
 
 from datetime import datetime
 from typing import Optional
@@ -27,31 +27,8 @@ class CalendarEvent(BaseModel):
     )
 
 
-class CalendarEventExtracted(BaseModel):
-    """Event extracted from email with source quote for audit trail.
-    
-    This is the new schema without confidence scores (LLMs hallucinate them).
-    """
-
-    title: str = Field(description="The event title or name")
-    start_datetime: Optional[datetime] = Field(
-        None, description="The event start date and time (ISO 8601)"
-    )
-    end_datetime: Optional[datetime] = Field(
-        None, description="The event end date and time (ISO 8601)"
-    )
-    all_day: bool = Field(False, description="Whether this is an all-day event")
-    location: Optional[str] = Field(None, description="The event location or venue")
-    description: str = Field(
-        description="Detailed description of the event with all relevant information"
-    )
-    source_quote: str = Field(
-        description="Verbatim quote from the email that describes this event (1-3 sentences)"
-    )
-
-
-class GeminiEventsResponse(BaseModel):
-    """Gemini's response containing only extracted events (no metadata)."""
+class EventExtractionResponse(BaseModel):
+    """LLM response containing extracted events."""
 
     events_found: bool = Field(
         description="Whether any calendar events were found in the email"
@@ -60,13 +37,13 @@ class GeminiEventsResponse(BaseModel):
         default_factory=list, description="List of extracted calendar events"
     )
 
-    model_config = {"json_schema_extra": {"title": "GeminiEventsResponse"}}
+    model_config = {"json_schema_extra": {"title": "EventExtractionResponse"}}
 
 
 class CalendarEventExtraction(BaseModel):
     """Complete extraction result from an email analysis.
     
-    This combines email metadata (that we already have) with Gemini's extracted events.
+    This combines email metadata (that we already have) with LLM extracted events.
     """
 
     email_message_id: str = Field(description="The Gmail message ID")

@@ -41,3 +41,8 @@ frontend/coverage/
 # Test results (generated, used by pre-commit hook)
 ios/TestResults.xcresult/
 frontend/test-results.json
+test-results/
+
+# MCP tool artifacts
+.playwright-mcp/
+.xcodebuildmcp/

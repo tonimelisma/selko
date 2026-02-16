@@ -4,11 +4,11 @@ Future enhancements for Selko, documented for prioritization.
 
 ## Google Photos Integration
 
-Scan Google Photos for event-related images (tickets, posters, flyers) and extract calendar event data using Gemini multimodal analysis. Requires `google_photos` OAuth scope and a new `event_sources.source_origin = 'google_photos'` workflow.
+Scan Google Photos for event-related images (tickets, posters, flyers) and extract calendar event data using LLM multimodal analysis. Requires `google_photos` OAuth scope and a new `event_sources.source_origin = 'google_photos'` workflow.
 
 ## Embedded Images in Emails
 
-Extract inline images from HTML email bodies before sending to Gemini. Currently only standalone attachments are processed. Embedded images (e.g., event flyers in newsletters) may contain event details.
+Extract inline images from HTML email bodies before sending to Gemini. Currently only standalone attachments are processed. Embedded images (e.g., event flyers in newsletters) may contain event details. (Note: linked image extraction from HTML body was added in PR #80.)
 
 ## Two-Way Calendar Sync
 
@@ -16,7 +16,7 @@ Detect drift between Selko events and Google Calendar. If a user edits an event 
 
 ## .ics File Direct Parsing
 
-Parse `.ics` (iCalendar) file attachments directly without LLM processing. These files contain structured event data that can be parsed deterministically, saving LLM tokens and improving accuracy.
+Parse `.ics` (iCalendar) file attachments directly without LLM. These files contain structured event data that can be parsed deterministically, saving LLM tokens and improving accuracy.
 
 ## Configurable Per-User Reprocess Window
 
@@ -24,4 +24,32 @@ Allow users to configure how far back to reprocess emails when un-ignoring a sen
 
 ## Attachment Text Extraction
 
-Pre-extract text from PDF attachments using OCR/text extraction before sending to Gemini. This could reduce token usage by sending extracted text instead of raw PDF bytes, while still falling back to multimodal analysis for image-heavy PDFs.
+Pre-extract text from PDF attachments using OCR/text extraction before sending to LLM. This could reduce token usage by sending extracted text instead of raw PDF bytes, while still falling back to multimodal analysis for image-heavy PDFs.
+
+## Refactor `process_email_for_events()`
+
+The 130-line function in `events.py` does sender validation, LLM extraction, deduplication, and DB updates all in one. Break into smaller, testable steps: `should_skip_sender()`, `extract_and_deduplicate_events()`, `save_new_events()`.
+
+## Standardize API Error Responses
+
+API routes use inconsistent error patterns: some return user-friendly messages, others pass raw exception text, others use generic strings. Create an `ErrorDetail` schema with `code`, `message`, `detail` fields and standardize all endpoints.
+
+## Add `body_text`/`body_html` to `EmailResponse` Schema
+
+Database stores `body_text` and `body_html` (migration `20260215000001`) and backend uses them for LLM processing, but `EmailResponse` schema omits them. API clients can't access full email bodies.
+
+## Add `scheduled_tasks.py` Unit Tests
+
+`scheduled_tasks.py` service lacks a dedicated unit test file — only tested indirectly via integration tests. Add unit tests for `enqueue_scheduled_task()`, `claim_scheduled_task()`, `complete_scheduled_task()`, `fail_scheduled_task()`.
+
+## Remove Unused Email Flag Fields from Schema
+
+`EmailResponse` includes boolean flags (`is_social`, `is_updates`, `is_forums`, `is_important`, `is_starred`, `is_unread`) that are computed by DB triggers but never queried or displayed. Remove from schema and optionally drop trigger computation.
+
+## Deprecate `gemini_model` Config Field
+
+`config.py` has `gemini_model` (backward compat) alongside `llm_model` + `llm_provider`. Plan migration: rename env var, add deprecation warning, update all deployments.
+
+## Document `llm_call_log` Table in Database Schema
+
+The `llm_call_log` table (migration `20260130000001`, updated by `20260215000002`) is not documented in `docs/database-schema.md`. Add table definition including the `provider` column.
