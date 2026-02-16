@@ -7,6 +7,7 @@ from uuid import UUID
 
 from supabase import Client
 
+from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.config import Config
 from selko.services import calendars, event_processing
 from selko.services.llm_gateway import LLMGateway
@@ -20,6 +21,117 @@ class EventsError(Exception):
     pass
 
 
+def mark_email_status(
+    supabase_client: Client,
+    email_id: str,
+    status: str,
+    error: Optional[str] = None,
+) -> None:
+    """Update email processing status.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        email_id: UUID of email to update.
+        status: New processing status (processing, processed, skipped, failed).
+        error: Optional error message (only used for failed status).
+    """
+    update_data: dict[str, Any] = {"processing_status": status}
+    if status == "processing":
+        update_data["processed_at"] = datetime.now().isoformat()
+    if error is not None:
+        update_data["processing_error"] = error
+    supabase_client.table("emails").update(update_data).eq("id", email_id).execute()
+
+
+def should_skip_email(
+    supabase_client: Client, user_id: str, sender_email: str
+) -> bool:
+    """Check if sender is ignored and email should be skipped.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        user_id: UUID of user.
+        sender_email: Email address of sender.
+
+    Returns:
+        True if sender has an "ignore" rule.
+    """
+    sender_rule = check_sender_rules(supabase_client, user_id, sender_email)
+    return bool(sender_rule and sender_rule.get("action") == "ignore")
+
+
+def normalize_event_data(event: CalendarEvent) -> dict[str, Any]:
+    """Convert a CalendarEvent dataclass to a DB-ready dict.
+
+    Args:
+        event: Extracted CalendarEvent from LLM.
+
+    Returns:
+        Dict with isoformat datetimes suitable for DB insertion.
+    """
+    return {
+        "title": event.title,
+        "start_datetime": event.start_datetime.isoformat() if event.start_datetime else None,
+        "end_datetime": event.end_datetime.isoformat() if event.end_datetime else None,
+        "all_day": getattr(event, 'all_day', False),
+        "location": event.location,
+        "description": event.description,
+        "source_quote": getattr(event, 'source_quote', ''),
+    }
+
+
+def save_extracted_events(
+    supabase_client: Client,
+    gateway: LLMGateway,
+    user_id: str,
+    email_id: str,
+    extraction: CalendarEventExtraction,
+) -> tuple[int, int]:
+    """Deduplicate and persist extracted events.
+
+    For each event in the extraction, normalizes the data, checks for
+    duplicates (local + GCal), and creates or updates accordingly.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        gateway: LLMGateway instance for LLM operations.
+        user_id: UUID of user.
+        email_id: UUID of source email.
+        extraction: LLM extraction result containing events.
+
+    Returns:
+        Tuple of (num_new, num_updated) event counts.
+    """
+    num_new = 0
+    num_updated = 0
+
+    for event in extraction.events:
+        event_data = normalize_event_data(event)
+
+        matched_event_id = find_matching_event(
+            supabase_client, gateway, user_id, event_data
+        )
+
+        if matched_event_id:
+            if matched_event_id.startswith("gcal:"):
+                gcal_id = matched_event_id[5:]
+                create_event_from_gcal_match(
+                    supabase_client, user_id, event_data, email_id, gcal_id
+                )
+                num_new += 1
+            else:
+                update_event(
+                    supabase_client, gateway, matched_event_id,
+                    event_data, email_id, "update"
+                )
+                num_updated += 1
+        else:
+            create_event(supabase_client, user_id, event_data, email_id)
+            num_new += 1
+
+    return num_new, num_updated
+
+
 def process_email_for_events(
     supabase_client: Client,
     gateway: LLMGateway,
@@ -29,12 +141,7 @@ def process_email_for_events(
 ) -> dict[str, Any]:
     """Main pipeline function to extract events from an email.
 
-    Steps:
-    1. Check if sender is ignored
-    2. Extract events from email using LLM
-    3. For each event, check if it matches existing events (dedup)
-    4. Create new or update existing events
-    5. Check sender rules for auto-approve
+    Orchestrates sender checking, LLM extraction, dedup, and persistence.
 
     Args:
         supabase_client: Authenticated Supabase client.
@@ -49,123 +156,45 @@ def process_email_for_events(
     Raises:
         EventsError: If processing fails.
     """
-    # Set gateway context for this email processing
     gateway.for_user(user_id).for_email(email_id)
 
     try:
-        # Mark email as processing
-        supabase_client.table("emails").update({
-            "processing_status": "processing",
-            "processed_at": datetime.now().isoformat()
-        }).eq("id", email_id).execute()
+        mark_email_status(supabase_client, email_id, "processing")
 
-        # Fetch email data
         email_metadata, email_text, attachments = event_processing.fetch_email_with_attachments(
             supabase_client, email_id
         )
-
         sender_email = email_metadata.get("from_email", "")
 
-        # Check if sender is ignored
-        sender_rule = check_sender_rules(supabase_client, user_id, sender_email)
-        if sender_rule and sender_rule.get("action") == "ignore":
+        if should_skip_email(supabase_client, user_id, sender_email):
             logger.info(f"Sender {sender_email} is ignored, skipping event extraction")
-            supabase_client.table("emails").update({
-                "processing_status": "skipped",
-            }).eq("id", email_id).execute()
+            mark_email_status(supabase_client, email_id, "skipped")
             return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
 
-        # Extract events using LLM via gateway
         extraction = event_processing.extract_calendar_events(
-            gateway,
-            email_text,
-            email_metadata,
-            attachments,
-            config=config,
+            gateway, email_text, email_metadata, attachments, config=config,
         )
 
         if not extraction.events_found or not extraction.events:
             logger.info("No events found in email")
-            supabase_client.table("emails").update({
-                "processing_status": "processed",
-            }).eq("id", email_id).execute()
+            mark_email_status(supabase_client, email_id, "processed")
             return {"num_events": 0, "num_new": 0, "num_updated": 0}
 
-        num_new = 0
-        num_updated = 0
+        num_new, num_updated = save_extracted_events(
+            supabase_client, gateway, user_id, email_id, extraction
+        )
 
-        # Process each extracted event
-        for event in extraction.events:
-            event_data = {
-                "title": event.title,
-                "start_datetime": event.start_datetime.isoformat() if event.start_datetime else None,
-                "end_datetime": event.end_datetime.isoformat() if event.end_datetime else None,
-                "all_day": getattr(event, 'all_day', False),
-                "location": event.location,
-                "description": event.description,
-                "source_quote": getattr(event, 'source_quote', ''),
-            }
-
-            # Find matching event (date-based + LLM comparison, including GCal)
-            matched_event_id = find_matching_event(
-                supabase_client,
-                gateway,
-                user_id,
-                event_data
-            )
-
-            if matched_event_id:
-                if matched_event_id.startswith("gcal:"):
-                    # Matched a Google Calendar event — adopt it
-                    gcal_id = matched_event_id[5:]
-                    create_event_from_gcal_match(
-                        supabase_client,
-                        user_id,
-                        event_data,
-                        email_id,
-                        gcal_id,
-                    )
-                    num_new += 1
-                else:
-                    # Update existing Selko event
-                    update_event(
-                        supabase_client,
-                        gateway,
-                        matched_event_id,
-                        event_data,
-                        email_id,
-                        "update"
-                    )
-                    num_updated += 1
-            else:
-                # Create new event
-                create_event(
-                    supabase_client,
-                    user_id,
-                    event_data,
-                    email_id
-                )
-                num_new += 1
-
-        # Mark email as processed
-        supabase_client.table("emails").update({
-            "processing_status": "processed",
-        }).eq("id", email_id).execute()
-
+        mark_email_status(supabase_client, email_id, "processed")
         logger.info(f"Processed email {email_id}: {num_new} new, {num_updated} updated events")
 
         return {
             "num_events": len(extraction.events),
             "num_new": num_new,
-            "num_updated": num_updated
+            "num_updated": num_updated,
         }
 
     except Exception as e:
-        # Mark email as failed
-        supabase_client.table("emails").update({
-            "processing_status": "failed",
-            "processing_error": str(e)
-        }).eq("id", email_id).execute()
+        mark_email_status(supabase_client, email_id, "failed", error=str(e))
         raise EventsError(f"Failed to process email for events: {e}") from e
 
 
