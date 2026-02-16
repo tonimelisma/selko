@@ -1,13 +1,23 @@
 #!/bin/bash
-# Poll CI checks for one or more PRs and merge when green.
+# Poll CI checks for one or more PRs, merge when green, and verify
+# the post-merge push workflow on main also passes.
+#
+# This is the ONE AND ONLY way to track CI. All docs point here.
 #
 # Usage:
 #   ./scripts/poll-and-merge.sh 71
 #   ./scripts/poll-and-merge.sh 71 72 73
 #
+# What it does:
+#   1. Polls PR checks until they pass
+#   2. Squash-merges the PR
+#   3. Finds the push workflow triggered by the merge on main
+#   4. Watches it until completion (including staging deploy + integration tests)
+#   5. Reports pass/fail for each PR
+#
 # Exit codes:
-#   0 = all PRs merged successfully
-#   1 = one or more PRs had CI failures
+#   0 = all PRs merged and post-merge workflows passed
+#   1 = one or more PRs had CI failures or post-merge workflow failed
 #   2 = timed out waiting for checks
 
 set -euo pipefail
@@ -24,6 +34,7 @@ START_TIME=$(date +%s)
 FAILED_PRS=()
 MERGED_PRS=()
 TIMED_OUT_PRS=()
+POST_MERGE_FAILED_PRS=()
 
 is_transient_error() {
     local stderr_output="$1"
@@ -32,6 +43,59 @@ is_transient_error() {
         return 0
     fi
     return 1
+}
+
+# Wait for the post-merge push workflow on main and report its result.
+# Args: $1 = PR number (for reporting), $2 = merge commit SHA
+wait_for_post_merge_workflow() {
+    local pr="$1"
+    local merge_sha="$2"
+
+    echo ""
+    echo "Waiting for post-merge push workflow on main (PR #${pr}, commit ${merge_sha:0:7})..."
+
+    # Give GitHub a few seconds to trigger the push workflow
+    sleep 5
+
+    # Find the workflow run triggered by this merge commit
+    local retries=0
+    local run_id=""
+    while [ $retries -lt 12 ]; do
+        # List recent push workflow runs on main, find one matching our commit
+        run_id=$(gh run list --branch main --event push --limit 5 --json databaseId,headSha,status \
+            -q ".[] | select(.headSha == \"${merge_sha}\") | .databaseId" 2>/dev/null | head -1)
+
+        if [ -n "$run_id" ]; then
+            break
+        fi
+
+        retries=$((retries + 1))
+        echo "  Waiting for push workflow to appear (attempt ${retries}/12)..."
+        sleep 10
+    done
+
+    if [ -z "$run_id" ]; then
+        echo "  WARNING: Could not find push workflow for commit ${merge_sha:0:7}."
+        echo "  Falling back to most recent push workflow on main..."
+        run_id=$(gh run list --branch main --event push --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null)
+    fi
+
+    if [ -z "$run_id" ]; then
+        echo "  ERROR: No push workflow found on main at all."
+        POST_MERGE_FAILED_PRS+=("$pr")
+        return
+    fi
+
+    echo "  Watching workflow run ${run_id}..."
+
+    # Use gh run watch to block until completion
+    if gh run watch "$run_id" --exit-status 2>/dev/null; then
+        echo "  Post-merge workflow PASSED for PR #${pr}."
+    else
+        echo "  Post-merge workflow FAILED for PR #${pr}!"
+        echo "  View logs: gh run view ${run_id} --log-failed"
+        POST_MERGE_FAILED_PRS+=("$pr")
+    fi
 }
 
 for pr in "$@"; do
@@ -57,18 +121,27 @@ for pr in "$@"; do
         if [ $ec -eq 0 ]; then
             # All checks passed — merge
             echo "CI passed for PR #${pr}, merging..."
+            merge_sha=""
             if gh pr merge "$pr" --squash --delete-branch; then
                 echo "PR #${pr} merged."
                 MERGED_PRS+=("$pr")
+                # Get the merge commit SHA for post-merge tracking
+                merge_sha=$(gh pr view "$pr" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null || true)
             else
                 # Merge might fail if already merged
                 if gh pr view "$pr" --json state -q '.state' 2>/dev/null | grep -qi "MERGED"; then
                     echo "PR #${pr} was already merged."
                     MERGED_PRS+=("$pr")
+                    merge_sha=$(gh pr view "$pr" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null || true)
                 else
                     echo "Failed to merge PR #${pr}."
                     FAILED_PRS+=("$pr")
                 fi
+            fi
+
+            # Track post-merge push workflow if we have a merge SHA
+            if [ -n "$merge_sha" ]; then
+                wait_for_post_merge_workflow "$pr" "$merge_sha"
             fi
             break
         elif [ $ec -eq 8 ]; then
@@ -100,14 +173,15 @@ for pr in "$@"; do
 done
 
 echo ""
-echo "Results:"
+echo "=== Results ==="
 [ ${#MERGED_PRS[@]} -gt 0 ] && echo "  Merged: ${MERGED_PRS[*]}"
-[ ${#FAILED_PRS[@]} -gt 0 ] && echo "  Failed: ${FAILED_PRS[*]}"
+[ ${#FAILED_PRS[@]} -gt 0 ] && echo "  PR CI failed: ${FAILED_PRS[*]}"
 [ ${#TIMED_OUT_PRS[@]} -gt 0 ] && echo "  Timed out: ${TIMED_OUT_PRS[*]}"
+[ ${#POST_MERGE_FAILED_PRS[@]} -gt 0 ] && echo "  Post-merge workflow failed: ${POST_MERGE_FAILED_PRS[*]}"
 
 if [ ${#TIMED_OUT_PRS[@]} -gt 0 ]; then
     exit 2
 fi
-if [ ${#FAILED_PRS[@]} -gt 0 ]; then
+if [ ${#FAILED_PRS[@]} -gt 0 ] || [ ${#POST_MERGE_FAILED_PRS[@]} -gt 0 ]; then
     exit 1
 fi

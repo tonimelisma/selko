@@ -150,61 +150,48 @@ git tag -a v1.0.0 -m "Release 1.0.0"
 git push origin v1.0.0
 ```
 
-## Manual Merge After CI
+## Merge Workflow
 
 ### Why Not Auto-Merge?
 
-Auto-merge requires branch protection rules, which require GitHub Pro for private repositories. This project uses manual merge after CI passes instead.
+Auto-merge requires branch protection rules, which require GitHub Pro for private repositories. This project uses `scripts/poll-and-merge.sh` instead.
 
-### Merge Workflow
+### Using poll-and-merge.sh
+
+**This is the one and only way to track CI.** Do not use manual `gh pr checks`, `gh run list`, `gh run watch`, or inline polling loops.
 
 ```bash
 # Step 1: Create the PR
 gh pr create --title "..." --body "..."
 
-# Step 2: Wait for CI to pass, then merge
-# Exit codes: 0=pass, 8=pending, other=failed
-# NOTE: Don't use "status" as variable name - it's read-only in zsh
-while true; do
-  gh pr checks
-  ec=$?
-  if [ $ec -eq 0 ]; then
-    gh pr merge --squash
-    break
-  elif [ $ec -ne 8 ]; then
-    echo "CI checks failed"
-    exit 1
-  fi
-  sleep 10
-done
+# Step 2: Poll CI, merge, and verify post-merge workflow — all in one command
+./scripts/poll-and-merge.sh <pr_number>
 ```
 
-The loop polls `gh pr checks` and handles three cases:
-- **Exit 0:** All checks passed → merge the PR and exit
-- **Exit 8:** Checks still pending → wait 10 seconds and retry
-- **Other exit codes:** Checks failed → report failure and exit with error
+The script handles the full lifecycle:
+1. **Polls PR checks** — retries every 10s, handles transient API errors with backoff
+2. **Merges** — squash merge with branch deletion
+3. **Tracks post-merge push workflow** — finds the workflow run triggered by the merge commit on main, watches it until completion (including staging deploy + integration tests)
+4. **Reports results** — exit 0 = all green, exit 1 = failure, exit 2 = timeout
 
-Required checks: `unit-tests`, `integration-tests-development`, `android-unit-tests`
+Required PR checks: `unit-tests`, `integration-tests-development`, `android-unit-tests`
 
 ### Troubleshooting
 
-If CI fails:
+If the script reports a failure:
 
 ```bash
-# Check CI status
-gh pr checks
-
 # View failed workflow logs
-gh run view --log-failed
+gh run view <run_id> --log-failed
 
-# After fixing, push and run the polling loop again
+# After fixing, push and re-run
 git push
-# (run the polling loop from Step 2 above)
+./scripts/poll-and-merge.sh <pr_number>
 ```
 
 Common issues:
-- **CI still pending:** The polling loop will wait (exit code 8 = pending)
-- **Merge conflicts:** Rebase your branch and force-push
+- **Merge conflicts:** Rebase your branch and force-push, then re-run the script
+- **Expired Google OAuth tokens** (`RefreshError: invalid_grant`): Ask user to run `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`, then re-run the post-merge workflow
 
 ### Email Notifications
 
