@@ -25,12 +25,6 @@ class EmailResponse(BaseModel):
     is_spam: bool = False
     is_trash: bool = False
     is_promotions: bool = False
-    is_social: bool = False
-    is_updates: bool = False
-    is_forums: bool = False
-    is_primary: bool = False
-    is_important: bool = False
-    is_starred: bool = False
     is_unread: bool = False
 
     created_at: datetime
