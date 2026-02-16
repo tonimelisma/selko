@@ -1,8 +1,8 @@
 {
   "name": "pdf_dance_performance_03",
   "category": "school",
-  "description": "Dance studio winter performance with PDF flyer containing venue and times",
-  "difficulty": "medium",
+  "description": "Dance studio winter performance with PDF flyer containing venue and per-class times",
+  "difficulty": "hard",
   "tags": ["school", "pdf", "performance", "extracurricular", "real-world"],
   "input": {
     "gmail_id": "eval-school-pdf-003",
@@ -18,11 +18,35 @@
   },
   "expected": {
     "events_found": true,
-    "event_count": 1,
+    "event_count": 4,
     "events": [
       {
-        "title": "Winter Dance Performance",
+        "title": "Winter Dance Performance - Pre-Ballet",
         "start_datetime": "2025-12-11T15:55:00",
+        "end_datetime": "2025-12-11T16:15:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Jazz Ballet Tap",
+        "start_datetime": "2025-12-11T16:40:00",
+        "end_datetime": "2025-12-11T17:00:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Jr Hip Hop",
+        "start_datetime": "2025-12-11T17:25:00",
+        "end_datetime": "2025-12-11T17:45:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Hip Hop",
+        "start_datetime": "2025-12-11T18:10:00",
         "end_datetime": "2025-12-11T18:30:00",
         "location": "111 N Wiget Lane, Walnut Creek, CA",
         "confidence_min": 0.7,
@@ -30,5 +54,5 @@
       }
     ]
   },
-  "notes": "Body has event date, PDF has specific times and venue. Tests cross-referencing body + PDF."
+  "notes": "LLM correctly extracts 4 individual class performances from the PDF schedule. Body has event date, PDF has per-class times and venue."
 }
