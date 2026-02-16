@@ -311,3 +311,5 @@ Running full eval suite (~50 fixtures):
 3. Add meaningful tags and difficulty level
 4. Include notes explaining what the fixture tests
 5. Run the fixture to verify it works: `uv run python -m backend.tests.eval.run_eval --fixture <name>`
+
+**Important:** Fixtures should always use local attachment files in `fixtures/attachments/`, never external URLs. All images referenced in `body_html` are cached at sync time in production, so eval fixtures must also use pre-downloaded local files to remain reproducible offline.

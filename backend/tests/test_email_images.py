@@ -1,5 +1,6 @@
-"""Tests for email HTML linked image extraction."""
+"""Tests for email HTML image extraction (linked and data URI)."""
 
+import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from selko.services.email_images import (
     _ImageSrcParser,
     _is_tracking_url,
+    extract_data_uri_images,
     extract_linked_images,
 )
 from selko.services.llm_provider import ImageContent
@@ -238,3 +240,88 @@ class TestExtractLinkedImages:
         result = extract_linked_images('<img src="https://example.com/photo.jpg">')
 
         assert len(result) == 0
+
+
+class TestExtractDataUriImages:
+    """Test data URI image extraction from HTML."""
+
+    def test_extracts_basic_data_uri(self):
+        """Extract a base64 data URI image from HTML."""
+        # Create a real base64 image (at least 100 bytes decoded)
+        fake_image = b"x" * 200
+        b64 = base64.b64encode(fake_image).decode()
+        html = f'<img src="data:image/png;base64,{b64}">'
+
+        result = extract_data_uri_images(html)
+
+        assert len(result) == 1
+        assert isinstance(result[0], ImageContent)
+        assert result[0].mime_type == "image/png"
+        assert result[0].data == fake_image
+
+    def test_extracts_multiple_data_uris(self):
+        """Extract multiple data URI images."""
+        fake_image = b"y" * 200
+        b64 = base64.b64encode(fake_image).decode()
+        html = (
+            f'<img src="data:image/jpeg;base64,{b64}">'
+            f'<img src="data:image/png;base64,{b64}">'
+        )
+
+        result = extract_data_uri_images(html)
+
+        assert len(result) == 2
+
+    def test_skips_tiny_data_uri(self):
+        """Skip data URIs that decode to fewer than 100 bytes."""
+        tiny_data = b"tiny"
+        b64 = base64.b64encode(tiny_data).decode()
+        html = f'<img src="data:image/gif;base64,{b64}">'
+
+        result = extract_data_uri_images(html)
+
+        assert len(result) == 0
+
+    def test_skips_non_image_data_uri(self):
+        """Skip data URIs with non-image MIME types."""
+        fake_data = b"x" * 200
+        b64 = base64.b64encode(fake_data).decode()
+        html = f'<img src="data:text/plain;base64,{b64}">'
+
+        result = extract_data_uri_images(html)
+
+        assert len(result) == 0
+
+    def test_empty_html_returns_empty(self):
+        """Empty HTML returns no images."""
+        result = extract_data_uri_images("")
+
+        assert result == []
+
+    def test_no_data_uris_returns_empty(self):
+        """HTML without data URIs returns empty."""
+        result = extract_data_uri_images('<img src="https://example.com/photo.jpg">')
+
+        assert result == []
+
+    def test_max_images_limit(self):
+        """Respects max_images parameter."""
+        fake_image = b"z" * 200
+        b64 = base64.b64encode(fake_image).decode()
+        html = "".join(
+            f'<img src="data:image/png;base64,{b64}">' for _ in range(5)
+        )
+
+        result = extract_data_uri_images(html, max_images=2)
+
+        assert len(result) == 2
+
+    def test_handles_single_quoted_src(self):
+        """Handle single-quoted src attributes."""
+        fake_image = b"x" * 200
+        b64 = base64.b64encode(fake_image).decode()
+        html = f"<img src='data:image/jpeg;base64,{b64}'>"
+
+        result = extract_data_uri_images(html)
+
+        assert len(result) == 1
