@@ -1,0 +1,25 @@
+{
+  "name": "pdf_financial_statement_05",
+  "category": "no_events",
+  "description": "HOA financial statement PDF with dates and amounts - negative test (no events)",
+  "difficulty": "medium",
+  "tags": ["no_events", "pdf", "financial", "negative-test", "real-world"],
+  "input": {
+    "gmail_id": "eval-noevents-pdf-005",
+    "thread_id": "thread-noevents-pdf-005",
+    "subject": "Your Walnut Heights Statement",
+    "from_email": "billing@walnutheightshoa.com",
+    "from_name": "Walnut Heights HOA",
+    "to_emails": ["homeowner@example.com"],
+    "date_sent": "2026-01-15T08:00:00Z",
+    "snippet": "Your most recent statement is attached",
+    "body_text": "Dear Homeowner,\n\nYour most recent statement is attached for your records.\n\nIf you have any questions about your account, please contact our billing department.\n\nThank you,\nWalnut Heights HOA Management",
+    "attachments": ["walnut_heights_statement.pdf"]
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "PDF has dates and dollar amounts but no calendar events. Tests that financial docs are not mistaken for events."
+}

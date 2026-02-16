@@ -19,6 +19,8 @@ dependencies = [
     "openai>=2.21.0",
     "pillow>=12.1.1",
     "icalendar>=6.0.0",
+    "pymupdf>=1.25.0",
+    "pillow-heif>=0.21.0",
 ]
 
 [project.optional-dependencies]

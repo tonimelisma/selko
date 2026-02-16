@@ -373,7 +373,7 @@ def mock_gemini_client():
         # Event merge (returns merged JSON)
         if "merging calendar event data" in prompt_text.lower():
             return LLMResponse(
-                text='{"title": "Merged Event", "start_datetime": "2026-03-01T14:00:00Z", "end_datetime": "2026-03-01T15:00:00Z", "all_day": false, "location": "Merged Location", "description": "Merged description"}',
+                text='{"title": "Merged Event", "start_datetime": "2026-03-01T14:00:00Z", "end_datetime": "2026-03-01T15:00:00Z", "all_day": false, "location": "Merged Location", "description": "Merged description", "importance": "action_required"}',
                 prompt_tokens=200,
                 completion_tokens=50,
             )

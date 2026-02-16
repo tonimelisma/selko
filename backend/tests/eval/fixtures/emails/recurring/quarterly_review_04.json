@@ -3,17 +3,24 @@
   "category": "recurring",
   "description": "Quarterly business review meeting",
   "difficulty": "easy",
-  "tags": ["recurring", "quarterly", "review", "business"],
+  "tags": [
+    "recurring",
+    "quarterly",
+    "review",
+    "business"
+  ],
   "input": {
     "gmail_id": "eval-recur-004",
     "thread_id": "thread-recur-004",
     "subject": "Q2 2026 Business Review - Calendar Hold",
     "from_email": "ops@company.com",
     "from_name": "Operations Team",
-    "to_emails": ["leadership@company.com"],
+    "to_emails": [
+      "leadership@company.com"
+    ],
     "date_sent": "2026-03-01T07:00:00Z",
     "snippet": "Please save the date for our Q2 business review...",
-    "body_text": "QUARTERLY BUSINESS REVIEW\n\n══════════════════════════════════════\nQ2 2026 BUSINESS REVIEW\n══════════════════════════════════════\n\nDear Leadership Team,\n\nPlease save the date for our Q2 2026 Quarterly Business Review.\n\nDate: Wednesday, April 15, 2026\nTime: 9:00 AM - 12:00 PM\nLocation: Executive Conference Room (HQ, 10th Floor)\n\n──────────────────────────────────────\nAGENDA (Tentative)\n──────────────────────────────────────\n\n9:00 AM - CEO Opening Remarks\n9:15 AM - Financial Review (CFO)\n9:45 AM - Sales & Revenue Update\n10:15 AM - Break\n10:30 AM - Product Roadmap\n11:00 AM - Operations Update\n11:30 AM - Strategic Initiatives\n12:00 PM - Closing & Next Steps\n\n──────────────────────────────────────\n\nPresentation materials due: April 8, 2026\nSubmit to: ops@company.com\n\nReminder: This is a recurring quarterly meeting.\nFuture dates: July 15, October 14, January 13\n\nPlease confirm your attendance.\n\nThank you,\nOperations Team",
+    "body_text": "QUARTERLY BUSINESS REVIEW\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nQ2 2026 BUSINESS REVIEW\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nDear Leadership Team,\n\nPlease save the date for our Q2 2026 Quarterly Business Review.\n\nDate: Wednesday, April 15, 2026\nTime: 9:00 AM - 12:00 PM\nLocation: Executive Conference Room (HQ, 10th Floor)\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAGENDA (Tentative)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n9:00 AM - CEO Opening Remarks\n9:15 AM - Financial Review (CFO)\n9:45 AM - Sales & Revenue Update\n10:15 AM - Break\n10:30 AM - Product Roadmap\n11:00 AM - Operations Update\n11:30 AM - Strategic Initiatives\n12:00 PM - Closing & Next Steps\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nPresentation materials due: April 8, 2026\nSubmit to: ops@company.com\n\nReminder: This is a recurring quarterly meeting.\nFuture dates: July 15, October 14, January 13\n\nPlease confirm your attendance.\n\nThank you,\nOperations Team",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "Executive Conference Room (HQ, 10th Floor)",
         "description": "Quarterly business review meeting",
         "is_all_day": false,
-        "confidence_min": 0.9
+        "confidence_min": 0.9,
+        "importance": "action_required"
       }
     ]
   },

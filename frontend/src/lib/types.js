@@ -62,6 +62,10 @@
  */
 
 /**
+ * @typedef {'action_required' | 'fyi'} EventImportance
+ */
+
+/**
  * @typedef {Object} CalendarEvent
  * @property {string} id - UUID
  * @property {string} user_id - UUID
@@ -72,6 +76,7 @@
  * @property {string} [location]
  * @property {string} [description]
  * @property {string} [source_attribution]
+ * @property {EventImportance} importance
  * @property {EventStatus} status
  * @property {string} [google_calendar_event_id]
  * @property {string} [synced_at]

@@ -228,7 +228,7 @@ class TestAttachmentLimitsDefaults:
             supabase_key="test-key",
         )
 
-        assert config.max_pdf_size_for_llm == 5 * 1024 * 1024
+        assert config.max_pdf_pages_for_llm == 10
         assert config.max_image_size_for_llm == 10 * 1024 * 1024
         assert config.max_other_size_for_llm == 20 * 1024 * 1024
 
@@ -238,12 +238,12 @@ class TestAttachmentLimitsDefaults:
             environment="development",
             supabase_url="http://localhost:54321",
             supabase_key="test-key",
-            max_pdf_size_for_llm=1024,
+            max_pdf_pages_for_llm=5,
             max_image_size_for_llm=2048,
             max_other_size_for_llm=4096,
         )
 
-        assert config.max_pdf_size_for_llm == 1024
+        assert config.max_pdf_pages_for_llm == 5
         assert config.max_image_size_for_llm == 2048
         assert config.max_other_size_for_llm == 4096
 
@@ -258,13 +258,13 @@ class TestAttachmentLimitsFromEnv:
         monkeypatch.setenv("ENVIRONMENT", "development")
         monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
         monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
-        monkeypatch.setenv("MAX_PDF_SIZE_FOR_LLM", "1000000")
+        monkeypatch.setenv("MAX_PDF_PAGES_FOR_LLM", "20")
         monkeypatch.setenv("MAX_IMAGE_SIZE_FOR_LLM", "2000000")
         monkeypatch.setenv("MAX_OTHER_SIZE_FOR_LLM", "3000000")
 
         config = load_config()
 
-        assert config.max_pdf_size_for_llm == 1000000
+        assert config.max_pdf_pages_for_llm == 20
         assert config.max_image_size_for_llm == 2000000
         assert config.max_other_size_for_llm == 3000000
 
@@ -275,12 +275,12 @@ class TestAttachmentLimitsFromEnv:
         monkeypatch.setenv("ENVIRONMENT", "development")
         monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
         monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
-        monkeypatch.delenv("MAX_PDF_SIZE_FOR_LLM", raising=False)
+        monkeypatch.delenv("MAX_PDF_PAGES_FOR_LLM", raising=False)
         monkeypatch.delenv("MAX_IMAGE_SIZE_FOR_LLM", raising=False)
         monkeypatch.delenv("MAX_OTHER_SIZE_FOR_LLM", raising=False)
 
         config = load_config()
 
-        assert config.max_pdf_size_for_llm == 5 * 1024 * 1024
+        assert config.max_pdf_pages_for_llm == 10
         assert config.max_image_size_for_llm == 10 * 1024 * 1024
         assert config.max_other_size_for_llm == 20 * 1024 * 1024

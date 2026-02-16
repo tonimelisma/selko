@@ -3,17 +3,24 @@
   "category": "school",
   "description": "School graduation ceremony details",
   "difficulty": "easy",
-  "tags": ["graduation", "ceremony", "school", "formal"],
+  "tags": [
+    "graduation",
+    "ceremony",
+    "school",
+    "formal"
+  ],
   "input": {
     "gmail_id": "eval-school-005",
     "thread_id": "thread-school-005",
     "subject": "8th Grade Graduation Ceremony - Save the Date",
     "from_email": "principal@middleschool.edu",
     "from_name": "Principal Martinez",
-    "to_emails": ["8thgrade-families@middleschool.edu"],
+    "to_emails": [
+      "8thgrade-families@middleschool.edu"
+    ],
     "date_sent": "2026-04-15T09:00:00Z",
     "snippet": "Congratulations to our 8th grade graduates...",
-    "body_text": "RIVERSIDE MIDDLE SCHOOL\n\n🎓 CLASS OF 2026 🎓\n\n═══════════════════════════════════════\nGRADUATION CEREMONY\n═══════════════════════════════════════\n\nDear 8th Grade Families,\n\nCongratulations! Your student is graduating from Riverside Middle School!\n\nPlease save the date for our graduation ceremony:\n\nDate: Friday, June 12, 2026\nTime: 6:00 PM\nLocation: Riverside Middle School Gymnasium\n          200 Riverside Drive\n          San Jose, CA 95123\n\nDoors open at 5:30 PM\nSeating is first-come, first-served\n\n───────────────────────────────────────\nCEREMONY PROGRAM\n───────────────────────────────────────\n\n6:00 PM - Processional\n6:15 PM - Welcome & National Anthem\n6:20 PM - Student Speeches\n6:40 PM - Guest Speaker\n7:00 PM - Diploma Presentation\n7:45 PM - Closing Remarks\n8:00 PM - Reception in Courtyard\n\n───────────────────────────────────────\n\nTickets: 4 tickets per family (distributed in May)\nDress code: Semi-formal attire\nParking: School parking lot and street parking\n\nProfessional photos available for purchase.\n\nMore details to follow.\n\nCongratulations again!\n\nPrincipal Martinez\nRiverside Middle School",
+    "body_text": "RIVERSIDE MIDDLE SCHOOL\n\n\ud83c\udf93 CLASS OF 2026 \ud83c\udf93\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nGRADUATION CEREMONY\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nDear 8th Grade Families,\n\nCongratulations! Your student is graduating from Riverside Middle School!\n\nPlease save the date for our graduation ceremony:\n\nDate: Friday, June 12, 2026\nTime: 6:00 PM\nLocation: Riverside Middle School Gymnasium\n          200 Riverside Drive\n          San Jose, CA 95123\n\nDoors open at 5:30 PM\nSeating is first-come, first-served\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nCEREMONY PROGRAM\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n6:00 PM - Processional\n6:15 PM - Welcome & National Anthem\n6:20 PM - Student Speeches\n6:40 PM - Guest Speaker\n7:00 PM - Diploma Presentation\n7:45 PM - Closing Remarks\n8:00 PM - Reception in Courtyard\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nTickets: 4 tickets per family (distributed in May)\nDress code: Semi-formal attire\nParking: School parking lot and street parking\n\nProfessional photos available for purchase.\n\nMore details to follow.\n\nCongratulations again!\n\nPrincipal Martinez\nRiverside Middle School",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
         "description": "8th grade graduation ceremony with reception to follow",
         "is_all_day": false,
-        "confidence_min": 0.9
+        "confidence_min": 0.9,
+        "importance": "action_required"
       }
     ]
   },

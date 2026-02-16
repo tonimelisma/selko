@@ -1,0 +1,34 @@
+{
+  "name": "pdf_dance_performance_03",
+  "category": "school",
+  "description": "Dance studio winter performance with PDF flyer containing venue and times",
+  "difficulty": "medium",
+  "tags": ["school", "pdf", "performance", "extracurricular", "real-world"],
+  "input": {
+    "gmail_id": "eval-school-pdf-003",
+    "thread_id": "thread-school-pdf-003",
+    "subject": "Winter Dance Performance - December 11th",
+    "from_email": "info@studio8dance.com",
+    "from_name": "Studio 8 Dance",
+    "to_emails": ["parent@example.com"],
+    "date_sent": "2025-12-01T14:00:00Z",
+    "snippet": "In-class winter performance December 11th",
+    "body_text": "Dear Dance Families,\n\nWe are excited to invite you to our Winter Dance Performance!\n\nDate: Thursday, December 11th, 2025\nIn-class performance for all students.\n\nPlease see the attached flyer for the full schedule and venue details.\n\nStudio 8 Dance\n3233 Danville Blvd, Alamo, CA 94507",
+    "attachments": ["winter_dance_performance.pdf"]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Winter Dance Performance",
+        "start_datetime": "2025-12-11T15:55:00",
+        "end_datetime": "2025-12-11T18:30:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Body has event date, PDF has specific times and venue. Tests cross-referencing body + PDF."
+}

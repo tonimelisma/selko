@@ -3,14 +3,21 @@
   "category": "appointments",
   "description": "Legal consultation appointment",
   "difficulty": "easy",
-  "tags": ["legal", "lawyer", "consultation", "professional"],
+  "tags": [
+    "legal",
+    "lawyer",
+    "consultation",
+    "professional"
+  ],
   "input": {
     "gmail_id": "eval-appt-005",
     "thread_id": "thread-appt-005",
     "subject": "Confirmed: Initial Consultation with Attorney Williams",
     "from_email": "scheduling@williamslaw.com",
     "from_name": "Williams Law Group",
-    "to_emails": ["recipient@example.com"],
+    "to_emails": [
+      "recipient@example.com"
+    ],
     "date_sent": "2026-02-01T10:45:00Z",
     "snippet": "This confirms your initial consultation...",
     "body_text": "Dear Mr. Johnson,\n\nThis confirms your initial consultation with Attorney Robert Williams.\n\nAppointment Details:\n--------------------\nDate: Wednesday, February 11, 2026\nTime: 11:00 AM - 12:00 PM\nType: Estate Planning Consultation\n\nLocation:\nWilliams Law Group\n100 California Street, 20th Floor\nSan Francisco, CA 94111\n\nParking: Validated parking available in building garage\n\nPlease bring the following documents:\n- Valid ID\n- Current will (if applicable)\n- List of assets and beneficiaries\n\nThe initial consultation fee is $250, payable at the time of appointment.\n\nIf you have any questions, please contact our office at (415) 555-4567.\n\nWe look forward to meeting with you.\n\nSincerely,\nWilliams Law Group\nScheduling Department",
@@ -27,7 +34,8 @@
         "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
         "description": "Estate planning consultation",
         "is_all_day": false,
-        "confidence_min": 0.9
+        "confidence_min": 0.9,
+        "importance": "action_required"
       }
     ]
   },

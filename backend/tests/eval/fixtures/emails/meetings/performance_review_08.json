@@ -3,14 +3,21 @@
   "category": "meetings",
   "description": "Annual performance review scheduling",
   "difficulty": "easy",
-  "tags": ["performance", "review", "hr", "annual"],
+  "tags": [
+    "performance",
+    "review",
+    "hr",
+    "annual"
+  ],
   "input": {
     "gmail_id": "eval-mtg-008",
     "thread_id": "thread-mtg-008",
     "subject": "Your Annual Performance Review - Scheduled",
     "from_email": "manager@company.com",
     "from_name": "Robert Chen",
-    "to_emails": ["employee@company.com"],
+    "to_emails": [
+      "employee@company.com"
+    ],
     "date_sent": "2026-02-20T09:15:00Z",
     "snippet": "Hi, I've scheduled your annual performance review...",
     "body_text": "Hi,\n\nI've scheduled your annual performance review. Please see the details below:\n\nPERFORMANCE REVIEW MEETING\n\nDate: Thursday, March 5, 2026\nTime: 3:00 PM - 4:00 PM\nLocation: My Office (Room 512)\n\nThis is your annual review covering the period from March 2025 to February 2026.\n\nBEFORE THE MEETING:\n- Complete your self-assessment in Workday by March 1st\n- Reflect on your key accomplishments\n- Think about areas for growth and development\n- Prepare questions about career progression\n\nDURING THE MEETING:\n- We'll discuss your performance and contributions\n- Review your goals and set new ones\n- Talk about development opportunities\n- Discuss compensation (if applicable)\n\nPlease let me know if you have any conflicts with this time.\n\nBest,\nRobert\n\n--\nRobert Chen\nEngineering Director",
@@ -27,7 +34,8 @@
         "location": "Room 512",
         "description": "Annual performance review meeting",
         "is_all_day": false,
-        "confidence_min": 0.9
+        "confidence_min": 0.9,
+        "importance": "action_required"
       }
     ]
   },
