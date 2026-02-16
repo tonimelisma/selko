@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""CLI for extracting calendar events from emails using Gemini.
+"""CLI for extracting calendar events from emails using LLM.
 
 Analyzes email content and attachments to extract structured calendar events.
+Preview-only — does not save events to the database.
 """
 
 import argparse
@@ -13,12 +14,12 @@ from pathlib import Path
 from selko.config import add_logging_arguments, load_config
 from selko.logging import setup_logging
 from selko.services.auth import AuthenticationError, get_authenticated_client
-from selko.services.gemini import (
-    GeminiError,
+from selko.services.event_processing import (
     extract_calendar_events,
     fetch_email_with_attachments,
-    get_gemini_client,
 )
+from selko.services.llm_gateway import LLMGateway, LLMGatewayError
+from selko.services.llm_provider import create_provider
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +37,11 @@ def load_fixture(fixture_path: Path) -> dict:
         return json.load(f)
 
 
-def extract_from_fixture(gemini_client, fixture_path: Path, output_json: bool = False):
+def extract_from_fixture(gateway, fixture_path: Path, output_json: bool = False):
     """Extract events from a test fixture file.
 
     Args:
-        gemini_client: Initialized Gemini client.
+        gateway: LLMGateway instance.
         fixture_path: Path to fixture JSON file.
         output_json: If True, output raw JSON instead of formatted text.
     """
@@ -60,7 +61,7 @@ def extract_from_fixture(gemini_client, fixture_path: Path, output_json: bool = 
 
     try:
         result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gateway,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
             attachments=input_data.get("attachments", []),
@@ -71,18 +72,18 @@ def extract_from_fixture(gemini_client, fixture_path: Path, output_json: bool = 
         else:
             print_extraction_result(result)
 
-    except GeminiError as e:
+    except LLMGatewayError as e:
         logger.error(f"Extraction failed: {e}")
         sys.exit(1)
 
 
 def extract_from_database(
-    gemini_client, supabase_client, email_id: str, output_json: bool = False
+    gateway, supabase_client, email_id: str, output_json: bool = False
 ):
     """Extract events from an email in the database.
 
     Args:
-        gemini_client: Initialized Gemini client.
+        gateway: LLMGateway instance.
         supabase_client: Authenticated Supabase client.
         email_id: UUID of email record.
         output_json: If True, output raw JSON instead of formatted text.
@@ -97,7 +98,7 @@ def extract_from_database(
         logger.info(f"Extracting events from: {email_metadata.get('subject', '(no subject)')}")
 
         result = extract_calendar_events(
-            client=gemini_client,
+            gateway=gateway,
             email_text=email_text,
             email_metadata=email_metadata,
             attachments=attachments,
@@ -108,18 +109,18 @@ def extract_from_database(
         else:
             print_extraction_result(result)
 
-    except GeminiError as e:
+    except LLMGatewayError as e:
         logger.error(f"Extraction failed: {e}")
         sys.exit(1)
 
 
 def extract_from_recent(
-    gemini_client, supabase_client, max_emails: int, output_json: bool = False
+    gateway, supabase_client, max_emails: int, output_json: bool = False
 ):
     """Extract events from recent emails in the database.
 
     Args:
-        gemini_client: Initialized Gemini client.
+        gateway: LLMGateway instance.
         supabase_client: Authenticated Supabase client.
         max_emails: Maximum number of emails to process.
         output_json: If True, output raw JSON instead of formatted text.
@@ -156,7 +157,7 @@ def extract_from_recent(
                 )
 
                 extraction_result = extract_calendar_events(
-                    client=gemini_client,
+                    gateway=gateway,
                     email_text=email_text,
                     email_metadata=email_metadata,
                     attachments=attachments,
@@ -169,7 +170,7 @@ def extract_from_recent(
 
                 total_events += len(extraction_result.events)
 
-            except GeminiError as e:
+            except LLMGatewayError as e:
                 logger.error(f"Failed to process email {email_id}: {e}")
                 continue
 
@@ -231,7 +232,7 @@ def print_extraction_result(result, compact: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Extract calendar events from emails using Gemini AI",
+        description="Extract calendar events from emails using LLM",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -251,7 +252,7 @@ Examples:
   ENVIRONMENT=staging uv run python -m cli.cli_extract_events --recent 10
 
 Note:
-  Requires GEMINI_API_KEY in .env file.
+  Requires GEMINI_API_KEY (or other LLM provider key) in .env file.
   For database operations, requires TEST_USER_EMAIL and TEST_USER_PASSWORD.
         """,
     )
@@ -288,11 +289,12 @@ Note:
     setup_logging(verbose=args.verbose, quiet=args.quiet)
     config = load_config()
 
-    # Initialize Gemini client
+    # Initialize LLM Gateway
     try:
-        gemini_client = get_gemini_client(config)
-    except GeminiError as e:
-        logger.error(f"Failed to initialize Gemini: {e}")
+        provider = create_provider(config)
+        gateway = LLMGateway(provider)
+    except LLMGatewayError as e:
+        logger.error(f"Failed to initialize LLM Gateway: {e}")
         sys.exit(1)
 
     # Handle fixture mode (no Supabase needed)
@@ -313,7 +315,7 @@ Note:
             logger.error(f"Fixture file not found: {fixture_path}")
             sys.exit(1)
 
-        extract_from_fixture(gemini_client, fixture_path, args.json)
+        extract_from_fixture(gateway, fixture_path, args.json)
         return
 
     # Handle database modes (require Supabase authentication)
@@ -324,9 +326,9 @@ Note:
         sys.exit(1)
 
     if args.email_id:
-        extract_from_database(gemini_client, supabase_client, args.email_id, args.json)
+        extract_from_database(gateway, supabase_client, args.email_id, args.json)
     elif args.recent:
-        extract_from_recent(gemini_client, supabase_client, args.recent, args.json)
+        extract_from_recent(gateway, supabase_client, args.recent, args.json)
 
 
 if __name__ == "__main__":

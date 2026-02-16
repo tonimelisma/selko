@@ -60,6 +60,8 @@ Synced Gmail messages with status-based worker claiming.
 | `is_spam` | boolean | Auto-computed from labels |
 | `is_trash` | boolean | Auto-computed from labels |
 | `is_promotions` | boolean | Auto-computed from labels |
+| `body_text` | text | Full plain-text body (used for LLM processing) |
+| `body_html` | text | Full HTML body (used for linked image extraction) |
 | `content_hash` | text | SHA-256 for deduplication |
 | `processing_status` | text | `pending`, `processing`, `processed`, `failed`, `skipped` |
 | `processing_error` | text | Last processing error message |

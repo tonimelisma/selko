@@ -1,22 +1,23 @@
 # LLM Evaluation Test Suite
 
-Manual evaluation framework for testing LLM (Gemini) email processing quality.
+Multi-model, multi-operation evaluation framework for testing LLM email processing quality across 6 providers.
 
 ## Overview
 
-This directory contains ~50 test email fixtures designed to evaluate the LLM's ability to:
-- Extract calendar events from various email types
-- Parse dates/times correctly (relative dates, timezones, all-day events)
-- Handle attachments (text files, ICS calendar files, agendas)
-- Process multi-email threads (updates, cancellations, reminders)
-- Correctly identify emails with no extractable events
+This directory contains ~97 test fixtures across 3 operations designed to evaluate:
+- **Extract**: Calendar event extraction from various email types (text, images, attachments)
+- **Compare**: Event deduplication — matching new events against existing candidates
+- **Merge**: Event data merging from multiple email sources
+- Date/time parsing (relative dates, timezones, all-day events)
+- Multi-email thread processing (updates, cancellations, reminders)
+- Correct identification of emails with no extractable events
 
 ## Directory Structure
 
 ```
 eval/
 ├── fixtures/
-│   ├── emails/              # Email fixtures organized by category
+│   ├── emails/              # Extract fixtures organized by category
 │   │   ├── invitations/     # Birthday, wedding, party invitations (10)
 │   │   ├── appointments/    # Medical, service, professional (8)
 │   │   ├── meetings/        # Business, 1:1, team meetings (8)
@@ -25,11 +26,16 @@ eval/
 │   │   ├── school/          # School events, sports (5)
 │   │   ├── recurring/       # Weekly/monthly recurring (4)
 │   │   └── no_events/       # Newsletters, receipts, etc. (10)
-│   ├── attachments/         # Text attachment fixtures
+│   ├── compare/             # Compare (dedup) fixtures
+│   ├── merge/               # Merge fixtures
+│   ├── attachments/         # Text/image attachment fixtures
 │   └── threads/             # Multi-email thread scenarios (4)
 ├── results/                 # Cached evaluation results (gitignored)
+│   ├── extract/             # Per-model extract results
+│   ├── compare/             # Per-model compare results
+│   └── merge/               # Per-model merge results
 ├── run_eval.py              # Evaluation runner CLI
-├── eval_config.py           # Configuration
+├── eval_config.py           # Configuration (models, thresholds, cost tiers)
 └── conftest.py              # Pytest fixtures
 ```
 
@@ -38,15 +44,26 @@ eval/
 ### Prerequisites
 
 ```bash
-# Ensure GEMINI_API_KEY is set
+# Set at least one provider API key (Gemini is the default)
 export GEMINI_API_KEY="your-api-key"
+
+# Or use a different provider
+export LLM_PROVIDER=moonshot
+export LLM_MODEL=kimi-k2.5
+export MOONSHOT_API_KEY="your-api-key"
 ```
 
 ### Run All Evaluations
 
 ```bash
-# Run all fixtures against real LLM (costs $$$)
+# Run all extract fixtures against default model (costs $$$)
 uv run python -m backend.tests.eval.run_eval --all
+
+# Run all 3 operations (extract + compare + merge)
+uv run python -m backend.tests.eval.run_eval --all --all-operations
+
+# Run all operations across all 6 default models
+uv run python -m backend.tests.eval.run_eval --all --all-operations --all-models
 
 # Run specific category
 uv run python -m backend.tests.eval.run_eval --category invitations
@@ -54,8 +71,18 @@ uv run python -m backend.tests.eval.run_eval --category invitations
 # Run single fixture
 uv run python -m backend.tests.eval.run_eval --fixture invitations/birthday_party_01
 
+# Run compare or merge only
+uv run python -m backend.tests.eval.run_eval --compare
+uv run python -m backend.tests.eval.run_eval --merge
+
 # Run thread scenarios only
 uv run python -m backend.tests.eval.run_eval --threads
+
+# Dry-run (validate fixtures without calling LLM)
+uv run python -m backend.tests.eval.run_eval --all --all-operations --dry-run
+
+# Generate markdown report from cached results
+uv run python -m backend.tests.eval.run_eval --report-md backend/tests/eval/REPORT.md
 ```
 
 ### Using Cached Results

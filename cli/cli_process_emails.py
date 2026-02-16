@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """CLI for processing emails into calendar events.
 
-Processes emails from the database using the Gemini LLM to extract
-calendar events, handling deduplication and saving to the events table.
+Processes emails from the database using LLM to extract calendar events,
+handling deduplication and saving to the events table.
 """
 
 import argparse
@@ -203,7 +203,9 @@ Note:
 
     # Create LLM Gateway (no quota service for CLI - that's done at API level)
     try:
-        gateway = LLMGateway(config, logging_service=logging_service, quota_service=None)
+        from selko.services.llm_provider import create_provider
+        provider = create_provider(config)
+        gateway = LLMGateway(provider, logging_service=logging_service, quota_service=None)
     except LLMGatewayError as e:
         logger.error(f"Failed to initialize LLM Gateway: {e}")
         sys.exit(1)

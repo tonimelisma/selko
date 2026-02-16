@@ -29,7 +29,7 @@ from .eval_config import (
     EMAIL_CATEGORIES,
     EMAILS_DIR,
     EVAL_MODELS,
-    GEMINI_PY_PATH,
+    EVENT_PROCESSING_PATH,
     MERGE_DIR,
     MERGE_SCORE_THRESHOLDS,
     RATING_SCALE,
@@ -48,11 +48,11 @@ def get_fixture_hash(fixture_path: Path) -> str:
 
 
 def get_code_hash() -> str:
-    """Short SHA256 hash of gemini.py (production prompts/schemas)."""
-    gemini_path = GEMINI_PY_PATH.resolve()
-    if not gemini_path.exists():
+    """Short SHA256 hash of event_processing.py (production prompts/schemas)."""
+    code_path = EVENT_PROCESSING_PATH.resolve()
+    if not code_path.exists():
         return "unknown"
-    return hashlib.sha256(gemini_path.read_bytes()).hexdigest()[:12]
+    return hashlib.sha256(code_path.read_bytes()).hexdigest()[:12]
 
 
 # ---------------------------------------------------------------------------
@@ -548,7 +548,7 @@ def run_extract_eval(
         }
 
     # Real run
-    from selko.services.gemini import extract_calendar_events
+    from selko.services.event_processing import extract_calendar_events
 
     gateway = _create_gateway(provider_name, model_name)
 
@@ -674,7 +674,7 @@ def run_compare_eval(
             "errors": validation_errors,
         }
 
-    from selko.services.gemini import compare_events
+    from selko.services.event_processing import compare_events
 
     gateway = _create_gateway(provider_name, model_name)
 
@@ -769,7 +769,7 @@ def run_merge_eval(
             "errors": validation_errors,
         }
 
-    from selko.services.gemini import merge_event_data
+    from selko.services.event_processing import merge_event_data
 
     gateway = _create_gateway(provider_name, model_name)
 
@@ -867,7 +867,7 @@ def run_thread_eval(
             "email_results": [],
         }
 
-    from selko.services.gemini import extract_calendar_events
+    from selko.services.event_processing import extract_calendar_events
 
     gateway = _create_gateway(DEFAULT_PROVIDER, DEFAULT_MODEL)
 

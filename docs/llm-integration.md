@@ -1,4 +1,25 @@
-# **Architectural Convergence: Implementing Multimodal Email Intelligence via Google Cloud Vertex AI and Gemini 2.5**
+# LLM Integration — Multi-Provider Architecture
+
+## Overview
+
+Selko uses a provider-agnostic LLM abstraction layer (`LLMProvider` + `LLMGateway`) that supports 6 providers and 21+ models. The default provider is Google Gemini, but any provider can be selected via `LLM_PROVIDER` and `LLM_MODEL` environment variables.
+
+### Supported Providers
+
+| Provider | Env Var Key | Default Model | Vision |
+|----------|-------------|---------------|--------|
+| Gemini | `GEMINI_API_KEY` | `gemini-3-flash-preview` | Yes |
+| Moonshot (Kimi) | `MOONSHOT_API_KEY` | `kimi-k2.5` | Yes |
+| ZAI (GLM) | `ZAI_API_KEY` | `glm-4.6v-flash` | Yes |
+| Qwen | `QWEN_API_KEY` | `qwen3-vl-flash` | Yes |
+| DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-chat` | No |
+| MiniMax | `MINIMAX_API_KEY` | `MiniMax-M2.5` | No |
+
+See `backend/selko/services/llm_provider.py` for the full `MODEL_REGISTRY` with pricing, context windows, and capabilities.
+
+## Gemini-Specific Setup (Default Provider)
+
+The following section covers Google Gemini setup, which is the default and most-tested provider.
 
 ## **Executive Summary**
 
