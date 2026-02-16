@@ -308,29 +308,41 @@ class TestResultPath:
         assert "some_nested_name" in str(path)
 
 
-class TestFixtureHasImages:
+class TestFixtureRequiresVision:
     """Test vision requirement detection."""
 
     def test_fixture_with_images(self):
-        from tests.eval.run_eval import fixture_has_images
+        from tests.eval.run_eval import fixture_requires_vision
 
         fixture = {"input": {"attachments": ["image1.png", "doc.txt"]}}
-        assert fixture_has_images(fixture) is True
+        assert fixture_requires_vision(fixture) is True
 
     def test_fixture_without_images(self):
-        from tests.eval.run_eval import fixture_has_images
+        from tests.eval.run_eval import fixture_requires_vision
 
         fixture = {"input": {"attachments": ["doc.txt", "data.csv"]}}
-        assert fixture_has_images(fixture) is False
+        assert fixture_requires_vision(fixture) is False
 
     def test_fixture_no_attachments(self):
-        from tests.eval.run_eval import fixture_has_images
+        from tests.eval.run_eval import fixture_requires_vision
 
         fixture = {"input": {"body_text": "hello"}}
-        assert fixture_has_images(fixture) is False
+        assert fixture_requires_vision(fixture) is False
 
     def test_fixture_jpg_attachment(self):
-        from tests.eval.run_eval import fixture_has_images
+        from tests.eval.run_eval import fixture_requires_vision
 
         fixture = {"input": {"attachments": ["photo.jpg"]}}
-        assert fixture_has_images(fixture) is True
+        assert fixture_requires_vision(fixture) is True
+
+    def test_fixture_pdf_requires_vision(self):
+        from tests.eval.run_eval import fixture_requires_vision
+
+        fixture = {"input": {"attachments": ["calendar.pdf"]}}
+        assert fixture_requires_vision(fixture) is True
+
+    def test_fixture_heic_requires_vision(self):
+        from tests.eval.run_eval import fixture_requires_vision
+
+        fixture = {"input": {"attachments": ["photo.heic"]}}
+        assert fixture_requires_vision(fixture) is True

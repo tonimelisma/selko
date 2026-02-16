@@ -3,18 +3,27 @@
   "category": "meetings",
   "description": "Meeting invitation with attached agenda document",
   "difficulty": "medium",
-  "tags": ["meeting", "attachment", "agenda", "txt"],
+  "tags": [
+    "meeting",
+    "attachment",
+    "agenda",
+    "txt"
+  ],
   "input": {
     "gmail_id": "eval-attach-001",
     "thread_id": "thread-attach-001",
     "subject": "Quarterly Planning Meeting - March 10th (Agenda Attached)",
     "from_email": "planning@company.com",
     "from_name": "Planning Team",
-    "to_emails": ["leadership@company.com"],
+    "to_emails": [
+      "leadership@company.com"
+    ],
     "date_sent": "2026-02-25T09:00:00Z",
     "snippet": "Please find attached the agenda for our upcoming quarterly planning meeting...",
     "body_text": "Dear Leadership Team,\n\nPlease find attached the agenda for our upcoming quarterly planning meeting.\n\nPlease review and come prepared to discuss your department's Q2 priorities.\n\nDetails in attachment.\n\nBest,\nPlanning Team",
-    "attachments": ["meeting_agenda.txt"]
+    "attachments": [
+      "meeting_agenda.txt"
+    ]
   },
   "expected": {
     "events_found": true,
@@ -27,7 +36,8 @@
         "location": "Main Conference Room, Building A",
         "description": "Quarterly planning meeting - Q1 review and Q2 planning",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

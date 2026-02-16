@@ -3,14 +3,21 @@
   "category": "appointments",
   "description": "Tax preparation meeting with CPA",
   "difficulty": "easy",
-  "tags": ["accountant", "tax", "cpa", "financial"],
+  "tags": [
+    "accountant",
+    "tax",
+    "cpa",
+    "financial"
+  ],
   "input": {
     "gmail_id": "eval-appt-006",
     "thread_id": "thread-appt-006",
     "subject": "Tax Preparation Meeting Scheduled",
     "from_email": "linda.park@parkaccounting.com",
     "from_name": "Linda Park, CPA",
-    "to_emails": ["recipient@example.com"],
+    "to_emails": [
+      "recipient@example.com"
+    ],
     "date_sent": "2026-02-15T09:30:00Z",
     "snippet": "Your tax preparation meeting has been scheduled...",
     "body_text": "Hi David,\n\nYour tax preparation meeting has been scheduled:\n\nMEETING DETAILS\n\nDate: Monday, March 2, 2026\nTime: 4:00 PM\nLocation: My office or Video Call (your choice)\n\nOffice Address:\nPark Accounting Services\n555 Main Street, Suite 300\nSunnyvale, CA 94086\n\nVideo Call: Zoom link will be sent if preferred\n\nPlease bring or upload in advance:\n- W-2s from all employers\n- 1099 forms\n- Last year's tax return\n- Mortgage interest statements (1098)\n- Property tax bills\n- Charitable donation receipts\n\nUpload documents securely: https://parkaccounting.com/upload\n\nLet me know if you have any questions before our meeting.\n\nBest,\nLinda Park, CPA\nPark Accounting Services\n(408) 555-8901",
@@ -27,7 +34,8 @@
         "location": "Park Accounting Services, 555 Main Street, Suite 300, Sunnyvale, CA 94086",
         "description": "Tax preparation meeting with accountant",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

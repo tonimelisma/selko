@@ -3,17 +3,24 @@
   "category": "invitations",
   "description": "Casual dinner party at friend's home",
   "difficulty": "easy",
-  "tags": ["dinner", "casual", "evening", "friends"],
+  "tags": [
+    "dinner",
+    "casual",
+    "evening",
+    "friends"
+  ],
   "input": {
     "gmail_id": "eval-inv-009",
     "thread_id": "thread-inv-009",
     "subject": "Dinner at our place next Saturday?",
     "from_email": "tom.baker@gmail.com",
     "from_name": "Tom Baker",
-    "to_emails": ["recipient@example.com"],
+    "to_emails": [
+      "recipient@example.com"
+    ],
     "date_sent": "2026-01-25T20:15:00Z",
     "snippet": "Hey! We'd love to have you over for dinner...",
-    "body_text": "Hey!\n\nWe'd love to have you over for dinner next Saturday, February 7th. Maria's making her famous lasagna!\n\nCome by around 6:30pm. We're at:\n321 Elm Street\nPortland, OR 97201\n\nBring your appetite (and maybe a bottle of wine if you're feeling generous 🍷)\n\nLet me know if you can make it!\n\nTom",
+    "body_text": "Hey!\n\nWe'd love to have you over for dinner next Saturday, February 7th. Maria's making her famous lasagna!\n\nCome by around 6:30pm. We're at:\n321 Elm Street\nPortland, OR 97201\n\nBring your appetite (and maybe a bottle of wine if you're feeling generous \ud83c\udf77)\n\nLet me know if you can make it!\n\nTom",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "321 Elm Street, Portland, OR 97201",
         "description": "Dinner party at Tom and Maria's",
         "is_all_day": false,
-        "confidence_min": 0.75
+        "confidence_min": 0.75,
+        "importance": "action_required"
       }
     ]
   },

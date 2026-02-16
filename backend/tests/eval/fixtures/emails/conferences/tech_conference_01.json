@@ -3,17 +3,24 @@
   "category": "conferences",
   "description": "Multi-day tech conference registration",
   "difficulty": "medium",
-  "tags": ["conference", "tech", "multi-day", "registration"],
+  "tags": [
+    "conference",
+    "tech",
+    "multi-day",
+    "registration"
+  ],
   "input": {
     "gmail_id": "eval-conf-001",
     "thread_id": "thread-conf-001",
     "subject": "Registration Confirmed: TechSummit 2026",
     "from_email": "registration@techsummit.com",
     "from_name": "TechSummit 2026",
-    "to_emails": ["attendee@example.com"],
+    "to_emails": [
+      "attendee@example.com"
+    ],
     "date_sent": "2026-02-01T08:00:00Z",
     "snippet": "Your registration for TechSummit 2026 is confirmed...",
-    "body_text": "TECHSUMMIT 2026\nThe Future of Technology\n\n═══════════════════════════════════════\nREGISTRATION CONFIRMED!\n═══════════════════════════════════════\n\nThank you for registering!\n\nAttendee: Alex Chen\nRegistration #: TS2026-78901\nPass Type: Full Conference (3-Day)\n\n───────────────────────────────────────\nEVENT DETAILS\n───────────────────────────────────────\n\nDates: March 18-20, 2026\nLocation: Moscone Center\n          747 Howard Street\n          San Francisco, CA 94103\n\nDAY 1 - Wednesday, March 18\n8:00 AM - Registration & Breakfast\n9:00 AM - Opening Keynote\n10:00 AM - 6:00 PM - Sessions\n7:00 PM - Welcome Reception\n\nDAY 2 - Thursday, March 19\n8:00 AM - 6:00 PM - Sessions & Workshops\n12:00 PM - Networking Lunch\n\nDAY 3 - Friday, March 20\n8:00 AM - 3:00 PM - Sessions\n3:00 PM - Closing Keynote\n4:00 PM - Conference Ends\n\n───────────────────────────────────────\n\nYour Badge:\nPick up at Registration Desk\nBring photo ID\n\nDownload the TechSummit app for schedule and networking!\n\nQuestions? support@techsummit.com\n\nSee you in San Francisco!",
+    "body_text": "TECHSUMMIT 2026\nThe Future of Technology\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nREGISTRATION CONFIRMED!\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nThank you for registering!\n\nAttendee: Alex Chen\nRegistration #: TS2026-78901\nPass Type: Full Conference (3-Day)\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nEVENT DETAILS\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nDates: March 18-20, 2026\nLocation: Moscone Center\n          747 Howard Street\n          San Francisco, CA 94103\n\nDAY 1 - Wednesday, March 18\n8:00 AM - Registration & Breakfast\n9:00 AM - Opening Keynote\n10:00 AM - 6:00 PM - Sessions\n7:00 PM - Welcome Reception\n\nDAY 2 - Thursday, March 19\n8:00 AM - 6:00 PM - Sessions & Workshops\n12:00 PM - Networking Lunch\n\nDAY 3 - Friday, March 20\n8:00 AM - 3:00 PM - Sessions\n3:00 PM - Closing Keynote\n4:00 PM - Conference Ends\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYour Badge:\nPick up at Registration Desk\nBring photo ID\n\nDownload the TechSummit app for schedule and networking!\n\nQuestions? support@techsummit.com\n\nSee you in San Francisco!",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
         "description": "3-day technology conference",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

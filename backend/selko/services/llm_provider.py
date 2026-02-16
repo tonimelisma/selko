@@ -321,19 +321,31 @@ class GeminiProvider(LLMProvider):
     ) -> LLMResponse:
         from google.genai import types
 
+        from selko.services.format_conversion import (
+            PROVIDER_ACCEPTED_FORMATS,
+            prepare_content_for_provider,
+        )
+
         # Convert ContentPart list to Gemini format
         gemini_parts: list[Any] = []
         for part in contents:
             if isinstance(part, str):
                 gemini_parts.append(part)
             elif isinstance(part, ImageContent):
-                resized = _resize_image_if_needed(part.data, part.mime_type)
-                gemini_parts.append({
-                    "inline_data": {
-                        "mime_type": part.mime_type,
-                        "data": base64.b64encode(resized).decode("utf-8"),
-                    }
-                })
+                # Run through format conversion gate
+                converted_list = prepare_content_for_provider(
+                    part.data, part.mime_type, self.provider_name,
+                )
+                for converted in converted_list:
+                    resized = _resize_image_if_needed(
+                        converted.data, converted.mime_type
+                    )
+                    gemini_parts.append({
+                        "inline_data": {
+                            "mime_type": converted.mime_type,
+                            "data": base64.b64encode(resized).decode("utf-8"),
+                        }
+                    })
 
         # Build generation config
         config_kwargs: dict[str, Any] = {}
@@ -396,24 +408,28 @@ class OpenAICompatibleProvider(LLMProvider):
         contents: list[ContentPart],
         json_schema: Optional[dict] = None,
     ) -> LLMResponse:
+        from selko.services.format_conversion import prepare_content_for_provider
+
         # Build message content parts
         message_content: list[dict[str, Any]] = []
         for part in contents:
             if isinstance(part, str):
                 message_content.append({"type": "text", "text": part})
             elif isinstance(part, ImageContent):
-                if not self.supports_vision:
-                    logger.warning(
-                        f"Skipping image for text-only provider {self.provider_name}"
+                # Run through format conversion gate
+                converted_list = prepare_content_for_provider(
+                    part.data, part.mime_type, self.provider_name,
+                )
+                for converted in converted_list:
+                    resized = _resize_image_if_needed(
+                        converted.data, converted.mime_type
                     )
-                    continue
-                resized = _resize_image_if_needed(part.data, part.mime_type)
-                b64 = base64.b64encode(resized).decode("utf-8")
-                data_url = f"data:{part.mime_type};base64,{b64}"
-                message_content.append({
-                    "type": "image_url",
-                    "image_url": {"url": data_url},
-                })
+                    b64 = base64.b64encode(resized).decode("utf-8")
+                    data_url = f"data:{converted.mime_type};base64,{b64}"
+                    message_content.append({
+                        "type": "image_url",
+                        "image_url": {"url": data_url},
+                    })
 
         messages = [{"role": "user", "content": message_content}]
 

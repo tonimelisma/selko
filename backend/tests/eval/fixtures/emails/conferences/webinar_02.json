@@ -3,17 +3,24 @@
   "category": "conferences",
   "description": "Online webinar registration confirmation",
   "difficulty": "easy",
-  "tags": ["webinar", "online", "virtual", "tech"],
+  "tags": [
+    "webinar",
+    "online",
+    "virtual",
+    "tech"
+  ],
   "input": {
     "gmail_id": "eval-conf-002",
     "thread_id": "thread-conf-002",
     "subject": "You're Registered: AI in Practice Webinar",
     "from_email": "webinars@learningplatform.com",
     "from_name": "Learning Platform",
-    "to_emails": ["participant@example.com"],
+    "to_emails": [
+      "participant@example.com"
+    ],
     "date_sent": "2026-02-08T15:30:00Z",
     "snippet": "You're registered for our upcoming webinar...",
-    "body_text": "LEARNING PLATFORM\n\n✅ Registration Confirmed!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nAI IN PRACTICE: FROM THEORY TO DEPLOYMENT\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDate: Tuesday, February 24, 2026\nTime: 1:00 PM - 2:30 PM EST\nFormat: Live Webinar (Zoom)\n\nPresenter: Dr. Maria Santos\n           Chief AI Officer, TechCorp\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nWHAT YOU'LL LEARN:\n• Real-world AI implementation strategies\n• Common pitfalls and how to avoid them\n• Case studies from Fortune 500 companies\n• Q&A with the presenter\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nJOIN LINK:\nhttps://zoom.us/j/webinar2026\nMeeting ID: 456 789 0123\nPasscode: AIWebinar\n\nAdd to Calendar: [ICS file attached]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nCan't make it live? A recording will be sent within 24 hours.\n\nQuestions? Reply to this email.\n\nHappy Learning!\nThe Learning Platform Team",
+    "body_text": "LEARNING PLATFORM\n\n\u2705 Registration Confirmed!\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nAI IN PRACTICE: FROM THEORY TO DEPLOYMENT\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nDate: Tuesday, February 24, 2026\nTime: 1:00 PM - 2:30 PM EST\nFormat: Live Webinar (Zoom)\n\nPresenter: Dr. Maria Santos\n           Chief AI Officer, TechCorp\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nWHAT YOU'LL LEARN:\n\u2022 Real-world AI implementation strategies\n\u2022 Common pitfalls and how to avoid them\n\u2022 Case studies from Fortune 500 companies\n\u2022 Q&A with the presenter\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nJOIN LINK:\nhttps://zoom.us/j/webinar2026\nMeeting ID: 456 789 0123\nPasscode: AIWebinar\n\nAdd to Calendar: [ICS file attached]\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nCan't make it live? A recording will be sent within 24 hours.\n\nQuestions? Reply to this email.\n\nHappy Learning!\nThe Learning Platform Team",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "Zoom",
         "description": "Webinar on AI implementation strategies with Dr. Maria Santos",
         "is_all_day": false,
-        "confidence_min": 0.9
+        "confidence_min": 0.9,
+        "importance": "action_required"
       }
     ]
   },

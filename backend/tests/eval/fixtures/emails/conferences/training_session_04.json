@@ -3,17 +3,24 @@
   "category": "conferences",
   "description": "Corporate training session invitation",
   "difficulty": "easy",
-  "tags": ["training", "corporate", "internal", "mandatory"],
+  "tags": [
+    "training",
+    "corporate",
+    "internal",
+    "mandatory"
+  ],
   "input": {
     "gmail_id": "eval-conf-004",
     "thread_id": "thread-conf-004",
     "subject": "[Required] Annual Compliance Training - Your Session",
     "from_email": "learning@company.com",
     "from_name": "Company Learning & Development",
-    "to_emails": ["employee@company.com"],
+    "to_emails": [
+      "employee@company.com"
+    ],
     "date_sent": "2026-02-16T07:00:00Z",
     "snippet": "You have been enrolled in the annual compliance training...",
-    "body_text": "COMPANY LEARNING & DEVELOPMENT\n\n══════════════════════════════════════\nREQUIRED TRAINING ENROLLMENT\n══════════════════════════════════════\n\nHello,\n\nYou have been enrolled in the Annual Compliance Training for 2026.\n\nThis training is MANDATORY for all employees and must be completed by March 31, 2026.\n\n──────────────────────────────────────\nYOUR SESSION\n──────────────────────────────────────\n\nSession: Annual Compliance Training\nDate: Wednesday, February 25, 2026\nTime: 10:00 AM - 12:00 PM\nLocation: Training Room A (Building 2, Floor 1)\n\nVirtual Option: Zoom link below\nhttps://company.zoom.us/j/compliance2026\nPasscode: comply26\n\n──────────────────────────────────────\nAGENDA\n──────────────────────────────────────\n• Code of Conduct Review\n• Data Privacy & Security\n• Anti-Harassment Policy\n• Ethics & Reporting\n• Quiz & Certification\n\n──────────────────────────────────────\n\nPlease add this to your calendar. If you cannot attend this session, you must reschedule by contacting learning@company.com.\n\nNon-completion may affect your performance review.\n\nThank you,\nLearning & Development Team",
+    "body_text": "COMPANY LEARNING & DEVELOPMENT\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nREQUIRED TRAINING ENROLLMENT\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nHello,\n\nYou have been enrolled in the Annual Compliance Training for 2026.\n\nThis training is MANDATORY for all employees and must be completed by March 31, 2026.\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nYOUR SESSION\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nSession: Annual Compliance Training\nDate: Wednesday, February 25, 2026\nTime: 10:00 AM - 12:00 PM\nLocation: Training Room A (Building 2, Floor 1)\n\nVirtual Option: Zoom link below\nhttps://company.zoom.us/j/compliance2026\nPasscode: comply26\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAGENDA\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u2022 Code of Conduct Review\n\u2022 Data Privacy & Security\n\u2022 Anti-Harassment Policy\n\u2022 Ethics & Reporting\n\u2022 Quiz & Certification\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nPlease add this to your calendar. If you cannot attend this session, you must reschedule by contacting learning@company.com.\n\nNon-completion may affect your performance review.\n\nThank you,\nLearning & Development Team",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "Training Room A (Building 2, Floor 1)",
         "description": "Mandatory annual compliance training session",
         "is_all_day": false,
-        "confidence_min": 0.9
+        "confidence_min": 0.9,
+        "importance": "action_required"
       }
     ]
   },

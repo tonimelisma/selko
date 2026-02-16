@@ -1,7 +1,7 @@
 """Calendar event Pydantic schemas for LLM extraction."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +24,14 @@ class CalendarEvent(BaseModel):
         description="Confidence score from 0.0 to 1.0 indicating extraction certainty",
         ge=0.0,
         le=1.0,
+    )
+    importance: Literal["action_required", "fyi"] = Field(
+        default="action_required",
+        description=(
+            "Event importance: 'action_required' for closures, schedule changes, "
+            "deadlines the user must act on; 'fyi' for themed days, birthdays, "
+            "informational items that are nice to know"
+        ),
     )
 
 

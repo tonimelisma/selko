@@ -77,6 +77,7 @@ def normalize_event_data(event: CalendarEvent) -> dict[str, Any]:
         "location": event.location,
         "description": event.description,
         "source_quote": getattr(event, 'source_quote', ''),
+        "importance": getattr(event, 'importance', 'action_required'),
     }
 
 
@@ -324,11 +325,12 @@ def create_event(
         "all_day": event_data.get("all_day", False),
         "location": event_data.get("location"),
         "description": event_data.get("description"),
+        "importance": event_data.get("importance", "action_required"),
         "status": "pending_review",
     }).execute()
-    
+
     event_id = event_result.data[0]["id"]
-    
+
     # Create event_source link
     supabase_client.table("event_sources").insert({
         "event_id": event_id,
@@ -381,6 +383,7 @@ def create_event_from_gcal_match(
         "all_day": event_data.get("all_day", False),
         "location": event_data.get("location"),
         "description": event_data.get("description"),
+        "importance": event_data.get("importance", "action_required"),
         "status": "pending_review",
         "google_calendar_event_id": gcal_event_id,
     }).execute()
@@ -469,6 +472,7 @@ def update_event(
         "all_day": merged_data.get("all_day", False),
         "location": merged_data.get("location"),
         "description": merged_data.get("description"),
+        "importance": merged_data.get("importance", "action_required"),
         "updated_at": datetime.now().isoformat(),
     }
 

@@ -49,8 +49,8 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 - Date Sent: {date_sent}
 
 **Instructions:**
-1. Analyze the email content and any attachments
-2. Extract ALL calendar events mentioned (meetings, appointments, parties, reminders, etc.)
+1. Analyze the email content and any attachments (including PDFs, images, calendars)
+2. Extract ALL calendar events mentioned — meetings, appointments, parties, closures, themed days, deadlines, etc.
 3. For each event, extract:
    - Title (clear, concise event name)
    - Start date/time (parse relative dates like "tomorrow", "next Friday")
@@ -58,23 +58,36 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
    - Location (physical address or virtual meeting link)
    - Full description with all relevant details
    - Confidence score (0.0-1.0) based on clarity of information
+   - Importance: "action_required" or "fyi" (see classification below)
+
+**Importance Classification:**
+- **action_required**: Events that require the recipient to take action or change their schedule.
+  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,
+  appointments, meetings, conferences, registration deadlines, performances to attend.
+- **fyi**: Informational events that are nice to know but don't require action.
+  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,
+  movie days, classroom activities the child participates in without parent involvement.
 
 **Important:**
 - If NO calendar events are found, set events_found=false and return empty events list
 - Parse dates carefully using the current date as context
 - Include uncertainty in confidence scores (e.g., 0.7 if time is ambiguous)
-- Be conservative - only extract clear event invitations, not casual mentions
+- Extract ALL events including themed days and informational items — classify them as "fyi"
+- For PDFs: extract events from calendar grids, flyers, and schedules
 
 **Examples of events:**
-✓ Birthday party invitations
-✓ Doctor/dentist appointments
-✓ Meeting requests
-✓ Conference registrations
-✓ Webinar invitations
+✓ Birthday party invitations (action_required)
+✓ Doctor/dentist appointments (action_required)
+✓ Meeting requests (action_required)
+✓ School closures (action_required)
+✓ Themed dress-up days at school (fyi)
+✓ Staff birthdays (fyi)
+✓ Conference registrations (action_required)
 
 **NOT events:**
-✗ Newsletter content
+✗ Newsletter content without specific dates
 ✗ Receipts or order confirmations (unless they mention an appointment)
+✗ Financial statements or account summaries
 ✗ General announcements without specific event details
 """
     return prompt
@@ -82,6 +95,9 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 
 def _get_attachment_size_limit(mime_type: str, config: Optional[Config] = None) -> int:
     """Get the size limit for an attachment based on its MIME type.
+
+    PDFs use page-based limits (handled separately via format_conversion),
+    so they have no byte-size limit here.
 
     Args:
         mime_type: MIME type of the attachment.
@@ -93,7 +109,8 @@ def _get_attachment_size_limit(mime_type: str, config: Optional[Config] = None) 
     if config is None:
         return 20 * 1024 * 1024  # fallback
     if mime_type == "application/pdf":
-        return config.max_pdf_size_for_llm
+        # PDFs use page-based limit via format_conversion, not byte size
+        return 100 * 1024 * 1024  # effectively unlimited (100 MB)
     elif mime_type.startswith("image/"):
         return config.max_image_size_for_llm
     else:
@@ -440,6 +457,7 @@ def merge_event_data(
 - All Day: {existing_event.get('all_day', False)}
 - Location: {existing_event.get('location', 'Not specified')}
 - Description: {existing_event.get('description', '')}
+- Importance: {existing_event.get('importance', 'action_required')}
 
 **New Information (source type: {source_type}):**
 - Title: {new_extraction.get('title')}
@@ -448,6 +466,7 @@ def merge_event_data(
 - All Day: {new_extraction.get('all_day', False)}
 - Location: {new_extraction.get('location', 'Not specified')}
 - Description: {new_extraction.get('description', '')}
+- Importance: {new_extraction.get('importance', 'action_required')}
 
 **Merge Rules:**
 1. If source_type is "cancellation", prefix title with "CANCELLED: " (if not already)
@@ -455,6 +474,7 @@ def merge_event_data(
 3. Combine descriptions, keeping all relevant info (append new info)
 4. Use most specific location (longer address usually better)
 5. Keep newer times if they differ (updates)
+6. For importance: keep the highest level (action_required > fyi)
 
 Output JSON with merged event data:
 {{
@@ -463,7 +483,8 @@ Output JSON with merged event data:
     "end_datetime": "...",
     "all_day": true/false,
     "location": "...",
-    "description": "..."
+    "description": "...",
+    "importance": "action_required" or "fyi"
 }}
 """
 
@@ -477,8 +498,9 @@ Output JSON with merged event data:
             "all_day": {"type": "boolean"},
             "location": {"type": ["string", "null"]},
             "description": {"type": ["string", "null"]},
+            "importance": {"type": "string", "enum": ["action_required", "fyi"]},
         },
-        "required": ["title", "start_datetime", "all_day"],
+        "required": ["title", "start_datetime", "all_day", "importance"],
     }
 
     try:

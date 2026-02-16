@@ -3,17 +3,24 @@
   "category": "travel",
   "description": "Flight booking confirmation with departure and arrival times",
   "difficulty": "medium",
-  "tags": ["flight", "airline", "booking", "multiple-events"],
+  "tags": [
+    "flight",
+    "airline",
+    "booking",
+    "multiple-events"
+  ],
   "input": {
     "gmail_id": "eval-travel-001",
     "thread_id": "thread-travel-001",
     "subject": "Your Flight Confirmation - United Airlines",
     "from_email": "reservations@united.com",
     "from_name": "United Airlines",
-    "to_emails": ["traveler@example.com"],
+    "to_emails": [
+      "traveler@example.com"
+    ],
     "date_sent": "2026-01-28T22:15:00Z",
     "snippet": "Thank you for booking with United Airlines...",
-    "body_text": "UNITED AIRLINES\nFlight Confirmation\n\nConfirmation Number: ABC123\nPassenger: JOHN DOE\n\n══════════════════════════════════════\nOUTBOUND FLIGHT\n══════════════════════════════════════\nFlight: UA 1234\nDate: Friday, March 13, 2026\n\nDepart: San Francisco (SFO)\n        8:00 AM\n\nArrive: New York JFK (JFK)\n        4:35 PM\n\nDuration: 5h 35m\nClass: Economy (K)\nSeat: 24A (Window)\n\n══════════════════════════════════════\nRETURN FLIGHT\n══════════════════════════════════════\nFlight: UA 5678\nDate: Sunday, March 15, 2026\n\nDepart: New York JFK (JFK)\n        7:00 PM\n\nArrive: San Francisco (SFO)\n        10:15 PM\n\nDuration: 6h 15m\nClass: Economy (K)\nSeat: 18F (Window)\n\n══════════════════════════════════════\n\nTicket Number: 0167891234567\nTotal Paid: $456.78\n\nManage your booking: united.com/mytrips\n\nThank you for flying United!",
+    "body_text": "UNITED AIRLINES\nFlight Confirmation\n\nConfirmation Number: ABC123\nPassenger: JOHN DOE\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nOUTBOUND FLIGHT\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nFlight: UA 1234\nDate: Friday, March 13, 2026\n\nDepart: San Francisco (SFO)\n        8:00 AM\n\nArrive: New York JFK (JFK)\n        4:35 PM\n\nDuration: 5h 35m\nClass: Economy (K)\nSeat: 24A (Window)\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nRETURN FLIGHT\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nFlight: UA 5678\nDate: Sunday, March 15, 2026\n\nDepart: New York JFK (JFK)\n        7:00 PM\n\nArrive: San Francisco (SFO)\n        10:15 PM\n\nDuration: 6h 15m\nClass: Economy (K)\nSeat: 18F (Window)\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nTicket Number: 0167891234567\nTotal Paid: $456.78\n\nManage your booking: united.com/mytrips\n\nThank you for flying United!",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "San Francisco International Airport (SFO)",
         "description": "United Airlines flight to New York JFK",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       },
       {
         "title": "Flight UA 5678 - JFK to SFO",
@@ -36,7 +44,8 @@
         "location": "John F. Kennedy International Airport (JFK)",
         "description": "United Airlines return flight to San Francisco",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

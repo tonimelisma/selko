@@ -3,17 +3,24 @@
   "category": "recurring",
   "description": "Monthly book club meeting invitation",
   "difficulty": "medium",
-  "tags": ["recurring", "monthly", "book-club", "social"],
+  "tags": [
+    "recurring",
+    "monthly",
+    "book-club",
+    "social"
+  ],
   "input": {
     "gmail_id": "eval-recur-002",
     "thread_id": "thread-recur-002",
     "subject": "Book Club - March Meeting Details",
     "from_email": "jessica.moore@gmail.com",
     "from_name": "Jessica Moore",
-    "to_emails": ["book-club@googlegroups.com"],
+    "to_emails": [
+      "book-club@googlegroups.com"
+    ],
     "date_sent": "2026-02-20T19:30:00Z",
     "snippet": "Hi everyone! Here are the details for our March meeting...",
-    "body_text": "Hi Book Club Friends!\n\nHere are the details for our March meeting:\n\n📚 MARCH BOOK CLUB 📚\n\nBook: \"The Midnight Library\" by Matt Haig\n\nDate: First Thursday of the month\n      Thursday, March 5, 2026\n\nTime: 7:00 PM - 9:00 PM\n\nHost: Jessica's house\n      42 Reading Lane\n      Cupertino, CA 95014\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAs always:\n- Bring your own beverage\n- I'll provide light snacks\n- No spoilers until discussion starts!\n\nRSVP by March 3rd so I know how many to expect.\n\nCan't wait to discuss this one - I've heard great things!\n\nJessica\n\nP.S. April's book pick will be voted on at the meeting.",
+    "body_text": "Hi Book Club Friends!\n\nHere are the details for our March meeting:\n\n\ud83d\udcda MARCH BOOK CLUB \ud83d\udcda\n\nBook: \"The Midnight Library\" by Matt Haig\n\nDate: First Thursday of the month\n      Thursday, March 5, 2026\n\nTime: 7:00 PM - 9:00 PM\n\nHost: Jessica's house\n      42 Reading Lane\n      Cupertino, CA 95014\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nAs always:\n- Bring your own beverage\n- I'll provide light snacks\n- No spoilers until discussion starts!\n\nRSVP by March 3rd so I know how many to expect.\n\nCan't wait to discuss this one - I've heard great things!\n\nJessica\n\nP.S. April's book pick will be voted on at the meeting.",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "42 Reading Lane, Cupertino, CA 95014",
         "description": "Monthly book club meeting to discuss The Midnight Library by Matt Haig",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

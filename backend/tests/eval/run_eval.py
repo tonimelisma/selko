@@ -274,10 +274,20 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
         "match": actual_confidence >= min_confidence,
     }
 
+    # Importance (soft match — tracked for reporting but doesn't affect overall_match)
+    expected_importance = expected.get("importance")
+    actual_importance = actual.get("importance")
+    if expected_importance is not None:
+        scores["importance"] = {
+            "expected": expected_importance,
+            "actual": actual_importance,
+            "match": expected_importance == actual_importance,
+        }
+
     scores["overall_match"] = all(
         s.get("match", True)
-        for s in scores.values()
-        if isinstance(s, dict)
+        for key, s in scores.items()
+        if isinstance(s, dict) and key != "importance"  # importance is soft
     )
 
     return scores
@@ -444,6 +454,12 @@ def _guess_mime_type(filename: str) -> str:
         "png": "image/png",
         "jpg": "image/jpeg",
         "jpeg": "image/jpeg",
+        "gif": "image/gif",
+        "webp": "image/webp",
+        "heic": "image/heic",
+        "bmp": "image/bmp",
+        "tiff": "image/tiff",
+        "tif": "image/tiff",
     }
     return mime_map.get(ext, "application/octet-stream")
 
@@ -469,12 +485,12 @@ def _create_gateway(provider_name: str, model_name: str):
 # Check if fixture requires vision
 # ---------------------------------------------------------------------------
 
-def fixture_has_images(fixture: dict) -> bool:
-    """Check if an extraction fixture has image attachments."""
+def fixture_requires_vision(fixture: dict) -> bool:
+    """Check if an extraction fixture has visual attachments (images, PDFs, HEIC)."""
     for att in fixture.get("input", {}).get("attachments", []):
         if isinstance(att, str):
             ext = att.lower().split(".")[-1] if "." in att else ""
-            if ext in ("png", "jpg", "jpeg", "gif", "webp"):
+            if ext in ("png", "jpg", "jpeg", "gif", "webp", "pdf", "heic", "bmp", "tiff"):
                 return True
     return False
 
@@ -515,7 +531,7 @@ def run_extract_eval(
                 name, content = load_attachment(att_ref)
                 attachments.append({
                     "filename": name,
-                    "content": content,
+                    "data": content,
                     "mime_type": _guess_mime_type(name),
                 })
             except FileNotFoundError as e:
@@ -1527,7 +1543,7 @@ def run_all_models(
                 filtered = []
                 for name, path in fixtures:
                     fixture = load_fixture(path)
-                    if not fixture_has_images(fixture):
+                    if not fixture_requires_vision(fixture):
                         filtered.append((name, path))
                     elif verbose:
                         print(f"  [skip] {name} (requires vision)")

@@ -643,15 +643,14 @@ class TestGenerateSourceAttribution:
 class TestBuildContentPartsPerTypeLimits:
     """Test per-type attachment size limits in _build_content_parts."""
 
-    def test_pdf_limit_skips_oversized(self):
-        """Test that a 6MB PDF is skipped with 5MB limit."""
+    def test_pdf_uses_page_limit_not_byte_limit(self):
+        """PDFs use page-based limits, so large PDFs pass byte-size check."""
         from selko.services.event_processing import _build_content_parts
 
         config = Config(
             environment="development",
             supabase_url="http://localhost:54321",
             supabase_key="test-key",
-            max_pdf_size_for_llm=5 * 1024 * 1024,
         )
 
         attachments = [{
@@ -660,9 +659,11 @@ class TestBuildContentPartsPerTypeLimits:
             "filename": "large.pdf",
         }]
 
+        # PDF is included because byte-size limit is effectively unlimited;
+        # page-based limits are applied later in format_conversion
         parts = _build_content_parts("prompt", "email body", attachments, config=config)
 
-        assert len(parts) == 2
+        assert len(parts) == 3
 
     def test_image_limit_skips_oversized(self):
         """Test that an 11MB image is skipped with 10MB limit."""
@@ -707,7 +708,6 @@ class TestBuildContentPartsPerTypeLimits:
             environment="development",
             supabase_url="http://localhost:54321",
             supabase_key="test-key",
-            max_pdf_size_for_llm=5 * 1024 * 1024,
         )
 
         attachments = [{

@@ -3,14 +3,21 @@
   "category": "meetings",
   "description": "Quarterly board meeting notice",
   "difficulty": "easy",
-  "tags": ["board", "quarterly", "formal", "executive"],
+  "tags": [
+    "board",
+    "quarterly",
+    "formal",
+    "executive"
+  ],
   "input": {
     "gmail_id": "eval-mtg-003",
     "thread_id": "thread-mtg-003",
     "subject": "Q1 2026 Board Meeting - March 15th",
     "from_email": "board-secretary@acmecorp.com",
     "from_name": "Board Secretary - ACME Corp",
-    "to_emails": ["board-members@acmecorp.com"],
+    "to_emails": [
+      "board-members@acmecorp.com"
+    ],
     "date_sent": "2026-02-15T09:00:00Z",
     "snippet": "Dear Board Members, This is the official notice...",
     "body_text": "Dear Board Members,\n\nThis is the official notice for the Q1 2026 Board of Directors Meeting.\n\nMEETING DETAILS\n===============\nDate: Sunday, March 15, 2026\nTime: 10:00 AM - 4:00 PM EST\nLocation: ACME Corp Headquarters\n         Executive Boardroom, 25th Floor\n         200 Park Avenue\n         New York, NY 10166\n\nVIDEO CONFERENCE OPTION\nZoom Meeting ID: 987 654 3210\nPasscode: Board2026\n\nTENTATIVE AGENDA\n----------------\n10:00 AM - Call to Order\n10:15 AM - CEO Report\n11:00 AM - CFO Financial Review\n12:00 PM - Working Lunch\n1:00 PM - Strategic Initiatives\n2:30 PM - Committee Reports\n3:30 PM - New Business\n4:00 PM - Adjournment\n\nBoard materials will be distributed one week prior to the meeting.\n\nPlease confirm your attendance by March 1st.\n\nRespectfully,\nMargaret Chen\nCorporate Secretary",
@@ -27,7 +34,8 @@
         "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
         "description": "Quarterly board of directors meeting",
         "is_all_day": false,
-        "confidence_min": 0.9
+        "confidence_min": 0.9,
+        "importance": "action_required"
       }
     ]
   },

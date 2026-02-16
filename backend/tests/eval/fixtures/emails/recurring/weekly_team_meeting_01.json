@@ -3,17 +3,24 @@
   "category": "recurring",
   "description": "Weekly recurring team meeting setup",
   "difficulty": "medium",
-  "tags": ["recurring", "weekly", "meeting", "team"],
+  "tags": [
+    "recurring",
+    "weekly",
+    "meeting",
+    "team"
+  ],
   "input": {
     "gmail_id": "eval-recur-001",
     "thread_id": "thread-recur-001",
     "subject": "New Recurring Meeting: Weekly Team Sync",
     "from_email": "calendar@company.com",
     "from_name": "Company Calendar",
-    "to_emails": ["team@company.com"],
+    "to_emails": [
+      "team@company.com"
+    ],
     "date_sent": "2026-02-02T08:00:00Z",
     "snippet": "You've been added to a recurring meeting...",
-    "body_text": "You've been added to a recurring meeting.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nWeekly Team Sync\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nOrganizer: Sarah Kim (sarah.kim@company.com)\n\nWhen: Every Monday\n      10:00 AM - 10:30 AM\n      Starting February 9, 2026\n\nWhere: Conference Room A / Zoom\n       https://zoom.us/j/teamsync2026\n\nRecurs: Weekly on Mondays\nEnds: Never\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDescription:\nWeekly sync to discuss:\n- Project updates\n- Blockers\n- Upcoming priorities\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAccept | Decline | Tentative\n\n[View in Calendar]",
+    "body_text": "You've been added to a recurring meeting.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nWeekly Team Sync\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nOrganizer: Sarah Kim (sarah.kim@company.com)\n\nWhen: Every Monday\n      10:00 AM - 10:30 AM\n      Starting February 9, 2026\n\nWhere: Conference Room A / Zoom\n       https://zoom.us/j/teamsync2026\n\nRecurs: Weekly on Mondays\nEnds: Never\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nDescription:\nWeekly sync to discuss:\n- Project updates\n- Blockers\n- Upcoming priorities\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nAccept | Decline | Tentative\n\n[View in Calendar]",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "Conference Room A",
         "description": "Weekly team sync meeting",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

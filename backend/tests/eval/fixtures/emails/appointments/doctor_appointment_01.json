@@ -3,14 +3,20 @@
   "category": "appointments",
   "description": "Standard doctor appointment confirmation",
   "difficulty": "easy",
-  "tags": ["medical", "doctor", "confirmation"],
+  "tags": [
+    "medical",
+    "doctor",
+    "confirmation"
+  ],
   "input": {
     "gmail_id": "eval-appt-001",
     "thread_id": "thread-appt-001",
     "subject": "Appointment Confirmation - Dr. Jennifer Smith",
     "from_email": "appointments@valleymedical.com",
     "from_name": "Valley Medical Center",
-    "to_emails": ["recipient@example.com"],
+    "to_emails": [
+      "recipient@example.com"
+    ],
     "date_sent": "2026-01-22T09:00:00Z",
     "snippet": "Your appointment has been confirmed...",
     "body_text": "Dear Patient,\n\nYour appointment has been confirmed:\n\nProvider: Dr. Jennifer Smith, MD\nSpecialty: Internal Medicine\nDate: Tuesday, February 3, 2026\nTime: 10:30 AM\nDuration: 30 minutes\n\nLocation:\nValley Medical Center\n1500 Medical Plaza Drive, Suite 200\nSan Jose, CA 95128\n\nPlease arrive 15 minutes early to complete paperwork.\nBring your insurance card and a valid photo ID.\n\nTo reschedule or cancel, please call (408) 555-1234\nat least 24 hours in advance.\n\nThank you for choosing Valley Medical Center.\n\nBest regards,\nValley Medical Center Scheduling Team",
@@ -27,7 +33,8 @@
         "location": "Valley Medical Center, 1500 Medical Plaza Drive, Suite 200, San Jose, CA 95128",
         "description": "Internal Medicine appointment with Dr. Jennifer Smith",
         "is_all_day": false,
-        "confidence_min": 0.9
+        "confidence_min": 0.9,
+        "importance": "action_required"
       }
     ]
   },

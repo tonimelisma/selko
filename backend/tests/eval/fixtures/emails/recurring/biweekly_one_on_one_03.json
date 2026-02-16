@@ -3,17 +3,24 @@
   "category": "recurring",
   "description": "Bi-weekly recurring 1:1 meeting",
   "difficulty": "medium",
-  "tags": ["recurring", "biweekly", "1:1", "manager"],
+  "tags": [
+    "recurring",
+    "biweekly",
+    "1:1",
+    "manager"
+  ],
   "input": {
     "gmail_id": "eval-recur-003",
     "thread_id": "thread-recur-003",
     "subject": "Updated: 1:1 Moving to Bi-Weekly",
     "from_email": "mark.chen@company.com",
     "from_name": "Mark Chen",
-    "to_emails": ["employee@company.com"],
+    "to_emails": [
+      "employee@company.com"
+    ],
     "date_sent": "2026-02-05T11:15:00Z",
     "snippet": "Hi, as we discussed, let's move our 1:1 to bi-weekly...",
-    "body_text": "Hi,\n\nAs we discussed, let's move our 1:1 meetings to bi-weekly (every other week) starting this month.\n\nNEW SCHEDULE:\n─────────────────────────────────\n1:1 with Mark\n\nFrequency: Every other Friday\nTime: 3:00 PM - 3:30 PM\nLocation: Mark's office or Zoom\n\nFirst meeting: Friday, February 13, 2026\nThen: Feb 27, March 13, March 27, etc.\n─────────────────────────────────\n\nZoom link (same as before):\nhttps://zoom.us/j/markchen1on1\n\nAgenda doc:\nhttps://docs.google.com/d/xxx\n\nI've updated the calendar invite. Please accept when you receive it.\n\nLet me know if you have any questions.\n\nMark\n\n--\nMark Chen\nSenior Engineering Manager",
+    "body_text": "Hi,\n\nAs we discussed, let's move our 1:1 meetings to bi-weekly (every other week) starting this month.\n\nNEW SCHEDULE:\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n1:1 with Mark\n\nFrequency: Every other Friday\nTime: 3:00 PM - 3:30 PM\nLocation: Mark's office or Zoom\n\nFirst meeting: Friday, February 13, 2026\nThen: Feb 27, March 13, March 27, etc.\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nZoom link (same as before):\nhttps://zoom.us/j/markchen1on1\n\nAgenda doc:\nhttps://docs.google.com/d/xxx\n\nI've updated the calendar invite. Please accept when you receive it.\n\nLet me know if you have any questions.\n\nMark\n\n--\nMark Chen\nSenior Engineering Manager",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "Mark's office or Zoom",
         "description": "Bi-weekly 1:1 meeting",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

@@ -3,17 +3,25 @@
   "category": "school",
   "description": "School play/performance announcement",
   "difficulty": "medium",
-  "tags": ["school", "play", "performance", "arts", "multiple-shows"],
+  "tags": [
+    "school",
+    "play",
+    "performance",
+    "arts",
+    "multiple-shows"
+  ],
   "input": {
     "gmail_id": "eval-school-002",
     "thread_id": "thread-school-002",
     "subject": "Invitation: Spring Musical - 'The Wizard of Oz'",
     "from_email": "drama@woodsidehigh.edu",
     "from_name": "Woodside High Drama Department",
-    "to_emails": ["families@woodsidehigh.edu"],
+    "to_emails": [
+      "families@woodsidehigh.edu"
+    ],
     "date_sent": "2026-03-01T10:00:00Z",
     "snippet": "You're invited to the Woodside High Spring Musical...",
-    "body_text": "WOODSIDE HIGH SCHOOL\nDRAMA DEPARTMENT PRESENTS\n\n🎭 THE WIZARD OF OZ 🎭\n\n═══════════════════════════════════════\n\nDear Woodside Families,\n\nYou are cordially invited to our Spring Musical production!\n\nSHOW DATES:\n\nFriday, April 3, 2026 - 7:00 PM\nSaturday, April 4, 2026 - 2:00 PM (Matinee)\nSaturday, April 4, 2026 - 7:00 PM\nSunday, April 5, 2026 - 2:00 PM (Matinee)\n\nLOCATION:\nWoodside High Auditorium\n150 Education Drive\nWoodside, CA 94062\n\nTICKETS:\nAdults: $15\nStudents/Seniors: $10\nChildren under 5: Free\n\nPurchase online: woodsidedrama.org/tickets\nOr at the door (cash/card accepted)\n\n═══════════════════════════════════════\n\nThis production features over 50 talented students!\n\nDoors open 30 minutes before showtime.\nConcessions available at intermission.\n\nWe hope to see you there!\n\nMr. Roberts\nDrama Department Director",
+    "body_text": "WOODSIDE HIGH SCHOOL\nDRAMA DEPARTMENT PRESENTS\n\n\ud83c\udfad THE WIZARD OF OZ \ud83c\udfad\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nDear Woodside Families,\n\nYou are cordially invited to our Spring Musical production!\n\nSHOW DATES:\n\nFriday, April 3, 2026 - 7:00 PM\nSaturday, April 4, 2026 - 2:00 PM (Matinee)\nSaturday, April 4, 2026 - 7:00 PM\nSunday, April 5, 2026 - 2:00 PM (Matinee)\n\nLOCATION:\nWoodside High Auditorium\n150 Education Drive\nWoodside, CA 94062\n\nTICKETS:\nAdults: $15\nStudents/Seniors: $10\nChildren under 5: Free\n\nPurchase online: woodsidedrama.org/tickets\nOr at the door (cash/card accepted)\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nThis production features over 50 talented students!\n\nDoors open 30 minutes before showtime.\nConcessions available at intermission.\n\nWe hope to see you there!\n\nMr. Roberts\nDrama Department Director",
     "attachments": []
   },
   "expected": {
@@ -27,7 +35,8 @@
         "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
         "description": "Woodside High School spring musical performance",
         "is_all_day": false,
-        "confidence_min": 0.8
+        "confidence_min": 0.8,
+        "importance": "action_required"
       },
       {
         "title": "The Wizard of Oz - School Musical (Matinee)",
@@ -36,7 +45,8 @@
         "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
         "description": "Woodside High School spring musical - Saturday matinee",
         "is_all_day": false,
-        "confidence_min": 0.8
+        "confidence_min": 0.8,
+        "importance": "action_required"
       },
       {
         "title": "The Wizard of Oz - School Musical",
@@ -45,7 +55,8 @@
         "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
         "description": "Woodside High School spring musical - Saturday evening",
         "is_all_day": false,
-        "confidence_min": 0.8
+        "confidence_min": 0.8,
+        "importance": "action_required"
       },
       {
         "title": "The Wizard of Oz - School Musical (Matinee)",
@@ -54,7 +65,8 @@
         "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
         "description": "Woodside High School spring musical - Sunday matinee",
         "is_all_day": false,
-        "confidence_min": 0.8
+        "confidence_min": 0.8,
+        "importance": "action_required"
       }
     ]
   },

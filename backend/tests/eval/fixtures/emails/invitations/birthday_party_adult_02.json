@@ -3,17 +3,24 @@
   "category": "invitations",
   "description": "Adult milestone birthday party at restaurant",
   "difficulty": "easy",
-  "tags": ["birthday", "adult", "restaurant", "evening"],
+  "tags": [
+    "birthday",
+    "adult",
+    "restaurant",
+    "evening"
+  ],
   "input": {
     "gmail_id": "eval-inv-002",
     "thread_id": "thread-inv-002",
-    "subject": "🎉 Surprise! You're Invited to Mark's 40th Birthday Bash!",
+    "subject": "\ud83c\udf89 Surprise! You're Invited to Mark's 40th Birthday Bash!",
     "from_email": "jennifer.wilson@outlook.com",
     "from_name": "Jennifer Wilson",
-    "to_emails": ["recipient@example.com"],
+    "to_emails": [
+      "recipient@example.com"
+    ],
     "date_sent": "2026-01-18T14:22:00Z",
     "snippet": "SHHH! It's a surprise party...",
-    "body_text": "SHHH! It's a SURPRISE!\n\nYou're invited to celebrate Mark's 40th birthday!\n\nPlease join us for dinner and drinks:\n\nDate: Friday, March 6th, 2026\nTime: 7:30 PM\nPlace: The Capital Grille\n       150 E 42nd Street\n       New York, NY 10017\n\nIMPORTANT: Please arrive by 7:00 PM - Mark will arrive at 7:30!\n\nDress code: Smart casual\nRSVP: jennifer.wilson@outlook.com by Feb 28th\n\nP.S. Don't tell Mark! 🤫\n\nJennifer",
+    "body_text": "SHHH! It's a SURPRISE!\n\nYou're invited to celebrate Mark's 40th birthday!\n\nPlease join us for dinner and drinks:\n\nDate: Friday, March 6th, 2026\nTime: 7:30 PM\nPlace: The Capital Grille\n       150 E 42nd Street\n       New York, NY 10017\n\nIMPORTANT: Please arrive by 7:00 PM - Mark will arrive at 7:30!\n\nDress code: Smart casual\nRSVP: jennifer.wilson@outlook.com by Feb 28th\n\nP.S. Don't tell Mark! \ud83e\udd2b\n\nJennifer",
     "attachments": []
   },
   "expected": {
@@ -27,7 +34,8 @@
         "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
         "description": "Surprise 40th birthday dinner for Mark",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

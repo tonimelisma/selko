@@ -1,0 +1,96 @@
+{
+  "name": "pdf_calendar_childcare_jan_01",
+  "category": "school",
+  "description": "Childcare center January 2026 calendar PDF with closures and themed days",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "real-world"
+  ],
+  "input": {
+    "provider_message_id": "eval-school-pdf-001",
+    "thread_id": "thread-school-pdf-001",
+    "subject": "January Calendar",
+    "from_email": "center@littleacorns.example.com",
+    "from_name": "Little Acorns Learning Center",
+    "to_emails": [
+      "parent@example.com"
+    ],
+    "date_sent": "2025-12-28T10:00:00Z",
+    "snippet": "Calendar",
+    "body_text": "Calendar",
+    "attachments": [
+      "january_2026_childcare_calendar.pdf"
+    ]
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "Little Acorns Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions Day",
+        "start_datetime": "2026-01-07",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Carmen",
+        "start_datetime": "2026-01-13",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake Day",
+        "start_datetime": "2026-01-15",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Little Acorns Closed - Martin Luther King Day",
+        "start_datetime": "2026-01-19",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow Day",
+        "start_datetime": "2026-01-28",
+        "all_day": true,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "notes": "Events only in PDF calendar. Tests PDF extraction and importance classification."
+}

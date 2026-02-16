@@ -3,18 +3,27 @@
   "category": "school",
   "description": "School field trip permission and details",
   "difficulty": "easy",
-  "tags": ["school", "field-trip", "permission", "kids"],
+  "tags": [
+    "school",
+    "field-trip",
+    "permission",
+    "kids"
+  ],
   "input": {
     "gmail_id": "eval-school-004",
     "thread_id": "thread-school-004",
     "subject": "Field Trip Permission - Science Museum (March 12)",
     "from_email": "mrjohnson@oakridgeelementary.edu",
     "from_name": "Mr. Johnson",
-    "to_emails": ["4thgrade-parents@oakridgeelementary.edu"],
+    "to_emails": [
+      "4thgrade-parents@oakridgeelementary.edu"
+    ],
     "date_sent": "2026-02-25T08:30:00Z",
     "snippet": "Permission forms needed for our upcoming field trip...",
-    "body_text": "Dear 4th Grade Families,\n\nWe're excited to announce our upcoming field trip!\n\n═══════════════════════════════════════\nFIELD TRIP DETAILS\n═══════════════════════════════════════\n\nDestination: California Science Museum\nDate: Thursday, March 12, 2026\n\nSchedule:\n8:30 AM - Depart from school (bus)\n9:30 AM - Arrive at museum\n9:30-11:30 AM - Guided tour & exhibits\n11:30 AM-12:15 PM - Lunch (bring bag lunch)\n12:15-1:30 PM - Planetarium show & free exploration\n2:00 PM - Depart museum\n3:00 PM - Return to school (regular dismissal)\n\nLocation:\nCalifornia Science Museum\n700 Museum Way\nSan Francisco, CA 94107\n\n═══════════════════════════════════════\nIMPORTANT INFORMATION\n═══════════════════════════════════════\n\nCost: $15 per student (covers admission, planetarium, and bus)\nPayment deadline: March 5, 2026\n\nStudents should bring:\n- Bag lunch (no glass containers)\n- Water bottle\n- Comfortable walking shoes\n- Light jacket\n\n═══════════════════════════════════════\n\nPERMISSION FORM attached - please sign and return by March 5th.\n\nChaperones needed! Email me if interested.\n\nThank you,\nMr. Johnson\n4th Grade Teacher",
-    "attachments": ["field_trip_permission.txt"]
+    "body_text": "Dear 4th Grade Families,\n\nWe're excited to announce our upcoming field trip!\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nFIELD TRIP DETAILS\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nDestination: California Science Museum\nDate: Thursday, March 12, 2026\n\nSchedule:\n8:30 AM - Depart from school (bus)\n9:30 AM - Arrive at museum\n9:30-11:30 AM - Guided tour & exhibits\n11:30 AM-12:15 PM - Lunch (bring bag lunch)\n12:15-1:30 PM - Planetarium show & free exploration\n2:00 PM - Depart museum\n3:00 PM - Return to school (regular dismissal)\n\nLocation:\nCalifornia Science Museum\n700 Museum Way\nSan Francisco, CA 94107\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nIMPORTANT INFORMATION\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nCost: $15 per student (covers admission, planetarium, and bus)\nPayment deadline: March 5, 2026\n\nStudents should bring:\n- Bag lunch (no glass containers)\n- Water bottle\n- Comfortable walking shoes\n- Light jacket\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nPERMISSION FORM attached - please sign and return by March 5th.\n\nChaperones needed! Email me if interested.\n\nThank you,\nMr. Johnson\n4th Grade Teacher",
+    "attachments": [
+      "field_trip_permission.txt"
+    ]
   },
   "expected": {
     "events_found": true,
@@ -27,7 +36,8 @@
         "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
         "description": "4th grade field trip to science museum with guided tour and planetarium show",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },
