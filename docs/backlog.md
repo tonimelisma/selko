@@ -22,9 +22,9 @@ Parse `.ics` (iCalendar) file attachments directly without LLM. These files cont
 
 Pre-extract text from PDF attachments using OCR/text extraction before sending to LLM. This could reduce token usage by sending extracted text instead of raw PDF bytes, while still falling back to multimodal analysis for image-heavy PDFs.
 
-## Refactor `process_email_for_events()`
+## ~~Refactor `process_email_for_events()`~~ **Done**
 
-The 130-line function in `events.py` does sender validation, LLM extraction, deduplication, and DB updates all in one. Break into smaller, testable steps: `should_skip_sender()`, `extract_and_deduplicate_events()`, `save_new_events()`.
+~~The 130-line function in `events.py` does sender validation, LLM extraction, deduplication, and DB updates all in one. Break into smaller, testable steps: `should_skip_sender()`, `extract_and_deduplicate_events()`, `save_new_events()`.~~ Extracted 4 helpers: `mark_email_status()`, `should_skip_email()`, `normalize_event_data()`, `save_extracted_events()`. Orchestrator slimmed to ~35 lines. Added 20 unit tests in `test_events_refactor.py`.
 
 ## ~~Standardize API Error Responses~~
 
