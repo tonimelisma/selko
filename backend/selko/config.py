@@ -45,7 +45,6 @@ class Config:
 
     # API keys (one per provider)
     gemini_api_key: Optional[str] = None
-    gemini_model: str = "gemini-3-flash-preview"  # backward compat
     moonshot_api_key: Optional[str] = None
     zai_api_key: Optional[str] = None
     deepseek_api_key: Optional[str] = None

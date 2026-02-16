@@ -494,11 +494,7 @@ def create_provider(config: Any) -> LLMProvider:
 
     # Determine model
     if model_name is None:
-        # Backward compatibility: if provider is gemini, use gemini_model
-        if provider_name == "gemini":
-            model_name = getattr(config, "gemini_model", None)
-        if model_name is None:
-            model_name = PROVIDER_DEFAULT_MODEL.get(provider_name)
+        model_name = PROVIDER_DEFAULT_MODEL.get(provider_name)
     if model_name is None:
         raise LLMProviderError(
             f"No model specified and no default for provider '{provider_name}'"
