@@ -63,10 +63,20 @@ BLOCKED: Cannot edit source code in the main repository.
 - [ ] Update screenshots for changed platforms only (see "Screenshot Updates" section below). Review the captured screenshots to verify UI looks correct.
 - [ ] Commit, push, `gh pr create`
 - [ ] Poll CI and merge when green, then cleanup worktree (see cleanup rules below)
+- [ ] **Verify ALL CI jobs pass after merge** — including staging integration tests. You own CI health end-to-end.
 
 **Config/docs edits on main** (no worktree needed): commit and `git push origin main`.
 
 See `docs/parallel-agents.md` for the CI polling script and post-merge cleanup steps. See `docs/ci-cd.md` for CI details.
+
+### MANDATORY: CI Ownership
+
+**You are responsible for all CI passing — not just the PR checks, but also the post-merge push workflow including staging integration tests.** After merge, check the push workflow run on main. If staging tests fail:
+
+1. **Diagnose the failure** — read `gh run view <id> --log-failed`
+2. **If Google OAuth tokens expired** (`RefreshError: invalid_grant`): ask the user to run `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail` to refresh tokens, then re-run CI to verify
+3. **If it's a code issue**: fix it immediately with a follow-up PR
+4. **Never leave CI broken** — a red main branch blocks all other work
 
 ### MANDATORY: Worktree Cleanup Rules
 
