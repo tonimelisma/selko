@@ -46,6 +46,6 @@ Database stores `body_text` and `body_html` (migration `20260215000001`) and bac
 
 `config.py` has `gemini_model` (backward compat) alongside `llm_model` + `llm_provider`. Plan migration: rename env var, add deprecation warning, update all deployments.
 
-## Document `llm_call_log` Table in Database Schema
+## ~~Document `llm_call_log` Table in Database Schema~~ **Done**
 
-The `llm_call_log` table (migration `20260130000001`, updated by `20260215000002`) is not documented in `docs/database-schema.md`. Add table definition including the `provider` column.
+~~The `llm_call_log` table (migration `20260130000001`, updated by `20260215000002`) is not documented in `docs/database-schema.md`. Add table definition including the `provider` column.~~
