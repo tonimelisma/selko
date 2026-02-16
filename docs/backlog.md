@@ -40,7 +40,7 @@ Database stores `body_text` and `body_html` (migration `20260215000001`) and bac
 
 ## Remove Unused Email Flag Fields from Schema
 
-`EmailResponse` includes boolean flags (`is_social`, `is_updates`, `is_forums`, `is_important`, `is_starred`, `is_unread`) that are computed by DB triggers but never queried or displayed. Remove from schema and optionally drop trigger computation.
+~~`EmailResponse` includes boolean flags (`is_social`, `is_updates`, `is_forums`, `is_important`, `is_starred`, `is_unread`) that are computed by DB triggers but never queried or displayed. Remove from schema and optionally drop trigger computation.~~ **Done** — removed `is_social`, `is_updates`, `is_forums`, `is_primary`, `is_important`, `is_starred` from `EmailResponse`. Kept `is_spam`, `is_trash`, `is_promotions`, `is_unread` (actively filtered in frontend). DB columns and triggers remain unchanged.
 
 ## Deprecate `gemini_model` Config Field
 
