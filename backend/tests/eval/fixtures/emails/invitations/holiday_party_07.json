@@ -3,14 +3,21 @@
   "category": "invitations",
   "description": "Office holiday party invitation",
   "difficulty": "easy",
-  "tags": ["holiday", "office", "evening", "formal"],
+  "tags": [
+    "holiday",
+    "office",
+    "evening",
+    "formal"
+  ],
   "input": {
     "gmail_id": "eval-inv-007",
     "thread_id": "thread-inv-007",
     "subject": "You're Invited: TechCorp Annual Holiday Celebration",
     "from_email": "hr@techcorp.com",
     "from_name": "TechCorp HR",
-    "to_emails": ["all-staff@techcorp.com"],
+    "to_emails": [
+      "all-staff@techcorp.com"
+    ],
     "date_sent": "2026-11-15T08:00:00Z",
     "snippet": "Join us for our annual holiday celebration...",
     "body_text": "Dear TechCorp Team,\n\nYou're cordially invited to our Annual Holiday Celebration!\n\nDate: Friday, December 18th, 2026\nTime: 6:00 PM - 10:00 PM\nLocation: Grand Ballroom\n         The Ritz-Carlton\n         181 Fremont Street\n         San Francisco, CA 94105\n\nDress Code: Cocktail attire\nPlus ones welcome!\n\nThe evening will include:\n- Cocktail hour with passed appetizers\n- Plated dinner with vegetarian options\n- Live band and dancing\n- Year-end awards ceremony\n\nPlease RSVP by December 4th using the link below.\n[RSVP Now]\n\nWe look forward to celebrating with you!\n\nBest regards,\nThe HR Team",
@@ -27,7 +34,8 @@
         "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
         "description": "Annual holiday party with dinner, live band, and awards ceremony",
         "is_all_day": false,
-        "confidence_min": 0.85
+        "confidence_min": 0.85,
+        "importance": "action_required"
       }
     ]
   },

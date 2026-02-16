@@ -33,9 +33,14 @@
 
 <div class="flex items-start justify-between p-4 border-b border-base-200">
 	<div class="min-w-0 flex-1">
-		<a href="/app/events/{event.id}" class="link link-hover">
-			<h4 class="font-semibold text-base">{event.title}</h4>
-		</a>
+		<div class="flex items-center gap-2">
+			<a href="/app/events/{event.id}" class="link link-hover">
+				<h4 class="font-semibold text-base">{event.title}</h4>
+			</a>
+			{#if event.importance === 'fyi'}
+				<span class="badge badge-sm badge-info">FYI</span>
+			{/if}
+		</div>
 		<p class="text-sm text-base-content/70 mt-1">{formattedDateTime()}</p>
 		{#if event.location}
 			<p class="text-sm text-base-content/60 mt-0.5">{event.location}</p>

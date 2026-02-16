@@ -1,0 +1,33 @@
+{
+  "name": "valentines_exchange_06",
+  "category": "school",
+  "description": "Valentine's Day gift exchange at daycare - text only, no attachments",
+  "difficulty": "easy",
+  "tags": ["school", "daycare", "holiday", "real-world"],
+  "input": {
+    "gmail_id": "eval-school-val-006",
+    "thread_id": "thread-school-val-006",
+    "subject": "Valentine's Day Exchange - Feb 13th",
+    "from_email": "teacher@kindercare.com",
+    "from_name": "Ms. Rodriguez",
+    "to_emails": ["parent@example.com"],
+    "date_sent": "2026-02-03T11:00:00Z",
+    "snippet": "We will be having our Valentine's Day gift exchange on Friday, February 13th",
+    "body_text": "Dear Families,\n\nWe will be having our Valentine's Day gift exchange on Friday, February 13th!\n\nPlease bring goodies or valentines for 12 students in our class. Please note our classroom is a nut-free zone, so no nuts or nut products in any treats please.\n\nThe children are so excited for this special day!\n\nThank you,\nMs. Rodriguez\nKinderCare Pre-K Room",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Valentine's Day Gift Exchange at KinderCare",
+        "start_datetime": "2026-02-13",
+        "is_all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Text-only email, no attachments. Action required because parent must prepare valentines."
+}

@@ -3,14 +3,23 @@
   "category": "school",
   "description": "Real-world city arts & rec spring registration announcement with specific open date/time - borderline calendar event",
   "difficulty": "medium",
-  "tags": ["school", "registration", "community", "borderline", "real-world", "images"],
+  "tags": [
+    "school",
+    "registration",
+    "community",
+    "borderline",
+    "real-world",
+    "images"
+  ],
   "input": {
     "gmail_id": "eval-school-009",
     "thread_id": "thread-school-009",
     "subject": "Spring 2026 Registration Starts 2/18",
     "from_email": "artsrec@walnut-creek.org",
     "from_name": "Arts + Rec",
-    "to_emails": ["recipient@example.com"],
+    "to_emails": [
+      "recipient@example.com"
+    ],
     "date_sent": "2026-02-13T19:30:56Z",
     "snippet": "Registration Starts at 12PM! Classes are currently viewable online.",
     "body_text": "Email from City of Walnut Creek\n\nRegistration Starts at @ 12PM! Classes are currently viewable online.\n\nSpring 2026 Registration Starts February 18 at 12:00 PM!\n\nSpring registration is almost here! Now is the perfect time to plan spring activities for you and your family. Make a note of the 5-digit course numbers so signing up is a breeze!\n\nView Offerings and Register Online\n\nClick through all the exciting options available to you this Spring online. If you\u2019d like a printed copy of the Activity Guide, limited quantities will be available at the following locations for pick up, as supplies last:\n\nCivic Park Community Center (1375 Civic Drive)\nTice Valley Gym (2055 Tice Valley Boulevard)\nShadelands Art Center (111 N. Wiget Lane)\nWalnut Creek City Hall (1666 N. Main Street)\n\nLook for NEW! classes this Spring marked by red throughout the Guide!\n\nReference Links\nAquatics Information\nRegistration Policies\nCommunity Workshops & Social Services\nPreschools\nScholarship Information\nView Classes Online\n\nTo register via phone, Contact Customer Support 925-295-1490 and reference the course number.\nEmail artsrec@walnutcreekca.gov with any questions.\n\nSection Highlights\n\nYouth Programs\nThis spring, child and teen programs include ceramics, dance classes, STEM, drama classes, and more!\n\nExplore Community Arts Preschool\nJoin Community Arts Preschool! Registration for Summer 2026 and School Year 2026\u201327 classes open on Wednesday, February 18 at 12:00 PM.\n\nExplore Intergenerational\nAttend art, music, or cooking classes with your family for these fun and educational intergenerational classes!\n\nExplore Adult Classes\nExplore adult programs like ceramics, culinary arts, dance, digital media, and more!\n\nExplore Spring Youth Events\nArts + Rec has tons of fun events for kids and teens this spring!\nFamily Art Day: Festivals of Spring\n\nContact Customer Support: artsrec@walnut-creek.org + (925) 295-1490\nAbout Arts + Rec | FAQs | Activity Guide | Registration Policies | Class Locations\n\nCity of Walnut Creek | 1666 North Main Street 9259435850 | Walnut Creek, CA 94596 US",
@@ -42,7 +51,8 @@
         "location": null,
         "description": "Spring 2026 registration opens for Arts + Rec classes including youth programs, preschool, adult classes, and intergenerational programs",
         "is_all_day": false,
-        "confidence_min": 0.6
+        "confidence_min": 0.6,
+        "importance": "action_required"
       }
     ]
   },

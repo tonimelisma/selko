@@ -3,18 +3,27 @@
   "category": "conferences",
   "description": "Conference registration with markdown details attachment",
   "difficulty": "hard",
-  "tags": ["conference", "attachment", "markdown", "multi-day"],
+  "tags": [
+    "conference",
+    "attachment",
+    "markdown",
+    "multi-day"
+  ],
   "input": {
     "gmail_id": "eval-attach-004",
     "thread_id": "thread-attach-004",
     "subject": "DevCon 2026 - Your Registration & Event Details",
     "from_email": "registration@devcon.io",
     "from_name": "DevCon 2026",
-    "to_emails": ["developer@example.com"],
+    "to_emails": [
+      "developer@example.com"
+    ],
     "date_sent": "2026-03-15T08:00:00Z",
     "snippet": "Welcome to DevCon 2026! Please review the attached attendee information...",
     "body_text": "DevCon 2026\n\nCongratulations! Your registration is complete.\n\nPlease review the attached document for complete event details, schedule, and important information.\n\nWe look forward to seeing you!\n\nDevCon Team",
-    "attachments": ["conference_details.md"]
+    "attachments": [
+      "conference_details.md"
+    ]
   },
   "expected": {
     "events_found": true,
@@ -27,7 +36,8 @@
         "location": "San Jose Convention Center, 150 W San Carlos St, San Jose, CA 95113",
         "description": "3-day developer conference with workshops",
         "is_all_day": false,
-        "confidence_min": 0.8
+        "confidence_min": 0.8,
+        "importance": "action_required"
       }
     ]
   },
