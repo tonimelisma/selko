@@ -67,7 +67,7 @@ EVAL_MODELS = [
     ("qwen", "qwen3-vl-flash"),
     ("deepseek", "deepseek-chat"),
     ("minimax", "MiniMax-M2.5"),
-    ("openai", "gpt-4o-mini"),
+    ("openai", "gpt-5-nano"),
     ("anthropic", "claude-haiku-4-5-20251001"),
 ]
 

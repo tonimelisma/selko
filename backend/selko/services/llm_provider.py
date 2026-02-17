@@ -195,20 +195,34 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.minimax.io/v1",
         "pricing": {"input": 0.20, "output": 1.10},
     },
-    # --- OpenAI (2 models) ---
-    "gpt-4o-mini": {
+    # --- OpenAI (4 models) ---
+    "gpt-5.2": {
         "provider": "openai",
         "vision": True,
         "json_schema": True,
         "base_url": "https://api.openai.com/v1",
-        "pricing": {"input": 0.15, "output": 0.60},
+        "pricing": {"input": 1.75, "output": 14.00},
     },
-    "gpt-4o": {
+    "gpt-5.1": {
         "provider": "openai",
         "vision": True,
         "json_schema": True,
         "base_url": "https://api.openai.com/v1",
-        "pricing": {"input": 2.50, "output": 10.00},
+        "pricing": {"input": 1.25, "output": 10.00},
+    },
+    "gpt-5-mini": {
+        "provider": "openai",
+        "vision": True,
+        "json_schema": True,
+        "base_url": "https://api.openai.com/v1",
+        "pricing": {"input": 0.25, "output": 2.00},
+    },
+    "gpt-5-nano": {
+        "provider": "openai",
+        "vision": True,
+        "json_schema": True,
+        "base_url": "https://api.openai.com/v1",
+        "pricing": {"input": 0.05, "output": 0.40},
     },
     # --- Anthropic / Claude (2 models) ---
     "claude-sonnet-4-5-20250929": {
@@ -245,7 +259,7 @@ PROVIDER_DEFAULT_MODEL = {
     "qwen": "qwen3-vl-flash",
     "deepseek": "deepseek-chat",
     "minimax": "MiniMax-M2.5",
-    "openai": "gpt-4o-mini",
+    "openai": "gpt-5-nano",
     "anthropic": "claude-sonnet-4-5-20250929",
 }
 
