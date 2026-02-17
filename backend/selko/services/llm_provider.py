@@ -640,18 +640,30 @@ class AnthropicProvider(LLMProvider):
                     part.data, part.mime_type, self.provider_name,
                 )
                 for converted in converted_list:
-                    resized = _resize_image_if_needed(
-                        converted.data, converted.mime_type
-                    )
-                    b64 = base64.b64encode(resized).decode("utf-8")
-                    message_content.append({
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": converted.mime_type,
-                            "data": b64,
-                        },
-                    })
+                    if converted.mime_type == "application/pdf":
+                        # Anthropic uses "document" type for PDFs
+                        b64 = base64.b64encode(converted.data).decode("utf-8")
+                        message_content.append({
+                            "type": "document",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "application/pdf",
+                                "data": b64,
+                            },
+                        })
+                    else:
+                        resized = _resize_image_if_needed(
+                            converted.data, converted.mime_type
+                        )
+                        b64 = base64.b64encode(resized).decode("utf-8")
+                        message_content.append({
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": converted.mime_type,
+                                "data": b64,
+                            },
+                        })
 
         # Handle JSON schema via prompt instruction (no native schema mode)
         if json_schema is not None:
