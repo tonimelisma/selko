@@ -2,7 +2,8 @@
 
 Provides a unified interface for multiple LLM providers:
 - Google Gemini (native SDK)
-- Moonshot/Kimi, Z.AI/Zhipu, Alibaba/Qwen, DeepSeek, MiniMax (OpenAI-compatible)
+- Anthropic Claude (native SDK)
+- OpenAI, Moonshot/Kimi, Z.AI/Zhipu, Alibaba/Qwen, DeepSeek, MiniMax (OpenAI-compatible)
 
 All providers implement the same LLMProvider interface, allowing transparent
 switching between providers via environment variables.
@@ -194,6 +195,34 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.minimax.io/v1",
         "pricing": {"input": 0.20, "output": 1.10},
     },
+    # --- OpenAI (2 models) ---
+    "gpt-4o-mini": {
+        "provider": "openai",
+        "vision": True,
+        "json_schema": True,
+        "base_url": "https://api.openai.com/v1",
+        "pricing": {"input": 0.15, "output": 0.60},
+    },
+    "gpt-4o": {
+        "provider": "openai",
+        "vision": True,
+        "json_schema": True,
+        "base_url": "https://api.openai.com/v1",
+        "pricing": {"input": 2.50, "output": 10.00},
+    },
+    # --- Anthropic / Claude (2 models) ---
+    "claude-sonnet-4-5-20250929": {
+        "provider": "anthropic",
+        "vision": True,
+        "json_schema": False,
+        "pricing": {"input": 3.00, "output": 15.00},
+    },
+    "claude-haiku-4-5-20251001": {
+        "provider": "anthropic",
+        "vision": True,
+        "json_schema": False,
+        "pricing": {"input": 0.80, "output": 4.00},
+    },
 }
 
 # Map provider name → Config attribute name for API key
@@ -204,6 +233,8 @@ PROVIDER_API_KEY_MAP = {
     "qwen": "alibaba_api_key",
     "deepseek": "deepseek_api_key",
     "minimax": "minimax_api_key",
+    "openai": "openai_api_key",
+    "anthropic": "anthropic_api_key",
 }
 
 # Default model per provider (first listed model)
@@ -214,6 +245,8 @@ PROVIDER_DEFAULT_MODEL = {
     "qwen": "qwen3-vl-flash",
     "deepseek": "deepseek-chat",
     "minimax": "MiniMax-M2.5",
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-sonnet-4-5-20250929",
 }
 
 
@@ -546,6 +579,87 @@ class OpenAICompatibleProvider(LLMProvider):
         )
 
 
+class AnthropicProvider(LLMProvider):
+    """Anthropic Claude provider using native anthropic SDK."""
+
+    def __init__(self, api_key: str, model: str):
+        import anthropic
+
+        self.provider_name = "anthropic"
+        self.model = model
+        self.supports_vision = True
+        self.supports_json_schema = False
+        self.client = anthropic.Anthropic(api_key=api_key)
+        logger.debug(f"Initialized Anthropic provider with model {model}")
+
+    def generate(
+        self,
+        contents: list[ContentPart],
+        json_schema: Optional[dict] = None,
+    ) -> LLMResponse:
+        from selko.services.format_conversion import prepare_content_for_provider
+
+        # Build message content parts
+        message_content: list[dict[str, Any]] = []
+        for part in contents:
+            if isinstance(part, str):
+                message_content.append({"type": "text", "text": part})
+            elif isinstance(part, ImageContent):
+                converted_list = prepare_content_for_provider(
+                    part.data, part.mime_type, self.provider_name,
+                )
+                for converted in converted_list:
+                    resized = _resize_image_if_needed(
+                        converted.data, converted.mime_type
+                    )
+                    b64 = base64.b64encode(resized).decode("utf-8")
+                    message_content.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": converted.mime_type,
+                            "data": b64,
+                        },
+                    })
+
+        # Handle JSON schema via prompt instruction (no native schema mode)
+        if json_schema is not None:
+            json_instruction = (
+                "\n\nYou MUST respond with valid JSON matching this schema:\n"
+                f"{json_schema}\n"
+                "Return ONLY the JSON, no other text."
+            )
+            for item in reversed(message_content):
+                if item["type"] == "text":
+                    item["text"] += json_instruction
+                    break
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": message_content}],
+        )
+
+        # Extract response text
+        text = ""
+        for block in response.content:
+            if block.type == "text":
+                text += block.text
+
+        # Extract token counts
+        prompt_tokens = None
+        completion_tokens = None
+        if response.usage:
+            prompt_tokens = response.usage.input_tokens
+            completion_tokens = response.usage.output_tokens
+
+        return LLMResponse(
+            text=text,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+
+
 class LLMProviderError(Exception):
     """Raised when provider creation or configuration fails."""
 
@@ -602,7 +716,10 @@ def create_provider(config: Any) -> LLMProvider:
     # Create provider
     if provider_name == "gemini":
         return GeminiProvider(api_key=api_key, model=model_name)
+    elif provider_name == "anthropic":
+        return AnthropicProvider(api_key=api_key, model=model_name)
     else:
+        # OpenAI-compatible (moonshot, zai, qwen, deepseek, minimax, openai)
         base_url = registry_entry.get("base_url")
         if not base_url:
             raise LLMProviderError(

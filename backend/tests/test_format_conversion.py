@@ -74,7 +74,7 @@ class TestWhitelists:
         assert ALWAYS_CONVERT.issubset(INGESTIBLE_FORMATS)
 
     def test_all_providers_have_entries(self):
-        expected_providers = {"gemini", "moonshot", "zai", "qwen", "deepseek", "minimax"}
+        expected_providers = {"gemini", "moonshot", "zai", "qwen", "deepseek", "minimax", "openai", "anthropic"}
         assert set(PROVIDER_ACCEPTED_FORMATS.keys()) == expected_providers
 
     def test_text_only_providers_have_empty_sets(self):
