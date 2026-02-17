@@ -40,7 +40,7 @@ class Config:
     google_client_secret: Optional[str] = None
 
     # LLM provider configuration
-    llm_provider: str = "gemini"  # gemini|moonshot|zai|qwen|deepseek|minimax
+    llm_provider: str = "gemini"  # gemini|moonshot|zai|qwen|deepseek|minimax|openai|anthropic
     llm_model: Optional[str] = None  # specific model ID (None = provider default)
 
     # API keys (one per provider)
@@ -50,6 +50,8 @@ class Config:
     deepseek_api_key: Optional[str] = None
     alibaba_api_key: Optional[str] = None
     minimax_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
 
     # Test user credentials for CLI authentication
     test_user_email: Optional[str] = None
@@ -187,6 +189,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         deepseek_api_key=os.getenv("DEEPSEEK_API_KEY"),
         alibaba_api_key=os.getenv("ALIBABA_API_KEY"),
         minimax_api_key=os.getenv("MINIMAX_API_KEY"),
+        openai_api_key=os.getenv("OPENAI_API_KEY"),
+        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
         test_user_email=os.getenv("TEST_USER_EMAIL"),
         test_user_password=os.getenv("TEST_USER_PASSWORD"),
         worker_pool_size=int(os.getenv("WORKER_POOL_SIZE", "3")),
