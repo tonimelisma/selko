@@ -1033,7 +1033,10 @@ def print_result_summary(result: dict[str, Any]) -> None:
         rating = auto_score.get("auto_rating", "?")
         matched = auto_score.get("fields_matched", 0)
         total = auto_score.get("total_fields", 0)
-        status = "PASS" if rating == 5 else ("PARTIAL" if rating >= 3 else "FAIL")
+        if isinstance(rating, (int, float)):
+            status = "PASS" if rating == 5 else ("PARTIAL" if rating >= 3 else "FAIL")
+        else:
+            status = "ERROR"
         print(
             f"  [{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] Rating:{rating}/5 ({matched}/{total}) "

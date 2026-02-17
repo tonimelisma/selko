@@ -12,6 +12,7 @@ switching between providers via environment variables.
 import base64
 import io
 import logging
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -320,6 +321,22 @@ def _resize_image_if_needed(
     except Exception as e:
         logger.warning(f"Failed to resize image: {e}")
         return data
+
+
+_MARKDOWN_JSON_RE = re.compile(
+    r"^\s*```(?:json)?\s*\n?(.*?)\n?\s*```\s*$", re.DOTALL
+)
+
+
+def _strip_markdown_json(text: str) -> str:
+    """Strip markdown code-block wrapping from JSON responses.
+
+    Models without native JSON mode (e.g. Anthropic Claude) often wrap
+    JSON in ```json ... ``` markers. This function removes them so the
+    raw JSON can be parsed with json.loads().
+    """
+    m = _MARKDOWN_JSON_RE.match(text)
+    return m.group(1).strip() if m else text
 
 
 def _sanitize_schema_for_strict(schema: dict) -> dict:
@@ -654,11 +671,12 @@ class AnthropicProvider(LLMProvider):
             messages=[{"role": "user", "content": message_content}],
         )
 
-        # Extract response text
+        # Extract response text (strip markdown code blocks if present)
         text = ""
         for block in response.content:
             if block.type == "text":
                 text += block.text
+        text = _strip_markdown_json(text)
 
         # Extract token counts
         prompt_tokens = None
