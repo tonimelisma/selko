@@ -1,0 +1,83 @@
+{
+  "name": "ysc_newsletter_multi_event_11",
+  "category": "invitations",
+  "description": "YSC community newsletter with 5 events buried in board updates, cabin rental info, and booking rules",
+  "difficulty": "hard",
+  "tags": [
+    "multi-event",
+    "newsletter",
+    "community",
+    "real-world"
+  ],
+  "input": {
+    "gmail_id": "eval-inv-011",
+    "thread_id": "thread-inv-011",
+    "subject": "Welcome New YSC Board Members",
+    "from_email": "info@ysc.org",
+    "from_name": "YSC",
+    "to_emails": [
+      "toni@melisma.net"
+    ],
+    "date_sent": "2026-02-17T03:54:48Z",
+    "snippet": "Four new members joined the YSC board...",
+    "body_text": "Four new members joined the YSC board\n\nNewsletter, February 16, 2026\n\nWelcome New Board Members\n\nOn February 1st we had our annual meeting at the Swedish American Hall. You can read more about the meeting below, but I would really like to thank Jeanette Flodell for having been our president for the past three years. Even though being president is somewhat of a marathon, Jeanette did an amazing sprint towards the finish line by being in charge of, and putting together, an amazing 75 year anniversary party back in October. Thank you Jeanette!!!\n\nI would also like to welcome four new people to the board, Anne Buike, Christopher Tevren, Elsa Putur and Polina Pribytkova. Thank you all so much for stepping up and wanting to help run the club. We've already put a number of new exciting events on the calendar, so save the dates, for those that are still being worked out.\n\nFinally I'd like to remind everyone that the whole Clear Lake Cabin is available for rent for only $100 per night during the winter. I spent this long weekend up there with a number of friends and it's a great and different experience to visit the cabin in the winter. We now have three bedrooms with beds for 8 people, and with a fire in the fireplace you get some truly Scandinavian hygge. There's also plenty of things to do and explore around the lake, so check it out, you can't find a better deal!\n\nPeter Nordstr\u00f6m (your new/old president)\nPs. On Friday Jan 30 we had a fun Full moon hike. Great to see so many people joining on short notice.\n\nAnnual Meeting at Swedish American Hall - Feb 1, 2026\n\nBefore we dove into the official business, the afternoon kicked off at 1:00 PM with a social hour. About 40 people showed up and it was fantastic to see so many familiar faces and welcome several newcomers over drinks and mingling. Whether it was catching up on Tahoe ski conditions or sharing stories from the holidays, that first moment of \u2026\n\nUpcoming Events\n\nHappy Hour Above the City in the Transamerica Building\n\nFebruary 19\n\nJoin Polina and Mary for a truly special YSC Happy Hour experience, one you won\u2019t want to miss. This February, we\u2019re heading inside the iconic Transamerica Building for exclusive access to a 48th-floor bar with breathtaking views of San Francisco.\n\nWhen: Thursday, February 19, 5:30 PM\nWhat: Evening Happy Hour (timed entry required)\nWhere: Transamerica Building \u2013 48th Floor\n\nThis event is by registration only and must be coordinated directly through Mary in advance! Due to building security, all guests must be checked in at a designated arrival time to gain access upstairs.\nAvailable arrival time slots:\n\u2022 5:30 PM\n\u2022 6:00 PM\n\u2022 6:30 PM\nIf you\u2019re interested in attending, you must RSVP on partiful under the following link, where you can also read more details: https://partiful.com/e/g1hU5HXmUnfJwxpW8u8M?c=fLU6roGc\n\nMarch 19th: YSC Happy Hour at The Royal Cuckoo\n\nYSC Happy Hour at The Royal Cuckoo \u2013 Join us on Thursday, March 19th, from 5:30 PM at one of SF\u2019s most unique cocktail bars. Enjoy exclusive drink specials, a cozy vintage atmosphere, and some of the best Aquavit in town, courtesy of owner Paul\u2019s Danish roots. Great drinks, great vibes, and great company and live music\u2014don\u2019t miss it!\n\nMarch 28th: YSC Bus Trip to Wine Country (save the date)\n\nBus trip to wine country, details coming soon.\n\nApril 4th: Joint YSC-SSCC Easter Luncheon (Save the date)\n\nCome join the YSC and SSCC for a traditional Scandinavian Luncheon. More info to follow. If you would like to help out organizing this event, please fill out this form.\n\nApril 5th: Joint YSC-SSCC Kids Easter & Crafts (save the date)\n\nKids and family friendly event at the Scandinavian School and Cultural Center\n\nTahoe cabin reservations\n\nThe Tahoe winter reservations have now been open for a while, and we are seeing a lot of bookings come in. To make the system as fair as possible for everyone, we want to kindly remind everyone about the booking rules:\n\n- Single membership allows you to make reservations for ONE room, ONE stay at a time. Once your stay is over, you can then make your next reservation.\n- Family membership allows reservations for TWO rooms, ONE stay at a time, i.e. on the same dates.\n- We do not allow multiple reservations for different dates. Once your current reservation is over, you can go online and book your next one.\n- IMPORTANT: You do need to make sure that you include the correct # of people that will stay in each room in the reservation. If you need to add extra people to the reservation, email info@ysc.org, and let us know what the adjustment should be. Note that there is a max # of individuals allowed per room, as outlined in the room descriptions on the reservation page.\n\nPlease email tahoe@ysc.org if you have any questions about the cabin or the reservation system.\n\nYoung Scandinavians Club\nPO Box 640610\nSan Francisco, CA 94164",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 5,
+    "events": [
+      {
+        "title": "YSC Happy Hour at Transamerica Building",
+        "start_datetime": "2026-02-19T17:30:00",
+        "end_datetime": null,
+        "location": "Transamerica Building, 48th Floor",
+        "description": "YSC Happy Hour with breathtaking views of San Francisco",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Happy Hour at The Royal Cuckoo",
+        "start_datetime": "2026-03-19T17:30:00",
+        "end_datetime": null,
+        "location": "The Royal Cuckoo",
+        "description": "YSC Happy Hour at The Royal Cuckoo cocktail bar",
+        "is_all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Bus Trip to Wine Country",
+        "start_datetime": "2026-03-28",
+        "end_datetime": null,
+        "location": null,
+        "description": "Bus trip to wine country, details coming soon",
+        "is_all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint YSC-SSCC Easter Luncheon",
+        "start_datetime": "2026-04-04",
+        "end_datetime": null,
+        "location": null,
+        "description": "Traditional Scandinavian Luncheon",
+        "is_all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint YSC-SSCC Kids Easter & Crafts",
+        "start_datetime": "2026-04-05",
+        "end_datetime": null,
+        "location": "Scandinavian School and Cultural Center",
+        "description": "Kids and family friendly Easter and crafts event",
+        "is_all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Real-world YSC newsletter with 5 events buried among board updates, cabin rental info, and booking rules. Tests ability to extract multiple events from long newsletters with non-event content."
+}

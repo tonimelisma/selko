@@ -14,7 +14,7 @@ MERGE_DIR = FIXTURES_DIR / "merge"
 RESULTS_DIR = EVAL_DIR / "results"
 
 # Production code path for hashing (detects prompt/schema changes)
-EVENT_PROCESSING_PATH = Path(__file__).parent / "../../../selko/services/event_processing.py"
+EVENT_PROCESSING_PATH = Path(__file__).parent / "../../selko/services/event_processing.py"
 
 # Categories
 EMAIL_CATEGORIES = [
