@@ -468,7 +468,7 @@ def _guess_mime_type(filename: str) -> str:
 # Provider/gateway factory for evals
 # ---------------------------------------------------------------------------
 
-def _create_gateway(provider_name: str, model_name: str):
+def _create_gateway(provider_name: str, model_name: str, thinking: str = "low"):
     """Create a provider + gateway for a specific model."""
     from selko.config import load_config
     from selko.services.llm_gateway import LLMGateway
@@ -477,7 +477,7 @@ def _create_gateway(provider_name: str, model_name: str):
     config = load_config()
     config.llm_provider = provider_name
     config.llm_model = model_name
-    provider = create_provider(config)
+    provider = create_provider(config, thinking=thinking)
     return LLMGateway(provider)
 
 
@@ -507,6 +507,7 @@ def run_extract_eval(
     use_cache: bool = True,
     verbose: bool = False,
     dry_run: bool = False,
+    thinking: str = "low",
 ) -> dict[str, Any]:
     """Run extraction evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
@@ -566,7 +567,7 @@ def run_extract_eval(
     # Real run
     from selko.services.event_processing import extract_calendar_events
 
-    gateway = _create_gateway(provider_name, model_name)
+    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
 
     email_metadata = {
         "subject": input_data.get("subject", ""),
@@ -618,6 +619,7 @@ def run_extract_eval(
         "operation": "extract",
         "provider": provider_name,
         "model": model_name,
+        "thinking": thinking,
         "run_at": datetime.now(timezone.utc).isoformat(),
         "duration_ms": duration_ms,
         "category": fixture.get("category", fixture_name.split("/")[0]),
@@ -657,6 +659,7 @@ def run_compare_eval(
     use_cache: bool = True,
     verbose: bool = False,
     dry_run: bool = False,
+    thinking: str = "low",
 ) -> dict[str, Any]:
     """Run compare (dedup) evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
@@ -693,7 +696,7 @@ def run_compare_eval(
 
     from selko.services.event_processing import compare_events
 
-    gateway = _create_gateway(provider_name, model_name)
+    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
 
     new_event = input_data["new_event"]
     candidate_events = input_data["candidate_events"]
@@ -720,6 +723,7 @@ def run_compare_eval(
         "operation": "compare",
         "provider": provider_name,
         "model": model_name,
+        "thinking": thinking,
         "run_at": datetime.now(timezone.utc).isoformat(),
         "duration_ms": duration_ms,
         "description": fixture.get("description", ""),
@@ -752,6 +756,7 @@ def run_merge_eval(
     use_cache: bool = True,
     verbose: bool = False,
     dry_run: bool = False,
+    thinking: str = "low",
 ) -> dict[str, Any]:
     """Run merge evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
@@ -788,7 +793,7 @@ def run_merge_eval(
 
     from selko.services.event_processing import merge_event_data
 
-    gateway = _create_gateway(provider_name, model_name)
+    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
 
     existing_event = input_data["existing_event"]
     new_extraction = input_data["new_extraction"]
@@ -816,6 +821,7 @@ def run_merge_eval(
         "operation": "merge",
         "provider": provider_name,
         "model": model_name,
+        "thinking": thinking,
         "run_at": datetime.now(timezone.utc).isoformat(),
         "duration_ms": duration_ms,
         "description": fixture.get("description", ""),
@@ -991,16 +997,59 @@ def run_single_eval(
 # Display helpers
 # ---------------------------------------------------------------------------
 
-def print_result_summary(result: dict[str, Any]) -> None:
-    """Print a one-line summary of a result."""
+def _get_result_status(result: dict[str, Any]) -> str:
+    """Extract PASS/PARTIAL/FAIL status from a result."""
+    op = result.get("operation", "extract")
+    auto_score = result.get("auto_score", {})
+    if op == "extract":
+        if auto_score.get("all_events_match"):
+            return "PASS"
+        elif auto_score.get("events_found_match"):
+            return "PARTIAL"
+        return "FAIL"
+    elif op == "compare":
+        return "PASS" if auto_score.get("correct", False) else "FAIL"
+    elif op == "merge":
+        rating = auto_score.get("auto_rating", "?")
+        if isinstance(rating, (int, float)):
+            return "PASS" if rating == 5 else ("PARTIAL" if rating >= 3 else "FAIL")
+        return "ERROR"
+    return "?"
+
+
+def _print_progress_totals(results: list[dict], operation: str) -> None:
+    """Print running totals after each fixture."""
+    op_results = [r for r in results if r.get("operation") == operation and not r.get("dry_run")]
+    if not op_results:
+        return
+    pass_count = sum(1 for r in op_results if _get_result_status(r) == "PASS")
+    partial_count = sum(1 for r in op_results if _get_result_status(r) == "PARTIAL")
+    fail_count = sum(1 for r in op_results if _get_result_status(r) in ("FAIL", "ERROR"))
+    total_cost = sum(r.get("cost", 0) for r in op_results)
+    total_duration = sum(r.get("duration_ms", 0) for r in op_results)
+    avg_duration = total_duration // len(op_results) if op_results else 0
+    print(
+        f"         Running: {pass_count} pass, {partial_count} partial, "
+        f"{fail_count} fail | ${total_cost:.4f} total | {avg_duration}ms avg",
+        flush=True,
+    )
+
+
+def print_result_summary(result: dict[str, Any], progress: str = "") -> None:
+    """Print a one-line summary of a result.
+
+    Args:
+        result: The eval result dict.
+        progress: Optional progress prefix like "[3/25] ".
+    """
     if result.get("dry_run"):
         valid = result.get("valid", False)
         errors = result.get("errors", [])
         op = result.get("operation", "extract")
         status = "VALID" if valid else "INVALID"
-        print(f"  [{op:7}] {result.get('fixture_name', '?'):40} [{status:7}] (dry-run)")
+        print(f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} [{status:7}] (dry-run)", flush=True)
         for err in errors:
-            print(f"           - {err}")
+            print(f"           - {err}", flush=True)
         return
 
     op = result.get("operation", "extract")
@@ -1009,38 +1058,32 @@ def print_result_summary(result: dict[str, Any]) -> None:
     duration = result.get("duration_ms", 0)
 
     if op == "extract":
-        if auto_score.get("all_events_match"):
-            status = "PASS"
-        elif auto_score.get("events_found_match"):
-            status = "PARTIAL"
-        else:
-            status = "FAIL"
+        status = _get_result_status(result)
         rating = auto_score.get("auto_rating", "?")
         print(
-            f"  [{op:7}] {result.get('fixture_name', '?'):40} "
+            f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] Rating:{rating}/5 "
-            f"${cost:.4f} ({duration}ms)"
+            f"${cost:.4f} ({duration}ms)",
+            flush=True,
         )
     elif op == "compare":
-        correct = auto_score.get("correct", False)
-        status = "PASS" if correct else "FAIL"
+        status = _get_result_status(result)
         print(
-            f"  [{op:7}] {result.get('fixture_name', '?'):40} "
+            f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] "
-            f"${cost:.4f} ({duration}ms)"
+            f"${cost:.4f} ({duration}ms)",
+            flush=True,
         )
     elif op == "merge":
         rating = auto_score.get("auto_rating", "?")
         matched = auto_score.get("fields_matched", 0)
         total = auto_score.get("total_fields", 0)
-        if isinstance(rating, (int, float)):
-            status = "PASS" if rating == 5 else ("PARTIAL" if rating >= 3 else "FAIL")
-        else:
-            status = "ERROR"
+        status = _get_result_status(result)
         print(
-            f"  [{op:7}] {result.get('fixture_name', '?'):40} "
+            f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] Rating:{rating}/5 ({matched}/{total}) "
-            f"${cost:.4f} ({duration}ms)"
+            f"${cost:.4f} ({duration}ms)",
+            flush=True,
         )
 
 
@@ -1521,7 +1564,7 @@ def run_all_models(
     use_cache: bool = True,
     verbose: bool = False,
     dry_run: bool = False,
-    models: list[tuple[str, str]] | None = None,
+    models: list[tuple] | None = None,
 ) -> list[dict]:
     """Run evals across multiple models and operations."""
     from selko.services.llm_provider import MODEL_REGISTRY
@@ -1529,12 +1572,19 @@ def run_all_models(
     eval_models = models or EVAL_MODELS
     all_results = []
 
-    for provider_name, model_name in eval_models:
+    for model_tuple in eval_models:
+        # Support both 2-tuples (provider, model) and 3-tuples (provider, model, thinking)
+        if len(model_tuple) == 3:
+            provider_name, model_name, thinking = model_tuple
+        else:
+            provider_name, model_name = model_tuple
+            thinking = "low"
+
         model_info = MODEL_REGISTRY.get(model_name, {})
         supports_vision = model_info.get("vision", False)
 
         print(f"\n{'='*60}")
-        print(f"Model: {model_name} (provider: {provider_name}, vision: {supports_vision})")
+        print(f"Model: {model_name} (provider: {provider_name}, thinking: {thinking}, vision: {supports_vision})")
         print(f"{'='*60}")
 
         if "extract" in operations:
@@ -1556,52 +1606,73 @@ def run_all_models(
                 if skipped:
                     print(f"  Skipping {skipped} image fixtures (text-only model)")
 
-            print(f"\n  Extract: {len(fixtures)} fixtures")
+            total = len(fixtures)
+            print(f"\n  Extract: {total} fixtures")
             print(f"  {'-'*50}")
-            for name, path in fixtures:
+            model_extract_results: list[dict] = []
+            for i, (name, path) in enumerate(fixtures, 1):
+                progress = f"[{i}/{total}] "
                 try:
                     result = run_extract_eval(
                         name, path, provider_name, model_name,
                         use_cache=use_cache, verbose=verbose, dry_run=dry_run,
+                        thinking=thinking,
                     )
                     all_results.append(result)
-                    print_result_summary(result)
+                    model_extract_results.append(result)
+                    print_result_summary(result, progress=progress)
+                    if i % 10 == 0 or i == total:
+                        _print_progress_totals(model_extract_results, "extract")
                 except Exception as e:
-                    print(f"  [extract] {name:40} [ERROR] {e}")
+                    print(f"  {progress}[extract] {name:40} [ERROR] {e}", flush=True)
 
         if "compare" in operations:
             fixtures = get_compare_fixtures()
             if difficulty:
                 fixtures = [(n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty]
-            print(f"\n  Compare: {len(fixtures)} fixtures")
+            total = len(fixtures)
+            print(f"\n  Compare: {total} fixtures")
             print(f"  {'-'*50}")
-            for name, path in fixtures:
+            model_compare_results: list[dict] = []
+            for i, (name, path) in enumerate(fixtures, 1):
+                progress = f"[{i}/{total}] "
                 try:
                     result = run_compare_eval(
                         name, path, provider_name, model_name,
                         use_cache=use_cache, verbose=verbose, dry_run=dry_run,
+                        thinking=thinking,
                     )
                     all_results.append(result)
-                    print_result_summary(result)
+                    model_compare_results.append(result)
+                    print_result_summary(result, progress=progress)
                 except Exception as e:
-                    print(f"  [compare] {name:40} [ERROR] {e}")
+                    print(f"  {progress}[compare] {name:40} [ERROR] {e}", flush=True)
+            if model_compare_results:
+                _print_progress_totals(model_compare_results, "compare")
 
         if "merge" in operations:
             fixtures = get_merge_fixtures()
             if difficulty:
                 fixtures = [(n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty]
-            print(f"\n  Merge: {len(fixtures)} fixtures")
+            total = len(fixtures)
+            print(f"\n  Merge: {total} fixtures")
             print(f"  {'-'*50}")
-            for name, path in fixtures:
+            model_merge_results: list[dict] = []
+            for i, (name, path) in enumerate(fixtures, 1):
+                progress = f"[{i}/{total}] "
                 try:
                     result = run_merge_eval(
                         name, path, provider_name, model_name,
                         use_cache=use_cache, verbose=verbose, dry_run=dry_run,
+                        thinking=thinking,
                     )
                     all_results.append(result)
-                    print_result_summary(result)
+                    model_merge_results.append(result)
+                    print_result_summary(result, progress=progress)
                 except Exception as e:
-                    print(f"  [merge] {name:40} [ERROR] {e}")
+                    print(f"  {progress}[merge] {name:40} [ERROR] {e}", flush=True)
+            if model_merge_results:
+                _print_progress_totals(model_merge_results, "merge")
 
     return all_results
 
@@ -1670,6 +1741,11 @@ Examples:
     # Provider options
     parser.add_argument("--provider", type=str, help="LLM provider override")
     parser.add_argument("--model", type=str, help="LLM model ID override")
+    parser.add_argument(
+        "--thinking", type=str, default="low",
+        choices=["none", "low", "medium"],
+        help="Thinking/reasoning level (default: low)",
+    )
 
     # Output options
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
@@ -1846,60 +1922,81 @@ Examples:
             fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
 
         if fixtures_to_run:
-            print(f"\nRunning {len(fixtures_to_run)} extraction fixtures ({provider}/{model})...")
+            total = len(fixtures_to_run)
+            print(f"\nRunning {total} extraction fixtures ({provider}/{model})...")
             if args.dry_run:
                 print("(dry-run mode)")
             print("-" * 60)
-            for name, path in fixtures_to_run:
+            extract_results: list[dict] = []
+            for i, (name, path) in enumerate(fixtures_to_run, 1):
+                progress = f"[{i}/{total}] "
                 try:
                     result = run_extract_eval(
                         name, path, provider, model,
                         use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
+                        thinking=args.thinking,
                     )
                     all_results.append(result)
-                    print_result_summary(result)
+                    extract_results.append(result)
+                    print_result_summary(result, progress=progress)
+                    if i % 10 == 0 or i == total:
+                        _print_progress_totals(extract_results, "extract")
                 except Exception as e:
-                    print(f"  [extract] {name:40} [ERROR] {e}")
+                    print(f"  {progress}[extract] {name:40} [ERROR] {e}", flush=True)
 
     if "compare" in operations:
         fixtures_to_run = get_compare_fixtures()
         if args.difficulty:
             fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
         if fixtures_to_run:
-            print(f"\nRunning {len(fixtures_to_run)} compare fixtures ({provider}/{model})...")
+            total = len(fixtures_to_run)
+            print(f"\nRunning {total} compare fixtures ({provider}/{model})...")
             if args.dry_run:
                 print("(dry-run mode)")
             print("-" * 60)
-            for name, path in fixtures_to_run:
+            compare_results: list[dict] = []
+            for i, (name, path) in enumerate(fixtures_to_run, 1):
+                progress = f"[{i}/{total}] "
                 try:
                     result = run_compare_eval(
                         name, path, provider, model,
                         use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
+                        thinking=args.thinking,
                     )
                     all_results.append(result)
-                    print_result_summary(result)
+                    compare_results.append(result)
+                    print_result_summary(result, progress=progress)
                 except Exception as e:
-                    print(f"  [compare] {name:40} [ERROR] {e}")
+                    print(f"  {progress}[compare] {name:40} [ERROR] {e}", flush=True)
+            if compare_results:
+                _print_progress_totals(compare_results, "compare")
 
     if "merge" in operations:
         fixtures_to_run = get_merge_fixtures()
         if args.difficulty:
             fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
         if fixtures_to_run:
-            print(f"\nRunning {len(fixtures_to_run)} merge fixtures ({provider}/{model})...")
+            total = len(fixtures_to_run)
+            print(f"\nRunning {total} merge fixtures ({provider}/{model})...")
             if args.dry_run:
                 print("(dry-run mode)")
             print("-" * 60)
-            for name, path in fixtures_to_run:
+            merge_results: list[dict] = []
+            for i, (name, path) in enumerate(fixtures_to_run, 1):
+                progress = f"[{i}/{total}] "
                 try:
                     result = run_merge_eval(
                         name, path, provider, model,
                         use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
+                        thinking=args.thinking,
                     )
                     all_results.append(result)
-                    print_result_summary(result)
+                    merge_results.append(result)
+                    print_result_summary(result, progress=progress)
                 except Exception as e:
-                    print(f"  [merge] {name:40} [ERROR] {e}")
+                    print(f"  {progress}[merge] {name:40} [ERROR] {e}", flush=True)
+            if merge_results:
+                _print_progress_totals(merge_results, "merge")
 
     if not operations and not args.threads:
         parser.print_help()
