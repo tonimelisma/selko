@@ -17,6 +17,7 @@ from selko.services.llm_provider import (
     LLMResponse,
     OpenAICompatibleProvider,
     _resize_image_if_needed,
+    _strip_markdown_json,
     create_provider,
 )
 
@@ -247,3 +248,34 @@ class TestResizeImage:
         data = b"not an image"
         result = _resize_image_if_needed(data, "image/png")
         assert result == data
+
+
+class TestStripMarkdownJson:
+    """Test markdown code-block stripping from JSON responses."""
+
+    def test_strips_json_code_block(self):
+        """Test that ```json ... ``` wrapping is removed."""
+        text = '```json\n{"greeting": "hello"}\n```'
+        assert _strip_markdown_json(text) == '{"greeting": "hello"}'
+
+    def test_strips_plain_code_block(self):
+        """Test that ``` ... ``` wrapping without language tag is removed."""
+        text = '```\n{"greeting": "hello"}\n```'
+        assert _strip_markdown_json(text) == '{"greeting": "hello"}'
+
+    def test_plain_json_unchanged(self):
+        """Test that plain JSON without markdown is returned unchanged."""
+        text = '{"greeting": "hello"}'
+        assert _strip_markdown_json(text) == '{"greeting": "hello"}'
+
+    def test_multiline_json(self):
+        """Test with multiline JSON inside code block."""
+        text = '```json\n{\n  "events_found": true,\n  "events": []\n}\n```'
+        result = _strip_markdown_json(text)
+        assert '"events_found": true' in result
+        assert result.startswith("{")
+        assert result.endswith("}")
+
+    def test_empty_string(self):
+        """Test that empty string is returned unchanged."""
+        assert _strip_markdown_json("") == ""
