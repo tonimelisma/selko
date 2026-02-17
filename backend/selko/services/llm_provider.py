@@ -275,6 +275,67 @@ def _resize_image_if_needed(
         return data
 
 
+def _sanitize_schema_for_strict(schema: dict) -> dict:
+    """Sanitize a Pydantic-generated JSON schema for strict-mode OpenAI-compatible APIs.
+
+    Strict mode (used by Moonshot, Z.AI, etc.) requires:
+    - No $ref/$defs — all definitions must be inlined
+    - No 'default' alongside 'anyOf' (Moonshot rejects this combination)
+    - No 'title' on nested properties
+    - All objects must have 'additionalProperties': false
+    - All properties must be listed in 'required'
+    """
+    import copy
+
+    schema = copy.deepcopy(schema)
+    defs = schema.pop("$defs", {})
+
+    def _resolve(node: Any) -> Any:
+        if isinstance(node, dict):
+            # Resolve $ref
+            if "$ref" in node:
+                ref_path = node["$ref"]  # e.g. "#/$defs/CalendarEvent"
+                ref_name = ref_path.split("/")[-1]
+                if ref_name in defs:
+                    return _resolve(copy.deepcopy(defs[ref_name]))
+                return node
+
+            resolved = {}
+            for key, value in node.items():
+                resolved[key] = _resolve(value)
+
+            # Remove 'default' when 'anyOf' is present (strict mode incompatibility)
+            if "anyOf" in resolved and "default" in resolved:
+                del resolved["default"]
+
+            # Remove 'title' from property-level nodes (not root)
+            if "title" in resolved and "type" in resolved:
+                del resolved["title"]
+            if "title" in resolved and "anyOf" in resolved:
+                del resolved["title"]
+
+            # Ensure objects have additionalProperties: false and all props in required
+            if resolved.get("type") == "object" and "properties" in resolved:
+                resolved["additionalProperties"] = False
+                resolved["required"] = list(resolved["properties"].keys())
+
+            # Handle items in arrays
+            if resolved.get("type") == "array" and "items" in resolved:
+                resolved["items"] = _resolve(resolved["items"])
+                # Remove title from array-level too
+                if "title" in resolved:
+                    del resolved["title"]
+
+            return resolved
+        elif isinstance(node, list):
+            return [_resolve(item) for item in node]
+        return node
+
+    result = _resolve(schema)
+    # Keep root-level title if present (some APIs expect it)
+    return result
+
+
 class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
 
@@ -442,12 +503,13 @@ class OpenAICompatibleProvider(LLMProvider):
         # Handle structured output
         if json_schema is not None:
             if self.supports_json_schema:
+                sanitized = _sanitize_schema_for_strict(json_schema)
                 kwargs["response_format"] = {
                     "type": "json_schema",
                     "json_schema": {
                         "name": "response",
                         "strict": True,
-                        "schema": json_schema,
+                        "schema": sanitized,
                     },
                 }
             else:

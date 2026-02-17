@@ -388,7 +388,7 @@ Return the matching Event ID (or null if no match) and brief reasoning.
     compare_schema = {
         "type": "object",
         "properties": {
-            "matched_event_id": {"type": ["string", "null"]},
+            "matched_event_id": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "reasoning": {"type": "string"},
         },
         "required": ["matched_event_id", "reasoning"],
@@ -494,10 +494,10 @@ Output JSON with merged event data:
         "properties": {
             "title": {"type": "string"},
             "start_datetime": {"type": "string"},
-            "end_datetime": {"type": ["string", "null"]},
+            "end_datetime": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "all_day": {"type": "boolean"},
-            "location": {"type": ["string", "null"]},
-            "description": {"type": ["string", "null"]},
+            "location": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "importance": {"type": "string", "enum": ["action_required", "fyi"]},
         },
         "required": ["title", "start_datetime", "all_day", "importance"],
