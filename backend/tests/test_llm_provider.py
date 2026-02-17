@@ -279,3 +279,84 @@ class TestStripMarkdownJson:
     def test_empty_string(self):
         """Test that empty string is returned unchanged."""
         assert _strip_markdown_json("") == ""
+
+
+class TestAnthropicProviderPDFHandling:
+    """Test that AnthropicProvider uses correct content types for PDFs vs images."""
+
+    def test_pdf_uses_document_type(self):
+        """Regression: PDFs must use 'type': 'document', not 'type': 'image'."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(type="text", text='{"events_found": false, "events": []}')]
+        mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
+        mock_client.messages.create.return_value = mock_response
+
+        with patch("anthropic.Anthropic", return_value=mock_client):
+            provider = AnthropicProvider(api_key="test-key", model="claude-haiku-4-5-20251001")
+
+        # Call generate with a PDF attachment
+        contents = [
+            "Analyze this PDF",
+            ImageContent(data=b"%PDF-1.4 test pdf content", mime_type="application/pdf"),
+        ]
+
+        with patch("selko.services.format_conversion.prepare_content_for_provider") as mock_convert:
+            from selko.services.format_conversion import ConvertedContent
+            # Simulate format_conversion passing PDF through (Anthropic accepts PDFs)
+            mock_convert.return_value = [
+                ConvertedContent(data=b"%PDF-1.4 test pdf content", mime_type="application/pdf")
+            ]
+            provider.generate(contents)
+
+        # Verify the API was called with "type": "document" for the PDF
+        call_args = mock_client.messages.create.call_args
+        message_content = call_args.kwargs["messages"][0]["content"]
+
+        pdf_parts = [p for p in message_content if p.get("type") == "document"]
+        image_parts = [p for p in message_content if p.get("type") == "image"]
+
+        assert len(pdf_parts) == 1, "PDF should use 'type': 'document'"
+        assert len(image_parts) == 0, "PDF should NOT use 'type': 'image'"
+        assert pdf_parts[0]["source"]["media_type"] == "application/pdf"
+
+    def test_image_uses_image_type(self):
+        """Images should still use 'type': 'image'."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(type="text", text='{"events_found": false, "events": []}')]
+        mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
+        mock_client.messages.create.return_value = mock_response
+
+        with patch("anthropic.Anthropic", return_value=mock_client):
+            provider = AnthropicProvider(api_key="test-key", model="claude-haiku-4-5-20251001")
+
+        # Create a tiny valid PNG for the test
+        from PIL import Image
+        import io
+        img = Image.new("RGB", (10, 10), color="red")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        png_data = buf.getvalue()
+
+        contents = [
+            "Analyze this image",
+            ImageContent(data=png_data, mime_type="image/png"),
+        ]
+
+        with patch("selko.services.format_conversion.prepare_content_for_provider") as mock_convert:
+            from selko.services.format_conversion import ConvertedContent
+            mock_convert.return_value = [
+                ConvertedContent(data=png_data, mime_type="image/png")
+            ]
+            provider.generate(contents)
+
+        call_args = mock_client.messages.create.call_args
+        message_content = call_args.kwargs["messages"][0]["content"]
+
+        image_parts = [p for p in message_content if p.get("type") == "image"]
+        document_parts = [p for p in message_content if p.get("type") == "document"]
+
+        assert len(image_parts) == 1, "Image should use 'type': 'image'"
+        assert len(document_parts) == 0, "Image should NOT use 'type': 'document'"
+        assert image_parts[0]["source"]["media_type"] == "image/png"
