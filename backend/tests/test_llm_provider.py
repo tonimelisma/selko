@@ -24,9 +24,9 @@ from selko.services.llm_provider import (
 class TestModelRegistry:
     """Test the model registry."""
 
-    def test_registry_has_25_models(self):
-        """Test that all 25 models are in the registry."""
-        assert len(MODEL_REGISTRY) == 25
+    def test_registry_has_27_models(self):
+        """Test that all 27 models are in the registry."""
+        assert len(MODEL_REGISTRY) == 27
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -153,14 +153,14 @@ class TestCreateProvider:
         """Test creating an OpenAI provider (uses OpenAI-compatible path)."""
         config = MagicMock()
         config.llm_provider = "openai"
-        config.llm_model = "gpt-4o-mini"
+        config.llm_model = "gpt-5-nano"
         config.openai_api_key = "test-key"
 
         with patch("openai.OpenAI"):
             provider = create_provider(config)
 
         assert isinstance(provider, OpenAICompatibleProvider)
-        assert provider.model == "gpt-4o-mini"
+        assert provider.model == "gpt-5-nano"
         assert provider.provider_name == "openai"
         assert provider.supports_vision is True
 
