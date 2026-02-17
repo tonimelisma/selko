@@ -247,7 +247,7 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
     )
     scores["start_datetime"] = {
         "difference_minutes": start_diff,
-        "match": start_diff is not None
+        "match": isinstance(start_diff, (int, float))
         and start_diff <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"],
     }
 
@@ -257,7 +257,7 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
     scores["end_datetime"] = {
         "difference_minutes": end_diff,
         "match": end_diff is None
-        or end_diff <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"],
+        or (isinstance(end_diff, (int, float)) and end_diff <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"]),
     }
 
     loc_sim = string_similarity(expected.get("location"), actual.get("location"))
@@ -368,7 +368,7 @@ def score_merge_result(expected: dict, actual: dict) -> dict[str, Any]:
     start_diff = time_difference_minutes(
         expected.get("start_datetime"), actual.get("start_datetime")
     )
-    start_match = start_diff is not None and start_diff <= MERGE_SCORE_THRESHOLDS["time_tolerance_minutes"]
+    start_match = isinstance(start_diff, (int, float)) and start_diff <= MERGE_SCORE_THRESHOLDS["time_tolerance_minutes"]
     scores["start_datetime"] = {"difference_minutes": start_diff, "match": start_match}
     if start_match:
         fields_matched += 1
@@ -378,7 +378,7 @@ def score_merge_result(expected: dict, actual: dict) -> dict[str, Any]:
     end_diff = time_difference_minutes(
         expected.get("end_datetime"), actual.get("end_datetime")
     )
-    end_match = end_diff is None or end_diff <= MERGE_SCORE_THRESHOLDS["time_tolerance_minutes"]
+    end_match = end_diff is None or (isinstance(end_diff, (int, float)) and end_diff <= MERGE_SCORE_THRESHOLDS["time_tolerance_minutes"])
     scores["end_datetime"] = {"difference_minutes": end_diff, "match": end_match}
     if end_match:
         fields_matched += 1

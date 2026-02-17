@@ -1,0 +1,73 @@
+{
+  "name": "club_newsletter_multi_event_11",
+  "category": "invitations",
+  "description": "NSC community newsletter with 5 events buried in board updates, cabin rental info, and booking rules",
+  "difficulty": "hard",
+  "tags": [
+    "multi-event",
+    "newsletter",
+    "community",
+    "real-world"
+  ],
+  "input": {
+    "provider_message_id": "eval-inv-011",
+    "thread_id": "thread-inv-011",
+    "subject": "Welcome New NSC Board Members",
+    "from_email": "info@nordicsocial.example.org",
+    "from_name": "NSC",
+    "to_emails": [
+      "member@example.com"
+    ],
+    "date_sent": "2026-02-17T03:54:48Z",
+    "snippet": "Four new members joined the NSC board...",
+    "body_text": "Four new members joined the NSC board\n\nNewsletter, February 16, 2026\n\nWelcome New Board Members\n\nOn February 1st we had our annual meeting at the Heritage Hall. You can read more about the meeting below, but I would really like to thank Ingrid Larsen for having been our president for the past three years. Even though being president is somewhat of a marathon, Ingrid did an amazing sprint towards the finish line by being in charge of, and putting together, an amazing 75 year anniversary party back in October. Thank you Ingrid!!!\n\nI would also like to welcome four new people to the board, Maria Holm, David Berg, Sara Lind and Nina Dahl. Thank you all so much for stepping up and wanting to help run the club. We've already put a number of new exciting events on the calendar, so save the dates, for those that are still being worked out.\n\nFinally I'd like to remind everyone that the whole Pine Lake Cabin is available for rent for only $100 per night during the winter. I spent this long weekend up there with a number of friends and it's a great and different experience to visit the cabin in the winter. We now have three bedrooms with beds for 8 people, and with a fire in the fireplace you get some truly Scandinavian hygge. There's also plenty of things to do and explore around the lake, so check it out, you can't find a better deal!\n\nErik Sandberg (your new/old president)\nPs. On Friday Jan 30 we had a fun Full moon hike. Great to see so many people joining on short notice.\n\nAnnual Meeting at Heritage Hall - Feb 1, 2026\n\nBefore we dove into the official business, the afternoon kicked off at 1:00 PM with a social hour. About 40 people showed up and it was fantastic to see so many familiar faces and welcome several newcomers over drinks and mingling. Whether it was catching up on Sierra ski conditions or sharing stories from the holidays, that first moment of \u2026\n\nUpcoming Events\n\nHappy Hour Above the City in the Skyline Tower\n\nFebruary 19\n\nJoin Nina and Mary for a truly special NSC Happy Hour experience, one you won\u2019t want to miss. This February, we\u2019re heading inside the iconic Skyline Tower for exclusive access to a 48th-floor bar with breathtaking views of the bay.\n\nWhen: Thursday, February 19, 5:30 PM\nWhat: Evening Happy Hour (timed entry required)\nWhere: Skyline Tower \u2013 48th Floor\n\nThis event is by registration only and must be coordinated directly through Mary in advance! Due to building security, all guests must be checked in at a designated arrival time to gain access upstairs.\nAvailable arrival time slots:\n\u2022 5:30 PM\n\u2022 6:00 PM\n\u2022 6:30 PM\nIf you\u2019re interested in attending, you must RSVP online under the following link, where you can also read more details: https://rsvp.example.com/e/nsc-happy-hour\n\nMarch 19th: NSC Happy Hour at The Copper Kettle\n\nNSC Happy Hour at The Copper Kettle \u2013 Join us on Thursday, March 19th, from 5:30 PM at one of the city\u2019s most unique cocktail bars. Enjoy exclusive drink specials, a cozy vintage atmosphere, and some of the best Aquavit in town, courtesy of owner Paul\u2019s Danish roots. Great drinks, great vibes, and great company and live music\u2014don\u2019t miss it!\n\nMarch 28th: NSC Bus Trip to Wine Country (save the date)\n\nBus trip to wine country, details coming soon.\n\nApril 4th: Joint NSC-NHC Easter Luncheon (Save the date)\n\nCome join the NSC and NHC for a traditional Scandinavian Luncheon. More info to follow. If you would like to help out organizing this event, please fill out this form.\n\nApril 5th: Joint NSC-NHC Kids Easter & Crafts (save the date)\n\nKids and family friendly event at the Nordic Heritage Center\n\nMountain cabin reservations\n\nThe mountain cabin winter reservations have now been open for a while, and we are seeing a lot of bookings come in. To make the system as fair as possible for everyone, we want to kindly remind everyone about the booking rules:\n\n- Single membership allows you to make reservations for ONE room, ONE stay at a time. Once your stay is over, you can then make your next reservation.\n- Family membership allows reservations for TWO rooms, ONE stay at a time, i.e. on the same dates.\n- We do not allow multiple reservations for different dates. Once your current reservation is over, you can go online and book your next one.\n- IMPORTANT: You do need to make sure that you include the correct # of people that will stay in each room in the reservation. If you need to add extra people to the reservation, email info@nordicsocial.example.org, and let us know what the adjustment should be. Note that there is a max # of individuals allowed per room, as outlined in the room descriptions on the reservation page.\n\nPlease email cabin@nordicsocial.example.org if you have any questions about the cabin or the reservation system.\n\nNordic Social Club\nPO Box 1000\nRiverside, CA 90000",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 5,
+    "events": [
+      {
+        "title": "NSC Happy Hour at Skyline Tower",
+        "start_datetime": "2026-02-19T17:30:00",
+        "end_datetime": null,
+        "location": "Skyline Tower, 48th Floor",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "NSC Happy Hour at The Copper Kettle",
+        "start_datetime": "2026-03-19T17:30:00",
+        "end_datetime": null,
+        "location": "The Copper Kettle",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "NSC Bus Trip to Wine Country",
+        "start_datetime": "2026-03-28",
+        "end_datetime": null,
+        "location": null,
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint NSC-NHC Easter Luncheon",
+        "start_datetime": "2026-04-04",
+        "end_datetime": null,
+        "location": null,
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint NSC-NHC Kids Easter & Crafts",
+        "start_datetime": "2026-04-05",
+        "end_datetime": null,
+        "location": "Nordic Heritage Center",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Real-world-style NSC newsletter with 5 future events buried among board updates, cabin rental info, and booking rules. It also recaps two events already past when it was sent (Full Moon Hike Jan 30, Annual Meeting Feb 1); those are not expected, since production drops past events before saving."
+}
