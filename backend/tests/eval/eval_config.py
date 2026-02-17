@@ -59,16 +59,25 @@ MERGE_SCORE_THRESHOLDS = {
 DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", os.environ.get("SELKO_EVAL_PROVIDER", "gemini"))
 DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "gemini-3-flash-preview"))
 
-# 6 default models for multi-model evals (one per provider)
+# Default models for multi-model evals: (provider, model, thinking_level)
+# Thinking levels: "none", "low", "medium" — providers without thinking support ignore the level
+# Gemini supports none/low/medium; OpenAI GPT-5 supports low/medium (reasoning models, no "none")
 EVAL_MODELS = [
-    ("gemini", "gemini-3-flash-preview"),
-    ("moonshot", "kimi-k2.5"),
-    ("zai", "glm-4.6v-flash"),
-    ("qwen", "qwen3-vl-flash"),
-    ("deepseek", "deepseek-chat"),
-    ("minimax", "MiniMax-M2.5"),
-    ("openai", "gpt-5-nano"),
-    ("anthropic", "claude-haiku-4-5-20251001"),
+    # Gemini — test at none, low, medium
+    ("gemini", "gemini-3-flash-preview", "none"),
+    ("gemini", "gemini-3-flash-preview", "low"),
+    ("gemini", "gemini-3-flash-preview", "medium"),
+    # OpenAI GPT-5 — test at low, medium (reasoning model, can't disable reasoning)
+    ("openai", "gpt-5-nano", "low"),
+    ("openai", "gpt-5-nano", "medium"),
+    # Anthropic — single mode (no thinking levels)
+    ("anthropic", "claude-haiku-4-5-20251001", "none"),
+    # Other providers — single mode (no thinking support)
+    ("moonshot", "kimi-k2.5", "none"),
+    ("zai", "glm-4.6v-flash", "none"),
+    ("qwen", "qwen3-vl-flash", "none"),
+    ("deepseek", "deepseek-chat", "none"),
+    ("minimax", "MiniMax-M2.5", "none"),
 ]
 
 # Monthly cost projection tiers
