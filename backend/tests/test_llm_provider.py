@@ -8,6 +8,7 @@ from selko.services.llm_provider import (
     MODEL_REGISTRY,
     PROVIDER_API_KEY_MAP,
     PROVIDER_DEFAULT_MODEL,
+    AnthropicProvider,
     ContentPart,
     GeminiProvider,
     ImageContent,
@@ -23,9 +24,9 @@ from selko.services.llm_provider import (
 class TestModelRegistry:
     """Test the model registry."""
 
-    def test_registry_has_21_models(self):
-        """Test that all 21 models are in the registry."""
-        assert len(MODEL_REGISTRY) == 21
+    def test_registry_has_25_models(self):
+        """Test that all 25 models are in the registry."""
+        assert len(MODEL_REGISTRY) == 25
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -37,10 +38,11 @@ class TestModelRegistry:
             assert "input" in entry["pricing"], f"{model_name} missing pricing 'input'"
             assert "output" in entry["pricing"], f"{model_name} missing pricing 'output'"
 
-    def test_non_gemini_models_have_base_url(self):
-        """Test that non-Gemini models have base_url."""
+    def test_non_native_sdk_models_have_base_url(self):
+        """Test that non-native-SDK models have base_url."""
+        native_sdk_providers = {"gemini", "anthropic"}
         for model_name, entry in MODEL_REGISTRY.items():
-            if entry["provider"] != "gemini":
+            if entry["provider"] not in native_sdk_providers:
                 assert "base_url" in entry, f"{model_name} missing 'base_url'"
 
     def test_all_providers_have_default_model(self):
@@ -132,6 +134,35 @@ class TestCreateProvider:
             provider = create_provider(config)
 
         assert provider.model == "deepseek-chat"
+
+    def test_create_anthropic_provider(self):
+        """Test creating an Anthropic provider."""
+        config = MagicMock()
+        config.llm_provider = "anthropic"
+        config.llm_model = "claude-haiku-4-5-20251001"
+        config.anthropic_api_key = "test-key"
+
+        with patch("anthropic.Anthropic"):
+            provider = create_provider(config)
+
+        assert isinstance(provider, AnthropicProvider)
+        assert provider.model == "claude-haiku-4-5-20251001"
+        assert provider.provider_name == "anthropic"
+
+    def test_create_openai_provider(self):
+        """Test creating an OpenAI provider (uses OpenAI-compatible path)."""
+        config = MagicMock()
+        config.llm_provider = "openai"
+        config.llm_model = "gpt-4o-mini"
+        config.openai_api_key = "test-key"
+
+        with patch("openai.OpenAI"):
+            provider = create_provider(config)
+
+        assert isinstance(provider, OpenAICompatibleProvider)
+        assert provider.model == "gpt-4o-mini"
+        assert provider.provider_name == "openai"
+        assert provider.supports_vision is True
 
 
 class TestImageContent:

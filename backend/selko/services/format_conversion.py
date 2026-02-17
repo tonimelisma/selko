@@ -47,6 +47,8 @@ PROVIDER_ACCEPTED_FORMATS: dict[str, set[str]] = {
     "qwen": {"image/png", "image/jpeg", "image/gif", "image/webp"},
     "deepseek": set(),   # text-only
     "minimax": set(),    # text-only
+    "openai": {"image/png", "image/jpeg", "image/gif", "image/webp"},
+    "anthropic": {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"},
 }
 
 
