@@ -63,6 +63,15 @@ class TestModelRegistry:
         for provider, model in PROVIDER_DEFAULT_MODEL.items():
             assert model in MODEL_REGISTRY, f"Default model {model} for {provider} not in registry"
 
+    def test_gpt5_models_have_reasoning_flag(self):
+        """Test that all GPT-5 models are marked as reasoning models."""
+        gpt5_models = [m for m in MODEL_REGISTRY if m.startswith("gpt-5")]
+        assert len(gpt5_models) == 4
+        for model_name in gpt5_models:
+            assert MODEL_REGISTRY[model_name].get("reasoning") is True, (
+                f"{model_name} should have reasoning=True"
+            )
+
 
 class TestCreateProvider:
     """Test provider factory function."""
@@ -164,6 +173,59 @@ class TestCreateProvider:
         assert provider.model == "gpt-5-nano"
         assert provider.provider_name == "openai"
         assert provider.supports_vision is True
+        assert provider.reasoning_model is True
+
+    def test_non_reasoning_model_has_no_reasoning_flag(self):
+        """Test that non-reasoning models don't get reasoning_model=True."""
+        config = MagicMock()
+        config.llm_provider = "moonshot"
+        config.llm_model = "kimi-k2.5"
+        config.moonshot_api_key = "test-key"
+
+        with patch("openai.OpenAI"):
+            provider = create_provider(config)
+
+        assert isinstance(provider, OpenAICompatibleProvider)
+        assert provider.reasoning_model is False
+
+    def test_create_provider_passes_thinking_to_gemini(self):
+        """Test that thinking level is passed through to GeminiProvider."""
+        config = MagicMock()
+        config.llm_provider = "gemini"
+        config.llm_model = None
+        config.gemini_api_key = "test-key"
+
+        with patch("google.genai.Client"):
+            provider = create_provider(config, thinking="medium")
+
+        assert isinstance(provider, GeminiProvider)
+        assert provider.thinking == "medium"
+
+    def test_create_provider_passes_thinking_to_openai(self):
+        """Test that thinking level is passed through to OpenAICompatibleProvider."""
+        config = MagicMock()
+        config.llm_provider = "openai"
+        config.llm_model = "gpt-5-nano"
+        config.openai_api_key = "test-key"
+
+        with patch("openai.OpenAI"):
+            provider = create_provider(config, thinking="medium")
+
+        assert isinstance(provider, OpenAICompatibleProvider)
+        assert provider.thinking == "medium"
+
+    def test_create_provider_passes_thinking_to_anthropic(self):
+        """Test that thinking level is passed through to AnthropicProvider."""
+        config = MagicMock()
+        config.llm_provider = "anthropic"
+        config.llm_model = "claude-haiku-4-5-20251001"
+        config.anthropic_api_key = "test-key"
+
+        with patch("anthropic.Anthropic"):
+            provider = create_provider(config, thinking="none")
+
+        assert isinstance(provider, AnthropicProvider)
+        assert provider.thinking == "none"
 
 
 class TestImageContent:
@@ -279,6 +341,105 @@ class TestStripMarkdownJson:
     def test_empty_string(self):
         """Test that empty string is returned unchanged."""
         assert _strip_markdown_json("") == ""
+
+
+class TestOpenAIReasoningEffort:
+    """Test that reasoning models get reasoning_effort in API calls."""
+
+    def test_reasoning_model_passes_reasoning_effort_low(self):
+        """GPT-5 models with thinking='low' should pass reasoning_effort='low'."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"events_found": false, "events": []}'))]
+        mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
+        mock_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key",
+                model="gpt-5-nano",
+                base_url="https://api.openai.com/v1",
+                provider_name="openai",
+                supports_vision=True,
+                reasoning_model=True,
+                thinking="low",
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs.get("reasoning_effort") == "low"
+
+    def test_reasoning_model_passes_reasoning_effort_medium(self):
+        """GPT-5 models with thinking='medium' should pass reasoning_effort='medium'."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"events_found": false, "events": []}'))]
+        mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
+        mock_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key",
+                model="gpt-5-nano",
+                base_url="https://api.openai.com/v1",
+                provider_name="openai",
+                supports_vision=True,
+                reasoning_model=True,
+                thinking="medium",
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs.get("reasoning_effort") == "medium"
+
+    def test_reasoning_model_with_thinking_none_omits_reasoning_effort(self):
+        """Reasoning model with thinking='none' should NOT pass reasoning_effort."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"events_found": false, "events": []}'))]
+        mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
+        mock_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key",
+                model="gpt-5-nano",
+                base_url="https://api.openai.com/v1",
+                provider_name="openai",
+                supports_vision=True,
+                reasoning_model=True,
+                thinking="none",
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert "reasoning_effort" not in call_kwargs
+
+    def test_non_reasoning_model_omits_reasoning_effort(self):
+        """Non-reasoning models should NOT pass reasoning_effort."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"result": "ok"}'))]
+        mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
+        mock_client.chat.completions.create.return_value = mock_response
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key",
+                model="kimi-k2.5",
+                base_url="https://api.moonshot.ai/v1",
+                provider_name="moonshot",
+                supports_vision=True,
+                reasoning_model=False,
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert "reasoning_effort" not in call_kwargs
 
 
 class TestAnthropicProviderPDFHandling:

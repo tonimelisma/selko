@@ -196,11 +196,12 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.minimax.io/v1",
         "pricing": {"input": 0.20, "output": 1.10},
     },
-    # --- OpenAI (4 models) ---
+    # --- OpenAI (4 models, all GPT-5 reasoning) ---
     "gpt-5.2": {
         "provider": "openai",
         "vision": True,
         "json_schema": True,
+        "reasoning": True,
         "base_url": "https://api.openai.com/v1",
         "pricing": {"input": 1.75, "output": 14.00},
     },
@@ -208,6 +209,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "provider": "openai",
         "vision": True,
         "json_schema": True,
+        "reasoning": True,
         "base_url": "https://api.openai.com/v1",
         "pricing": {"input": 1.25, "output": 10.00},
     },
@@ -215,6 +217,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "provider": "openai",
         "vision": True,
         "json_schema": True,
+        "reasoning": True,
         "base_url": "https://api.openai.com/v1",
         "pricing": {"input": 0.25, "output": 2.00},
     },
@@ -222,6 +225,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "provider": "openai",
         "vision": True,
         "json_schema": True,
+        "reasoning": True,
         "base_url": "https://api.openai.com/v1",
         "pricing": {"input": 0.05, "output": 0.40},
     },
@@ -429,15 +433,16 @@ class LLMProvider(ABC):
 class GeminiProvider(LLMProvider):
     """Google Gemini provider using native google-genai SDK."""
 
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, thinking: str = "low"):
         from google import genai
 
         self.provider_name = "gemini"
         self.model = model
         self.supports_vision = True
         self.supports_json_schema = True
+        self.thinking = thinking
         self.client = genai.Client(api_key=api_key)
-        logger.debug(f"Initialized Gemini provider with model {model}")
+        logger.debug(f"Initialized Gemini provider with model {model}, thinking={thinking}")
 
     def generate(
         self,
@@ -477,7 +482,10 @@ class GeminiProvider(LLMProvider):
         if json_schema is not None:
             config_kwargs["response_mime_type"] = "application/json"
             config_kwargs["response_schema"] = json_schema
-        config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="low")
+        if self.thinking != "none":
+            config_kwargs["thinking_config"] = types.ThinkingConfig(
+                thinking_level=self.thinking
+            )
         config = types.GenerateContentConfig(**config_kwargs)
 
         response = self.client.models.generate_content(
@@ -505,7 +513,7 @@ class GeminiProvider(LLMProvider):
 
 
 class OpenAICompatibleProvider(LLMProvider):
-    """Provider for OpenAI-compatible APIs (Moonshot, Z.AI, Qwen, DeepSeek, MiniMax)."""
+    """Provider for OpenAI-compatible APIs (Moonshot, Z.AI, Qwen, DeepSeek, MiniMax, OpenAI)."""
 
     def __init__(
         self,
@@ -515,6 +523,8 @@ class OpenAICompatibleProvider(LLMProvider):
         provider_name: str,
         supports_vision: bool = False,
         supports_json_schema: bool = True,
+        reasoning_model: bool = False,
+        thinking: str = "low",
     ):
         from openai import OpenAI
 
@@ -522,10 +532,12 @@ class OpenAICompatibleProvider(LLMProvider):
         self.model = model
         self.supports_vision = supports_vision
         self.supports_json_schema = supports_json_schema
+        self.reasoning_model = reasoning_model
+        self.thinking = thinking
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         logger.debug(
             f"Initialized {provider_name} provider with model {model} "
-            f"at {base_url}"
+            f"at {base_url}, thinking={thinking}"
         )
 
     def generate(
@@ -563,6 +575,10 @@ class OpenAICompatibleProvider(LLMProvider):
             "model": self.model,
             "messages": messages,
         }
+
+        # Set reasoning effort for GPT-5 reasoning models
+        if self.reasoning_model and self.thinking != "none":
+            kwargs["reasoning_effort"] = self.thinking
 
         # Handle structured output
         if json_schema is not None:
@@ -613,13 +629,14 @@ class OpenAICompatibleProvider(LLMProvider):
 class AnthropicProvider(LLMProvider):
     """Anthropic Claude provider using native anthropic SDK."""
 
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, thinking: str = "low"):
         import anthropic
 
         self.provider_name = "anthropic"
         self.model = model
         self.supports_vision = True
         self.supports_json_schema = False
+        self.thinking = thinking  # Stored for eval tracking; Anthropic doesn't have thinking levels
         self.client = anthropic.Anthropic(api_key=api_key)
         logger.debug(f"Initialized Anthropic provider with model {model}")
 
@@ -710,7 +727,7 @@ class LLMProviderError(Exception):
     pass
 
 
-def create_provider(config: Any) -> LLMProvider:
+def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
     """Create an LLM provider from configuration.
 
     Uses LLM_PROVIDER to select the API key and LLM_MODEL to select
@@ -718,6 +735,9 @@ def create_provider(config: Any) -> LLMProvider:
 
     Args:
         config: Config object with provider settings and API keys.
+        thinking: Thinking/reasoning level ("none", "low", "medium").
+            Gemini maps to thinking_level, OpenAI GPT-5 maps to reasoning_effort.
+            Providers without thinking support ignore this parameter.
 
     Returns:
         Configured LLMProvider instance.
@@ -759,9 +779,9 @@ def create_provider(config: Any) -> LLMProvider:
 
     # Create provider
     if provider_name == "gemini":
-        return GeminiProvider(api_key=api_key, model=model_name)
+        return GeminiProvider(api_key=api_key, model=model_name, thinking=thinking)
     elif provider_name == "anthropic":
-        return AnthropicProvider(api_key=api_key, model=model_name)
+        return AnthropicProvider(api_key=api_key, model=model_name, thinking=thinking)
     else:
         # OpenAI-compatible (moonshot, zai, qwen, deepseek, minimax, openai)
         base_url = registry_entry.get("base_url")
@@ -776,4 +796,6 @@ def create_provider(config: Any) -> LLMProvider:
             provider_name=provider_name,
             supports_vision=registry_entry.get("vision", False),
             supports_json_schema=registry_entry.get("json_schema", True),
+            reasoning_model=registry_entry.get("reasoning", False),
+            thinking=thinking,
         )
