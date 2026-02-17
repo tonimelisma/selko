@@ -230,7 +230,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "pricing": {"input": 0.05, "output": 0.40},
     },
     # --- Anthropic / Claude (2 models) ---
-    "claude-sonnet-4-5-20250929": {
+    "claude-sonnet-4-6": {
         "provider": "anthropic",
         "vision": True,
         "json_schema": False,
@@ -265,7 +265,7 @@ PROVIDER_DEFAULT_MODEL = {
     "deepseek": "deepseek-chat",
     "minimax": "MiniMax-M2.5",
     "openai": "gpt-5-nano",
-    "anthropic": "claude-sonnet-4-5-20250929",
+    "anthropic": "claude-sonnet-4-6",
 }
 
 
