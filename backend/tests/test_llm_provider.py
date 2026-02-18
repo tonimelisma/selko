@@ -25,9 +25,9 @@ from selko.services.llm_provider import (
 class TestModelRegistry:
     """Test the model registry."""
 
-    def test_registry_has_27_models(self):
-        """Test that all 27 models are in the registry."""
-        assert len(MODEL_REGISTRY) == 27
+    def test_registry_has_28_models(self):
+        """Test that all 28 models are in the registry."""
+        assert len(MODEL_REGISTRY) == 28
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -79,6 +79,22 @@ class TestModelRegistry:
     def test_haiku_has_no_adaptive_thinking(self):
         """Test that Haiku 4.5 does not have adaptive_thinking flag."""
         assert MODEL_REGISTRY["claude-haiku-4-5-20251001"].get("adaptive_thinking") is not True
+
+    def test_qwen_thinking_models_have_flag(self):
+        """Test that Qwen3-VL and Qwen3.5 models have qwen_thinking flag."""
+        thinking_models = ["qwen3.5-plus", "qwen3-vl-plus", "qwen3-vl-flash"]
+        for model_name in thinking_models:
+            assert MODEL_REGISTRY[model_name].get("qwen_thinking") is True, (
+                f"{model_name} should have qwen_thinking=True"
+            )
+
+    def test_older_qwen_models_no_thinking(self):
+        """Test that older Qwen models don't have qwen_thinking flag."""
+        non_thinking = ["qwen-vl-max", "qwen-vl-plus", "qwen-plus", "qwen-turbo"]
+        for model_name in non_thinking:
+            assert MODEL_REGISTRY[model_name].get("qwen_thinking") is not True, (
+                f"{model_name} should NOT have qwen_thinking"
+            )
 
 
 class TestCreateProvider:
@@ -249,6 +265,33 @@ class TestCreateProvider:
         assert isinstance(provider, AnthropicProvider)
         assert provider.thinking == "medium"
         assert provider.adaptive_thinking is True
+
+    def test_create_provider_qwen_thinking_model_gets_flag(self):
+        """Test that Qwen3-VL-Plus gets qwen_thinking=True via create_provider."""
+        config = MagicMock()
+        config.llm_provider = "qwen"
+        config.llm_model = "qwen3-vl-plus"
+        config.alibaba_api_key = "test-key"
+
+        with patch("openai.OpenAI"):
+            provider = create_provider(config, thinking="low")
+
+        assert isinstance(provider, OpenAICompatibleProvider)
+        assert provider.qwen_thinking is True
+        assert provider.thinking == "low"
+
+    def test_create_provider_qwen_non_thinking_model_no_flag(self):
+        """Test that older Qwen model gets qwen_thinking=False."""
+        config = MagicMock()
+        config.llm_provider = "qwen"
+        config.llm_model = "qwen-vl-max"
+        config.alibaba_api_key = "test-key"
+
+        with patch("openai.OpenAI"):
+            provider = create_provider(config, thinking="none")
+
+        assert isinstance(provider, OpenAICompatibleProvider)
+        assert provider.qwen_thinking is False
 
 
 class TestImageContent:
@@ -630,3 +673,85 @@ class TestAnthropicAdaptiveThinking:
         call_kwargs = mock_client.messages.create.call_args.kwargs
         assert "thinking" not in call_kwargs
         assert "output_config" not in call_kwargs
+
+
+class TestQwenThinking:
+    """Test that Qwen thinking params are passed correctly via extra_body."""
+
+    def _make_mock_client(self):
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock(message=MagicMock(content='{"events_found": false, "events": []}'))]
+        mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
+        mock_client.chat.completions.create.return_value = mock_response
+        return mock_client
+
+    def test_qwen_thinking_low(self):
+        """Qwen model with thinking='low' should pass enable_thinking + thinking_budget."""
+        mock_client = self._make_mock_client()
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key", model="qwen3-vl-plus",
+                base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+                provider_name="qwen", qwen_thinking=True, thinking="low",
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["extra_body"] == {
+            "enable_thinking": True,
+            "thinking_budget": 2048,
+        }
+
+    def test_qwen_thinking_medium(self):
+        """Qwen model with thinking='medium' should pass higher thinking_budget."""
+        mock_client = self._make_mock_client()
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key", model="qwen3.5-plus",
+                base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+                provider_name="qwen", qwen_thinking=True, thinking="medium",
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["extra_body"] == {
+            "enable_thinking": True,
+            "thinking_budget": 8192,
+        }
+
+    def test_qwen_thinking_none_disables(self):
+        """Qwen model with thinking='none' should explicitly disable thinking."""
+        mock_client = self._make_mock_client()
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key", model="qwen3-vl-plus",
+                base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+                provider_name="qwen", qwen_thinking=True, thinking="none",
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["extra_body"] == {"enable_thinking": False}
+
+    def test_non_thinking_qwen_no_extra_body(self):
+        """Older Qwen model (no qwen_thinking) should NOT pass extra_body."""
+        mock_client = self._make_mock_client()
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key", model="qwen-vl-max",
+                base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+                provider_name="qwen", qwen_thinking=False, thinking="none",
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert "extra_body" not in call_kwargs
