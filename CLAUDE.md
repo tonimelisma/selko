@@ -219,6 +219,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 | **Frontend queries** | `docs/supabase-frontend-queries.md` | When building UI features |
 | **API workflow** | `docs/api-workflow.md` | When working with Python API |
 | **CI/CD** | `docs/ci-cd.md` | When troubleshooting CI |
+| **GCP VPS** | `docs/gcp-vps.md` | When maintaining the CI Supabase VM |
 | **Job queue** | `docs/job-queue.md` | When working with background jobs |
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |

@@ -6,7 +6,8 @@ The CI/CD pipeline ensures code quality and manages deployments across three env
 
 | Environment | Database | Deployment | Purpose |
 |-------------|----------|------------|---------|
-| **Development** | Local Docker | Manual (local only) | Fast iteration with isolated database |
+| **Development (local)** | Local Docker (`supabase start`) | Manual | Fast iteration with isolated database |
+| **Development (CI)** | Persistent GCP VM via SSH tunnel | Automatic on push/PR | Integration tests without Docker startup overhead |
 | **Staging** | Cloud Supabase | **Automatic on main push** | Pre-production validation with real services |
 | **Production** | Cloud Supabase | Manual trigger only | Live environment (manual safety gate) |
 
@@ -18,7 +19,7 @@ The CI/CD pipeline ensures code quality and manages deployments across three env
 PR opened/updated
     |
     +-- Unit Tests (no external dependencies)
-    +-- Integration Tests (local Supabase via Docker)
+    +-- Integration Tests (Supabase via SSH tunnel to GCP VM)
     +-- Android Unit Tests (Gradle)
     |
 All tests pass -> PR ready for review (no deployment)
@@ -30,7 +31,7 @@ All tests pass -> PR ready for review (no deployment)
 Code merged to main
     |
     +-- Unit Tests (backend)
-    +-- Integration Tests (local Supabase)
+    +-- Integration Tests (Supabase via SSH tunnel to GCP VM)
     +-- Android Unit Tests
     |
 All tests pass
@@ -75,7 +76,7 @@ Production environment updated
 | Job | Runs On | Dependencies | Purpose |
 |-----|---------|--------------|---------|
 | `unit-tests` | Every push/PR | None | Fast backend validation, no external services |
-| `integration-tests-development` | Every push/PR | None | Spins up local Supabase in Docker |
+| `integration-tests-development` | Every push/PR | None | SSH tunnel to persistent Supabase on GCP VM |
 | `android-unit-tests` | Every push/PR | None | Android unit tests via Gradle |
 | `deploy-staging` | Main push only | unit-tests, integration-tests-development, android-unit-tests | Deploy DB + API + frontend to staging |
 | `integration-tests-staging` | Main push only | deploy-staging | Validate deployed staging backend with real LLM |
@@ -96,6 +97,11 @@ Configure at: Repository -> Settings -> Secrets and variables -> Actions
 | `STAGING_TEST_USER_PASSWORD` | Test user password | Set when creating user |
 | `GOOGLE_CLIENT_ID` | OAuth for Gmail integration | Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | OAuth secret | Google Cloud Console |
+| `CI_SUPABASE_SSH_KEY` | SSH private key for GCP VM access | `ssh-keygen -t ed25519 -f ci_vm` |
+| `CI_SUPABASE_HOST` | GCP VM static IP | GCP Console -> VPC -> External IP |
+| `CI_SUPABASE_USER` | SSH username on GCP VM | VM OS login user (e.g. `toni`) |
+| `CI_SUPABASE_ANON_KEY` | Supabase anon JWT key on CI VM | Well-known local dev key from `supabase status` |
+| `CI_SUPABASE_SERVICE_ROLE_KEY` | Supabase service role JWT key on CI VM | Well-known local dev key from `supabase status` |
 
 **Note on naming:** GitHub secrets use `STAGING_*` prefix to distinguish environments, but the workflow maps these to unprefixed environment variables (`TEST_USER_EMAIL`, etc.) that the code expects.
 
@@ -109,7 +115,8 @@ Configure at: Repository -> Settings -> Secrets and variables -> Actions
 ### GitHub Actions
 - Uses GitHub Secrets mapped to environment variables
 - Automatic deployment on main push (staging only)
-- Ephemeral Supabase instances for dev tests
+- Integration tests connect to persistent Supabase on GCP VM via SSH tunnel (see [GCP VPS docs](gcp-vps.md))
+- Concurrency group `ci-supabase-vm` queues concurrent integration test runs
 
 ## Deployment Commands
 
@@ -215,3 +222,4 @@ When multiple agents work simultaneously, they use git worktrees for isolation. 
 - [PRD_ARCH.md](../PRD_ARCH.md) Part 3 - Render deployment configuration
 - [PRD_ARCH.md](../PRD_ARCH.md) Part 4 - Testing strategy details
 - [parallel-agents.md](parallel-agents.md) - Multi-agent workflow guide
+- [gcp-vps.md](gcp-vps.md) - GCP VM setup and maintenance (hosts CI Supabase)

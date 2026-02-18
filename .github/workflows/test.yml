@@ -77,6 +77,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true'
     runs-on: ubuntu-latest
+    # Queue concurrent runs — persistent VM can only handle one db reset at a time
+    concurrency:
+      group: ci-supabase-vm
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -101,46 +105,53 @@ jobs:
           uv sync --extra test
           uv pip install pytest-xdist
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /var/lib/docker
-          key: docker-${{ runner.os }}-supabase-${{ hashFiles('supabase/config.toml') }}
-          restore-keys: docker-${{ runner.os }}-supabase-
-
-      - name: Start Supabase
-        run: supabase start
-
-      - name: Wait for Supabase to be ready
+      - name: Setup SSH key
         run: |
-          echo "Waiting for Supabase API..."
-          for i in {1..30}; do
-            if curl -s http://localhost:54321/rest/v1/ > /dev/null 2>&1; then
-              echo "Supabase API is ready"
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CI_SUPABASE_SSH_KEY }}" > ~/.ssh/ci_vm
+          chmod 600 ~/.ssh/ci_vm
+          ssh-keyscan -H ${{ secrets.CI_SUPABASE_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Verify VM health
+        run: |
+          ssh -i ~/.ssh/ci_vm -o ConnectTimeout=10 \
+            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
+            "curl -sf http://localhost:54321/rest/v1/ > /dev/null && echo 'Supabase API healthy'"
+
+      - name: Sync migrations and reset database
+        run: |
+          scp -i ~/.ssh/ci_vm -r supabase/migrations/ \
+            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }}:/opt/selko/supabase/migrations/
+          ssh -i ~/.ssh/ci_vm \
+            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
+            "cd /opt/selko && supabase db reset"
+
+      - name: Establish SSH tunnel
+        run: |
+          ssh -i ~/.ssh/ci_vm -fN \
+            -L 54321:localhost:54321 \
+            -L 54322:localhost:54322 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            -o ExitOnForwardFailure=yes \
+            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }}
+          # Verify tunnel is working
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:54321/rest/v1/ > /dev/null 2>&1; then
+              echo "SSH tunnel established and Supabase reachable"
               exit 0
             fi
-            echo "Attempt $i/30: Waiting..."
-            sleep 2
+            sleep 1
           done
-          echo "Supabase API did not become ready in time"
+          echo "SSH tunnel failed to establish"
           exit 1
 
-      - name: Create .env file for local Supabase
+      - name: Create .env file
         run: |
-          # Get credentials from supabase status
-          SUPABASE_URL=$(supabase status --output json | jq -r '.API_URL')
-          SUPABASE_ANON_KEY=$(supabase status --output json | jq -r '.ANON_KEY')
-          SUPABASE_SERVICE_ROLE_KEY=$(supabase status --output json | jq -r '.SERVICE_ROLE_KEY')
-
-          echo "SUPABASE_URL=${SUPABASE_URL}" > .env
-          echo "SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}" >> .env
-          echo "SUPABASE_PUBLISHABLE_KEY=${SUPABASE_ANON_KEY}" >> .env
-          echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}" >> .env
+          echo "SUPABASE_URL=http://localhost:54321" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.CI_SUPABASE_ANON_KEY }}" >> .env
+          echo "SUPABASE_PUBLISHABLE_KEY=${{ secrets.CI_SUPABASE_ANON_KEY }}" >> .env
+          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}" >> .env
           echo "TEST_USER_EMAIL=test@selko.local" >> .env
           echo "TEST_USER_PASSWORD=testpass123" >> .env
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
@@ -158,17 +169,13 @@ jobs:
 
       - name: Seed Gmail tokens from staging
         run: |
-          # Get local Supabase service role key dynamically
-          export TARGET_SUPABASE_SERVICE_ROLE_KEY=$(supabase status --output json | jq -r '.SERVICE_ROLE_KEY')
-          
           uv run python -m cli.cli_seed_tokens \
             --from staging --to development --provider gmail
         env:
-          # Source (staging) credentials via environment overrides
           SOURCE_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
           SOURCE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
-          # Target (local) credentials
           TARGET_SUPABASE_URL: http://localhost:54321
+          TARGET_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}
           TEST_USER_EMAIL: test@selko.local
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
@@ -185,9 +192,11 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         # NOTE: Does NOT use --run-llm flag, so LLM tests are skipped (mocked versions run instead)
 
-      - name: Stop Supabase
+      - name: Cleanup SSH tunnel
         if: always()
-        run: supabase stop
+        run: |
+          pkill -f "ssh.*ci_vm.*-L 54321" || true
+          rm -f ~/.ssh/ci_vm
 
   android-unit-tests:
     name: Android Unit Tests
