@@ -12,7 +12,9 @@ import argparse
 import hashlib
 import json
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -520,25 +522,36 @@ def run_extract_eval(
                 print(f"  [cached] {fixture_name}")
             return cached
 
+    # Phase 1: Fixture + attachment loading
+    fixture_load_started_at = datetime.now(timezone.utc)
     input_data = fixture["input"]
     expected = fixture["expected"]
 
-    # Load attachments
     attachments = []
     attachment_errors = []
+    attachment_types: list[str] = []
+    total_attachment_bytes = 0
     for att_ref in input_data.get("attachments", []):
         if isinstance(att_ref, str):
             try:
                 name, content = load_attachment(att_ref)
+                mime = _guess_mime_type(name)
                 attachments.append({
                     "filename": name,
                     "data": content,
-                    "mime_type": _guess_mime_type(name),
+                    "mime_type": mime,
                 })
+                total_attachment_bytes += len(content)
+                if mime.startswith("image/") or mime == "application/pdf":
+                    attachment_types.append("image")
+                else:
+                    attachment_types.append("text")
             except FileNotFoundError as e:
                 attachment_errors.append(str(e))
                 if not dry_run:
                     print(f"  Warning: {e}")
+
+    fixture_load_ms = int((datetime.now(timezone.utc) - fixture_load_started_at).total_seconds() * 1000)
 
     # Dry-run
     if dry_run:
@@ -567,7 +580,10 @@ def run_extract_eval(
     # Real run
     from selko.services.event_processing import extract_calendar_events
 
+    # Phase 2: Gateway creation
+    gateway_create_started_at = datetime.now(timezone.utc)
     gateway = _create_gateway(provider_name, model_name, thinking=thinking)
+    gateway_create_ms = int((datetime.now(timezone.utc) - gateway_create_started_at).total_seconds() * 1000)
 
     email_metadata = {
         "subject": input_data.get("subject", ""),
@@ -576,7 +592,8 @@ def run_extract_eval(
         "date_sent": input_data.get("date_sent", ""),
     }
 
-    start_time = time.time()
+    # Phase 3: API call
+    api_call_started_at = datetime.now(timezone.utc)
     try:
         extraction = extract_calendar_events(
             gateway=gateway,
@@ -603,14 +620,14 @@ def run_extract_eval(
     except Exception as e:
         actual = {"events_found": False, "events": [], "error": str(e)}
         error = str(e)
+    api_call_ms = int((datetime.now(timezone.utc) - api_call_started_at).total_seconds() * 1000)
 
-    duration_ms = int((time.time() - start_time) * 1000)
-
-    # Get token info from gateway's last response
+    # Phase 4: Scoring
+    scoring_started_at = datetime.now(timezone.utc)
     prompt_tokens = getattr(gateway, '_last_prompt_tokens', None)
     completion_tokens = getattr(gateway, '_last_completion_tokens', None)
-
     auto_score = auto_score_result(expected, actual) if not error else {"error": error}
+    scoring_ms = int((datetime.now(timezone.utc) - scoring_started_at).total_seconds() * 1000)
 
     result = {
         "fixture_name": fixture_name,
@@ -621,7 +638,25 @@ def run_extract_eval(
         "model": model_name,
         "thinking": thinking,
         "run_at": datetime.now(timezone.utc).isoformat(),
-        "duration_ms": duration_ms,
+        "duration_ms": fixture_load_ms + gateway_create_ms + api_call_ms + scoring_ms,
+        "timing": {
+            "fixture_load": {
+                "started_at": fixture_load_started_at.isoformat(),
+                "duration_ms": fixture_load_ms,
+            },
+            "gateway_create": {
+                "started_at": gateway_create_started_at.isoformat(),
+                "duration_ms": gateway_create_ms,
+            },
+            "api_call": {
+                "started_at": api_call_started_at.isoformat(),
+                "duration_ms": api_call_ms,
+            },
+            "scoring": {
+                "started_at": scoring_started_at.isoformat(),
+                "duration_ms": scoring_ms,
+            },
+        },
         "category": fixture.get("category", fixture_name.split("/")[0]),
         "description": fixture.get("description", ""),
         "difficulty": fixture.get("difficulty", "medium"),
@@ -631,6 +666,8 @@ def run_extract_eval(
             "from": input_data.get("from_email", ""),
             "has_attachments": bool(attachments),
             "attachment_count": len(attachments),
+            "attachment_types": attachment_types,
+            "total_attachment_bytes": total_attachment_bytes,
         },
         "expected": expected,
         "actual": actual,
@@ -696,25 +733,33 @@ def run_compare_eval(
 
     from selko.services.event_processing import compare_events
 
-    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
-
+    # Phase 1: Fixture loading (already done above)
+    fixture_load_started_at = datetime.now(timezone.utc)
     new_event = input_data["new_event"]
     candidate_events = input_data["candidate_events"]
+    fixture_load_ms = int((datetime.now(timezone.utc) - fixture_load_started_at).total_seconds() * 1000)
 
-    start_time = time.time()
+    # Phase 2: Gateway creation
+    gateway_create_started_at = datetime.now(timezone.utc)
+    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
+    gateway_create_ms = int((datetime.now(timezone.utc) - gateway_create_started_at).total_seconds() * 1000)
+
+    # Phase 3: API call
+    api_call_started_at = datetime.now(timezone.utc)
     try:
         matched_id = compare_events(gateway, new_event, candidate_events)
         error = None
     except Exception as e:
         matched_id = None
         error = str(e)
+    api_call_ms = int((datetime.now(timezone.utc) - api_call_started_at).total_seconds() * 1000)
 
-    duration_ms = int((time.time() - start_time) * 1000)
-
+    # Phase 4: Scoring
+    scoring_started_at = datetime.now(timezone.utc)
     prompt_tokens = getattr(gateway, '_last_prompt_tokens', None)
     completion_tokens = getattr(gateway, '_last_completion_tokens', None)
-
     auto_score = score_compare_result(expected, matched_id) if not error else {"error": error}
+    scoring_ms = int((datetime.now(timezone.utc) - scoring_started_at).total_seconds() * 1000)
 
     result = {
         "fixture_name": fixture_name,
@@ -725,7 +770,25 @@ def run_compare_eval(
         "model": model_name,
         "thinking": thinking,
         "run_at": datetime.now(timezone.utc).isoformat(),
-        "duration_ms": duration_ms,
+        "duration_ms": fixture_load_ms + gateway_create_ms + api_call_ms + scoring_ms,
+        "timing": {
+            "fixture_load": {
+                "started_at": fixture_load_started_at.isoformat(),
+                "duration_ms": fixture_load_ms,
+            },
+            "gateway_create": {
+                "started_at": gateway_create_started_at.isoformat(),
+                "duration_ms": gateway_create_ms,
+            },
+            "api_call": {
+                "started_at": api_call_started_at.isoformat(),
+                "duration_ms": api_call_ms,
+            },
+            "scoring": {
+                "started_at": scoring_started_at.isoformat(),
+                "duration_ms": scoring_ms,
+            },
+        },
         "description": fixture.get("description", ""),
         "difficulty": fixture.get("difficulty", "medium"),
         "tags": fixture.get("tags", []),
@@ -793,26 +856,34 @@ def run_merge_eval(
 
     from selko.services.event_processing import merge_event_data
 
-    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
-
+    # Phase 1: Fixture loading (already done above)
+    fixture_load_started_at = datetime.now(timezone.utc)
     existing_event = input_data["existing_event"]
     new_extraction = input_data["new_extraction"]
     source_type = input_data["source_type"]
+    fixture_load_ms = int((datetime.now(timezone.utc) - fixture_load_started_at).total_seconds() * 1000)
 
-    start_time = time.time()
+    # Phase 2: Gateway creation
+    gateway_create_started_at = datetime.now(timezone.utc)
+    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
+    gateway_create_ms = int((datetime.now(timezone.utc) - gateway_create_started_at).total_seconds() * 1000)
+
+    # Phase 3: API call
+    api_call_started_at = datetime.now(timezone.utc)
     try:
         merged = merge_event_data(gateway, existing_event, new_extraction, source_type)
         error = None
     except Exception as e:
         merged = {}
         error = str(e)
+    api_call_ms = int((datetime.now(timezone.utc) - api_call_started_at).total_seconds() * 1000)
 
-    duration_ms = int((time.time() - start_time) * 1000)
-
+    # Phase 4: Scoring
+    scoring_started_at = datetime.now(timezone.utc)
     prompt_tokens = getattr(gateway, '_last_prompt_tokens', None)
     completion_tokens = getattr(gateway, '_last_completion_tokens', None)
-
     auto_score = score_merge_result(expected, merged) if not error else {"error": error}
+    scoring_ms = int((datetime.now(timezone.utc) - scoring_started_at).total_seconds() * 1000)
 
     result = {
         "fixture_name": fixture_name,
@@ -823,7 +894,25 @@ def run_merge_eval(
         "model": model_name,
         "thinking": thinking,
         "run_at": datetime.now(timezone.utc).isoformat(),
-        "duration_ms": duration_ms,
+        "duration_ms": fixture_load_ms + gateway_create_ms + api_call_ms + scoring_ms,
+        "timing": {
+            "fixture_load": {
+                "started_at": fixture_load_started_at.isoformat(),
+                "duration_ms": fixture_load_ms,
+            },
+            "gateway_create": {
+                "started_at": gateway_create_started_at.isoformat(),
+                "duration_ms": gateway_create_ms,
+            },
+            "api_call": {
+                "started_at": api_call_started_at.isoformat(),
+                "duration_ms": api_call_ms,
+            },
+            "scoring": {
+                "started_at": scoring_started_at.isoformat(),
+                "duration_ms": scoring_ms,
+            },
+        },
         "description": fixture.get("description", ""),
         "difficulty": fixture.get("difficulty", "medium"),
         "tags": fixture.get("tags", []),
@@ -994,6 +1083,99 @@ def run_single_eval(
 
 
 # ---------------------------------------------------------------------------
+# Parallel execution helpers
+# ---------------------------------------------------------------------------
+
+class ProgressTracker:
+    """Thread-safe progress tracker for parallel fixture execution."""
+
+    def __init__(self, total: int, operation: str):
+        self._lock = threading.Lock()
+        self._completed = 0
+        self._total = total
+        self._operation = operation
+        self._results: list[dict] = []
+
+    def record(self, result: dict) -> None:
+        with self._lock:
+            self._completed += 1
+            self._results.append(result)
+            progress = f"[{self._completed}/{self._total}] "
+            print_result_summary(result, progress=progress)
+            if self._completed % 10 == 0 or self._completed == self._total:
+                _print_progress_totals(self._results, self._operation)
+
+    def record_error(self, name: str, error: str) -> None:
+        with self._lock:
+            self._completed += 1
+            print(
+                f"  [{self._completed}/{self._total}] [{self._operation:7}] "
+                f"{name:40} [ERROR ] {error}",
+                flush=True,
+            )
+
+    @property
+    def results(self) -> list[dict]:
+        with self._lock:
+            return list(self._results)
+
+
+def _run_fixtures_parallel(fixtures, operation, run_fn, concurrency=10):
+    """Run fixtures with ThreadPoolExecutor. Sequential if concurrency <= 1."""
+    tracker = ProgressTracker(len(fixtures), operation)
+
+    if concurrency <= 1:
+        for name, path in fixtures:
+            try:
+                tracker.record(run_fn(name, path))
+            except Exception as e:
+                tracker.record_error(name, str(e))
+        return tracker.results
+
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        future_to_name = {executor.submit(run_fn, n, p): n for n, p in fixtures}
+        for future in as_completed(future_to_name):
+            name = future_to_name[future]
+            try:
+                tracker.record(future.result())
+            except Exception as e:
+                tracker.record_error(name, str(e))
+
+    return tracker.results
+
+
+def _print_model_summary(model_name: str, thinking: str, results: list[dict]) -> None:
+    """Print a one-line summary after all fixtures for a model/operation complete."""
+    if not results:
+        return
+    op = results[0].get("operation", "?")
+    non_dry = [r for r in results if not r.get("dry_run")]
+    if not non_dry:
+        return
+    pass_count = sum(1 for r in non_dry if _get_result_status(r) == "PASS")
+    partial_count = sum(1 for r in non_dry if _get_result_status(r) == "PARTIAL")
+    fail_count = sum(1 for r in non_dry if _get_result_status(r) in ("FAIL", "ERROR"))
+    total_cost = sum(r.get("cost", 0) for r in non_dry)
+    # Prefer api_call timing when available
+    api_durations = []
+    for r in non_dry:
+        timing = r.get("timing")
+        if timing and timing.get("api_call", {}).get("duration_ms") is not None:
+            api_durations.append(timing["api_call"]["duration_ms"])
+        else:
+            api_durations.append(r.get("duration_ms", 0))
+    avg_api = sum(api_durations) // len(api_durations) if api_durations else 0
+    total_tok = sum(r.get("tokens", {}).get("total_tokens", 0) or 0 for r in non_dry)
+    tok_str = f"{total_tok:,}" if total_tok else "0"
+    print(
+        f"  >>> {model_name} ({thinking}) {op}: "
+        f"{pass_count} pass, {partial_count} partial, {fail_count} fail | "
+        f"${total_cost:.4f} | {avg_api}ms avg API | {tok_str} tok",
+        flush=True,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Display helpers
 # ---------------------------------------------------------------------------
 
@@ -1035,8 +1217,61 @@ def _print_progress_totals(results: list[dict], operation: str) -> None:
     )
 
 
+def _format_timing_detail(result: dict[str, Any]) -> str:
+    """Format timing breakdown from result's timing block, falling back to duration_ms."""
+    timing = result.get("timing")
+    if timing:
+        parts = []
+        api_ms = timing.get("api_call", {}).get("duration_ms")
+        gw_ms = timing.get("gateway_create", {}).get("duration_ms")
+        load_ms = timing.get("fixture_load", {}).get("duration_ms")
+        if api_ms is not None:
+            parts.append(f"{api_ms}ms api")
+        if gw_ms is not None and gw_ms > 0:
+            parts.append(f"{gw_ms}ms gw")
+        if load_ms is not None and load_ms > 0:
+            parts.append(f"{load_ms}ms load")
+        if parts:
+            return ", ".join(parts)
+    return f"{result.get('duration_ms', 0)}ms"
+
+
+def _format_token_detail(result: dict[str, Any]) -> str:
+    """Format token counts from result."""
+    tokens = result.get("tokens", {})
+    prompt = tokens.get("prompt_tokens")
+    completion = tokens.get("completion_tokens")
+    if prompt is not None and completion is not None:
+        return f"{prompt}+{completion}tok"
+    return ""
+
+
+def _format_attachment_detail(result: dict[str, Any]) -> str:
+    """Format attachment info from input_summary."""
+    summary = result.get("input_summary", {})
+    count = summary.get("attachment_count", 0)
+    if count == 0:
+        return ""
+    types = summary.get("attachment_types", [])
+    total_bytes = summary.get("total_attachment_bytes", 0)
+    img_count = sum(1 for t in types if t == "image")
+    text_count = sum(1 for t in types if t == "text")
+    if total_bytes >= 1024 * 1024:
+        size_str = f"{total_bytes / (1024 * 1024):.1f}MB"
+    elif total_bytes >= 1024:
+        size_str = f"{total_bytes // 1024}KB"
+    else:
+        size_str = f"{total_bytes}B"
+    parts = []
+    if img_count:
+        parts.append(f"{img_count} img")
+    if text_count:
+        parts.append(f"{text_count} txt")
+    return f"[{', '.join(parts)}, {size_str}]" if parts else ""
+
+
 def print_result_summary(result: dict[str, Any], progress: str = "") -> None:
-    """Print a one-line summary of a result.
+    """Print a one-line summary of a result with timing breakdown, tokens, and attachments.
 
     Args:
         result: The eval result dict.
@@ -1055,34 +1290,43 @@ def print_result_summary(result: dict[str, Any], progress: str = "") -> None:
     op = result.get("operation", "extract")
     auto_score = result.get("auto_score", {})
     cost = result.get("cost", 0)
-    duration = result.get("duration_ms", 0)
+    status = _get_result_status(result)
+    timing_str = _format_timing_detail(result)
+    token_str = _format_token_detail(result)
+    error_str = ""
+
+    if status in ("FAIL", "ERROR"):
+        err = result.get("actual", {}).get("error", "")
+        if err:
+            error_str = f" | {err[:80]}"
 
     if op == "extract":
-        status = _get_result_status(result)
         rating = auto_score.get("auto_rating", "?")
+        attach_str = _format_attachment_detail(result)
+        extra = " ".join(filter(None, [token_str, attach_str]))
         print(
             f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] Rating:{rating}/5 "
-            f"${cost:.4f} ({duration}ms)",
+            f"${cost:.4f} ({timing_str}) {extra}{error_str}",
             flush=True,
         )
     elif op == "compare":
-        status = _get_result_status(result)
+        extra = token_str
         print(
             f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] "
-            f"${cost:.4f} ({duration}ms)",
+            f"${cost:.4f} ({timing_str}) {extra}{error_str}",
             flush=True,
         )
     elif op == "merge":
         rating = auto_score.get("auto_rating", "?")
         matched = auto_score.get("fields_matched", 0)
         total = auto_score.get("total_fields", 0)
-        status = _get_result_status(result)
+        extra = token_str
         print(
             f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] Rating:{rating}/5 ({matched}/{total}) "
-            f"${cost:.4f} ({duration}ms)",
+            f"${cost:.4f} ({timing_str}) {extra}{error_str}",
             flush=True,
         )
 
@@ -1565,6 +1809,7 @@ def run_all_models(
     verbose: bool = False,
     dry_run: bool = False,
     models: list[tuple] | None = None,
+    concurrency: int = 10,
 ) -> list[dict]:
     """Run evals across multiple models and operations."""
     from selko.services.llm_provider import MODEL_REGISTRY
@@ -1607,72 +1852,60 @@ def run_all_models(
                     print(f"  Skipping {skipped} image fixtures (text-only model)")
 
             total = len(fixtures)
-            print(f"\n  Extract: {total} fixtures")
+            print(f"\n  Extract: {total} fixtures (concurrency: {concurrency})")
             print(f"  {'-'*50}")
-            model_extract_results: list[dict] = []
-            for i, (name, path) in enumerate(fixtures, 1):
-                progress = f"[{i}/{total}] "
-                try:
-                    result = run_extract_eval(
-                        name, path, provider_name, model_name,
-                        use_cache=use_cache, verbose=verbose, dry_run=dry_run,
-                        thinking=thinking,
-                    )
-                    all_results.append(result)
-                    model_extract_results.append(result)
-                    print_result_summary(result, progress=progress)
-                    if i % 10 == 0 or i == total:
-                        _print_progress_totals(model_extract_results, "extract")
-                except Exception as e:
-                    print(f"  {progress}[extract] {name:40} [ERROR] {e}", flush=True)
+
+            def _run_extract(name, path):
+                return run_extract_eval(
+                    name, path, provider_name, model_name,
+                    use_cache=use_cache, verbose=verbose, dry_run=dry_run,
+                    thinking=thinking,
+                )
+
+            model_extract_results = _run_fixtures_parallel(fixtures, "extract", _run_extract, concurrency)
+            all_results.extend(model_extract_results)
+            if not dry_run:
+                _print_model_summary(model_name, thinking, model_extract_results)
 
         if "compare" in operations:
             fixtures = get_compare_fixtures()
             if difficulty:
                 fixtures = [(n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty]
             total = len(fixtures)
-            print(f"\n  Compare: {total} fixtures")
+            print(f"\n  Compare: {total} fixtures (concurrency: {concurrency})")
             print(f"  {'-'*50}")
-            model_compare_results: list[dict] = []
-            for i, (name, path) in enumerate(fixtures, 1):
-                progress = f"[{i}/{total}] "
-                try:
-                    result = run_compare_eval(
-                        name, path, provider_name, model_name,
-                        use_cache=use_cache, verbose=verbose, dry_run=dry_run,
-                        thinking=thinking,
-                    )
-                    all_results.append(result)
-                    model_compare_results.append(result)
-                    print_result_summary(result, progress=progress)
-                except Exception as e:
-                    print(f"  {progress}[compare] {name:40} [ERROR] {e}", flush=True)
-            if model_compare_results:
-                _print_progress_totals(model_compare_results, "compare")
+
+            def _run_compare(name, path):
+                return run_compare_eval(
+                    name, path, provider_name, model_name,
+                    use_cache=use_cache, verbose=verbose, dry_run=dry_run,
+                    thinking=thinking,
+                )
+
+            model_compare_results = _run_fixtures_parallel(fixtures, "compare", _run_compare, concurrency)
+            all_results.extend(model_compare_results)
+            if not dry_run:
+                _print_model_summary(model_name, thinking, model_compare_results)
 
         if "merge" in operations:
             fixtures = get_merge_fixtures()
             if difficulty:
                 fixtures = [(n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty]
             total = len(fixtures)
-            print(f"\n  Merge: {total} fixtures")
+            print(f"\n  Merge: {total} fixtures (concurrency: {concurrency})")
             print(f"  {'-'*50}")
-            model_merge_results: list[dict] = []
-            for i, (name, path) in enumerate(fixtures, 1):
-                progress = f"[{i}/{total}] "
-                try:
-                    result = run_merge_eval(
-                        name, path, provider_name, model_name,
-                        use_cache=use_cache, verbose=verbose, dry_run=dry_run,
-                        thinking=thinking,
-                    )
-                    all_results.append(result)
-                    model_merge_results.append(result)
-                    print_result_summary(result, progress=progress)
-                except Exception as e:
-                    print(f"  {progress}[merge] {name:40} [ERROR] {e}", flush=True)
-            if model_merge_results:
-                _print_progress_totals(model_merge_results, "merge")
+
+            def _run_merge(name, path):
+                return run_merge_eval(
+                    name, path, provider_name, model_name,
+                    use_cache=use_cache, verbose=verbose, dry_run=dry_run,
+                    thinking=thinking,
+                )
+
+            model_merge_results = _run_fixtures_parallel(fixtures, "merge", _run_merge, concurrency)
+            all_results.extend(model_merge_results)
+            if not dry_run:
+                _print_model_summary(model_name, thinking, model_merge_results)
 
     return all_results
 
@@ -1693,6 +1926,12 @@ Examples:
   Run all operations, all models:
     uv run python -m backend.tests.eval.run_eval --all --all-operations --all-models
 
+  Run with concurrency (default 10):
+    uv run python -m backend.tests.eval.run_eval --all --concurrency 10
+
+  Run sequentially:
+    uv run python -m backend.tests.eval.run_eval --all --concurrency 1
+
   Dry-run all operations:
     uv run python -m backend.tests.eval.run_eval --all --all-operations --dry-run
 
@@ -1707,6 +1946,9 @@ Examples:
 
   Use a specific model:
     uv run python -m backend.tests.eval.run_eval --all --provider moonshot --model kimi-k2.5
+
+  For real-time output when redirecting to file:
+    PYTHONUNBUFFERED=1 uv run python -m backend.tests.eval.run_eval ...
         """,
     )
 
@@ -1745,6 +1987,12 @@ Examples:
         "--thinking", type=str, default="low",
         choices=["none", "low", "medium"],
         help="Thinking/reasoning level (default: low)",
+    )
+
+    # Concurrency options
+    parser.add_argument(
+        "--concurrency", type=int, default=10,
+        help="Max concurrent fixture runs per model (default: 10, use 1 for sequential)",
     )
 
     # Output options
@@ -1863,6 +2111,7 @@ Examples:
             use_cache=use_cache,
             verbose=args.verbose,
             dry_run=args.dry_run,
+            concurrency=args.concurrency,
         )
         if not args.dry_run:
             generate_report(results)
@@ -1923,26 +2172,20 @@ Examples:
 
         if fixtures_to_run:
             total = len(fixtures_to_run)
-            print(f"\nRunning {total} extraction fixtures ({provider}/{model})...")
+            print(f"\nRunning {total} extraction fixtures ({provider}/{model}, concurrency: {args.concurrency})...")
             if args.dry_run:
                 print("(dry-run mode)")
             print("-" * 60)
-            extract_results: list[dict] = []
-            for i, (name, path) in enumerate(fixtures_to_run, 1):
-                progress = f"[{i}/{total}] "
-                try:
-                    result = run_extract_eval(
-                        name, path, provider, model,
-                        use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
-                        thinking=args.thinking,
-                    )
-                    all_results.append(result)
-                    extract_results.append(result)
-                    print_result_summary(result, progress=progress)
-                    if i % 10 == 0 or i == total:
-                        _print_progress_totals(extract_results, "extract")
-                except Exception as e:
-                    print(f"  {progress}[extract] {name:40} [ERROR] {e}", flush=True)
+
+            def _run_extract_single(name, path):
+                return run_extract_eval(
+                    name, path, provider, model,
+                    use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
+                    thinking=args.thinking,
+                )
+
+            extract_results = _run_fixtures_parallel(fixtures_to_run, "extract", _run_extract_single, args.concurrency)
+            all_results.extend(extract_results)
 
     if "compare" in operations:
         fixtures_to_run = get_compare_fixtures()
@@ -1950,26 +2193,20 @@ Examples:
             fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
         if fixtures_to_run:
             total = len(fixtures_to_run)
-            print(f"\nRunning {total} compare fixtures ({provider}/{model})...")
+            print(f"\nRunning {total} compare fixtures ({provider}/{model}, concurrency: {args.concurrency})...")
             if args.dry_run:
                 print("(dry-run mode)")
             print("-" * 60)
-            compare_results: list[dict] = []
-            for i, (name, path) in enumerate(fixtures_to_run, 1):
-                progress = f"[{i}/{total}] "
-                try:
-                    result = run_compare_eval(
-                        name, path, provider, model,
-                        use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
-                        thinking=args.thinking,
-                    )
-                    all_results.append(result)
-                    compare_results.append(result)
-                    print_result_summary(result, progress=progress)
-                except Exception as e:
-                    print(f"  {progress}[compare] {name:40} [ERROR] {e}", flush=True)
-            if compare_results:
-                _print_progress_totals(compare_results, "compare")
+
+            def _run_compare_single(name, path):
+                return run_compare_eval(
+                    name, path, provider, model,
+                    use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
+                    thinking=args.thinking,
+                )
+
+            compare_results = _run_fixtures_parallel(fixtures_to_run, "compare", _run_compare_single, args.concurrency)
+            all_results.extend(compare_results)
 
     if "merge" in operations:
         fixtures_to_run = get_merge_fixtures()
@@ -1977,26 +2214,20 @@ Examples:
             fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
         if fixtures_to_run:
             total = len(fixtures_to_run)
-            print(f"\nRunning {total} merge fixtures ({provider}/{model})...")
+            print(f"\nRunning {total} merge fixtures ({provider}/{model}, concurrency: {args.concurrency})...")
             if args.dry_run:
                 print("(dry-run mode)")
             print("-" * 60)
-            merge_results: list[dict] = []
-            for i, (name, path) in enumerate(fixtures_to_run, 1):
-                progress = f"[{i}/{total}] "
-                try:
-                    result = run_merge_eval(
-                        name, path, provider, model,
-                        use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
-                        thinking=args.thinking,
-                    )
-                    all_results.append(result)
-                    merge_results.append(result)
-                    print_result_summary(result, progress=progress)
-                except Exception as e:
-                    print(f"  {progress}[merge] {name:40} [ERROR] {e}", flush=True)
-            if merge_results:
-                _print_progress_totals(merge_results, "merge")
+
+            def _run_merge_single(name, path):
+                return run_merge_eval(
+                    name, path, provider, model,
+                    use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
+                    thinking=args.thinking,
+                )
+
+            merge_results = _run_fixtures_parallel(fixtures_to_run, "merge", _run_merge_single, args.concurrency)
+            all_results.extend(merge_results)
 
     if not operations and not args.threads:
         parser.print_help()
