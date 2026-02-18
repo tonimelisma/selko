@@ -287,6 +287,23 @@ class TestStringHelpers:
 
         assert time_difference_minutes(None, "2026-03-20T14:00:00") is None
 
+    def test_time_difference_timezone_offset(self):
+        """Regression: timezone offsets like +00:00 must be parsed correctly."""
+        from tests.eval.run_eval import time_difference_minutes
+
+        # Same time with and without offset
+        diff = time_difference_minutes("2026-02-03T10:30:00+00:00", "2026-02-03T10:30:00")
+        assert diff == 0.0
+
+        # Different timezone offsets representing same instant
+        diff = time_difference_minutes("2026-02-03T10:30:00+02:00", "2026-02-03T08:30:00+00:00")
+        assert diff == 0.0
+
+        # Z suffix
+        diff = time_difference_minutes("2026-02-03T10:30:00Z", "2026-02-03T10:30:00+00:00")
+        assert diff is not None
+        assert diff == 0.0
+
 
 class TestResultPath:
     """Test result path generation."""
