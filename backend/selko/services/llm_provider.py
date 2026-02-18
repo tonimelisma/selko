@@ -123,11 +123,20 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.z.ai/api/paas/v4/",
         "pricing": {"input": 0.00, "output": 0.00},
     },
-    # --- Alibaba / Qwen (6 models) ---
+    # --- Alibaba / Qwen (7 models) ---
+    "qwen3.5-plus": {
+        "provider": "qwen",
+        "vision": True,
+        "json_schema": False,
+        "qwen_thinking": True,
+        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        "pricing": {"input": 0.80, "output": 6.40},
+    },
     "qwen3-vl-plus": {
         "provider": "qwen",
         "vision": True,
         "json_schema": False,
+        "qwen_thinking": True,
         "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
         "pricing": {"input": 0.40, "output": 3.20},
     },
@@ -135,6 +144,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "provider": "qwen",
         "vision": True,
         "json_schema": False,
+        "qwen_thinking": True,
         "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
         "pricing": {"input": 0.08, "output": 0.68},
     },
@@ -525,6 +535,7 @@ class OpenAICompatibleProvider(LLMProvider):
         supports_vision: bool = False,
         supports_json_schema: bool = True,
         reasoning_model: bool = False,
+        qwen_thinking: bool = False,
         thinking: str = "low",
     ):
         from openai import OpenAI
@@ -534,6 +545,7 @@ class OpenAICompatibleProvider(LLMProvider):
         self.supports_vision = supports_vision
         self.supports_json_schema = supports_json_schema
         self.reasoning_model = reasoning_model
+        self.qwen_thinking = qwen_thinking
         self.thinking = thinking
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         logger.debug(
@@ -580,6 +592,17 @@ class OpenAICompatibleProvider(LLMProvider):
         # Set reasoning effort for GPT-5 reasoning models
         if self.reasoning_model and self.thinking != "none":
             kwargs["reasoning_effort"] = self.thinking
+
+        # Qwen thinking mode (enable_thinking + thinking_budget via extra_body)
+        if self.qwen_thinking:
+            if self.thinking != "none":
+                thinking_budgets = {"low": 2048, "medium": 8192}
+                kwargs["extra_body"] = {
+                    "enable_thinking": True,
+                    "thinking_budget": thinking_budgets.get(self.thinking, 8192),
+                }
+            else:
+                kwargs["extra_body"] = {"enable_thinking": False}
 
         # Handle structured output
         if json_schema is not None:
@@ -815,5 +838,6 @@ def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
             supports_vision=registry_entry.get("vision", False),
             supports_json_schema=registry_entry.get("json_schema", True),
             reasoning_model=registry_entry.get("reasoning", False),
+            qwen_thinking=registry_entry.get("qwen_thinking", False),
             thinking=thinking,
         )
