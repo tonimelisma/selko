@@ -217,20 +217,16 @@ def time_difference_minutes(t1: str | None, t2: str | None) -> float | None:
     if t1 is None or t2 is None:
         return None
     try:
-        for fmt in [
-            "%Y-%m-%dT%H:%M:%S",
-            "%Y-%m-%dT%H:%M:%SZ",
-            "%Y-%m-%dT%H:%M:%S%z",
-            "%Y-%m-%d",
-        ]:
-            try:
-                dt1 = datetime.strptime(t1.replace("Z", ""), fmt.replace("Z", "").replace("%z", ""))
-                dt2 = datetime.strptime(t2.replace("Z", ""), fmt.replace("Z", "").replace("%z", ""))
-                return abs((dt1 - dt2).total_seconds() / 60)
-            except ValueError:
-                continue
-        return None
-    except Exception:
+        # Replace Z suffix with +00:00 for Python 3.10 compatibility
+        dt1 = datetime.fromisoformat(t1.replace("Z", "+00:00"))
+        dt2 = datetime.fromisoformat(t2.replace("Z", "+00:00"))
+        # Make both naive or both aware for comparison
+        if dt1.tzinfo is not None and dt2.tzinfo is None:
+            dt2 = dt2.replace(tzinfo=dt1.tzinfo)
+        elif dt2.tzinfo is not None and dt1.tzinfo is None:
+            dt1 = dt1.replace(tzinfo=dt2.tzinfo)
+        return abs((dt1 - dt2).total_seconds() / 60)
+    except (ValueError, TypeError):
         return None
 
 
