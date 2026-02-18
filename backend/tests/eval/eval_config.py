@@ -61,7 +61,7 @@ DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "
 
 # Default models for multi-model evals: (provider, model, thinking_level)
 # Thinking levels: "none", "low", "medium" — providers without thinking support ignore the level
-# Gemini supports none/low/medium; OpenAI GPT-5 supports low/medium (reasoning models, no "none")
+# Gemini supports none/low/medium; OpenAI GPT-5 supports low/medium; Anthropic Sonnet 4.6 supports none/low/medium
 EVAL_MODELS = [
     # Gemini — test at none, low, medium
     ("gemini", "gemini-3-flash-preview", "none"),
@@ -70,13 +70,19 @@ EVAL_MODELS = [
     # OpenAI GPT-5 — test at low, medium (reasoning model, can't disable reasoning)
     ("openai", "gpt-5-nano", "low"),
     ("openai", "gpt-5-nano", "medium"),
-    # Anthropic — single mode (no thinking levels)
+    # Anthropic Sonnet 4.6 — test at none, low, medium (adaptive thinking)
+    ("anthropic", "claude-sonnet-4-6", "none"),
+    ("anthropic", "claude-sonnet-4-6", "low"),
+    ("anthropic", "claude-sonnet-4-6", "medium"),
+    # Anthropic Haiku — single mode (no adaptive thinking)
     ("anthropic", "claude-haiku-4-5-20251001", "none"),
     # Other providers — single mode (no thinking support)
     ("moonshot", "kimi-k2.5", "none"),
     ("zai", "glm-4.6v-flash", "none"),
     ("qwen", "qwen3-vl-flash", "none"),
+    ("qwen", "qwen3-vl-plus", "none"),
     ("deepseek", "deepseek-chat", "none"),
+    ("deepseek", "deepseek-reasoner", "none"),
     ("minimax", "MiniMax-M2.5", "none"),
 ]
 

@@ -234,6 +234,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "provider": "anthropic",
         "vision": True,
         "json_schema": False,
+        "adaptive_thinking": True,
         "pricing": {"input": 3.00, "output": 15.00},
     },
     "claude-haiku-4-5-20251001": {
@@ -629,14 +630,18 @@ class OpenAICompatibleProvider(LLMProvider):
 class AnthropicProvider(LLMProvider):
     """Anthropic Claude provider using native anthropic SDK."""
 
-    def __init__(self, api_key: str, model: str, thinking: str = "low"):
+    def __init__(
+        self, api_key: str, model: str, thinking: str = "low",
+        adaptive_thinking: bool = False,
+    ):
         import anthropic
 
         self.provider_name = "anthropic"
         self.model = model
         self.supports_vision = True
         self.supports_json_schema = False
-        self.thinking = thinking  # Stored for eval tracking; Anthropic doesn't have thinking levels
+        self.thinking = thinking
+        self.adaptive_thinking = adaptive_thinking
         self.client = anthropic.Anthropic(api_key=api_key)
         logger.debug(f"Initialized Anthropic provider with model {model}")
 
@@ -694,11 +699,21 @@ class AnthropicProvider(LLMProvider):
                     item["text"] += json_instruction
                     break
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=4096,
-            messages=[{"role": "user", "content": message_content}],
-        )
+        # Build API kwargs
+        api_kwargs: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": 4096,
+            "messages": [{"role": "user", "content": message_content}],
+        }
+
+        # Adaptive thinking for Sonnet 4.6+ (thinking=none skips entirely)
+        if self.adaptive_thinking and self.thinking != "none":
+            api_kwargs["thinking"] = {"type": "adaptive"}
+            api_kwargs["output_config"] = {"effort": self.thinking}
+            # Adaptive thinking needs higher max_tokens to include thinking tokens
+            api_kwargs["max_tokens"] = 16000
+
+        response = self.client.messages.create(**api_kwargs)
 
         # Extract response text (strip markdown code blocks if present)
         text = ""
@@ -781,7 +796,10 @@ def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
     if provider_name == "gemini":
         return GeminiProvider(api_key=api_key, model=model_name, thinking=thinking)
     elif provider_name == "anthropic":
-        return AnthropicProvider(api_key=api_key, model=model_name, thinking=thinking)
+        return AnthropicProvider(
+            api_key=api_key, model=model_name, thinking=thinking,
+            adaptive_thinking=registry_entry.get("adaptive_thinking", False),
+        )
     else:
         # OpenAI-compatible (moonshot, zai, qwen, deepseek, minimax, openai)
         base_url = registry_entry.get("base_url")
