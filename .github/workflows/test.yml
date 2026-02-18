@@ -122,9 +122,23 @@ jobs:
         run: |
           scp -i ~/.ssh/ci_vm -r supabase/migrations/ \
             ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }}:/opt/selko/supabase/migrations/
-          ssh -i ~/.ssh/ci_vm \
-            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
-            "cd /opt/selko && supabase db reset"
+          # supabase db reset can fail if storage container is slow to restart.
+          # Retry up to 3 times with a wait between attempts.
+          for attempt in 1 2 3; do
+            echo "Attempt ${attempt}/3: supabase db reset"
+            if ssh -i ~/.ssh/ci_vm \
+              ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
+              "cd /opt/selko && supabase db reset"; then
+              echo "supabase db reset succeeded on attempt ${attempt}"
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "supabase db reset failed after 3 attempts"
+              exit 1
+            fi
+            echo "supabase db reset failed, waiting 15s before retry..."
+            sleep 15
+          done
 
       - name: Establish SSH tunnel
         run: |
