@@ -875,21 +875,6 @@ jobs:
       - run: uv sync --extra test
       - run: uv run pytest backend/tests/ -m "not integration" -v
 
-  integration-tests-development:
-    runs-on: ubuntu-latest
-    services:
-      supabase:
-        # Use Supabase CLI in Docker or local setup
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
-      - uses: supabase/setup-cli@v1
-      - run: supabase start
-      - run: uv sync --extra test
-      - run: uv run pytest backend/tests/integration/ -m "development" -v
-    env:
-      ENVIRONMENT: development
-
   integration-tests-staging:
     runs-on: ubuntu-latest
     # Only run on main branch or manual trigger
