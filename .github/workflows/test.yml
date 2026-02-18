@@ -160,6 +160,32 @@ jobs:
           echo "SSH tunnel failed to establish"
           exit 1
 
+      - name: "[DIAG] Network latency baseline"
+        run: |
+          echo "=== Raw SSH round-trip ==="
+          for i in 1 2 3 4 5; do
+            time ssh -i ~/.ssh/ci_vm -o ConnectTimeout=5 \
+              ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
+              "echo pong"
+          done
+
+          echo "=== HTTP via SSH tunnel (localhost:54321) ==="
+          for i in 1 2 3 4 5; do
+            curl -w "time_total: %{time_total}s\n" -sf -o /dev/null \
+              http://localhost:54321/rest/v1/ \
+              -H "apikey: ${{ secrets.CI_SUPABASE_ANON_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.CI_SUPABASE_ANON_KEY }}"
+          done
+
+          echo "=== Direct HTTP to VM (no tunnel) ==="
+          for i in 1 2 3 4 5; do
+            curl -w "time_total: %{time_total}s\n" -sf -o /dev/null \
+              http://${{ secrets.CI_SUPABASE_HOST }}:54321/rest/v1/ \
+              -H "apikey: ${{ secrets.CI_SUPABASE_ANON_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.CI_SUPABASE_ANON_KEY }}" \
+              2>&1 || echo "Direct HTTP failed (port not open) - time_total: N/A"
+          done
+
       - name: Create .env file
         run: |
           echo "SUPABASE_URL=http://localhost:54321" > .env
@@ -194,9 +220,15 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
+      - name: "[DIAG] Start VM resource monitor"
+        run: |
+          ssh -i ~/.ssh/ci_vm \
+            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
+            "nohup bash -c 'while true; do date; free -h | head -3; echo CPU: \$(top -bn1 | head -3 | tail -1); echo ---; sleep 5; done' > /tmp/ci-resource-monitor.log 2>&1 &"
+
       - name: Run integration tests (mocked LLM)
         # Run sequentially - integration tests have shared DB state that breaks with parallel execution
-        run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short
+        run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short --durations=0
         env:
           ENVIRONMENT: development
           TEST_USER_EMAIL: test@selko.local
@@ -205,6 +237,14 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         # NOTE: Does NOT use --run-llm flag, so LLM tests are skipped (mocked versions run instead)
+
+      - name: "[DIAG] Collect VM resource log"
+        if: always()
+        run: |
+          echo "=== VM resource usage during tests ==="
+          ssh -i ~/.ssh/ci_vm \
+            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
+            "cat /tmp/ci-resource-monitor.log; rm -f /tmp/ci-resource-monitor.log; pkill -f ci-resource-monitor || true"
 
       - name: Cleanup SSH tunnel
         if: always()
