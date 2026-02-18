@@ -72,6 +72,14 @@ class TestModelRegistry:
                 f"{model_name} should have reasoning=True"
             )
 
+    def test_sonnet_has_adaptive_thinking(self):
+        """Test that Sonnet 4.6 has adaptive_thinking flag."""
+        assert MODEL_REGISTRY["claude-sonnet-4-6"].get("adaptive_thinking") is True
+
+    def test_haiku_has_no_adaptive_thinking(self):
+        """Test that Haiku 4.5 does not have adaptive_thinking flag."""
+        assert MODEL_REGISTRY["claude-haiku-4-5-20251001"].get("adaptive_thinking") is not True
+
 
 class TestCreateProvider:
     """Test provider factory function."""
@@ -226,6 +234,21 @@ class TestCreateProvider:
 
         assert isinstance(provider, AnthropicProvider)
         assert provider.thinking == "none"
+        assert provider.adaptive_thinking is False
+
+    def test_create_provider_sonnet_gets_adaptive_thinking(self):
+        """Test that Sonnet 4.6 gets adaptive_thinking=True via create_provider."""
+        config = MagicMock()
+        config.llm_provider = "anthropic"
+        config.llm_model = "claude-sonnet-4-6"
+        config.anthropic_api_key = "test-key"
+
+        with patch("anthropic.Anthropic"):
+            provider = create_provider(config, thinking="medium")
+
+        assert isinstance(provider, AnthropicProvider)
+        assert provider.thinking == "medium"
+        assert provider.adaptive_thinking is True
 
 
 class TestImageContent:
@@ -521,3 +544,89 @@ class TestAnthropicProviderPDFHandling:
         assert len(image_parts) == 1, "Image should use 'type': 'image'"
         assert len(document_parts) == 0, "Image should NOT use 'type': 'document'"
         assert image_parts[0]["source"]["media_type"] == "image/png"
+
+
+class TestAnthropicAdaptiveThinking:
+    """Test that Anthropic adaptive thinking is passed correctly."""
+
+    def test_adaptive_thinking_low(self):
+        """Sonnet 4.6 with thinking='low' should pass adaptive thinking + effort."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(type="text", text='{"events_found": false, "events": []}')]
+        mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
+        mock_client.messages.create.return_value = mock_response
+
+        with patch("anthropic.Anthropic", return_value=mock_client):
+            provider = AnthropicProvider(
+                api_key="test-key", model="claude-sonnet-4-6",
+                thinking="low", adaptive_thinking=True,
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.messages.create.call_args.kwargs
+        assert call_kwargs["thinking"] == {"type": "adaptive"}
+        assert call_kwargs["output_config"] == {"effort": "low"}
+        assert call_kwargs["max_tokens"] == 16000
+
+    def test_adaptive_thinking_medium(self):
+        """Sonnet 4.6 with thinking='medium' should pass effort='medium'."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(type="text", text='{"events_found": false, "events": []}')]
+        mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
+        mock_client.messages.create.return_value = mock_response
+
+        with patch("anthropic.Anthropic", return_value=mock_client):
+            provider = AnthropicProvider(
+                api_key="test-key", model="claude-sonnet-4-6",
+                thinking="medium", adaptive_thinking=True,
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.messages.create.call_args.kwargs
+        assert call_kwargs["thinking"] == {"type": "adaptive"}
+        assert call_kwargs["output_config"] == {"effort": "medium"}
+
+    def test_adaptive_thinking_none_omits_thinking(self):
+        """Sonnet 4.6 with thinking='none' should NOT pass thinking params."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(type="text", text='{"events_found": false, "events": []}')]
+        mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
+        mock_client.messages.create.return_value = mock_response
+
+        with patch("anthropic.Anthropic", return_value=mock_client):
+            provider = AnthropicProvider(
+                api_key="test-key", model="claude-sonnet-4-6",
+                thinking="none", adaptive_thinking=True,
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.messages.create.call_args.kwargs
+        assert "thinking" not in call_kwargs
+        assert "output_config" not in call_kwargs
+        assert call_kwargs["max_tokens"] == 4096
+
+    def test_non_adaptive_model_omits_thinking(self):
+        """Haiku (no adaptive_thinking) should NOT pass thinking params."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(type="text", text='{"events_found": false, "events": []}')]
+        mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
+        mock_client.messages.create.return_value = mock_response
+
+        with patch("anthropic.Anthropic", return_value=mock_client):
+            provider = AnthropicProvider(
+                api_key="test-key", model="claude-haiku-4-5-20251001",
+                thinking="low", adaptive_thinking=False,
+            )
+
+        provider.generate(["Hello"])
+
+        call_kwargs = mock_client.messages.create.call_args.kwargs
+        assert "thinking" not in call_kwargs
+        assert "output_config" not in call_kwargs
