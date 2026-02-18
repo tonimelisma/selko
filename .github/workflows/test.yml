@@ -2,8 +2,8 @@ name: Tests
 
 # CI Optimization: Path filtering skips jobs when irrelevant files change.
 # - Markdown-only changes: No test jobs run
-# - Backend changes: Unit tests + integration tests
-# - Supabase changes: Integration tests only
+# - Backend changes: Unit tests run
+# - Supabase changes: Staging deploy + integration tests
 # - Android changes: Android tests only
 
 on:
@@ -72,186 +72,6 @@ jobs:
       - name: Run unit tests
         run: uv run pytest backend/tests/ -m "not integration" -v --tb=short -n auto
 
-  integration-tests-development:
-    name: Integration Tests (Development)
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true'
-    runs-on: ubuntu-latest
-    # Queue concurrent runs — persistent VM can only handle one db reset at a time
-    concurrency:
-      group: ci-supabase-vm
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-
-      - name: Cache uv dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
-          restore-keys: |
-            uv-${{ runner.os }}-
-
-      - name: Set up Python
-        run: uv python install 3.11
-
-      - name: Install dependencies
-        run: |
-          uv sync --extra test
-          uv pip install pytest-xdist
-
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.CI_SUPABASE_SSH_KEY }}" > ~/.ssh/ci_vm
-          chmod 600 ~/.ssh/ci_vm
-          ssh-keyscan -H ${{ secrets.CI_SUPABASE_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
-
-      - name: Verify VM health
-        run: |
-          ssh -i ~/.ssh/ci_vm -o ConnectTimeout=10 \
-            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
-            "curl -sf http://localhost:54321/rest/v1/ > /dev/null && echo 'Supabase API healthy'"
-
-      - name: Sync migrations and reset database
-        run: |
-          scp -i ~/.ssh/ci_vm -r supabase/migrations/ \
-            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }}:/opt/selko/supabase/migrations/
-          # supabase db reset can fail if storage container is slow to restart.
-          # Retry up to 3 times with a wait between attempts.
-          for attempt in 1 2 3; do
-            echo "Attempt ${attempt}/3: supabase db reset"
-            if ssh -i ~/.ssh/ci_vm \
-              ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
-              "cd /opt/selko && supabase db reset"; then
-              echo "supabase db reset succeeded on attempt ${attempt}"
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "supabase db reset failed after 3 attempts"
-              exit 1
-            fi
-            echo "supabase db reset failed, waiting 15s before retry..."
-            sleep 15
-          done
-
-      - name: Establish SSH tunnel
-        run: |
-          ssh -i ~/.ssh/ci_vm -fN \
-            -L 54321:localhost:54321 \
-            -L 54322:localhost:54322 \
-            -o ServerAliveInterval=30 \
-            -o ServerAliveCountMax=3 \
-            -o ExitOnForwardFailure=yes \
-            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }}
-          # Verify tunnel is working
-          for i in $(seq 1 10); do
-            if curl -sf http://localhost:54321/rest/v1/ > /dev/null 2>&1; then
-              echo "SSH tunnel established and Supabase reachable"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "SSH tunnel failed to establish"
-          exit 1
-
-      - name: "[DIAG] Network latency baseline"
-        run: |
-          echo "=== Raw SSH round-trip ==="
-          for i in 1 2 3 4 5; do
-            time ssh -i ~/.ssh/ci_vm -o ConnectTimeout=5 \
-              ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
-              "echo pong"
-          done
-
-          echo "=== HTTP via SSH tunnel (localhost:54321) ==="
-          for i in 1 2 3 4 5; do
-            curl -w "time_total: %{time_total}s\n" -sf -o /dev/null \
-              http://localhost:54321/rest/v1/ \
-              -H "apikey: ${{ secrets.CI_SUPABASE_ANON_KEY }}" \
-              -H "Authorization: Bearer ${{ secrets.CI_SUPABASE_ANON_KEY }}"
-          done
-
-          echo "=== Direct HTTP to VM (no tunnel) ==="
-          for i in 1 2 3 4 5; do
-            curl -w "time_total: %{time_total}s\n" -sf -o /dev/null \
-              http://${{ secrets.CI_SUPABASE_HOST }}:54321/rest/v1/ \
-              -H "apikey: ${{ secrets.CI_SUPABASE_ANON_KEY }}" \
-              -H "Authorization: Bearer ${{ secrets.CI_SUPABASE_ANON_KEY }}" \
-              2>&1 || echo "Direct HTTP failed (port not open) - time_total: N/A"
-          done
-
-      - name: Create .env file
-        run: |
-          echo "SUPABASE_URL=http://localhost:54321" > .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.CI_SUPABASE_ANON_KEY }}" >> .env
-          echo "SUPABASE_PUBLISHABLE_KEY=${{ secrets.CI_SUPABASE_ANON_KEY }}" >> .env
-          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}" >> .env
-          echo "TEST_USER_EMAIL=test@selko.local" >> .env
-          echo "TEST_USER_PASSWORD=testpass123" >> .env
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-
-      - name: Create test user
-        run: |
-          uv run python -m cli.cli_user create \
-            --email test@selko.local \
-            --password testpass123 \
-            --auto-confirm 2>&1 || echo "Note: User may already exist (this is OK)"
-        env:
-          ENVIRONMENT: development
-          TEST_USER_EMAIL: test@selko.local
-          TEST_USER_PASSWORD: testpass123
-
-      - name: Seed Gmail tokens from staging
-        run: |
-          uv run python -m cli.cli_seed_tokens \
-            --from staging --to development --provider gmail
-        env:
-          SOURCE_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-          SOURCE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
-          TARGET_SUPABASE_URL: http://localhost:54321
-          TARGET_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}
-          TEST_USER_EMAIL: test@selko.local
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-
-      - name: "[DIAG] Start VM resource monitor"
-        run: |
-          ssh -i ~/.ssh/ci_vm \
-            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
-            "nohup bash -c 'while true; do date; free -h | head -3; echo CPU: \$(top -bn1 | head -3 | tail -1); echo ---; sleep 5; done' > /tmp/ci-resource-monitor.log 2>&1 &"
-
-      - name: Run integration tests (mocked LLM)
-        # Run sequentially - integration tests have shared DB state that breaks with parallel execution
-        run: uv run pytest backend/tests/integration/ -m "development" -v --tb=short --durations=0
-        env:
-          ENVIRONMENT: development
-          TEST_USER_EMAIL: test@selko.local
-          TEST_USER_PASSWORD: testpass123
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        # NOTE: Does NOT use --run-llm flag, so LLM tests are skipped (mocked versions run instead)
-
-      - name: "[DIAG] Collect VM resource log"
-        if: always()
-        run: |
-          echo "=== VM resource usage during tests ==="
-          ssh -i ~/.ssh/ci_vm \
-            ${{ secrets.CI_SUPABASE_USER }}@${{ secrets.CI_SUPABASE_HOST }} \
-            "cat /tmp/ci-resource-monitor.log; rm -f /tmp/ci-resource-monitor.log; pkill -f ci-resource-monitor || true"
-
-      - name: Cleanup SSH tunnel
-        if: always()
-        run: |
-          pkill -f "ssh.*ci_vm.*-L 54321" || true
-          rm -f ~/.ssh/ci_vm
-
   android-unit-tests:
     name: Android Unit Tests
     needs: changes
@@ -298,9 +118,8 @@ jobs:
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
       (needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true') &&
       (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
-      (needs.integration-tests-development.result == 'success' || needs.integration-tests-development.result == 'skipped') &&
       (needs.android-unit-tests.result == 'success' || needs.android-unit-tests.result == 'skipped')
-    needs: [changes, unit-tests, integration-tests-development, android-unit-tests]
+    needs: [changes, unit-tests, android-unit-tests]
     steps:
       - uses: actions/checkout@v4
 
