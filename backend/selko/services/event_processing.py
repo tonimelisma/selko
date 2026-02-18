@@ -84,11 +84,21 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 ✓ Staff birthdays (fyi)
 ✓ Conference registrations (action_required)
 
-**NOT events:**
+**NOT events (do NOT extract these):**
 ✗ Newsletter content without specific dates
 ✗ Receipts or order confirmations (unless they mention an appointment)
 ✗ Financial statements or account summaries
 ✗ General announcements without specific event details
+✗ Promotional offers, sales, or discount deadlines ("offer expires", "sale ends")
+✗ Survey, feedback, or review request deadlines
+✗ Terms of service or privacy policy effective dates
+✗ Public comment periods or administrative deadlines
+✗ Emails where event details (date, time) must be inferred or guessed from context — only extract events with explicitly stated dates and times
+
+**Extraction rules:**
+- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events
+- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs — note them in the main event's description instead
+- Only extract events with explicitly stated dates — do NOT infer dates from holidays, context, or subject lines
 """
     return prompt
 
