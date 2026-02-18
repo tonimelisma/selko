@@ -6,14 +6,14 @@ General-purpose VPS for hosting Docker services. Currently runs Supabase for CI 
 
 | Property | Value |
 |----------|-------|
-| Project | `melisma-cloud` |
+| Project | `melisma-services` |
 | VM name | `vps-1` |
 | Zone | `us-central1-a` |
 | Machine type | `e2-micro` (1 GB RAM, 2 shared vCPU) |
 | Disk | 30 GB pd-standard |
 | OS | Ubuntu 24.04 LTS |
 | Swap | 4 GB |
-| Static IP | Reserved in `us-central1` |
+| Static IP | `34.45.72.52` |
 | Firewall | SSH (port 22) only |
 
 ## Initial Provisioning
@@ -24,8 +24,8 @@ These commands were run once to create the VM. Documented here for reproducibili
 
 ```bash
 # Create project and enable Compute Engine
-gcloud projects create melisma-cloud
-gcloud config set project melisma-cloud
+gcloud projects create melisma-services
+gcloud config set project melisma-services
 # Link billing account via GCP Console
 
 gcloud services enable compute.googleapis.com
@@ -83,25 +83,26 @@ git clone https://github.com/tonimelisma/selko.git /opt/selko
 
 ### 3. CI-Optimized Supabase Config
 
-Create `/opt/selko/supabase/config.ci.toml` overlay or edit `config.toml` on the VM to disable unused services:
+Edit `config.toml` on the VM to disable unused services and increase health timeout:
 
 ```toml
+# Disabled to save memory (~640 MB total):
 [studio]
-enabled = false      # ~256 MB saved
-
+enabled = false
 [inbucket]
-enabled = false      # ~64 MB saved
-
+enabled = false
 [edge_runtime]
-enabled = false      # ~128 MB saved
-
+enabled = false
 [analytics]
-enabled = false      # ~64 MB saved
-
+enabled = false
 [realtime]
-enabled = false      # ~128 MB saved
+enabled = false
 
-# Keep: PostgreSQL, GoTrue (auth), PostgREST (api), Storage
+# Kept: PostgreSQL, GoTrue (auth), PostgREST (api), Storage, imgproxy, Kong
+
+# Increase DB health timeout for e2-micro (slow I/O):
+[db]
+health_timeout = "10m"
 ```
 
 Then start Supabase:
@@ -127,8 +128,8 @@ RemainAfterExit=yes
 WorkingDirectory=/opt/selko
 ExecStart=/usr/local/bin/supabase start
 ExecStop=/usr/local/bin/supabase stop
-User=toni
-Environment=HOME=/home/toni
+User=tonimelisma
+Environment=HOME=/home/tonimelisma
 
 [Install]
 WantedBy=multi-user.target
