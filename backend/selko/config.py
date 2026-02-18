@@ -1,7 +1,7 @@
 """Centralized configuration module for Selko.
 
-Handles environment detection and .env file loading with support for
-development/staging/production environments.
+Loads environment-specific settings from .env files (local development) or
+environment variables (CI/CD). Supports development, staging, and production.
 """
 
 import argparse
