@@ -33,7 +33,7 @@
         "end_datetime": "2026-03-15T16:00:00",
         "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
         "description": "Quarterly board of directors meeting",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }

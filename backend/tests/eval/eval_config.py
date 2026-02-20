@@ -33,11 +33,11 @@ DIFFICULTY_LEVELS = ["easy", "medium", "hard"]
 
 # Rating scale
 RATING_SCALE = {
-    5: "Perfect - Exact match on all fields",
-    4: "Excellent - Minor differences (e.g., slight description variation)",
-    3: "Good - Correct event detection, some field issues",
-    2: "Partial - Missed events or significant extraction errors",
-    1: "Failed - Wrong extraction or false positive/negative",
+    5: "Perfect - events_found + count + ALL events match",
+    4: "Good - events_found + count match + >= 50% events match",
+    3: "Partial - events_found + count match + < 50% events match",
+    2: "Poor - events_found match only (count wrong)",
+    1: "Failed - events_found mismatch",
 }
 
 # Auto-scoring thresholds (extraction)

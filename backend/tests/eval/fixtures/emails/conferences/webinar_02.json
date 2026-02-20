@@ -33,7 +33,7 @@
         "end_datetime": "2026-02-24T14:30:00",
         "location": "Zoom",
         "description": "Webinar on AI implementation strategies with Dr. Maria Santos",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }

@@ -33,7 +33,7 @@
         "end_datetime": "2026-03-20T16:00:00",
         "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
         "description": "3-day technology conference",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

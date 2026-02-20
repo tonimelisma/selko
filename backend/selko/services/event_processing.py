@@ -57,6 +57,7 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
    - End date/time (if mentioned)
    - Location (physical address or virtual meeting link)
    - Full description with all relevant details
+   - Whether it's an all-day event (true/false)
    - Confidence score (0.0-1.0) based on clarity of information
    - Importance: "action_required" or "fyi" (see classification below)
 

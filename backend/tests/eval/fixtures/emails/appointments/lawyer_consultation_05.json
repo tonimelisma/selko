@@ -33,7 +33,7 @@
         "end_datetime": "2026-02-11T12:00:00",
         "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
         "description": "Estate planning consultation",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }

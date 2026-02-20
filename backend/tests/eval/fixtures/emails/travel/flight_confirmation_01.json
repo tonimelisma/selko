@@ -33,7 +33,7 @@
         "end_datetime": "2026-03-13T16:35:00",
         "location": "San Francisco International Airport (SFO)",
         "description": "United Airlines flight to New York JFK",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       },
@@ -43,7 +43,7 @@
         "end_datetime": "2026-03-15T22:15:00",
         "location": "John F. Kennedy International Airport (JFK)",
         "description": "United Airlines return flight to San Francisco",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

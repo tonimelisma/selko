@@ -32,7 +32,7 @@
         "end_datetime": "2026-02-12T17:30:00",
         "location": "Style Studio Salon, 890 University Avenue, Palo Alto, CA 94301",
         "description": "Haircut and color with Amanda Torres",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

@@ -272,7 +272,17 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
         "match": actual_confidence >= min_confidence,
     }
 
-    # Importance (soft match — tracked for reporting but doesn't affect overall_match)
+    # All day
+    expected_all_day = expected.get("all_day")
+    if expected_all_day is not None:
+        actual_all_day = actual.get("all_day")
+        scores["all_day"] = {
+            "expected": expected_all_day,
+            "actual": actual_all_day,
+            "match": expected_all_day == actual_all_day,
+        }
+
+    # Importance
     expected_importance = expected.get("importance")
     actual_importance = actual.get("importance")
     if expected_importance is not None:
@@ -285,7 +295,7 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
     scores["overall_match"] = all(
         s.get("match", True)
         for key, s in scores.items()
-        if isinstance(s, dict) and key != "importance"  # importance is soft
+        if isinstance(s, dict) and key != "overall_match"
     )
 
     return scores
@@ -304,17 +314,47 @@ def auto_score_result(expected: dict, actual: dict) -> dict[str, Any]:
     actual_events = actual.get("events", [])
 
     if expected_events and actual_events:
-        event_scores = []
+        # Build score matrix for greedy best-match (not positional)
+        score_matrix = []
         for i, exp_event in enumerate(expected_events):
-            if i < len(actual_events):
-                event_scores.append(auto_score_event(exp_event, actual_events[i]))
-            else:
-                event_scores.append({"missing": True, "overall_match": False})
-        for i in range(len(expected_events), len(actual_events)):
-            event_scores.append({"extra": True, "overall_match": False})
-        scores["event_scores"] = event_scores
+            for j, act_event in enumerate(actual_events):
+                pair_score = auto_score_event(exp_event, act_event)
+                # Quality metric: (overall_match, count of field matches)
+                field_matches = sum(
+                    1 for k, s in pair_score.items()
+                    if isinstance(s, dict) and s.get("match", False) and k != "overall_match"
+                )
+                score_matrix.append((pair_score.get("overall_match", False), field_matches, i, j, pair_score))
+
+        # Sort descending by quality: overall_match first, then field_matches
+        score_matrix.sort(key=lambda x: (x[0], x[1]), reverse=True)
+
+        # Greedy assignment: best unmatched pairs first
+        matched_expected = set()
+        matched_actual = set()
+        event_scores = [None] * len(expected_events)
+        extra_scores = []
+
+        for overall_match, field_matches, i, j, pair_score in score_matrix:
+            if i not in matched_expected and j not in matched_actual:
+                event_scores[i] = pair_score
+                matched_expected.add(i)
+                matched_actual.add(j)
+
+        # Remaining unmatched expected → missing
+        for i in range(len(expected_events)):
+            if event_scores[i] is None:
+                event_scores[i] = {"missing": True, "overall_match": False}
+
+        # Remaining unmatched actual → extra
+        for j in range(len(actual_events)):
+            if j not in matched_actual:
+                extra_scores.append({"extra": True, "overall_match": False})
+
+        all_scores = event_scores + extra_scores
+        scores["event_scores"] = all_scores
         scores["all_events_match"] = all(
-            es.get("overall_match", False) for es in event_scores
+            es.get("overall_match", False) for es in all_scores
         )
     else:
         scores["all_events_match"] = not expected_events and not actual_events
@@ -322,9 +362,16 @@ def auto_score_result(expected: dict, actual: dict) -> dict[str, Any]:
     if scores["events_found_match"] and scores["event_count_match"] and scores.get("all_events_match"):
         scores["auto_rating"] = 5
     elif scores["events_found_match"] and scores["event_count_match"]:
-        scores["auto_rating"] = 4
+        # Check what fraction of events match
+        event_scores_list = scores.get("event_scores", [])
+        matched_count = sum(1 for es in event_scores_list if es.get("overall_match", False))
+        total_count = len(event_scores_list) if event_scores_list else 1
+        if matched_count / total_count >= 0.5:
+            scores["auto_rating"] = 4
+        else:
+            scores["auto_rating"] = 3
     elif scores["events_found_match"]:
-        scores["auto_rating"] = 3
+        scores["auto_rating"] = 2
     else:
         scores["auto_rating"] = 1
 
@@ -434,6 +481,65 @@ def score_merge_result(expected: dict, actual: dict) -> dict[str, Any]:
     scores["total_fields"] = total_fields
     scores["auto_rating"] = rating
     return scores
+
+
+# ---------------------------------------------------------------------------
+# Fixture schema validation
+# ---------------------------------------------------------------------------
+
+def validate_fixtures() -> list[str]:
+    """Validate all fixture files for schema correctness. Returns list of warnings."""
+    warnings = []
+
+    # Validate extract fixtures
+    for fixture_name, fixture_path in get_all_fixtures():
+        try:
+            fixture = load_fixture(fixture_path)
+        except Exception as e:
+            warnings.append(f"[extract] {fixture_name}: Failed to parse JSON: {e}")
+            continue
+
+        expected = fixture.get("expected", {})
+        if "events_found" not in expected:
+            warnings.append(f"[extract] {fixture_name}: Missing required field 'expected.events_found'")
+
+        for i, event in enumerate(expected.get("events", [])):
+            if "title" not in event:
+                warnings.append(f"[extract] {fixture_name}: Event {i} missing 'title'")
+            if "start_datetime" not in event:
+                warnings.append(f"[extract] {fixture_name}: Event {i} missing 'start_datetime'")
+            if "is_all_day" in event:
+                warnings.append(f"[extract] {fixture_name}: Event {i} uses deprecated 'is_all_day' — rename to 'all_day'")
+
+    # Validate compare fixtures
+    for fixture_name, fixture_path in get_compare_fixtures():
+        try:
+            fixture = load_fixture(fixture_path)
+        except Exception as e:
+            warnings.append(f"[compare] {fixture_name}: Failed to parse JSON: {e}")
+            continue
+
+        expected = fixture.get("expected", {})
+        if "matched_event_id" not in expected:
+            warnings.append(f"[compare] {fixture_name}: Missing required field 'expected.matched_event_id'")
+
+    # Validate merge fixtures
+    for fixture_name, fixture_path in get_merge_fixtures():
+        try:
+            fixture = load_fixture(fixture_path)
+        except Exception as e:
+            warnings.append(f"[merge] {fixture_name}: Failed to parse JSON: {e}")
+            continue
+
+        input_data = fixture.get("input", {})
+        if "existing_event" not in input_data:
+            warnings.append(f"[merge] {fixture_name}: Missing 'input.existing_event'")
+        if "new_extraction" not in input_data:
+            warnings.append(f"[merge] {fixture_name}: Missing 'input.new_extraction'")
+        if "source_type" not in input_data:
+            warnings.append(f"[merge] {fixture_name}: Missing 'input.source_type'")
+
+    return warnings
 
 
 # ---------------------------------------------------------------------------
@@ -604,6 +710,7 @@ def run_extract_eval(
                     "title": e.title,
                     "start_datetime": e.start_datetime.isoformat() if e.start_datetime else None,
                     "end_datetime": e.end_datetime.isoformat() if e.end_datetime else None,
+                    "all_day": getattr(e, "all_day", False),
                     "location": e.location,
                     "description": e.description,
                     "confidence": e.confidence,
@@ -937,8 +1044,13 @@ def run_thread_eval(
     use_cache: bool = False,
     verbose: bool = False,
     dry_run: bool = False,
+    provider_name: str | None = None,
+    model_name: str | None = None,
+    thinking: str = "low",
 ) -> dict[str, Any]:
     """Run evaluation for a thread scenario (multiple emails processed in sequence)."""
+    provider_name = provider_name or DEFAULT_PROVIDER
+    model_name = model_name or DEFAULT_MODEL
     start_time = time.time()
 
     with open(scenario_path) as f:
@@ -966,7 +1078,7 @@ def run_thread_eval(
             "difficulty": scenario.get("difficulty", "medium"),
             "tags": scenario.get("tags", []),
             "run_at": datetime.now(timezone.utc).isoformat(),
-            "model": DEFAULT_MODEL,
+            "model": model_name,
             "duration_ms": 0,
             "email_count": len(thread_emails),
             "expected_final_state": expected_final,
@@ -977,7 +1089,7 @@ def run_thread_eval(
 
     from selko.services.event_processing import extract_calendar_events
 
-    gateway = _create_gateway(DEFAULT_PROVIDER, DEFAULT_MODEL)
+    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
 
     email_results = []
     all_events = []
@@ -1047,7 +1159,9 @@ def run_thread_eval(
         "difficulty": scenario.get("difficulty", "medium"),
         "tags": scenario.get("tags", []),
         "run_at": datetime.now(timezone.utc).isoformat(),
-        "model": DEFAULT_MODEL,
+        "provider": provider_name,
+        "model": model_name,
+        "thinking": thinking,
         "duration_ms": duration_ms,
         "email_count": len(thread_emails),
         "expected_final_state": expected_final,
@@ -1180,9 +1294,10 @@ def _get_result_status(result: dict[str, Any]) -> str:
     op = result.get("operation", "extract")
     auto_score = result.get("auto_score", {})
     if op == "extract":
-        if auto_score.get("all_events_match"):
+        rating = auto_score.get("auto_rating", 0)
+        if rating == 5:
             return "PASS"
-        elif auto_score.get("events_found_match"):
+        elif rating >= 3:
             return "PARTIAL"
         return "FAIL"
     elif op == "compare":
@@ -1446,14 +1561,15 @@ def generate_markdown_report(output_path: str) -> None:
         Path(output_path).write_text("\n".join(lines))
         return
 
-    # Group by model and operation
+    # Group by model+thinking and operation
     models_seen = set()
     by_model_op: dict[str, dict[str, list]] = {}
     for r in all_results:
-        model = r.get("model", "unknown")
+        thinking = r.get("thinking", "low")
+        model_key = f"{r.get('model', 'unknown')} ({thinking})"
         op = r.get("operation", "extract")
-        models_seen.add(model)
-        by_model_op.setdefault(model, {}).setdefault(op, []).append(r)
+        models_seen.add(model_key)
+        by_model_op.setdefault(model_key, {}).setdefault(op, []).append(r)
 
     models_sorted = sorted(models_seen)
 
@@ -1501,6 +1617,17 @@ def generate_markdown_report(output_path: str) -> None:
         line(f"| {model} | {ext_str} | {cmp_str} | {mrg_str} | ${total_cost:.4f} | {avg_latency:.0f}ms |")
 
     line()
+
+    # Check if models have different extract fixture counts (vision vs text-only)
+    extract_counts = set()
+    for model in models_sorted:
+        ext = by_model_op.get(model, {}).get("extract", [])
+        if ext:
+            extract_counts.add(len(ext))
+    if len(extract_counts) > 1:
+        line(f"*Note: Models ran different numbers of extract fixtures ({', '.join(str(c) for c in sorted(extract_counts))}). "
+             f"Text-only models skip vision fixtures (images, PDFs), so pass rates are not directly comparable.*")
+        line()
 
     # ---- Extraction Results ----
     line("## Extraction Results")
@@ -1600,6 +1727,33 @@ def generate_markdown_report(output_path: str) -> None:
         cost = sum(r.get("cost", 0) for r in results)
         line(f"| {model} | {avg_rating:.1f}/5 | {perfect}/{len(results)} | ${cost:.4f} |")
     line()
+
+    # ---- Failure Patterns ----
+    fail_partial_results = [r for r in all_results if _get_result_status(r) in ("FAIL", "PARTIAL")]
+    if fail_partial_results:
+        tag_stats: dict[str, dict[str, int]] = {}
+        for r in all_results:
+            status = _get_result_status(r)
+            for tag in r.get("tags", []):
+                if tag not in tag_stats:
+                    tag_stats[tag] = {"total": 0, "fail": 0, "partial": 0}
+                tag_stats[tag]["total"] += 1
+                if status == "FAIL":
+                    tag_stats[tag]["fail"] += 1
+                elif status == "PARTIAL":
+                    tag_stats[tag]["partial"] += 1
+
+        # Only show tags with at least one failure
+        failing_tags = {t: s for t, s in tag_stats.items() if s["fail"] > 0 or s["partial"] > 0}
+        if failing_tags:
+            line("## Failure Patterns")
+            line()
+            line("| Tag | Total | Fail | Partial | Failure Rate |")
+            line("|-----|-------|------|---------|--------------|")
+            for tag, stats in sorted(failing_tags.items(), key=lambda x: (x[1]["fail"] + x[1]["partial"]) / max(x[1]["total"], 1), reverse=True):
+                failure_rate = (stats["fail"] + stats["partial"]) / stats["total"] * 100 if stats["total"] else 0
+                line(f"| {tag} | {stats['total']} | {stats['fail']} | {stats['partial']} | {failure_rate:.0f}% |")
+            line()
 
     # ---- Cost Analysis ----
     line("## Cost Analysis")
@@ -1702,6 +1856,105 @@ def generate_markdown_report(output_path: str) -> None:
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     Path(output_path).write_text("\n".join(lines) + "\n")
     print(f"Markdown report written to {output_path}")
+
+
+# ---------------------------------------------------------------------------
+# Baseline comparison
+# ---------------------------------------------------------------------------
+
+def compare_baseline() -> None:
+    """Compare auto_ratings between the two most recent code versions."""
+    results_base = RESULTS_DIR
+    if not results_base.exists():
+        print("No results directory found.")
+        return
+
+    # Collect all results grouped by code_hash
+    by_hash: dict[str, list[dict]] = {}
+    for op_dir in sorted(results_base.iterdir()):
+        if not op_dir.is_dir() or op_dir.name.startswith("."):
+            continue
+        for model_dir in sorted(op_dir.iterdir()):
+            if not model_dir.is_dir():
+                continue
+            for fixture_dir in sorted(model_dir.iterdir()):
+                if not fixture_dir.is_dir():
+                    continue
+                for result_file in fixture_dir.glob("result_*.json"):
+                    try:
+                        with open(result_file) as f:
+                            r = json.load(f)
+                            code_hash = r.get("code_hash", "")
+                            if code_hash:
+                                by_hash.setdefault(code_hash, []).append(r)
+                    except Exception:
+                        pass
+
+    if len(by_hash) < 2:
+        print(f"Need at least 2 code versions to compare. Found {len(by_hash)}.")
+        return
+
+    # Find two most recent versions by newest result timestamp
+    version_times = []
+    for ch, results in by_hash.items():
+        newest = max(r.get("run_at", "") for r in results)
+        version_times.append((newest, ch))
+    version_times.sort(reverse=True)
+
+    current_hash = version_times[0][1]
+    previous_hash = version_times[1][1]
+
+    print(f"Comparing code versions:")
+    print(f"  Current:  {current_hash} ({len(by_hash[current_hash])} results)")
+    print(f"  Previous: {previous_hash} ({len(by_hash[previous_hash])} results)")
+    print()
+
+    # Build lookup: (fixture_name, model, operation) → auto_rating for each version
+    def build_lookup(results: list[dict]) -> dict[tuple, int]:
+        lookup = {}
+        for r in results:
+            key = (r.get("fixture_name", ""), r.get("model", ""), r.get("operation", ""))
+            op = r.get("operation", "extract")
+            if op == "compare":
+                rating = 5 if r.get("auto_score", {}).get("correct") else 1
+            else:
+                rating = r.get("auto_score", {}).get("auto_rating", 0)
+            lookup[key] = rating
+        return lookup
+
+    current_lookup = build_lookup(by_hash[current_hash])
+    previous_lookup = build_lookup(by_hash[previous_hash])
+
+    # Compare
+    all_keys = set(current_lookup.keys()) | set(previous_lookup.keys())
+    improved = []
+    regressed = []
+    unchanged = 0
+
+    for key in sorted(all_keys):
+        curr = current_lookup.get(key)
+        prev = previous_lookup.get(key)
+        if curr is not None and prev is not None:
+            if curr > prev:
+                improved.append((key, prev, curr))
+            elif curr < prev:
+                regressed.append((key, prev, curr))
+            else:
+                unchanged += 1
+
+    print(f"Results: {len(improved)} improved, {len(regressed)} regressed, {unchanged} unchanged")
+    print()
+
+    if regressed:
+        print("REGRESSIONS:")
+        for (fixture, model, op), prev_rating, curr_rating in regressed:
+            print(f"  [{op}] {fixture} ({model}): {prev_rating} → {curr_rating}")
+        print()
+
+    if improved:
+        print("IMPROVEMENTS:")
+        for (fixture, model, op), prev_rating, curr_rating in improved:
+            print(f"  [{op}] {fixture} ({model}): {prev_rating} → {curr_rating}")
 
 
 # ---------------------------------------------------------------------------
@@ -1991,6 +2244,10 @@ Examples:
         help="Max concurrent fixture runs per model (default: 10, use 1 for sequential)",
     )
 
+    # Validation and baseline
+    parser.add_argument("--validate", action="store_true", help="Validate all fixture schemas")
+    parser.add_argument("--compare-baseline", action="store_true", help="Compare latest vs previous code version results")
+
     # Output options
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--dry-run", action="store_true", help="Validate fixtures without calling LLM")
@@ -2003,6 +2260,24 @@ Examples:
         eval_cfg.DEFAULT_PROVIDER = args.provider
     if args.model:
         eval_cfg.DEFAULT_MODEL = args.model
+
+    # Handle validate
+    if args.validate:
+        print("Validating all fixtures...")
+        warnings = validate_fixtures()
+        if warnings:
+            print(f"\n{len(warnings)} warning(s):")
+            for w in warnings:
+                print(f"  - {w}")
+            sys.exit(1)
+        else:
+            print("All fixtures valid.")
+        return
+
+    # Handle compare-baseline
+    if args.compare_baseline:
+        compare_baseline()
+        return
 
     # Handle list
     if args.list:
@@ -2132,7 +2407,10 @@ Examples:
         thread_results = []
         for name, path in threads:
             try:
-                result = run_thread_eval(name, path, use_cache=use_cache, verbose=args.verbose, dry_run=dry_run)
+                result = run_thread_eval(
+                    name, path, use_cache=use_cache, verbose=args.verbose, dry_run=dry_run,
+                    provider_name=provider, model_name=model, thinking=args.thinking,
+                )
                 thread_results.append(result)
                 print_thread_result_summary(result)
             except Exception as e:
@@ -2237,6 +2515,12 @@ Examples:
         valid = sum(1 for r in all_results if r.get("valid", False))
         invalid = len(all_results) - valid
         print(f"Dry-run complete: {valid} valid, {invalid} invalid fixtures")
+        # Also run fixture schema validation during dry-run
+        schema_warnings = validate_fixtures()
+        if schema_warnings:
+            print(f"\nFixture schema warnings ({len(schema_warnings)}):")
+            for w in schema_warnings:
+                print(f"  - {w}")
 
 
 if __name__ == "__main__":

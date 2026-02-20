@@ -33,7 +33,7 @@
         "end_datetime": "2026-03-05T21:00:00",
         "location": "42 Reading Lane, Cupertino, CA 95014",
         "description": "Monthly book club meeting to discuss The Midnight Library by Matt Haig",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

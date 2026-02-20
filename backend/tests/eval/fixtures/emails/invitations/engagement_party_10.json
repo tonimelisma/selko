@@ -33,7 +33,7 @@
         "end_datetime": null,
         "location": "Stonegate Winery, 7801 Silverado Trail, Napa, CA 94558",
         "description": "Engagement celebration with wine tasting and hors d'oeuvres at winery",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

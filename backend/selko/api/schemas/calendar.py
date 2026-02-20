@@ -16,6 +16,7 @@ class CalendarEvent(BaseModel):
     end_datetime: Optional[datetime] = Field(
         None, description="The event end date and time (ISO 8601)"
     )
+    all_day: bool = Field(False, description="Whether this is an all-day event")
     location: Optional[str] = Field(None, description="The event location or venue")
     description: str = Field(
         description="Detailed description of the event with all relevant information"

@@ -33,7 +33,7 @@
         "end_datetime": null,
         "location": "Sunnyvale Sports Complex, Field #3, 500 Athletic Way, Sunnyvale, CA 94086",
         "description": "Youth soccer game - arrive by 9:30 AM",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

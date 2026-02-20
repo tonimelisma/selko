@@ -33,7 +33,7 @@
         "end_datetime": "2026-04-15T12:00:00",
         "location": "Executive Conference Room (HQ, 10th Floor)",
         "description": "Quarterly business review meeting",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }
