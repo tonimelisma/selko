@@ -22,7 +22,9 @@ import org.koin.compose.koinInject
 @Composable
 fun SelkoNavHost(
     navController: NavHostController,
-    authRepository: AuthRepository = koinInject()
+    authRepository: AuthRepository = koinInject(),
+    deepLink: DeepLink? = null,
+    onDeepLinkConsumed: () -> Unit = {}
 ) {
     val sessionStatus by authRepository.sessionStatus.collectAsState(initial = SessionStatus.Initializing)
 
@@ -77,7 +79,9 @@ fun SelkoNavHost(
                     navController.navigate(Auth) {
                         popUpTo(Home) { inclusive = true }
                     }
-                }
+                },
+                deepLink = deepLink,
+                onDeepLinkConsumed = onDeepLinkConsumed
             )
         }
 
