@@ -1,5 +1,6 @@
 package net.melisma.selko.ui.screens.settings
 
+import android.app.Application
 import app.cash.turbine.test
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -11,6 +12,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import net.melisma.selko.R
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.data.repository.AuthRepository
@@ -29,6 +31,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
 
+    private lateinit var application: Application
     private lateinit var authRepository: AuthRepository
     private lateinit var integrationRepository: IntegrationRepository
     private lateinit var calendarSettingsRepository: CalendarSettingsRepository
@@ -57,6 +60,11 @@ class SettingsViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        application = mockk(relaxed = true)
+        every { application.getString(R.string.settings_error_disconnect) } returns "Failed to disconnect"
+        every { application.getString(R.string.settings_error_load_rules) } returns "Failed to load automation rules"
+        every { application.getString(R.string.settings_error_create_rule) } returns "Failed to create rule"
+        every { application.getString(R.string.settings_error_delete_rule) } returns "Failed to delete rule"
         authRepository = mockk(relaxed = true)
         integrationRepository = mockk(relaxed = true)
         calendarSettingsRepository = mockk(relaxed = true)
@@ -79,6 +87,7 @@ class SettingsViewModelTest {
 
     private fun createViewModel(): SettingsViewModel {
         return SettingsViewModel(
+            application,
             authRepository,
             integrationRepository,
             calendarSettingsRepository,

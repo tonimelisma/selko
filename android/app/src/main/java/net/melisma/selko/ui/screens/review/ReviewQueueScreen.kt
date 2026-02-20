@@ -39,8 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import net.melisma.selko.R
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,7 +91,7 @@ fun ReviewQueueScreen(
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Review Queue",
+                                text = stringResource(R.string.review_queue_title),
                                 style = MaterialTheme.typography.headlineSmall,
                                 modifier = Modifier.padding(
                                     start = 16.dp,
@@ -142,7 +144,7 @@ fun ReviewQueueScreen(
                         onClick = { viewModel.clearError() },
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Text("Dismiss")
+                        Text(stringResource(R.string.review_dismiss))
                     }
                 }
             ) {
@@ -175,7 +177,7 @@ private fun SenderGroupHeader(
                 style = MaterialTheme.typography.titleSmall
             )
             Text(
-                text = "${group.events.size} event${if (group.events.size != 1) "s" else ""}",
+                text = stringResource(R.string.review_events_count, group.events.size, if (group.events.size != 1) "s" else ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -185,7 +187,7 @@ private fun SenderGroupHeader(
             IconButton(onClick = { showMenu = true }) {
                 Icon(
                     imageVector = Icons.Filled.MoreVert,
-                    contentDescription = "Actions",
+                    contentDescription = stringResource(R.string.review_actions),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -195,7 +197,7 @@ private fun SenderGroupHeader(
             ) {
                 if (group.events.size > 1) {
                     DropdownMenuItem(
-                        text = { Text("Approve all") },
+                        text = { Text(stringResource(R.string.review_approve_all)) },
                         onClick = {
                             showMenu = false
                             onApproveAll()
@@ -207,7 +209,7 @@ private fun SenderGroupHeader(
                     DropdownMenuItem(
                         text = {
                             Text(
-                                "Reject all",
+                                stringResource(R.string.review_reject_all),
                                 color = MaterialTheme.colorScheme.error
                             )
                         },
@@ -226,7 +228,7 @@ private fun SenderGroupHeader(
                     HorizontalDivider()
                 }
                 DropdownMenuItem(
-                    text = { Text("Auto-approve sender") },
+                    text = { Text(stringResource(R.string.review_auto_approve_sender)) },
                     onClick = {
                         showMenu = false
                         onAutoApproveSender()
@@ -236,7 +238,7 @@ private fun SenderGroupHeader(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Ignore sender") },
+                    text = { Text(stringResource(R.string.review_ignore_sender)) },
                     onClick = {
                         showMenu = false
                         onIgnoreSender()
@@ -261,7 +263,7 @@ private fun EmptyReviewContent() {
     ) {
         Icon(
             imageVector = Icons.Filled.Inbox,
-            contentDescription = "No events",
+            contentDescription = stringResource(R.string.review_empty_icon_description),
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
@@ -269,7 +271,7 @@ private fun EmptyReviewContent() {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "All caught up!",
+            text = stringResource(R.string.review_empty_title),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -277,7 +279,7 @@ private fun EmptyReviewContent() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "No events pending review. Pull down to refresh.",
+            text = stringResource(R.string.review_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center

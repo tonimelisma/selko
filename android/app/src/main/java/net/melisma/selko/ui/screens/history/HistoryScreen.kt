@@ -1,5 +1,6 @@
 package net.melisma.selko.ui.screens.history
 
+import android.content.res.Resources
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,11 +36,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.ui.theme.SelkoTheme
@@ -70,7 +74,7 @@ fun HistoryScreen(
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Activity History",
+                            text = stringResource(R.string.history_title),
                             style = MaterialTheme.typography.headlineSmall,
                             modifier = Modifier.padding(
                                 start = 16.dp,
@@ -120,7 +124,7 @@ fun HistoryScreen(
                                         onClick = { viewModel.loadMore() },
                                         shape = MaterialTheme.shapes.medium
                                     ) {
-                                        Text("Load More")
+                                        Text(stringResource(R.string.history_load_more))
                                     }
                                 }
                             }
@@ -145,7 +149,7 @@ fun HistoryScreen(
                         onClick = { viewModel.clearError() },
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Text("Dismiss")
+                        Text(stringResource(R.string.history_dismiss))
                     }
                 }
             ) {
@@ -162,6 +166,8 @@ private fun HistoryEventItem(
     onUndo: () -> Unit,
     onRetry: () -> Unit
 ) {
+    val resources = LocalContext.current.resources
+
     ListItem(
         leadingContent = { StatusIcon(status = event.status) },
         headlineContent = {
@@ -174,7 +180,7 @@ private fun HistoryEventItem(
         supportingContent = {
             Column {
                 Text(
-                    text = getStatusDescription(event),
+                    text = getStatusDescription(event, resources),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -210,7 +216,7 @@ private fun HistoryEventItem(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Undo", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.history_undo), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     EventStatus.SYNC_FAILED -> {
@@ -230,7 +236,7 @@ private fun HistoryEventItem(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Retry", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.history_retry), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     EventStatus.SYNCED -> {
@@ -246,7 +252,7 @@ private fun HistoryEventItem(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Undo", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.history_undo), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     else -> { }
@@ -274,13 +280,13 @@ private fun StatusIcon(status: EventStatus) {
     )
 }
 
-private fun getStatusDescription(event: CalendarEvent): String {
+private fun getStatusDescription(event: CalendarEvent, resources: Resources): String {
     return when (event.status) {
-        EventStatus.APPROVED -> "Approved, waiting to sync"
-        EventStatus.SYNCED -> "Synced to Google Calendar"
-        EventStatus.SYNC_FAILED -> "Sync failed"
-        EventStatus.REJECTED -> "Rejected"
-        EventStatus.CANCELLED -> "Cancelled"
+        EventStatus.APPROVED -> resources.getString(R.string.history_status_approved)
+        EventStatus.SYNCED -> resources.getString(R.string.history_status_synced)
+        EventStatus.SYNC_FAILED -> resources.getString(R.string.history_status_sync_failed)
+        EventStatus.REJECTED -> resources.getString(R.string.history_status_rejected)
+        EventStatus.CANCELLED -> resources.getString(R.string.history_status_cancelled)
         else -> event.status.name
     }
 }
@@ -296,7 +302,7 @@ private fun EmptyHistoryContent() {
     ) {
         Icon(
             imageVector = Icons.Filled.History,
-            contentDescription = "No activity",
+            contentDescription = stringResource(R.string.history_empty_icon_description),
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
@@ -304,7 +310,7 @@ private fun EmptyHistoryContent() {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "No Activity Yet",
+            text = stringResource(R.string.history_empty_title),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -312,7 +318,7 @@ private fun EmptyHistoryContent() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Events you approve or reject will appear here.",
+            text = stringResource(R.string.history_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center

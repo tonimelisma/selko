@@ -35,12 +35,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.ui.theme.SelkoTheme
 
@@ -120,7 +122,7 @@ fun EventListItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Filled.Schedule,
-                        contentDescription = "Event time",
+                        contentDescription = stringResource(R.string.event_card_time_description),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -139,7 +141,7 @@ fun EventListItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Event location",
+                        contentDescription = stringResource(R.string.event_card_location_description),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -191,7 +193,7 @@ fun EventListItem(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Check,
-                            contentDescription = "Accept",
+                            contentDescription = stringResource(R.string.event_card_accept),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -211,7 +213,7 @@ fun EventListItem(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Edit")
+                        Text(stringResource(R.string.event_card_edit))
                     }
 
                     // Reject button (icon-only)
@@ -225,7 +227,7 @@ fun EventListItem(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "Reject",
+                            contentDescription = stringResource(R.string.event_card_reject),
                             modifier = Modifier.size(18.dp)
                         )
                     }

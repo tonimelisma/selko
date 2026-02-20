@@ -13,6 +13,7 @@ import net.melisma.selko.ui.screens.history.HistoryViewModel
 import net.melisma.selko.ui.screens.review.EventDetailViewModel
 import net.melisma.selko.ui.screens.review.ReviewQueueViewModel
 import net.melisma.selko.ui.screens.settings.SettingsViewModel
+import org.koin.android.ext.koin.androidApplication
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -32,9 +33,9 @@ val appModule = module {
     single { SenderRuleRepository(get()) }
 
     // ViewModels
-    viewModel { AuthViewModel(get()) }
-    viewModel { ReviewQueueViewModel(get(), get(), get(), get()) }
-    viewModel { (eventId: String) -> EventDetailViewModel(get(), eventId) }
-    viewModel { HistoryViewModel(get(), get()) }
-    viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
+    viewModel { AuthViewModel(androidApplication(), get()) }
+    viewModel { ReviewQueueViewModel(androidApplication(), get(), get(), get(), get()) }
+    viewModel { (eventId: String) -> EventDetailViewModel(androidApplication(), get(), eventId) }
+    viewModel { HistoryViewModel(androidApplication(), get(), get()) }
+    viewModel { SettingsViewModel(androidApplication(), get(), get(), get(), get(), get()) }
 }

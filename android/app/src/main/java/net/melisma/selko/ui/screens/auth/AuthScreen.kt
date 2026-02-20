@@ -21,10 +21,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import net.melisma.selko.R
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -50,7 +52,7 @@ fun AuthScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Selko",
+                text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -58,7 +60,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = if (uiState.isSignUp) "Sign up" else "Clear your mind.",
+                text = if (uiState.isSignUp) stringResource(R.string.auth_sign_up_title) else stringResource(R.string.auth_tagline),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -68,7 +70,7 @@ fun AuthScreen(
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.auth_email_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -84,7 +86,7 @@ fun AuthScreen(
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.auth_password_label)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
@@ -102,7 +104,7 @@ fun AuthScreen(
                 OutlinedTextField(
                     value = uiState.confirmPassword,
                     onValueChange = viewModel::onConfirmPasswordChange,
-                    label = { Text("Confirm password") },
+                    label = { Text(stringResource(R.string.auth_confirm_password_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
@@ -139,7 +141,7 @@ fun AuthScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text(if (uiState.isSignUp) "Sign up" else "Sign in")
+                    Text(if (uiState.isSignUp) stringResource(R.string.auth_sign_up_button) else stringResource(R.string.auth_sign_in_button))
                 }
             }
 
@@ -152,9 +154,9 @@ fun AuthScreen(
             ) {
                 Text(
                     if (uiState.isSignUp) {
-                        "Already have an account? Log in"
+                        stringResource(R.string.auth_switch_to_login)
                     } else {
-                        "Don't have an account? Sign up"
+                        stringResource(R.string.auth_switch_to_signup)
                     }
                 )
             }
