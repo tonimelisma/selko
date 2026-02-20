@@ -9,13 +9,16 @@ import net.melisma.selko.data.model.SenderRule
 class SenderRuleRepository(
     private val supabaseClient: SupabaseClient
 ) {
-    suspend fun fetchRules(): Result<List<SenderRule>> {
-        return runCatching {
-            supabaseClient.from("sender_rules")
+    suspend fun fetchRules(): RepositoryResult<List<SenderRule>> {
+        return try {
+            val rules = supabaseClient.from("sender_rules")
                 .select {
                     order("created_at", Order.DESCENDING)
                 }
                 .decodeList<SenderRule>()
+            RepositoryResult.Success(rules)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e.message ?: "Failed to fetch sender rules")
         }
     }
 
@@ -23,8 +26,8 @@ class SenderRuleRepository(
         senderEmail: String?,
         senderDomain: String?,
         action: String
-    ): Result<SenderRule> {
-        return runCatching {
+    ): RepositoryResult<SenderRule> {
+        return try {
             val userId = supabaseClient.auth.currentUserOrNull()?.id
                 ?: throw IllegalStateException("User not authenticated")
 
@@ -35,22 +38,28 @@ class SenderRuleRepository(
             senderEmail?.let { data["sender_email"] = it }
             senderDomain?.let { data["sender_domain"] = it }
 
-            supabaseClient.from("sender_rules")
+            val rule = supabaseClient.from("sender_rules")
                 .insert(data) {
                     select()
                 }
                 .decodeSingle<SenderRule>()
+            RepositoryResult.Success(rule)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e.message ?: "Failed to create sender rule")
         }
     }
 
-    suspend fun deleteRule(id: String): Result<Unit> {
-        return runCatching {
+    suspend fun deleteRule(id: String): RepositoryResult<Unit> {
+        return try {
             supabaseClient.from("sender_rules")
                 .delete {
                     filter {
                         eq("id", id)
                     }
                 }
+            RepositoryResult.Success(Unit)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e.message ?: "Failed to delete sender rule")
         }
     }
 }

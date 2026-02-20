@@ -10,7 +10,6 @@ import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.SenderRuleRepository
 import net.melisma.selko.ui.screens.auth.AuthViewModel
 import net.melisma.selko.ui.screens.history.HistoryViewModel
-import net.melisma.selko.ui.screens.home.HomeViewModel
 import net.melisma.selko.ui.screens.review.EventDetailViewModel
 import net.melisma.selko.ui.screens.review.ReviewQueueViewModel
 import net.melisma.selko.ui.screens.settings.SettingsViewModel
@@ -34,7 +33,6 @@ val appModule = module {
 
     // ViewModels
     viewModel { AuthViewModel(get()) }
-    viewModel { HomeViewModel(get()) }
     viewModel { ReviewQueueViewModel(get(), get(), get(), get()) }
     viewModel { (eventId: String) -> EventDetailViewModel(get(), eventId) }
     viewModel { HistoryViewModel(get(), get()) }

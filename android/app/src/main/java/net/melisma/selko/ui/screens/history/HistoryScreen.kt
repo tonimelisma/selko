@@ -1,7 +1,6 @@
 package net.melisma.selko.ui.screens.history
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,9 +42,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
-import net.melisma.selko.ui.theme.SelkoSuccess
-import net.melisma.selko.ui.theme.SelkoSuccessDark
-import net.melisma.selko.ui.theme.SelkoWarning
+import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -222,9 +219,9 @@ private fun HistoryEventItem(
                             modifier = Modifier.height(32.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = SelkoWarning
+                                contentColor = SelkoTheme.colors.warning
                             ),
-                            border = BorderStroke(1.dp, SelkoWarning),
+                            border = BorderStroke(1.dp, SelkoTheme.colors.warning),
                             shape = MaterialTheme.shapes.medium
                         ) {
                             Icon(
@@ -263,7 +260,7 @@ private fun HistoryEventItem(
 private fun StatusIcon(status: EventStatus) {
     val (icon, tint) = when (status) {
         EventStatus.APPROVED -> Icons.Filled.CheckCircle to MaterialTheme.colorScheme.primary
-        EventStatus.SYNCED -> Icons.Filled.CheckCircle to (if (isSystemInDarkTheme()) SelkoSuccessDark else SelkoSuccess)
+        EventStatus.SYNCED -> Icons.Filled.CheckCircle to SelkoTheme.colors.success
         EventStatus.SYNC_FAILED -> Icons.Filled.Error to MaterialTheme.colorScheme.error
         EventStatus.REJECTED -> Icons.Filled.Cancel to MaterialTheme.colorScheme.onSurfaceVariant
         EventStatus.CANCELLED -> Icons.Filled.Cancel to MaterialTheme.colorScheme.onSurfaceVariant
