@@ -2,24 +2,36 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { user, loading } from '$lib/stores.js';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+
+	let isLoading = $state(true);
+	/** @type {import('@supabase/supabase-js').User | null} */
+	let currentUser = $state(null);
 
 	onMount(() => {
-		const unsubscribe = loading.subscribe((isLoading) => {
-			if (!isLoading) {
-				user.subscribe((currentUser) => {
-					if (currentUser) {
-						goto('/app');
-					} else {
-						goto('/login');
-					}
-				})();
-			}
+		const unsubLoading = loading.subscribe((v) => {
+			isLoading = v;
 		});
+		const unsubUser = user.subscribe((u) => {
+			currentUser = u;
+		});
+		return () => {
+			unsubLoading();
+			unsubUser();
+		};
+	});
 
-		return unsubscribe;
+	$effect(() => {
+		if (!isLoading) {
+			if (currentUser) {
+				goto('/app');
+			} else {
+				goto('/login');
+			}
+		}
 	});
 </script>
 
 <div class="flex items-center justify-center min-h-screen">
-	<span class="loading loading-spinner loading-lg"></span>
+	<LoadingSpinner />
 </div>

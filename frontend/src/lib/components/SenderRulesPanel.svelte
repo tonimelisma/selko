@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fetchSenderRules, createSenderRule, deleteSenderRule } from '$lib/services/sender-rules.js';
 	import ConfirmModal from './ConfirmModal.svelte';
+	import ErrorAlert from './ErrorAlert.svelte';
 
 	/** @type {import('$lib/services/sender-rules.js').SenderRule[]} */
 	let rules = $state([]);
@@ -87,9 +88,7 @@
 	<div class="h-12 bg-base-200 rounded animate-pulse"></div>
 {:else}
 	{#if error}
-		<div class="alert alert-error mb-4" role="alert">
-			<span>{error}</span>
-		</div>
+		<ErrorAlert message={error} />
 	{/if}
 
 	{#if rules.length === 0}

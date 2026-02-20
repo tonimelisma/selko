@@ -10,6 +10,8 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SenderRulesPanel from '$lib/components/SenderRulesPanel.svelte';
+	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
@@ -132,14 +134,10 @@
 <PageHeader title="Settings" />
 
 {#if isLoading}
-	<div class="flex items-center justify-center py-16">
-		<span class="loading loading-spinner loading-lg"></span>
-	</div>
+	<LoadingSpinner />
 {:else}
 	{#if error}
-		<div class="alert alert-error mb-4">
-			<span>{error}</span>
-		</div>
+		<ErrorAlert message={error} />
 	{/if}
 
 	<div class="space-y-8">
