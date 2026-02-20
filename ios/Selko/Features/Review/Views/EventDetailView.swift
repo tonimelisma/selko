@@ -229,7 +229,7 @@ struct EventDetailView: View {
             if let email = source.emails {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(email.fromName ?? "Unknown Sender")
+                        Text(email.fromName ?? String(localized: "Unknown Sender"))
                             .font(.headline)
                         Text(email.fromEmail ?? "")
                             .font(.caption)

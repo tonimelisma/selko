@@ -18,13 +18,13 @@ enum AppAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidCredentials:
-            return "Invalid email or password"
+            return String(localized: "Invalid email or password")
         case .emailAlreadyExists:
-            return "An account with this email already exists"
+            return String(localized: "An account with this email already exists")
         case .weakPassword:
-            return "Password is too weak. Use at least 6 characters"
+            return String(localized: "Password is too weak. Use at least 6 characters")
         case .networkError:
-            return "Network error. Please check your connection"
+            return String(localized: "Network error. Please check your connection")
         case .serverError(let message):
             return message
         case .unknown(let message):

@@ -43,27 +43,27 @@ final class RegisterViewModel {
 
     private func validateInput() -> Bool {
         guard !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            errorMessage = "Email is required"
+            errorMessage = String(localized: "Email is required")
             return false
         }
 
         guard email.contains("@") else {
-            errorMessage = "Please enter a valid email address"
+            errorMessage = String(localized: "Please enter a valid email address")
             return false
         }
 
         guard !password.isEmpty else {
-            errorMessage = "Password is required"
+            errorMessage = String(localized: "Password is required")
             return false
         }
 
         guard password.count >= 6 else {
-            errorMessage = "Password must be at least 6 characters"
+            errorMessage = String(localized: "Password must be at least 6 characters")
             return false
         }
 
         guard password == confirmPassword else {
-            errorMessage = "Passwords do not match"
+            errorMessage = String(localized: "Passwords do not match")
             return false
         }
 
