@@ -33,7 +33,7 @@
         "end_datetime": "2026-06-12T20:00:00",
         "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
         "description": "8th grade graduation ceremony with reception to follow",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }

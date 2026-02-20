@@ -50,7 +50,7 @@
         "end_datetime": null,
         "location": null,
         "description": "Spring 2026 registration opens for Arts + Rec classes including youth programs, preschool, adult classes, and intergenerational programs",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.6,
         "importance": "action_required"
       }

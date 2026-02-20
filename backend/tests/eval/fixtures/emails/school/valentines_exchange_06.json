@@ -23,7 +23,7 @@
       {
         "title": "Valentine's Day Gift Exchange at KinderCare",
         "start_datetime": "2026-02-13",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.8,
         "importance": "action_required"
       }

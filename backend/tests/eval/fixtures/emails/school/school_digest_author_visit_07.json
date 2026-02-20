@@ -42,7 +42,7 @@
         "end_datetime": null,
         "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
         "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "action_required"
       },
@@ -52,7 +52,7 @@
         "end_datetime": null,
         "location": "Walnut Heights MPR",
         "description": "TK and K music showcase. Livestream available.",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.5,
         "importance": "action_required"
       }

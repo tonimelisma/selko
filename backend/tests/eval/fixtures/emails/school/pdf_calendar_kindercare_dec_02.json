@@ -23,77 +23,77 @@
       {
         "title": "Mad about Plaid! Day",
         "start_datetime": "2025-12-01",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Write a Letter to Santa Day",
         "start_datetime": "2025-12-03",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2025-12-05",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Wear a Santa Hat Day",
         "start_datetime": "2025-12-09",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Candy Cane Day",
         "start_datetime": "2025-12-11",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2025-12-12",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Ugly Sweater Day",
         "start_datetime": "2025-12-15",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Rudolf Day",
         "start_datetime": "2025-12-17",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Movie Day - The Grinch",
         "start_datetime": "2025-12-19",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2025-12-22",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2025-12-23",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
@@ -107,28 +107,28 @@
       {
         "title": "KinderCare Closed - Christmas Day",
         "start_datetime": "2025-12-25",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.8,
         "importance": "action_required"
       },
       {
         "title": "Happy Birthday to Ms Noella",
         "start_datetime": "2025-12-26",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.5,
         "importance": "fyi"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2025-12-29",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2025-12-30",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
@@ -142,14 +142,14 @@
       {
         "title": "KinderCare Closed - New Year's Day",
         "start_datetime": "2026-01-01",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.8,
         "importance": "action_required"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2026-01-02",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       }

@@ -32,7 +32,7 @@
         "end_datetime": "2026-03-15T14:00:00",
         "location": "789 Maple Street, Austin, TX 78701",
         "description": "Baby shower brunch for Amanda Rodriguez",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

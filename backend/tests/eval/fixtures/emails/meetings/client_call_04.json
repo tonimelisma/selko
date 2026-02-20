@@ -34,7 +34,7 @@
         "end_datetime": "2026-02-10T12:30:00",
         "location": "Microsoft Teams",
         "description": "Project kickoff call with GlobalTech",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

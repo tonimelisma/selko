@@ -33,7 +33,7 @@
         "end_datetime": "2026-02-12T15:00:00",
         "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
         "description": "On-site interview for Senior Software Engineer position",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }
