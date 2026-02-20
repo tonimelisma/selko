@@ -1573,11 +1573,33 @@ def generate_markdown_report(output_path: str) -> None:
 
     models_sorted = sorted(models_seen)
 
-    # ---- Summary Table ----
-    line("## Summary")
+    # ---- Eval Run Overview ----
+    grand_total_cost = sum(r.get("cost", 0) for r in all_results)
+    grand_total_tokens = sum(r.get("tokens", {}).get("total_tokens", 0) or 0 for r in all_results)
+    total_evals = len(all_results)
+    total_extract = sum(1 for r in all_results if r.get("operation") == "extract")
+    total_compare = sum(1 for r in all_results if r.get("operation") == "compare")
+    total_merge = sum(1 for r in all_results if r.get("operation") == "merge")
+    total_duration_s = sum(r.get("duration_ms", 0) for r in all_results) / 1000
+    code_hashes = set(r.get("code_hash", "") for r in all_results if r.get("code_hash"))
+
+    line("## Eval Run Overview")
     line()
-    line("| Model | Extract | Compare | Merge | Total Cost | Avg Latency |")
-    line("|-------|---------|---------|-------|------------|-------------|")
+    line(f"| Metric | Value |")
+    line(f"|--------|-------|")
+    line(f"| **Total Eval Cost** | **${grand_total_cost:.4f}** |")
+    line(f"| Total Evals | {total_evals} ({total_extract} extract, {total_compare} compare, {total_merge} merge) |")
+    line(f"| Models Tested | {len(models_sorted)} |")
+    line(f"| Total Tokens | {grand_total_tokens:,} |")
+    line(f"| Total API Time | {total_duration_s:.0f}s |")
+    line(f"| Code Hash | {', '.join(sorted(code_hashes)) if code_hashes else 'N/A'} |")
+    line()
+
+    # ---- Model Comparison Table ----
+    line("## Model Comparison")
+    line()
+    line("| Model | Extract | Compare | Merge | Cost | Avg Latency |")
+    line("|-------|---------|---------|-------|------|-------------|")
 
     for model in models_sorted:
         ops = by_model_op.get(model, {})
@@ -1616,6 +1638,7 @@ def generate_markdown_report(output_path: str) -> None:
 
         line(f"| {model} | {ext_str} | {cmp_str} | {mrg_str} | ${total_cost:.4f} | {avg_latency:.0f}ms |")
 
+    line(f"| **TOTAL** | | | | **${grand_total_cost:.4f}** | |")
     line()
 
     # Check if models have different extract fixture counts (vision vs text-only)
