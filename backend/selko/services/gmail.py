@@ -106,9 +106,22 @@ def get_credentials(
             logger.info("Token expired, refreshing...")
             creds.refresh(Request())
 
-            # Save refreshed token to database
-            update_oauth_credentials(client, "gmail", creds)
-            logger.info("Token refreshed and saved")
+            # Retry save up to 3 times for atomicity
+            for attempt in range(3):
+                try:
+                    update_oauth_credentials(client, "gmail", creds)
+                    logger.info("Token refreshed and saved")
+                    break
+                except Exception as save_err:
+                    logger.error(
+                        "Failed to save refreshed token (attempt %d): %s",
+                        attempt + 1,
+                        save_err,
+                    )
+                    if attempt == 2:
+                        logger.error(
+                            "CRITICAL: Refreshed token could not be saved after 3 attempts"
+                        )
 
         except RefreshError as e:
             logger.warning(f"Token refresh failed: {e}")
