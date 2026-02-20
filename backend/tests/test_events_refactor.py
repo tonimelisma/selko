@@ -13,6 +13,7 @@ import pytest
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.services.events import (
     EventsError,
+    create_event,
     mark_email_status,
     normalize_event_data,
     process_email_for_events,
@@ -255,7 +256,7 @@ class TestProcessEmailPipeline:
         with patch("selko.services.events.mark_email_status") as mock_mark, \
              patch("selko.services.events.event_processing.fetch_email_with_attachments",
                    return_value=({"from_email": "sender@example.com"}, "text", [])), \
-             patch("selko.services.events.should_skip_email", return_value=False), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
              patch("selko.services.events.event_processing.extract_calendar_events",
                    return_value=extraction), \
              patch("selko.services.events.save_extracted_events", return_value=(1, 0)):
@@ -279,7 +280,8 @@ class TestProcessEmailPipeline:
         with patch("selko.services.events.mark_email_status") as mock_mark, \
              patch("selko.services.events.event_processing.fetch_email_with_attachments",
                    return_value=({"from_email": "spam@example.com"}, "text", [])), \
-             patch("selko.services.events.should_skip_email", return_value=True), \
+             patch("selko.services.events.check_sender_rules",
+                   return_value={"action": "ignore"}), \
              patch("selko.services.events.event_processing.extract_calendar_events") as mock_extract:
             result = process_email_for_events(
                 mock_client, mock_gateway, "email-1", "user-1"
@@ -303,7 +305,7 @@ class TestProcessEmailPipeline:
         with patch("selko.services.events.mark_email_status") as mock_mark, \
              patch("selko.services.events.event_processing.fetch_email_with_attachments",
                    return_value=({"from_email": "sender@example.com"}, "text", [])), \
-             patch("selko.services.events.should_skip_email", return_value=False), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
              patch("selko.services.events.event_processing.extract_calendar_events",
                    return_value=extraction), \
              patch("selko.services.events.save_extracted_events") as mock_save:
@@ -362,7 +364,7 @@ END:VCALENDAR"""
              patch("selko.services.events.event_processing.fetch_email_with_attachments",
                    return_value=({"gmail_id": "msg-1", "from_email": "sender@example.com",
                                   "date_sent": "2026-03-15T10:00:00Z"}, "text", attachments)), \
-             patch("selko.services.events.should_skip_email", return_value=False), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
              patch("selko.services.events.event_processing.extract_calendar_events") as mock_llm, \
              patch("selko.services.events.save_extracted_events", return_value=(1, 0)):
             result = process_email_for_events(
@@ -394,7 +396,7 @@ END:VCALENDAR"""
              patch("selko.services.events.event_processing.fetch_email_with_attachments",
                    return_value=({"gmail_id": "msg-1", "from_email": "sender@example.com",
                                   "date_sent": "2026-03-15T10:00:00Z"}, "text", attachments)), \
-             patch("selko.services.events.should_skip_email", return_value=False), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
              patch("selko.services.events.event_processing.extract_calendar_events",
                    return_value=extraction) as mock_llm, \
              patch("selko.services.events.save_extracted_events", return_value=(1, 0)):
@@ -405,3 +407,115 @@ END:VCALENDAR"""
         # LLM SHOULD have been called as fallback
         mock_llm.assert_called_once()
         assert result["num_events"] == 1
+
+
+class TestAutoApproveSenderRule:
+    """Tests for auto_approve sender rule action."""
+
+    def test_process_email_auto_approve_creates_approved_events(self):
+        """When sender has auto_approve rule, save_extracted_events gets initial_status='approved'."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        extraction = _make_extraction(
+            events=[_make_calendar_event()],
+            events_found=True,
+        )
+
+        with patch("selko.services.events.mark_email_status"), \
+             patch("selko.services.events.event_processing.fetch_email_with_attachments",
+                   return_value=({"from_email": "school@example.com"}, "text", [])), \
+             patch("selko.services.events.check_sender_rules",
+                   return_value={"action": "auto_approve"}), \
+             patch("selko.services.events.event_processing.extract_calendar_events",
+                   return_value=extraction), \
+             patch("selko.services.events.save_extracted_events",
+                   return_value=(1, 0)) as mock_save:
+            process_email_for_events(
+                mock_client, mock_gateway, "email-1", "user-1"
+            )
+
+        # Verify save_extracted_events was called with initial_status="approved"
+        mock_save.assert_called_once()
+        call_kwargs = mock_save.call_args
+        assert call_kwargs[1]["initial_status"] == "approved"
+
+    def test_process_email_auto_approve_returns_flag(self):
+        """When sender has auto_approve rule, return dict includes auto_approved=True."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        extraction = _make_extraction(
+            events=[_make_calendar_event()],
+            events_found=True,
+        )
+
+        with patch("selko.services.events.mark_email_status"), \
+             patch("selko.services.events.event_processing.fetch_email_with_attachments",
+                   return_value=({"from_email": "school@example.com"}, "text", [])), \
+             patch("selko.services.events.check_sender_rules",
+                   return_value={"action": "auto_approve"}), \
+             patch("selko.services.events.event_processing.extract_calendar_events",
+                   return_value=extraction), \
+             patch("selko.services.events.save_extracted_events", return_value=(1, 0)):
+            result = process_email_for_events(
+                mock_client, mock_gateway, "email-1", "user-1"
+            )
+
+        assert result["auto_approved"] is True
+        assert result["num_events"] == 1
+        assert result["num_new"] == 1
+
+    def test_process_email_no_rule_creates_pending_events(self):
+        """When no sender rule, save_extracted_events gets default initial_status='pending_review'."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        extraction = _make_extraction(
+            events=[_make_calendar_event()],
+            events_found=True,
+        )
+
+        with patch("selko.services.events.mark_email_status"), \
+             patch("selko.services.events.event_processing.fetch_email_with_attachments",
+                   return_value=({"from_email": "unknown@example.com"}, "text", [])), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
+             patch("selko.services.events.event_processing.extract_calendar_events",
+                   return_value=extraction), \
+             patch("selko.services.events.save_extracted_events",
+                   return_value=(1, 0)) as mock_save:
+            result = process_email_for_events(
+                mock_client, mock_gateway, "email-1", "user-1"
+            )
+
+        # Verify save_extracted_events was called with default initial_status
+        mock_save.assert_called_once()
+        call_kwargs = mock_save.call_args
+        assert call_kwargs[1]["initial_status"] == "pending_review"
+
+        # auto_approved should NOT be in the result
+        assert "auto_approved" not in result
+
+    def test_create_event_with_initial_status(self):
+        """create_event() passes initial_status to the Supabase insert call."""
+        mock_client = MagicMock()
+        mock_client.table.return_value.insert.return_value.execute.return_value = MagicMock(
+            data=[{"id": "event-123"}]
+        )
+
+        with patch("selko.services.events.generate_source_attribution", return_value="From test"):
+            create_event(
+                mock_client, "user-1",
+                {"title": "Test Event", "start_datetime": "2026-03-15T14:00:00",
+                 "end_datetime": "2026-03-15T15:00:00"},
+                "email-1",
+                initial_status="approved",
+            )
+
+        # The first insert call is for the events table
+        first_insert_data = mock_client.table.return_value.insert.call_args_list[0][0][0]
+        assert first_insert_data["status"] == "approved"
+        assert first_insert_data["title"] == "Test Event"
