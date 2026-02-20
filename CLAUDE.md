@@ -230,6 +230,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 | **UI testing** | `docs/ui-testing-guide.md` | When writing E2E tests or using MCP visual verification |
 | **Screenshot capture** | `docs/screenshot-guide.md` | When capturing product screenshots across web, iOS, and Android |
 | **LLM eval system** | `backend/tests/eval/README.md` | When working with LLM evaluation or benchmarking |
+| **Evals process** | `docs/evals-process.md` | When running evals, interpreting results, or iterating on prompts |
 
 ---
 
