@@ -48,4 +48,8 @@ final class DependencyContainer {
     lazy var calendarSettingsService: CalendarSettingsServiceProtocol = {
         CalendarSettingsService(supabase: supabase)
     }()
+
+    lazy var senderRuleService: SenderRuleServiceProtocol = {
+        SenderRuleService(supabase: supabase)
+    }()
 }

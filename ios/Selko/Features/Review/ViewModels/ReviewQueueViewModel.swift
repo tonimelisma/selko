@@ -25,13 +25,16 @@ final class ReviewQueueViewModel {
 
     private let eventService: EventServiceProtocol
     private let integrationService: IntegrationServiceProtocol
+    private let senderRuleService: SenderRuleServiceProtocol
 
     init(
         eventService: EventServiceProtocol? = nil,
-        integrationService: IntegrationServiceProtocol? = nil
+        integrationService: IntegrationServiceProtocol? = nil,
+        senderRuleService: SenderRuleServiceProtocol? = nil
     ) {
         self.eventService = eventService ?? DependencyContainer.shared.eventService
         self.integrationService = integrationService ?? DependencyContainer.shared.integrationService
+        self.senderRuleService = senderRuleService ?? DependencyContainer.shared.senderRuleService
     }
 
     func load() async {
@@ -98,6 +101,40 @@ final class ReviewQueueViewModel {
         }
         // Remove the entire group
         senderGroups.removeAll { $0.id == group.id }
+    }
+
+    func ignoreSender(_ group: SenderGroup) async {
+        do {
+            _ = try await senderRuleService.createRule(
+                senderEmail: group.senderEmail,
+                senderDomain: nil,
+                action: .ignore
+            )
+            // Reject all events from this sender
+            for event in group.events {
+                _ = try await eventService.rejectEvent(id: event.id)
+            }
+            senderGroups.removeAll { $0.id == group.id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func autoApproveSender(_ group: SenderGroup) async {
+        do {
+            _ = try await senderRuleService.createRule(
+                senderEmail: group.senderEmail,
+                senderDomain: nil,
+                action: .autoApprove
+            )
+            // Approve all events from this sender
+            for event in group.events {
+                _ = try await eventService.approveEvent(id: event.id)
+            }
+            senderGroups.removeAll { $0.id == group.id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     // MARK: - Private
