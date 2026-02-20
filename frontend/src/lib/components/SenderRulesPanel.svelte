@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import { fetchSenderRules, createSenderRule, deleteSenderRule } from '$lib/services/sender-rules.js';
 	import ConfirmModal from './ConfirmModal.svelte';
 	import ErrorAlert from './ErrorAlert.svelte';
@@ -93,7 +94,7 @@
 
 	{#if rules.length === 0}
 		<p class="text-base-content/60 mb-4">
-			No automation rules yet. Create rules from the review queue or add one below.
+			{$_('senderRules.noRules')}
 		</p>
 	{:else}
 		<div class="space-y-2 mb-4">
@@ -107,7 +108,7 @@
 						{/if}
 						<div>
 							<span class="text-sm font-medium text-base-content">
-								{rule.action === 'ignore' ? 'Ignore' : 'Auto-approve'}
+								{rule.action === 'ignore' ? $_('senderRules.ignore') : $_('senderRules.autoApprove')}
 							</span>
 							<span class="text-sm text-base-content/60 ml-2">
 								{rule.sender_email || rule.sender_domain}
@@ -116,7 +117,7 @@
 					</div>
 					<button
 						class="btn btn-ghost btn-sm btn-square"
-						aria-label="Delete rule for {rule.sender_email || rule.sender_domain}"
+						aria-label={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain } })}
 						onclick={() => handleDeleteRequest(rule)}
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -132,7 +133,7 @@
 			<input
 				type="text"
 				class="input input-bordered input-sm w-full"
-				placeholder="sender@example.com or example.com"
+				placeholder={$_('senderRules.senderPlaceholder')}
 				bind:value={newSenderInput}
 				onkeydown={(e) => { if (e.key === 'Enter') handleAddRule(); }}
 			/>
@@ -140,10 +141,10 @@
 		<select
 			class="select select-bordered select-sm"
 			bind:value={newAction}
-			aria-label="Rule action"
+			aria-label={$_('senderRules.ruleAction')}
 		>
-			<option value="ignore">Ignore</option>
-			<option value="auto_approve">Auto-approve</option>
+			<option value="ignore">{$_('senderRules.ignore')}</option>
+			<option value="auto_approve">{$_('senderRules.autoApprove')}</option>
 		</select>
 		<button
 			class="btn btn-primary btn-sm"
@@ -153,16 +154,16 @@
 			{#if isAdding}
 				<span class="loading loading-spinner loading-xs"></span>
 			{/if}
-			Add rule
+			{$_('senderRules.addRule')}
 		</button>
 	</div>
 {/if}
 
 <ConfirmModal
 	open={showDeleteModal}
-	title="Delete rule"
-	description="Are you sure you want to delete the rule for {deleteTargetLabel}?"
-	confirmText="Delete"
+	title={$_('senderRules.deleteRuleTitle')}
+	description={$_('senderRules.deleteRuleDescription', { values: { label: deleteTargetLabel } })}
+	confirmText={$_('common.delete')}
 	confirmClass="btn-error"
 	onconfirm={handleDeleteConfirm}
 	oncancel={handleDeleteCancel}

@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import { fetchIntegrations } from '$lib/services/integrations.js';
 	import {
 		fetchPendingEventsWithSources,
@@ -39,7 +40,7 @@
 			const sources = event.event_sources || [];
 			const firstSource = sources[0];
 			const email = firstSource?.emails;
-			const senderKey = email?.from_email || 'Unknown Sender';
+			const senderKey = email?.from_email || $_('common.unknownSender');
 
 			if (!senderMap.has(senderKey)) {
 				senderMap.set(senderKey, {
@@ -141,7 +142,7 @@
 		for (const event of eventsList) {
 			await handleReject(event);
 		}
-		notification = `Sender ignored: ${senderEmail}`;
+		notification = $_('home.senderIgnored', { values: { senderEmail } });
 		setTimeout(() => { notification = ''; }, 3000);
 	}
 
@@ -161,7 +162,7 @@
 		for (const event of eventsList) {
 			await handleApprove(event);
 		}
-		notification = `Sender auto-approved: ${senderEmail}`;
+		notification = $_('home.senderAutoApproved', { values: { senderEmail } });
 		setTimeout(() => { notification = ''; }, 3000);
 	}
 
@@ -180,7 +181,7 @@
 </script>
 
 <svelte:head>
-	<title>Home - Selko</title>
+	<title>{$_('home.title')}</title>
 </svelte:head>
 
 {#if notification}
@@ -202,7 +203,7 @@
 	/>
 {:else if isLoadingEvents}
 	<div class="space-y-4" aria-busy="true" aria-live="polite">
-		<span class="sr-only">Loading events</span>
+		<span class="sr-only">{$_('common.loadingEvents')}</span>
 		<div class="h-8 bg-base-200 rounded animate-pulse w-48"></div>
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
@@ -211,7 +212,7 @@
 {:else if error}
 	<ErrorAlert message={error} onretry={loadEvents} />
 {:else if events.length === 0}
-	<EmptyState heading="All caught up!" description="No events pending review. Check back later for new events from your emails." />
+	<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
 {:else}
 	<div class="space-y-6">
 		{#each [...groupedEvents().entries()] as [senderKey, senderGroup]}

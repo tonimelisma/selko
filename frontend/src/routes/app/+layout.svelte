@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { _ } from 'svelte-i18n';
 	import { user, loading } from '$lib/stores.js';
 	import { supabase } from '$lib/supabase.js';
 	import Navbar from '$lib/components/Navbar.svelte';
@@ -33,7 +34,7 @@
 </script>
 
 <svelte:head>
-	<title>Selko</title>
+	<title>{$_('common.appName')}</title>
 </svelte:head>
 
 {#if isLoading}

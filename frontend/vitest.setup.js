@@ -1,6 +1,13 @@
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 
+// Initialize svelte-i18n with English locale for tests
+import { register, init, waitLocale } from 'svelte-i18n';
+import en from './src/lib/i18n/en.json';
+
+register('en', () => Promise.resolve(en));
+init({ fallbackLocale: 'en', initialLocale: 'en' });
+
 // Mock SvelteKit modules
 export const goto = vi.fn();
 export const invalidate = vi.fn();

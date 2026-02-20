@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import { fetchActivityEvents, updateEventStatus } from '$lib/services/events.js';
 	import { syncEventToCalendar } from '$lib/api/backend.js';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
@@ -32,9 +33,9 @@
 
 			let dateLabel;
 			if (eventDate.getTime() === today.getTime()) {
-				dateLabel = 'Today';
+				dateLabel = $_('history.today');
 			} else if (eventDate.getTime() === yesterday.getTime()) {
-				dateLabel = 'Yesterday';
+				dateLabel = $_('history.yesterday');
 			} else {
 				dateLabel = eventDate.toLocaleDateString(undefined, {
 					weekday: 'long',
@@ -84,14 +85,15 @@
 
 	/** @param {any} event */
 	function getActionDescription(event) {
+		/** @type {Record<string, string>} */
 		const statusMap = {
-			approved: 'Approved',
-			synced: 'Synced to calendar',
-			sync_failed: 'Calendar sync failed',
-			rejected: 'Rejected',
-			cancelled: 'Cancelled'
+			approved: $_('history.statusApproved'),
+			synced: $_('history.statusSynced'),
+			sync_failed: $_('history.statusSyncFailed'),
+			rejected: $_('history.statusRejected'),
+			cancelled: $_('history.statusCancelled')
 		};
-		return /** @type {Record<string, string>} */ (statusMap)[event.status] || event.status;
+		return statusMap[event.status] || event.status;
 	}
 
 	/** @param {any} event */
@@ -112,7 +114,8 @@
 		const firstSource = sources[0];
 		const email = firstSource?.emails;
 		if (email) {
-			return `From: ${email.from_name || email.from_email || 'Unknown'}`;
+			const name = email.from_name || email.from_email || $_('history.unknownSender');
+			return $_('history.from', { values: { name } });
 		}
 		return '';
 	}
@@ -142,7 +145,7 @@
 	}
 </script>
 
-<PageHeader title="Activity History" />
+<PageHeader title={$_('history.title')} />
 
 {#if isLoading}
 	<div class="space-y-4">
@@ -155,8 +158,8 @@
 	<ErrorAlert message={error} onretry={loadEvents} />
 {:else if events.length === 0}
 	<EmptyState
-		heading="No activity yet"
-		description="Events you approve, reject, or sync will appear here."
+		heading={$_('history.noActivity')}
+		description={$_('history.noActivityDescription')}
 	/>
 {:else}
 	<div class="space-y-6">
@@ -185,7 +188,7 @@
 										class="btn btn-outline btn-warning btn-xs"
 										onclick={() => handleRetry(event)}
 									>
-										Retry
+										{$_('history.retrySync')}
 									</button>
 								{/if}
 								{#if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
@@ -193,7 +196,7 @@
 										class="btn btn-outline btn-xs"
 										onclick={() => handleUndo(event)}
 									>
-										Undo
+										{$_('history.undo')}
 									</button>
 								{/if}
 							</div>
@@ -213,7 +216,7 @@
 					{#if isLoadingMore}
 						<span class="loading loading-spinner loading-sm"></span>
 					{:else}
-						Load More
+						{$_('history.loadMore')}
 					{/if}
 				</button>
 			</div>
