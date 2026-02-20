@@ -32,11 +32,8 @@ The system automatically ingests unstructured data from emails and photos to cre
 | Unit + Integration tests | ✅ DONE | **166 total tests** (55 unit + 111 integration) | All passing |
 
 **❌ Not Yet Implemented (MVP scope):**
-- ❌ Calendar sync (write to Google Calendar API)
-- ❌ Review interface (web UI)
 - ❌ Undo/Redo functionality
-- ❌ Automation rules
-- ❌ Google Photos sync
+- ❌ Google Photos sync (Phase 2)
 - ❌ Web upload interface
 
 #### **3.1. Phase 1: Web-First Cloud Processing (MVP)**
@@ -74,7 +71,7 @@ The system automatically ingests unstructured data from emails and photos to cre
 | **FR-B.2** | **Entity Extraction** | NLP to identify Entities: *Event Date*, *Time*, *Location*, *Vendor*, *Amount*. | **P0** | ✅ **DONE** (Calendar events) |
 | **FR-B.3** | **Classification** | Distinguish document types: *Receipt* vs. *Invitation* vs. *Kid's Drawing* vs. *Trash*. | **P0** | 🟡 Partial (Events only) |
 | **FR-B.4** | **Smart Idempotency** | Detect duplicates. **Update Logic:** If an email is an update (e.g., "Time Change"), modify the existing event rather than creating a duplicate. | **P0** | 🟡 Partial (Calendar sync idempotent) |
-| **FR-B.5** | **Automation Rules** | User-defined logic (e.g., "Always accept from school@district.edu") to bypass review. | **P0** | ❌ Not Started |
+| **FR-B.5** | **Automation Rules** | User-defined logic (e.g., "Always accept from school@district.edu") to bypass review. | **P0** | ✅ **DONE** (Sender rules with auto-approve) |
 
 #### **Domain C: User Experience & Control**
 
@@ -82,7 +79,7 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 | ID | Feature | Description | Priority | Status |
 | :---- | :---- | :---- | :---- | :---- |
-| **FR-C.1** | **Review Interface** | Side-by-side view (Source Asset vs. Extracted Data) allowing users to edit, approve, or reject. | **P0** | ❌ Not Started |
+| **FR-C.1** | **Review Interface** | Side-by-side view (Source Asset vs. Extracted Data) allowing users to edit, approve, or reject. | **P0** | ✅ **DONE** (Web + iOS + Android) |
 | **FR-C.2** | **Undo/Redo** | **Compensating Transactions:** Ability to revert any action (Create/Update/Delete) and restore original state. | **P0** | ❌ Not Started |
 | **FR-C.3** | **Authentication** | Passwordless or Social Login. Granular scope management for integrations. | **P0** | ✅ **DONE** (Supabase Auth) |
 
@@ -92,13 +89,13 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 | ID | Feature | Description | Priority | Status |
 | :---- | :---- | :---- | :---- | :---- |
-| **FR-D.1** | **Calendar Sync** | Create/Update events in external calendars. | **P0** | 🟡 Partial (CLI sync, idempotent) |
+| **FR-D.1** | **Calendar Sync** | Create/Update events in external calendars. | **P0** | ✅ **DONE** (Full CRUD + idempotent sync) |
 | **FR-D.2** | **File Storage** | Upload categorized documents to external cloud storage. | **P0** | ❌ Not Started |
 | **FR-D.3** | **Task Management** | Create tasks in external task managers. | **P0** | ❌ Not Started |
 
 ### **5\. User Journeys & Example Journeys**
 
-#### **Journey 1: The "Event Invitation" (Email \-\> Calendar)** - 🟡 PARTIAL
+#### **Journey 1: The "Event Invitation" (Email \-\> Calendar)** - ✅ COMPLETE
 
 *Goal: User receives a PDF invite and wants it on their calendar without typing.*
 
@@ -106,17 +103,18 @@ The system automatically ingests unstructured data from emails and photos to cre
 | :---- | :---- | :---- | :---- | :---- |
 | 1 | User receives email with "Invite.pdf". | System detects email, ingests PDF, performs OCR. | FR-A.2, FR-B.1 | ✅ DONE |
 | 2 | N/A | **AI Analysis:** Identifies Date (Oct 5), Time (2 PM), Title (Party). Classifies as "Invitation". | FR-B.2, FR-B.3 | ✅ DONE |
-| 3 | User logs into Dashboard. | **Notification:** Badge on "Review" tab. | FR-C.1 | ❌ Not Started |
-| 4 | User opens Review Tab. | Displays PDF side-by-side with proposed Event details. | FR-C.1 | ❌ Not Started |
-| 5 | User corrects time (OCR read 5 PM as 6 PM) and clicks "Approve". | System updates payload, writes to Calendar. | FR-C.1, FR-D.1 | ❌ Not Started |
-| 6 | N/A | System logs "Event Created (User Modified)" in Activity Log. | FR-C.2 | ❌ Not Started |
+| 3 | User logs into Dashboard. | **Notification:** Badge on "Review" tab. | FR-C.1 | ✅ DONE (Web + iOS + Android) |
+| 4 | User opens Review Tab. | Displays source email alongside proposed Event details. | FR-C.1 | ✅ DONE |
+| 5 | User corrects time and clicks "Approve". | System updates payload, writes to Calendar. | FR-C.1, FR-D.1 | ✅ DONE |
+| 6 | N/A | System logs action in Activity History. | FR-C.2 | 🟡 Partial (history view exists, no full undo) |
 
 **Current Implementation:**
-- ✅ CLI tool can extract events: `uv run python -m cli.cli_extract_events --email-id <uuid>`
-- ✅ JSON output with structured CalendarEvent data
-- ✅ CLI can sync events to Google Calendar: `uv run python -m cli.cli_events sync <event-id>`
+- ✅ Automatic email fetch and LLM processing via background workers
+- ✅ Review interface on Web (SvelteKit), iOS (SwiftUI), Android (Jetpack Compose)
+- ✅ Edit, approve, reject events with Google Calendar sync
+- ✅ Sender rules for auto-approve/ignore automation
+- ✅ History view with event status tracking
 - ✅ Idempotent calendar sync (updates existing events, recreates if deleted)
-- ❌ No web UI yet
 
 #### **Calendar Sync Phased Approach**
 
@@ -278,26 +276,26 @@ The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Cale
 
 | Component | Priority | Blocker | Next Steps |
 |-----------|----------|---------|------------|
-| **Google Calendar API** | P0 | None | Write events to calendar |
-| **Review Web UI** | P0 | Calendar API | FastAPI endpoints + frontend |
-| **Undo/Redo** | P0 | Calendar API | Compensating transactions |
-| **Automation Rules** | P0 | Review UI | Database schema + logic |
-| **Google Photos** | P1 | End-to-end Email→Calendar | Similar to Gmail integration |
-| **Web Upload** | P1 | Review UI | Frontend drag-and-drop |
+| **Undo/Redo** | P0 | None | Compensating transactions (action_history table created) |
+| **Google Photos** | P1 | None | Similar to Gmail integration (OAuth scopes, fetch, LLM process) |
+| **Web Upload** | P1 | None | Frontend drag-and-drop |
 
 **Current Capability:**
 - ✅ Fetch emails from Gmail (OAuth authenticated)
 - ✅ Download and store attachments (SHA-256 deduplication)
 - ✅ Extract calendar events from emails using Gemini LLM
 - ✅ Process multimodal content (email body + image attachments)
-- ❌ Cannot yet write events to Google Calendar
-- ❌ No web UI for reviewing/approving events
+- ✅ Write events to Google Calendar (full CRUD + idempotent sync)
+- ✅ Review interface on Web, iOS, and Android
+- ✅ Sender rules for automation (ignore + auto-approve)
+- ✅ History view with undo actions
+- ❌ No full undo/redo with compensating transactions
+- ❌ No Google Photos integration
 
-**Next Milestone: End-to-End Email → Calendar**
-1. Implement Google Calendar API integration
-2. Build review interface (web UI)
-3. Add undo/redo functionality
-4. Complete first user journey
+**Next Milestone: Phase 2 — Extended Inputs**
+1. Google Photos integration (server-side sync + LLM analysis)
+2. Undo/Redo with compensating transactions
+3. Web upload interface
 
 ---
 
@@ -378,16 +376,16 @@ Selko is an AI-powered assistant that automates personal organization by analyzi
   - RLS-enforced multi-tenancy
 
 #### **Phase 1: MVP (Web-First Cloud Processing)**
-- **Status:** 🟡 IN PROGRESS (started 2026-01-25)
+- **Status:** ✅ MOSTLY COMPLETE (started 2026-01-25)
 - **Goal:** Complete end-to-end journey: Email → LLM → Calendar
-- **Components:** FastAPI, Gemini LLM, Google Calendar API
+- **Components:** FastAPI, Gemini LLM, Google Calendar API, SvelteKit, SwiftUI, Jetpack Compose
 - **Implementation progress:**
   1. ✅ **LLM integration (Gemini 3 Flash)** - DONE (2026-01-26)
   2. ✅ **Email → LLM analysis pipeline** - DONE (2026-01-26)
-  3. ❌ Calendar sync (write events) - NOT STARTED
-  4. ❌ Review interface (web dashboard) - NOT STARTED
+  3. ✅ **Calendar sync (write events)** - DONE (full CRUD + idempotent sync)
+  4. ✅ **Review interface (web + iOS + Android)** - DONE
   5. ❌ Undo/Redo functionality - NOT STARTED
-  6. ❌ Automation rules - NOT STARTED
+  6. ✅ **Automation rules (sender rules)** - DONE (ignore + auto-approve)
 
 #### **Phase 2: Extended Inputs**
 - **Status:** FUTURE
