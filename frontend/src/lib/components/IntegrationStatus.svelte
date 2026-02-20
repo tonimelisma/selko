@@ -1,4 +1,5 @@
 <script>
+	import { _ } from 'svelte-i18n';
 	import StatusBadge from './StatusBadge.svelte';
 
 	let {
@@ -17,14 +18,14 @@
 	let fullyConnected = $derived(gmailConnected && gcalConnected);
 	let partiallyConnected = $derived(gmailConnected || gcalConnected);
 
-	const services = [
-		{ key: 'gmail', label: 'Gmail', description: 'Read emails to find calendar events' },
+	let services = $derived([
+		{ key: 'gmail', label: $_('integrations.gmail'), description: $_('integrations.gmailDescription') },
 		{
 			key: 'google_calendar',
-			label: 'Google Calendar',
-			description: 'Sync approved events to your calendar'
+			label: $_('integrations.googleCalendar'),
+			description: $_('integrations.googleCalendarDescription')
 		}
-	];
+	]);
 
 	/** @param {string} key */
 	function getIntegrationForService(key) {
@@ -34,17 +35,16 @@
 
 {#if setupMode && !partiallyConnected}
 	<div class="flex flex-col items-center justify-center py-16 px-4 text-center">
-		<h2 class="text-2xl font-bold mb-2">Welcome to Selko</h2>
+		<h2 class="text-2xl font-bold mb-2">{$_('integrations.welcomeTitle')}</h2>
 		<p class="text-base-content/70 max-w-md mb-6">
-			Connect your Google account to get started. Selko will read your emails to find calendar
-			events and sync them to your Google Calendar.
+			{$_('integrations.welcomeDescription')}
 		</p>
-		<button class="btn btn-primary" onclick={onconnect}>Connect Google Account</button>
+		<button class="btn btn-primary" onclick={onconnect}>{$_('integrations.connectGoogle')}</button>
 	</div>
 {:else}
 	<div class="space-y-4">
 		{#if setupMode}
-			<h2 class="text-xl font-bold mb-4">Connect your accounts</h2>
+			<h2 class="text-xl font-bold mb-4">{$_('integrations.connectAccounts')}</h2>
 		{/if}
 		{#each services as service}
 			{@const integration = getIntegrationForService(service.key)}
@@ -64,7 +64,7 @@
 								class="btn btn-outline btn-error btn-sm"
 								onclick={() => ondisconnect?.(integration.id)}
 							>
-								Disconnect
+								{$_('integrations.disconnect')}
 							</button>
 						{/if}
 						{#if integration.status !== 'active'}
@@ -72,7 +72,7 @@
 								class="btn btn-primary btn-sm"
 								onclick={() => onauthorize?.(service.key)}
 							>
-								Reconnect
+								{$_('integrations.reconnect')}
 							</button>
 						{/if}
 					{:else}
@@ -81,7 +81,7 @@
 							class="btn btn-primary btn-sm"
 							onclick={() => onauthorize?.(service.key)}
 						>
-							Connect
+							{$_('integrations.connect')}
 						</button>
 					{/if}
 				</div>

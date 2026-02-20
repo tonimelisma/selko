@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { _ } from 'svelte-i18n';
 	import { user } from '$lib/stores.js';
 	import { supabase } from '$lib/supabase.js';
 	import { fetchIntegrations, disconnectIntegration } from '$lib/services/integrations.js';
@@ -96,7 +97,7 @@
 	function handleDisconnectRequest(integrationId) {
 		const integration = integrationsList.find((i) => i.id === integrationId);
 		disconnectTargetId = integrationId;
-		disconnectTargetName = integration?.provider === 'gmail' ? 'Gmail' : 'Google Calendar';
+		disconnectTargetName = integration?.provider === 'gmail' ? $_('integrations.gmail') : $_('integrations.googleCalendar');
 		showDisconnectModal = true;
 	}
 
@@ -131,7 +132,7 @@
 	}
 </script>
 
-<PageHeader title="Settings" />
+<PageHeader title={$_('settings.title')} />
 
 {#if isLoading}
 	<LoadingSpinner />
@@ -143,7 +144,7 @@
 	<div class="space-y-8">
 		<!-- Section 1: Connected Accounts -->
 		<section>
-			<h2 class="text-lg font-semibold mb-4">Connected Accounts</h2>
+			<h2 class="text-lg font-semibold mb-4">{$_('settings.connectedAccounts')}</h2>
 			<IntegrationStatus
 				integrations={integrationsList}
 				setupMode={false}
@@ -154,13 +155,13 @@
 
 		<!-- Section 2: Calendar Defaults -->
 		<section>
-			<h2 class="text-lg font-semibold mb-4">Calendar Defaults</h2>
+			<h2 class="text-lg font-semibold mb-4">{$_('settings.calendarDefaults')}</h2>
 			{#if isLoadingCalendars}
 				<div class="h-12 bg-base-200 rounded animate-pulse"></div>
 			{:else if calendars.length > 0}
 				<div class="form-control max-w-md">
 					<label class="label" for="target-calendar">
-						<span class="label-text">Target Calendar</span>
+						<span class="label-text">{$_('settings.targetCalendar')}</span>
 					</label>
 					<select
 						id="target-calendar"
@@ -170,36 +171,36 @@
 					>
 						{#each calendars as calendar}
 							<option value={calendar.id}>
-								{calendar.name}{calendar.is_primary ? ' (Primary)' : ''}
+								{calendar.name}{calendar.is_primary ? ' ' + $_('settings.calendarPrimary') : ''}
 							</option>
 						{/each}
 					</select>
 					<label class="label" for="target-calendar">
 						<span class="label-text-alt text-base-content/60">
-							Approved events will be added to this calendar
+							{$_('settings.targetCalendarHint')}
 						</span>
 					</label>
 				</div>
 			{:else}
 				<p class="text-base-content/60">
-					Connect Google Calendar to configure calendar defaults.
+					{$_('settings.connectCalendarPrompt')}
 				</p>
 			{/if}
 		</section>
 
 		<!-- Section 3: Automation Rules -->
 		<section>
-			<h2 class="text-lg font-semibold mb-4">Automation Rules</h2>
+			<h2 class="text-lg font-semibold mb-4">{$_('settings.automationRules')}</h2>
 			<SenderRulesPanel />
 		</section>
 
 		<!-- Section 4: Account -->
 		<section>
-			<h2 class="text-lg font-semibold mb-4">Account</h2>
+			<h2 class="text-lg font-semibold mb-4">{$_('settings.account')}</h2>
 			<div class="space-y-4">
 				<div class="form-control max-w-md">
 					<label class="label" for="account-email">
-						<span class="label-text">Email</span>
+						<span class="label-text">{$_('auth.emailLabel')}</span>
 					</label>
 					<input
 						id="account-email"
@@ -210,7 +211,7 @@
 					/>
 				</div>
 				<div class="lg:hidden">
-					<button class="btn btn-error" onclick={handleLogout}>Log out</button>
+					<button class="btn btn-error" onclick={handleLogout}>{$_('auth.logOut')}</button>
 				</div>
 			</div>
 		</section>
@@ -219,9 +220,9 @@
 
 <ConfirmModal
 	open={showDisconnectModal}
-	title="Disconnect {disconnectTargetName}"
-	description="Are you sure you want to disconnect {disconnectTargetName}? You will need to re-authorize to use it again."
-	confirmText="Disconnect"
+	title={$_('settings.disconnectTitle', { values: { name: disconnectTargetName } })}
+	description={$_('settings.disconnectDescription', { values: { name: disconnectTargetName } })}
+	confirmText={$_('settings.disconnect')}
 	confirmClass="btn-error"
 	onconfirm={handleDisconnectConfirm}
 	oncancel={handleDisconnectCancel}

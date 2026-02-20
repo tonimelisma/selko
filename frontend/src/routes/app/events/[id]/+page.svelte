@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
+	import { _ } from 'svelte-i18n';
 	import { getEvent, updateEvent, updateEventStatus } from '$lib/services/events.js';
 	import { fetchEventSources } from '$lib/services/event-sources.js';
 	import { getEmail } from '$lib/services/emails.js';
@@ -158,9 +159,9 @@
 {#if isLoading}
 	<LoadingSpinner />
 {:else if error && !event}
-	<ErrorAlert message={error} onaction={() => goto('/app')} actionLabel="Back to Review" />
+	<ErrorAlert message={error} onaction={() => goto('/app')} actionLabel={$_('events.backToReview')} />
 {:else if event}
-	<PageHeader title="Edit Event" backHref="/app">
+	<PageHeader title={$_('events.editEvent')} backHref="/app">
 		{#snippet children()}
 			<StatusBadge status={event.status} />
 		{/snippet}
@@ -178,12 +179,12 @@
 				<div class="hidden lg:block">
 					<div class="card bg-base-200">
 						<div class="card-body">
-							<h3 class="card-title text-sm">Source Email</h3>
+							<h3 class="card-title text-sm">{$_('eventSource.sourceEmail')}</h3>
 							<div class="space-y-2 text-sm">
-								<p><span class="font-medium">From:</span> {sourceEmail.from_name || sourceEmail.from_email}</p>
-								<p><span class="font-medium">Subject:</span> {sourceEmail.subject || 'No subject'}</p>
+								<p><span class="font-medium">{$_('eventSource.from')}</span> {sourceEmail.from_name || sourceEmail.from_email}</p>
+								<p><span class="font-medium">{$_('eventSource.subject')}</span> {sourceEmail.subject || $_('eventSource.noSubject')}</p>
 								{#if sourceEmail.date_sent}
-									<p><span class="font-medium">Date:</span> {new Date(sourceEmail.date_sent).toLocaleDateString()}</p>
+									<p><span class="font-medium">{$_('eventSource.date')}</span> {new Date(sourceEmail.date_sent).toLocaleDateString()}</p>
 								{/if}
 								{#if sourceEmail.snippet}
 									<div class="mt-3 p-3 bg-base-100 rounded text-base-content/70">
@@ -192,7 +193,7 @@
 								{/if}
 								{#if attachments.length > 0}
 									<div class="mt-3">
-										<p class="font-medium">Attachments ({attachments.length})</p>
+										<p class="font-medium">{$_('eventSource.attachments', { values: { count: attachments.length } })}</p>
 										<ul class="list-disc list-inside mt-1">
 											{#each attachments as attachment}
 												<li class="text-base-content/70">{attachment.filename}</li>
@@ -210,14 +211,14 @@
 					<div class="collapse collapse-arrow bg-base-200">
 						<input type="checkbox" bind:checked={sourceExpanded} />
 						<div class="collapse-title font-medium">
-							View Source Email
+							{$_('eventSource.viewSourceEmail')}
 						</div>
 						<div class="collapse-content">
 							<div class="space-y-2 text-sm">
-								<p><span class="font-medium">From:</span> {sourceEmail.from_name || sourceEmail.from_email}</p>
-								<p><span class="font-medium">Subject:</span> {sourceEmail.subject || 'No subject'}</p>
+								<p><span class="font-medium">{$_('eventSource.from')}</span> {sourceEmail.from_name || sourceEmail.from_email}</p>
+								<p><span class="font-medium">{$_('eventSource.subject')}</span> {sourceEmail.subject || $_('eventSource.noSubject')}</p>
 								{#if sourceEmail.date_sent}
-									<p><span class="font-medium">Date:</span> {new Date(sourceEmail.date_sent).toLocaleDateString()}</p>
+									<p><span class="font-medium">{$_('eventSource.date')}</span> {new Date(sourceEmail.date_sent).toLocaleDateString()}</p>
 								{/if}
 								{#if sourceEmail.snippet}
 									<div class="mt-3 p-3 bg-base-100 rounded text-base-content/70">
@@ -226,7 +227,7 @@
 								{/if}
 								{#if attachments.length > 0}
 									<div class="mt-3">
-										<p class="font-medium">Attachments ({attachments.length})</p>
+										<p class="font-medium">{$_('eventSource.attachments', { values: { count: attachments.length } })}</p>
 										<ul class="list-disc list-inside mt-1">
 											{#each attachments as attachment}
 												<li class="text-base-content/70">{attachment.filename}</li>
@@ -246,7 +247,7 @@
 			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-4 pb-24 lg:pb-0">
 				<div class="form-control">
 					<label class="label" for="event-title">
-						<span class="label-text">Title</span>
+						<span class="label-text">{$_('events.titleLabel')}</span>
 					</label>
 					<input
 						id="event-title"
@@ -267,13 +268,13 @@
 							class="checkbox"
 							onchange={handleSave}
 						/>
-						<span class="label-text">All Day</span>
+						<span class="label-text">{$_('events.allDay')}</span>
 					</label>
 				</div>
 
 				<div class="form-control">
 					<label class="label" for="event-date">
-						<span class="label-text">Date</span>
+						<span class="label-text">{$_('events.dateLabel')}</span>
 					</label>
 					<input
 						id="event-date"
@@ -289,7 +290,7 @@
 					<div class="grid grid-cols-2 gap-4">
 						<div class="form-control">
 							<label class="label" for="event-start-time">
-								<span class="label-text">Start Time</span>
+								<span class="label-text">{$_('events.startTime')}</span>
 							</label>
 							<input
 								id="event-start-time"
@@ -302,7 +303,7 @@
 						</div>
 						<div class="form-control">
 							<label class="label" for="event-end-time">
-								<span class="label-text">End Time</span>
+								<span class="label-text">{$_('events.endTime')}</span>
 							</label>
 							<input
 								id="event-end-time"
@@ -317,28 +318,28 @@
 
 				<div class="form-control">
 					<label class="label" for="event-location">
-						<span class="label-text">Location</span>
+						<span class="label-text">{$_('events.locationLabel')}</span>
 					</label>
 					<input
 						id="event-location"
 						type="text"
 						bind:value={location}
 						class="input input-bordered w-full"
-						placeholder="Optional"
+						placeholder={$_('events.locationPlaceholder')}
 						onblur={handleSave}
 					/>
 				</div>
 
 				<div class="form-control">
 					<label class="label" for="event-description">
-						<span class="label-text">Description</span>
+						<span class="label-text">{$_('events.descriptionLabel')}</span>
 					</label>
 					<textarea
 						id="event-description"
 						bind:value={description}
 						class="textarea textarea-bordered w-full"
 						rows="3"
-						placeholder="Optional"
+						placeholder={$_('events.descriptionPlaceholder')}
 						onblur={handleSave}
 					></textarea>
 				</div>
@@ -347,9 +348,9 @@
 			<!-- Desktop action buttons -->
 			{#if event.status === 'pending_review'}
 				<div class="hidden lg:flex justify-end gap-3 mt-6">
-					<button class="btn btn-outline btn-error" onclick={handleReject}>Reject</button>
+					<button class="btn btn-outline btn-error" onclick={handleReject}>{$_('events.reject')}</button>
 					<button class="btn btn-success" onclick={handleApprove} disabled={!title}>
-						Accept
+						{$_('events.accept')}
 					</button>
 				</div>
 			{/if}
@@ -360,9 +361,9 @@
 	{#if event.status === 'pending_review'}
 		<div class="fixed bottom-20 left-0 right-0 bg-base-100 border-t border-base-300 p-4 lg:hidden">
 			<div class="flex justify-end gap-3 max-w-7xl mx-auto">
-				<button class="btn btn-outline btn-error flex-1" onclick={handleReject}>Reject</button>
+				<button class="btn btn-outline btn-error flex-1" onclick={handleReject}>{$_('events.reject')}</button>
 				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title}>
-					Accept
+					{$_('events.accept')}
 				</button>
 			</div>
 		</div>

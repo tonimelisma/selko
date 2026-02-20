@@ -1,23 +1,25 @@
 <script>
+	import { _ } from 'svelte-i18n';
+
 	let { status, type = 'event' } = $props();
 
-	const eventStatusMap = {
-		pending_review: { class: 'badge-warning', label: 'Pending' },
-		approved: { class: 'badge-info', label: 'Approved' },
-		syncing: { class: 'badge-info', label: 'Syncing' },
-		synced: { class: 'badge-success', label: 'Synced' },
-		sync_failed: { class: 'badge-error', label: 'Failed' },
-		rejected: { class: 'badge-ghost', label: 'Rejected' },
-		cancelled: { class: 'badge-ghost', label: 'Cancelled' }
-	};
+	let eventStatusMap = $derived(/** @type {Record<string, {class: string, label: string}>} */ ({
+		pending_review: { class: 'badge-warning', label: $_('status.pending') },
+		approved: { class: 'badge-info', label: $_('status.approved') },
+		syncing: { class: 'badge-info', label: $_('status.syncing') },
+		synced: { class: 'badge-success', label: $_('status.synced') },
+		sync_failed: { class: 'badge-error', label: $_('status.failed') },
+		rejected: { class: 'badge-ghost', label: $_('status.rejected') },
+		cancelled: { class: 'badge-ghost', label: $_('status.cancelled') }
+	}));
 
-	const integrationStatusMap = {
-		active: { class: 'badge-success', label: 'Authorized' },
-		expired: { class: 'badge-error', label: 'Expired' },
-		revoked: { class: 'badge-error', label: 'Revoked' },
-		error: { class: 'badge-error', label: 'Error' },
-		not_connected: { class: 'badge-ghost', label: 'Not Connected' }
-	};
+	let integrationStatusMap = $derived(/** @type {Record<string, {class: string, label: string}>} */ ({
+		active: { class: 'badge-success', label: $_('status.authorized') },
+		expired: { class: 'badge-error', label: $_('status.expired') },
+		revoked: { class: 'badge-error', label: $_('status.revoked') },
+		error: { class: 'badge-error', label: $_('status.error') },
+		not_connected: { class: 'badge-ghost', label: $_('status.notConnected') }
+	}));
 
 	let badgeInfo = $derived(() => {
 		/** @type {Record<string, {class: string, label: string}>} */
