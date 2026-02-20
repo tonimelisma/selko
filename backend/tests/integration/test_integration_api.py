@@ -214,48 +214,32 @@ class TestOAuthCallback:
 
     def test_callback_expired_state(self, test_client):
         """Callback rejects expired state (>10 min)."""
-        from datetime import datetime, timedelta
-        from selko.services.integrations import _oauth_states
-        import secrets
+        from selko.services.integrations import OAuthStateError
+        from unittest.mock import patch
 
-        state = secrets.token_urlsafe(32)
-        _oauth_states[state] = {
-            "user_id": "test-user",
-            "provider": "gmail",
-            "created_at": datetime.utcnow() - timedelta(minutes=11),
-            "redirect_uri": "http://localhost:8000/integrations/google/callback",
-        }
-
-        try:
+        # Mock complete_oauth_flow to raise OAuthStateError for expired state
+        with patch(
+            "selko.api.routes.integrations.complete_oauth_flow",
+            side_effect=OAuthStateError("State parameter expired"),
+        ):
             response = test_client.get(
-                f"/integrations/google/callback?code=test&state={state}"
+                "/integrations/google/callback?code=test&state=expired-state"
             )
             assert response.status_code == 400
             detail = response.json()["detail"]
             msg = detail["detail"] if isinstance(detail, dict) else detail
             assert "expired" in msg.lower()
-        finally:
-            _oauth_states.pop(state, None)
 
     def test_callback_success_mocked(self, test_client, config, temp_user):
         """Callback successfully saves credentials (mocked token exchange)."""
-        from datetime import datetime
         from unittest.mock import Mock, patch
-        from selko.services.integrations import _oauth_states
         import secrets
 
         user_id, email, password = temp_user
 
-        # Create valid state
         state = secrets.token_urlsafe(32)
-        _oauth_states[state] = {
-            "user_id": user_id,
-            "provider": "gmail",
-            "created_at": datetime.utcnow(),
-            "redirect_uri": "http://localhost:8000/integrations/google/callback",
-        }
 
-        # Mock token exchange
+        # Mock token exchange (complete_oauth_flow now uses DB-backed state)
         mock_creds = Mock()
         mock_creds.token = "test_token"
         mock_creds.refresh_token = "test_refresh"
@@ -295,7 +279,6 @@ class TestOAuthCallback:
                 assert result.data["provider_email"] == "test@gmail.com"
 
             finally:
-                _oauth_states.pop(state, None)
                 from selko.services.auth import get_service_client
                 service_client = get_service_client(config)
                 service_client.table("integrations").delete().eq(

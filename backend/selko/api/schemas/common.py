@@ -30,6 +30,7 @@ class ErrorCode:
 
     # Rate limiting
     QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
+    QUOTA_SERVICE_ERROR = "QUOTA_SERVICE_ERROR"
 
     # Database
     DATABASE_ERROR = "DATABASE_ERROR"

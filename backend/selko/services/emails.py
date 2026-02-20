@@ -33,6 +33,18 @@ class EmailError(Exception):
     pass
 
 
+class NoGmailIntegrationError(EmailError):
+    """Raised when no Gmail integration is found for the user."""
+
+    pass
+
+
+class ExpiredCredentialsError(EmailError):
+    """Raised when Gmail credentials are expired or revoked."""
+
+    pass
+
+
 def _extract_body_from_payload(payload: dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
     """Extract plain text and HTML body from Gmail MIME payload.
 
@@ -223,7 +235,9 @@ def fetch_emails_for_user(
     try:
         creds = get_credentials(client, config)
         if not creds:
-            raise EmailError("No Gmail integration found. Please authenticate with Gmail first.")
+            raise NoGmailIntegrationError("No Gmail integration found. Please authenticate with Gmail first.")
+    except (NoGmailIntegrationError, ExpiredCredentialsError):
+        raise
     except Exception as e:
         raise EmailError(f"Error getting credentials: {e}") from e
 
