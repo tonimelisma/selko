@@ -3,6 +3,7 @@ name: Tests
 # CI Optimization: Path filtering skips jobs when irrelevant files change.
 # - Markdown-only changes: No test jobs run
 # - Backend changes: Unit tests run
+# - Frontend changes: Frontend unit tests run
 # - Supabase changes: Staging deploy + integration tests
 # - Android changes: Android tests only
 
@@ -24,6 +25,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       supabase: ${{ steps.filter.outputs.supabase }}
       android: ${{ steps.filter.outputs.android }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -39,6 +41,8 @@ jobs:
               - 'supabase/**'
             android:
               - 'android/**'
+            frontend:
+              - 'frontend/**'
 
   unit-tests:
     name: Unit Tests
@@ -107,6 +111,28 @@ jobs:
           name: android-unit-test-results
           path: android/app/build/reports/tests/
 
+  frontend-unit-tests:
+    name: Frontend Unit Tests
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: frontend
+        run: npm run test:unit
+
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
@@ -118,8 +144,9 @@ jobs:
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
       (needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true') &&
       (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
-      (needs.android-unit-tests.result == 'success' || needs.android-unit-tests.result == 'skipped')
-    needs: [changes, unit-tests, android-unit-tests]
+      (needs.android-unit-tests.result == 'success' || needs.android-unit-tests.result == 'skipped') &&
+      (needs.frontend-unit-tests.result == 'success' || needs.frontend-unit-tests.result == 'skipped')
+    needs: [changes, unit-tests, android-unit-tests, frontend-unit-tests]
     steps:
       - uses: actions/checkout@v4
 
@@ -181,8 +208,8 @@ jobs:
           uv pip install pytest-xdist
 
       - name: Run staging integration tests (mocked LLM)
-        # Run sequentially - integration tests have shared DB state that breaks with parallel execution
-        run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short
+        # Parallelized - each test uses isolated data (uuid4 IDs, temp_user fixtures, SKIP LOCKED claiming)
+        run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short -n auto
         env:
           ENVIRONMENT: staging
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
