@@ -1,5 +1,6 @@
 package net.melisma.selko.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.History
@@ -10,20 +11,22 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import net.melisma.selko.R
 import net.melisma.selko.ui.navigation.History
 import net.melisma.selko.ui.navigation.Review
 import net.melisma.selko.ui.navigation.Settings
 
 data class BottomNavItem(
-    val label: String,
+    @StringRes val labelResId: Int,
     val icon: ImageVector,
     val route: Any
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem("Review", Icons.AutoMirrored.Filled.List, Review),
-    BottomNavItem("History", Icons.Filled.History, History),
-    BottomNavItem("Settings", Icons.Filled.Settings, Settings)
+    BottomNavItem(R.string.nav_review, Icons.AutoMirrored.Filled.List, Review),
+    BottomNavItem(R.string.nav_history, Icons.Filled.History, History),
+    BottomNavItem(R.string.nav_settings, Icons.Filled.Settings, Settings)
 )
 
 @Composable
@@ -34,9 +37,10 @@ fun SelkoBottomNavigation(
     NavigationBar {
         bottomNavItems.forEach { item ->
             val routeName = item.route::class.qualifiedName
+            val label = stringResource(item.labelResId)
             NavigationBarItem(
-                icon = { Icon(item.icon, contentDescription = item.label) },
-                label = { Text(item.label) },
+                icon = { Icon(item.icon, contentDescription = label) },
+                label = { Text(label) },
                 selected = currentRoute == routeName,
                 onClick = { onNavigate(item.route) }
             )

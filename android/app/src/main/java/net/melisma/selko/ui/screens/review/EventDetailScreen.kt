@@ -56,11 +56,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import net.melisma.selko.R
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -84,7 +86,7 @@ fun EventDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Event Details") },
+                title = { Text(stringResource(R.string.event_detail_title)) },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (uiState.hasUnsavedChanges) {
@@ -94,7 +96,7 @@ fun EventDetailScreen(
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.event_detail_back)
                         )
                     }
                 }
@@ -126,12 +128,12 @@ fun EventDetailScreen(
                             } else {
                                 Icon(
                                     imageVector = Icons.Filled.Close,
-                                    contentDescription = "Reject",
+                                    contentDescription = stringResource(R.string.event_detail_reject),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Reject")
+                            Text(stringResource(R.string.event_detail_reject))
                         }
 
                         Button(
@@ -152,12 +154,12 @@ fun EventDetailScreen(
                             } else {
                                 Icon(
                                     imageVector = Icons.Filled.Check,
-                                    contentDescription = "Accept",
+                                    contentDescription = stringResource(R.string.event_detail_accept),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Accept")
+                            Text(stringResource(R.string.event_detail_accept))
                         }
                     }
                 }
@@ -178,7 +180,7 @@ fun EventDetailScreen(
 
                 uiState.event == null -> {
                     Text(
-                        text = uiState.errorMessage ?: "Event not found",
+                        text = uiState.errorMessage ?: stringResource(R.string.event_detail_not_found),
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(16.dp),
@@ -213,7 +215,7 @@ fun EventDetailScreen(
                             onClick = { viewModel.clearError() },
                             shape = MaterialTheme.shapes.medium
                         ) {
-                            Text("Dismiss")
+                            Text(stringResource(R.string.event_detail_dismiss))
                         }
                     }
                 ) {
@@ -243,15 +245,17 @@ private fun EventDetailContent(
     var showEndTimePicker by remember { mutableStateOf(false) }
 
     val tz = TimeZone.currentSystemDefault()
+    val selectDateText = stringResource(R.string.event_detail_select_date)
+    val selectTimeText = stringResource(R.string.event_detail_select_time)
 
     fun formatDate(instant: Instant?): String {
-        if (instant == null) return "Select date"
+        if (instant == null) return selectDateText
         val local = instant.toLocalDateTime(tz)
         return "${local.dayOfMonth} ${local.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${local.year}"
     }
 
     fun formatTime(instant: Instant?): String {
-        if (instant == null) return "Select time"
+        if (instant == null) return selectTimeText
         val local = instant.toLocalDateTime(tz)
         return "${local.hour.toString().padStart(2, '0')}:${local.minute.toString().padStart(2, '0')}"
     }
@@ -272,7 +276,7 @@ private fun EventDetailContent(
         OutlinedTextField(
             value = uiState.title,
             onValueChange = onTitleChange,
-            label = { Text("Title") },
+            label = { Text(stringResource(R.string.event_detail_field_title)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = MaterialTheme.shapes.small
@@ -285,7 +289,7 @@ private fun EventDetailContent(
             value = formatDate(uiState.startInstant),
             onValueChange = {},
             readOnly = true,
-            label = { Text(if (uiState.allDay) "Date" else "Start Date") },
+            label = { Text(if (uiState.allDay) stringResource(R.string.event_detail_field_date) else stringResource(R.string.event_detail_field_start_date)) },
             modifier = Modifier.fillMaxWidth().clickable { showStartDatePicker = true },
             enabled = false,
             colors = OutlinedTextFieldDefaults.colors(
@@ -304,7 +308,7 @@ private fun EventDetailContent(
                 value = formatTime(uiState.startInstant),
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Start Time") },
+                label = { Text(stringResource(R.string.event_detail_field_start_time)) },
                 modifier = Modifier.fillMaxWidth().clickable { showStartTimePicker = true },
                 enabled = false,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -323,7 +327,7 @@ private fun EventDetailContent(
             value = formatDate(uiState.endInstant),
             onValueChange = {},
             readOnly = true,
-            label = { Text("End Date") },
+            label = { Text(stringResource(R.string.event_detail_field_end_date)) },
             modifier = Modifier.fillMaxWidth().clickable { showEndDatePicker = true },
             enabled = false,
             colors = OutlinedTextFieldDefaults.colors(
@@ -342,7 +346,7 @@ private fun EventDetailContent(
                 value = formatTime(uiState.endInstant),
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("End Time") },
+                label = { Text(stringResource(R.string.event_detail_field_end_time)) },
                 modifier = Modifier.fillMaxWidth().clickable { showEndTimePicker = true },
                 enabled = false,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -362,7 +366,7 @@ private fun EventDetailContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "All Day Event",
+                text = stringResource(R.string.event_detail_all_day),
                 style = MaterialTheme.typography.bodyLarge
             )
             Switch(
@@ -376,7 +380,7 @@ private fun EventDetailContent(
         OutlinedTextField(
             value = uiState.location,
             onValueChange = onLocationChange,
-            label = { Text("Location") },
+            label = { Text(stringResource(R.string.event_detail_field_location)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = MaterialTheme.shapes.small
@@ -387,7 +391,7 @@ private fun EventDetailContent(
         OutlinedTextField(
             value = uiState.description,
             onValueChange = onDescriptionChange,
-            label = { Text("Description") },
+            label = { Text(stringResource(R.string.event_detail_field_description)) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             maxLines = 6,
@@ -398,7 +402,7 @@ private fun EventDetailContent(
         uiState.event?.sourceAttribution?.let { attribution ->
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Source: $attribution",
+                text = stringResource(R.string.event_detail_source_label, attribution),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -417,10 +421,10 @@ private fun EventDetailContent(
                     TextButton(onClick = {
                         datePickerState.selectedDateMillis?.let { onStartDateChange(it) }
                         showStartDatePicker = false
-                    }) { Text("OK") }
+                    }) { Text(stringResource(R.string.event_detail_ok)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") }
+                    TextButton(onClick = { showStartDatePicker = false }) { Text(stringResource(R.string.event_detail_cancel)) }
                 }
             ) {
                 DatePicker(state = datePickerState)
@@ -439,10 +443,10 @@ private fun EventDetailContent(
                     TextButton(onClick = {
                         onStartTimeChange(timePickerState.hour, timePickerState.minute)
                         showStartTimePicker = false
-                    }) { Text("OK") }
+                    }) { Text(stringResource(R.string.event_detail_ok)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showStartTimePicker = false }) { Text("Cancel") }
+                    TextButton(onClick = { showStartTimePicker = false }) { Text(stringResource(R.string.event_detail_cancel)) }
                 }
             ) {
                 TimePicker(state = timePickerState)
@@ -459,10 +463,10 @@ private fun EventDetailContent(
                     TextButton(onClick = {
                         datePickerState.selectedDateMillis?.let { onEndDateChange(it) }
                         showEndDatePicker = false
-                    }) { Text("OK") }
+                    }) { Text(stringResource(R.string.event_detail_ok)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") }
+                    TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.event_detail_cancel)) }
                 }
             ) {
                 DatePicker(state = datePickerState)
@@ -481,10 +485,10 @@ private fun EventDetailContent(
                     TextButton(onClick = {
                         onEndTimeChange(timePickerState.hour, timePickerState.minute)
                         showEndTimePicker = false
-                    }) { Text("OK") }
+                    }) { Text(stringResource(R.string.event_detail_ok)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showEndTimePicker = false }) { Text("Cancel") }
+                    TextButton(onClick = { showEndTimePicker = false }) { Text(stringResource(R.string.event_detail_cancel)) }
                 }
             ) {
                 TimePicker(state = timePickerState)
@@ -519,13 +523,13 @@ private fun SourceEmailCard(email: net.melisma.selko.data.model.Email) {
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Email,
-                        contentDescription = "Email",
+                        contentDescription = stringResource(R.string.source_email_icon_description),
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Source Email",
+                        text = stringResource(R.string.source_email_label),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -533,7 +537,7 @@ private fun SourceEmailCard(email: net.melisma.selko.data.model.Email) {
                 IconButton(onClick = { isExpanded = !isExpanded }) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand"
+                        contentDescription = if (isExpanded) stringResource(R.string.source_email_collapse) else stringResource(R.string.source_email_expand)
                     )
                 }
             }
@@ -543,7 +547,7 @@ private fun SourceEmailCard(email: net.melisma.selko.data.model.Email) {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "From: ${email.displaySender}",
+                        text = stringResource(R.string.source_email_from, email.displaySender),
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -558,7 +562,7 @@ private fun SourceEmailCard(email: net.melisma.selko.data.model.Email) {
                     email.subject?.let { subject ->
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Subject: $subject",
+                            text = stringResource(R.string.source_email_subject, subject),
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -568,7 +572,7 @@ private fun SourceEmailCard(email: net.melisma.selko.data.model.Email) {
                     email.dateSent?.let { date ->
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Sent: ${date}",
+                            text = stringResource(R.string.source_email_sent, date.toString()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

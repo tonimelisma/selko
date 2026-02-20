@@ -1,8 +1,10 @@
 package net.melisma.selko.ui.screens.review
 
+import android.app.Application
 import app.cash.turbine.test
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -10,6 +12,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import net.melisma.selko.R
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.Email
@@ -35,6 +38,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReviewQueueViewModelTest {
 
+    private lateinit var application: Application
     private lateinit var eventRepository: EventRepository
     private lateinit var integrationRepository: IntegrationRepository
     private lateinit var backendApiClient: BackendApiClient
@@ -95,6 +99,11 @@ class ReviewQueueViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        application = mockk(relaxed = true)
+        every { application.getString(R.string.review_error_approve) } returns "Failed to approve event"
+        every { application.getString(R.string.review_error_reject) } returns "Failed to reject event"
+        every { application.getString(R.string.review_error_ignore_rule) } returns "Failed to create ignore rule"
+        every { application.getString(R.string.review_error_auto_approve_rule) } returns "Failed to create auto-approve rule"
         eventRepository = mockk(relaxed = true)
         integrationRepository = mockk(relaxed = true)
         backendApiClient = mockk(relaxed = true)
@@ -113,6 +122,7 @@ class ReviewQueueViewModelTest {
                 EventResult.Success(testEvents)
 
         return ReviewQueueViewModel(
+            application,
             eventRepository,
             integrationRepository,
             backendApiClient,

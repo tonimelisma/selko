@@ -20,8 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import net.melisma.selko.R
 
 @Composable
 fun IntegrationSetupContent(
@@ -40,7 +42,7 @@ fun IntegrationSetupContent(
     ) {
         Icon(
             imageVector = Icons.Filled.Email,
-            contentDescription = "Email setup",
+            contentDescription = stringResource(R.string.integration_email_setup_description),
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary
         )
@@ -48,7 +50,7 @@ fun IntegrationSetupContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Welcome to Selko",
+            text = stringResource(R.string.integration_welcome_title),
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
@@ -56,7 +58,7 @@ fun IntegrationSetupContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Connect your Google account to start managing your calendar events from emails.",
+            text = stringResource(R.string.integration_welcome_subtitle),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -73,20 +75,20 @@ fun IntegrationSetupContent(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium
             ) {
-                Text("Connect Google Account")
+                Text(stringResource(R.string.integration_connect_google))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "This will connect both Gmail and Google Calendar",
+                text = stringResource(R.string.integration_connect_google_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         } else if (!isCalendarConnected) {
             Text(
-                text = "Gmail is connected. Calendar connection is also needed to sync events.",
+                text = stringResource(R.string.integration_gmail_connected_note),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -102,7 +104,7 @@ fun IntegrationSetupContent(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium
             ) {
-                Text("Connect Google Calendar")
+                Text(stringResource(R.string.integration_connect_calendar))
             }
         }
     }

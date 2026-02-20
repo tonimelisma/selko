@@ -1,6 +1,7 @@
 package net.melisma.selko.ui.screens.history
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.data.repository.EventRepository
@@ -31,15 +33,18 @@ data class HistoryUiState(
 )
 
 class HistoryViewModel(
+    application: Application,
     private val eventRepository: EventRepository,
     private val integrationRepository: IntegrationRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
     private val pageSize = 20
     private var currentOffset = 0
+
+    private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
 
     init {
         loadHistory()
@@ -105,7 +110,7 @@ class HistoryViewModel(
                 ?.date
             date?.let {
                 "${it.dayOfMonth} ${it.month.name.lowercase().replaceFirstChar { c -> c.uppercase() }} ${it.year}"
-            } ?: "Unknown Date"
+            } ?: getString(R.string.history_unknown_date)
         }.map { (dateLabel, groupEvents) ->
             DateGroup(dateLabel = dateLabel, events = groupEvents)
         }
@@ -130,7 +135,7 @@ class HistoryViewModel(
                     _uiState.update {
                         it.copy(
                             processingEventIds = it.processingEventIds - eventId,
-                            errorMessage = "Failed to undo action"
+                            errorMessage = getString(R.string.history_error_undo)
                         )
                     }
                 }
@@ -152,7 +157,7 @@ class HistoryViewModel(
                     _uiState.update {
                         it.copy(
                             processingEventIds = it.processingEventIds - eventId,
-                            errorMessage = "Failed to retry sync"
+                            errorMessage = getString(R.string.history_error_retry_sync)
                         )
                     }
                 }
