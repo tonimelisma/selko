@@ -17,6 +17,12 @@ vi.mock('$lib/services/events.js', () => ({
 	updateEventStatus: (...args) => mockUpdateEventStatus(...args)
 }));
 
+const mockCreateSenderRule = vi.fn();
+
+vi.mock('$lib/services/sender-rules.js', () => ({
+	createSenderRule: (...args) => mockCreateSenderRule(...args)
+}));
+
 const mockSyncEventToCalendar = vi.fn();
 const mockInitiateGmailAuth = vi.fn();
 const mockInitiateCalendarAuth = vi.fn();
@@ -35,6 +41,7 @@ describe('Review Queue (App Page)', () => {
 		vi.clearAllMocks();
 		mockSyncEventToCalendar.mockResolvedValue({ data: null, error: null });
 		mockUpdateEventStatus.mockResolvedValue({ data: null, error: null });
+		mockCreateSenderRule.mockResolvedValue({ data: { id: 'rule-1' }, error: null });
 	});
 
 	it('shows loading spinner while fetching integrations', () => {
@@ -241,6 +248,146 @@ describe('Review Queue (App Page)', () => {
 		await waitFor(() => {
 			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'rejected');
 			expect(screen.queryByText('Team Meeting')).not.toBeInTheDocument();
+		});
+	});
+
+	it('shows sender menu for single-event groups', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Solo Event',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Invite',
+								from_email: 'sender@example.com',
+								from_name: 'Sender',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Sender')).toBeInTheDocument();
+			// Menu button should be visible even for single event
+			expect(screen.getByRole('button', { name: /actions for/i })).toBeInTheDocument();
+		});
+	});
+
+	it('creates ignore sender rule and rejects events', async () => {
+		const user = userEvent.setup();
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Spam Event',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Spam',
+								from_email: 'spammer@example.com',
+								from_name: 'Spammer',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Spam Event')).toBeInTheDocument();
+		});
+
+		await user.click(screen.getByText('Ignore sender'));
+
+		await waitFor(() => {
+			expect(mockCreateSenderRule).toHaveBeenCalledWith({
+				sender_email: 'spammer@example.com',
+				action: 'ignore'
+			});
+			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'rejected');
+		});
+	});
+
+	it('creates auto-approve sender rule and approves events', async () => {
+		const user = userEvent.setup();
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Trusted Event',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Meeting',
+								from_email: 'boss@company.com',
+								from_name: 'Boss',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Trusted Event')).toBeInTheDocument();
+		});
+
+		await user.click(screen.getByText('Auto-approve sender'));
+
+		await waitFor(() => {
+			expect(mockCreateSenderRule).toHaveBeenCalledWith({
+				sender_email: 'boss@company.com',
+				action: 'auto_approve'
+			});
+			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'approved');
 		});
 	});
 });
