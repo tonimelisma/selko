@@ -16,7 +16,12 @@ final class DependencyContainer {
 
     lazy var supabase: SupabaseClient = {
         SupabaseClient(
-            supabaseURL: URL(string: Config.supabaseURL)!,
+            supabaseURL: {
+                guard let url = URL(string: Config.supabaseURL) else {
+                    fatalError("Invalid Supabase URL configuration: \(Config.supabaseURL)")
+                }
+                return url
+            }(),
             supabaseKey: Config.supabaseAnonKey
         )
     }()
