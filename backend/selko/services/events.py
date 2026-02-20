@@ -87,6 +87,7 @@ def save_extracted_events(
     user_id: str,
     email_id: str,
     extraction: CalendarEventExtraction,
+    initial_status: str = "pending_review",
 ) -> tuple[int, int]:
     """Deduplicate and persist extracted events.
 
@@ -99,6 +100,7 @@ def save_extracted_events(
         user_id: UUID of user.
         email_id: UUID of source email.
         extraction: LLM extraction result containing events.
+        initial_status: Status for newly created events (default: pending_review).
 
     Returns:
         Tuple of (num_new, num_updated) event counts.
@@ -117,7 +119,8 @@ def save_extracted_events(
             if matched_event_id.startswith("gcal:"):
                 gcal_id = matched_event_id[5:]
                 create_event_from_gcal_match(
-                    supabase_client, user_id, event_data, email_id, gcal_id
+                    supabase_client, user_id, event_data, email_id, gcal_id,
+                    initial_status=initial_status,
                 )
                 num_new += 1
             else:
@@ -127,7 +130,8 @@ def save_extracted_events(
                 )
                 num_updated += 1
         else:
-            create_event(supabase_client, user_id, event_data, email_id)
+            create_event(supabase_client, user_id, event_data, email_id,
+                         initial_status=initial_status)
             num_new += 1
 
     return num_new, num_updated
@@ -167,10 +171,21 @@ def process_email_for_events(
         )
         sender_email = email_metadata.get("from_email", "")
 
-        if should_skip_email(supabase_client, user_id, sender_email):
+        # Check sender rules: ignore, auto_approve, or no rule
+        sender_rule = check_sender_rules(supabase_client, user_id, sender_email)
+        rule_action = sender_rule.get("action") if sender_rule else None
+
+        if rule_action == "ignore":
             logger.info(f"Sender {sender_email} is ignored, skipping event extraction")
             mark_email_status(supabase_client, email_id, "skipped")
             return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
+
+        # Determine initial status based on sender rule
+        if rule_action == "auto_approve":
+            initial_status = "approved"
+            logger.info(f"Sender {sender_email} is auto-approved, events will be created as approved")
+        else:
+            initial_status = "pending_review"
 
         # Try .ics direct parsing first (skips LLM)
         ics_extraction = ics_parser.parse_ics_attachments(attachments, email_metadata)
@@ -188,17 +203,23 @@ def process_email_for_events(
             return {"num_events": 0, "num_new": 0, "num_updated": 0}
 
         num_new, num_updated = save_extracted_events(
-            supabase_client, gateway, user_id, email_id, extraction
+            supabase_client, gateway, user_id, email_id, extraction,
+            initial_status=initial_status,
         )
 
         mark_email_status(supabase_client, email_id, "processed")
         logger.info(f"Processed email {email_id}: {num_new} new, {num_updated} updated events")
 
-        return {
+        result = {
             "num_events": len(extraction.events),
             "num_new": num_new,
             "num_updated": num_updated,
         }
+
+        if rule_action == "auto_approve":
+            result["auto_approved"] = True
+
+        return result
 
     except Exception as e:
         mark_email_status(supabase_client, email_id, "failed", error=str(e))
@@ -304,15 +325,17 @@ def create_event(
     user_id: str,
     event_data: dict[str, Any],
     email_id: str,
+    initial_status: str = "pending_review",
 ) -> str:
     """Create new event and link to email source.
-    
+
     Args:
         supabase_client: Authenticated Supabase client.
         user_id: UUID of user.
         event_data: Event data to create.
         email_id: UUID of source email.
-        
+        initial_status: Status for the new event (default: pending_review).
+
     Returns:
         UUID of created event.
     """
@@ -326,7 +349,7 @@ def create_event(
         "location": event_data.get("location"),
         "description": event_data.get("description"),
         "importance": event_data.get("importance", "action_required"),
-        "status": "pending_review",
+        "status": initial_status,
     }).execute()
 
     event_id = event_result.data[0]["id"]
@@ -357,12 +380,14 @@ def create_event_from_gcal_match(
     event_data: dict[str, Any],
     email_id: str,
     gcal_event_id: str,
+    initial_status: str = "pending_review",
 ) -> str:
     """Create a Selko event that adopts an existing Google Calendar event.
 
     When dedup finds a match on the user's GCal (not managed by Selko),
     we create a Selko event linked to it. The event starts as pending_review
-    so the user must approve before Selko modifies their calendar event.
+    (or approved if sender has auto_approve rule) so the user must approve
+    before Selko modifies their calendar event.
 
     Args:
         supabase_client: Authenticated Supabase client.
@@ -370,6 +395,7 @@ def create_event_from_gcal_match(
         event_data: Extracted event data from email.
         email_id: UUID of source email.
         gcal_event_id: Google Calendar event ID being adopted.
+        initial_status: Status for the new event (default: pending_review).
 
     Returns:
         UUID of created Selko event.
@@ -384,7 +410,7 @@ def create_event_from_gcal_match(
         "location": event_data.get("location"),
         "description": event_data.get("description"),
         "importance": event_data.get("importance", "action_required"),
-        "status": "pending_review",
+        "status": initial_status,
         "google_calendar_event_id": gcal_event_id,
     }).execute()
 
