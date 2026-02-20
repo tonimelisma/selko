@@ -277,3 +277,19 @@ class TestPrepareContentForProvider:
         result = prepare_content_for_provider(webp_image, "image/webp", "gemini")
         assert len(result) == 1
         assert result[0].mime_type == "image/webp"
+
+    # Bug 6 regression: Anthropic PDF → PNG conversion
+    def test_anthropic_pdf_converted_to_images(self):
+        """PDFs sent to Anthropic must be converted to PNG images, not passed through.
+
+        Regression test for Bug 6: Anthropic Haiku rejects PDF as document type
+        with 'media_type should be image/jpeg, image/png, image/gif or image/webp'.
+        """
+        result = prepare_content_for_provider(PDF_1PAGE, "application/pdf", "anthropic")
+        assert len(result) == 1
+        assert result[0].mime_type == "image/png"  # Converted, not PDF
+        assert result[0].data != PDF_1PAGE
+
+    def test_anthropic_does_not_accept_pdf(self):
+        """Anthropic's accepted formats must NOT include application/pdf."""
+        assert "application/pdf" not in PROVIDER_ACCEPTED_FORMATS["anthropic"]

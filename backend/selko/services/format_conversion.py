@@ -48,7 +48,7 @@ PROVIDER_ACCEPTED_FORMATS: dict[str, set[str]] = {
     "deepseek": set(),   # text-only
     "minimax": set(),    # text-only
     "openai": {"image/png", "image/jpeg", "image/gif", "image/webp"},
-    "anthropic": {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"},
+    "anthropic": {"image/png", "image/jpeg", "image/gif", "image/webp"},
 }
 
 
