@@ -12,6 +12,7 @@ struct SettingsView: View {
         Form {
             connectedAccountsSection
             calendarDefaultsSection
+            senderRulesSection
             accountSection
         }
         .navigationTitle("Settings")
@@ -135,6 +136,18 @@ struct SettingsView: View {
                         Task { await viewModel.updateDefaultCalendar() }
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: - Sender Rules
+
+    private var senderRulesSection: some View {
+        Section {
+            NavigationLink {
+                SenderRulesView()
+            } label: {
+                Label("Sender Rules", systemImage: "shield.lefthalf.filled")
             }
         }
     }
