@@ -143,8 +143,18 @@ class QuotaService:
             )
 
         except Exception as e:
-            # On error, log but allow the request (fail-open for availability)
-            logger.error(f"Quota check failed for user {user_id}: {e}")
+            # Alarmed fail-open: allow the request for availability, but log
+            # at ERROR with structured fields so monitoring can alert on it
+            logger.error(
+                "QUOTA_SERVICE_ERROR: Quota check failed, allowing request "
+                "(fail-open for availability)",
+                extra={
+                    "error_code": "QUOTA_SERVICE_ERROR",
+                    "user_id": user_id,
+                    "quota_type": quota_type,
+                    "error": str(e),
+                },
+            )
             return QuotaCheckResult(
                 allowed=True,
                 current_count=0,
@@ -201,8 +211,15 @@ class QuotaService:
             )
 
         except Exception as e:
-            logger.error(f"Failed to get usage for user {user_id}: {e}")
-            # Return defaults on error
+            # Alarmed fail-open: return defaults but log at ERROR for monitoring
+            logger.error(
+                "QUOTA_SERVICE_ERROR: Failed to get usage, returning defaults",
+                extra={
+                    "error_code": "QUOTA_SERVICE_ERROR",
+                    "user_id": user_id,
+                    "error": str(e),
+                },
+            )
             return UserUsage(
                 llm_calls_count=0,
                 llm_calls_limit=100,

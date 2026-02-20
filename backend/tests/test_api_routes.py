@@ -276,11 +276,11 @@ class TestOAuthCallback:
 
     def test_callback_invalid_state(self, test_client):
         """Invalid state returns 400."""
-        from selko.services.integrations import IntegrationError
+        from selko.services.integrations import OAuthStateError
 
         with patch(
             "selko.api.routes.integrations.complete_oauth_flow",
-            side_effect=IntegrationError("Invalid or expired state"),
+            side_effect=OAuthStateError("Invalid or expired state parameter"),
         ):
             resp = test_client.get(
                 "/integrations/google/callback",
@@ -290,11 +290,11 @@ class TestOAuthCallback:
 
     def test_callback_expired_state(self, test_client):
         """Expired state returns 400."""
-        from selko.services.integrations import IntegrationError
+        from selko.services.integrations import OAuthStateError
 
         with patch(
             "selko.api.routes.integrations.complete_oauth_flow",
-            side_effect=IntegrationError("State parameter expired"),
+            side_effect=OAuthStateError("State parameter expired"),
         ):
             resp = test_client.get(
                 "/integrations/google/callback",

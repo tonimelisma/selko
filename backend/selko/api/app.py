@@ -23,7 +23,7 @@ from selko.services.auth import AuthenticationError
 from selko.services.calendars import CalendarsError
 from selko.services.emails import EmailError
 from selko.services.events import EventsError
-from selko.services.integrations import IntegrationError
+from selko.services.integrations import IntegrationError, OAuthStateError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.workers.email_fetch import schedule_email_fetches
@@ -222,6 +222,14 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={"error": "email_error", "detail": "Email operation failed"},
+        )
+
+    @app.exception_handler(OAuthStateError)
+    async def oauth_state_error_handler(request: Request, exc: OAuthStateError):
+        logger.warning(f"OAuth state error: {exc}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "oauth_state_error", "detail": "OAuth state invalid or expired"},
         )
 
     @app.exception_handler(IntegrationError)
