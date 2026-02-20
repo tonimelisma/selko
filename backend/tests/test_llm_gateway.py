@@ -265,19 +265,27 @@ class TestErrorClassification:
     """Tests for error classification."""
 
     def test_classify_rate_limit_429(self, mock_provider):
-        """Test rate limit classification for 429 errors."""
+        """Test retryable error classification for 429 errors."""
         gateway = LLMGateway(mock_provider)
 
-        assert gateway._is_rate_limit_error("429 too many requests")
+        assert gateway._is_retryable_error("429 too many requests")
 
     def test_classify_rate_limit_quota(self, mock_provider):
-        """Test rate limit classification for quota errors."""
+        """Test retryable error classification for quota errors."""
         gateway = LLMGateway(mock_provider)
 
-        assert gateway._is_rate_limit_error("quota exceeded")
+        assert gateway._is_retryable_error("quota exceeded")
 
     def test_classify_not_rate_limit(self, mock_provider):
-        """Test non-rate-limit error classification."""
+        """Test non-retryable error classification."""
         gateway = LLMGateway(mock_provider)
 
-        assert not gateway._is_rate_limit_error("invalid api key")
+        assert not gateway._is_retryable_error("invalid api key")
+
+    def test_classify_503_unavailable(self, mock_provider):
+        """Test retryable error classification for 503 errors."""
+        gateway = LLMGateway(mock_provider)
+
+        assert gateway._is_retryable_error("503 unavailable")
+        assert gateway._is_retryable_error("this model is currently experiencing high demand")
+        assert gateway._is_retryable_error("service overloaded")

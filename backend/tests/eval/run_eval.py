@@ -76,17 +76,17 @@ def estimate_cost(model: str, prompt_tokens: int | None, completion_tokens: int 
 # Per-model result path helpers
 # ---------------------------------------------------------------------------
 
-def get_result_path(operation: str, provider: str, model: str, fixture_name: str, code_hash: str) -> Path:
-    """Get path for a result file: results/{op}/{provider}_{model}/{fixture}/result_{code_hash}.json"""
+def get_result_path(operation: str, provider: str, model: str, fixture_name: str, code_hash: str, thinking: str = "low") -> Path:
+    """Get path for a result file: results/{op}/{provider}_{model}_{thinking}/{fixture}/result_{code_hash}.json"""
     safe_name = fixture_name.replace("/", "_")
-    model_dir = f"{provider}_{model}"
+    model_dir = f"{provider}_{model}_{thinking}"
     return RESULTS_DIR / operation / model_dir / safe_name / f"result_{code_hash}.json"
 
 
-def get_latest_result(operation: str, provider: str, model: str, fixture_name: str) -> dict | None:
+def get_latest_result(operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> dict | None:
     """Get the most recent result file for a fixture (by mtime)."""
     safe_name = fixture_name.replace("/", "_")
-    model_dir = f"{provider}_{model}"
+    model_dir = f"{provider}_{model}_{thinking}"
     result_dir = RESULTS_DIR / operation / model_dir / safe_name
     if not result_dir.exists():
         return None
@@ -97,10 +97,10 @@ def get_latest_result(operation: str, provider: str, model: str, fixture_name: s
         return json.load(f)
 
 
-def should_run(fixture_path: Path, operation: str, provider: str, model: str, fixture_name: str) -> bool:
+def should_run(fixture_path: Path, operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> bool:
     """Check if eval needs to run (cache miss or hash mismatch)."""
     code_hash = get_code_hash()
-    result_path = get_result_path(operation, provider, model, fixture_name, code_hash)
+    result_path = get_result_path(operation, provider, model, fixture_name, code_hash, thinking)
     if not result_path.exists():
         return True
     try:
@@ -110,10 +110,10 @@ def should_run(fixture_path: Path, operation: str, provider: str, model: str, fi
         return True
 
 
-def save_result_new(result: dict, operation: str, provider: str, model: str, fixture_name: str) -> None:
+def save_result_new(result: dict, operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> None:
     """Save result to the new per-model directory structure."""
     code_hash = result.get("code_hash", get_code_hash())
-    result_path = get_result_path(operation, provider, model, fixture_name, code_hash)
+    result_path = get_result_path(operation, provider, model, fixture_name, code_hash, thinking)
     result_path.parent.mkdir(parents=True, exist_ok=True)
     with open(result_path, "w") as f:
         json.dump(result, f, indent=2, default=str)
@@ -599,6 +599,49 @@ def fixture_requires_vision(fixture: dict) -> bool:
     return False
 
 
+def run_preflight(eval_models: list[tuple]) -> bool:
+    """Run a cheap API call per model to validate credentials.
+
+    Returns True if all models pass, False if any fail.
+    """
+    from selko.services.llm_provider import ContentPart
+
+    print("Preflight: validating API credentials for each model...")
+    all_ok = True
+    seen = set()
+    for model_tuple in eval_models:
+        if len(model_tuple) == 3:
+            provider_name, model_name, thinking = model_tuple
+        else:
+            provider_name, model_name = model_tuple
+            thinking = "low"
+
+        # Only test each provider+model once (skip duplicate thinking levels)
+        key = (provider_name, model_name)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        try:
+            gateway = _create_gateway(provider_name, model_name, thinking=thinking)
+            from selko.services.llm_logging import LLMOperationType
+            response = gateway.call(
+                operation=LLMOperationType.EXTRACT_EVENTS,
+                contents=["Say 'ok' in one word."],
+                max_retries=1,
+            )
+            print(f"  OK  {provider_name}/{model_name} ({len(response.text)} chars)")
+        except Exception as e:
+            print(f"  FAIL {provider_name}/{model_name}: {e}")
+            all_ok = False
+
+    if all_ok:
+        print("Preflight: all models OK")
+    else:
+        print("Preflight: some models FAILED — fix credentials before running evals")
+    return all_ok
+
+
 # ---------------------------------------------------------------------------
 # Extract eval runner
 # ---------------------------------------------------------------------------
@@ -617,8 +660,8 @@ def run_extract_eval(
     fixture = load_fixture(fixture_path)
 
     # Cache check
-    if use_cache and not dry_run and not should_run(fixture_path, "extract", provider_name, model_name, fixture_name):
-        cached = get_latest_result("extract", provider_name, model_name, fixture_name)
+    if use_cache and not dry_run and not should_run(fixture_path, "extract", provider_name, model_name, fixture_name, thinking):
+        cached = get_latest_result("extract", provider_name, model_name, fixture_name, thinking)
         if cached:
             if verbose:
                 print(f"  [cached] {fixture_name}")
@@ -783,7 +826,7 @@ def run_extract_eval(
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
     }
 
-    save_result_new(result, "extract", provider_name, model_name, fixture_name)
+    save_result_new(result, "extract", provider_name, model_name, fixture_name, thinking)
     return result
 
 
@@ -804,8 +847,8 @@ def run_compare_eval(
     """Run compare (dedup) evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
 
-    if use_cache and not dry_run and not should_run(fixture_path, "compare", provider_name, model_name, fixture_name):
-        cached = get_latest_result("compare", provider_name, model_name, fixture_name)
+    if use_cache and not dry_run and not should_run(fixture_path, "compare", provider_name, model_name, fixture_name, thinking):
+        cached = get_latest_result("compare", provider_name, model_name, fixture_name, thinking)
         if cached:
             if verbose:
                 print(f"  [cached] {fixture_name}")
@@ -906,7 +949,7 @@ def run_compare_eval(
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
     }
 
-    save_result_new(result, "compare", provider_name, model_name, fixture_name)
+    save_result_new(result, "compare", provider_name, model_name, fixture_name, thinking)
     return result
 
 
@@ -927,8 +970,8 @@ def run_merge_eval(
     """Run merge evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
 
-    if use_cache and not dry_run and not should_run(fixture_path, "merge", provider_name, model_name, fixture_name):
-        cached = get_latest_result("merge", provider_name, model_name, fixture_name)
+    if use_cache and not dry_run and not should_run(fixture_path, "merge", provider_name, model_name, fixture_name, thinking):
+        cached = get_latest_result("merge", provider_name, model_name, fixture_name, thinking)
         if cached:
             if verbose:
                 print(f"  [cached] {fixture_name}")
@@ -1030,7 +1073,7 @@ def run_merge_eval(
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
     }
 
-    save_result_new(result, "merge", provider_name, model_name, fixture_name)
+    save_result_new(result, "merge", provider_name, model_name, fixture_name, thinking)
     return result
 
 
@@ -1243,9 +1286,13 @@ def _run_fixtures_parallel(fixtures, operation, run_fn, concurrency=10):
         return tracker.results
 
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
-        future_to_name = {executor.submit(run_fn, n, p): n for n, p in fixtures}
-        for future in as_completed(future_to_name):
-            name = future_to_name[future]
+        futures = {}
+        for name, path in fixtures:
+            future = executor.submit(run_fn, name, path)
+            futures[future] = name
+            time.sleep(0.2)  # Stagger submissions to avoid rate-limit bursts
+        for future in as_completed(futures):
+            name = futures[future]
             try:
                 tracker.record(future.result())
             except Exception as e:
@@ -2267,6 +2314,22 @@ Examples:
         help="Max concurrent fixture runs per model (default: 10, use 1 for sequential)",
     )
 
+    # Model filtering
+    parser.add_argument(
+        "--skip-models", type=str, default="",
+        help="Comma-separated list of provider names to skip (e.g., moonshot,zai)",
+    )
+
+    # Preflight
+    parser.add_argument(
+        "--preflight", action="store_true",
+        help="Run one cheap API call per model to validate credentials before full eval",
+    )
+    parser.add_argument(
+        "--no-preflight", action="store_true",
+        help="Skip automatic preflight check",
+    )
+
     # Validation and baseline
     parser.add_argument("--validate", action="store_true", help="Validate all fixture schemas")
     parser.add_argument("--compare-baseline", action="store_true", help="Compare latest vs previous code version results")
@@ -2393,10 +2456,35 @@ Examples:
         if args.merge:
             operations.append("merge")
 
+    # Handle preflight-only mode
+    if args.preflight and not args.all_models and not args.all:
+        filtered_models = list(EVAL_MODELS)
+        if args.skip_models:
+            skip_set = {s.strip().lower() for s in args.skip_models.split(",")}
+            filtered_models = [m for m in filtered_models if m[0].lower() not in skip_set]
+        run_preflight(filtered_models)
+        return
+
     # Multi-model mode
     if args.all_models:
         if not operations:
             operations = ["extract", "compare", "merge"]
+
+        # Apply --skip-models filter
+        filtered_models = list(EVAL_MODELS)
+        if args.skip_models:
+            skip_set = {s.strip().lower() for s in args.skip_models.split(",")}
+            before = len(filtered_models)
+            filtered_models = [m for m in filtered_models if m[0].lower() not in skip_set]
+            skipped = before - len(filtered_models)
+            if skipped:
+                print(f"Skipping {skipped} model configs (providers: {args.skip_models})")
+
+        # Run preflight unless --no-preflight
+        if not args.no_preflight and not args.dry_run:
+            if not run_preflight(filtered_models):
+                print("Aborting due to preflight failures. Use --no-preflight to skip.")
+                sys.exit(1)
 
         use_cache = args.use_cache and not args.no_cache
         results = run_all_models(
@@ -2405,6 +2493,7 @@ Examples:
             use_cache=use_cache,
             verbose=args.verbose,
             dry_run=args.dry_run,
+            models=filtered_models,
             concurrency=args.concurrency,
         )
         if not args.dry_run:

@@ -282,8 +282,11 @@ PROVIDER_DEFAULT_MODEL = {
 
 def _resize_image_if_needed(
     data: bytes, mime_type: str, max_dimension: int = 2048
-) -> bytes:
+) -> Optional[bytes]:
     """Resize image if either dimension exceeds max_dimension.
+
+    Filters out degenerate images (tracking pixels, spacers) that are
+    too small for LLM providers to process.
 
     Args:
         data: Raw image bytes.
@@ -291,7 +294,7 @@ def _resize_image_if_needed(
         max_dimension: Maximum allowed dimension in pixels.
 
     Returns:
-        Original or resized image bytes.
+        Original or resized image bytes, or None for degenerate images.
     """
     if not mime_type.startswith("image/"):
         return data
@@ -301,6 +304,12 @@ def _resize_image_if_needed(
 
         img = Image.open(io.BytesIO(data))
         w, h = img.size
+
+        # Skip degenerate images (tracking pixels, spacers)
+        MIN_DIMENSION = 10
+        if w < MIN_DIMENSION or h < MIN_DIMENSION:
+            logger.debug(f"Skipping degenerate image ({w}x{h})")
+            return None
 
         if w <= max_dimension and h <= max_dimension:
             return data
@@ -369,15 +378,22 @@ def _sanitize_schema_for_strict(schema: dict) -> dict:
     schema = copy.deepcopy(schema)
     defs = schema.pop("$defs", {})
 
+    # Track recursion to avoid infinite loops with circular $ref
+    _resolving: set[str] = set()
+
     def _resolve(node: Any) -> Any:
         if isinstance(node, dict):
             # Resolve $ref
             if "$ref" in node:
                 ref_path = node["$ref"]  # e.g. "#/$defs/CalendarEvent"
                 ref_name = ref_path.split("/")[-1]
-                if ref_name in defs:
-                    return _resolve(copy.deepcopy(defs[ref_name]))
-                return node
+                if ref_name in defs and ref_name not in _resolving:
+                    _resolving.add(ref_name)
+                    resolved = _resolve(copy.deepcopy(defs[ref_name]))
+                    _resolving.discard(ref_name)
+                    return resolved
+                # Unresolvable ref — strip it and return empty object
+                return {"type": "object"}
 
             resolved = {}
             for key, value in node.items():
@@ -411,8 +427,95 @@ def _sanitize_schema_for_strict(schema: dict) -> dict:
         return node
 
     result = _resolve(schema)
-    # Keep root-level title if present (some APIs expect it)
+
+    # Final validation: assert no $ref or $defs remain in the output
+    def _assert_no_refs(node: Any, path: str = "") -> None:
+        if isinstance(node, dict):
+            if "$ref" in node:
+                logger.warning(f"Unresolved $ref at {path}: {node['$ref']}")
+            if "$defs" in node:
+                logger.warning(f"Remaining $defs at {path}")
+            for key, value in node.items():
+                _assert_no_refs(value, f"{path}.{key}")
+        elif isinstance(node, list):
+            for i, item in enumerate(node):
+                _assert_no_refs(item, f"{path}[{i}]")
+
+    _assert_no_refs(result)
+
     return result
+
+
+def _sanitize_schema_for_gemini(schema: dict) -> dict:
+    """Sanitize a JSON schema for Gemini SDK compatibility.
+
+    The Gemini SDK's Schema class doesn't accept anyOf patterns.
+    Converts anyOf: [{"type": "string"}, {"type": "null"}] to
+    {"type": "string", "nullable": true} which Gemini accepts.
+
+    Also resolves $ref/$defs and removes unsupported keywords.
+    """
+    import copy
+
+    schema = copy.deepcopy(schema)
+    defs = schema.pop("$defs", {})
+
+    _resolving: set[str] = set()
+
+    def _resolve(node: Any) -> Any:
+        if isinstance(node, dict):
+            # Resolve $ref
+            if "$ref" in node:
+                ref_path = node["$ref"]
+                ref_name = ref_path.split("/")[-1]
+                if ref_name in defs and ref_name not in _resolving:
+                    _resolving.add(ref_name)
+                    resolved = _resolve(copy.deepcopy(defs[ref_name]))
+                    _resolving.discard(ref_name)
+                    return resolved
+                return {"type": "STRING"}
+
+            resolved = {}
+            for key, value in node.items():
+                resolved[key] = _resolve(value)
+
+            # Convert anyOf with null to nullable
+            if "anyOf" in resolved:
+                any_of = resolved["anyOf"]
+                non_null = [s for s in any_of if s.get("type") != "null"]
+                has_null = any(s.get("type") == "null" for s in any_of)
+                if has_null and len(non_null) == 1:
+                    # Replace anyOf with the non-null type + nullable
+                    merged = dict(non_null[0])
+                    merged["nullable"] = True
+                    # Preserve other keys from resolved (except anyOf)
+                    del resolved["anyOf"]
+                    resolved.update(merged)
+                elif len(non_null) == 1 and not has_null:
+                    # Single non-null anyOf — just unwrap
+                    del resolved["anyOf"]
+                    resolved.update(non_null[0])
+
+            # Remove unsupported keywords
+            for key in ("title", "default", "$defs", "additionalProperties"):
+                resolved.pop(key, None)
+
+            # Recurse into properties
+            if "properties" in resolved:
+                resolved["properties"] = {
+                    k: _resolve(v) for k, v in resolved["properties"].items()
+                }
+
+            # Recurse into array items
+            if "items" in resolved:
+                resolved["items"] = _resolve(resolved["items"])
+
+            return resolved
+        elif isinstance(node, list):
+            return [_resolve(item) for item in node]
+        return node
+
+    return _resolve(schema)
 
 
 class LLMProvider(ABC):
@@ -481,6 +584,8 @@ class GeminiProvider(LLMProvider):
                     resized = _resize_image_if_needed(
                         converted.data, converted.mime_type
                     )
+                    if resized is None:
+                        continue
                     gemini_parts.append({
                         "inline_data": {
                             "mime_type": converted.mime_type,
@@ -492,7 +597,7 @@ class GeminiProvider(LLMProvider):
         config_kwargs: dict[str, Any] = {}
         if json_schema is not None:
             config_kwargs["response_mime_type"] = "application/json"
-            config_kwargs["response_schema"] = json_schema
+            config_kwargs["response_schema"] = _sanitize_schema_for_gemini(json_schema)
         if self.thinking != "none":
             config_kwargs["thinking_config"] = types.ThinkingConfig(
                 thinking_level=self.thinking
@@ -574,6 +679,8 @@ class OpenAICompatibleProvider(LLMProvider):
                     resized = _resize_image_if_needed(
                         converted.data, converted.mime_type
                     )
+                    if resized is None:
+                        continue
                     b64 = base64.b64encode(resized).decode("utf-8")
                     data_url = f"data:{converted.mime_type};base64,{b64}"
                     message_content.append({
@@ -635,6 +742,7 @@ class OpenAICompatibleProvider(LLMProvider):
         # Extract response
         choice = response.choices[0]
         text = choice.message.content or ""
+        text = _strip_markdown_json(text)
 
         # Extract token counts
         prompt_tokens = None
@@ -700,6 +808,8 @@ class AnthropicProvider(LLMProvider):
                         resized = _resize_image_if_needed(
                             converted.data, converted.mime_type
                         )
+                        if resized is None:
+                            continue
                         b64 = base64.b64encode(resized).decode("utf-8")
                         message_content.append({
                             "type": "image",

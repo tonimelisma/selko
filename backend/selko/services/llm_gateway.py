@@ -194,7 +194,7 @@ class LLMGateway:
                 error_str = str(e).lower()
 
                 # Check for rate limiting
-                if self._is_rate_limit_error(error_str):
+                if self._is_retryable_error(error_str):
                     if attempt < max_retries - 1:
                         wait_time = (2**attempt) + 1  # 1, 3, 5 seconds
                         logger.warning(
@@ -257,19 +257,23 @@ class LLMGateway:
             result += f"\n[{attachment_count} attachment(s) included]"
         return result
 
-    def _is_rate_limit_error(self, error_str: str) -> bool:
-        """Check if error is a rate limit error.
+    def _is_retryable_error(self, error_str: str) -> bool:
+        """Check if error is retryable (rate limit or transient server error).
 
         Args:
             error_str: Lowercase error string.
 
         Returns:
-            True if rate limit error.
+            True if the error should be retried with backoff.
         """
         return (
             "429" in error_str
             or "rate limit" in error_str
             or "quota" in error_str
+            or "503" in error_str
+            or "unavailable" in error_str
+            or "overloaded" in error_str
+            or "high demand" in error_str
         )
 
     def _classify_error(self, error_str: str) -> LLMErrorType:
@@ -281,7 +285,7 @@ class LLMGateway:
         Returns:
             Error type classification.
         """
-        if self._is_rate_limit_error(error_str):
+        if self._is_retryable_error(error_str):
             return LLMErrorType.RATE_LIMIT
         elif "timeout" in error_str:
             return LLMErrorType.TIMEOUT
