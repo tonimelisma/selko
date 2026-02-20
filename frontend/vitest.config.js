@@ -30,5 +30,9 @@ export default defineConfig({
 	},
 	resolve: {
 		conditions: ['browser']
+	},
+	// Ensure intl-messageformat and related packages resolve correctly in test environment
+	ssr: {
+		noExternal: ['svelte-i18n', 'intl-messageformat', '@formatjs/icu-messageformat-parser', '@formatjs/fast-memoize', '@formatjs/ecma402-abstract']
 	}
 });

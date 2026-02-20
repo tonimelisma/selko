@@ -1,5 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
+	import { _ } from 'svelte-i18n';
 	import { supabase } from '$lib/supabase.js';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
@@ -29,14 +30,14 @@
 </script>
 
 <svelte:head>
-	<title>Sign in - Selko</title>
+	<title>{$_('auth.signInTitle')}</title>
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-screen px-4">
 	<div class="card w-full max-w-sm bg-base-200" style="box-shadow: 0 1px 3px rgba(0,0,0,0.06)">
 		<div class="card-body">
-			<h1 class="text-4xl font-semibold text-center tracking-tight text-primary">Selko</h1>
-			<p class="text-center text-base-content/70 text-sm mt-1">Clear your mind.</p>
+			<h1 class="text-4xl font-semibold text-center tracking-tight text-primary">{$_('common.appName')}</h1>
+			<p class="text-center text-base-content/70 text-sm mt-1">{$_('common.tagline')}</p>
 
 			<form onsubmit={handleLogin} class="space-y-4 mt-6">
 				{#if error}
@@ -45,28 +46,28 @@
 
 				<div class="form-control">
 					<label class="label" for="email">
-						<span class="label-text">Email</span>
+						<span class="label-text">{$_('auth.emailLabel')}</span>
 					</label>
 					<input
 						id="email"
 						type="email"
 						bind:value={email}
 						class="input input-bordered w-full"
-						placeholder="you@example.com"
+						placeholder={$_('auth.emailPlaceholder')}
 						required
 					/>
 				</div>
 
 				<div class="form-control">
 					<label class="label" for="password">
-						<span class="label-text">Password</span>
+						<span class="label-text">{$_('auth.passwordLabel')}</span>
 					</label>
 					<input
 						id="password"
 						type="password"
 						bind:value={password}
 						class="input input-bordered w-full"
-						placeholder="Your password"
+						placeholder={$_('auth.passwordPlaceholder')}
 						required
 					/>
 				</div>
@@ -74,16 +75,16 @@
 				<button type="submit" class="btn btn-primary w-full" disabled={isLoading} aria-busy={isLoading}>
 					{#if isLoading}
 						<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-						<span class="sr-only">Loading</span>
+						<span class="sr-only">{$_('common.loading')}</span>
 					{:else}
-						Sign in
+						{$_('auth.signIn')}
 					{/if}
 				</button>
 			</form>
 
 			<p class="text-center text-sm mt-4">
-				Don't have an account?
-				<a href="/register" class="link link-primary">Sign up</a>
+				{$_('auth.noAccount')}
+				<a href="/register" class="link link-primary">{$_('auth.signUp')}</a>
 			</p>
 		</div>
 	</div>
