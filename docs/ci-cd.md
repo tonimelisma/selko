@@ -41,7 +41,6 @@ Deploy to Staging (ATOMIC)
     |-- 3. Deploy frontend to Render (auto-deploys via GitHub integration)
     |
     +-- Integration Tests (Staging backend) - real Gmail API + real LLM
-    +-- Frontend E2E Tests (Staging) - tests deployed frontend
     |
 Staging environment running latest code
 ```
@@ -76,10 +75,9 @@ Production environment updated
 |-----|---------|-------------|--------------|---------|
 | `unit-tests` | Every push/PR | `backend/**`, `cli/**`, `pyproject.toml`, `uv.lock` | None | Fast backend validation, no external services |
 | `android-unit-tests` | Every push/PR | `android/**` | None | Android unit tests via Gradle |
-| `frontend-unit-tests` | Every push/PR | `frontend/**` | None | Frontend unit tests via Vitest |
+| `frontend-unit-tests` | Every push/PR (frontend-tests.yml) | `frontend/**` | None | Frontend unit + build + svelte-check via dedicated workflow |
 | `deploy-staging` | Main push only | `backend/**` or `supabase/**` | unit-tests, android-unit-tests, frontend-unit-tests | Deploy DB + API + frontend to staging |
 | `integration-tests-staging` | Main push only | — | deploy-staging | Validate deployed staging backend (parallelized with pytest-xdist) |
-| `frontend-e2e-staging` | Main push only | — | deploy-staging | E2E tests against deployed staging frontend |
 | `deploy-production` | Manual/tag only | — | None | Deploy DB + API to production |
 
 ## Required GitHub Secrets
