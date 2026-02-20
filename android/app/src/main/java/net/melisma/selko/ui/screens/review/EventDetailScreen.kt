@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -62,9 +61,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import net.melisma.selko.ui.theme.SelkoOnSuccess
-import net.melisma.selko.ui.theme.SelkoSuccess
-import net.melisma.selko.ui.theme.SelkoSuccessDark
+import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -141,8 +138,8 @@ fun EventDetailScreen(
                             onClick = { viewModel.approveEvent() },
                             enabled = !uiState.isApproving && !uiState.isRejecting,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSystemInDarkTheme()) SelkoSuccessDark else SelkoSuccess,
-                                contentColor = SelkoOnSuccess
+                                containerColor = SelkoTheme.colors.success,
+                                contentColor = SelkoTheme.colors.onSuccess
                             ),
                             shape = MaterialTheme.shapes.medium
                         ) {
@@ -150,7 +147,7 @@ fun EventDetailScreen(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
                                     strokeWidth = 2.dp,
-                                    color = SelkoOnSuccess
+                                    color = SelkoTheme.colors.onSuccess
                                 )
                             } else {
                                 Icon(

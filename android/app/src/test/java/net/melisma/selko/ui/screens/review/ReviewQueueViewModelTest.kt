@@ -24,6 +24,7 @@ import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.RepositoryResult
 import net.melisma.selko.data.repository.SenderRuleRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -130,7 +131,7 @@ class ReviewQueueViewModelTest {
         )
         coEvery {
             senderRuleRepository.createRule("sender@example.com", null, "ignore")
-        } returns Result.success(testRule)
+        } returns RepositoryResult.Success(testRule)
         coEvery { eventRepository.rejectEvent(any()) } returns
                 EventResult.Success(testEvents[0].copy(status = EventStatus.REJECTED))
 
@@ -155,7 +156,7 @@ class ReviewQueueViewModelTest {
         )
         coEvery {
             senderRuleRepository.createRule("sender@example.com", null, "auto_approve")
-        } returns Result.success(testRule)
+        } returns RepositoryResult.Success(testRule)
         coEvery { eventRepository.approveEvent(any()) } returns
                 EventResult.Success(testEvents[0].copy(status = EventStatus.APPROVED))
 
@@ -173,7 +174,7 @@ class ReviewQueueViewModelTest {
     fun `ignoreSender shows error on failure`() = runTest {
         coEvery {
             senderRuleRepository.createRule(any(), any(), any())
-        } returns Result.failure(Exception("Network error"))
+        } returns RepositoryResult.Error("Network error")
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -191,7 +192,7 @@ class ReviewQueueViewModelTest {
     fun `autoApproveSender shows error on failure`() = runTest {
         coEvery {
             senderRuleRepository.createRule(any(), any(), any())
-        } returns Result.failure(Exception("Network error"))
+        } returns RepositoryResult.Error("Network error")
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -216,7 +217,7 @@ class ReviewQueueViewModelTest {
         )
         coEvery {
             senderRuleRepository.createRule("sender@example.com", null, "ignore")
-        } returns Result.success(testRule)
+        } returns RepositoryResult.Success(testRule)
         coEvery { eventRepository.rejectEvent(any()) } returns
                 EventResult.Success(testEvents[0].copy(status = EventStatus.REJECTED))
 
