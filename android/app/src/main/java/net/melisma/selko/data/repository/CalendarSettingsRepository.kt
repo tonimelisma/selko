@@ -15,21 +15,21 @@ data class CalendarSettings(
 
 class CalendarSettingsRepository(private val supabaseClient: SupabaseClient) {
 
-    suspend fun getSettings(): Result<CalendarSettings?> {
+    suspend fun getSettings(): RepositoryResult<CalendarSettings?> {
         return try {
             val settings = supabaseClient.from("user_calendar_settings")
                 .select()
                 .decodeSingleOrNull<CalendarSettings>()
-            Result.success(settings)
+            RepositoryResult.Success(settings)
         } catch (e: Exception) {
-            Result.failure(e)
+            RepositoryResult.Error(e.message ?: "Failed to fetch calendar settings")
         }
     }
 
     suspend fun updateSettings(
         targetCalendarId: String?,
         defaultInvitees: String?
-    ): Result<CalendarSettings> {
+    ): RepositoryResult<CalendarSettings> {
         return try {
             val updates = mutableMapOf<String, Any?>()
             targetCalendarId?.let { updates["target_calendar_id"] = it }
@@ -40,9 +40,9 @@ class CalendarSettingsRepository(private val supabaseClient: SupabaseClient) {
                     select()
                 }
                 .decodeSingle<CalendarSettings>()
-            Result.success(settings)
+            RepositoryResult.Success(settings)
         } catch (e: Exception) {
-            Result.failure(e)
+            RepositoryResult.Error(e.message ?: "Failed to update calendar settings")
         }
     }
 }

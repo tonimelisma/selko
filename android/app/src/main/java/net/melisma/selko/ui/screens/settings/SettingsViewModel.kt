@@ -16,6 +16,7 @@ import net.melisma.selko.data.repository.CalendarSettings
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.RepositoryResult
 import net.melisma.selko.data.repository.SenderRuleRepository
 
 data class SettingsUiState(
@@ -79,9 +80,9 @@ class SettingsViewModel(
             }
 
             // Load calendar settings
-            try {
-                val settingsResult = calendarSettingsRepository.getSettings()
-                settingsResult.onSuccess { settings ->
+            when (val result = calendarSettingsRepository.getSettings()) {
+                is RepositoryResult.Success -> {
+                    val settings = result.data
                     _uiState.update {
                         it.copy(
                             calendarSettings = settings,
@@ -90,8 +91,9 @@ class SettingsViewModel(
                         )
                     }
                 }
-            } catch (e: Exception) {
-                // Settings may not exist yet
+                is RepositoryResult.Error -> {
+                    // Settings may not exist yet
+                }
             }
 
             _uiState.update { it.copy(isLoading = false) }
@@ -156,11 +158,11 @@ class SettingsViewModel(
     fun loadRules() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingRules = true) }
-            senderRuleRepository.fetchRules()
-                .onSuccess { rules ->
-                    _uiState.update { it.copy(rules = rules, isLoadingRules = false) }
+            when (val result = senderRuleRepository.fetchRules()) {
+                is RepositoryResult.Success -> {
+                    _uiState.update { it.copy(rules = result.data, isLoadingRules = false) }
                 }
-                .onFailure {
+                is RepositoryResult.Error -> {
                     _uiState.update {
                         it.copy(
                             isLoadingRules = false,
@@ -168,26 +170,29 @@ class SettingsViewModel(
                         )
                     }
                 }
+            }
         }
     }
 
     fun createRule(senderEmail: String?, senderDomain: String?, action: String) {
         viewModelScope.launch {
-            senderRuleRepository.createRule(senderEmail, senderDomain, action)
-                .onSuccess { loadRules() }
-                .onFailure {
+            when (senderRuleRepository.createRule(senderEmail, senderDomain, action)) {
+                is RepositoryResult.Success -> loadRules()
+                is RepositoryResult.Error -> {
                     _uiState.update { it.copy(errorMessage = "Failed to create rule") }
                 }
+            }
         }
     }
 
     fun deleteRule(id: String) {
         viewModelScope.launch {
-            senderRuleRepository.deleteRule(id)
-                .onSuccess { loadRules() }
-                .onFailure {
+            when (senderRuleRepository.deleteRule(id)) {
+                is RepositoryResult.Success -> loadRules()
+                is RepositoryResult.Error -> {
                     _uiState.update { it.copy(errorMessage = "Failed to delete rule") }
                 }
+            }
         }
     }
 

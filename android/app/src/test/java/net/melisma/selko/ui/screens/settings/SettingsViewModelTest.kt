@@ -17,6 +17,7 @@ import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.RepositoryResult
 import net.melisma.selko.data.repository.SenderRuleRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -66,7 +67,7 @@ class SettingsViewModelTest {
         coEvery { integrationRepository.fetchIntegrations() } returns
                 IntegrationResult.Success(emptyList())
         coEvery { calendarSettingsRepository.getSettings() } returns
-                Result.success(null)
+                RepositoryResult.Success(null)
         coEvery { backendApiClient.listCalendars() } returns
                 Result.success(emptyList())
     }
@@ -88,7 +89,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `loadRules fetches and updates state`() = runTest {
-        coEvery { senderRuleRepository.fetchRules() } returns Result.success(testRules)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(testRules)
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -105,7 +106,7 @@ class SettingsViewModelTest {
     @Test
     fun `loadRules shows error on failure`() = runTest {
         coEvery { senderRuleRepository.fetchRules() } returns
-                Result.failure(Exception("Network error"))
+                RepositoryResult.Error("Network error")
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -127,17 +128,17 @@ class SettingsViewModelTest {
             action = "ignore",
             createdAt = "2026-01-03T00:00:00Z"
         )
-        coEvery { senderRuleRepository.fetchRules() } returns Result.success(testRules)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(testRules)
         coEvery {
             senderRuleRepository.createRule("new@example.com", null, "ignore")
-        } returns Result.success(newRule)
+        } returns RepositoryResult.Success(newRule)
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         // After init, fetchRules has been called once
         coEvery { senderRuleRepository.fetchRules() } returns
-                Result.success(testRules + newRule)
+                RepositoryResult.Success(testRules + newRule)
 
         viewModel.createRule("new@example.com", null, "ignore")
         testDispatcher.scheduler.advanceUntilIdle()
@@ -149,10 +150,10 @@ class SettingsViewModelTest {
 
     @Test
     fun `createRule shows error on failure`() = runTest {
-        coEvery { senderRuleRepository.fetchRules() } returns Result.success(emptyList())
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
         coEvery {
             senderRuleRepository.createRule(any(), any(), any())
-        } returns Result.failure(Exception("Failed"))
+        } returns RepositoryResult.Error("Failed")
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -168,14 +169,14 @@ class SettingsViewModelTest {
 
     @Test
     fun `deleteRule calls repository and reloads`() = runTest {
-        coEvery { senderRuleRepository.fetchRules() } returns Result.success(testRules)
-        coEvery { senderRuleRepository.deleteRule("rule-1") } returns Result.success(Unit)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(testRules)
+        coEvery { senderRuleRepository.deleteRule("rule-1") } returns RepositoryResult.Success(Unit)
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         coEvery { senderRuleRepository.fetchRules() } returns
-                Result.success(testRules.filter { it.id != "rule-1" })
+                RepositoryResult.Success(testRules.filter { it.id != "rule-1" })
 
         viewModel.deleteRule("rule-1")
         testDispatcher.scheduler.advanceUntilIdle()
@@ -186,9 +187,9 @@ class SettingsViewModelTest {
 
     @Test
     fun `deleteRule shows error on failure`() = runTest {
-        coEvery { senderRuleRepository.fetchRules() } returns Result.success(testRules)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(testRules)
         coEvery { senderRuleRepository.deleteRule(any()) } returns
-                Result.failure(Exception("Failed"))
+                RepositoryResult.Error("Failed")
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -204,7 +205,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `rules are loaded on init`() = runTest {
-        coEvery { senderRuleRepository.fetchRules() } returns Result.success(testRules)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(testRules)
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()

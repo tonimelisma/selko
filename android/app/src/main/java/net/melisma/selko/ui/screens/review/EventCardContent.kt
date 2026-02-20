@@ -1,7 +1,6 @@
 package net.melisma.selko.ui.screens.review
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,10 +42,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.data.model.CalendarEvent
-import net.melisma.selko.ui.theme.SelkoError
-import net.melisma.selko.ui.theme.SelkoErrorDark
-import net.melisma.selko.ui.theme.SelkoSuccess
-import net.melisma.selko.ui.theme.SelkoSuccessDark
+import net.melisma.selko.ui.theme.SelkoTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -188,7 +184,7 @@ fun EventListItem(
                     FilledTonalButton(
                         onClick = onApprove,
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (isSystemInDarkTheme()) SelkoSuccessDark else SelkoSuccess,
+                            containerColor = SelkoTheme.colors.success,
                             contentColor = Color.White
                         ),
                         shape = MaterialTheme.shapes.medium
@@ -243,8 +239,8 @@ fun EventListItem(
 @Composable
 fun SwipeBackground(dismissState: SwipeToDismissBoxState) {
     val color = when (dismissState.targetValue) {
-        SwipeToDismissBoxValue.StartToEnd -> if (isSystemInDarkTheme()) SelkoSuccessDark else SelkoSuccess
-        SwipeToDismissBoxValue.EndToStart -> if (isSystemInDarkTheme()) SelkoErrorDark else SelkoError
+        SwipeToDismissBoxValue.StartToEnd -> SelkoTheme.colors.success
+        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
         else -> Color.Transparent
     }
 
