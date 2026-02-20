@@ -5,6 +5,7 @@
 	import { supabase } from '$lib/supabase.js';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
 	let { children } = $props();
 	/** @type {any} */
@@ -36,9 +37,8 @@
 </svelte:head>
 
 {#if isLoading}
-	<div class="flex items-center justify-center min-h-screen" aria-busy="true">
-		<span class="loading loading-spinner loading-lg" aria-hidden="true"></span>
-		<span class="sr-only">Loading</span>
+	<div class="min-h-screen" aria-busy="true">
+		<LoadingSpinner class="min-h-screen" />
 	</div>
 {:else if currentUser}
 	<div class="min-h-screen flex flex-col overflow-x-hidden">

@@ -12,6 +12,8 @@
 	import SenderHeader from '$lib/components/SenderHeader.svelte';
 	import EventCard from '$lib/components/EventCard.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
@@ -190,10 +192,7 @@
 {/if}
 
 {#if isLoadingIntegrations}
-	<div class="flex items-center justify-center py-16" aria-busy="true" aria-live="polite">
-		<span class="loading loading-spinner loading-lg" aria-hidden="true"></span>
-		<span class="sr-only">Loading</span>
-	</div>
+	<LoadingSpinner />
 {:else if !fullyConnected}
 	<IntegrationStatus
 		integrations={integrationsList}
@@ -210,10 +209,7 @@
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 	</div>
 {:else if error}
-	<div class="alert alert-error mb-4" role="alert" aria-live="polite">
-		<span>{error}</span>
-		<button class="btn btn-sm btn-ghost" onclick={loadEvents}>Retry</button>
-	</div>
+	<ErrorAlert message={error} onretry={loadEvents} />
 {:else if events.length === 0}
 	<EmptyState heading="All caught up!" description="No events pending review. Check back later for new events from your emails." />
 {:else}

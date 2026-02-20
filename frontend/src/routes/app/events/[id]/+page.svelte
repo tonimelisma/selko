@@ -10,6 +10,8 @@
 	import { syncEventToCalendar } from '$lib/api/backend.js';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
 	let eventId = $state('');
 	/** @type {any} */
@@ -154,14 +156,9 @@
 </script>
 
 {#if isLoading}
-	<div class="flex items-center justify-center py-16">
-		<span class="loading loading-spinner loading-lg"></span>
-	</div>
+	<LoadingSpinner />
 {:else if error && !event}
-	<div class="alert alert-error">
-		<span>{error}</span>
-		<a href="/app" class="btn btn-sm btn-ghost">Back to Review</a>
-	</div>
+	<ErrorAlert message={error} onaction={() => goto('/app')} actionLabel="Back to Review" />
 {:else if event}
 	<PageHeader title="Edit Event" backHref="/app">
 		{#snippet children()}
@@ -170,9 +167,7 @@
 	</PageHeader>
 
 	{#if error}
-		<div class="alert alert-error mb-4">
-			<span>{error}</span>
-		</div>
+		<ErrorAlert message={error} />
 	{/if}
 
 	<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">

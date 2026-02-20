@@ -1,5 +1,6 @@
 <script>
 	import { supabase } from '$lib/supabase.js';
+	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
 	let email = $state('');
 	let password = $state('');
@@ -60,9 +61,7 @@
 			{:else}
 				<form onsubmit={handleRegister} class="space-y-4 mt-6">
 					{#if error}
-						<div id="register-error" class="alert alert-error" role="alert" aria-live="polite">
-							<span>{error}</span>
-						</div>
+						<ErrorAlert message={error} />
 					{/if}
 
 					<div class="form-control">
@@ -77,7 +76,6 @@
 							placeholder="you@example.com"
 							required
 							aria-invalid={!!error}
-							aria-describedby={error ? 'register-error' : undefined}
 						/>
 					</div>
 
@@ -93,7 +91,6 @@
 							placeholder="At least 6 characters"
 							required
 							aria-invalid={!!error}
-							aria-describedby={error ? 'register-error' : undefined}
 						/>
 					</div>
 
@@ -109,7 +106,6 @@
 							placeholder="Confirm your password"
 							required
 							aria-invalid={!!error}
-							aria-describedby={error ? 'register-error' : undefined}
 						/>
 					</div>
 
