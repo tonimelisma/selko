@@ -25,7 +25,12 @@ from selko.api.schemas.emails import (
     EmailSyncResponse,
 )
 from selko.config import load_config
-from selko.services.emails import EmailError, fetch_emails_for_user
+from selko.services.emails import (
+    EmailError,
+    ExpiredCredentialsError,
+    NoGmailIntegrationError,
+    fetch_emails_for_user,
+)
 from selko.services.events import EventsError, process_email_for_events
 from selko.services.llm_gateway import LLMGateway
 from selko.services.quotas import QuotaExceededError, QuotaService
@@ -93,19 +98,18 @@ async def sync_emails(
             attachments_downloaded=result["attachments_downloaded"],
         )
 
+    except NoGmailIntegrationError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Gmail integration found. Connect Gmail first."),
+        )
+    except ExpiredCredentialsError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=error_detail(ErrorCode.CREDENTIALS_EXPIRED, "Gmail credentials expired or revoked. Please reconnect Gmail."),
+        )
     except EmailError as e:
         logger.error(f"Failed to sync emails: {e}")
-        error_msg = str(e)
-        if "No Gmail integration" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Gmail integration found. Connect Gmail first."),
-            )
-        if "expired or revoked" in error_msg or "unauthorized_client" in error_msg.lower():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=error_detail(ErrorCode.CREDENTIALS_EXPIRED, "Gmail credentials expired or revoked. Please reconnect Gmail."),
-            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail(ErrorCode.SYNC_FAILED, "Failed to sync emails"),

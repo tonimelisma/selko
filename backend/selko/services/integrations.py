@@ -6,7 +6,7 @@ Uses RLS - all operations are scoped to the authenticated user.
 
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from google.oauth2.credentials import Credentials
@@ -28,13 +28,15 @@ CALENDAR_SCOPES = [
     "https://www.googleapis.com/auth/calendar.events",
 ]
 
-# In-memory state storage for OAuth flow (MVP)
-# Maps state -> {user_id, provider, created_at, redirect_uri}
-_oauth_states: dict[str, dict] = {}
-
 
 class IntegrationError(Exception):
     """Raised when integration operations fail."""
+
+    pass
+
+
+class OAuthStateError(IntegrationError):
+    """Raised when OAuth state validation fails (invalid or expired)."""
 
     pass
 
@@ -165,7 +167,7 @@ def update_integration_status(
 
     try:
         client.table("integrations").update(
-            {"status": status, "updated_at": datetime.utcnow().isoformat()}
+            {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}
         ).eq("user_id", user_id).eq("provider", provider).execute()
         logger.debug(f"Updated {provider} integration status to {status}")
     except PostgrestAPIError as e:
@@ -196,7 +198,7 @@ def update_oauth_credentials(
                 "access_token": credentials.token,
                 "token_expiry": token_expiry,
                 "status": "active",
-                "updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }
         ).eq("user_id", user_id).eq("provider", provider).execute()
         logger.debug(f"Updated {provider} OAuth tokens")
@@ -210,23 +212,141 @@ def get_credentials(
     provider: str,
 ) -> Optional[Credentials]:
     """Get OAuth credentials for a specific user and provider.
-    
+
     This is a simplified version that doesn't require Config since it's called
     from API context where we already have an authenticated client.
-    
+
     Args:
         client: Authenticated Supabase client.
         user_id: User ID (not used, client auth handles this).
         provider: Integration provider name.
-        
+
     Returns:
         Google Credentials object, or None if no integration found.
     """
     # Load config to get client_id/secret
     from selko.config import load_config
     config = load_config()
-    
+
     return get_oauth_credentials(client, config, provider)
+
+
+# --- OAuth state management (DB-backed) ---
+
+
+def _get_service_client_for_oauth() -> Client:
+    """Get a service role client for OAuth state operations.
+
+    OAuth states table uses service_role RLS policy, so we need a
+    service role client to read/write states.
+    """
+    from selko.config import load_config
+    from selko.services.auth import get_service_client
+    config = load_config()
+    return get_service_client(config)
+
+
+def _save_oauth_state(
+    state: str,
+    user_id: str,
+    provider: str,
+    redirect_uri: str,
+) -> None:
+    """Save OAuth state to database.
+
+    Args:
+        state: Cryptographically random state token.
+        user_id: User ID initiating the flow.
+        provider: OAuth provider name.
+        redirect_uri: Callback URI for the flow.
+    """
+    client = _get_service_client_for_oauth()
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=10)
+
+    try:
+        client.table("oauth_states").insert({
+            "state": state,
+            "user_id": user_id,
+            "provider": provider,
+            "redirect_uri": redirect_uri,
+            "created_at": now.isoformat(),
+            "expires_at": expires_at.isoformat(),
+        }).execute()
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to save OAuth state: {e.message}") from e
+
+
+def _validate_and_consume_oauth_state(state: str) -> dict:
+    """Validate OAuth state and consume it (delete after use).
+
+    Args:
+        state: State parameter from callback.
+
+    Returns:
+        Dict with user_id, provider, redirect_uri.
+
+    Raises:
+        OAuthStateError: If state is invalid or expired.
+    """
+    client = _get_service_client_for_oauth()
+
+    try:
+        result = (
+            client.table("oauth_states")
+            .select("*")
+            .eq("state", state)
+            .maybe_single()
+            .execute()
+        )
+
+        if result is None or not result.data:
+            raise OAuthStateError("Invalid or expired state parameter")
+
+        row = result.data
+
+        # Check expiry
+        expires_at = datetime.fromisoformat(row["expires_at"])
+        if datetime.now(timezone.utc) > expires_at:
+            # Clean up expired state
+            client.table("oauth_states").delete().eq("state", state).execute()
+            raise OAuthStateError("State parameter expired")
+
+        # Consume state (one-time use)
+        client.table("oauth_states").delete().eq("state", state).execute()
+
+        return {
+            "user_id": row["user_id"],
+            "provider": row["provider"],
+            "redirect_uri": row["redirect_uri"],
+        }
+
+    except OAuthStateError:
+        raise
+    except APIError as e:
+        if e.code == "204":
+            raise OAuthStateError("Invalid or expired state parameter") from e
+        raise IntegrationError(f"Failed to validate OAuth state: {e.message}") from e
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to validate OAuth state: {e.message}") from e
+
+
+def _clean_expired_oauth_states() -> None:
+    """Clean up expired OAuth states from the database."""
+    try:
+        client = _get_service_client_for_oauth()
+        now = datetime.now(timezone.utc).isoformat()
+        result = (
+            client.table("oauth_states")
+            .delete()
+            .lt("expires_at", now)
+            .execute()
+        )
+        if result.data:
+            logger.debug(f"Cleaned up {len(result.data)} expired OAuth states")
+    except Exception as e:
+        # Non-critical cleanup — log and continue
+        logger.warning(f"Failed to clean up expired OAuth states: {e}")
 
 
 def initiate_oauth_flow(
@@ -238,6 +358,7 @@ def initiate_oauth_flow(
     """Initiate OAuth flow for a provider.
 
     Generates an authorization URL with state parameter for CSRF protection.
+    State is persisted in the database to survive server restarts.
 
     Args:
         config: Configuration with Google OAuth client credentials.
@@ -285,16 +406,11 @@ def initiate_oauth_flow(
         # Generate cryptographically random state
         state = secrets.token_urlsafe(32)
 
-        # Store state in memory (expires in 10 minutes)
-        _oauth_states[state] = {
-            "user_id": user_id,
-            "provider": provider,
-            "created_at": datetime.utcnow(),
-            "redirect_uri": redirect_uri,
-        }
+        # Persist state to database
+        _save_oauth_state(state, user_id, provider, redirect_uri)
 
-        # Clean up expired states (older than 10 minutes)
-        _clean_expired_states()
+        # Clean up expired states (non-blocking)
+        _clean_expired_oauth_states()
 
         # Generate authorization URL
         auth_url, _ = flow.authorization_url(
@@ -306,6 +422,8 @@ def initiate_oauth_flow(
         logger.info(f"Generated OAuth URL for {provider} (user {user_id})")
         return {"auth_url": auth_url, "state": state}
 
+    except IntegrationError:
+        raise
     except ValueError as e:
         raise IntegrationError(f"Invalid OAuth configuration: {e}") from e
 
@@ -326,18 +444,11 @@ def complete_oauth_flow(
         Tuple of (credentials, user_id, provider).
 
     Raises:
-        IntegrationError: If state invalid, expired, or token exchange fails.
+        OAuthStateError: If state invalid or expired.
+        IntegrationError: If token exchange fails.
     """
-    # Validate state
-    state_data = _oauth_states.get(state)
-    if not state_data:
-        raise IntegrationError("Invalid or expired state parameter")
-
-    # Check state age (10 minute expiry)
-    age = datetime.utcnow() - state_data["created_at"]
-    if age > timedelta(minutes=10):
-        _oauth_states.pop(state, None)
-        raise IntegrationError("State parameter expired")
+    # Validate and consume state from database
+    state_data = _validate_and_consume_oauth_state(state)
 
     user_id = state_data["user_id"]
     provider = state_data["provider"]
@@ -372,14 +483,10 @@ def complete_oauth_flow(
         flow.fetch_token(code=code)
         credentials = flow.credentials
 
-        # Clean up state
-        _oauth_states.pop(state, None)
-
         logger.info(f"OAuth flow completed for {provider} (user {user_id})")
         return credentials, user_id, provider
 
     except Exception as e:
-        _oauth_states.pop(state, None)
         raise IntegrationError(f"Token exchange failed: {e}") from e
 
 
@@ -403,17 +510,3 @@ def delete_integration(
         logger.info(f"Deleted {provider} integration for user {user_id}")
     except PostgrestAPIError as e:
         raise IntegrationError(f"Failed to delete integration: {e.message}") from e
-
-
-def _clean_expired_states() -> None:
-    """Clean up expired OAuth states (older than 10 minutes)."""
-    now = datetime.utcnow()
-    expired_keys = [
-        state
-        for state, data in _oauth_states.items()
-        if now - data["created_at"] > timedelta(minutes=10)
-    ]
-    for key in expired_keys:
-        _oauth_states.pop(key, None)
-    if expired_keys:
-        logger.debug(f"Cleaned up {len(expired_keys)} expired OAuth states")

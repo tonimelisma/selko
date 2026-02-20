@@ -5,10 +5,12 @@ For direct integration queries, use Supabase client from frontend.
 """
 
 import logging
+import time
+from collections import defaultdict
 from typing import Annotated
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 
 from selko.api.deps import CurrentUser, get_config, get_current_user
@@ -17,6 +19,7 @@ from selko.config import Config
 from selko.services.gmail import build_service, get_user_profile
 from selko.services.integrations import (
     IntegrationError,
+    OAuthStateError,
     complete_oauth_flow,
     initiate_oauth_flow,
     save_oauth_credentials,
@@ -37,6 +40,46 @@ ALLOWED_REDIRECT_PATHS = {
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
+
+
+# --- IP-based rate limiter for OAuth callback ---
+
+# Track request timestamps per IP: {ip: [timestamp, ...]}
+_callback_request_log: dict[str, list[float]] = defaultdict(list)
+_CALLBACK_RATE_LIMIT = 10  # max requests
+_CALLBACK_RATE_WINDOW = 60  # per 60 seconds
+
+
+def _check_callback_rate_limit(request: Request) -> None:
+    """Check IP-based rate limit for OAuth callback endpoint.
+
+    Args:
+        request: FastAPI request object.
+
+    Raises:
+        HTTPException: 429 if rate limit exceeded.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.monotonic()
+
+    # Clean old entries outside the window
+    timestamps = _callback_request_log[client_ip]
+    _callback_request_log[client_ip] = [
+        t for t in timestamps if now - t < _CALLBACK_RATE_WINDOW
+    ]
+
+    if len(_callback_request_log[client_ip]) >= _CALLBACK_RATE_LIMIT:
+        logger.warning(f"OAuth callback rate limit exceeded for IP {client_ip}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=error_detail(
+                ErrorCode.QUOTA_EXCEEDED,
+                "Too many OAuth callback requests. Please try again later.",
+            ),
+            headers={"Retry-After": str(_CALLBACK_RATE_WINDOW)},
+        )
+
+    _callback_request_log[client_ip].append(now)
 
 
 def _validate_redirect_uri(redirect_uri: str) -> bool:
@@ -115,6 +158,7 @@ async def gmail_oauth_initiate(
 
 @router.get("/google/callback")
 async def google_oauth_callback(
+    request: Request,
     code: Annotated[str, Query(description="Authorization code from Google")],
     state: Annotated[str, Query(description="State parameter for CSRF validation")],
     config: Config = Depends(get_config),
@@ -128,9 +172,10 @@ async def google_oauth_callback(
     Stores tokens in the integrations table.
 
     This endpoint is PUBLIC - no JWT authentication required.
-    Security is provided by state parameter validation.
+    Security is provided by state parameter validation + IP rate limiting.
 
     Args:
+        request: FastAPI request (for rate limiting).
         code: Authorization code from Google.
         state: State parameter for CSRF validation.
 
@@ -139,8 +184,12 @@ async def google_oauth_callback(
 
     Raises:
         400: Invalid or expired state.
+        429: Rate limit exceeded.
         500: Token exchange or save failed.
     """
+    # Rate limit this endpoint to prevent abuse
+    _check_callback_rate_limit(request)
+
     try:
         # Validate state and extract user_id FIRST
         credentials, user_id, provider = complete_oauth_flow(
@@ -183,14 +232,14 @@ async def google_oauth_callback(
             "message": f"{provider_display} integration connected successfully",
         }
 
+    except OAuthStateError as e:
+        logger.warning(f"OAuth state validation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail(ErrorCode.INVALID_REQUEST, "OAuth state invalid or expired. Please try again."),
+        )
     except IntegrationError as e:
         logger.error(f"OAuth callback failed: {e}")
-        error_msg = str(e)
-        if "Invalid or expired state" in error_msg or "State parameter expired" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_detail(ErrorCode.INVALID_REQUEST, "OAuth state invalid or expired. Please try again."),
-            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail(ErrorCode.OAUTH_FAILED, "OAuth callback failed"),
