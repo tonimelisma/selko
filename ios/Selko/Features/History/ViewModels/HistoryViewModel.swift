@@ -116,9 +116,9 @@ final class HistoryViewModel {
 
     private func dateLabel(for date: Date, calendar: Calendar) -> String {
         if calendar.isDateInToday(date) {
-            return "Today"
+            return String(localized: "Today")
         } else if calendar.isDateInYesterday(date) {
-            return "Yesterday"
+            return String(localized: "Yesterday")
         } else {
             let formatter = DateFormatter()
             formatter.dateStyle = .medium

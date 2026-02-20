@@ -115,9 +115,9 @@ final class SettingsViewModel {
 
     func providerDisplayName(_ provider: IntegrationProvider) -> String {
         switch provider {
-        case .gmail: return "Gmail"
-        case .googleCalendar: return "Google Calendar"
-        case .googlePhotos: return "Google Photos"
+        case .gmail: return String(localized: "Gmail")
+        case .googleCalendar: return String(localized: "Google Calendar")
+        case .googlePhotos: return String(localized: "Google Photos")
         }
     }
 }
