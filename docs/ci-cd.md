@@ -17,8 +17,9 @@ The CI/CD pipeline ensures code quality and manages deployments across three env
 ```
 PR opened/updated
     |
-    +-- Unit Tests (no external dependencies)
-    +-- Android Unit Tests (Gradle)
+    +-- Unit Tests (backend, path-filtered)
+    +-- Android Unit Tests (Gradle, path-filtered)
+    +-- Frontend Unit Tests (Vitest, path-filtered)
     |
 All tests pass -> PR ready for review (no deployment)
 ```
@@ -30,6 +31,7 @@ Code merged to main
     |
     +-- Unit Tests (backend)
     +-- Android Unit Tests
+    +-- Frontend Unit Tests
     |
 All tests pass
     |
@@ -70,14 +72,15 @@ Production environment updated
 
 ## GitHub Actions Jobs
 
-| Job | Runs On | Dependencies | Purpose |
-|-----|---------|--------------|---------|
-| `unit-tests` | Every push/PR | None | Fast backend validation, no external services |
-| `android-unit-tests` | Every push/PR | None | Android unit tests via Gradle |
-| `deploy-staging` | Main push only | unit-tests, android-unit-tests | Deploy DB + API + frontend to staging |
-| `integration-tests-staging` | Main push only | deploy-staging | Validate deployed staging backend with real LLM |
-| `frontend-e2e-staging` | Main push only | deploy-staging | E2E tests against deployed staging frontend |
-| `deploy-production` | Manual/tag only | None | Deploy DB + API to production |
+| Job | Runs On | Path Filter | Dependencies | Purpose |
+|-----|---------|-------------|--------------|---------|
+| `unit-tests` | Every push/PR | `backend/**`, `cli/**`, `pyproject.toml`, `uv.lock` | None | Fast backend validation, no external services |
+| `android-unit-tests` | Every push/PR | `android/**` | None | Android unit tests via Gradle |
+| `frontend-unit-tests` | Every push/PR | `frontend/**` | None | Frontend unit tests via Vitest |
+| `deploy-staging` | Main push only | `backend/**` or `supabase/**` | unit-tests, android-unit-tests, frontend-unit-tests | Deploy DB + API + frontend to staging |
+| `integration-tests-staging` | Main push only | — | deploy-staging | Validate deployed staging backend (parallelized with pytest-xdist) |
+| `frontend-e2e-staging` | Main push only | — | deploy-staging | E2E tests against deployed staging frontend |
+| `deploy-production` | Manual/tag only | — | None | Deploy DB + API to production |
 
 ## Required GitHub Secrets
 
@@ -172,7 +175,7 @@ The script handles the full lifecycle:
 3. **Tracks post-merge push workflow** — finds the workflow run triggered by the merge commit on main, watches it until completion (including staging deploy + integration tests)
 4. **Reports results** — exit 0 = all green, exit 1 = failure, exit 2 = timeout
 
-Required PR checks: `unit-tests`, `android-unit-tests`
+Required PR checks: `unit-tests`, `android-unit-tests`, `frontend-unit-tests`
 
 ### Troubleshooting
 
