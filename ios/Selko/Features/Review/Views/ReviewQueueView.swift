@@ -103,9 +103,6 @@ struct ReviewQueueView: View {
         }
         .listStyle(.insetGrouped)
         .accessibilityIdentifier("eventList")
-        .navigationDestination(for: UUID.self) { eventId in
-            EventDetailView(eventId: eventId)
-        }
     }
 }
 

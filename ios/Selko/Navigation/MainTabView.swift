@@ -6,17 +6,21 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var selectedTab = 0
+    @Bindable var router: AppRouter
+    @State private var reviewPath = NavigationPath()
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack {
+        TabView(selection: $router.selectedTab) {
+            NavigationStack(path: $reviewPath) {
                 ReviewQueueView()
+                    .navigationDestination(for: UUID.self) { eventId in
+                        EventDetailView(eventId: eventId)
+                    }
             }
             .tabItem {
                 Label("Review", systemImage: "list.bullet")
             }
-            .tag(0)
+            .tag(Tab.review)
 
             NavigationStack {
                 HistoryView()
@@ -24,7 +28,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("History", systemImage: "clock.arrow.circlepath")
             }
-            .tag(1)
+            .tag(Tab.history)
 
             NavigationStack {
                 SettingsView()
@@ -32,11 +36,18 @@ struct MainTabView: View {
             .tabItem {
                 Label("Settings", systemImage: "gear")
             }
-            .tag(2)
+            .tag(Tab.settings)
+        }
+        .onChange(of: router.pendingEventId) { _, newEventId in
+            if let eventId = newEventId {
+                // Navigate to the event detail within the Review tab
+                reviewPath.append(eventId)
+                router.pendingEventId = nil
+            }
         }
     }
 }
 
 #Preview {
-    MainTabView()
+    MainTabView(router: AppRouter())
 }
