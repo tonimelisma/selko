@@ -1,12 +1,14 @@
 package net.melisma.selko.ui.screens.settings
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.melisma.selko.R
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
@@ -36,15 +38,18 @@ data class SettingsUiState(
 )
 
 class SettingsViewModel(
+    application: Application,
     private val authRepository: AuthRepository,
     private val integrationRepository: IntegrationRepository,
     private val calendarSettingsRepository: CalendarSettingsRepository,
     private val backendApiClient: BackendApiClient,
     private val senderRuleRepository: SenderRuleRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
 
     init {
         loadSettings()
@@ -117,7 +122,7 @@ class SettingsViewModel(
                     _uiState.update {
                         it.copy(
                             isDisconnecting = false,
-                            errorMessage = "Failed to disconnect"
+                            errorMessage = getString(R.string.settings_error_disconnect)
                         )
                     }
                 }
@@ -166,7 +171,7 @@ class SettingsViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingRules = false,
-                            errorMessage = "Failed to load automation rules"
+                            errorMessage = getString(R.string.settings_error_load_rules)
                         )
                     }
                 }
@@ -179,7 +184,7 @@ class SettingsViewModel(
             when (senderRuleRepository.createRule(senderEmail, senderDomain, action)) {
                 is RepositoryResult.Success -> loadRules()
                 is RepositoryResult.Error -> {
-                    _uiState.update { it.copy(errorMessage = "Failed to create rule") }
+                    _uiState.update { it.copy(errorMessage = getString(R.string.settings_error_create_rule)) }
                 }
             }
         }
@@ -190,7 +195,7 @@ class SettingsViewModel(
             when (senderRuleRepository.deleteRule(id)) {
                 is RepositoryResult.Success -> loadRules()
                 is RepositoryResult.Error -> {
-                    _uiState.update { it.copy(errorMessage = "Failed to delete rule") }
+                    _uiState.update { it.copy(errorMessage = getString(R.string.settings_error_delete_rule)) }
                 }
             }
         }

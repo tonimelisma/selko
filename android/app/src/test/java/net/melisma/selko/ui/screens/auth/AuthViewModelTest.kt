@@ -1,8 +1,10 @@
 package net.melisma.selko.ui.screens.auth
 
+import android.app.Application
 import app.cash.turbine.test
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -10,6 +12,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import net.melisma.selko.R
 import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.AuthResult
 import org.junit.After
@@ -23,6 +26,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModelTest {
 
+    private lateinit var application: Application
     private lateinit var authRepository: AuthRepository
     private lateinit var viewModel: AuthViewModel
     private val testDispatcher = StandardTestDispatcher()
@@ -30,8 +34,12 @@ class AuthViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        application = mockk(relaxed = true)
+        every { application.getString(R.string.auth_error_email_password_required) } returns "Email and password are required"
+        every { application.getString(R.string.auth_error_confirm_password) } returns "Please confirm your password"
+        every { application.getString(R.string.auth_error_passwords_mismatch) } returns "Passwords do not match"
         authRepository = mockk(relaxed = true)
-        viewModel = AuthViewModel(authRepository)
+        viewModel = AuthViewModel(application, authRepository)
     }
 
     @After

@@ -1,6 +1,7 @@
 package net.melisma.selko.ui.screens.review
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +14,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.Email
 import net.melisma.selko.data.model.EventSource
@@ -39,12 +41,15 @@ data class EventDetailUiState(
 )
 
 class EventDetailViewModel(
+    application: Application,
     private val eventRepository: EventRepository,
     private val eventId: String
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(EventDetailUiState())
     val uiState: StateFlow<EventDetailUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
 
     init {
         loadEvent()
@@ -194,7 +199,7 @@ class EventDetailViewModel(
                     _uiState.update {
                         it.copy(
                             isApproving = false,
-                            errorMessage = "Failed to approve event"
+                            errorMessage = getString(R.string.event_detail_error_approve)
                         )
                     }
                 }
@@ -214,7 +219,7 @@ class EventDetailViewModel(
                     _uiState.update {
                         it.copy(
                             isRejecting = false,
-                            errorMessage = "Failed to reject event"
+                            errorMessage = getString(R.string.event_detail_error_reject)
                         )
                     }
                 }

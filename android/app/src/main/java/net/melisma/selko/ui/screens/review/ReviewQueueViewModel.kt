@@ -1,12 +1,14 @@
 package net.melisma.selko.ui.screens.review
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.melisma.selko.R
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.IntegrationProvider
@@ -36,14 +38,17 @@ data class ReviewQueueUiState(
 )
 
 class ReviewQueueViewModel(
+    application: Application,
     private val eventRepository: EventRepository,
     private val integrationRepository: IntegrationRepository,
     private val backendApiClient: BackendApiClient,
     private val senderRuleRepository: SenderRuleRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(ReviewQueueUiState())
     val uiState: StateFlow<ReviewQueueUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
 
     init {
         loadData()
@@ -127,7 +132,7 @@ class ReviewQueueViewModel(
         return events.groupBy { event ->
             val source = event.eventSources?.firstOrNull()
             val email = source?.emails
-            Pair(email?.fromName ?: email?.fromEmail ?: "Unknown", email?.fromEmail ?: "unknown")
+            Pair(email?.fromName ?: email?.fromEmail ?: getString(R.string.review_unknown_sender), email?.fromEmail ?: "unknown")
         }.map { (senderInfo, groupEvents) ->
             SenderGroup(
                 senderName = senderInfo.first,
@@ -155,7 +160,7 @@ class ReviewQueueViewModel(
                     _uiState.update {
                         it.copy(
                             processingEventIds = it.processingEventIds - eventId,
-                            errorMessage = "Failed to approve event"
+                            errorMessage = getString(R.string.review_error_approve)
                         )
                     }
                 }
@@ -248,7 +253,7 @@ class ReviewQueueViewModel(
                     _uiState.update {
                         it.copy(
                             processingEventIds = it.processingEventIds - eventId,
-                            errorMessage = "Failed to reject event"
+                            errorMessage = getString(R.string.review_error_reject)
                         )
                     }
                 }
@@ -286,7 +291,7 @@ class ReviewQueueViewModel(
                     }
                 }
                 is RepositoryResult.Error -> {
-                    _uiState.update { it.copy(errorMessage = "Failed to create ignore rule") }
+                    _uiState.update { it.copy(errorMessage = getString(R.string.review_error_ignore_rule)) }
                 }
             }
         }
@@ -322,7 +327,7 @@ class ReviewQueueViewModel(
                     }
                 }
                 is RepositoryResult.Error -> {
-                    _uiState.update { it.copy(errorMessage = "Failed to create auto-approve rule") }
+                    _uiState.update { it.copy(errorMessage = getString(R.string.review_error_auto_approve_rule)) }
                 }
             }
         }

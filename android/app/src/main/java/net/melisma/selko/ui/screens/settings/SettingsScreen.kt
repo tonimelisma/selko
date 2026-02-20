@@ -56,7 +56,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import net.melisma.selko.R
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.SenderRule
@@ -82,14 +84,14 @@ fun SettingsScreen(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Settings",
+                    text = stringResource(R.string.settings_title),
                     style = MaterialTheme.typography.headlineSmall
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Connected Accounts Section
-                SectionHeader(title = "Connected Accounts")
+                SectionHeader(title = stringResource(R.string.settings_section_connected_accounts))
                 Spacer(modifier = Modifier.height(8.dp))
                 ConnectedAccountsSection(
                     uiState = uiState,
@@ -101,7 +103,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Calendar Defaults Section
-                SectionHeader(title = "Calendar Defaults")
+                SectionHeader(title = stringResource(R.string.settings_section_calendar_defaults))
                 Spacer(modifier = Modifier.height(8.dp))
                 CalendarDefaultsSection(
                     uiState = uiState,
@@ -113,7 +115,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Automation Rules Section
-                SectionHeader(title = "Automation Rules")
+                SectionHeader(title = stringResource(R.string.settings_section_automation_rules))
                 Spacer(modifier = Modifier.height(8.dp))
                 AutomationRulesSection(
                     rules = uiState.rules,
@@ -127,7 +129,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Account Section
-                SectionHeader(title = "Account")
+                SectionHeader(title = stringResource(R.string.settings_section_account))
                 Spacer(modifier = Modifier.height(8.dp))
                 AccountSection(
                     uiState = uiState,
@@ -149,7 +151,7 @@ fun SettingsScreen(
                         onClick = { viewModel.clearError() },
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Text("Dismiss")
+                        Text(stringResource(R.string.settings_dismiss))
                     }
                 }
             ) {
@@ -187,7 +189,7 @@ private fun ConnectedAccountsSection(
             // Gmail
             IntegrationRow(
                 icon = Icons.Filled.Email,
-                label = "Gmail",
+                label = stringResource(R.string.settings_gmail),
                 email = gmailIntegration?.providerEmail,
                 isConnected = gmailIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
@@ -203,7 +205,7 @@ private fun ConnectedAccountsSection(
             // Google Calendar
             IntegrationRow(
                 icon = Icons.Filled.CalendarMonth,
-                label = "Google Calendar",
+                label = stringResource(R.string.settings_google_calendar),
                 email = calendarIntegration?.providerEmail,
                 isConnected = calendarIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
@@ -262,7 +264,7 @@ private fun IntegrationRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Connected",
+                    contentDescription = stringResource(R.string.settings_connected),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -283,7 +285,7 @@ private fun IntegrationRow(
                             color = MaterialTheme.colorScheme.error
                         )
                     } else {
-                        Text("Disconnect")
+                        Text(stringResource(R.string.settings_disconnect))
                     }
                 }
             }
@@ -292,7 +294,7 @@ private fun IntegrationRow(
                 onClick = onConnect,
                 shape = MaterialTheme.shapes.medium
             ) {
-                Text("Connect")
+                Text(stringResource(R.string.settings_connect))
             }
         }
     }
@@ -317,7 +319,7 @@ private fun CalendarDefaultsSection(
                 val selectedCalendar = uiState.calendars.find { it.id == uiState.selectedCalendarId }
 
                 Text(
-                    text = "Target Calendar",
+                    text = stringResource(R.string.settings_target_calendar),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -327,7 +329,7 @@ private fun CalendarDefaultsSection(
                     onExpandedChange = { expanded = !expanded }
                 ) {
                     OutlinedTextField(
-                        value = selectedCalendar?.name ?: "Select a calendar",
+                        value = selectedCalendar?.name ?: stringResource(R.string.settings_select_calendar),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -349,7 +351,7 @@ private fun CalendarDefaultsSection(
                                         if (calendar.is_primary) {
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(
-                                                text = "(Primary)",
+                                                text = stringResource(R.string.settings_primary_label),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -368,7 +370,7 @@ private fun CalendarDefaultsSection(
                 Spacer(modifier = Modifier.height(16.dp))
             } else {
                 Text(
-                    text = "Connect Google Calendar to configure calendar defaults.",
+                    text = stringResource(R.string.settings_connect_calendar_prompt),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -378,8 +380,8 @@ private fun CalendarDefaultsSection(
             OutlinedTextField(
                 value = uiState.defaultInvitees,
                 onValueChange = onDefaultInviteesChange,
-                label = { Text("Default Invitees") },
-                placeholder = { Text("email1@example.com, email2@example.com") },
+                label = { Text(stringResource(R.string.settings_default_invitees)) },
+                placeholder = { Text(stringResource(R.string.settings_default_invitees_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = MaterialTheme.shapes.small
@@ -398,7 +400,7 @@ private fun CalendarDefaultsSection(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Save")
+                        Text(stringResource(R.string.settings_save))
                     }
                 }
             }
@@ -422,19 +424,19 @@ private fun AccountSection(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Person,
-                    contentDescription = "Account",
+                    contentDescription = stringResource(R.string.settings_account_description),
                     modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Signed in as",
+                        text = stringResource(R.string.settings_signed_in_as),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = uiState.userEmail ?: "Unknown",
+                        text = uiState.userEmail ?: stringResource(R.string.settings_unknown_user),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -462,12 +464,12 @@ private fun AccountSection(
                 } else {
                     Icon(
                         imageVector = Icons.Filled.Logout,
-                        contentDescription = "Log out",
+                        contentDescription = stringResource(R.string.settings_log_out_description),
                         modifier = Modifier.size(18.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Log out")
+                Text(stringResource(R.string.settings_log_out))
             }
         }
     }
@@ -499,7 +501,7 @@ private fun AutomationRulesSection(
                 )
             } else if (rules.isEmpty()) {
                 Text(
-                    text = "No automation rules yet. Add a rule to automatically approve or ignore emails from specific senders.",
+                    text = stringResource(R.string.settings_rules_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -523,11 +525,11 @@ private fun AutomationRulesSection(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (rule.action == "ignore") "Ignore" else "Auto-approve",
+                                text = if (rule.action == "ignore") stringResource(R.string.settings_rule_ignore) else stringResource(R.string.settings_rule_auto_approve),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                text = rule.senderEmail ?: rule.senderDomain ?: "Unknown",
+                                text = rule.senderEmail ?: rule.senderDomain ?: stringResource(R.string.settings_rule_unknown_sender),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -535,7 +537,7 @@ private fun AutomationRulesSection(
                         IconButton(onClick = { ruleToDelete = rule }) {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
-                                contentDescription = "Delete rule",
+                                contentDescription = stringResource(R.string.settings_rule_delete_description),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -551,7 +553,7 @@ private fun AutomationRulesSection(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Add Rule",
+                text = stringResource(R.string.settings_add_rule_title),
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -559,8 +561,8 @@ private fun AutomationRulesSection(
             OutlinedTextField(
                 value = ruleInput,
                 onValueChange = { ruleInput = it },
-                label = { Text("Email or domain") },
-                placeholder = { Text("sender@example.com or example.com") },
+                label = { Text(stringResource(R.string.settings_add_rule_email_label)) },
+                placeholder = { Text(stringResource(R.string.settings_add_rule_email_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = MaterialTheme.shapes.small
@@ -573,10 +575,10 @@ private fun AutomationRulesSection(
                 onExpandedChange = { actionExpanded = !actionExpanded }
             ) {
                 OutlinedTextField(
-                    value = if (selectedAction == "ignore") "Ignore" else "Auto-approve",
+                    value = if (selectedAction == "ignore") stringResource(R.string.settings_rule_ignore) else stringResource(R.string.settings_rule_auto_approve),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Action") },
+                    label = { Text(stringResource(R.string.settings_add_rule_action_label)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = actionExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -589,7 +591,7 @@ private fun AutomationRulesSection(
                     onDismissRequest = { actionExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Ignore") },
+                        text = { Text(stringResource(R.string.settings_rule_ignore)) },
                         onClick = {
                             selectedAction = "ignore"
                             actionExpanded = false
@@ -599,7 +601,7 @@ private fun AutomationRulesSection(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Auto-approve") },
+                        text = { Text(stringResource(R.string.settings_rule_auto_approve)) },
                         onClick = {
                             selectedAction = "auto_approve"
                             actionExpanded = false
@@ -635,20 +637,21 @@ private fun AutomationRulesSection(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Add Rule")
+                Text(stringResource(R.string.settings_add_rule_button))
             }
         }
     }
 
     // Delete confirmation dialog
     ruleToDelete?.let { rule ->
+        val actionText = if (rule.action == "ignore") stringResource(R.string.settings_rule_ignore).lowercase() else stringResource(R.string.settings_rule_auto_approve).lowercase()
+        val senderText = rule.senderEmail ?: rule.senderDomain ?: stringResource(R.string.settings_rule_unknown_sender)
+
         AlertDialog(
             onDismissRequest = { ruleToDelete = null },
-            title = { Text("Delete Rule") },
+            title = { Text(stringResource(R.string.settings_delete_rule_title)) },
             text = {
-                Text(
-                    "Remove the ${if (rule.action == "ignore") "ignore" else "auto-approve"} rule for ${rule.senderEmail ?: rule.senderDomain ?: "this sender"}?"
-                )
+                Text(stringResource(R.string.settings_delete_rule_message, actionText, senderText))
             },
             confirmButton = {
                 TextButton(
@@ -658,7 +661,7 @@ private fun AutomationRulesSection(
                     },
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.settings_delete_rule_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -666,7 +669,7 @@ private fun AutomationRulesSection(
                     onClick = { ruleToDelete = null },
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.settings_delete_rule_cancel))
                 }
             }
         )

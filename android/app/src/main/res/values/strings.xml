@@ -1,3 +1,158 @@
 <resources>
     <string name="app_name">Selko</string>
+
+    <!-- Auth Screen -->
+    <string name="auth_tagline">Clear your mind.</string>
+    <string name="auth_sign_up_title">Sign up</string>
+    <string name="auth_email_label">Email</string>
+    <string name="auth_password_label">Password</string>
+    <string name="auth_confirm_password_label">Confirm password</string>
+    <string name="auth_sign_in_button">Sign in</string>
+    <string name="auth_sign_up_button">Sign up</string>
+    <string name="auth_switch_to_login">Already have an account? Log in</string>
+    <string name="auth_switch_to_signup">Don\'t have an account? Sign up</string>
+    <string name="auth_error_email_password_required">Email and password are required</string>
+    <string name="auth_error_confirm_password">Please confirm your password</string>
+    <string name="auth_error_passwords_mismatch">Passwords do not match</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_review">Review</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Review Queue Screen -->
+    <string name="review_queue_title">Review Queue</string>
+    <string name="review_dismiss">Dismiss</string>
+    <string name="review_actions">Actions</string>
+    <string name="review_approve_all">Approve all</string>
+    <string name="review_reject_all">Reject all</string>
+    <string name="review_auto_approve_sender">Auto-approve sender</string>
+    <string name="review_ignore_sender">Ignore sender</string>
+    <string name="review_events_count">%1$d event%2$s</string>
+    <string name="review_empty_title">All caught up!</string>
+    <string name="review_empty_subtitle">No events pending review. Pull down to refresh.</string>
+    <string name="review_empty_icon_description">No events</string>
+    <string name="review_unknown_sender">Unknown</string>
+    <string name="review_error_approve">Failed to approve event</string>
+    <string name="review_error_reject">Failed to reject event</string>
+    <string name="review_error_ignore_rule">Failed to create ignore rule</string>
+    <string name="review_error_auto_approve_rule">Failed to create auto-approve rule</string>
+
+    <!-- Event Card -->
+    <string name="event_card_accept">Accept</string>
+    <string name="event_card_reject">Reject</string>
+    <string name="event_card_edit">Edit</string>
+    <string name="event_card_time_description">Event time</string>
+    <string name="event_card_location_description">Event location</string>
+
+    <!-- Event Detail Screen -->
+    <string name="event_detail_title">Event Details</string>
+    <string name="event_detail_back">Back</string>
+    <string name="event_detail_reject">Reject</string>
+    <string name="event_detail_accept">Accept</string>
+    <string name="event_detail_dismiss">Dismiss</string>
+    <string name="event_detail_not_found">Event not found</string>
+    <string name="event_detail_field_title">Title</string>
+    <string name="event_detail_field_date">Date</string>
+    <string name="event_detail_field_start_date">Start Date</string>
+    <string name="event_detail_field_start_time">Start Time</string>
+    <string name="event_detail_field_end_date">End Date</string>
+    <string name="event_detail_field_end_time">End Time</string>
+    <string name="event_detail_select_date">Select date</string>
+    <string name="event_detail_select_time">Select time</string>
+    <string name="event_detail_all_day">All Day Event</string>
+    <string name="event_detail_field_location">Location</string>
+    <string name="event_detail_field_description">Description</string>
+    <string name="event_detail_source_label">Source: %1$s</string>
+    <string name="event_detail_ok">OK</string>
+    <string name="event_detail_cancel">Cancel</string>
+    <string name="event_detail_error_approve">Failed to approve event</string>
+    <string name="event_detail_error_reject">Failed to reject event</string>
+
+    <!-- Source Email Card -->
+    <string name="source_email_label">Source Email</string>
+    <string name="source_email_icon_description">Email</string>
+    <string name="source_email_collapse">Collapse</string>
+    <string name="source_email_expand">Expand</string>
+    <string name="source_email_from">From: %1$s</string>
+    <string name="source_email_subject">Subject: %1$s</string>
+    <string name="source_email_sent">Sent: %1$s</string>
+
+    <!-- Integration Setup -->
+    <string name="integration_welcome_title">Welcome to Selko</string>
+    <string name="integration_welcome_subtitle">Connect your Google account to start managing your calendar events from emails.</string>
+    <string name="integration_connect_google">Connect Google Account</string>
+    <string name="integration_connect_google_note">This will connect both Gmail and Google Calendar</string>
+    <string name="integration_gmail_connected_note">Gmail is connected. Calendar connection is also needed to sync events.</string>
+    <string name="integration_connect_calendar">Connect Google Calendar</string>
+    <string name="integration_email_setup_description">Email setup</string>
+
+    <!-- History Screen -->
+    <string name="history_title">Activity History</string>
+    <string name="history_dismiss">Dismiss</string>
+    <string name="history_load_more">Load More</string>
+    <string name="history_undo">Undo</string>
+    <string name="history_retry">Retry</string>
+    <string name="history_empty_title">No Activity Yet</string>
+    <string name="history_empty_subtitle">Events you approve or reject will appear here.</string>
+    <string name="history_empty_icon_description">No activity</string>
+    <string name="history_status_approved">Approved, waiting to sync</string>
+    <string name="history_status_synced">Synced to Google Calendar</string>
+    <string name="history_status_sync_failed">Sync failed</string>
+    <string name="history_status_rejected">Rejected</string>
+    <string name="history_status_cancelled">Cancelled</string>
+    <string name="history_unknown_date">Unknown Date</string>
+    <string name="history_error_undo">Failed to undo action</string>
+    <string name="history_error_retry_sync">Failed to retry sync</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_dismiss">Dismiss</string>
+    <string name="settings_section_connected_accounts">Connected Accounts</string>
+    <string name="settings_section_calendar_defaults">Calendar Defaults</string>
+    <string name="settings_section_automation_rules">Automation Rules</string>
+    <string name="settings_section_account">Account</string>
+
+    <!-- Settings - Connected Accounts -->
+    <string name="settings_gmail">Gmail</string>
+    <string name="settings_google_calendar">Google Calendar</string>
+    <string name="settings_connected">Connected</string>
+    <string name="settings_disconnect">Disconnect</string>
+    <string name="settings_connect">Connect</string>
+    <string name="settings_error_disconnect">Failed to disconnect</string>
+
+    <!-- Settings - Calendar Defaults -->
+    <string name="settings_target_calendar">Target Calendar</string>
+    <string name="settings_select_calendar">Select a calendar</string>
+    <string name="settings_primary_label">(Primary)</string>
+    <string name="settings_connect_calendar_prompt">Connect Google Calendar to configure calendar defaults.</string>
+    <string name="settings_default_invitees">Default Invitees</string>
+    <string name="settings_default_invitees_placeholder">email1@example.com, email2@example.com</string>
+    <string name="settings_save">Save</string>
+
+    <!-- Settings - Automation Rules -->
+    <string name="settings_rules_empty">No automation rules yet. Add a rule to automatically approve or ignore emails from specific senders.</string>
+    <string name="settings_rule_ignore">Ignore</string>
+    <string name="settings_rule_auto_approve">Auto-approve</string>
+    <string name="settings_rule_unknown_sender">Unknown</string>
+    <string name="settings_rule_delete_description">Delete rule</string>
+    <string name="settings_add_rule_title">Add Rule</string>
+    <string name="settings_add_rule_email_label">Email or domain</string>
+    <string name="settings_add_rule_email_placeholder">sender@example.com or example.com</string>
+    <string name="settings_add_rule_action_label">Action</string>
+    <string name="settings_add_rule_button">Add Rule</string>
+    <string name="settings_delete_rule_title">Delete Rule</string>
+    <string name="settings_delete_rule_message">Remove the %1$s rule for %2$s?</string>
+    <string name="settings_delete_rule_confirm">Delete</string>
+    <string name="settings_delete_rule_cancel">Cancel</string>
+    <string name="settings_error_load_rules">Failed to load automation rules</string>
+    <string name="settings_error_create_rule">Failed to create rule</string>
+    <string name="settings_error_delete_rule">Failed to delete rule</string>
+
+    <!-- Settings - Account -->
+    <string name="settings_account_description">Account</string>
+    <string name="settings_signed_in_as">Signed in as</string>
+    <string name="settings_unknown_user">Unknown</string>
+    <string name="settings_log_out">Log out</string>
+    <string name="settings_log_out_description">Log out</string>
 </resources>

@@ -1,12 +1,14 @@
 package net.melisma.selko.ui.screens.auth
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.melisma.selko.R
 import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.AuthResult
 
@@ -21,11 +23,14 @@ data class AuthUiState(
 )
 
 class AuthViewModel(
+    application: Application,
     private val authRepository: AuthRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
 
     fun onEmailChange(email: String) {
         _uiState.update { it.copy(email = email, errorMessage = null) }
@@ -50,17 +55,17 @@ class AuthViewModel(
     fun submit() {
         val state = _uiState.value
         if (state.email.isBlank() || state.password.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Email and password are required") }
+            _uiState.update { it.copy(errorMessage = getString(R.string.auth_error_email_password_required)) }
             return
         }
 
         if (state.isSignUp) {
             if (state.confirmPassword.isBlank()) {
-                _uiState.update { it.copy(errorMessage = "Please confirm your password") }
+                _uiState.update { it.copy(errorMessage = getString(R.string.auth_error_confirm_password)) }
                 return
             }
             if (state.password != state.confirmPassword) {
-                _uiState.update { it.copy(errorMessage = "Passwords do not match") }
+                _uiState.update { it.copy(errorMessage = getString(R.string.auth_error_passwords_mismatch)) }
                 return
             }
         }
