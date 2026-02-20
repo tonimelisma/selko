@@ -9,13 +9,25 @@ import Foundation
 final class MockEventService: EventServiceProtocol, @unchecked Sendable {
     var fetchPendingEventsResult: Result<[CalendarEvent], Error> = .success([])
     var fetchPendingEventsWithSourcesResult: Result<[CalendarEvent], Error> = .success([])
+    var fetchActivityEventsResult: Result<[CalendarEvent], Error> = .success([])
+    var getEventWithSourcesResult: Result<CalendarEvent, Error> = .success(.mock)
+    var updateEventResult: Result<CalendarEvent, Error> = .success(.mock)
+    var updateEventStatusResult: Result<CalendarEvent, Error> = .success(.mock)
     var approveEventResult: Result<CalendarEvent, Error> = .success(.mock)
     var rejectEventResult: Result<CalendarEvent, Error> = .success(.mock)
 
+    var fetchActivityEventsCallCount = 0
+    var getEventWithSourcesCallCount = 0
+    var updateEventCallCount = 0
+    var updateEventStatusCallCount = 0
     var approveEventCallCount = 0
     var rejectEventCallCount = 0
     var lastApprovedEventId: UUID?
     var lastRejectedEventId: UUID?
+    var lastUpdateEventStatusId: UUID?
+    var lastUpdateEventStatusStatus: EventStatus?
+    var lastFetchActivityEventsOffset: Int?
+    var lastFetchActivityEventsLimit: Int?
 
     func fetchPendingEvents() async throws -> [CalendarEvent] {
         switch fetchPendingEventsResult {
@@ -32,7 +44,13 @@ final class MockEventService: EventServiceProtocol, @unchecked Sendable {
     }
 
     func fetchActivityEvents(limit: Int, offset: Int) async throws -> [CalendarEvent] {
-        return []
+        fetchActivityEventsCallCount += 1
+        lastFetchActivityEventsLimit = limit
+        lastFetchActivityEventsOffset = offset
+        switch fetchActivityEventsResult {
+        case .success(let events): return events
+        case .failure(let error): throw error
+        }
     }
 
     func fetchEvents(limit: Int, offset: Int, statuses: [EventStatus]?, startAfter: Date?, startBefore: Date?) async throws -> [CalendarEvent] {
@@ -44,15 +62,29 @@ final class MockEventService: EventServiceProtocol, @unchecked Sendable {
     }
 
     func getEventWithSources(id: UUID) async throws -> CalendarEvent {
-        return .mock
+        getEventWithSourcesCallCount += 1
+        switch getEventWithSourcesResult {
+        case .success(let event): return event
+        case .failure(let error): throw error
+        }
     }
 
     func updateEventStatus(id: UUID, status: EventStatus) async throws -> CalendarEvent {
-        return .mock
+        updateEventStatusCallCount += 1
+        lastUpdateEventStatusId = id
+        lastUpdateEventStatusStatus = status
+        switch updateEventStatusResult {
+        case .success(let event): return event
+        case .failure(let error): throw error
+        }
     }
 
     func updateEvent(id: UUID, title: String?, startDatetime: Date?, endDatetime: Date?, allDay: Bool?, location: String?, description: String?) async throws -> CalendarEvent {
-        return .mock
+        updateEventCallCount += 1
+        switch updateEventResult {
+        case .success(let event): return event
+        case .failure(let error): throw error
+        }
     }
 
     func approveEvent(id: UUID) async throws -> CalendarEvent {
