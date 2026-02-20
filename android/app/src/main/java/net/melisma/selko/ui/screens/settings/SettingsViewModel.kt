@@ -10,11 +10,13 @@ import kotlinx.coroutines.launch
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
+import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.CalendarSettings
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.SenderRuleRepository
 
 data class SettingsUiState(
     val isLoading: Boolean = true,
@@ -27,14 +29,17 @@ data class SettingsUiState(
     val errorMessage: String? = null,
     val isDisconnecting: Boolean = false,
     val isSigningOut: Boolean = false,
-    val isSavingCalendarSettings: Boolean = false
+    val isSavingCalendarSettings: Boolean = false,
+    val rules: List<SenderRule> = emptyList(),
+    val isLoadingRules: Boolean = false
 )
 
 class SettingsViewModel(
     private val authRepository: AuthRepository,
     private val integrationRepository: IntegrationRepository,
     private val calendarSettingsRepository: CalendarSettingsRepository,
-    private val backendApiClient: BackendApiClient
+    private val backendApiClient: BackendApiClient,
+    private val senderRuleRepository: SenderRuleRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -42,6 +47,7 @@ class SettingsViewModel(
 
     init {
         loadSettings()
+        loadRules()
     }
 
     private fun loadSettings() {
@@ -144,6 +150,44 @@ class SettingsViewModel(
             _uiState.update { it.copy(isSigningOut = true) }
             authRepository.signOut()
             onSignOutComplete()
+        }
+    }
+
+    fun loadRules() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingRules = true) }
+            senderRuleRepository.fetchRules()
+                .onSuccess { rules ->
+                    _uiState.update { it.copy(rules = rules, isLoadingRules = false) }
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(
+                            isLoadingRules = false,
+                            errorMessage = "Failed to load automation rules"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun createRule(senderEmail: String?, senderDomain: String?, action: String) {
+        viewModelScope.launch {
+            senderRuleRepository.createRule(senderEmail, senderDomain, action)
+                .onSuccess { loadRules() }
+                .onFailure {
+                    _uiState.update { it.copy(errorMessage = "Failed to create rule") }
+                }
+        }
+    }
+
+    fun deleteRule(id: String) {
+        viewModelScope.launch {
+            senderRuleRepository.deleteRule(id)
+                .onSuccess { loadRules() }
+                .onFailure {
+                    _uiState.update { it.copy(errorMessage = "Failed to delete rule") }
+                }
         }
     }
 
