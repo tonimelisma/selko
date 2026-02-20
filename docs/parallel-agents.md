@@ -156,14 +156,14 @@ After your task is complete:
 # 2. Return to main repo
 cd ~/Development/selko
 
-# 4. Remove worktree and branch
+# 3. Remove worktree and branch
 # ⚠️  NEVER use --force! If remove refuses, inspect uncommitted work first.
 #    Go back to the worktree, run `git status`, review any uncommitted files.
 #    --force DESTROYS uncommitted work with NO recovery.
 git worktree remove ../selko-<type>-<task>
 git branch -D <type>/<task-name>
 
-# 5. Sync main
+# 4. Sync main
 git fetch origin && git merge --ff-only origin/main
 ```
 

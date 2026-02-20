@@ -3,7 +3,7 @@ name: Tests
 # CI Optimization: Path filtering skips jobs when irrelevant files change.
 # - Markdown-only changes: No test jobs run
 # - Backend changes: Unit tests run
-# - Frontend changes: Frontend unit tests run
+# - Frontend changes: Handled by frontend-tests.yml (separate workflow)
 # - Supabase changes: Staging deploy + integration tests
 # - Android changes: Android tests only
 
@@ -25,7 +25,6 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       supabase: ${{ steps.filter.outputs.supabase }}
       android: ${{ steps.filter.outputs.android }}
-      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -41,8 +40,6 @@ jobs:
               - 'supabase/**'
             android:
               - 'android/**'
-            frontend:
-              - 'frontend/**'
 
   unit-tests:
     name: Unit Tests
@@ -111,28 +108,6 @@ jobs:
           name: android-unit-test-results
           path: android/app/build/reports/tests/
 
-  frontend-unit-tests:
-    name: Frontend Unit Tests
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Run unit tests
-        working-directory: frontend
-        run: npm run test:unit
-
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
@@ -144,9 +119,8 @@ jobs:
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
       (needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true') &&
       (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
-      (needs.android-unit-tests.result == 'success' || needs.android-unit-tests.result == 'skipped') &&
-      (needs.frontend-unit-tests.result == 'success' || needs.frontend-unit-tests.result == 'skipped')
-    needs: [changes, unit-tests, android-unit-tests, frontend-unit-tests]
+      (needs.android-unit-tests.result == 'success' || needs.android-unit-tests.result == 'skipped')
+    needs: [changes, unit-tests, android-unit-tests]
     steps:
       - uses: actions/checkout@v4
 
@@ -169,8 +143,28 @@ jobs:
       - name: Deploy to Render (Staging)
         run: |
           echo "Triggering Render deployments..."
-          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}" || echo "App deploy hook failed or not configured"
-          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB_STAGING }}" || echo "Web deploy hook failed or not configured"
+          for hook_name in "App:${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}" "Web:${{ secrets.RENDER_DEPLOY_HOOK_WEB_STAGING }}"; do
+            name="${hook_name%%:*}"
+            url="${hook_name#*:}"
+            if [ -z "$url" ]; then
+              echo "  ${name} deploy hook not configured, skipping"
+              continue
+            fi
+            for attempt in 1 2; do
+              status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$url")
+              if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
+                echo "  ${name} deploy hook triggered successfully (HTTP ${status})"
+                break
+              else
+                echo "  ${name} deploy hook returned HTTP ${status} (attempt ${attempt}/2)"
+                if [ "$attempt" -eq 2 ]; then
+                  echo "  ERROR: ${name} deploy hook failed after 2 attempts"
+                  exit 1
+                fi
+                sleep 5
+              fi
+            done
+          done
           echo "Deploy hooks triggered. Builds will complete asynchronously."
 
   integration-tests-staging:
@@ -250,6 +244,26 @@ jobs:
       - name: Deploy to Render (Production)
         run: |
           echo "Triggering Render deployments..."
-          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_APP_PRODUCTION }}" || echo "App deploy hook failed or not configured"
-          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB_PRODUCTION }}" || echo "Web deploy hook failed or not configured"
+          for hook_name in "App:${{ secrets.RENDER_DEPLOY_HOOK_APP_PRODUCTION }}" "Web:${{ secrets.RENDER_DEPLOY_HOOK_WEB_PRODUCTION }}"; do
+            name="${hook_name%%:*}"
+            url="${hook_name#*:}"
+            if [ -z "$url" ]; then
+              echo "  ${name} deploy hook not configured, skipping"
+              continue
+            fi
+            for attempt in 1 2; do
+              status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$url")
+              if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
+                echo "  ${name} deploy hook triggered successfully (HTTP ${status})"
+                break
+              else
+                echo "  ${name} deploy hook returned HTTP ${status} (attempt ${attempt}/2)"
+                if [ "$attempt" -eq 2 ]; then
+                  echo "  ERROR: ${name} deploy hook failed after 2 attempts"
+                  exit 1
+                fi
+                sleep 5
+              fi
+            done
+          done
           echo "Deploy hooks triggered. Builds will complete asynchronously."
