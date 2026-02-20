@@ -15,6 +15,7 @@ import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.SenderRuleRepository
 
 data class SenderGroup(
     val senderName: String,
@@ -36,7 +37,8 @@ data class ReviewQueueUiState(
 class ReviewQueueViewModel(
     private val eventRepository: EventRepository,
     private val integrationRepository: IntegrationRepository,
-    private val backendApiClient: BackendApiClient
+    private val backendApiClient: BackendApiClient,
+    private val senderRuleRepository: SenderRuleRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReviewQueueUiState())
@@ -249,6 +251,74 @@ class ReviewQueueViewModel(
                         )
                     }
                 }
+            }
+        }
+    }
+
+    fun ignoreSender(senderEmail: String) {
+        viewModelScope.launch {
+            val result = senderRuleRepository.createRule(
+                senderEmail = senderEmail,
+                senderDomain = null,
+                action = "ignore"
+            )
+            result.onSuccess {
+                // Reject all events from this sender
+                val eventsToReject = _uiState.value.senderGroups
+                    .find { it.senderEmail == senderEmail }
+                    ?.events ?: return@onSuccess
+
+                val eventIds = eventsToReject.map { it.id }.toSet()
+                _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventIds) }
+
+                for (event in eventsToReject) {
+                    eventRepository.rejectEvent(event.id)
+                }
+
+                _uiState.update { state ->
+                    val updatedEvents = state.events.filter { it.id !in eventIds }
+                    state.copy(
+                        events = updatedEvents,
+                        senderGroups = groupBySender(updatedEvents),
+                        processingEventIds = state.processingEventIds - eventIds
+                    )
+                }
+            }.onFailure {
+                _uiState.update { it.copy(errorMessage = "Failed to create ignore rule") }
+            }
+        }
+    }
+
+    fun autoApproveSender(senderEmail: String) {
+        viewModelScope.launch {
+            val result = senderRuleRepository.createRule(
+                senderEmail = senderEmail,
+                senderDomain = null,
+                action = "auto_approve"
+            )
+            result.onSuccess {
+                // Approve all events from this sender
+                val eventsToApprove = _uiState.value.senderGroups
+                    .find { it.senderEmail == senderEmail }
+                    ?.events ?: return@onSuccess
+
+                val eventIds = eventsToApprove.map { it.id }.toSet()
+                _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventIds) }
+
+                for (event in eventsToApprove) {
+                    eventRepository.approveEvent(event.id)
+                }
+
+                _uiState.update { state ->
+                    val updatedEvents = state.events.filter { it.id !in eventIds }
+                    state.copy(
+                        events = updatedEvents,
+                        senderGroups = groupBySender(updatedEvents),
+                        processingEventIds = state.processingEventIds - eventIds
+                    )
+                }
+            }.onFailure {
+                _uiState.update { it.copy(errorMessage = "Failed to create auto-approve rule") }
             }
         }
     }
