@@ -9,6 +9,7 @@
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import SenderRulesPanel from '$lib/components/SenderRulesPanel.svelte';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
@@ -188,7 +189,13 @@
 			{/if}
 		</section>
 
-		<!-- Section 3: Account -->
+		<!-- Section 3: Automation Rules -->
+		<section>
+			<h2 class="text-lg font-semibold mb-4">Automation Rules</h2>
+			<SenderRulesPanel />
+		</section>
+
+		<!-- Section 4: Account -->
 		<section>
 			<h2 class="text-lg font-semibold mb-4">Account</h2>
 			<div class="space-y-4">
