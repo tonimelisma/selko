@@ -33,7 +33,7 @@
         "end_datetime": null,
         "location": "Transamerica Building, 48th Floor",
         "description": "YSC Happy Hour with breathtaking views of San Francisco",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.8,
         "importance": "action_required"
       },
@@ -43,7 +43,7 @@
         "end_datetime": null,
         "location": "The Royal Cuckoo",
         "description": "YSC Happy Hour at The Royal Cuckoo cocktail bar",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.7,
         "importance": "action_required"
       },
@@ -53,7 +53,7 @@
         "end_datetime": null,
         "location": null,
         "description": "Bus trip to wine country, details coming soon",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.5,
         "importance": "action_required"
       },
@@ -63,7 +63,7 @@
         "end_datetime": null,
         "location": null,
         "description": "Traditional Scandinavian Luncheon",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.5,
         "importance": "action_required"
       },
@@ -73,7 +73,7 @@
         "end_datetime": null,
         "location": "Scandinavian School and Cultural Center",
         "description": "Kids and family friendly Easter and crafts event",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.5,
         "importance": "action_required"
       }

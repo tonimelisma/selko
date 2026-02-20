@@ -23,70 +23,70 @@
       {
         "title": "KinderCare Closed - New Year's Day",
         "start_datetime": "2026-01-01",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.8,
         "importance": "action_required"
       },
       {
         "title": "Wear Anything Sparkle Day",
         "start_datetime": "2026-01-02",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Selfie Day",
         "start_datetime": "2026-01-05",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Resolutions Day",
         "start_datetime": "2026-01-07",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2026-01-09",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Happy Birthday to Ms Ashley",
         "start_datetime": "2026-01-13",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.5,
         "importance": "fyi"
       },
       {
         "title": "Let's Make a Snowflake Day",
         "start_datetime": "2026-01-15",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "KinderCare Closed - Martin Luther King Day",
         "start_datetime": "2026-01-19",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.8,
         "importance": "action_required"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2026-01-23",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Dress Like a Rainbow Day",
         "start_datetime": "2026-01-28",
-        "is_all_day": true,
+        "all_day": true,
         "confidence_min": 0.6,
         "importance": "fyi"
       }

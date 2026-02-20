@@ -33,7 +33,7 @@
         "end_datetime": "2026-02-19T16:35:00",
         "location": "Room 203, Lincoln Elementary, 500 School Lane, Pleasantville, CA 94025",
         "description": "Conference with Mrs. Thompson about Emma's progress",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }

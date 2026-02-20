@@ -35,7 +35,7 @@
         "end_datetime": "2026-03-15T16:00:00",
         "location": "Innovation Hub, Room 501",
         "description": "Meeting to finalize Q2 product launch strategy",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }

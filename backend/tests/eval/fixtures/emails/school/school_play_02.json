@@ -34,7 +34,7 @@
         "end_datetime": null,
         "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
         "description": "Woodside High School spring musical performance",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.8,
         "importance": "action_required"
       },
@@ -44,7 +44,7 @@
         "end_datetime": null,
         "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
         "description": "Woodside High School spring musical - Saturday matinee",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.8,
         "importance": "action_required"
       },
@@ -54,7 +54,7 @@
         "end_datetime": null,
         "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
         "description": "Woodside High School spring musical - Saturday evening",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.8,
         "importance": "action_required"
       },
@@ -64,7 +64,7 @@
         "end_datetime": null,
         "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
         "description": "Woodside High School spring musical - Sunday matinee",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.8,
         "importance": "action_required"
       }

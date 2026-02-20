@@ -33,7 +33,7 @@
         "end_datetime": "2026-02-09T09:45:00",
         "location": "Conference Room B",
         "description": "Daily team standup meeting (new time)",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.8,
         "importance": "action_required"
       }

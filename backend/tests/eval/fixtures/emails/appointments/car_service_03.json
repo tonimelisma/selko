@@ -33,7 +33,7 @@
         "end_datetime": "2026-02-07T12:00:00",
         "location": "Honda of San Jose Service Center, 4321 Stevens Creek Blvd, San Jose, CA 95129",
         "description": "30,000 mile maintenance for 2023 Honda Accord",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

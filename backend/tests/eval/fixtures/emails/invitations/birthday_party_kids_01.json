@@ -33,7 +33,7 @@
         "end_datetime": "2026-02-22T17:00:00",
         "location": "FunZone Play Center, 456 Rainbow Lane, Pleasantville, CA 94123",
         "description": "Unicorns & Rainbows theme birthday party for Emma",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }

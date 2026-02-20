@@ -33,7 +33,7 @@
         "end_datetime": "2026-03-07T16:00:00",
         "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
         "description": "Full-day leadership workshop",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.9,
         "importance": "action_required"
       }

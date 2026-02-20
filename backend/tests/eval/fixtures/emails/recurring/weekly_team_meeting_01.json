@@ -33,7 +33,7 @@
         "end_datetime": "2026-02-09T10:30:00",
         "location": "Conference Room A",
         "description": "Weekly team sync meeting",
-        "is_all_day": false,
+        "all_day": false,
         "confidence_min": 0.85,
         "importance": "action_required"
       }
