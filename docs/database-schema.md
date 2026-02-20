@@ -70,6 +70,9 @@ Synced Gmail messages with status-based worker claiming.
 | `locked_by` | text | Worker ID that claimed this email |
 | `attempts` | integer | Number of processing attempts (default: 0) |
 | `max_attempts` | integer | Maximum attempts before permanent failure (default: 3) |
+| `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry (60s * 2^attempts, max 1h) |
+| `dead_letter_reason` | text, nullable | Reason for permanent failure (set when max_attempts exceeded) |
+| `dead_letter_at` | timestamptz, nullable | When the email was moved to dead letter |
 | `created_at` | timestamptz | Auto-set |
 
 **RLS Policies:** Users manage own emails only.
@@ -120,6 +123,9 @@ Calendar events with status-based worker claiming for sync.
 | `sync_attempts` | integer | Number of sync attempts (default: 0) |
 | `max_sync_attempts` | integer | Maximum sync attempts (default: 3) |
 | `sync_error` | text | Last sync error message |
+| `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry sync |
+| `dead_letter_reason` | text, nullable | Reason for permanent sync failure |
+| `dead_letter_at` | timestamptz, nullable | When the event sync was abandoned |
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
 
@@ -192,6 +198,41 @@ Per-user rules for handling emails from specific senders or domains.
 **RLS Policies:** Users manage own sender rules only.
 
 **Triggers:** `sender_rule_before_delete` — when an ignore rule is deleted (un-ignored), a BEFORE DELETE trigger resets matching `skipped` emails from the last 30 days back to `pending` for reprocessing.
+
+### `oauth_states`
+
+Persistent OAuth state tokens for CSRF protection during OAuth flows.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `state` | text, PK | Random state token |
+| `user_id` | uuid | User initiating the OAuth flow |
+| `provider` | text | OAuth provider (`gmail`, `google_calendar`) |
+| `redirect_uri` | text | Where to redirect after OAuth |
+| `created_at` | timestamptz | Auto-set |
+| `expires_at` | timestamptz | State token expiration (10 minutes) |
+
+**RLS Policies:** Service role only (no direct user access).
+
+### `action_history`
+
+Records user actions for undo/redo support.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Action ID |
+| `user_id` | uuid, FK | References `users.id` (CASCADE delete) |
+| `action_type` | text | Action performed (e.g., `approve`, `reject`, `edit`) |
+| `entity_type` | text | Type of entity acted on (e.g., `event`) |
+| `entity_id` | uuid | ID of the entity |
+| `previous_state` | jsonb, nullable | Entity state before the action |
+| `new_state` | jsonb, nullable | Entity state after the action |
+| `external_resource_id` | text, nullable | External resource ID (e.g., Google Calendar event ID) |
+| `created_at` | timestamptz | Auto-set |
+
+**RLS Policies:** Users manage own action history only.
+
+**Indexes:** `(user_id, created_at DESC)` for recent actions lookup.
 
 ### `llm_call_log`
 
