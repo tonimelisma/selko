@@ -17,6 +17,8 @@ from selko.services.llm_provider import (
     LLMResponse,
     OpenAICompatibleProvider,
     _resize_image_if_needed,
+    _sanitize_schema_for_gemini,
+    _sanitize_schema_for_strict,
     _strip_markdown_json,
     create_provider,
 )
@@ -755,3 +757,273 @@ class TestQwenThinking:
 
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
         assert "extra_body" not in call_kwargs
+
+
+class TestSanitizeSchemaForStrict:
+    """Regression tests for _sanitize_schema_for_strict (Bug 1: Moonshot schema)."""
+
+    def test_resolves_all_refs_and_removes_defs(self):
+        """$ref and $defs must be fully resolved and removed."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "event": {"$ref": "#/$defs/CalendarEvent"},
+            },
+            "$defs": {
+                "CalendarEvent": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                    },
+                },
+            },
+        }
+        result = _sanitize_schema_for_strict(schema)
+
+        # No $ref or $defs should remain
+        result_str = str(result)
+        assert "$ref" not in result_str
+        assert "$defs" not in result_str
+        # The reference should be inlined
+        assert result["properties"]["event"]["properties"]["title"]["type"] == "string"
+
+    def test_removes_default_alongside_anyof(self):
+        """'default' must be removed when 'anyOf' is present (Moonshot requirement)."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "end_datetime": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                    "default": None,
+                    "title": "End Datetime",
+                },
+            },
+        }
+        result = _sanitize_schema_for_strict(schema)
+
+        prop = result["properties"]["end_datetime"]
+        assert "default" not in prop
+        assert "anyOf" in prop
+
+    def test_nested_ref_with_anyof_and_default(self):
+        """Nested $ref with anyOf+default must be fully resolved and sanitized."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "event": {"$ref": "#/$defs/CalendarEvent"},
+            },
+            "$defs": {
+                "CalendarEvent": {
+                    "type": "object",
+                    "title": "CalendarEvent",
+                    "properties": {
+                        "start_datetime": {
+                            "anyOf": [{"type": "string"}, {"type": "null"}],
+                            "default": None,
+                            "title": "Start Datetime",
+                        },
+                        "end_datetime": {
+                            "anyOf": [{"type": "string"}, {"type": "null"}],
+                            "default": None,
+                            "title": "End Datetime",
+                        },
+                    },
+                },
+            },
+        }
+        result = _sanitize_schema_for_strict(schema)
+
+        result_str = str(result)
+        assert "$ref" not in result_str
+        assert "$defs" not in result_str
+        assert "default" not in result_str
+
+        event = result["properties"]["event"]
+        assert event["type"] == "object"
+        assert "default" not in event["properties"]["start_datetime"]
+        assert "default" not in event["properties"]["end_datetime"]
+
+    def test_adds_additional_properties_false(self):
+        """All objects must have additionalProperties: false for strict mode."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "nested": {
+                    "type": "object",
+                    "properties": {
+                        "field": {"type": "string"},
+                    },
+                },
+            },
+        }
+        result = _sanitize_schema_for_strict(schema)
+
+        assert result["additionalProperties"] is False
+        assert result["properties"]["nested"]["additionalProperties"] is False
+
+    def test_circular_ref_does_not_loop(self):
+        """Circular $ref must not cause infinite recursion."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "self_ref": {"$ref": "#/$defs/Node"},
+            },
+            "$defs": {
+                "Node": {
+                    "type": "object",
+                    "properties": {
+                        "child": {"$ref": "#/$defs/Node"},
+                    },
+                },
+            },
+        }
+        # Should not raise RecursionError
+        result = _sanitize_schema_for_strict(schema)
+        assert "$ref" not in str(result)
+
+
+class TestSanitizeSchemaForGemini:
+    """Regression tests for _sanitize_schema_for_gemini (Bug 3: Gemini anyOf)."""
+
+    def test_converts_anyof_with_null_to_nullable(self):
+        """anyOf: [type, null] must become {type, nullable: true}."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "end_datetime": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                    "default": None,
+                },
+            },
+        }
+        result = _sanitize_schema_for_gemini(schema)
+
+        prop = result["properties"]["end_datetime"]
+        assert "anyOf" not in prop
+        assert prop["type"] == "string"
+        assert prop["nullable"] is True
+
+    def test_removes_unsupported_keywords(self):
+        """title, default, additionalProperties must be removed."""
+        schema = {
+            "type": "object",
+            "title": "MySchema",
+            "additionalProperties": False,
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "title": "Field",
+                    "default": "hello",
+                },
+            },
+        }
+        result = _sanitize_schema_for_gemini(schema)
+
+        assert "title" not in result
+        assert "additionalProperties" not in result
+        assert "title" not in result["properties"]["field"]
+        assert "default" not in result["properties"]["field"]
+
+    def test_resolves_refs(self):
+        """$ref/$defs must be resolved for Gemini."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "event": {"$ref": "#/$defs/Event"},
+            },
+            "$defs": {
+                "Event": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                    },
+                },
+            },
+        }
+        result = _sanitize_schema_for_gemini(schema)
+
+        assert "$ref" not in str(result)
+        assert "$defs" not in str(result)
+        assert result["properties"]["event"]["properties"]["name"]["type"] == "string"
+
+    def test_merge_schema_pattern(self):
+        """Hand-built merge schema pattern should work after sanitization."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "start_datetime": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                },
+                "end_datetime": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                },
+                "location": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                },
+            },
+        }
+        result = _sanitize_schema_for_gemini(schema)
+
+        for field in ("start_datetime", "end_datetime", "location"):
+            prop = result["properties"][field]
+            assert "anyOf" not in prop, f"{field} still has anyOf"
+            assert prop["type"] == "string"
+            assert prop["nullable"] is True
+
+
+class TestResizeImageDegenerateFiltering:
+    """Regression tests for degenerate image filtering (Bug 5)."""
+
+    def test_1x1_tracking_pixel_returns_none(self):
+        """1x1 tracking pixel must be filtered out."""
+        import io
+        from PIL import Image
+
+        img = Image.new("RGB", (1, 1), color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        data = buf.getvalue()
+
+        result = _resize_image_if_needed(data, "image/png")
+        assert result is None
+
+    def test_5x5_spacer_returns_none(self):
+        """5x5 spacer image must be filtered out."""
+        import io
+        from PIL import Image
+
+        img = Image.new("RGB", (5, 5), color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        data = buf.getvalue()
+
+        result = _resize_image_if_needed(data, "image/png")
+        assert result is None
+
+    def test_1x100_narrow_image_returns_none(self):
+        """1-pixel-wide image must be filtered out."""
+        import io
+        from PIL import Image
+
+        img = Image.new("RGB", (1, 100), color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        data = buf.getvalue()
+
+        result = _resize_image_if_needed(data, "image/png")
+        assert result is None
+
+    def test_10x10_minimum_passes(self):
+        """10x10 image (at minimum threshold) should pass through."""
+        import io
+        from PIL import Image
+
+        img = Image.new("RGB", (10, 10), color="red")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        data = buf.getvalue()
+
+        result = _resize_image_if_needed(data, "image/png")
+        assert result is not None
+        assert result == data
