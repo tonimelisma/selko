@@ -5,6 +5,7 @@
 		fetchPendingEventsWithSources,
 		updateEventStatus
 	} from '$lib/services/events.js';
+	import { createSenderRule } from '$lib/services/sender-rules.js';
 	import { syncEventToCalendar } from '$lib/api/backend.js';
 	import { initiateGmailAuth, initiateCalendarAuth } from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
@@ -19,6 +20,7 @@
 	let isLoadingIntegrations = $state(true);
 	let isLoadingEvents = $state(false);
 	let error = $state('');
+	let notification = $state('');
 
 	let gmailIntegration = $derived(integrationsList.find((i) => i.provider === 'gmail'));
 	let gcalIntegration = $derived(
@@ -121,6 +123,46 @@
 		}
 	}
 
+	/**
+	 * @param {string} senderEmail
+	 * @param {any[]} eventsList
+	 */
+	async function handleIgnoreSender(senderEmail, eventsList) {
+		const { error: ruleError } = await createSenderRule({
+			sender_email: senderEmail,
+			action: 'ignore'
+		});
+		if (ruleError) {
+			error = ruleError.message;
+			return;
+		}
+		for (const event of eventsList) {
+			await handleReject(event);
+		}
+		notification = `Sender ignored: ${senderEmail}`;
+		setTimeout(() => { notification = ''; }, 3000);
+	}
+
+	/**
+	 * @param {string} senderEmail
+	 * @param {any[]} eventsList
+	 */
+	async function handleAutoApproveSender(senderEmail, eventsList) {
+		const { error: ruleError } = await createSenderRule({
+			sender_email: senderEmail,
+			action: 'auto_approve'
+		});
+		if (ruleError) {
+			error = ruleError.message;
+			return;
+		}
+		for (const event of eventsList) {
+			await handleApprove(event);
+		}
+		notification = `Sender auto-approved: ${senderEmail}`;
+		setTimeout(() => { notification = ''; }, 3000);
+	}
+
 	function handleConnect() {
 		initiateGmailAuth();
 	}
@@ -138,6 +180,14 @@
 <svelte:head>
 	<title>Home - Selko</title>
 </svelte:head>
+
+{#if notification}
+	<div class="toast toast-end z-50">
+		<div class="alert alert-success">
+			<span>{notification}</span>
+		</div>
+	</div>
+{/if}
 
 {#if isLoadingIntegrations}
 	<div class="flex items-center justify-center py-16" aria-busy="true" aria-live="polite">
@@ -172,9 +222,12 @@
 			<div>
 				<SenderHeader
 					sender={senderGroup.senderName}
+					senderEmail={senderKey}
 					eventCount={senderGroup.events.length}
 					onapproveAll={() => handleApproveAll(senderGroup.events)}
 					onrejectAll={() => handleRejectAll(senderGroup.events)}
+					onignoreSender={() => handleIgnoreSender(senderKey, senderGroup.events)}
+					onautoApproveSender={() => handleAutoApproveSender(senderKey, senderGroup.events)}
 				/>
 				{#each senderGroup.events as event (event.id)}
 					<EventCard

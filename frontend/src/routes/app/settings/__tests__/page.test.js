@@ -73,6 +73,16 @@ vi.mock('$lib/api/backend.js', () => ({
 	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args)
 }));
 
+const mockFetchSenderRules = vi.fn();
+const mockCreateSenderRule = vi.fn();
+const mockDeleteSenderRule = vi.fn();
+
+vi.mock('$lib/services/sender-rules.js', () => ({
+	fetchSenderRules: (...args) => mockFetchSenderRules(...args),
+	createSenderRule: (...args) => mockCreateSenderRule(...args),
+	deleteSenderRule: (...args) => mockDeleteSenderRule(...args)
+}));
+
 const { default: SettingsPage } = await import('../+page.svelte');
 
 describe('Settings Page', () => {
@@ -83,6 +93,7 @@ describe('Settings Page', () => {
 		mockListCalendars.mockResolvedValue({ data: null, error: null });
 		mockUpdateCalendarSettings.mockResolvedValue({ data: null, error: null });
 		mockDisconnectIntegration.mockResolvedValue({ data: true, error: null });
+		mockFetchSenderRules.mockResolvedValue({ data: [], error: null });
 	});
 
 	it('shows loading spinner initially', () => {
@@ -167,6 +178,16 @@ describe('Settings Page', () => {
 
 		await waitFor(() => {
 			expect(screen.getByText(/Connect Google Calendar to configure/)).toBeInTheDocument();
+		});
+	});
+
+	it('shows Automation Rules section', async () => {
+		mockFetchIntegrations.mockResolvedValue({ data: [], error: null });
+
+		render(SettingsPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Automation Rules')).toBeInTheDocument();
 		});
 	});
 
