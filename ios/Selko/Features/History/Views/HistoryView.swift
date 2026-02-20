@@ -160,15 +160,15 @@ struct HistoryRowView: View {
     private var statusDescription: String {
         switch event.status {
         case .approved:
-            return "Approved, waiting to sync"
+            return String(localized: "Approved, waiting to sync")
         case .synced:
-            return "Synced to Google Calendar"
+            return String(localized: "Synced to Google Calendar")
         case .syncFailed:
-            return "Failed to sync to calendar"
+            return String(localized: "Failed to sync to calendar")
         case .rejected:
-            return "Rejected"
+            return String(localized: "Rejected")
         case .cancelled:
-            return "Cancelled"
+            return String(localized: "Cancelled")
         default:
             return event.status.rawValue
         }
