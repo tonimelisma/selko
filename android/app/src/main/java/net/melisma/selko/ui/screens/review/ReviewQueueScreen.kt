@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.MoreVert
@@ -103,7 +104,9 @@ fun ReviewQueueScreen(
                                 SenderGroupHeader(
                                     group = group,
                                     onApproveAll = { viewModel.approveGroup(group.senderEmail) },
-                                    onRejectAll = { viewModel.rejectGroup(group.senderEmail) }
+                                    onRejectAll = { viewModel.rejectGroup(group.senderEmail) },
+                                    onIgnoreSender = { viewModel.ignoreSender(group.senderEmail) },
+                                    onAutoApproveSender = { viewModel.autoApproveSender(group.senderEmail) }
                                 )
                             }
 
@@ -153,7 +156,9 @@ fun ReviewQueueScreen(
 private fun SenderGroupHeader(
     group: SenderGroup,
     onApproveAll: () -> Unit,
-    onRejectAll: () -> Unit
+    onRejectAll: () -> Unit,
+    onIgnoreSender: () -> Unit,
+    onAutoApproveSender: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -176,19 +181,19 @@ private fun SenderGroupHeader(
             )
         }
 
-        if (group.events.size > 1) {
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.MoreVert,
-                        contentDescription = "Actions",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
+        Box {
+            IconButton(onClick = { showMenu = true }) {
+                Icon(
+                    imageVector = Icons.Filled.MoreVert,
+                    contentDescription = "Actions",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                if (group.events.size > 1) {
                     DropdownMenuItem(
                         text = { Text("Approve all") },
                         onClick = {
@@ -219,24 +224,27 @@ private fun SenderGroupHeader(
                         }
                     )
                     HorizontalDivider()
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                "Ignore sender",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        },
-                        onClick = { showMenu = false },
-                        enabled = false,
-                        leadingIcon = {
-                            Icon(
-                                Icons.Filled.Block,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        }
-                    )
                 }
+                DropdownMenuItem(
+                    text = { Text("Auto-approve sender") },
+                    onClick = {
+                        showMenu = false
+                        onAutoApproveSender()
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Ignore sender") },
+                    onClick = {
+                        showMenu = false
+                        onIgnoreSender()
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Filled.Block, contentDescription = null)
+                    }
+                )
             }
         }
     }

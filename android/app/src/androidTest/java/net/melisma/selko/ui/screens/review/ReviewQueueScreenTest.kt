@@ -15,6 +15,7 @@ import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.SenderRuleRepository
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.junit.Rule
 import org.junit.Test
@@ -27,6 +28,7 @@ class ReviewQueueScreenTest {
     private val eventRepository = mockk<EventRepository>(relaxed = true)
     private val integrationRepository = mockk<IntegrationRepository>(relaxed = true)
     private val backendApiClient = mockk<BackendApiClient>(relaxed = true)
+    private val senderRuleRepository = mockk<SenderRuleRepository>(relaxed = true)
 
     private fun setupMocks(
         isGmailConnected: Boolean = true,
@@ -46,7 +48,7 @@ class ReviewQueueScreenTest {
             SelkoTheme {
                 ReviewQueueScreen(
                     onNavigateToEventDetail = {},
-                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient)
+                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -63,7 +65,7 @@ class ReviewQueueScreenTest {
             SelkoTheme {
                 ReviewQueueScreen(
                     onNavigateToEventDetail = {},
-                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient)
+                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -90,7 +92,7 @@ class ReviewQueueScreenTest {
             SelkoTheme {
                 ReviewQueueScreen(
                     onNavigateToEventDetail = {},
-                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient)
+                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }

@@ -12,6 +12,7 @@ import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.SenderRuleRepository
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.junit.Rule
 import org.junit.Test
@@ -25,6 +26,7 @@ class SettingsScreenTest {
     private val integrationRepository = mockk<IntegrationRepository>(relaxed = true)
     private val calendarSettingsRepository = mockk<CalendarSettingsRepository>(relaxed = true)
     private val backendApiClient = mockk<BackendApiClient>(relaxed = true)
+    private val senderRuleRepository = mockk<SenderRuleRepository>(relaxed = true)
 
     private fun setupMocks() {
         coEvery { authRepository.getCurrentUserEmail() } returns "test@example.com"
@@ -41,7 +43,7 @@ class SettingsScreenTest {
             SelkoTheme {
                 SettingsScreen(
                     onLogout = {},
-                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient)
+                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -58,7 +60,7 @@ class SettingsScreenTest {
             SelkoTheme {
                 SettingsScreen(
                     onLogout = {},
-                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient)
+                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -75,7 +77,7 @@ class SettingsScreenTest {
             SelkoTheme {
                 SettingsScreen(
                     onLogout = {},
-                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient)
+                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -92,7 +94,7 @@ class SettingsScreenTest {
             SelkoTheme {
                 SettingsScreen(
                     onLogout = {},
-                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient)
+                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -109,7 +111,7 @@ class SettingsScreenTest {
             SelkoTheme {
                 SettingsScreen(
                     onLogout = {},
-                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient)
+                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -126,7 +128,7 @@ class SettingsScreenTest {
             SelkoTheme {
                 SettingsScreen(
                     onLogout = {},
-                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient)
+                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -143,7 +145,7 @@ class SettingsScreenTest {
             SelkoTheme {
                 SettingsScreen(
                     onLogout = {},
-                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient)
+                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
@@ -160,7 +162,7 @@ class SettingsScreenTest {
             SelkoTheme {
                 SettingsScreen(
                     onLogout = {},
-                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient)
+                    viewModel = SettingsViewModel(authRepository, integrationRepository, calendarSettingsRepository, backendApiClient, senderRuleRepository)
                 )
             }
         }
