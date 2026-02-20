@@ -17,10 +17,13 @@ struct SelkoApp: App {
                 if router.isLoading {
                     ProgressView("Loading...")
                 } else if router.isAuthenticated {
-                    MainTabView()
+                    MainTabView(router: router)
                 } else {
                     LoginView()
                 }
+            }
+            .onOpenURL { url in
+                router.handleDeepLink(url)
             }
         }
     }
