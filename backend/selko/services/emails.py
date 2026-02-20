@@ -5,7 +5,8 @@ Handles email parsing and database storage.
 
 import base64
 import logging
-from datetime import datetime
+import math
+from datetime import datetime, timedelta, timezone
 from email.utils import getaddresses, parseaddr
 from typing import Any, Optional
 
@@ -493,7 +494,9 @@ def fail_email_processing(
         ).eq("id", email_id).single().execute()
 
         email = result.data
-        should_retry = email["attempts"] < email["max_attempts"]
+        attempts = email["attempts"]
+        max_attempts = email["max_attempts"]
+        should_retry = attempts < max_attempts
 
         update_data = {
             "processing_status": "pending" if should_retry else "failed",
@@ -502,18 +505,31 @@ def fail_email_processing(
             "locked_until": None,
         }
 
+        if should_retry:
+            # Exponential backoff: 60s, 120s, 240s, ... capped at 3600s
+            base_delay = 60  # seconds
+            max_delay = 3600  # 1 hour
+            delay = min(base_delay * (2 ** (attempts - 1)), max_delay)
+            next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
+            update_data["next_retry_at"] = next_retry_at.isoformat()
+        else:
+            # Dead letter: permanently failed
+            update_data["dead_letter_reason"] = error
+            update_data["dead_letter_at"] = datetime.now(timezone.utc).isoformat()
+
         client.table("emails").update(update_data).eq("id", email_id).execute()
 
         if should_retry:
             logger.warning(
                 f"Email {email_id} processing failed "
-                f"(attempt {email['attempts']}/{email['max_attempts']}): {error}. "
-                f"Will retry."
+                f"(attempt {attempts}/{max_attempts}): {error}. "
+                f"Will retry in {delay}s."
             )
         else:
             logger.error(
                 f"Email {email_id} processing failed permanently "
-                f"after {email['attempts']} attempts: {error}"
+                f"after {attempts} attempts: {error}. "
+                f"Moved to dead letter."
             )
 
     except Exception as e:

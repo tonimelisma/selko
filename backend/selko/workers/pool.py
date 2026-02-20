@@ -16,6 +16,7 @@ from typing import Any, Optional
 
 from selko.config import Config, load_config
 from selko.services.auth import get_service_client
+from selko.services.circuit_breaker import circuit_breaker
 from selko.services.scheduled_tasks import (
     ScheduledTasksError,
     claim_scheduled_task,
@@ -180,32 +181,39 @@ class WorkerPool:
 
         client = get_service_client(self.config)
 
-        # 1. Try scheduled tasks first (email_fetch)
-        try:
-            task = claim_scheduled_task(client, ["email_fetch"], worker_id)
-            if task:
-                await self._process_scheduled_task(client, worker_id, task)
-                return True
-        except ScheduledTasksError as e:
-            logger.error(f"{worker_id}: Error claiming scheduled task: {e}")
+        # 1. Try scheduled tasks first (email_fetch) - requires Gmail
+        if circuit_breaker.is_available("gmail"):
+            try:
+                task = claim_scheduled_task(client, ["email_fetch"], worker_id)
+                if task:
+                    await self._process_scheduled_task(client, worker_id, task)
+                    return True
+            except ScheduledTasksError as e:
+                logger.error(f"{worker_id}: Error claiming scheduled task: {e}")
 
-        # 2. Try pending emails
-        try:
-            email = claim_pending_email(client, worker_id)
-            if email:
-                await self._process_email(client, worker_id, email)
-                return True
-        except EmailError as e:
-            logger.error(f"{worker_id}: Error claiming email: {e}")
+        # 2. Try pending emails - requires LLM
+        if circuit_breaker.is_available("llm"):
+            try:
+                email = claim_pending_email(
+                    client, worker_id, lock_duration_seconds=600,
+                )
+                if email:
+                    await self._process_email(client, worker_id, email)
+                    return True
+            except EmailError as e:
+                logger.error(f"{worker_id}: Error claiming email: {e}")
 
-        # 3. Try approved events
-        try:
-            event = claim_approved_event_for_sync(client, worker_id)
-            if event:
-                await self._process_event_sync(client, worker_id, event)
-                return True
-        except EventsError as e:
-            logger.error(f"{worker_id}: Error claiming event: {e}")
+        # 3. Try approved events - requires Google Calendar
+        if circuit_breaker.is_available("google_calendar"):
+            try:
+                event = claim_approved_event_for_sync(
+                    client, worker_id, lock_duration_seconds=300,
+                )
+                if event:
+                    await self._process_event_sync(client, worker_id, event)
+                    return True
+            except EventsError as e:
+                logger.error(f"{worker_id}: Error claiming event: {e}")
 
         return False
 
@@ -237,9 +245,11 @@ class WorkerPool:
                 raise ValueError(f"Unknown scheduled task type: {task_type}")
 
             complete_scheduled_task(client, task_id)
+            circuit_breaker.record_success("gmail")
             logger.info(f"{worker_id}: Completed scheduled task {task_id}")
 
         except Exception as e:
+            circuit_breaker.record_failure("gmail")
             logger.error(f"{worker_id}: Scheduled task {task_id} failed: {e}", exc_info=True)
             try:
                 fail_scheduled_task(client, task_id, str(e))
@@ -267,11 +277,23 @@ class WorkerPool:
         logger.info(f"{worker_id}: Processing email {email_id}: {subject}")
 
         try:
-            await process_email(client, self.config, email)
+            async with asyncio.timeout(120):
+                await process_email(client, self.config, email)
             complete_email_processing(client, email_id)
+            circuit_breaker.record_success("llm")
             logger.info(f"{worker_id}: Completed email {email_id}")
 
+        except asyncio.TimeoutError:
+            error_msg = "Email processing timed out after 120s"
+            circuit_breaker.record_failure("llm")
+            logger.error(f"{worker_id}: {error_msg} for email {email_id}")
+            try:
+                fail_email_processing(client, email_id, error_msg)
+            except Exception as fail_error:
+                logger.error(f"{worker_id}: Failed to mark email as failed: {fail_error}")
+
         except Exception as e:
+            circuit_breaker.record_failure("llm")
             logger.error(f"{worker_id}: Email {email_id} failed: {e}", exc_info=True)
             try:
                 fail_email_processing(client, email_id, str(e))
@@ -299,11 +321,23 @@ class WorkerPool:
         logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
 
         try:
-            google_event_id = await sync_event(client, self.config, event)
+            async with asyncio.timeout(60):
+                google_event_id = await sync_event(client, self.config, event)
             complete_event_sync(client, event_id, google_event_id)
+            circuit_breaker.record_success("google_calendar")
             logger.info(f"{worker_id}: Completed event sync {event_id}")
 
+        except asyncio.TimeoutError:
+            error_msg = "Event sync timed out after 60s"
+            circuit_breaker.record_failure("google_calendar")
+            logger.error(f"{worker_id}: {error_msg} for event {event_id}")
+            try:
+                fail_event_sync(client, event_id, error_msg)
+            except Exception as fail_error:
+                logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")
+
         except Exception as e:
+            circuit_breaker.record_failure("google_calendar")
             logger.error(f"{worker_id}: Event {event_id} sync failed: {e}", exc_info=True)
             try:
                 fail_event_sync(client, event_id, str(e))

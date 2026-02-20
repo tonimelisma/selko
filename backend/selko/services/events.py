@@ -1,7 +1,7 @@
 """Events service for event extraction, deduplication, and management."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID
 
@@ -847,7 +847,9 @@ def fail_event_sync(
         ).eq("id", event_id).single().execute()
 
         event = result.data
-        should_retry = event["sync_attempts"] < event["max_sync_attempts"]
+        sync_attempts = event["sync_attempts"]
+        max_sync_attempts = event["max_sync_attempts"]
+        should_retry = sync_attempts < max_sync_attempts
 
         update_data = {
             "status": "approved" if should_retry else "sync_failed",
@@ -856,18 +858,31 @@ def fail_event_sync(
             "locked_until": None,
         }
 
+        if should_retry:
+            # Exponential backoff: 60s, 120s, 240s, ... capped at 3600s
+            base_delay = 60  # seconds
+            max_delay = 3600  # 1 hour
+            delay = min(base_delay * (2 ** (sync_attempts - 1)), max_delay)
+            next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
+            update_data["next_retry_at"] = next_retry_at.isoformat()
+        else:
+            # Dead letter: permanently failed
+            update_data["dead_letter_reason"] = error
+            update_data["dead_letter_at"] = datetime.now(timezone.utc).isoformat()
+
         client.table("events").update(update_data).eq("id", event_id).execute()
 
         if should_retry:
             logger.warning(
                 f"Event {event_id} sync failed "
-                f"(attempt {event['sync_attempts']}/{event['max_sync_attempts']}): {error}. "
-                f"Will retry."
+                f"(attempt {sync_attempts}/{max_sync_attempts}): {error}. "
+                f"Will retry in {delay}s."
             )
         else:
             logger.error(
                 f"Event {event_id} sync failed permanently "
-                f"after {event['sync_attempts']} attempts: {error}"
+                f"after {sync_attempts} attempts: {error}. "
+                f"Moved to dead letter."
             )
 
     except Exception as e:
