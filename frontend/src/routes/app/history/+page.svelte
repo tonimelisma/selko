@@ -5,6 +5,7 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 
 	/** @type {any[]} */
 	let events = $state([]);
@@ -151,10 +152,7 @@
 		<div class="h-16 bg-base-200 rounded animate-pulse"></div>
 	</div>
 {:else if error}
-	<div class="alert alert-error mb-4">
-		<span>{error}</span>
-		<button class="btn btn-sm btn-ghost" onclick={loadEvents}>Retry</button>
-	</div>
+	<ErrorAlert message={error} onretry={loadEvents} />
 {:else if events.length === 0}
 	<EmptyState
 		heading="No activity yet"
