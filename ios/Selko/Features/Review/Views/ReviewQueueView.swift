@@ -90,6 +90,12 @@ struct ReviewQueueView: View {
                         },
                         onRejectAll: {
                             Task { await viewModel.rejectAllInGroup(group) }
+                        },
+                        onIgnoreSender: {
+                            Task { await viewModel.ignoreSender(group) }
+                        },
+                        onAutoApproveSender: {
+                            Task { await viewModel.autoApproveSender(group) }
                         }
                     )
                 }

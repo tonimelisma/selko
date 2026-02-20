@@ -9,6 +9,8 @@ struct SenderGroupView: View {
     let group: SenderGroup
     let onApproveAll: () -> Void
     let onRejectAll: () -> Void
+    let onIgnoreSender: () -> Void
+    let onAutoApproveSender: () -> Void
 
     var body: some View {
         HStack {
@@ -27,8 +29,8 @@ struct SenderGroupView: View {
 
             Spacer()
 
-            if group.events.count > 1 {
-                Menu {
+            Menu {
+                if group.events.count > 1 {
                     Button {
                         onApproveAll()
                     } label: {
@@ -42,20 +44,25 @@ struct SenderGroupView: View {
                     }
 
                     Divider()
-
-                    Button(role: .destructive) {
-                        // Not implemented yet
-                    } label: {
-                        Label("Ignore sender", systemImage: "nosign")
-                    }
-                    .disabled(true)
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
                 }
-                .accessibilityLabel("Actions for this sender")
+
+                Button {
+                    onAutoApproveSender()
+                } label: {
+                    Label("Auto-approve sender", systemImage: "checkmark.circle")
+                }
+
+                Button(role: .destructive) {
+                    onIgnoreSender()
+                } label: {
+                    Label("Ignore sender", systemImage: "nosign")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
             }
+            .accessibilityLabel("Actions for this sender")
         }
         .textCase(nil)
     }
