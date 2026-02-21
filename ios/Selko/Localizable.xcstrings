@@ -617,6 +617,50 @@
         }
       }
     },
+    "event_detail.source_photo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source Photo"
+          }
+        }
+      }
+    },
+    "event_detail.source" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source"
+          }
+        }
+      }
+    },
+    "event_detail.photo_source_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Photos"
+          }
+        }
+      }
+    },
+    "event_detail.photo_source_description" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Event detected from photo"
+          }
+        }
+      }
+    },
     "event_detail.no_source" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -712,6 +756,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Google Photos"
+          }
+        }
+      }
+    },
+    "integration.google_photos_description" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan photos for event details"
           }
         }
       }

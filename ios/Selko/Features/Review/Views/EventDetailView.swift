@@ -167,7 +167,7 @@ struct EventDetailView: View {
     private var sourcePanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Source Email")
+                Text(sourceSectionTitle)
                     .font(.title3)
                     .fontWeight(.semibold)
                     .padding(.horizontal)
@@ -192,7 +192,7 @@ struct EventDetailView: View {
     private var sourceDisclosure: some View {
         Group {
             if let sources = viewModel.event?.eventSources, !sources.isEmpty {
-                DisclosureGroup("Source Email") {
+                DisclosureGroup(sourceSectionTitle) {
                     VStack(spacing: 12) {
                         ForEach(sources) { source in
                             sourceCard(source)
@@ -210,7 +210,7 @@ struct EventDetailView: View {
     private var sourceDisclosureSection: some View {
         if let sources = viewModel.event?.eventSources, !sources.isEmpty {
             Section {
-                DisclosureGroup("Source Email") {
+                DisclosureGroup(sourceSectionTitle) {
                     VStack(spacing: 12) {
                         ForEach(sources) { source in
                             sourceCard(source)
@@ -221,12 +221,57 @@ struct EventDetailView: View {
         }
     }
 
+    // MARK: - Source Helpers
+
+    /// Returns the appropriate section title based on the primary source origin.
+    private var sourceSectionTitle: String {
+        guard let sources = viewModel.event?.eventSources, !sources.isEmpty else {
+            return String(localized: "Source")
+        }
+        let primaryOrigin = sources.first?.sourceOrigin ?? .email
+        switch primaryOrigin {
+        case .email:
+            return String(localized: "Source Email")
+        case .googlePhotos:
+            return String(localized: "Source Photo")
+        case .googleCalendar:
+            return String(localized: "Source")
+        }
+    }
+
+    /// Returns the SF Symbol name for a source origin.
+    private func sourceOriginIcon(_ origin: SourceOrigin) -> String {
+        switch origin {
+        case .email:
+            return "envelope.fill"
+        case .googlePhotos:
+            return "photo.fill"
+        case .googleCalendar:
+            return "calendar"
+        }
+    }
+
     // MARK: - Source Card
 
     @ViewBuilder
     private func sourceCard(_ source: EventSource) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let email = source.emails {
+            if source.sourceOrigin == .googlePhotos {
+                // Photo source card
+                HStack {
+                    Image(systemName: "photo.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Google Photos")
+                            .font(.headline)
+                        Text("Event detected from photo")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+            } else if let email = source.emails {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(email.fromName ?? String(localized: "Unknown Sender"))
@@ -262,7 +307,7 @@ struct EventDetailView: View {
 
             HStack {
                 Label(source.sourceType.rawValue.replacingOccurrences(of: "_", with: " ").capitalized,
-                      systemImage: "tag")
+                      systemImage: sourceOriginIcon(source.sourceOrigin))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
