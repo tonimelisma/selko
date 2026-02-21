@@ -37,7 +37,6 @@
         "location": "LearnTech Training Center, 100 Tech Blvd, Austin, TX 78701",
         "description": "2-day Python programming training course",
         "all_day": true,
-        "confidence_min": 0.7,
         "importance": "action_required"
       }
     ]

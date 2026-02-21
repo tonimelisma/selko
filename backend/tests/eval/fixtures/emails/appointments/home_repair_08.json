@@ -34,7 +34,6 @@
         "location": "456 Homeowner Drive, Santa Clara, CA 95050",
         "description": "Water heater inspection and repair - technician will call 30 minutes before arrival",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]

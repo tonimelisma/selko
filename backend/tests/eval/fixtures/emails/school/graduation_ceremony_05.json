@@ -34,7 +34,6 @@
         "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
         "description": "8th grade graduation ceremony with reception to follow",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

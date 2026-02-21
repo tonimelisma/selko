@@ -17,8 +17,7 @@
         "title": "Appointment with Dr. Smith",
         "start_datetime": "2026-01-28T10:30:00",
         "location": "Springfield Health Clinic, 456 Medical Plaza, Suite 200",
-        "description": "Medical appointment with Dr. Emily Smith at Springfield Health Clinic",
-        "confidence": 0.98
+        "description": "Medical appointment with Dr. Emily Smith at Springfield Health Clinic"
       }
     ]
   }

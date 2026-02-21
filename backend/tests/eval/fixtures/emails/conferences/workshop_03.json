@@ -34,7 +34,6 @@
         "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
         "description": "Full-day leadership workshop",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

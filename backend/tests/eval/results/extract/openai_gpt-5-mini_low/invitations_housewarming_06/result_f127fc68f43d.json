@@ -1,0 +1,347 @@
+{
+  "fixture_name": "invitations/housewarming_06",
+  "fixture_hash": "c82d2dd5a3c905d6d373170fdccc7b24a158e49bc7ac8dd7f40d7ed25649c8bd",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:34:54.365311+00:00",
+  "duration_ms": 6539,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:34:47.819458+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:34:47.819469+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:34:47.836522+00:00",
+      "duration_ms": 6522
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:34:54.359345+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Housewarming party with open house style timing",
+  "difficulty": "easy",
+  "tags": [
+    "housewarming",
+    "open-house",
+    "casual"
+  ],
+  "input_summary": {
+    "subject": "We moved! Come see our new place",
+    "from": "chris.nguyen@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Chris & Jamie's Housewarming Party",
+        "start_datetime": "2026-02-28T16:00:00",
+        "end_datetime": "2026-02-28T21:00:00",
+        "location": "567 Willow Way, Apt 12B, Seattle, WA 98101",
+        "description": "Housewarming party - drop by anytime, BYOB",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Housewarming Party \u2014 Chris & Jamie",
+        "start_datetime": "2026-02-28T16:00:00-08:00",
+        "end_datetime": "2026-02-28T21:00:00-08:00",
+        "all_day": false,
+        "location": "567 Willow Way, Apt 12B, Seattle, WA 98101",
+        "description": "HOUSEWARMING PARTY hosted by Chris & Jamie\nDate: Saturday, February 28, 2026\nTime: 4:00 PM \u2013 9:00 PM\nAddress: 567 Willow Way, Apt 12B, Seattle, WA 98101\nDetails: Drop by anytime during the party \u2014 no need to stay the whole time. BYOB; snacks will be provided. No gifts necessary.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1175,
+    "completion_tokens": 385,
+    "total_tokens": 1560
+  },
+  "cost": 0.00106375,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3365,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: We moved! Come see our new place\n- From: Chris Nguyen <chris.nguyen@gmail.com>\n- Date Sent: 2026-02-01T19:30:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events \u2014 do NOT extract these:**\nAn event is something the recipient would put on their personal calendar to attend, participate in, or prepare for. Do NOT extract:\n\u2717 Transactional emails: order confirmations, shipping notifications, receipts, payment reminders, subscription renewals\n\u2717 Administrative/informational: account statements, terms updates, password resets, surveys, newsletters without specific event invitations\n\u2717 Dates that aren't events: delivery estimates, billing cycles, payment due dates, comment period deadlines, regulatory deadlines\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 375,
+        "text": "\n**Email Body:**\nHey!\n\nWe finally got the keys and moved in! \ud83c\udfe0\ud83c\udf89\n\nCome check out our new place:\n\nHOUSEWARMING PARTY\nSaturday, February 28th\n4pm - 9pm\n\nOur new address:\n567 Willow Way, Apt 12B\nSeattle, WA 98101\n\nDrop by anytime during the party - no need to stay the whole time.\nBYOB, we'll have snacks!\n\nNo gifts necessary, just bring yourselves!\n\nSee you there,\nChris & Jamie"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              },
+              "recurrence_rule": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events."
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "importance",
+              "recurrence_rule"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"events_found\":true,\"events\":[{\"title\":\"Housewarming Party \u2014 Chris & Jamie\",\"start_datetime\":\"2026-02-28T16:00:00-08:00\",\"end_datetime\":\"2026-02-28T21:00:00-08:00\",\"all_day\":false,\"location\":\"567 Willow Way, Apt 12B, Seattle, WA 98101\",\"description\":\"HOUSEWARMING PARTY hosted by Chris & Jamie\\nDate: Saturday, February 28, 2026\\nTime: 4:00 PM \u2013 9:00 PM\\nAddress: 567 Willow Way, Apt 12B, Seattle, WA 98101\\nDetails: Drop by anytime during the party \u2014 no need to stay the whole time. BYOB; snacks will be provided. No gifts necessary.\",\"importance\":\"action_required\",\"recurrence_rule\":null}]}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -1,0 +1,233 @@
+{
+  "fixture_name": "school_event_detailed_14",
+  "fixture_hash": "b8b88cefaf3b5cadd7959f1a5121c7798f81fc6a9abf014fd4e419a376411e77",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:36:32.078553+00:00",
+  "duration_ms": 3138,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:36:28.930907+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:36:28.930914+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:36:28.949590+00:00",
+      "duration_ms": 3120
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:36:32.069664+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "School event: newsletter brief mention, then dedicated email with volunteer needs and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "school",
+    "family"
+  ],
+  "expected": {
+    "title": "Spring Science Fair",
+    "start_datetime": "2026-05-14T17:00:00",
+    "end_datetime": "2026-05-14T19:00:00",
+    "all_day": false,
+    "location": "Lincoln Elementary School - Main Gymnasium",
+    "description_contains": [
+      "student projects",
+      "grades 3-5",
+      "volunteers",
+      "awards ceremony",
+      "parking"
+    ]
+  },
+  "actual": {
+    "title": "Spring Science Fair",
+    "start_datetime": "2026-05-14T17:00:00",
+    "end_datetime": "2026-05-14T19:00:00",
+    "all_day": false,
+    "location": "Lincoln Elementary School - Main Gymnasium",
+    "description": "Annual science fair showcasing student projects. Grades 3-5 projects on display. Volunteers needed for setup at 4pm. Light refreshments provided. Awards ceremony at 6:30pm. Parking in west lot.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "student projects",
+        "grades 3-5",
+        "volunteers",
+        "awards ceremony",
+        "parking"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 475,
+    "completion_tokens": 180,
+    "total_tokens": 655
+  },
+  "cost": 0.00047875,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1338,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Spring Science Fair\n- Start: 2026-05-14T17:00:00\n- End: 2026-05-14T19:00:00\n- All Day: False\n- Location: Lincoln Elementary School\n- Description: Annual science fair showcasing student projects\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Spring Science Fair\n- Start: 2026-05-14T17:00:00\n- End: 2026-05-14T19:00:00\n- All Day: False\n- Location: Lincoln Elementary School - Main Gymnasium\n- Description: Grades 3-5 projects on display. Volunteers needed for setup at 4pm. Light refreshments provided. Awards ceremony at 6:30pm. Parking in west lot.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "end_datetime",
+        "all_day",
+        "location",
+        "description",
+        "importance"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"title\":\"Spring Science Fair\",\"start_datetime\":\"2026-05-14T17:00:00\",\"end_datetime\":\"2026-05-14T19:00:00\",\"all_day\":false,\"location\":\"Lincoln Elementary School - Main Gymnasium\",\"description\":\"Annual science fair showcasing student projects. Grades 3-5 projects on display. Volunteers needed for setup at 4pm. Light refreshments provided. Awards ceremony at 6:30pm. Parking in west lot.\",\"importance\":\"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

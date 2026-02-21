@@ -21,11 +21,9 @@ class CalendarEvent(BaseModel):
     description: str = Field(
         description="Detailed description of the event with all relevant information"
     )
-    confidence: float = Field(
-        description="Confidence score from 0.0 to 1.0 indicating extraction certainty",
-        ge=0.0,
-        le=1.0,
-    )
+    # NOTE: This app intentionally has no confidence scoring.
+    # LLMs cannot meaningfully self-assess extraction certainty.
+    # All extracted events are treated equally.
     importance: Literal["action_required", "fyi"] = Field(
         default="action_required",
         description=(

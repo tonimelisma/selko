@@ -34,7 +34,6 @@
         "location": "Zoom",
         "description": "Webinar on AI implementation strategies with Dr. Maria Santos",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

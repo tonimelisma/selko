@@ -34,10 +34,10 @@
         "location": "Room 401 or Zoom",
         "description": "Weekly 1:1 sync meeting",
         "all_day": false,
-        "confidence_min": 0.85,
-        "importance": "action_required"
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=WEEKLY;BYDAY=TU"
       }
     ]
   },
-  "notes": "1:1 meeting request - tests extracting first occurrence of recurring meeting"
+  "notes": "1:1 meeting request - tests extracting recurring weekly Tuesday meeting"
 }

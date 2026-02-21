@@ -34,7 +34,6 @@
         "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
         "description": "Annual holiday party with dinner, live band, and awards ceremony",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]

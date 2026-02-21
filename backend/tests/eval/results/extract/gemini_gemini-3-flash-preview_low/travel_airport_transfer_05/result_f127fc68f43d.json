@@ -1,0 +1,325 @@
+{
+  "fixture_name": "travel/airport_transfer_05",
+  "fixture_hash": "f60bf2dffddae1ca908802a20819fd5a186c5d6aa90637932716b8c3afe3074c",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:35:21.906199+00:00",
+  "duration_ms": 23297,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:34:58.600313+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:34:58.600324+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:34:58.631090+00:00",
+      "duration_ms": 23267
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:35:21.898855+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Airport shuttle/transfer booking",
+  "difficulty": "easy",
+  "tags": [
+    "transfer",
+    "shuttle",
+    "airport",
+    "pickup"
+  ],
+  "input_summary": {
+    "subject": "Your SuperShuttle Reservation",
+    "from": "confirm@supershuttle.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Airport Shuttle Pickup - SuperShuttle",
+        "start_datetime": "2026-02-28T05:30:00",
+        "end_datetime": null,
+        "location": "123 Main Street, Apt 4B, San Diego, CA 92101",
+        "description": "SuperShuttle pickup to San Diego Airport Terminal 2",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "SuperShuttle Pick-up to SAN Airport",
+        "start_datetime": "2026-02-28T05:30:00+00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "123 Main Street, Apt 4B, San Diego, CA 92101",
+        "description": "SuperShuttle reservation (Confirmation #: SS789456) for a ride to San Diego International Airport (SAN), Terminal 2. Driver will call 10-15 minutes before arrival. Look for the blue SuperShuttle van. 1 passenger with 2 checked bags.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 997,
+    "completion_tokens": 205,
+    "total_tokens": 1202
+  },
+  "cost": 0.00027254999999999993,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3364,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Your SuperShuttle Reservation\n- From: SuperShuttle <confirm@supershuttle.com>\n- Date Sent: 2026-02-12T16:00:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events \u2014 do NOT extract these:**\nAn event is something the recipient would put on their personal calendar to attend, participate in, or prepare for. Do NOT extract:\n\u2717 Transactional emails: order confirmations, shipping notifications, receipts, payment reminders, subscription renewals\n\u2717 Administrative/informational: account statements, terms updates, password resets, surveys, newsletters without specific event invitations\n\u2717 Dates that aren't events: delivery estimates, billing cycles, payment due dates, comment period deadlines, regulatory deadlines\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 608,
+        "text": "\n**Email Body:**\nSUPERSHUTTLE\nYour Ride to the Airport\n\nReservation Confirmed!\nConfirmation #: SS789456\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nPICK-UP DETAILS\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nDate: Saturday, February 28, 2026\nTime: 5:30 AM\n\nPick-up Address:\n123 Main Street, Apt 4B\nSan Diego, CA 92101\n\nDestination:\nSan Diego International Airport (SAN)\nTerminal 2\n\nPassengers: 1\nLuggage: 2 checked bags\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nDriver will call 10-15 minutes before arrival.\nLook for the blue SuperShuttle van.\n\nTotal: $32.00 (prepaid)\n\nNeed changes? Call 1-800-258-3826\nor visit supershuttle.com\n\nHave a great trip!"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              },
+              "recurrence_rule": {
+                "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "title",
+              "description"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "importance",
+              "recurrence_rule"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"SuperShuttle Pick-up to SAN Airport\",\n      \"start_datetime\": \"2026-02-28T05:30:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": false,\n      \"location\": \"123 Main Street, Apt 4B, San Diego, CA 92101\",\n      \"description\": \"SuperShuttle reservation (Confirmation #: SS789456) for a ride to San Diego International Airport (SAN), Terminal 2. Driver will call 10-15 minutes before arrival. Look for the blue SuperShuttle van. 1 passenger with 2 checked bags.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    }\n  ]\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

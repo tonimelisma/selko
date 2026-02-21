@@ -1,0 +1,171 @@
+{
+  "fixture_name": "travel_itinerary_update_15",
+  "fixture_hash": "1d608c1b601d7a02b5101fcb272dc0d7c383f306ed40122fd49fec5cd13b0d6a",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:36:16.807329+00:00",
+  "duration_ms": 10102,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:36:06.698386+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:36:06.698391+00:00",
+      "duration_ms": 32
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:36:06.731077+00:00",
+      "duration_ms": 10070
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:36:16.801233+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Travel: booking confirmation has basic flight info, itinerary update adds gate and terminal details",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "travel",
+    "logistics"
+  ],
+  "expected": {
+    "title": "Flight to Seattle - UA 1847",
+    "start_datetime": "2026-06-08T07:30:00",
+    "end_datetime": "2026-06-08T10:15:00",
+    "all_day": false,
+    "location": "SFO Terminal 3, Gate 75 \u2192 SEA",
+    "description_contains": [
+      "United Airlines",
+      "seat 12A",
+      "boarding starts",
+      "TSA PreCheck",
+      "mobile boarding pass"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "Failed after 1 retries (rate limited)"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1330,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Flight to Seattle - UA 1847\n- Start: 2026-06-08T07:30:00\n- End: 2026-06-08T10:15:00\n- All Day: False\n- Location: SFO \u2192 SEA\n- Description: United Airlines flight 1847. Confirmation #ABC123. Seat 12A.\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Flight to Seattle - UA 1847\n- Start: 2026-06-08T07:30:00\n- End: 2026-06-08T10:15:00\n- All Day: False\n- Location: SFO Terminal 3, Gate 75 \u2192 SEA\n- Description: Boarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": null,
+    "finish_reason": null,
+    "retry_count": 0,
+    "error_traceback": "Traceback (most recent call last):\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/backend/selko/services/llm_gateway.py\", line 184, in call\n    response = self.provider.generate(\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/backend/selko/services/llm_provider.py\", line 673, in generate\n    response = self.client.models.generate_content(\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/models.py\", line 5227, in generate_content\n    response = self._generate_content(\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/models.py\", line 4009, in _generate_content\n    response = self._api_client.request(\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1386, in request\n    response = self._request(http_request, http_options, stream=False)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1222, in _request\n    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 477, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 378, in iter\n    result = action(retry_state)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 420, in exc_check\n    raise retry_exc.reraise()\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 187, in reraise\n    raise self.last_attempt.result()\n  File \"/Users/tonimelisma/.local/share/uv/python/cpython-3.10.17-macos-aarch64-none/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/Users/tonimelisma/.local/share/uv/python/cpython-3.10.17-macos-aarch64-none/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 480, in __call__\n    result = fn(*args, **kwargs)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1199, in _request_once\n    errors.APIError.raise_for_response(response)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/errors.py\", line 121, in raise_for_response\n    cls.raise_error(response.status_code, response_json, response)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/errors.py\", line 148, in raise_error\n    raise ServerError(status_code, response_json, response)\ngoogle.genai.errors.ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}\n"
+  }
+}

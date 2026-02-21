@@ -1,0 +1,474 @@
+{
+  "fixture_name": "conferences/tech_conference_01",
+  "fixture_hash": "d1f8468554c6b2fe3b7d8c7b197476a04c1162c6eb0b62b2dc5a51b3ba17b9ae",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:35:37.043608+00:00",
+  "duration_ms": 28145,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:35:08.893412+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:35:08.893421+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:35:08.907697+00:00",
+      "duration_ms": 28131
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:35:37.039452+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Multi-day tech conference registration",
+  "difficulty": "medium",
+  "tags": [
+    "conference",
+    "tech",
+    "multi-day",
+    "registration"
+  ],
+  "input_summary": {
+    "subject": "Registration Confirmed: TechSummit 2026",
+    "from": "registration@techsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechSummit 2026",
+        "start_datetime": "2026-03-18T08:00:00",
+        "end_datetime": "2026-03-20T16:00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "3-day technology conference",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechSummit 2026 \u2014 Full Conference (3-Day Pass)",
+        "start_datetime": "2026-03-18T08:00:00-07:00",
+        "end_datetime": "2026-03-20T16:00:00-07:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "TechSummit 2026 \u2014 Full Conference (3-Day). Dates: March 18\u201320, 2026. Location: Moscone Center, 747 Howard Street, San Francisco, CA 94103. Includes registration, keynotes, sessions, workshops, networking events, and closing keynote. Attendee: Alex Chen. Registration #: TS2026-78901. Pass Type: Full Conference (3-Day). Note: Badge pick-up at Registration Desk (bring photo ID). Download the TechSummit app for schedule and networking. Questions: support@techsummit.com.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Registration & Breakfast \u2014 TechSummit 2026 (Day 1)",
+        "start_datetime": "2026-03-18T08:00:00-07:00",
+        "end_datetime": "2026-03-18T09:00:00-07:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Day 1 \u2014 Registration & Breakfast on Wednesday, March 18, 2026. Time: 8:00 AM. Pick up badge at Registration Desk (bring photo ID).",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Opening Keynote \u2014 TechSummit 2026 (Day 1)",
+        "start_datetime": "2026-03-18T09:00:00-07:00",
+        "end_datetime": "2026-03-18T10:00:00-07:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Opening Keynote on Wednesday, March 18, 2026 at 9:00 AM.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Sessions \u2014 TechSummit 2026 (Day 1)",
+        "start_datetime": "2026-03-18T10:00:00-07:00",
+        "end_datetime": "2026-03-18T18:00:00-07:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Sessions on Wednesday, March 18, 2026 from 10:00 AM to 6:00 PM.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Welcome Reception \u2014 TechSummit 2026 (Day 1)",
+        "start_datetime": "2026-03-18T19:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Welcome Reception on Wednesday, March 18, 2026 at 7:00 PM.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Sessions & Workshops \u2014 TechSummit 2026 (Day 2)",
+        "start_datetime": "2026-03-19T08:00:00-07:00",
+        "end_datetime": "2026-03-19T18:00:00-07:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Sessions & Workshops on Thursday, March 19, 2026 from 8:00 AM to 6:00 PM.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Networking Lunch \u2014 TechSummit 2026 (Day 2)",
+        "start_datetime": "2026-03-19T12:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Networking Lunch on Thursday, March 19, 2026 at 12:00 PM.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Sessions \u2014 TechSummit 2026 (Day 3)",
+        "start_datetime": "2026-03-20T08:00:00-07:00",
+        "end_datetime": "2026-03-20T15:00:00-07:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Sessions on Friday, March 20, 2026 from 8:00 AM to 3:00 PM.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Closing Keynote \u2014 TechSummit 2026 (Day 3)",
+        "start_datetime": "2026-03-20T15:00:00-07:00",
+        "end_datetime": "2026-03-20T16:00:00-07:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Closing Keynote on Friday, March 20, 2026 at 3:00 PM.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Conference Ends \u2014 TechSummit 2026",
+        "start_datetime": "2026-03-20T16:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Conference ends on Friday, March 20, 2026 at 4:00 PM.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1358,
+    "completion_tokens": 1943,
+    "total_tokens": 3301
+  },
+  "cost": 0.0042255,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3380,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Registration Confirmed: TechSummit 2026\n- From: TechSummit 2026 <registration@techsummit.com>\n- Date Sent: 2026-02-01T08:00:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events \u2014 do NOT extract these:**\nAn event is something the recipient would put on their personal calendar to attend, participate in, or prepare for. Do NOT extract:\n\u2717 Transactional emails: order confirmations, shipping notifications, receipts, payment reminders, subscription renewals\n\u2717 Administrative/informational: account statements, terms updates, password resets, surveys, newsletters without specific event invitations\n\u2717 Dates that aren't events: delivery estimates, billing cycles, payment due dates, comment period deadlines, regulatory deadlines\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 1053,
+        "text": "\n**Email Body:**\nTECHSUMMIT 2026\nThe Future of Technology\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nREGISTRATION CONFIRMED!\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nThank you for registering!\n\nAttendee: Alex Chen\nRegistration #: TS2026-78901\nPass Type: Full Conference (3-Day)\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nEVENT DETAILS\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nDates: March 18-20, 2026\nLocation: Moscone Center\n          747 Howard Street\n          San Francisco, CA 94103\n\nDAY 1 - Wednesday, March 18\n8:00 AM - Registration & Breakfast\n9:00 AM - Opening Keynote\n10:00 AM - 6:00 PM - Sessions\n7:00 PM - Welcome Reception\n\nDAY 2 - Thursday, March 19\n8:00 AM - 6:00 PM - Sessions & Workshops\n12:00 PM - Networking Lunch\n\nDAY 3 - Friday, March 20\n8:00 AM - 3:00 PM - Sessions\n3:00 PM - Closing Keynote\n4:00 PM - Conference Ends\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYour Badge:\nPick up at Registration Desk\nBring photo ID\n\nDownload the TechSummit app for schedule and networking!\n\nQuestions? support@techsummit.com\n\nSee you in San Francisco!"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              },
+              "recurrence_rule": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events."
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "importance",
+              "recurrence_rule"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"TechSummit 2026 \u2014 Full Conference (3-Day Pass)\",\n      \"start_datetime\": \"2026-03-18T08:00:00-07:00\",\n      \"end_datetime\": \"2026-03-20T16:00:00-07:00\",\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"TechSummit 2026 \u2014 Full Conference (3-Day). Dates: March 18\u201320, 2026. Location: Moscone Center, 747 Howard Street, San Francisco, CA 94103. Includes registration, keynotes, sessions, workshops, networking events, and closing keynote. Attendee: Alex Chen. Registration #: TS2026-78901. Pass Type: Full Conference (3-Day). Note: Badge pick-up at Registration Desk (bring photo ID). Download the TechSummit app for schedule and networking. Questions: support@techsummit.com.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Registration & Breakfast \u2014 TechSummit 2026 (Day 1)\",\n      \"start_datetime\": \"2026-03-18T08:00:00-07:00\",\n      \"end_datetime\": \"2026-03-18T09:00:00-07:00\",\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Day 1 \u2014 Registration & Breakfast on Wednesday, March 18, 2026. Time: 8:00 AM. Pick up badge at Registration Desk (bring photo ID).\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Opening Keynote \u2014 TechSummit 2026 (Day 1)\",\n      \"start_datetime\": \"2026-03-18T09:00:00-07:00\",\n      \"end_datetime\": \"2026-03-18T10:00:00-07:00\",\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Opening Keynote on Wednesday, March 18, 2026 at 9:00 AM.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Sessions \u2014 TechSummit 2026 (Day 1)\",\n      \"start_datetime\": \"2026-03-18T10:00:00-07:00\",\n      \"end_datetime\": \"2026-03-18T18:00:00-07:00\",\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Sessions on Wednesday, March 18, 2026 from 10:00 AM to 6:00 PM.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Welcome Reception \u2014 TechSummit 2026 (Day 1)\",\n      \"start_datetime\": \"2026-03-18T19:00:00-07:00\",\n      \"end_datetime\": null,\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Welcome Reception on Wednesday, March 18, 2026 at 7:00 PM.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Sessions & Workshops \u2014 TechSummit 2026 (Day 2)\",\n      \"start_datetime\": \"2026-03-19T08:00:00-07:00\",\n      \"end_datetime\": \"2026-03-19T18:00:00-07:00\",\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Sessions & Workshops on Thursday, March 19, 2026 from 8:00 AM to 6:00 PM.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Networking Lunch \u2014 TechSummit 2026 (Day 2)\",\n      \"start_datetime\": \"2026-03-19T12:00:00-07:00\",\n      \"end_datetime\": null,\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Networking Lunch on Thursday, March 19, 2026 at 12:00 PM.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Sessions \u2014 TechSummit 2026 (Day 3)\",\n      \"start_datetime\": \"2026-03-20T08:00:00-07:00\",\n      \"end_datetime\": \"2026-03-20T15:00:00-07:00\",\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Sessions on Friday, March 20, 2026 from 8:00 AM to 3:00 PM.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Closing Keynote \u2014 TechSummit 2026 (Day 3)\",\n      \"start_datetime\": \"2026-03-20T15:00:00-07:00\",\n      \"end_datetime\": \"2026-03-20T16:00:00-07:00\",\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Closing Keynote on Friday, March 20, 2026 at 3:00 PM.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Conference Ends \u2014 TechSummit 2026\",\n      \"start_datetime\": \"2026-03-20T16:00:00-07:00\",\n      \"end_datetime\": null,\n      \"all_day\": false,\n      \"location\": \"Moscone Center, 747 Howard Street, San Francisco, CA 94103\",\n      \"description\": \"Conference ends on Friday, March 20, 2026 at 4:00 PM.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

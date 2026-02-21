@@ -33,7 +33,6 @@
         "location": "Valley Medical Center, 1500 Medical Plaza Drive, Suite 200, San Jose, CA 95128",
         "description": "Internal Medicine appointment with Dr. Jennifer Smith",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

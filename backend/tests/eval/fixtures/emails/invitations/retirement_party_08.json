@@ -33,7 +33,6 @@
         "location": "Ocean View Restaurant, 500 Harbor Boulevard, San Diego, CA 92101",
         "description": "Retirement luncheon celebrating Bob Williams' 35 years of service",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]

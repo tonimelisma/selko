@@ -33,7 +33,6 @@
         "location": "1234 Oak Drive, San Jose, CA 95123",
         "description": "High school graduation celebration - backyard BBQ and pool party",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]

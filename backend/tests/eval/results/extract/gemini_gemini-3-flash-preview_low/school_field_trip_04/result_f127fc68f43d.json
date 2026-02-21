@@ -1,0 +1,332 @@
+{
+  "fixture_name": "school/field_trip_04",
+  "fixture_hash": "1b66ea1f7e6d23229acd142d7fa8be597028197be1ae9a25e72e214a43be3bb8",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:35:19.879910+00:00",
+  "duration_ms": 13281,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:35:06.593209+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:35:06.593417+00:00",
+      "duration_ms": 28
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:35:06.622132+00:00",
+      "duration_ms": 13253
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:35:19.876079+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "School field trip permission and details",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "field-trip",
+    "permission",
+    "kids"
+  ],
+  "input_summary": {
+    "subject": "Field Trip Permission - Science Museum (March 12)",
+    "from": "mrjohnson@oakridgeelementary.edu",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "text"
+    ],
+    "total_attachment_bytes": 1360
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Field Trip - California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00",
+        "end_datetime": "2026-03-12T15:00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th grade field trip to science museum with guided tour and planetarium show",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "4th Grade Field Trip: California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00+00:00",
+        "end_datetime": "2026-03-12T15:00:00+00:00",
+        "all_day": false,
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th Grade field trip to the California Science Museum. Schedule includes: 8:30 AM departure from school via bus, 9:30 AM arrival, 9:30-11:30 AM guided tour and exhibits, 11:30 AM-12:15 PM lunch (bring a bag lunch, no glass), 12:15-1:30 PM planetarium show and exploration, 2:00 PM departure from museum, and 3:00 PM return to school. Cost: $15 per student. Requirements: Permission form and payment due by March 5, 2026. Students should bring a bag lunch, water bottle, comfortable walking shoes, and a light jacket.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1141,
+    "completion_tokens": 322,
+    "total_tokens": 1463
+  },
+  "cost": 0.00036435000000000005,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3391,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Field Trip Permission - Science Museum (March 12)\n- From: Mr. Johnson <mrjohnson@oakridgeelementary.edu>\n- Date Sent: 2026-02-25T08:30:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events \u2014 do NOT extract these:**\nAn event is something the recipient would put on their personal calendar to attend, participate in, or prepare for. Do NOT extract:\n\u2717 Transactional emails: order confirmations, shipping notifications, receipts, payment reminders, subscription renewals\n\u2717 Administrative/informational: account statements, terms updates, password resets, surveys, newsletters without specific event invitations\n\u2717 Dates that aren't events: delivery estimates, billing cycles, payment due dates, comment period deadlines, regulatory deadlines\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 1126,
+        "text": "\n**Email Body:**\nDear 4th Grade Families,\n\nWe're excited to announce our upcoming field trip!\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nFIELD TRIP DETAILS\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nDestination: California Science Museum\nDate: Thursday, March 12, 2026\n\nSchedule:\n8:30 AM - Depart from school (bus)\n9:30 AM - Arrive at museum\n9:30-11:30 AM - Guided tour & exhibits\n11:30 AM-12:15 PM - Lunch (bring bag lunch)\n12:15-1:30 PM - Planetarium show & free exploration\n2:00 PM - Depart museum\n3:00 PM - Return to school (regular dismissal)\n\nLocation:\nCalifornia Science Museum\n700 Museum Way\nSan Francisco, CA 94107\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nIMPORTANT INFORMATION\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nCost: $15 per student (covers admission, planetarium, and bus)\nPayment deadline: March 5, 2026\n\nStudents should bring:\n- Bag lunch (no glass containers)\n- Water bottle\n- Comfortable walking shoes\n- Light jacket\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nPERMISSION FORM attached - please sign and return by March 5th.\n\nChaperones needed! Email me if interested.\n\nThank you,\nMr. Johnson\n4th Grade Teacher"
+      },
+      {
+        "type": "image",
+        "mime_type": "text/plain",
+        "size_bytes": 1360
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              },
+              "recurrence_rule": {
+                "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "title",
+              "description"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "importance",
+              "recurrence_rule"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"4th Grade Field Trip: California Science Museum\",\n      \"start_datetime\": \"2026-03-12T08:30:00Z\",\n      \"end_datetime\": \"2026-03-12T15:00:00Z\",\n      \"all_day\": false,\n      \"location\": \"California Science Museum, 700 Museum Way, San Francisco, CA 94107\",\n      \"description\": \"4th Grade field trip to the California Science Museum. Schedule includes: 8:30 AM departure from school via bus, 9:30 AM arrival, 9:30-11:30 AM guided tour and exhibits, 11:30 AM-12:15 PM lunch (bring a bag lunch, no glass), 12:15-1:30 PM planetarium show and exploration, 2:00 PM departure from museum, and 3:00 PM return to school. Cost: $15 per student. Requirements: Permission form and payment due by March 5, 2026. Students should bring a bag lunch, water bottle, comfortable walking shoes, and a light jacket.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    }\n  ]\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 2,
+    "error_traceback": "Traceback (most recent call last):\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/backend/selko/services/llm_gateway.py\", line 184, in call\n    response = self.provider.generate(\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/backend/selko/services/llm_provider.py\", line 673, in generate\n    response = self.client.models.generate_content(\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/models.py\", line 5227, in generate_content\n    response = self._generate_content(\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/models.py\", line 4009, in _generate_content\n    response = self._api_client.request(\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1386, in request\n    response = self._request(http_request, http_options, stream=False)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1222, in _request\n    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 477, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 378, in iter\n    result = action(retry_state)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 420, in exc_check\n    raise retry_exc.reraise()\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 187, in reraise\n    raise self.last_attempt.result()\n  File \"/Users/tonimelisma/.local/share/uv/python/cpython-3.10.17-macos-aarch64-none/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/Users/tonimelisma/.local/share/uv/python/cpython-3.10.17-macos-aarch64-none/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 480, in __call__\n    result = fn(*args, **kwargs)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1199, in _request_once\n    errors.APIError.raise_for_response(response)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/errors.py\", line 121, in raise_for_response\n    cls.raise_error(response.status_code, response_json, response)\n  File \"/Users/tonimelisma/Development/selko-refactor-eval-scoring/.venv/lib/python3.10/site-packages/google/genai/errors.py\", line 148, in raise_error\n    raise ServerError(status_code, response_json, response)\ngoogle.genai.errors.ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}\n"
+  }
+}

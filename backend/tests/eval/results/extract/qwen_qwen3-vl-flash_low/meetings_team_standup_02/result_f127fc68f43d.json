@@ -1,0 +1,253 @@
+{
+  "fixture_name": "meetings/team_standup_02",
+  "fixture_hash": "93d45076b914939dbb102f3947f9ec6f0cb2a05b748830863bc126f4a392bae9",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:35:45.512103+00:00",
+  "duration_ms": 17010,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:35:28.497331+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:35:28.497341+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:35:28.516548+00:00",
+      "duration_ms": 16991
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:35:45.508056+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Daily team standup meeting change",
+  "difficulty": "medium",
+  "tags": [
+    "standup",
+    "team",
+    "daily",
+    "time-change"
+  ],
+  "input_summary": {
+    "subject": "Team Standup Moving to New Time",
+    "from": "priya.sharma@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Team Standup",
+        "start_datetime": "2026-02-09T09:30:00",
+        "end_datetime": "2026-02-09T09:45:00",
+        "location": "Conference Room B",
+        "description": "Daily team standup meeting (new time)",
+        "all_day": false,
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Team Standup",
+        "start_datetime": "2026-02-09T09:30:00-08:00",
+        "end_datetime": "2026-02-09T09:45:00-08:00",
+        "all_day": false,
+        "location": "Conference Room B, https://zoom.us/j/123456789",
+        "description": "Daily standup meeting moving to new time effective Monday, February 9th. Time: 9:30 AM PST (was 10:00 AM). Duration: 15 minutes. Format: 1. What did you accomplish yesterday? 2. What are you working on today? 3. Any blockers? Room: Conference Room B (same as before). Zoom link: https://zoom.us/j/123456789. Please update your calendars accordingly.",
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=DAILY"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "recurrence_rule": {
+          "expected": "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+          "actual": "RRULE:FREQ=DAILY",
+          "match": false
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1482,
+    "completion_tokens": 2311,
+    "total_tokens": 3793
+  },
+  "cost": 0.0016900399999999999,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3366,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Team Standup Moving to New Time\n- From: Priya Sharma <priya.sharma@company.com>\n- Date Sent: 2026-02-01T08:30:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events \u2014 do NOT extract these:**\nAn event is something the recipient would put on their personal calendar to attend, participate in, or prepare for. Do NOT extract:\n\u2717 Transactional emails: order confirmations, shipping notifications, receipts, payment reminders, subscription renewals\n\u2717 Administrative/informational: account statements, terms updates, password resets, surveys, newsletters without specific event invitations\n\u2717 Dates that aren't events: delivery estimates, billing cycles, payment due dates, comment period deadlines, regulatory deadlines\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 552,
+        "text": "\n**Email Body:**\nHi team,\n\nStarting next week, our daily standup is moving to a new time to better accommodate our colleagues in different time zones.\n\nNEW SCHEDULE (effective Monday, February 9th):\n- Time: 9:30 AM PST (was 10:00 AM)\n- Duration: 15 minutes\n- Room: Conference Room B (same as before)\n- Zoom: https://zoom.us/j/123456789\n\nThe format stays the same:\n1. What did you accomplish yesterday?\n2. What are you working on today?\n3. Any blockers?\n\nPlease update your calendars accordingly.\n\nThanks,\nPriya\n\n--\nPriya Sharma\nTeam Lead, Platform Team"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Team Standup\",\n      \"start_datetime\": \"2026-02-09T09:30:00-08:00\",\n      \"end_datetime\": \"2026-02-09T09:45:00-08:00\",\n      \"all_day\": false,\n      \"location\": \"Conference Room B, https://zoom.us/j/123456789\",\n      \"description\": \"Daily standup meeting moving to new time effective Monday, February 9th. Time: 9:30 AM PST (was 10:00 AM). Duration: 15 minutes. Format: 1. What did you accomplish yesterday? 2. What are you working on today? 3. Any blockers? Room: Conference Room B (same as before). Zoom link: https://zoom.us/j/123456789. Please update your calendars accordingly.\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": \"RRULE:FREQ=DAILY\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -5,7 +5,7 @@ normalize_event_data, save_extracted_events, and the slimmed-down
 process_email_for_events orchestrator.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,7 +33,6 @@ def _make_calendar_event(**overrides):
         "end_datetime": datetime(2026, 3, 15, 15, 0),
         "location": "Room A",
         "description": "Weekly sync",
-        "confidence": 0.9,
     }
     defaults.update(overrides)
     return CalendarEvent(**defaults)
@@ -520,3 +519,60 @@ class TestAutoApproveSenderRule:
         first_insert_data = mock_client.table.return_value.insert.call_args_list[0][0][0]
         assert first_insert_data["status"] == "approved"
         assert first_insert_data["title"] == "Test Event"
+
+
+class TestPastEventFiltering:
+    """Tests for past event filtering in save_extracted_events."""
+
+    def test_filters_past_events(self):
+        """Events >24h in the past are skipped, future events are saved."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+
+        now = datetime.now(timezone.utc)
+        past_event = _make_calendar_event(
+            title="Past Event",
+            start_datetime=now - timedelta(hours=48),
+            end_datetime=now - timedelta(hours=47),
+        )
+        future_event = _make_calendar_event(
+            title="Future Event",
+            start_datetime=now + timedelta(days=7),
+            end_datetime=now + timedelta(days=7, hours=1),
+        )
+        extraction = _make_extraction(events=[past_event, future_event])
+
+        with patch("selko.services.events.find_matching_event", return_value=None), \
+             patch("selko.services.events.create_event", return_value="new-id") as mock_create:
+            num_new, num_updated = save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction
+            )
+
+        # Only the future event should be created
+        assert num_new == 1
+        assert num_updated == 0
+        mock_create.assert_called_once()
+        created_data = mock_create.call_args[0][2]
+        assert created_data["title"] == "Future Event"
+
+    def test_keeps_recent_past_events(self):
+        """Events within the 24h window are NOT filtered."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+
+        now = datetime.now(timezone.utc)
+        recent_event = _make_calendar_event(
+            title="Just Happened",
+            start_datetime=now - timedelta(hours=12),
+            end_datetime=now - timedelta(hours=11),
+        )
+        extraction = _make_extraction(events=[recent_event])
+
+        with patch("selko.services.events.find_matching_event", return_value=None), \
+             patch("selko.services.events.create_event", return_value="new-id") as mock_create:
+            num_new, num_updated = save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction
+            )
+
+        assert num_new == 1
+        mock_create.assert_called_once()

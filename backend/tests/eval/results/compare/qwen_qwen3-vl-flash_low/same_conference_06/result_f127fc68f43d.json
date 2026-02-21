@@ -1,0 +1,90 @@
+{
+  "fixture_name": "same_conference_06",
+  "fixture_hash": "0b7e35940e63d57575ed216cb5fcb9d8d321b5dbbae8046a9452eeb648602ec1",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:37:13.183875+00:00",
+  "duration_ms": 8104,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:37:05.070274+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:37:05.070286+00:00",
+      "duration_ms": 23
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:37:05.094061+00:00",
+      "duration_ms": 8081
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:37:13.175082+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 528,
+    "completion_tokens": 1048,
+    "total_tokens": 1576
+  },
+  "cost": 0.0007548800000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1227,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: TechSummit 2026\n- Start: 2026-09-15T09:00:00\n- End: 2026-09-17T17:00:00\n- Location: Moscone Center, San Francisco\n- Description: Registration confirmed! Three days of cutting-edge tech talks and networking.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: TechSummit Conference\n   - Start: 2026-09-15T09:00:00\n   - End: 2026-09-17T17:00:00\n   - Location: Moscone Center, SF\n   - Description: Early bird tickets available! Sept 15-17.\n\n2. Event ID: event-002\n   - Title: Code Review Session\n   - Start: 2026-09-15T10:00:00\n   - End: 2026-09-15T11:00:00\n   - Location: Office\n   - Description: Weekly code review\n\n3. Event ID: event-003\n   - Title: Dinner with Alex\n   - Start: 2026-09-15T19:00:00\n   - End: 2026-09-15T21:00:00\n   - Location: The Garden Restaurant\n   - Description: Catch up dinner\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event has identical start and end times (2026-09-15T09:00:00 to 2026-09-17T17:00:00), the same location (Moscone Center, San Francisco/SF), and similar titles (TechSummit 2026 vs TechSummit Conference). The descriptions, though worded differently, both describe the same 3-day tech event. Event 002 and 003 have different time ranges and are not duplicates.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
