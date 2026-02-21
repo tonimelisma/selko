@@ -211,8 +211,8 @@ async def google_oauth_callback(
                 provider_email = profile.get("emailAddress")
             except Exception as e:
                 logger.warning(f"Could not get Gmail profile: {e}")
-        # For google_calendar and other providers, we don't fetch profile info
-        # (Calendar API doesn't have a user profile endpoint)
+        # For google_calendar and google_photos, we don't fetch profile info
+        # (those APIs don't have a user profile endpoint)
 
         # Save credentials with EXPLICIT user_id
         save_oauth_credentials(client, user_id, provider, credentials, provider_email)
@@ -223,6 +223,7 @@ async def google_oauth_callback(
         provider_display = {
             "gmail": "Gmail",
             "google_calendar": "Google Calendar",
+            "google_photos": "Google Photos",
         }.get(provider, provider)
 
         return {
