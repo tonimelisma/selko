@@ -971,6 +971,85 @@ class TestSanitizeSchemaForGemini:
             assert prop["type"] == "string"
             assert prop["nullable"] is True
 
+    def test_preserves_title_and_description_property_names(self):
+        """Property names 'title' and 'description' must survive sanitization.
+
+        Regression: _resolve() was processing the properties container dict
+        through the generic path, where 'description' (a property NAME) was
+        mistaken for the schema keyword, causing is_schema_node=True and
+        then 'title' (also a property NAME) got stripped.
+        """
+        schema = {
+            "type": "object",
+            "$defs": {
+                "CalendarEvent": {
+                    "type": "object",
+                    "title": "CalendarEvent",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "title": "Title",
+                            "description": "Event title",
+                        },
+                        "description": {
+                            "type": "string",
+                            "title": "Description",
+                            "description": "Event description",
+                        },
+                        "start_datetime": {
+                            "anyOf": [{"type": "string"}, {"type": "null"}],
+                            "title": "Start Datetime",
+                            "default": None,
+                        },
+                    },
+                    "required": ["title", "description"],
+                },
+            },
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/CalendarEvent"},
+                },
+            },
+        }
+        result = _sanitize_schema_for_gemini(schema)
+
+        event_props = result["properties"]["events"]["items"]["properties"]
+        assert "title" in event_props, "Property 'title' was stripped"
+        assert "description" in event_props, "Property 'description' was stripped"
+        assert event_props["title"]["type"] == "string"
+        assert event_props["description"]["type"] == "string"
+        # Metadata 'title' keys should be stripped from property values
+        assert "title" not in event_props["title"], "Metadata 'title' not stripped"
+        assert "title" not in event_props["description"], "Metadata 'title' not stripped"
+        # anyOf should be converted
+        assert event_props["start_datetime"]["nullable"] is True
+
+    def test_real_event_extraction_schema(self):
+        """The actual EventExtractionResponse schema must preserve all fields."""
+        from selko.services.event_processing import EventExtractionResponse
+
+        schema = EventExtractionResponse.model_json_schema()
+        result = _sanitize_schema_for_gemini(schema)
+
+        # Navigate to CalendarEvent properties
+        events_prop = result["properties"]["events"]
+        cal_props = events_prop["items"]["properties"]
+
+        expected_fields = [
+            "title", "start_datetime", "end_datetime", "all_day",
+            "location", "description", "confidence", "importance",
+        ]
+        for field in expected_fields:
+            assert field in cal_props, f"CalendarEvent.{field} was stripped"
+
+        # No $defs/$ref/anyOf should remain
+        import json
+        schema_str = json.dumps(result)
+        assert "$defs" not in schema_str
+        assert "$ref" not in schema_str
+        assert "anyOf" not in schema_str
+
 
 class TestResizeImageDegenerateFiltering:
     """Regression tests for degenerate image filtering (Bug 5)."""
