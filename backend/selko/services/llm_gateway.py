@@ -10,8 +10,9 @@ Supports multiple LLM providers via the LLMProvider abstraction.
 """
 
 import logging
+import traceback
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from selko.services.llm_logging import (
     LLMErrorType,
@@ -93,6 +94,8 @@ class LLMGateway:
         # Last call token counts (for eval/observability)
         self._last_prompt_tokens: Optional[int] = None
         self._last_completion_tokens: Optional[int] = None
+        # Optional tracing — set to {} to enable, None to disable
+        self.trace: Optional[dict[str, Any]] = None
 
     def for_user(self, user_id: str) -> "LLMGateway":
         """Set user context for logging and rate limiting.
@@ -160,6 +163,16 @@ class LLMGateway:
         # Build prompt text for logging
         prompt_for_logging = self._build_prompt_for_logging(contents)
 
+        # Populate trace with pre-call data if tracing is enabled
+        if self.trace is not None:
+            self.trace["content_parts"] = self._summarize_content_parts(contents)
+            self.trace["json_schema_input"] = json_schema
+            self.trace["json_schema_sanitized"] = None
+            self.trace["raw_response_text"] = None
+            self.trace["finish_reason"] = None
+            self.trace["retry_count"] = 0
+            self.trace["error_traceback"] = None
+
         # Retry loop for rate limiting
         for attempt in range(max_retries):
             start_time = time.time()
@@ -179,6 +192,15 @@ class LLMGateway:
                 self._last_prompt_tokens = response.prompt_tokens
                 self._last_completion_tokens = response.completion_tokens
 
+                # Populate trace with post-call data
+                if self.trace is not None:
+                    self.trace["raw_response_text"] = response.text
+                    self.trace["finish_reason"] = response.finish_reason
+                    self.trace["retry_count"] = attempt
+                    self.trace["json_schema_sanitized"] = getattr(
+                        self.provider, "_last_sanitized_schema", None
+                    )
+
                 # Log successful call
                 self._log_success(
                     operation=operation,
@@ -192,6 +214,14 @@ class LLMGateway:
             except Exception as e:
                 latency_ms = int((time.time() - start_time) * 1000)
                 error_str = str(e).lower()
+
+                # Populate trace with error data
+                if self.trace is not None:
+                    self.trace["retry_count"] = attempt
+                    self.trace["error_traceback"] = traceback.format_exc()
+                    self.trace["json_schema_sanitized"] = getattr(
+                        self.provider, "_last_sanitized_schema", None
+                    )
 
                 # Check for rate limiting
                 if self._is_retryable_error(error_str):
@@ -232,6 +262,20 @@ class LLMGateway:
 
         # Should not reach here, but just in case
         raise LLMRateLimitError(f"Failed after {max_retries} retries")
+
+    def _summarize_content_parts(self, contents: list[ContentPart]) -> list[dict[str, Any]]:
+        """Build a summary of content parts for tracing (no raw data)."""
+        summary = []
+        for item in contents:
+            if isinstance(item, str):
+                summary.append({"type": "text", "length": len(item)})
+            elif isinstance(item, ImageContent):
+                summary.append({
+                    "type": "image",
+                    "mime_type": item.mime_type,
+                    "size_bytes": len(item.data),
+                })
+        return summary
 
     def _build_prompt_for_logging(self, contents: list[ContentPart]) -> str:
         """Build a string representation of the prompt for logging.
