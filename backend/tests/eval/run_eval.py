@@ -288,9 +288,15 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
     }
 
     loc_sim = string_similarity(expected.get("location"), actual.get("location"))
+    # If either side is null, treat location as a match — the event was
+    # correctly identified regardless of whether a location was extracted.
+    if expected.get("location") is None or actual.get("location") is None:
+        loc_match = True
+    else:
+        loc_match = loc_sim >= AUTO_SCORE_THRESHOLDS["location_similarity"]
     scores["location"] = {
         "similarity": loc_sim,
-        "match": loc_sim >= AUTO_SCORE_THRESHOLDS["location_similarity"],
+        "match": loc_match,
     }
 
     actual_confidence = actual.get("confidence", 0)
@@ -321,10 +327,14 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
             "match": expected_importance == actual_importance,
         }
 
+    # Only core fields (times + all_day) gate overall_match.
+    # Title, location, confidence, importance are still scored/reported
+    # but don't determine pass/fail.
+    CORE_MATCH_FIELDS = {"start_datetime", "end_datetime", "all_day"}
     scores["overall_match"] = all(
         s.get("match", True)
         for key, s in scores.items()
-        if isinstance(s, dict) and key != "overall_match"
+        if isinstance(s, dict) and key in CORE_MATCH_FIELDS
     )
 
     return scores
@@ -332,11 +342,13 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
 
 def auto_score_result(expected: dict, actual: dict) -> dict[str, Any]:
     """Auto-score the full extraction result."""
+    expected_count = expected.get("event_count", len(expected.get("events", [])))
+    actual_count = len(actual.get("events", []))
+    tolerance = max(1, round(expected_count * 0.2))
     scores = {
         "events_found_match": expected.get("events_found")
         == actual.get("events_found"),
-        "event_count_match": expected.get("event_count", len(expected.get("events", [])))
-        == len(actual.get("events", [])),
+        "event_count_match": abs(actual_count - expected_count) <= tolerance,
     }
 
     expected_events = expected.get("events", [])

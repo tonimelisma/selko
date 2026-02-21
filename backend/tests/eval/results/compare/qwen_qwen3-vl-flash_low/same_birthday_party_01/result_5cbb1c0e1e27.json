@@ -1,0 +1,90 @@
+{
+  "fixture_name": "same_birthday_party_01",
+  "fixture_hash": "bad86f1b2a3faf21f3c8115fe8ac43a869f97ab03840d13f122a2de4fb890a06",
+  "code_hash": "c658e146c4ce",
+  "prompt_hash": "5cbb1c0e1e27",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T17:24:27.343168+00:00",
+  "duration_ms": 9551,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T17:24:17.786024+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T17:24:17.786032+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-21T17:24:17.805722+00:00",
+      "duration_ms": 9532
+    },
+    "scoring": {
+      "started_at": "2026-02-21T17:24:27.338430+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same birthday party with slightly different wording - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 543,
+    "completion_tokens": 1265,
+    "total_tokens": 1808
+  },
+  "cost": 0.0009036400000000002,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1263,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Emily's 7th Birthday Party\n- Start: 2026-03-15T14:00:00\n- End: 2026-03-15T17:00:00\n- Location: Adventure Zone, 123 Main St\n- Description: Come celebrate Emily turning 7! Pizza, cake, and fun activities. Please RSVP by March 10th.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Emily's Birthday Celebration\n   - Start: 2026-03-15T14:00:00\n   - End: 2026-03-15T17:00:00\n   - Location: Adventure Zone\n   - Description: Join us for Emily's 7th birthday! Pizza, cake, games.\n\n2. Event ID: event-002\n   - Title: Team Standup\n   - Start: 2026-03-15T09:00:00\n   - End: 2026-03-15T09:30:00\n   - Location: Office\n   - Description: Daily standup meeting\n\n3. Event ID: event-003\n   - Title: Dentist Appointment\n   - Start: 2026-03-14T10:00:00\n   - End: 2026-03-14T11:00:00\n   - Location: Bright Smiles Dental\n   - Description: Regular checkup\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event matches event-001 as they share the same date (2026-03-15), identical time range (14:00-17:00), and the same location (Adventure Zone, with the new event's full address being a consistent detail). Both describe Emily's 7th birthday celebration with similar activities (pizza, cake) and minor wording differences (e.g., 'Party' vs 'Celebration', 'games' vs 'fun activities') are not significant for identifying the same real-world event.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

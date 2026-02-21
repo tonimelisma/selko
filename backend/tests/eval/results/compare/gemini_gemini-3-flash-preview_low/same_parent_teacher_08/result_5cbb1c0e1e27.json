@@ -1,0 +1,105 @@
+{
+  "fixture_name": "same_parent_teacher_08",
+  "fixture_hash": "f8cf81aa24634194f42aa1a81aa9e5658c808a5130cb3b43aa977e9e291b82f7",
+  "code_hash": "c658e146c4ce",
+  "prompt_hash": "5cbb1c0e1e27",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T17:24:22.239254+00:00",
+  "duration_ms": 14128,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T17:24:08.106148+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T17:24:08.106157+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-21T17:24:08.136054+00:00",
+      "duration_ms": 14099
+    },
+    "scoring": {
+      "started_at": "2026-02-21T17:24:22.235168+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same parent-teacher conference with reminder vs original - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 377,
+    "completion_tokens": 84,
+    "total_tokens": 461
+  },
+  "cost": 0.00010694999999999998,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Parent-Teacher Conference\n- Start: 2026-05-12T15:30:00\n- End: 2026-05-12T16:00:00\n- Location: Room 204, Lincoln Elementary\n- Description: Reminder: Conference with Mrs. Johnson tomorrow at 3:30pm to discuss Jake's progress.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Conference - Mrs. Johnson\n   - Start: 2026-05-12T15:30:00\n   - End: 2026-05-12T16:00:00\n   - Location: Lincoln Elementary, Room 204\n   - Description: Parent-teacher conference for Jake\n\n2. Event ID: event-002\n   - Title: Pick up dry cleaning\n   - Start: 2026-05-12T17:00:00\n   - End: 2026-05-12T17:30:00\n   - Location: QuickClean\n   - Description: Get suits before Friday\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event and event-001 represent the same real-world event. They have identical start and end times, the same location (Room 204, Lincoln Elementary), and both descriptions refer to a parent-teacher conference with Mrs. Johnson regarding Jake's progress.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

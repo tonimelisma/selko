@@ -53,7 +53,7 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 1. Analyze the email content and any attachments (including PDFs, images, calendars)
 2. Extract ALL calendar events mentioned — meetings, appointments, parties, closures, themed days, deadlines, etc.
 3. For each event, extract:
-   - Title: clear, concise event name (under 60 chars). Include person name when relevant (e.g., "1:1 with Alex Rivera", not just "1:1"). For closures use format "[Organization] Closed - [Reason]". Do NOT just copy the email subject verbatim.
+   - Title: clear, descriptive event name
    - Start date/time (parse relative dates like "tomorrow", "next Friday")
    - End date/time (if mentioned)
    - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.
@@ -96,34 +96,14 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 ✗ Terms of service or privacy policy effective dates
 ✗ Public comment periods or administrative deadlines
 ✗ Emails where event details (date, time) must be inferred or guessed from context — only extract events with explicitly stated dates and times
+✗ Package shipping or delivery notifications (estimated delivery dates are NOT calendar events)
+✗ Payment due dates, invoice deadlines, or billing cycle dates
+✗ Subscription renewal dates
 
 **Extraction rules:**
 - Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events
 - Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs — note them in the main event's description instead
 - Only extract events with explicitly stated dates — do NOT infer dates from holidays, context, or subject lines
-- For recurring events (e.g., weekly meetings), extract only the NEXT upcoming occurrence based on the current date. Note the recurrence pattern in the description (e.g., "Recurring: every Tuesday at 10am").
-
-**Few-shot examples:**
-
-Example 1 — Meeting invitation:
-Email subject: "1:1 sync tomorrow at 2pm"
-From: Alex Rivera
-→ Extract:
-  title: "1:1 with Alex Rivera"
-  start_datetime: (tomorrow at 2:00 PM)
-  end_datetime: (tomorrow at 2:30 PM)
-  location: null  (no location mentioned)
-  all_day: false
-  importance: "action_required"
-
-Example 2 — School closure:
-Email: "Due to inclement weather, Lincoln Elementary will be closed on Friday, March 14."
-→ Extract:
-  title: "Lincoln Elementary Closed - Inclement Weather"
-  start_datetime: 2026-03-14
-  location: null  (school name is NOT a location)
-  all_day: true
-  importance: "action_required"
 """
     return prompt
 

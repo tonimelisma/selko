@@ -1,0 +1,90 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "fixture_hash": "075709b179cbc1e3166a98740f4d24696c9730ae203ffc45bbc398a047bdb529",
+  "code_hash": "c658e146c4ce",
+  "prompt_hash": "5cbb1c0e1e27",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T17:24:26.425987+00:00",
+  "duration_ms": 8839,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T17:24:17.581446+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T17:24:17.581454+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T17:24:17.599484+00:00",
+      "duration_ms": 8821
+    },
+    "scoring": {
+      "started_at": "2026-02-21T17:24:26.420905+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 532,
+    "completion_tokens": 1288,
+    "total_tokens": 1820
+  },
+  "cost": 0.0009184000000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1257,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sophie's 6th Birthday Party\n- Start: 2026-08-15T13:00:00\n- End: 2026-08-15T16:00:00\n- Location: Rainbow Play Center\n- Description: Join us for Sophie's princess-themed birthday bash! Arts and crafts, games, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Lucas's 8th Birthday Celebration\n   - Start: 2026-08-22T14:00:00\n   - End: 2026-08-22T17:00:00\n   - Location: Laser Tag Arena\n   - Description: Laser tag party for Lucas turning 8!\n\n2. Event ID: event-002\n   - Title: Swimming Lesson\n   - Start: 2026-08-15T10:00:00\n   - End: 2026-08-15T11:00:00\n   - Location: Community Pool\n   - Description: Level 3 swimming class\n\n3. Event ID: event-003\n   - Title: Book Club\n   - Start: 2026-08-15T19:00:00\n   - End: 2026-08-15T21:00:00\n   - Location: Barnes & Noble Cafe\n   - Description: Discussing 'The Midnight Library'\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event (Sophie's 6th Birthday Party) occurs on August 15, 2026, from 13:00 to 16:00 at Rainbow Play Center. The existing events on the same date are a swimming lesson (10:00-11:00) and a book club (19:00-21:00), which have different times, locations, and activities. Therefore, there is no matching event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

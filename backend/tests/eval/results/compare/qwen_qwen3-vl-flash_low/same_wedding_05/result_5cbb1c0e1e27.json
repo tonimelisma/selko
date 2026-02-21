@@ -1,0 +1,90 @@
+{
+  "fixture_name": "same_wedding_05",
+  "fixture_hash": "0e99db6db6315dbd8ea8eba08af78f9b41f957195cb0583aa5afb841a0ede572",
+  "code_hash": "c658e146c4ce",
+  "prompt_hash": "5cbb1c0e1e27",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T17:24:33.235823+00:00",
+  "duration_ms": 6800,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T17:24:26.430857+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T17:24:26.430863+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T17:24:26.447955+00:00",
+      "duration_ms": 6783
+    },
+    "scoring": {
+      "started_at": "2026-02-21T17:24:33.231039+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "social"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 443,
+    "completion_tokens": 848,
+    "total_tokens": 1291
+  },
+  "cost": 0.00061208,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1062,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-06-20T16:00:00\n- End: 2026-06-20T22:00:00\n- Location: Sunset Gardens, Napa Valley\n- Description: Thank you for RSVPing! Ceremony at 4pm, reception to follow. Cocktail attire.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Wedding - Sarah and Michael\n   - Start: 2026-06-20T16:00:00\n   - End: 2026-06-20T22:00:00\n   - Location: Sunset Gardens, Napa\n   - Description: You're invited to celebrate our special day!\n\n2. Event ID: event-002\n   - Title: Summer BBQ\n   - Start: 2026-06-21T12:00:00\n   - End: 2026-06-21T16:00:00\n   - Location: Central Park\n   - Description: Annual neighborhood BBQ\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 share the same date, time, and location (with minor variation in location name, which is likely the same place). The titles both refer to the same wedding of Sarah and Michael, and the descriptions are consistent with the same event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

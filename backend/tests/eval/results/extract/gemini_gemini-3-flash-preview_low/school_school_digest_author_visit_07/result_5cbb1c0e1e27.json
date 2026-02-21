@@ -1,0 +1,443 @@
+{
+  "fixture_name": "school/school_digest_author_visit_07",
+  "fixture_hash": "a0d43983314dce4f4fe12fe52123995371e9a04d101df783c1ed57d6e15c2800",
+  "code_hash": "c658e146c4ce",
+  "prompt_hash": "5cbb1c0e1e27",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T17:23:36.102653+00:00",
+  "duration_ms": 28109,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T17:23:07.988175+00:00",
+      "duration_ms": 1
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T17:23:07.989919+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T17:23:08.019960+00:00",
+      "duration_ms": 28078
+    },
+    "scoring": {
+      "started_at": "2026-02-21T17:23:36.098193+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world school digest with Valentine's Day party photos (past) and newsletter with future author visit",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "digest",
+    "newsletter",
+    "author-visit",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 12, 2026 Digest: 2 new messages from Walnut Heights School today",
+    "from": "donotreply+b8892cdd-b853-59af-bbf0-af20434c9aeb@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 6,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 666684
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00",
+        "end_datetime": null,
+        "location": "Walnut Heights MPR",
+        "description": "TK and K music showcase. Livestream available.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "No School - Presidents Day",
+        "start_datetime": "2026-02-12T00:00:00+00:00",
+        "end_datetime": "2026-02-16T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "School closure for Presidents Day weekend.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00+00:00",
+        "end_datetime": "2026-03-12T23:59:59+00:00",
+        "all_day": true,
+        "location": "4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Two authors will visit the school. Students can pre-order books through Rakestraw Bookstore to have them signed on the day of the visit. Use the school's address for shipping.",
+        "confidence": 1.0,
+        "importance": "fyi"
+      },
+      {
+        "title": "Spring Music Showcase (TK and K only)",
+        "start_datetime": "2026-03-24T09:30:00+00:00",
+        "end_datetime": "2026-03-24T10:00:00+00:00",
+        "all_day": false,
+        "location": "MPR at Walnut Heights Elementary",
+        "description": "Showcase of what TK and Kindergarten students have been working on in Music class with Mrs. Gold. A livestream link will be sent out a few days before the event for those who cannot attend in person.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7766990291262136,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.7241379310344828,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.68,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 6629,
+    "completion_tokens": 484,
+    "total_tokens": 7113
+  },
+  "cost": 0.00128475,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3687,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Feb 12, 2026 Digest: 2 new messages from Walnut Heights School today\n- From: Walnut Heights School via ParentSquare <donotreply+b8892cdd-b853-59af-bbf0-af20434c9aeb@parentsquare.com>\n- Date Sent: 2026-02-13T02:34:28Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Confidence score (0.0-1.0) based on clarity of information\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Include uncertainty in confidence scores (e.g., 0.7 if time is ambiguous)\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events (do NOT extract these):**\n\u2717 Newsletter content without specific dates\n\u2717 Receipts or order confirmations (unless they mention an appointment)\n\u2717 Financial statements or account summaries\n\u2717 General announcements without specific event details\n\u2717 Promotional offers, sales, or discount deadlines (\"offer expires\", \"sale ends\")\n\u2717 Survey, feedback, or review request deadlines\n\u2717 Terms of service or privacy policy effective dates\n\u2717 Public comment periods or administrative deadlines\n\u2717 Emails where event details (date, time) must be inferred or guessed from context \u2014 only extract events with explicitly stated dates and times\n\u2717 Package shipping or delivery notifications (estimated delivery dates are NOT calendar events)\n\u2717 Payment due dates, invoice deadlines, or billing cycle dates\n\u2717 Subscription renewal dates\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 1226,
+        "text": "\n**Email Body:**\nDaily digest created for Toni Melisma\n\n1. Vday Party Photos\n\nPosted by Brenda Dos Santos Szeto on Wednesday, Feb 11 at 7:19 PM in Kindergarten-Koeltl\n\nHi Room 102 Families Our Valentine\u2019s Day party was such a sweet success! The kids had an amazing time, and it truly wouldn\u2019t have been possible without all of you. A heartfelt THANK YOU to our wonder teacher ms Koeltl and everyone who volunteered their time, donated items, helped set up, or contributed in any way. Your generosity and support made the celebration extra special for the class. Here's a link of some photos we took today. Please let me know if you cant access it.\n\nSee you all next week! Wishing everyone a wonderful and safe super long weekend.\nArash, Brenda, & Renee\n\n2. Newsletter\n\nPosted by Reganne Koeltl on Thursday, Feb 12 at 11:16 AM in Kindergarten-Koeltl\n\nDouble Author Visit on March 12th\n\nIf students would like to order books and have them signed on the day of the visit, please place orders through Rakestraw Bookstore. The books will be delivered on the day of the visit, and the authors will sign them for students.\n\n*** Shipping Address when placing an order is the school\u2019s address:\n\n4064 Walnut Blvd, Walnut Creek, CA 94596"
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 16357
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 463699
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 173836
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 6301
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 6448
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 43
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "confidence"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"No School - Presidents Day\",\n      \"start_datetime\": \"2026-02-12T00:00:00Z\",\n      \"end_datetime\": \"2026-02-16T23:59:59Z\",\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"School closure for Presidents Day weekend.\",\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Double Author Visit\",\n      \"start_datetime\": \"2026-03-12T00:00:00Z\",\n      \"end_datetime\": \"2026-03-12T23:59:59Z\",\n      \"all_day\": true,\n      \"location\": \"4064 Walnut Blvd, Walnut Creek, CA 94596\",\n      \"description\": \"Two authors will visit the school. Students can pre-order books through Rakestraw Bookstore to have them signed on the day of the visit. Use the school's address for shipping.\",\n      \"confidence\": 1.0,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Spring Music Showcase (TK and K only)\",\n      \"start_datetime\": \"2026-03-24T09:30:00Z\",\n      \"end_datetime\": \"2026-03-24T10:00:00Z\",\n      \"all_day\": false,\n      \"location\": \"MPR at Walnut Heights Elementary\",\n      \"description\": \"Showcase of what TK and Kindergarten students have been working on in Music class with Mrs. Gold. A livestream link will be sent out a few days before the event for those who cannot attend in person.\",\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
