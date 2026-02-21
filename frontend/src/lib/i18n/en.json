@@ -69,6 +69,11 @@
 	"eventSource": {
 		"sourceEmail": "Source Email",
 		"viewSourceEmail": "View Source Email",
+		"sourcePhoto": "Source Photo",
+		"viewSourcePhoto": "View Source Photo",
+		"sourcePhotoDescription": "This event was extracted from a Google Photos image.",
+		"emailSource": "From email",
+		"photoSource": "From photo",
 		"from": "From:",
 		"subject": "Subject:",
 		"date": "Date:",
@@ -90,6 +95,7 @@
 		"statusRejected": "Rejected",
 		"statusCancelled": "Cancelled",
 		"from": "From: {name}",
+		"fromPhoto": "From: Google Photos",
 		"unknownSender": "Unknown"
 	},
 	"settings": {
@@ -117,6 +123,8 @@
 		"gmailDescription": "Read emails to find calendar events",
 		"googleCalendar": "Google Calendar",
 		"googleCalendarDescription": "Sync approved events to your calendar",
+		"googlePhotos": "Google Photos",
+		"googlePhotosDescription": "Scan photos for event details",
 		"disconnect": "Disconnect"
 	},
 	"senderRules": {
