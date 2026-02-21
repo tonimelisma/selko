@@ -1,0 +1,96 @@
+{
+  "fixture_name": "event_cancelled_06",
+  "fixture_hash": "3e4c1d2c17f2b9e11f399a3f37cb92e5a29a3518035703869efb1c5170d17075",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:15:31.450519+00:00",
+  "duration_ms": 2290,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:15:29.158708+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:15:29.158715+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:15:29.174232+00:00",
+      "duration_ms": 2275
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:15:31.450151+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Event cancelled - title should get CANCELLED prefix",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "cancellation"
+  ],
+  "expected": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description_contains": [
+      "cancelled",
+      "team offsite",
+      "reschedule next week"
+    ]
+  },
+  "actual": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description": "Bi-weekly sprint review and retrospective\n\nMeeting cancelled due to team offsite. Will reschedule next week.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "cancellation_prefix": true,
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "cancelled",
+        "team offsite",
+        "reschedule next week"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 589,
+    "completion_tokens": 130,
+    "total_tokens": 719
+  },
+  "cost": 0.003717
+}

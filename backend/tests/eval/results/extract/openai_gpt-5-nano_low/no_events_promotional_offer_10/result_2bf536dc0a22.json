@@ -1,0 +1,79 @@
+{
+  "fixture_name": "no_events/promotional_offer_10",
+  "fixture_hash": "18357a48402472a59a078bb0752031ff31e5587be3961a7473f2cf7dcb459449",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:51.227950+00:00",
+  "duration_ms": 5177,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:46.049908+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:46.049914+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:46.064427+00:00",
+      "duration_ms": 5163
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:51.227670+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Limited time promotional offer with deadline",
+  "difficulty": "hard",
+  "tags": [
+    "promo",
+    "offer",
+    "deadline",
+    "tricky",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Exclusive Offer Expires Tomorrow at Midnight!",
+    "from": "offers@subscription.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Offer expiration: 40% discount on Premium Annual Plan",
+        "start_datetime": "2026-02-20T23:59:00-08:00",
+        "end_datetime": "2026-02-20T23:59:00-08:00",
+        "all_day": false,
+        "location": null,
+        "description": "Final reminder: Your exclusive offer of 40% off the Premium Annual Plan expires on February 20, 2026 at 11:59 PM PST. This is a deadline to claim the discounted price ($119/year, down from $199/year). Offer expires at 11:59 PM PST on February 20, 2026. If you want the discount, claim your offer now before the deadline.",
+        "confidence": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1229,
+    "completion_tokens": 630,
+    "total_tokens": 1859
+  },
+  "cost": 0.00031345
+}

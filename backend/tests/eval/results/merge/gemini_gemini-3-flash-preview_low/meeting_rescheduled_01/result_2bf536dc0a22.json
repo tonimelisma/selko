@@ -1,0 +1,58 @@
+{
+  "fixture_name": "meeting_rescheduled_01",
+  "fixture_hash": "1d2c242ce2e61e827cbcca81a44ef6a981c57ad101dc8ea0a7d0ab3d834d9b83",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:00:02.147304+00:00",
+  "duration_ms": 151,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:01.994837+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:01.994844+00:00",
+      "duration_ms": 34
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:02.029152+00:00",
+      "duration_ms": 117
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:02.147026+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Meeting rescheduled to new time - simple time change with same location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "time-update",
+    "reschedule"
+  ],
+  "expected": {
+    "title": "Q1 Planning Meeting",
+    "start_datetime": "2026-03-15T16:00:00",
+    "end_datetime": "2026-03-15T17:00:00",
+    "all_day": false,
+    "location": "Conference Room B",
+    "description_contains": [
+      "quarterly planning",
+      "department heads",
+      "moved to 4pm"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

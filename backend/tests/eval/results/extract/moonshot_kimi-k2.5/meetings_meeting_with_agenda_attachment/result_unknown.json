@@ -1,0 +1,55 @@
+{
+  "fixture_name": "meetings/meeting_with_agenda_attachment",
+  "fixture_hash": "1a8945fd5489a50c0f167e6743a4403a14c73c2945f6d608c622e8d695a63b52",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "run_at": "2026-02-16T17:33:29.806266+00:00",
+  "duration_ms": 219,
+  "category": "meetings",
+  "description": "Meeting invitation with attached agenda document",
+  "difficulty": "medium",
+  "tags": [
+    "meeting",
+    "attachment",
+    "agenda",
+    "txt"
+  ],
+  "input_summary": {
+    "subject": "Quarterly Planning Meeting - March 10th (Agenda Attached)",
+    "from": "planning@company.com",
+    "has_attachments": true,
+    "attachment_count": 1
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Quarterly Planning Meeting",
+        "start_datetime": "2026-03-10T09:00:00",
+        "end_datetime": "2026-03-10T12:00:00",
+        "location": "Main Conference Room, Building A",
+        "description": "Quarterly planning meeting - Q1 review and Q2 planning",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "auto_score": {
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

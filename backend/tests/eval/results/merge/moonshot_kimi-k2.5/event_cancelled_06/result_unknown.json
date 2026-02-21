@@ -1,0 +1,77 @@
+{
+  "fixture_name": "event_cancelled_06",
+  "fixture_hash": "3e4c1d2c17f2b9e11f399a3f37cb92e5a29a3518035703869efb1c5170d17075",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "run_at": "2026-02-16T17:40:30.070389+00:00",
+  "duration_ms": 26075,
+  "description": "Event cancelled - title should get CANCELLED prefix",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "cancellation"
+  ],
+  "expected": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description_contains": [
+      "cancelled",
+      "team offsite",
+      "reschedule next week"
+    ]
+  },
+  "actual": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "all_day": false,
+    "importance": "action_required",
+    "description": "Bi-weekly sprint review and retrospective\nMeeting cancelled due to team offsite. Will reschedule next week.",
+    "end_datetime": "2026-04-18T15:00:00",
+    "location": "Conference Room A"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "cancellation_prefix": true,
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "cancelled",
+        "team offsite",
+        "reschedule next week"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 342,
+    "completion_tokens": 1139,
+    "total_tokens": 1481
+  },
+  "cost": 0.0036222
+}

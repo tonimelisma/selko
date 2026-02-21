@@ -1,0 +1,53 @@
+{
+  "fixture_name": "different_events_same_day_09",
+  "fixture_hash": "a37020bb4bbe4a8b306ed6637d57a90eb6ffd01aeae2c01d243ba195feaf7c15",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:35.965106+00:00",
+  "duration_ms": 3023,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:32.940742+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:32.940751+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:32.970859+00:00",
+      "duration_ms": 2993
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:35.964761+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 444,
+    "completion_tokens": 57,
+    "total_tokens": 501
+  },
+  "cost": 0.00010079999999999998
+}

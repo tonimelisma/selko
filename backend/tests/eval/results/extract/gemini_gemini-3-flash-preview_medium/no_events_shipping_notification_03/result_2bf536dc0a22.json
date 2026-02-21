@@ -1,0 +1,65 @@
+{
+  "fixture_name": "no_events/shipping_notification_03",
+  "fixture_hash": "e9ec530c80c65c58943683c0e5697296ab5756aa12957c216b9fc8a3d1b4ec0f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:23.707117+00:00",
+  "duration_ms": 2395,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:21.310155+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:21.310162+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:21.340067+00:00",
+      "duration_ms": 2366
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:23.706813+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Package shipped notification",
+  "difficulty": "medium",
+  "tags": [
+    "shipping",
+    "delivery",
+    "tracking",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your package has shipped! Tracking #1Z999AA10123456784",
+    "from": "shipping@store.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

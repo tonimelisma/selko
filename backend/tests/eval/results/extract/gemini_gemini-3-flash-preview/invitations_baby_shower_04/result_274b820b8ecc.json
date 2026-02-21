@@ -1,0 +1,131 @@
+{
+  "fixture_name": "invitations/baby_shower_04",
+  "fixture_hash": "09ebc91ae47d2f0d1a34b20353211dcfaca1fa2586246e8b29f97fb57cd9394f",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:19:42.955180+00:00",
+  "duration_ms": 4086,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:19:38.226307+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:19:38.867369+00:00",
+      "duration_ms": 1815
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:19:40.682821+00:00",
+      "duration_ms": 2271
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:19:42.953909+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Baby shower invitation with brunch timing",
+  "difficulty": "easy",
+  "tags": [
+    "baby-shower",
+    "brunch",
+    "weekend"
+  ],
+  "input_summary": {
+    "subject": "Baby Shower for Amanda!",
+    "from": "kelly.martinez@yahoo.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amanda's Baby Shower",
+        "start_datetime": "2026-03-15T11:00:00",
+        "end_datetime": "2026-03-15T14:00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch for Amanda Rodriguez",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Baby Shower for Amanda Rodriguez",
+        "start_datetime": "2026-03-15T11:00:00+00:00",
+        "end_datetime": "2026-03-15T14:00:00+00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch honoring mom-to-be Amanda Rodriguez. Light brunch will be served. Registry available at Amazon & Target. RSVP to Kelly at kelly.martinez@yahoo.com or (512) 555-8910 by March 8th. It's a boy!",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "RSVP Deadline: Amanda's Baby Shower",
+        "start_datetime": "2026-03-08T23:59:59+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Last day to RSVP to Kelly Martinez (kelly.martinez@yahoo.com or 512-555-8910) for Amanda Rodriguez's baby shower.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.4230769230769231,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 709,
+    "completion_tokens": 266,
+    "total_tokens": 975
+  },
+  "cost": 0.00026595
+}

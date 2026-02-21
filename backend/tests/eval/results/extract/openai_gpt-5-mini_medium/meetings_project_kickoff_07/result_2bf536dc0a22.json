@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/project_kickoff_07",
+  "fixture_hash": "e6d9c90441619dccf1a66649dfdc3012870fe65f9539ebe5bcb6b152889b74d4",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:09:16.142905+00:00",
+  "duration_ms": 13200,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:09:02.940707+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:09:02.940714+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:09:02.956121+00:00",
+      "duration_ms": 13185
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:09:16.141995+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Internal project kickoff meeting",
+  "difficulty": "easy",
+  "tags": [
+    "project",
+    "kickoff",
+    "internal",
+    "planning"
+  ],
+  "input_summary": {
+    "subject": "Project Phoenix Kickoff - Please Join!",
+    "from": "daniel.kim@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Phoenix Kickoff",
+        "start_datetime": "2026-02-18T10:00:00",
+        "end_datetime": "2026-02-18T11:30:00",
+        "location": "Innovation Lab (3rd floor)",
+        "description": "Project kickoff meeting with team introductions and planning",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Project Phoenix Kickoff \u2014 Kickoff Meeting",
+        "start_datetime": "2026-02-18T10:00:00+00:00",
+        "end_datetime": "2026-02-18T11:30:00+00:00",
+        "all_day": false,
+        "location": "Innovation Lab (3rd floor)",
+        "description": "KICKOFF MEETING\nDate: Wednesday, February 18, 2026\nTime: 10:00 AM - 11:30 AM\nRoom: Innovation Lab (3rd floor)\n\nCalendar invite to follow.\n\nAGENDA:\n1. Project overview and goals\n2. Team introductions and roles\n3. Technical architecture overview\n4. Sprint planning approach\n5. Communication and tooling\n6. Q&A\n\nPRE-WORK (Optional but helpful):\n- Review the PRD doc: [link]\n- Think about potential risks\n- Bring your questions!\n\nOrganizer: Daniel Kim, Senior Product Manager (daniel.kim@company.com)",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.71875,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1173,
+    "completion_tokens": 751,
+    "total_tokens": 1924
+  },
+  "cost": 0.00179525
+}

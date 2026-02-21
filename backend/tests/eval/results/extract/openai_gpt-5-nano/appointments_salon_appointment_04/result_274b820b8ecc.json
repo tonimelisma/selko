@@ -1,0 +1,97 @@
+{
+  "fixture_name": "appointments/salon_appointment_04",
+  "fixture_hash": "4584829f3014e874f14d09ad7b5ba95a29f7cb62f097aeeb9315c95396b8c5f4",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "run_at": "2026-02-17T17:27:27.657117+00:00",
+  "duration_ms": 22355,
+  "category": "appointments",
+  "description": "Hair salon appointment booking",
+  "difficulty": "easy",
+  "tags": [
+    "salon",
+    "haircut",
+    "personal-care"
+  ],
+  "input_summary": {
+    "subject": "Your Appointment at Style Studio",
+    "from": "bookings@stylestudio.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hair Appointment - Style Studio",
+        "start_datetime": "2026-02-12T15:30:00",
+        "end_datetime": "2026-02-12T17:30:00",
+        "location": "Style Studio Salon, 890 University Avenue, Palo Alto, CA 94301",
+        "description": "Haircut and color with Amanda Torres",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Haircut & Color with Amanda Torres",
+        "start_datetime": "2026-02-12T15:30:00-08:00",
+        "end_datetime": "2026-02-12T17:30:00-08:00",
+        "location": "Style Studio Salon, 890 University Avenue, Palo Alto, CA 94301",
+        "description": "Appointment: Haircut & Color with Stylist Amanda Torres. Date: Thursday, February 12, 2026. Time: 3:30 PM. Duration: approximately 2 hours. Location: Style Studio Salon, 890 University Avenue, Palo Alto, CA 94301. Cancellation Policy: Please provide at least 24 hours notice for cancellations to avoid a fee. Need to change your appointment? Click here or call us.",
+        "confidence": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.27692307692307694,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.8,
+          "required_min": 0.85,
+          "match": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 937,
+    "completion_tokens": 2880,
+    "total_tokens": 3817
+  },
+  "cost": 0.00119885
+}

@@ -1,0 +1,90 @@
+{
+  "fixture_name": "no_events/government_notice_13",
+  "fixture_hash": "c8d63c186c84a17b5873a37ce8aa4174d6b1fadb5cd4dfacfca61bfaf4ab3c4e",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:07:54.448410+00:00",
+  "duration_ms": 8467,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:45.979312+00:00",
+      "duration_ms": 2
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:45.981631+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:45.996849+00:00",
+      "duration_ms": 8450
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:07:54.447110+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Real-world city government notification about safety element update with comment period but no specific meeting dates",
+  "difficulty": "medium",
+  "tags": [
+    "government",
+    "city",
+    "public-comment",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Walnut Creek is updating its safety element",
+    "from": "CityofWalnutCreek@public.govdelivery.com",
+    "has_attachments": true,
+    "attachment_count": 9,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 548705
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Public review period \u2014 Draft Safety Element and environmental review",
+        "start_datetime": "2026-02-09T00:00:00+00:00",
+        "end_datetime": "2026-03-11T23:59:59+00:00",
+        "all_day": true,
+        "location": "City of Walnut Creek website; written comments may be sent via email to rustick@walnutcreekca.gov",
+        "description": "The City has posted the draft Safety Element and associated environmental review for a 30-day public review period. Residents may submit written comments during this period (via email to rustick@walnutcreekca.gov) and will have opportunities to comment when the draft is presented to the Planning Commission and later to the City Council. Information about the Safety Element, including upcoming public meeting dates, is available on the City website.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1980,
+    "completion_tokens": 453,
+    "total_tokens": 2433
+  },
+  "cost": 0.001401
+}

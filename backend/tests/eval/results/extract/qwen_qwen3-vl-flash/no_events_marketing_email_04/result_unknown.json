@@ -1,0 +1,56 @@
+{
+  "fixture_name": "no_events/marketing_email_04",
+  "fixture_hash": "814fe4ce8cc9ddb5a21a23d235168151a07b07f3c59cd70ab2f28a9a411e0c86",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:39:02.325593+00:00",
+  "duration_ms": 2439,
+  "category": "no_events",
+  "description": "Promotional marketing email with sale dates",
+  "difficulty": "medium",
+  "tags": [
+    "marketing",
+    "sale",
+    "promo",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "\ud83c\udf89 Presidents Day Sale - Up to 50% Off!",
+    "from": "deals@bigstore.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Presidents Day Sale",
+        "start_datetime": "2026-02-14T00:00:00+00:00",
+        "end_datetime": "2026-02-17T23:59:59+00:00",
+        "location": "BigStore retail locations and online",
+        "description": "BigStore is hosting a Presidents Day Sale with up to 50% off everything from February 14 to February 17, 2026. Additional offers include buy 2 get 1 free on bedding, extra 20% off with code PRES20 (online only), and free shipping on orders over $49. Stores are open regular hours: Monday-Saturday 10AM-9PM, Sunday 11AM-6PM.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1409,
+    "completion_tokens": 219,
+    "total_tokens": 1628
+  },
+  "cost": 0.00026164
+}

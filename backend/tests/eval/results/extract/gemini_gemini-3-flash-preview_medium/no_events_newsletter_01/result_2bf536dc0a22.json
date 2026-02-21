@@ -1,0 +1,64 @@
+{
+  "fixture_name": "no_events/newsletter_01",
+  "fixture_hash": "879192878c9beb3bc40f85df0d2b52a9c0dd1cd447dd12c037165d0c0a204fc1",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:20.524698+00:00",
+  "duration_ms": 1516,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:19.007359+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:19.007368+00:00",
+      "duration_ms": 31
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:19.038707+00:00",
+      "duration_ms": 1485
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:20.524402+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Weekly tech newsletter with no actionable events",
+  "difficulty": "easy",
+  "tags": [
+    "newsletter",
+    "tech",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "TechDigest Weekly - Top Stories This Week",
+    "from": "newsletter@techdigest.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

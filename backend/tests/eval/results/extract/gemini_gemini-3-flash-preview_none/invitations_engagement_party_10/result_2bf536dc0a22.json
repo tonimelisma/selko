@@ -1,0 +1,76 @@
+{
+  "fixture_name": "invitations/engagement_party_10",
+  "fixture_hash": "b84e2b5c53712ebfdb5d5c07e18725c88abd8a5f94048b25648cda9d69cae06c",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "none",
+  "run_at": "2026-02-20T23:58:20.669645+00:00",
+  "duration_ms": 141,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:58:20.527348+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:58:20.527364+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:58:20.557468+00:00",
+      "duration_ms": 111
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:58:20.669366+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Engagement celebration at winery",
+  "difficulty": "medium",
+  "tags": [
+    "engagement",
+    "winery",
+    "afternoon",
+    "outdoor"
+  ],
+  "input_summary": {
+    "subject": "Join Us! Rachel & David's Engagement Celebration",
+    "from": "susan.miller@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Rachel & David's Engagement Party",
+        "start_datetime": "2026-04-04T16:00:00",
+        "end_datetime": null,
+        "location": "Stonegate Winery, 7801 Silverado Trail, Napa, CA 94558",
+        "description": "Engagement celebration with wine tasting and hors d'oeuvres at winery",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

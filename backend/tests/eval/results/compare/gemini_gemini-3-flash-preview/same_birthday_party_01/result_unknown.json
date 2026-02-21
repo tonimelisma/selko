@@ -1,0 +1,32 @@
+{
+  "fixture_name": "same_birthday_party_01",
+  "fixture_hash": "bad86f1b2a3faf21f3c8115fe8ac43a869f97ab03840d13f122a2de4fb890a06",
+  "code_hash": "unknown",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:50:28.268418+00:00",
+  "duration_ms": 0,
+  "description": "Same birthday party with slightly different wording - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "error": "gemini API error: 1 validation error for Schema\nproperties.matched_event_id.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,118 @@
+{
+  "fixture_name": "appointments/dentist_appointment_02",
+  "fixture_hash": "447339a6ff66866c75a4ca86d3b70ae05bbee01bf1dc1cac0b04f80307c6dfcb",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:19:44.832644+00:00",
+  "duration_ms": 1594,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:19:43.237163+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:19:43.237171+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:19:43.266524+00:00",
+      "duration_ms": 1565
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:19:44.832239+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Dental cleaning appointment reminder",
+  "difficulty": "easy",
+  "tags": [
+    "dental",
+    "cleaning",
+    "reminder"
+  ],
+  "input_summary": {
+    "subject": "Reminder: Dental Appointment Tomorrow",
+    "from": "reminder@brightsmile.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Dental Appointment - Bright Smile Dental",
+        "start_datetime": "2026-02-10T14:00:00",
+        "end_datetime": null,
+        "location": "Bright Smile Dental, 250 First Street, Suite 100, San Francisco, CA 94105",
+        "description": "Routine cleaning and exam with Dr. Michael Chen",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Dental Appointment: Routine Cleaning & Exam",
+        "start_datetime": "2026-02-10T14:00:00+00:00",
+        "end_datetime": null,
+        "location": "Bright Smile Dental, 250 First Street, Suite 100, San Francisco, CA 94105",
+        "description": "Routine Cleaning & Exam with Dr. Michael Chen, DDS for patient John Doe. Phone: (415) 555-9876. Please reply or call to reschedule.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6024096385542169,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 715,
+    "completion_tokens": 136,
+    "total_tokens": 851
+  },
+  "cost": 0.00018884999999999998
+}

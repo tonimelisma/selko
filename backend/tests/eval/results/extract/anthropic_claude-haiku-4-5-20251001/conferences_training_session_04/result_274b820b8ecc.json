@@ -1,0 +1,111 @@
+{
+  "fixture_name": "conferences/training_session_04",
+  "fixture_hash": "d0b5fdfef5c3b4f448b1d001b02e1164e7d559e2de18ff98e732d195e2b68ea7",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:22:15.122210+00:00",
+  "duration_ms": 2429,
+  "category": "conferences",
+  "description": "Corporate training session invitation",
+  "difficulty": "easy",
+  "tags": [
+    "training",
+    "corporate",
+    "internal",
+    "mandatory"
+  ],
+  "input_summary": {
+    "subject": "[Required] Annual Compliance Training - Your Session",
+    "from": "learning@company.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Compliance Training",
+        "start_datetime": "2026-02-25T10:00:00",
+        "end_datetime": "2026-02-25T12:00:00",
+        "location": "Training Room A (Building 2, Floor 1)",
+        "description": "Mandatory annual compliance training session",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Compliance Training Session",
+        "start_datetime": "2026-02-25T10:00:00+00:00",
+        "end_datetime": "2026-02-25T12:00:00+00:00",
+        "location": "Training Room A (Building 2, Floor 1) or Virtual via Zoom: https://company.zoom.us/j/compliance2026",
+        "description": "Mandatory Annual Compliance Training for 2026. Session includes Code of Conduct Review, Data Privacy & Security, Anti-Harassment Policy, Ethics & Reporting, and Quiz & Certification. Passcode: comply26. Non-completion may affect performance review. If unable to attend this session, must reschedule by contacting learning@company.com.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Annual Compliance Training Completion Deadline",
+        "start_datetime": "2026-03-31T23:59:59+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to complete mandatory Annual Compliance Training for 2026. All employees must complete by this date. Non-completion may affect performance review.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8666666666666667,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5441176470588235,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1572,
+    "completion_tokens": 346,
+    "total_tokens": 1918
+  },
+  "cost": 0.0026416000000000005
+}

@@ -1,0 +1,98 @@
+{
+  "fixture_name": "appointments/vet_appointment_07",
+  "fixture_hash": "2a33cf65c996297fad449c357e46adb87aef1dfb3606742d1bf06c022e29c859",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:38:02.344154+00:00",
+  "duration_ms": 13603,
+  "category": "appointments",
+  "description": "Veterinary appointment for pet",
+  "difficulty": "easy",
+  "tags": [
+    "vet",
+    "pet",
+    "medical",
+    "animal"
+  ],
+  "input_summary": {
+    "subject": "Appointment Reminder for Max",
+    "from": "appointments@happypaws.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Vet Appointment for Max",
+        "start_datetime": "2026-02-20T09:15:00",
+        "end_datetime": null,
+        "location": "Happy Paws Veterinary Clinic, 2200 Pet Care Lane, Mountain View, CA 94043",
+        "description": "Annual wellness exam and vaccinations for Max (Golden Retriever)",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Max's Annual Wellness Exam & Vaccinations",
+        "start_datetime": "2026-02-20T09:15:00+00:00",
+        "end_datetime": null,
+        "location": "Happy Paws Veterinary Clinic, 2200 Pet Care Lane, Mountain View, CA 94043",
+        "description": "Pet: Max (Golden Retriever). Owner: Jennifer Walsh. Appointment Type: Annual Wellness Exam & Vaccinations. Doctor: Dr. Sarah Mitchell, DVM. Please bring: Vaccination records (if from another vet), Stool sample (if possible), and a list of any concerns. Call (650) 555-PAWS to reschedule.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.09375,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 751,
+    "completion_tokens": 169,
+    "total_tokens": 920
+  },
+  "cost": 0.00021404999999999997
+}

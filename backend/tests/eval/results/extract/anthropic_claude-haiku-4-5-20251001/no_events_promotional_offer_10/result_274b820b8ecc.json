@@ -1,0 +1,57 @@
+{
+  "fixture_name": "no_events/promotional_offer_10",
+  "fixture_hash": "18357a48402472a59a078bb0752031ff31e5587be3961a7473f2cf7dcb459449",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:23:59.260634+00:00",
+  "duration_ms": 2860,
+  "category": "no_events",
+  "description": "Limited time promotional offer with deadline",
+  "difficulty": "hard",
+  "tags": [
+    "promo",
+    "offer",
+    "deadline",
+    "tricky",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Exclusive Offer Expires Tomorrow at Midnight!",
+    "from": "offers@subscription.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Subscription Service Offer Expires",
+        "start_datetime": null,
+        "end_datetime": "2026-02-20T23:59:00-08:00",
+        "location": null,
+        "description": "Exclusive 40% OFF annual subscription offer expires. Premium Annual Plan available at $119/year (regular $199/year). This is a final reminder that the offer deadline is February 20, 2026 at 11:59 PM PST. User must claim the offer before this deadline to receive the discount.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1692,
+    "completion_tokens": 184,
+    "total_tokens": 1876
+  },
+  "cost": 0.0020896000000000005
+}

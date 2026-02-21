@@ -1,0 +1,44 @@
+{
+  "fixture_name": "no_events/shipping_notification_03",
+  "fixture_hash": "e9ec530c80c65c58943683c0e5697296ab5756aa12957c216b9fc8a3d1b4ec0f",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:53:50.471412+00:00",
+  "duration_ms": 9675,
+  "category": "no_events",
+  "description": "Package shipped notification",
+  "difficulty": "medium",
+  "tags": [
+    "shipping",
+    "delivery",
+    "tracking",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your package has shipped! Tracking #1Z999AA10123456784",
+    "from": "shipping@store.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 827,
+    "completion_tokens": 844,
+    "total_tokens": 1671
+  },
+  "cost": 0.0
+}

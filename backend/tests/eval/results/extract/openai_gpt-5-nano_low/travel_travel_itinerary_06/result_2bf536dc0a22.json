@@ -1,0 +1,301 @@
+{
+  "fixture_name": "travel/travel_itinerary_06",
+  "fixture_hash": "62d3fcaaf95126b9bb7dee2f9c1028091dede49daccfcf156f8f35c7ef1f93d3",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:29.468808+00:00",
+  "duration_ms": 10659,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:18.807259+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:18.807282+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:18.825390+00:00",
+      "duration_ms": 10640
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:29.465729+00:00",
+      "duration_ms": 1
+    }
+  },
+  "category": "travel",
+  "description": "Complete travel itinerary with multiple events",
+  "difficulty": "hard",
+  "tags": [
+    "itinerary",
+    "multiple-events",
+    "complex",
+    "multi-day"
+  ],
+  "input_summary": {
+    "subject": "Your Complete Travel Itinerary - Tokyo Trip",
+    "from": "bookings@travelagency.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "events": [
+      {
+        "title": "Flight JL 001 - SFO to Tokyo",
+        "start_datetime": "2026-04-10T11:30:00",
+        "end_datetime": null,
+        "location": "San Francisco International Airport (SFO)",
+        "description": "Japan Airlines flight to Tokyo Narita",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Airport Transfer - Narita to Shinjuku",
+        "start_datetime": "2026-04-11T16:30:00",
+        "end_datetime": "2026-04-11T18:30:00",
+        "location": "Narita Airport",
+        "description": "Limousine bus to Shinjuku Bus Terminal",
+        "all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel Stay - Park Hyatt Tokyo",
+        "start_datetime": "2026-04-11T15:00:00",
+        "end_datetime": "2026-04-18T12:00:00",
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo",
+        "description": "7-night hotel stay",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight JL 002 - Tokyo to SFO",
+        "start_datetime": "2026-04-18T17:00:00",
+        "end_datetime": null,
+        "location": "Tokyo Narita Airport (NRT)",
+        "description": "Japan Airlines return flight to San Francisco",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Outbound flight JL001: San Francisco to Tokyo Narita",
+        "start_datetime": "2026-04-10T11:30:00-07:00",
+        "end_datetime": "2026-04-11T15:30:00+09:00",
+        "all_day": false,
+        "location": "San Francisco (SFO) to Tokyo Narita (NRT)",
+        "description": "Japan Airlines JL 001 outbound flight. Depart SFO 11:30 on Apr 10. Arrive NRT Apr 11 at 15:30 local time (+1 day). Duration: 11h. Seat: 32K.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Airport transfer: Narita to Shinjuku",
+        "start_datetime": "2026-04-11T16:30:00+09:00",
+        "end_datetime": "2026-04-11T18:30:00+09:00",
+        "all_day": false,
+        "location": "Narita Airport \u2192 Shinjuku Bus Terminal",
+        "description": "Limousine Bus transfer from Narita Airport to Shinjuku Bus Terminal. Depart Narita at 16:30, arrive around 18:30. Ticket: Prepaid, show email.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Hotel check-in: Park Hyatt Tokyo",
+        "start_datetime": "2026-04-11T15:00:00+09:00",
+        "end_datetime": "2026-04-18T12:00:00+09:00",
+        "all_day": false,
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055",
+        "description": "Hotel check-in for 7 nights (Apr 11\u2013Apr 18). Confirmation: 12345PH.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Hotel check-out",
+        "start_datetime": "2026-04-18T12:00:00+09:00",
+        "end_datetime": "2026-04-18T12:00:00+09:00",
+        "all_day": true,
+        "location": "Park Hyatt Tokyo",
+        "description": "Hotel check-out by 12:00 PM.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Return flight JL002: Tokyo Narita to San Francisco",
+        "start_datetime": "2026-04-18T17:00:00+09:00",
+        "end_datetime": "2026-04-18T10:30:00-07:00",
+        "all_day": false,
+        "location": "Tokyo Narita (NRT) \u2192 San Francisco (SFO)",
+        "description": "Japan Airlines JL 002 return flight. Depart NRT 17:00, arrive SFO 10:30 same day. Duration: 9h 30m. Seat: 31K.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.625,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.4634146341463415,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.958904109589041,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5384615384615384,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.7,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.7868852459016393,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9302325581395349,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.6410256410256411,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5454545454545454,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1439,
+    "completion_tokens": 1511,
+    "total_tokens": 2950
+  },
+  "cost": 0.00067635
+}

@@ -1,0 +1,78 @@
+{
+  "fixture_name": "no_events/password_reset_06",
+  "fixture_hash": "672621788bd627e829c9fea63434085ba64d213b1f6306a5246636b0a738619f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:14:03.270665+00:00",
+  "duration_ms": 8799,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:54.470280+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:54.470312+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:54.486453+00:00",
+      "duration_ms": 8783
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:03.270330+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Password reset request email",
+  "difficulty": "easy",
+  "tags": [
+    "security",
+    "password",
+    "account",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Reset your password",
+    "from": "security@service.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Password reset link expires (Service.com)",
+        "start_datetime": "2026-02-17T10:15:00-08:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": null,
+        "description": "Service.com password reset email: the reset link is valid for 24 hours. To reset your password, use the \u201cReset Password\u201d link before it expires.\n\nEmail states the request time as: February 16, 2026 at 10:15 AM PST (IP: 192.168.1.1; Location: San Francisco, CA). Therefore, link expiry is 24 hours later: February 17, 2026 at 10:15 AM PST.\n\nIf you didn\u2019t request this, you can ignore the email; your password will not be changed.",
+        "confidence": 0.75,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1163,
+    "completion_tokens": 472,
+    "total_tokens": 1635
+  },
+  "cost": 0.00864325
+}

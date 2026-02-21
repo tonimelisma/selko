@@ -1,0 +1,124 @@
+{
+  "fixture_name": "school/field_trip_04",
+  "fixture_hash": "68100ecd7dd1cda16919e3ae833fce6fbcada86581ce1317428caddc02ad5ddf",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:46:39.682703+00:00",
+  "duration_ms": 40046,
+  "category": "school",
+  "description": "School field trip permission and details",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "field-trip",
+    "permission",
+    "kids"
+  ],
+  "input_summary": {
+    "subject": "Field Trip Permission - Science Museum (March 12)",
+    "from": "mrjohnson@oakridgeelementary.edu",
+    "has_attachments": true,
+    "attachment_count": 1
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Field Trip - California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00",
+        "end_datetime": "2026-03-12T15:00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th grade field trip to science museum with guided tour and planetarium show",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Field Trip - Science Museum",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "A field trip to the California Science Museum. Schedule includes departure at 8:30 AM, arrival at 9:30 AM, guided tour and exhibits from 9:30-11:30 AM, lunch from 11:30 AM-12:15 PM, a planetarium show and free exploration from 12:15-1:30 PM, and departure at 2:00 PM with return to school at 3:00 PM. Cost is $15 per student. Students should bring a bag lunch, water bottle, comfortable walking shoes, and a light jacket. A permission form is attached and must be returned by March 5th.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Field Trip Payment Deadline",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": null,
+        "description": "Payment of $15 per student is due by March 5, 2026, to cover admission, the planetarium show, and bus transportation.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Field Trip Chaperone Volunteer Sign-up",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": null,
+        "description": "Chaperones are needed for the field trip. Parents interested should email Mr. Johnson.",
+        "confidence": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8307692307692308,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 899,
+    "completion_tokens": 3021,
+    "total_tokens": 3920
+  },
+  "cost": 0.0
+}

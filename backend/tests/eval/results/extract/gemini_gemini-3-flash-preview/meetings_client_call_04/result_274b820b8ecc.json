@@ -1,0 +1,132 @@
+{
+  "fixture_name": "meetings/client_call_04",
+  "fixture_hash": "71dd5d4dba0431e399e1bbac6f9f398fbacf1273d8177daf8cb247e7cd118e75",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:19:50.011328+00:00",
+  "duration_ms": 3068,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:19:46.941821+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:19:46.941832+00:00",
+      "duration_ms": 36
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:19:46.978182+00:00",
+      "duration_ms": 3032
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:19:50.010918+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Client project kickoff call",
+  "difficulty": "easy",
+  "tags": [
+    "client",
+    "call",
+    "kickoff",
+    "project"
+  ],
+  "input_summary": {
+    "subject": "Re: Project Kickoff Call - GlobalTech Partnership",
+    "from": "james.wong@globaltech.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Kickoff - GlobalTech Partnership",
+        "start_datetime": "2026-02-10T11:00:00",
+        "end_datetime": "2026-02-10T12:30:00",
+        "location": "Microsoft Teams",
+        "description": "Project kickoff call with GlobalTech",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Project Kickoff: GlobalTech Partnership",
+        "start_datetime": "2026-02-10T11:00:00-08:00",
+        "end_datetime": "2026-02-10T12:30:00-08:00",
+        "location": "https://teams.microsoft.com/l/meetup-join/xyz123",
+        "description": "Project kickoff call with GlobalTech. Meeting ID: 456 789 0123, Passcode: kickoff. Dial-in: +1 (800) 555-0199, Conference ID: 789 456#. Attendees include James Wong, Sarah Kim, and Michael Chen. Agenda: 1. Introductions (10 min), 2. Project scope review (30 min), 3. Timeline and milestones (20 min), 4. Q&A and next steps (30 min).",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Send attendee list deadline",
+        "start_datetime": "2026-02-06T17:00:00-08:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to send over the list of attendees for the GlobalTech Partnership Project Kickoff.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.9620253164556962,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.31746031746031744,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 827,
+    "completion_tokens": 318,
+    "total_tokens": 1145
+  },
+  "cost": 0.00031485
+}

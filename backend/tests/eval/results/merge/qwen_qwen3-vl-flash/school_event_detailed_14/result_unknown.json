@@ -1,0 +1,82 @@
+{
+  "fixture_name": "school_event_detailed_14",
+  "fixture_hash": "b8b88cefaf3b5cadd7959f1a5121c7798f81fc6a9abf014fd4e419a376411e77",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:40:08.196221+00:00",
+  "duration_ms": 2054,
+  "description": "School event: newsletter brief mention, then dedicated email with volunteer needs and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "school",
+    "family"
+  ],
+  "expected": {
+    "title": "Spring Science Fair",
+    "start_datetime": "2026-05-14T17:00:00",
+    "end_datetime": "2026-05-14T19:00:00",
+    "all_day": false,
+    "location": "Lincoln Elementary School - Main Gymnasium",
+    "description_contains": [
+      "student projects",
+      "grades 3-5",
+      "volunteers",
+      "awards ceremony",
+      "parking"
+    ]
+  },
+  "actual": {
+    "title": "Spring Science Fair",
+    "start_datetime": "2026-05-14T17:00:00",
+    "end_datetime": "2026-05-14T19:00:00",
+    "all_day": false,
+    "location": "Lincoln Elementary School - Main Gymnasium",
+    "description": "Annual science fair showcasing student projects. Grades 3-5 projects on display. Volunteers needed for setup at 4pm. Light refreshments provided. Awards ceremony at 6:30pm. Parking in west lot.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "student projects",
+        "grades 3-5",
+        "volunteers",
+        "awards ceremony",
+        "parking"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 541,
+    "completion_tokens": 145,
+    "total_tokens": 686
+  },
+  "cost": 0.00014188
+}

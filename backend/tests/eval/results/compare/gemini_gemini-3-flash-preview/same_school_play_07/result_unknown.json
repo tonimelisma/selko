@@ -1,0 +1,32 @@
+{
+  "fixture_name": "same_school_play_07",
+  "fixture_hash": "383229ec54af3331fbff7d2bbf90ef2ebe78fe6a4ef571f6cb95b2104211299f",
+  "code_hash": "unknown",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:50:28.478642+00:00",
+  "duration_ms": 1,
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "error": "gemini API error: 1 validation error for Schema\nproperties.matched_event_id.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

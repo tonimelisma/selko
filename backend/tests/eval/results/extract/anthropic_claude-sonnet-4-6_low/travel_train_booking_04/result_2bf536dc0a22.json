@@ -1,0 +1,124 @@
+{
+  "fixture_name": "travel/train_booking_04",
+  "fixture_hash": "f1847d9ec9489efbcd23dcd79982abf1e7bc819891d109bce66bf23d9f9e357f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:15:48.317615+00:00",
+  "duration_ms": 3603,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:15:44.712886+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:15:44.712897+00:00",
+      "duration_ms": 34
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:15:44.747507+00:00",
+      "duration_ms": 3569
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:15:48.317199+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Amtrak train reservation",
+  "difficulty": "easy",
+  "tags": [
+    "train",
+    "amtrak",
+    "booking"
+  ],
+  "input_summary": {
+    "subject": "Amtrak Reservation Confirmation",
+    "from": "reservations@amtrak.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151 - Washington to New York",
+        "start_datetime": "2026-03-02T07:05:00",
+        "end_datetime": "2026-03-02T10:00:00",
+        "location": "Union Station, Washington DC",
+        "description": "Amtrak Acela train to New York Penn Station",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151: Washington DC \u2192 New York",
+        "start_datetime": "2026-03-02T07:05:00",
+        "end_datetime": "2026-03-02T10:00:00",
+        "all_day": false,
+        "location": "Union Station, Washington, DC",
+        "description": "Amtrak Acela 2151 from Washington DC (Union Station) to New York Penn Station.\n\nConfirmation: 2K9F8X\nPassenger: Jane Smith\nClass: Business Class, Car 3, Seat 12A\nTotal: $189.00\nTicket: eTicket (show on mobile)\n\nAmenities: Complimentary WiFi, power outlets, cafe car access.\nManage trip: amtrak.com/mytrip",
+        "confidence": 0.99,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8941176470588236,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9824561403508771,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.99,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1797,
+    "completion_tokens": 215,
+    "total_tokens": 2012
+  },
+  "cost": 0.008616
+}

@@ -1,0 +1,53 @@
+{
+  "fixture_name": "same_parent_teacher_08",
+  "fixture_hash": "f8cf81aa24634194f42aa1a81aa9e5658c808a5130cb3b43aa977e9e291b82f7",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:14:21.781452+00:00",
+  "duration_ms": 2006,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:19.774175+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:19.774183+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:19.789091+00:00",
+      "duration_ms": 1992
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:21.781232+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same parent-teacher conference with reminder vs original - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 366,
+    "completion_tokens": 88,
+    "total_tokens": 454
+  },
+  "cost": 0.0018725
+}

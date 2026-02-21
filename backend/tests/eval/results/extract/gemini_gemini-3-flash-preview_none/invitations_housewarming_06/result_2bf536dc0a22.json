@@ -1,0 +1,75 @@
+{
+  "fixture_name": "invitations/housewarming_06",
+  "fixture_hash": "12dfd4a064bdf926f8dee183d09691aea13998891cebe0050e1852560d3cc633",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "none",
+  "run_at": "2026-02-20T23:58:21.265675+00:00",
+  "duration_ms": 130,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:58:21.134280+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:58:21.134293+00:00",
+      "duration_ms": 31
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:58:21.165642+00:00",
+      "duration_ms": 99
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:58:21.265339+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Housewarming party with open house style timing",
+  "difficulty": "easy",
+  "tags": [
+    "housewarming",
+    "open-house",
+    "casual"
+  ],
+  "input_summary": {
+    "subject": "We moved! Come see our new place",
+    "from": "chris.nguyen@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Chris & Jamie's Housewarming Party",
+        "start_datetime": "2026-02-28T16:00:00",
+        "end_datetime": "2026-02-28T21:00:00",
+        "location": "567 Willow Way, Apt 12B, Seattle, WA 98101",
+        "description": "Housewarming party - drop by anytime, BYOB",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

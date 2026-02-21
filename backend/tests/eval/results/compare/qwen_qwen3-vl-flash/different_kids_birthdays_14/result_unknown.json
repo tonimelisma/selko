@@ -1,0 +1,34 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "fixture_hash": "075709b179cbc1e3166a98740f4d24696c9730ae203ffc45bbc398a047bdb529",
+  "code_hash": "unknown",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:39:28.501516+00:00",
+  "duration_ms": 1682,
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 526,
+    "completion_tokens": 128,
+    "total_tokens": 654
+  },
+  "cost": 0.00012912
+}

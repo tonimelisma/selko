@@ -1,0 +1,67 @@
+{
+  "fixture_name": "no_events/shipping_notification_03",
+  "fixture_hash": "e9ec530c80c65c58943683c0e5697296ab5756aa12957c216b9fc8a3d1b4ec0f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:07:56.379629+00:00",
+  "duration_ms": 3006,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:53.371692+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:53.371697+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:53.389562+00:00",
+      "duration_ms": 2989
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:07:56.379262+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Package shipped notification",
+  "difficulty": "medium",
+  "tags": [
+    "shipping",
+    "delivery",
+    "tracking",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your package has shipped! Tracking #1Z999AA10123456784",
+    "from": "shipping@store.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1210,
+    "completion_tokens": 149,
+    "total_tokens": 1359
+  },
+  "cost": 0.0006005
+}

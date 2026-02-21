@@ -1,0 +1,125 @@
+{
+  "fixture_name": "conferences/workshop_03",
+  "fixture_hash": "d57f192314d0c881c9590688e2dbd9edd4bf21859d2f50a96c5a9d963f603db6",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:27.374258+00:00",
+  "duration_ms": 6899,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:20.473454+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:20.473459+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:20.489160+00:00",
+      "duration_ms": 6884
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:27.373316+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "In-person professional workshop",
+  "difficulty": "easy",
+  "tags": [
+    "workshop",
+    "training",
+    "professional",
+    "in-person"
+  ],
+  "input_summary": {
+    "subject": "Workshop Confirmation: Leadership Essentials",
+    "from": "training@leadershipinstitute.org",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00",
+        "end_datetime": "2026-03-07T16:00:00",
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Full-day leadership workshop",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop (Leadership Institute)",
+        "start_datetime": "2026-03-07T09:00:00-06:00",
+        "end_datetime": "2026-03-07T16:00:00-06:00",
+        "all_day": false,
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Workshop Confirmation \u2014 Leadership Essentials\n\nParticipant: Jennifer Park\nOrder #: LI-2026-3456\n\nDate: Saturday, March 7, 2026\nTime: 9:00 AM \u2013 4:00 PM (local time in Chicago)\nLocation: Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601\n\nSchedule:\n\u2022 9:00 AM Welcome & Introductions\n\u2022 9:30 AM Module 1: Leadership Foundations\n\u2022 11:00 AM Break\n\u2022 11:15 AM Module 2: Communication Strategies\n\u2022 12:30 PM Lunch (provided)\n\u2022 1:30 PM Module 3: Team Building\n\u2022 3:00 PM Break\n\u2022 3:15 PM Module 4: Action Planning\n\u2022 4:00 PM Wrap-up & Certificates\n\nNotes: Free garage parking available. Lunch and refreshments included.\nWhat to bring: Laptop (optional), business cards for networking, comfortable attire.\nContact: training@leadershipinstitute.org",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7228915662650602,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1310,
+    "completion_tokens": 461,
+    "total_tokens": 1771
+  },
+  "cost": 0.0087465
+}

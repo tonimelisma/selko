@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/board_meeting_03",
+  "fixture_hash": "000068017dd26be9cb4492e40e028fac423c96b1bea61b8dc966a01734b957a4",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:09:15.488304+00:00",
+  "duration_ms": 19728,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:08:55.758305+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:08:55.758310+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:08:55.774236+00:00",
+      "duration_ms": 19713
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:09:15.487498+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Quarterly board meeting notice",
+  "difficulty": "easy",
+  "tags": [
+    "board",
+    "quarterly",
+    "formal",
+    "executive"
+  ],
+  "input_summary": {
+    "subject": "Q1 2026 Board Meeting - March 15th",
+    "from": "board-secretary@acmecorp.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-15T10:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Quarterly board of directors meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q1 2026 Board of Directors Meeting",
+        "start_datetime": "2026-03-15T10:00:00-04:00",
+        "end_datetime": "2026-03-15T16:00:00-04:00",
+        "all_day": false,
+        "location": "ACME Corp Headquarters \u2014 Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166; Video conference option: Zoom Meeting ID: 987 654 3210; Passcode: Board2026",
+        "description": "Official Q1 2026 Board of Directors Meeting.\n\nDate & time: Sunday, March 15, 2026 \u2014 10:00 AM to 4:00 PM (Eastern Time). Note: the email lists the time zone as EST; the meeting date is after U.S. DST begins (second Sunday in March), so local time will likely be EDT (UTC-4) on March 15, 2026 \u2014 see timezone note below.\n\nLocation (in-person): ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166\n\nVideo conference option: Zoom \u2014 Meeting ID: 987 654 3210; Passcode: Board2026\n\nTentative agenda:\n- 10:00 AM - Call to Order\n- 10:15 AM - CEO Report\n- 11:00 AM - CFO Financial Review\n- 12:00 PM - Working Lunch\n- 1:00 PM - Strategic Initiatives\n- 2:30 PM - Committee Reports\n- 3:30 PM - New Business\n- 4:00 PM - Adjournment\n\nAdditional notes:\n- Board materials will be distributed one week prior to the meeting.\n- Please confirm your attendance by March 1, 2026.\n\nTimezone note: Email states \"EST\". Because March 15, 2026 falls after U.S. daylight saving time begins (March 8, 2026), the local eastern time is likely EDT (UTC-4). The start/end times above are provided using UTC-4 to match local clock time on the meeting date.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7636363636363637,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.6946564885496184,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1250,
+    "completion_tokens": 1515,
+    "total_tokens": 2765
+  },
+  "cost": 0.0033425
+}

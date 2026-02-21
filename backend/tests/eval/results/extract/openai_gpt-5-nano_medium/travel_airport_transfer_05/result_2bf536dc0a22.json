@@ -1,0 +1,125 @@
+{
+  "fixture_name": "travel/airport_transfer_05",
+  "fixture_hash": "98b327e08b23119b31d433355808a96201ff28cbc57a7a4b390868b2fbfae4ec",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:03:09.217349+00:00",
+  "duration_ms": 6924,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:03:02.291129+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:03:02.291140+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:03:02.309061+00:00",
+      "duration_ms": 6907
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:03:09.216653+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Airport shuttle/transfer booking",
+  "difficulty": "easy",
+  "tags": [
+    "transfer",
+    "shuttle",
+    "airport",
+    "pickup"
+  ],
+  "input_summary": {
+    "subject": "Your SuperShuttle Reservation",
+    "from": "confirm@supershuttle.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Airport Shuttle Pickup - SuperShuttle",
+        "start_datetime": "2026-02-28T05:30:00",
+        "end_datetime": null,
+        "location": "123 Main Street, Apt 4B, San Diego, CA 92101",
+        "description": "SuperShuttle pickup to San Diego Airport Terminal 2",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Shuttle pickup to San Diego International Airport (SAN) Terminal 2",
+        "start_datetime": "2026-02-28T05:30:00+00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Pickup: 123 Main Street, Apt 4B, San Diego, CA 92101; Destination: San Diego International Airport (SAN) Terminal 2",
+        "description": "Reservation Confirmed: SS789456\\nPickup time: 5:30 AM on Saturday, February 28, 2026\\nPickup location: 123 Main Street, Apt 4B, San Diego, CA 92101\\nDestination: San Diego International Airport (SAN), Terminal 2\\nPassengers: 1\\nLuggage: 2 checked bags\\nDriver will call 10-15 minutes before arrival. Look for the blue SuperShuttle van.\\nTotal: $32.00 (prepaid)\\nNeed changes? Call 1-800-258-3826 or visit supershuttle.com\\nHave a great trip!",
+        "confidence": 0.92,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.42718446601941745,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5534591194968553,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1189,
+    "completion_tokens": 1791,
+    "total_tokens": 2980
+  },
+  "cost": 0.0007758500000000001
+}

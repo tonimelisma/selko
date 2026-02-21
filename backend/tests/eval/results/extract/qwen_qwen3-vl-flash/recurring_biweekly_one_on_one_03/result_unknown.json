@@ -1,0 +1,137 @@
+{
+  "fixture_name": "recurring/biweekly_one_on_one_03",
+  "fixture_hash": "b7099ac7b791418ebfe6864930c5c0c9f5e9fe2f823a316805b9a93532e9887d",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:38:47.585199+00:00",
+  "duration_ms": 6754,
+  "category": "recurring",
+  "description": "Bi-weekly recurring 1:1 meeting",
+  "difficulty": "medium",
+  "tags": [
+    "recurring",
+    "biweekly",
+    "1:1",
+    "manager"
+  ],
+  "input_summary": {
+    "subject": "Updated: 1:1 Moving to Bi-Weekly",
+    "from": "mark.chen@company.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Mark Chen",
+        "start_datetime": "2026-02-13T15:00:00",
+        "end_datetime": "2026-02-13T15:30:00",
+        "location": "Mark's office or Zoom",
+        "description": "Bi-weekly 1:1 meeting",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "1:1 Meeting with Mark",
+        "start_datetime": "2026-02-13T15:00:00+00:00",
+        "end_datetime": "2026-02-13T15:30:00+00:00",
+        "location": "Mark's office or Zoom",
+        "description": "Bi-weekly 1:1 meeting starting February 13, 2026. Frequency: Every other Friday. Time: 3:00 PM - 3:30 PM. Zoom link: https://zoom.us/j/markchen1on1. Agenda doc: https://docs.google.com/d/xxx. Calendar invite updated; please accept when received.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Next 1:1 Meeting with Mark",
+        "start_datetime": "2026-02-27T15:00:00+00:00",
+        "end_datetime": "2026-02-27T15:30:00+00:00",
+        "location": "Mark's office or Zoom",
+        "description": "Follow-up bi-weekly 1:1 meeting scheduled for February 27, 2026. Same time and location as previous meeting. Zoom link: https://zoom.us/j/markchen1on1. Agenda doc: https://docs.google.com/d/xxx.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "1:1 Meeting with Mark",
+        "start_datetime": "2026-03-13T15:00:00+00:00",
+        "end_datetime": "2026-03-13T15:30:00+00:00",
+        "location": "Mark's office or Zoom",
+        "description": "Bi-weekly 1:1 meeting scheduled for March 13, 2026. Time: 3:00 PM - 3:30 PM. Location: Mark\u2019s office or Zoom. Zoom link: https://zoom.us/j/markchen1on1. Agenda doc: https://docs.google.com/d/xxx.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "1:1 Meeting with Mark",
+        "start_datetime": "2026-03-27T15:00:00+00:00",
+        "end_datetime": "2026-03-27T15:30:00+00:00",
+        "location": "Mark's office or Zoom",
+        "description": "Bi-weekly 1:1 meeting scheduled for March 27, 2026. Time: 3:00 PM - 3:30 PM. Location: Mark\u2019s office or Zoom. Zoom link: https://zoom.us/j/markchen1on1. Agenda doc: https://docs.google.com/d/xxx.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6666666666666666,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1253,
+    "completion_tokens": 712,
+    "total_tokens": 1965
+  },
+  "cost": 0.0005844000000000001
+}

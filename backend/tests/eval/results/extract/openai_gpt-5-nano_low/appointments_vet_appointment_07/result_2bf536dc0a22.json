@@ -1,0 +1,125 @@
+{
+  "fixture_name": "appointments/vet_appointment_07",
+  "fixture_hash": "64a06f5f0563afc99f9c08ad5a23aaed8d951c9055d5b077af813e54b669952d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:13.443511+00:00",
+  "duration_ms": 3135,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:10.306647+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:10.306652+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:10.322409+00:00",
+      "duration_ms": 3120
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:13.443011+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Veterinary appointment for pet",
+  "difficulty": "easy",
+  "tags": [
+    "vet",
+    "pet",
+    "medical",
+    "animal"
+  ],
+  "input_summary": {
+    "subject": "Appointment Reminder for Max",
+    "from": "appointments@happypaws.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Vet Appointment for Max",
+        "start_datetime": "2026-02-20T09:15:00",
+        "end_datetime": null,
+        "location": "Happy Paws Veterinary Clinic, 2200 Pet Care Lane, Mountain View, CA 94043",
+        "description": "Annual wellness exam and vaccinations for Max (Golden Retriever)",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Wellness Exam & Vaccinations for Max",
+        "start_datetime": "2026-02-20T09:15:00-08:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Happy Paws Veterinary Clinic, 2200 Pet Care Lane, Mountain View, CA 94043",
+        "description": "Appointment reminder for Max (Golden Retriever).\nOwner: Jennifer Walsh\nAppointment Type: Annual Wellness Exam & Vaccinations\nDate: Friday, February 20, 2026\nTime: 9:15 AM\nDoctor: Dr. Sarah Mitchell, DVM\nNotes: Please bring vaccination records (if from another vet), stool sample (if possible), and a list of any concerns. Need to reschedule? Call or reply to this email.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.42424242424242425,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1178,
+    "completion_tokens": 382,
+    "total_tokens": 1560
+  },
+  "cost": 0.00021170000000000002
+}

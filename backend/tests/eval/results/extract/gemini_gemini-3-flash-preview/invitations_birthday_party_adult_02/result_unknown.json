@@ -1,0 +1,111 @@
+{
+  "fixture_name": "invitations/birthday_party_adult_02",
+  "fixture_hash": "583e4f78d37e94d4586ba3b15ad4c52ddd54b8a571b716d08919ffb4dc6405c6",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:35:11.618447+00:00",
+  "duration_ms": 3440,
+  "category": "invitations",
+  "description": "Adult milestone birthday party at restaurant",
+  "difficulty": "easy",
+  "tags": [
+    "birthday",
+    "adult",
+    "restaurant",
+    "evening"
+  ],
+  "input_summary": {
+    "subject": "\ud83c\udf89 Surprise! You're Invited to Mark's 40th Birthday Bash!",
+    "from": "jennifer.wilson@outlook.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Mark's 40th Birthday Party",
+        "start_datetime": "2026-03-06T19:30:00",
+        "end_datetime": null,
+        "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
+        "description": "Surprise 40th birthday dinner for Mark",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Mark's 40th Birthday Bash (Surprise!)",
+        "start_datetime": "2026-03-06T19:00:00+00:00",
+        "end_datetime": null,
+        "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
+        "description": "Surprise 40th birthday party for Mark. Guests are requested to arrive by 7:00 PM as Mark arrives at 7:30 PM. Dinner and drinks will be served. Dress code is smart casual. RSVP to Jennifer Wilson at jennifer.wilson@outlook.com by February 28th. SHHH! It's a surprise!",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "RSVP Deadline: Mark's 40th Birthday Bash",
+        "start_datetime": "2026-02-28T23:59:59+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Last day to RSVP to jennifer.wilson@outlook.com for Mark's 40th birthday party.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7301587301587301,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 744,
+    "completion_tokens": 271,
+    "total_tokens": 1015
+  },
+  "cost": 0.0002742
+}

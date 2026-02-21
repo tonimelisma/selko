@@ -1,0 +1,111 @@
+{
+  "fixture_name": "invitations/holiday_party_07",
+  "fixture_hash": "3a158aaaac1eda4e94eb2d3792f917c63caab769d1683933c69d3b029766e80e",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:20:42.358788+00:00",
+  "duration_ms": 2035,
+  "category": "invitations",
+  "description": "Office holiday party invitation",
+  "difficulty": "easy",
+  "tags": [
+    "holiday",
+    "office",
+    "evening",
+    "formal"
+  ],
+  "input_summary": {
+    "subject": "You're Invited: TechCorp Annual Holiday Celebration",
+    "from": "hr@techcorp.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechCorp Annual Holiday Celebration",
+        "start_datetime": "2026-12-18T18:00:00",
+        "end_datetime": "2026-12-18T22:00:00",
+        "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
+        "description": "Annual holiday party with dinner, live band, and awards ceremony",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechCorp Annual Holiday Celebration",
+        "start_datetime": "2026-12-18T18:00:00",
+        "end_datetime": "2026-12-18T22:00:00",
+        "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
+        "description": "Annual Holiday Celebration featuring cocktail hour with passed appetizers, plated dinner with vegetarian options, live band and dancing, and year-end awards ceremony. Cocktail attire required. Plus ones welcome. RSVP required by December 4th, 2026.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechCorp Holiday Celebration RSVP Deadline",
+        "start_datetime": "2026-12-04T23:59:59",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to RSVP for the TechCorp Annual Holiday Celebration on December 18th, 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1457,
+    "completion_tokens": 327,
+    "total_tokens": 1784
+  },
+  "cost": 0.0024736000000000003
+}

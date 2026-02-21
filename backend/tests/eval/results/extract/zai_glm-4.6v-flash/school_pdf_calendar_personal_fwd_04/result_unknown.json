@@ -1,0 +1,117 @@
+{
+  "fixture_name": "school/pdf_calendar_personal_fwd_04",
+  "fixture_hash": "5104252d25780ef07b7c3ec004194449bd81184ba30cf4d89287c3623ecf0d51",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:49:03.526541+00:00",
+  "duration_ms": 22605,
+  "category": "school",
+  "description": "Personal forward of KinderCare January calendar (Finnish subject, minimal body)",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "forwarded",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Fwd: Tammikuun kalenteri",
+    "from": "spouse@example.com",
+    "has_attachments": true,
+    "attachment_count": 1
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "is_all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle Day",
+        "start_datetime": "2026-01-02",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions Day",
+        "start_datetime": "2026-01-07",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-13",
+        "is_all_day": true,
+        "confidence_min": 0.5,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake Day",
+        "start_datetime": "2026-01-15",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "KinderCare Closed - Martin Luther King Day",
+        "start_datetime": "2026-01-19",
+        "is_all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow Day",
+        "start_datetime": "2026-01-28",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: 9 validation errors for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': \"New Year's Day...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.1.confidence\n  Field required [type=missing, input_value={'title': 'Sparkle Day', ....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.2.confidence\n  Field required [type=missing, input_value={'title': 'Selfie Day', '....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.3.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.4.confidence\n  Field required [type=missing, input_value={'title': \"Ms Ashley's Bi....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.5.confidence\n  Field required [type=missing, input_value={'title': 'Make a Snowfla....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.6.confidence\n  Field required [type=missing, input_value={'title': 'Martin Luther ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.7.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.8.confidence\n  Field required [type=missing, input_value={'title': 'Dress like a R....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: 9 validation errors for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': \"New Year's Day...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.1.confidence\n  Field required [type=missing, input_value={'title': 'Sparkle Day', ....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.2.confidence\n  Field required [type=missing, input_value={'title': 'Selfie Day', '....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.3.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.4.confidence\n  Field required [type=missing, input_value={'title': \"Ms Ashley's Bi....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.5.confidence\n  Field required [type=missing, input_value={'title': 'Make a Snowfla....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.6.confidence\n  Field required [type=missing, input_value={'title': 'Martin Luther ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.7.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.8.confidence\n  Field required [type=missing, input_value={'title': 'Dress like a R....8, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "tokens": {
+    "prompt_tokens": 3544,
+    "completion_tokens": 1712,
+    "total_tokens": 5256
+  },
+  "cost": 0.0
+}

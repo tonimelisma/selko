@@ -1,0 +1,65 @@
+{
+  "fixture_name": "no_events/terms_update_08",
+  "fixture_hash": "2674381c24e39d6fc84d6cf7ec756d7c30407a2cf9415ef0a5ec7ba1538cbcef",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:28.140357+00:00",
+  "duration_ms": 4430,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:23.708422+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:23.708428+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:23.739370+00:00",
+      "duration_ms": 4400
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:28.140073+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Terms of service update notification",
+  "difficulty": "medium",
+  "tags": [
+    "legal",
+    "terms",
+    "policy",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Important: Updates to our Terms of Service (Effective March 1)",
+    "from": "legal@platform.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/board_meeting_03",
+  "fixture_hash": "000068017dd26be9cb4492e40e028fac423c96b1bea61b8dc966a01734b957a4",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:16.926691+00:00",
+  "duration_ms": 5633,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:11.292807+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:11.292812+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:11.307874+00:00",
+      "duration_ms": 5618
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:16.926122+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Quarterly board meeting notice",
+  "difficulty": "easy",
+  "tags": [
+    "board",
+    "quarterly",
+    "formal",
+    "executive"
+  ],
+  "input_summary": {
+    "subject": "Q1 2026 Board Meeting - March 15th",
+    "from": "board-secretary@acmecorp.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-15T10:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Quarterly board of directors meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q1 2026 Board of Directors Meeting",
+        "start_datetime": "2026-03-15T10:00:00-05:00",
+        "end_datetime": "2026-03-15T16:00:00-05:00",
+        "all_day": false,
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Board meeting for Q1 2026. Includes the following agenda items:\n- 10:00 AM Call to Order\n- 10:15 AM CEO Report\n- 11:00 AM CFO Financial Review\n- 12:00 PM Working Lunch\n- 1:00 PM Strategic Initiatives\n- 2:30 PM Committee Reports\n- 3:30 PM New Business\n- 4:00 PM Adjournment\nVideo Conference option: Zoom Meeting ID 987 654 3210, Passcode: Board2026",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7636363636363637,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1250,
+    "completion_tokens": 747,
+    "total_tokens": 1997
+  },
+  "cost": 0.0003613
+}

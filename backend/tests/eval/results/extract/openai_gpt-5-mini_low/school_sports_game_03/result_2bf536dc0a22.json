@@ -1,0 +1,125 @@
+{
+  "fixture_name": "school/sports_game_03",
+  "fixture_hash": "4e3b364e97fde3f8bde010ad285f3862889865eb8233e0b0111e5ea24680b98d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:07:39.425702+00:00",
+  "duration_ms": 6786,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:32.638099+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:32.638105+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:32.655802+00:00",
+      "duration_ms": 6769
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:07:39.424990+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Youth sports game schedule",
+  "difficulty": "easy",
+  "tags": [
+    "sports",
+    "soccer",
+    "kids",
+    "game"
+  ],
+  "input_summary": {
+    "subject": "Soccer Game This Saturday - Wildcats vs. Eagles",
+    "from": "coach.davis@aysosoccer.org",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Soccer Game - Wildcats vs Eagles",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": null,
+        "location": "Sunnyvale Sports Complex, Field #3, 500 Athletic Way, Sunnyvale, CA 94086",
+        "description": "Youth soccer game - arrive by 9:30 AM",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Wildcats vs. Eagles \u2014 Soccer Game",
+        "start_datetime": "2026-02-21T10:00:00-08:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Sunnyvale Sports Complex, Field #3, 500 Athletic Way, Sunnyvale, CA 94086",
+        "description": "Wildcats vs. Eagles soccer game.\nDate: Saturday, February 21, 2026\nTime: 10:00 AM (please arrive by 9:30 AM)\nField: Sunnyvale Sports Complex, Field #3\nAddress: 500 Athletic Way, Sunnyvale, CA 94086\nPlayer requirements/items to bring:\n- Green Wildcats jersey\n- Black shorts\n- Shin guards (required)\n- Cleats\n- Water bottle\n- Folding chair (no bleachers at this field)\nSnack duty: The Martinez family is bringing snacks this week.\nContact: Coach Davis, (408) 555-GOAL",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.3384615384615385,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1197,
+    "completion_tokens": 491,
+    "total_tokens": 1688
+  },
+  "cost": 0.00128125
+}

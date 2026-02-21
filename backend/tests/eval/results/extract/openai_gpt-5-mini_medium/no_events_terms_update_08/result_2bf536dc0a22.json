@@ -1,0 +1,67 @@
+{
+  "fixture_name": "no_events/terms_update_08",
+  "fixture_hash": "2674381c24e39d6fc84d6cf7ec756d7c30407a2cf9415ef0a5ec7ba1538cbcef",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:10:39.669168+00:00",
+  "duration_ms": 2828,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:10:36.839981+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:10:36.839988+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:10:36.856331+00:00",
+      "duration_ms": 2812
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:10:39.668867+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Terms of service update notification",
+  "difficulty": "medium",
+  "tags": [
+    "legal",
+    "terms",
+    "policy",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Important: Updates to our Terms of Service (Effective March 1)",
+    "from": "legal@platform.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1213,
+    "completion_tokens": 149,
+    "total_tokens": 1362
+  },
+  "cost": 0.00060125
+}

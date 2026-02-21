@@ -1,0 +1,45 @@
+{
+  "fixture_name": "no_events/promotional_offer_10",
+  "fixture_hash": "18357a48402472a59a078bb0752031ff31e5587be3961a7473f2cf7dcb459449",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:53:40.750863+00:00",
+  "duration_ms": 25928,
+  "category": "no_events",
+  "description": "Limited time promotional offer with deadline",
+  "difficulty": "hard",
+  "tags": [
+    "promo",
+    "offer",
+    "deadline",
+    "tricky",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Exclusive Offer Expires Tomorrow at Midnight!",
+    "from": "offers@subscription.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 829,
+    "completion_tokens": 2065,
+    "total_tokens": 2894
+  },
+  "cost": 0.0
+}

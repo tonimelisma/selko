@@ -1,0 +1,53 @@
+{
+  "fixture_name": "conference_day1_vs_day2_15",
+  "fixture_hash": "1032db195dcbb5b6e3fd88cee872f02fa43e0e1f6b04e8cd16b030a424bd35f9",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:08:11.856415+00:00",
+  "duration_ms": 3048,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:08:08.807271+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:08:08.807277+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:08:08.824444+00:00",
+      "duration_ms": 3031
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:08:11.856157+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Conference day 1 vs day 2 - multi-day event different days - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "conference"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 438,
+    "completion_tokens": 172,
+    "total_tokens": 610
+  },
+  "cost": 0.0004535
+}

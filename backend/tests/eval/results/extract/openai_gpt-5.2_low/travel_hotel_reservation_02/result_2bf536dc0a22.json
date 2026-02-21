@@ -1,0 +1,125 @@
+{
+  "fixture_name": "travel/hotel_reservation_02",
+  "fixture_hash": "589c33759f2431646d458df3ff9e696aec2b2779983cfb678594919b69763c94",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:12:02.482700+00:00",
+  "duration_ms": 4004,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:58.477362+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:58.477368+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:58.492485+00:00",
+      "duration_ms": 3989
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:12:02.481779+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Hotel booking confirmation with check-in/check-out",
+  "difficulty": "medium",
+  "tags": [
+    "hotel",
+    "booking",
+    "checkin",
+    "checkout"
+  ],
+  "input_summary": {
+    "subject": "Reservation Confirmed - Marriott Times Square",
+    "from": "confirm@marriott.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hotel Stay - Marriott Times Square",
+        "start_datetime": "2026-03-13T15:00:00",
+        "end_datetime": "2026-03-15T11:00:00",
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "2-night hotel stay, King Room with City View",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Hotel stay: Marriott Times Square (John Doe)",
+        "start_datetime": "2026-03-13T15:00:00-04:00",
+        "end_datetime": "2026-03-15T11:00:00-04:00",
+        "all_day": false,
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "Marriott Hotels reservation confirmed.\n\nGuest: John Doe\nHotel: Marriott Times Square\nAddress: 1535 Broadway, New York, NY 10036\nPhone: (212) 555-1234\nConfirmation Number: 89XYZ456\nRoom Type: King Room, City View\nStay: 2 nights (1 adult)\nCheck-in: Friday, March 13, 2026 from 3:00 PM\nCheck-out: Sunday, March 15, 2026 by 11:00 AM\nPayment: Visa ending in 1234\nNotes: Mobile check-in available via Marriott app.",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8205128205128205,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1250,
+    "completion_tokens": 236,
+    "total_tokens": 1486
+  },
+  "cost": 0.0054915
+}

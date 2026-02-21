@@ -1,0 +1,53 @@
+{
+  "fixture_name": "different_doctor_appointments_12",
+  "fixture_hash": "38ff3025f30e128b227c85a552c7031421d6fd308d4f94ac4fa209b204660041",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:08:12.430858+00:00",
+  "duration_ms": 3421,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:08:09.009028+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:08:09.009038+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:08:09.025099+00:00",
+      "duration_ms": 3405
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:08:12.430548+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different doctor appointments in same week - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 422,
+    "completion_tokens": 191,
+    "total_tokens": 613
+  },
+  "cost": 0.0004875
+}

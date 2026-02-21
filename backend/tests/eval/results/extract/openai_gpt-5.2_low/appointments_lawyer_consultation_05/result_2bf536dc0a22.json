@@ -1,0 +1,125 @@
+{
+  "fixture_name": "appointments/lawyer_consultation_05",
+  "fixture_hash": "09e5fbd19468135127e79e4e2e5be1bcb23be4d7bd9b9dc9f6c1e483e89849e0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:11:53.940404+00:00",
+  "duration_ms": 2714,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:51.225364+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:51.225370+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:51.240399+00:00",
+      "duration_ms": 2699
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:11:53.939995+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Legal consultation appointment",
+  "difficulty": "easy",
+  "tags": [
+    "legal",
+    "lawyer",
+    "consultation",
+    "professional"
+  ],
+  "input_summary": {
+    "subject": "Confirmed: Initial Consultation with Attorney Williams",
+    "from": "scheduling@williamslaw.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Consultation with Attorney Williams",
+        "start_datetime": "2026-02-11T11:00:00",
+        "end_datetime": "2026-02-11T12:00:00",
+        "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
+        "description": "Estate planning consultation",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Estate Planning Consultation with Attorney Robert Williams",
+        "start_datetime": "2026-02-11T11:00:00-08:00",
+        "end_datetime": "2026-02-11T12:00:00-08:00",
+        "all_day": false,
+        "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
+        "description": "Initial consultation appointment with Attorney Robert Williams.\n\nType: Estate Planning Consultation\nParking: Validated parking available in building garage\nWhat to bring: Valid ID; current will (if applicable); list of assets and beneficiaries\nFee: $250, payable at the time of appointment\nContact: (415) 555-4567",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7526881720430108,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1184,
+    "completion_tokens": 176,
+    "total_tokens": 1360
+  },
+  "cost": 0.004536
+}

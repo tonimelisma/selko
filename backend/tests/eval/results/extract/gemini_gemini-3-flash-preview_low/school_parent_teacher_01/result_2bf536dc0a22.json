@@ -1,0 +1,76 @@
+{
+  "fixture_name": "school/parent_teacher_01",
+  "fixture_hash": "ddda5bff66aa740bee7549a167a25e15269bc512db027675146dff60395824e0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:16.330147+00:00",
+  "duration_ms": 124,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:16.204313+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:16.204328+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:16.234136+00:00",
+      "duration_ms": 95
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:16.329843+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Parent-teacher conference scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "parent-teacher",
+    "conference",
+    "education"
+  ],
+  "input_summary": {
+    "subject": "Parent-Teacher Conference Scheduled - Emma Johnson",
+    "from": "mrsthompson@lincolnelementary.edu",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Parent-Teacher Conference - Emma Johnson",
+        "start_datetime": "2026-02-19T16:15:00",
+        "end_datetime": "2026-02-19T16:35:00",
+        "location": "Room 203, Lincoln Elementary, 500 School Lane, Pleasantville, CA 94025",
+        "description": "Conference with Mrs. Thompson about Emma's progress",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

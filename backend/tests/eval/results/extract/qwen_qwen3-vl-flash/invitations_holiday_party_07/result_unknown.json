@@ -1,0 +1,98 @@
+{
+  "fixture_name": "invitations/holiday_party_07",
+  "fixture_hash": "3a158aaaac1eda4e94eb2d3792f917c63caab769d1683933c69d3b029766e80e",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:34:57.751767+00:00",
+  "duration_ms": 2365,
+  "category": "invitations",
+  "description": "Office holiday party invitation",
+  "difficulty": "easy",
+  "tags": [
+    "holiday",
+    "office",
+    "evening",
+    "formal"
+  ],
+  "input_summary": {
+    "subject": "You're Invited: TechCorp Annual Holiday Celebration",
+    "from": "hr@techcorp.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechCorp Annual Holiday Celebration",
+        "start_datetime": "2026-12-18T18:00:00",
+        "end_datetime": "2026-12-18T22:00:00",
+        "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
+        "description": "Annual holiday party with dinner, live band, and awards ceremony",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechCorp Annual Holiday Celebration",
+        "start_datetime": "2026-12-18T18:00:00+00:00",
+        "end_datetime": "2026-12-18T22:00:00+00:00",
+        "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
+        "description": "Cocktail attire required. Plus ones welcome. Evening includes cocktail hour with passed appetizers, plated dinner with vegetarian options, live band and dancing, and year-end awards ceremony. RSVP by December 4th using the provided link.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1233,
+    "completion_tokens": 192,
+    "total_tokens": 1425
+  },
+  "cost": 0.0002292
+}

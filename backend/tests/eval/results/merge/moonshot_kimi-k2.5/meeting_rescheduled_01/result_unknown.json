@@ -1,0 +1,74 @@
+{
+  "fixture_name": "meeting_rescheduled_01",
+  "fixture_hash": "1d2c242ce2e61e827cbcca81a44ef6a981c57ad101dc8ea0a7d0ab3d834d9b83",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "run_at": "2026-02-16T17:42:32.056173+00:00",
+  "duration_ms": 48509,
+  "description": "Meeting rescheduled to new time - simple time change with same location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "time-update",
+    "reschedule"
+  ],
+  "expected": {
+    "title": "Q1 Planning Meeting",
+    "start_datetime": "2026-03-15T16:00:00",
+    "end_datetime": "2026-03-15T17:00:00",
+    "all_day": false,
+    "location": "Conference Room B",
+    "description_contains": [
+      "quarterly planning",
+      "department heads",
+      "moved to 4pm"
+    ]
+  },
+  "actual": {
+    "title": "Q1 Planning Meeting",
+    "start_datetime": "2026-03-15T16:00:00",
+    "all_day": false,
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": null,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 0.0,
+      "match": false
+    },
+    "description_contains": {
+      "found": [],
+      "missing": [
+        "quarterly planning",
+        "department heads",
+        "moved to 4pm"
+      ],
+      "match": false
+    },
+    "fields_matched": 4,
+    "total_fields": 6,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 345,
+    "completion_tokens": 2212,
+    "total_tokens": 2557
+  },
+  "cost": 0.006843
+}

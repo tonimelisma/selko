@@ -1,0 +1,142 @@
+{
+  "fixture_name": "school/registration_opens_09",
+  "fixture_hash": "d39e8686f186f45158e856282314f6e26bffb99caa7760d577abb40a9127adf0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:04:58.873140+00:00",
+  "duration_ms": 57837,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:04:01.034925+00:00",
+      "duration_ms": 7
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:04:01.042017+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:04:01.058427+00:00",
+      "duration_ms": 57814
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:04:58.872546+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world city arts & rec spring registration announcement with specific open date/time - borderline calendar event",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "registration",
+    "community",
+    "borderline",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Spring 2026 Registration Starts 2/18",
+    "from": "artsrec@walnut-creek.org",
+    "has_attachments": true,
+    "attachment_count": 14,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 5028052
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Spring 2026 registration opens for Arts + Rec classes including youth programs, preschool, adult classes, and intergenerational programs",
+        "all_day": false,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00+00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Online registration portal (View Offerings Online)",
+        "description": "Spring 2026 registration opens February 18 at 12:00 PM for Spring 2026. Registration also covers Summer 2026 and School Year 2026\u201327 classes. Printed copies of the Activity Guide are available at Civic Park Community Center (1375 Civic Drive), Tice Valley Gym (2055 Tice Valley Boulevard), Shadelands Art Center (111 N. Wiget Lane), and Walnut Creek City Hall (1666 N. Main Street). Look for NEW classes in the Spring Guide marked by red. For register by phone: 925-295-1490; email artsrec@walnutcreekca.gov for questions.",
+        "confidence": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 10520,
+    "completion_tokens": 4184,
+    "total_tokens": 14704
+  },
+  "cost": 0.0021996000000000003
+}

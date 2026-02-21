@@ -1,0 +1,59 @@
+{
+  "fixture_name": "update_adds_dresscode_10",
+  "fixture_hash": "e61f28c2525d268ae4006a361582481380b5746e4686e89eac5349db82f0c374",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:01:00.415625+00:00",
+  "duration_ms": 134,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:00.279872+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:00.279881+00:00",
+      "duration_ms": 28
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:00.308616+00:00",
+      "duration_ms": 106
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:00.415247+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Update email adds dress code information to social event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "dress-code"
+  ],
+  "expected": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description_contains": [
+      "10 years",
+      "black tie",
+      "cocktail hour",
+      "plus-ones welcome"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/board_meeting_03",
+  "fixture_hash": "000068017dd26be9cb4492e40e028fac423c96b1bea61b8dc966a01734b957a4",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:03:15.393779+00:00",
+  "duration_ms": 28148,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:02:47.244025+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:02:47.244041+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:02:47.261431+00:00",
+      "duration_ms": 28131
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:03:15.392489+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Quarterly board meeting notice",
+  "difficulty": "easy",
+  "tags": [
+    "board",
+    "quarterly",
+    "formal",
+    "executive"
+  ],
+  "input_summary": {
+    "subject": "Q1 2026 Board Meeting - March 15th",
+    "from": "board-secretary@acmecorp.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-15T10:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Quarterly board of directors meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q1 2026 Board of Directors Meeting",
+        "start_datetime": "2026-03-15T10:00:00-04:00",
+        "end_datetime": "2026-03-15T16:00:00-04:00",
+        "all_day": false,
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Official notice for the Q1 2026 Board of Directors Meeting. Date: Sunday, March 15, 2026. Time: 10:00 AM \u2013 4:00 PM ET (note: the notice lists EST; March 15, 2026 falls after DST starts in 2026, so local time is likely EDT). Location: ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166. Video conference option: Zoom Meeting ID: 987 654 3210; Passcode: Board2026. Tentative Agenda: 10:00 AM - Call to Order; 10:15 AM - CEO Report; 11:00 AM - CFO Financial Review; 12:00 PM - Working Lunch; 1:00 PM - Strategic Initiatives; 2:30 PM - Committee Reports; 3:30 PM - New Business; 4:00 PM - Adjournment. Board materials will be distributed one week prior to the meeting. Please confirm your attendance by March 1st.",
+        "confidence": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7636363636363637,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.8,
+          "required_min": 0.9,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1250,
+    "completion_tokens": 3739,
+    "total_tokens": 4989
+  },
+  "cost": 0.0015581000000000002
+}

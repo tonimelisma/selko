@@ -1,0 +1,65 @@
+{
+  "fixture_name": "no_events/social_notification_05",
+  "fixture_hash": "b678a4bf962a9a98c75dca441e423cb81c8e3234d1b0b1a858012ce027117529",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "none",
+  "run_at": "2026-02-20T23:58:37.652742+00:00",
+  "duration_ms": 1302,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:58:36.349332+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:58:36.349338+00:00",
+      "duration_ms": 62
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:58:36.411758+00:00",
+      "duration_ms": 1240
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:58:37.652167+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Social media notification",
+  "difficulty": "easy",
+  "tags": [
+    "social",
+    "notification",
+    "linkedin",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Sarah Johnson and 5 others viewed your profile",
+    "from": "notifications@linkedin.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

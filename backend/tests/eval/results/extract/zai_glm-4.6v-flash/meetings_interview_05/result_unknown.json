@@ -1,0 +1,55 @@
+{
+  "fixture_name": "meetings/interview_05",
+  "fixture_hash": "731249b36f05037e3a9136b8b8a43cfe87930435455c8b6155bd9ddf4163638d",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:41:04.423612+00:00",
+  "duration_ms": 21500,
+  "category": "meetings",
+  "description": "Job interview scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "interview",
+    "job",
+    "hr",
+    "hiring"
+  ],
+  "input_summary": {
+    "subject": "Interview Confirmation - Senior Software Engineer Position",
+    "from": "recruiting@innovatetech.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Interview - InnovateTech Senior Software Engineer",
+        "start_datetime": "2026-02-12T13:00:00",
+        "end_datetime": "2026-02-12T15:00:00",
+        "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
+        "description": "On-site interview for Senior Software Engineer position",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: 1 validation error for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Interview - Se...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: 1 validation error for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Interview - Se...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "tokens": {
+    "prompt_tokens": 756,
+    "completion_tokens": 1534,
+    "total_tokens": 2290
+  },
+  "cost": 0.0
+}

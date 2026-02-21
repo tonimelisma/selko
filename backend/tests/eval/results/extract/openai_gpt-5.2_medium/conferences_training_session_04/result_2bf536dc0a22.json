@@ -1,0 +1,139 @@
+{
+  "fixture_name": "conferences/training_session_04",
+  "fixture_hash": "549306b894eed5dfa27bf6ff3543193924718a66114093c578e03954faf729d5",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:27.078776+00:00",
+  "duration_ms": 10293,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:16.784274+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:16.784280+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:16.799443+00:00",
+      "duration_ms": 10278
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:27.077948+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Corporate training session invitation",
+  "difficulty": "easy",
+  "tags": [
+    "training",
+    "corporate",
+    "internal",
+    "mandatory"
+  ],
+  "input_summary": {
+    "subject": "[Required] Annual Compliance Training - Your Session",
+    "from": "learning@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Compliance Training",
+        "start_datetime": "2026-02-25T10:00:00",
+        "end_datetime": "2026-02-25T12:00:00",
+        "location": "Training Room A (Building 2, Floor 1)",
+        "description": "Mandatory annual compliance training session",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Compliance Training (Scheduled Session)",
+        "start_datetime": "2026-02-25T10:00:00+00:00",
+        "end_datetime": "2026-02-25T12:00:00+00:00",
+        "all_day": false,
+        "location": "Training Room A (Building 2, Floor 1) \u2014 Virtual option: https://company.zoom.us/j/compliance2026 (Passcode: comply26)",
+        "description": "Mandatory Annual Compliance Training for 2026.\n\nSession details:\n- Date: Wednesday, February 25, 2026\n- Time: 10:00 AM \u2013 12:00 PM\n- In-person: Training Room A (Building 2, Floor 1)\n- Virtual option (Zoom): https://company.zoom.us/j/compliance2026\n- Passcode: comply26\n\nAgenda topics:\n- Code of Conduct Review\n- Data Privacy & Security\n- Anti-Harassment Policy\n- Ethics & Reporting\n- Quiz & Certification\n\nIf you cannot attend, you must reschedule by contacting learning@company.com.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      },
+      {
+        "title": "Annual Compliance Training Completion Deadline",
+        "start_datetime": "2026-03-31T00:00:00+00:00",
+        "end_datetime": "2026-04-01T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Deadline to complete the mandatory Annual Compliance Training for 2026. The email states the training must be completed by March 31, 2026. Non-completion may affect your performance review.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7222222222222222,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.4805194805194805,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1260,
+    "completion_tokens": 581,
+    "total_tokens": 1841
+  },
+  "cost": 0.010339
+}

@@ -1,0 +1,55 @@
+{
+  "fixture_name": "meetings/client_call_04",
+  "fixture_hash": "71dd5d4dba0431e399e1bbac6f9f398fbacf1273d8177daf8cb247e7cd118e75",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:40:37.775111+00:00",
+  "duration_ms": 11963,
+  "category": "meetings",
+  "description": "Client project kickoff call",
+  "difficulty": "easy",
+  "tags": [
+    "client",
+    "call",
+    "kickoff",
+    "project"
+  ],
+  "input_summary": {
+    "subject": "Re: Project Kickoff Call - GlobalTech Partnership",
+    "from": "james.wong@globaltech.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Kickoff - GlobalTech Partnership",
+        "start_datetime": "2026-02-10T11:00:00",
+        "end_datetime": "2026-02-10T12:30:00",
+        "location": "Microsoft Teams",
+        "description": "Project kickoff call with GlobalTech",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: 2 validation errors for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Project Kickof...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.1.confidence\n  Field required [type=missing, input_value={'title': 'Attendee list ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: 2 validation errors for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Project Kickof...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.1.confidence\n  Field required [type=missing, input_value={'title': 'Attendee list ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "tokens": {
+    "prompt_tokens": 761,
+    "completion_tokens": 1288,
+    "total_tokens": 2049
+  },
+  "cost": 0.0
+}

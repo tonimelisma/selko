@@ -1,0 +1,83 @@
+{
+  "fixture_name": "school/public_hearing_08",
+  "fixture_hash": "aac3b7883f5ed9b7d2e0f90eda84472007ff744c1a5ac0addfbdded1782f3cd9",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:16.799087+00:00",
+  "duration_ms": 3232,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:13.564999+00:00",
+      "duration_ms": 1
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:13.566712+00:00",
+      "duration_ms": 32
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:13.599369+00:00",
+      "duration_ms": 3199
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:16.798820+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world school district public hearing notice with clear date, time, and location",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "public-hearing",
+    "government",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 13, 2026 Digest: 1 new message from Walnut Creek School District today",
+    "from": "donotreply+f44b5b2b-0fe1-53bf-b5c1-2dada4954bce@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 5,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 198846
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Public Hearing - Education Parcel Tax",
+        "start_datetime": "2026-02-23T18:00:00",
+        "end_datetime": null,
+        "location": "960 Ygnacio Valley Road, Walnut Creek, CA 94596",
+        "description": "Public hearing by Walnut Creek School District governing board regarding calling an election to levy new $98 education parcel tax",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

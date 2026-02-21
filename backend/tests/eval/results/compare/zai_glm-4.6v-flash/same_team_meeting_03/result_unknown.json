@@ -1,0 +1,32 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "9dee5b65d2bfa1e5f9a9375250a1149ca1e06e0c707c6a690936f140925156eb",
+  "code_hash": "unknown",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:55:08.894460+00:00",
+  "duration_ms": 2287,
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "error": "Event comparison failed: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 371,
+    "completion_tokens": 233,
+    "total_tokens": 604
+  },
+  "cost": 0.0
+}

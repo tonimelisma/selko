@@ -1,0 +1,122 @@
+{
+  "fixture_name": "school/valentines_exchange_06",
+  "fixture_hash": "f4cf000b13e958443ae38942a6c42b5e7c87b36c695707e0797e33962c68cef6",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:10:25.739949+00:00",
+  "duration_ms": 13614,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:10:12.123680+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:10:12.123692+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:10:12.140284+00:00",
+      "duration_ms": 13598
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:10:25.739177+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Valentine's Day gift exchange at daycare - text only, no attachments",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "daycare",
+    "holiday",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Valentine's Day Exchange - Feb 13th",
+    "from": "teacher@kindercare.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Valentine's Day Gift Exchange at KinderCare",
+        "start_datetime": "2026-02-13",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Valentine's Day Gift Exchange",
+        "start_datetime": "2026-02-13T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "KinderCare Pre-K classroom (Ms. Rodriguez)",
+        "description": "Valentine's Day gift exchange on Friday, February 13, 2026. Families should bring goodies or valentines for 12 students in the class. Classroom is a nut-free zone \u2014 no nuts or nut products in any treats. No specific time was provided in the email. Sent by Ms. Rodriguez, KinderCare Pre-K Room.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8055555555555556,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": false,
+          "match": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1099,
+    "completion_tokens": 857,
+    "total_tokens": 1956
+  },
+  "cost": 0.00198875
+}

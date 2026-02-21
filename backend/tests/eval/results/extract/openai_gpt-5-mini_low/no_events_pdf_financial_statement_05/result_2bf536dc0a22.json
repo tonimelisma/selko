@@ -1,0 +1,81 @@
+{
+  "fixture_name": "no_events/pdf_financial_statement_05",
+  "fixture_hash": "2c0546b61f56acd57d1232a4085041545e480e64ddc50dd7e840e0cbfbfc401d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:08:00.455286+00:00",
+  "duration_ms": 9727,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:50.726827+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:50.727156+00:00",
+      "duration_ms": 28
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:50.755636+00:00",
+      "duration_ms": 9699
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:08:00.454738+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "HOA financial statement PDF with dates and amounts - negative test (no events)",
+  "difficulty": "medium",
+  "tags": [
+    "no_events",
+    "pdf",
+    "financial",
+    "negative-test",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Your Walnut Heights Statement",
+    "from": "billing@walnutheightshoa.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 16790
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Statement Payment Due",
+        "start_datetime": "2026-01-31T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Amount due per Walnut Heights Kids Club statement: $732.88. Statement attached to email sent 2026-01-15. Balance/ledger entries include prior balance forward 12/31/25 $634.50, payment 01/06/26 -$634.50, invoice fee 01/15/26 $10.00, and invoice for February childcare dated 01/27/26 $722.88 resulting in amount due $732.88. Contact billing department at Walnut Heights HOA for questions.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 2854,
+    "completion_tokens": 466,
+    "total_tokens": 3320
+  },
+  "cost": 0.0016455
+}

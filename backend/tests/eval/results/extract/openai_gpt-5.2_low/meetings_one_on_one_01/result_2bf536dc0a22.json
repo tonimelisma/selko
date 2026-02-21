@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/one_on_one_01",
+  "fixture_hash": "710658fb824d2ee56efb4b3758dcc8bbdf1c2ad476ec8f5576bb171bd000dc26",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:11:57.637037+00:00",
+  "duration_ms": 3130,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:54.506170+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:54.506177+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:54.520688+00:00",
+      "duration_ms": 3116
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:11:57.636729+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Manager 1:1 meeting invitation",
+  "difficulty": "easy",
+  "tags": [
+    "1:1",
+    "manager",
+    "work",
+    "calendar-invite"
+  ],
+  "input_summary": {
+    "subject": "1:1 with Alex - Weekly Sync",
+    "from": "alex.rivera@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Alex Rivera",
+        "start_datetime": "2026-02-03T14:00:00",
+        "end_datetime": "2026-02-03T14:30:00",
+        "location": "Room 401 or Zoom",
+        "description": "Weekly 1:1 sync meeting",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Weekly 1:1 with Alex (Weekly Sync)",
+        "start_datetime": "2026-02-03T14:00:00-05:00",
+        "end_datetime": "2026-02-03T14:30:00-05:00",
+        "all_day": false,
+        "location": "Alex's office (Room 401) or Zoom",
+        "description": "Weekly 1:1 meeting with Alex Rivera.\n\nSchedule: Every Tuesday, starting February 3, 2026\nTime: 2:00 PM \u2013 2:30 PM\nLocation: Alex's office (Room 401) or Zoom\nAgenda:\n- Project updates\n- Blockers and support needed\n- Career development\n- Open discussion\n\nNote: Email asks to confirm whether the proposed time works or suggest an alternative.",
+        "confidence": 0.78,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5555555555555556,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.6666666666666666,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.78,
+          "required_min": 0.85,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1127,
+    "completion_tokens": 193,
+    "total_tokens": 1320
+  },
+  "cost": 0.00467425
+}

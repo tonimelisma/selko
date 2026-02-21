@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/team_standup_02",
+  "fixture_hash": "5c2629cafad3e531e41ea2d60936671d3d62a0b67e700ad88b88742ce03fc786",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:43.012158+00:00",
+  "duration_ms": 3537,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:39.473667+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:39.473675+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:39.489028+00:00",
+      "duration_ms": 3522
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:43.011794+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Daily team standup meeting change",
+  "difficulty": "medium",
+  "tags": [
+    "standup",
+    "team",
+    "daily",
+    "time-change"
+  ],
+  "input_summary": {
+    "subject": "Team Standup Moving to New Time",
+    "from": "priya.sharma@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Team Standup",
+        "start_datetime": "2026-02-09T09:30:00",
+        "end_datetime": "2026-02-09T09:45:00",
+        "location": "Conference Room B",
+        "description": "Daily team standup meeting (new time)",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Daily Standup (New Time)",
+        "start_datetime": "2026-02-09T09:30:00-08:00",
+        "end_datetime": "2026-02-09T09:45:00-08:00",
+        "all_day": false,
+        "location": "Conference Room B | https://zoom.us/j/123456789",
+        "description": "The daily team standup has moved to a new time starting Monday, February 9th.\n\nNew Time: 9:30 AM PST (previously 10:00 AM PST)\nDuration: 15 minutes\nRoom: Conference Room B\nZoom: https://zoom.us/j/123456789\n\nFormat (unchanged):\n1. What did you accomplish yesterday?\n2. What are you working on today?\n3. Any blockers?\n\nPlease update your calendars accordingly. This is a recurring daily standup.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.53125,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1693,
+    "completion_tokens": 285,
+    "total_tokens": 1978
+  },
+  "cost": 0.009354
+}

@@ -1,0 +1,111 @@
+{
+  "fixture_name": "travel/car_rental_03",
+  "fixture_hash": "1fc56b84b9a505a06d58300671d665965c131692af6a4537beca2eaaafeabdfd",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:40:04.907317+00:00",
+  "duration_ms": 2753,
+  "category": "travel",
+  "description": "Car rental reservation confirmation",
+  "difficulty": "medium",
+  "tags": [
+    "car",
+    "rental",
+    "pickup",
+    "dropoff"
+  ],
+  "input_summary": {
+    "subject": "Your Hertz Reservation is Confirmed",
+    "from": "reservations@hertz.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Rental - Hertz LAX",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": "2026-02-25T18:00:00",
+        "location": "Hertz LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Full size car rental (Toyota Camry or similar)",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Hertz Rental Pick-up: Los Angeles LAX Airport",
+        "start_datetime": "2026-02-21T10:00:00+00:00",
+        "end_datetime": null,
+        "location": "9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Car rental pick-up for confirmation #H12345678. Vehicle: Full Size (Toyota Camry or similar). Gold Plus Members can skip the counter and go directly to the Hertz Gold area.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hertz Rental Drop-off: Los Angeles LAX Airport",
+        "start_datetime": "2026-02-25T18:00:00+00:00",
+        "end_datetime": null,
+        "location": "9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Car rental drop-off for confirmation #H12345678. Location is the same as pick-up (LAX). Estimated total: $287.45.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.47761194029850745,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8080808080808081,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 802,
+    "completion_tokens": 332,
+    "total_tokens": 1134
+  },
+  "cost": 0.0003195
+}

@@ -1,0 +1,111 @@
+{
+  "fixture_name": "school/field_trip_04",
+  "fixture_hash": "68100ecd7dd1cda16919e3ae833fce6fbcada86581ce1317428caddc02ad5ddf",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:22:28.843153+00:00",
+  "duration_ms": 3456,
+  "category": "school",
+  "description": "School field trip permission and details",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "field-trip",
+    "permission",
+    "kids"
+  ],
+  "input_summary": {
+    "subject": "Field Trip Permission - Science Museum (March 12)",
+    "from": "mrjohnson@oakridgeelementary.edu",
+    "has_attachments": true,
+    "attachment_count": 1
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Field Trip - California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00",
+        "end_datetime": "2026-03-12T15:00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th grade field trip to science museum with guided tour and planetarium show",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Field Trip - California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00",
+        "end_datetime": "2026-03-12T15:00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th grade field trip to California Science Museum. Schedule: 8:30 AM depart from school by bus, 9:30 AM arrive at museum, 9:30-11:30 AM guided tour and exhibits, 11:30 AM-12:15 PM lunch (bring bag lunch, no glass containers), 12:15-1:30 PM planetarium show and free exploration, 2:00 PM depart museum, 3:00 PM return to school for regular dismissal. Cost is $15 per student (covers admission, planetarium, and bus). Students should bring bag lunch, water bottle, comfortable walking shoes, and light jacket. Permission form must be signed and returned by March 5, 2026. Chaperones are needed.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Field Trip Permission Form Deadline",
+        "start_datetime": "2026-03-05T23:59:59",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to sign and return the field trip permission form for the March 12 Science Museum field trip. Payment of $15 per student is also due by this date.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1622,
+    "completion_tokens": 428,
+    "total_tokens": 2050
+  },
+  "cost": 0.0030096000000000003
+}

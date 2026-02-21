@@ -1,0 +1,68 @@
+{
+  "fixture_name": "no_events/promotional_offer_10",
+  "fixture_hash": "18357a48402472a59a078bb0752031ff31e5587be3961a7473f2cf7dcb459449",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:15:07.824368+00:00",
+  "duration_ms": 1873,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:15:05.950207+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:15:05.950213+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:15:05.966748+00:00",
+      "duration_ms": 1857
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:15:07.824071+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Limited time promotional offer with deadline",
+  "difficulty": "hard",
+  "tags": [
+    "promo",
+    "offer",
+    "deadline",
+    "tricky",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Exclusive Offer Expires Tomorrow at Midnight!",
+    "from": "offers@subscription.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1948,
+    "completion_tokens": 15,
+    "total_tokens": 1963
+  },
+  "cost": 0.006069
+}

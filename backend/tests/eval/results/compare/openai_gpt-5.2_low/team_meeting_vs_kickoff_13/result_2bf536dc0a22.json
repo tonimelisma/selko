@@ -1,0 +1,53 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "fixture_hash": "777f6d839c488eec093dc3afb600571cd65b8544e749bfdf1616d573b085fe22",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:12:51.188206+00:00",
+  "duration_ms": 2444,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:12:48.742882+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:12:48.742888+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:12:48.758490+00:00",
+      "duration_ms": 2429
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:12:51.187908+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 423,
+    "completion_tokens": 108,
+    "total_tokens": 531
+  },
+  "cost": 0.00225225
+}

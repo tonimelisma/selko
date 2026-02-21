@@ -1,0 +1,76 @@
+{
+  "fixture_name": "travel/hotel_reservation_02",
+  "fixture_hash": "589c33759f2431646d458df3ff9e696aec2b2779983cfb678594919b69763c94",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:10.259556+00:00",
+  "duration_ms": 131,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:10.126820+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:10.126836+00:00",
+      "duration_ms": 27
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:10.154616+00:00",
+      "duration_ms": 104
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:10.259275+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Hotel booking confirmation with check-in/check-out",
+  "difficulty": "medium",
+  "tags": [
+    "hotel",
+    "booking",
+    "checkin",
+    "checkout"
+  ],
+  "input_summary": {
+    "subject": "Reservation Confirmed - Marriott Times Square",
+    "from": "confirm@marriott.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hotel Stay - Marriott Times Square",
+        "start_datetime": "2026-03-13T15:00:00",
+        "end_datetime": "2026-03-15T11:00:00",
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "2-night hotel stay, King Room with City View",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

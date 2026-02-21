@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/interview_05",
+  "fixture_hash": "3c8a7bfeed0e8a8065f3fa4f1bbf605a98dd3917303ac4dcd8830a49c47ac05d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:09:09.651294+00:00",
+  "duration_ms": 12852,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:08:56.797189+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:08:56.797194+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:08:56.813418+00:00",
+      "duration_ms": 12836
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:09:09.649819+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Job interview scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "interview",
+    "job",
+    "hr",
+    "hiring"
+  ],
+  "input_summary": {
+    "subject": "Interview Confirmation - Senior Software Engineer Position",
+    "from": "recruiting@innovatetech.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Interview - InnovateTech Senior Software Engineer",
+        "start_datetime": "2026-02-12T13:00:00",
+        "end_datetime": "2026-02-12T15:00:00",
+        "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
+        "description": "On-site interview for Senior Software Engineer position",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "On-site Interview \u2014 Senior Software Engineer (InnovateTech)",
+        "start_datetime": "2026-02-12T13:00:00-08:00",
+        "end_datetime": "2026-02-12T15:00:00-08:00",
+        "all_day": false,
+        "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110 (check in at the front desk; ask for Emily Rodriguez)",
+        "description": "Interview for Senior Software Engineer position.\nDate: Thursday, February 12, 2026\nTime: 1:00 PM \u2013 3:00 PM PST\nFormat: On-site interview at InnovateTech Headquarters\nLocation: 500 Innovation Drive, Building A, San Jose, CA 95110 \u2014 check in at the front desk and ask for Emily Rodriguez.\nInterview schedule:\n- 1:00 PM \u2014 Technical Interview (coding)\n- 2:00 PM \u2014 System Design Discussion\n- 2:45 PM \u2014 Team Fit / Q&A\nWhat to bring: Government-issued photo ID; portfolio or examples of work (optional).\nParking: Visitor lot available.\nPlease confirm your attendance by replying to the email (requested action).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6481481481481481,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7452830188679245,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1223,
+    "completion_tokens": 800,
+    "total_tokens": 2023
+  },
+  "cost": 0.00190575
+}

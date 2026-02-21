@@ -1,0 +1,61 @@
+{
+  "fixture_name": "wedding_full_details_13",
+  "fixture_hash": "6b1539a71a03952c225842b2271c0caac67e3133aead651aa0cce93e0653071c",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:00:03.539505+00:00",
+  "duration_ms": 129,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:03.409278+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:03.409285+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:03.439867+00:00",
+      "duration_ms": 99
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:03.539167+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Wedding: save-the-date has basic info, formal invitation adds full venue details and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "wedding",
+    "social"
+  ],
+  "expected": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description_contains": [
+      "wedding celebration",
+      "ceremony",
+      "reception",
+      "cocktail attire",
+      "hotel block"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

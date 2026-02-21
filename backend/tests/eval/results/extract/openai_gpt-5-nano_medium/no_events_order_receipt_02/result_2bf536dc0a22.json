@@ -1,0 +1,78 @@
+{
+  "fixture_name": "no_events/order_receipt_02",
+  "fixture_hash": "85fb4acf07842ae6feefa19be7d7b03ad916012f73e09ccbb636eb4c87ea2cb1",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:05:13.279580+00:00",
+  "duration_ms": 14403,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:04:58.874278+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:04:58.874284+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:04:58.894046+00:00",
+      "duration_ms": 14384
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:05:13.278964+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "E-commerce order confirmation/receipt",
+  "difficulty": "easy",
+  "tags": [
+    "receipt",
+    "order",
+    "shopping",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Amazon.com order #112-3456789-0123456",
+    "from": "auto-confirm@amazon.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Delivery window for order 112-3456789-0123456",
+        "start_datetime": "2026-02-13T00:00:00+00:00",
+        "end_datetime": "2026-02-15T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Estimated delivery window for order 112-3456789-0123456. Items in this order: Sony WH-1000XM5 Wireless Headphones (Qty: 1), Anker USB-C Cable (3-pack) (Qty: 1). Delivery window: February 13\u201315, 2026.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1227,
+    "completion_tokens": 1633,
+    "total_tokens": 2860
+  },
+  "cost": 0.0007145500000000001
+}

@@ -1,0 +1,55 @@
+{
+  "fixture_name": "invitations/birthday_party_adult_02",
+  "fixture_hash": "583e4f78d37e94d4586ba3b15ad4c52ddd54b8a571b716d08919ffb4dc6405c6",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "run_at": "2026-02-16T17:33:24.029231+00:00",
+  "duration_ms": 226,
+  "category": "invitations",
+  "description": "Adult milestone birthday party at restaurant",
+  "difficulty": "easy",
+  "tags": [
+    "birthday",
+    "adult",
+    "restaurant",
+    "evening"
+  ],
+  "input_summary": {
+    "subject": "\ud83c\udf89 Surprise! You're Invited to Mark's 40th Birthday Bash!",
+    "from": "jennifer.wilson@outlook.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Mark's 40th Birthday Party",
+        "start_datetime": "2026-03-06T19:30:00",
+        "end_datetime": null,
+        "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
+        "description": "Surprise 40th birthday dinner for Mark",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "auto_score": {
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

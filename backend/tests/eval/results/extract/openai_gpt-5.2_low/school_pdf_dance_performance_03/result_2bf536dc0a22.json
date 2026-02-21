@@ -1,0 +1,276 @@
+{
+  "fixture_name": "school/pdf_dance_performance_03",
+  "fixture_hash": "49d8f880257b345a7aaf2c8377ef855323f1c6805d0ae0cc93ad5b49cbd503c5",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:12:26.956673+00:00",
+  "duration_ms": 17458,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:12:09.496857+00:00",
+      "duration_ms": 1
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:12:09.498250+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:12:09.515637+00:00",
+      "duration_ms": 17439
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:12:26.954909+00:00",
+      "duration_ms": 1
+    }
+  },
+  "category": "school",
+  "description": "Dance studio winter performance with PDF flyer containing venue and per-class times",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "performance",
+    "extracurricular",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Winter Dance Performance - December 11th",
+    "from": "info@studio8dance.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 4886106
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "events": [
+      {
+        "title": "Winter Dance Performance - Pre-Ballet",
+        "start_datetime": "2025-12-11T15:55:00",
+        "end_datetime": "2025-12-11T16:15:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Jazz Ballet Tap",
+        "start_datetime": "2025-12-11T16:40:00",
+        "end_datetime": "2025-12-11T17:00:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Jr Hip Hop",
+        "start_datetime": "2025-12-11T17:25:00",
+        "end_datetime": "2025-12-11T17:45:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Hip Hop",
+        "start_datetime": "2025-12-11T18:10:00",
+        "end_datetime": "2025-12-11T18:30:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Winter Dance Performance (in-class performances for all students)",
+        "start_datetime": "2025-12-11T00:00:00-08:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Studio 8 Dance Winter Dance Performance (in-class performance for all students) on Thursday, December 11, 2025.\n\nFlyer notes: \u201cPerformances will take place the last 20 minutes of your dancer\u2019s class.\u201d\n\nSpecific performance blocks listed on the flyer (times below) appear to occur at: 111 N Wiget Lane, Walnut Creek, CA.\n\nStudio contact/address in email signature: Studio 8 Dance, 3233 Danville Blvd, Alamo, CA 94507.",
+        "confidence": 0.72,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pre-Ballet performance (Winter Dance Performance)",
+        "start_datetime": "2025-12-11T15:55:00-08:00",
+        "end_datetime": "2025-12-11T16:15:00-08:00",
+        "all_day": false,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Pre-Ballet performance during the Winter Dance Performance.\nTime listed on flyer: 3:55\u20134:15pm.\nDate: Thursday, December 11, 2025.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Jazz Ballet Tap performance (Winter Dance Performance)",
+        "start_datetime": "2025-12-11T16:40:00-08:00",
+        "end_datetime": "2025-12-11T17:00:00-08:00",
+        "all_day": false,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Jazz Ballet Tap performance during the Winter Dance Performance.\nTime listed on flyer: 4:40\u20135:00pm.\nDate: Thursday, December 11, 2025.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Jr Hip Hop performance (Winter Dance Performance)",
+        "start_datetime": "2025-12-11T17:25:00-08:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Jr Hip Hop performance during the Winter Dance Performance.\nDate: Thursday, December 11, 2025.\n\nNote: The flyer lists the time as \u201c5:25\u20134:45pm,\u201d which appears inconsistent (end time earlier than start). Start time is clear (5:25pm); end time was not entered due to the discrepancy.",
+        "confidence": 0.6,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hip Hop performance (Winter Dance Performance)",
+        "start_datetime": "2025-12-11T18:10:00-08:00",
+        "end_datetime": "2025-12-11T18:30:00-08:00",
+        "all_day": false,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Hip Hop performance during the Winter Dance Performance.\nTime listed on flyer: 6:10\u20136:30pm.\nDate: Thursday, December 11, 2025.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5581395348837209,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5882352941176471,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 1045.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.72,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.6,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 2887,
+    "completion_tokens": 960,
+    "total_tokens": 3847
+  },
+  "cost": 0.01849225
+}

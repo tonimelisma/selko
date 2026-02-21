@@ -1,0 +1,82 @@
+{
+  "fixture_name": "no_events/shopping_promotion_11",
+  "fixture_hash": "ac19009bdd7da80a28a32c5f5495318a81033541f60603daef4b6dfa857623e0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:07:58.908598+00:00",
+  "duration_ms": 5125,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:53.781749+00:00",
+      "duration_ms": 3
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:53.784815+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:53.800439+00:00",
+      "duration_ms": 5107
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:07:58.908309+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Real-world shopping mall promotional email with vague event mention but no specific date/time",
+  "difficulty": "medium",
+  "tags": [
+    "shopping",
+    "promotional",
+    "mall",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "\ud83d\udc98 Book Now: CHANEL Fragrance and Beauty Boutique Shopping Event",
+    "from": "BroadwayPlaza@email.macerich.com",
+    "has_attachments": true,
+    "attachment_count": 12,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 297276
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 4247,
+    "completion_tokens": 149,
+    "total_tokens": 4396
+  },
+  "cost": 0.00135975
+}

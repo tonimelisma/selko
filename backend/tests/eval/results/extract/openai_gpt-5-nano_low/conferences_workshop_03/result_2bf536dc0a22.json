@@ -1,0 +1,125 @@
+{
+  "fixture_name": "conferences/workshop_03",
+  "fixture_hash": "d57f192314d0c881c9590688e2dbd9edd4bf21859d2f50a96c5a9d963f603db6",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:28.298902+00:00",
+  "duration_ms": 6109,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:22.187430+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:22.187434+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:22.202276+00:00",
+      "duration_ms": 6095
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:28.297496+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "In-person professional workshop",
+  "difficulty": "easy",
+  "tags": [
+    "workshop",
+    "training",
+    "professional",
+    "in-person"
+  ],
+  "input_summary": {
+    "subject": "Workshop Confirmation: Leadership Essentials",
+    "from": "training@leadershipinstitute.org",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00",
+        "end_datetime": "2026-03-07T16:00:00",
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Full-day leadership workshop",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00-05:00",
+        "end_datetime": "2026-03-07T16:00:00-05:00",
+        "all_day": false,
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Workshop confirmation for Jennifer Park. Event details:\n- Date: Saturday, March 7, 2026\n- Time: 9:00 AM \u2013 4:00 PM\n- Location: Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601\n- Schedule highlights: 9:00 Welcome & Introductions; 9:30 Module 1: Leadership Foundations; 11:00 Break; 11:15 Module 2: Communication Strategies; 12:30 Lunch (provided); 1:30 Module 3: Team Building; 3:00 Break; 3:15 Module 4: Action Planning; 4:00 Wrap-up & Certificates\n- Parking: Free garage parking available\n- Catering: Lunch and refreshments included\n- Contact: training@leadershipinstitute.org",
+        "confidence": 0.92,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1310,
+    "completion_tokens": 476,
+    "total_tokens": 1786
+  },
+  "cost": 0.0002559
+}

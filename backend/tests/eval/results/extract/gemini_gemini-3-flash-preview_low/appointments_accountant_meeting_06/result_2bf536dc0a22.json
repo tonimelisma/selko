@@ -1,0 +1,76 @@
+{
+  "fixture_name": "appointments/accountant_meeting_06",
+  "fixture_hash": "0afb24c86c9ce20f1ebbfc006b5af0bc6e760e7c89335e4bee4e00da159a7495",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:09.615815+00:00",
+  "duration_ms": 128,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:09.485775+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:09.485790+00:00",
+      "duration_ms": 32
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:09.518713+00:00",
+      "duration_ms": 96
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:09.615527+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Tax preparation meeting with CPA",
+  "difficulty": "easy",
+  "tags": [
+    "accountant",
+    "tax",
+    "cpa",
+    "financial"
+  ],
+  "input_summary": {
+    "subject": "Tax Preparation Meeting Scheduled",
+    "from": "linda.park@parkaccounting.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Tax Preparation Meeting - Linda Park CPA",
+        "start_datetime": "2026-03-02T16:00:00",
+        "end_datetime": null,
+        "location": "Park Accounting Services, 555 Main Street, Suite 300, Sunnyvale, CA 94086",
+        "description": "Tax preparation meeting with accountant",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

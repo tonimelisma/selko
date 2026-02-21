@@ -1,0 +1,44 @@
+{
+  "fixture_name": "no_events/order_receipt_02",
+  "fixture_hash": "85fb4acf07842ae6feefa19be7d7b03ad916012f73e09ccbb636eb4c87ea2cb1",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "run_at": "2026-02-16T17:34:57.032105+00:00",
+  "duration_ms": 510,
+  "category": "no_events",
+  "description": "E-commerce order confirmation/receipt",
+  "difficulty": "easy",
+  "tags": [
+    "receipt",
+    "order",
+    "shopping",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Amazon.com order #112-3456789-0123456",
+    "from": "auto-confirm@amazon.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "auto_score": {
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

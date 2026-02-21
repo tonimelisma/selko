@@ -1,0 +1,180 @@
+{
+  "fixture_name": "school/pdf_calendar_kindercare_dec_02",
+  "fixture_hash": "67a9fbcedca66a232197898c562d8b1ffe2165f0d30a2d4b1b5ce2067af9d3e6",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:48:10.970282+00:00",
+  "duration_ms": 71556,
+  "category": "school",
+  "description": "KinderCare December 2025 calendar with 2 PDFs + email body mentioning closures",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "multi-attachment",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "December Calendar & Holiday Lunch",
+    "from": "center@kindercare.com",
+    "has_attachments": true,
+    "attachment_count": 2
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 19,
+    "events": [
+      {
+        "title": "Mad about Plaid! Day",
+        "start_datetime": "2025-12-01",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Write a Letter to Santa Day",
+        "start_datetime": "2025-12-03",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-05",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Wear a Santa Hat Day",
+        "start_datetime": "2025-12-09",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Candy Cane Day",
+        "start_datetime": "2025-12-11",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-12",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Ugly Sweater Day",
+        "start_datetime": "2025-12-15",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Rudolf Day",
+        "start_datetime": "2025-12-17",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Movie Day - The Grinch",
+        "start_datetime": "2025-12-19",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-22",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-23",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Christmas Party - Half Day",
+        "start_datetime": "2025-12-24T08:00:00",
+        "end_datetime": "2025-12-24T12:00:00",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - Christmas Day",
+        "start_datetime": "2025-12-25",
+        "is_all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Happy Birthday to Ms Noella",
+        "start_datetime": "2025-12-26",
+        "is_all_day": true,
+        "confidence_min": 0.5,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-29",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-30",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "New Year's Eve - Early Close at 3pm",
+        "start_datetime": "2025-12-31T08:00:00",
+        "end_datetime": "2025-12-31T15:00:00",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "is_all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-02",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: 21 validation errors for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Christmas Eve ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.1.confidence\n  Field required [type=missing, input_value={'title': 'Christmas Day ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.2.confidence\n  Field required [type=missing, input_value={'title': \"New Year's Eve...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.3.confidence\n  Field required [type=missing, input_value={'title': \"New Year's Day...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.4.confidence\n  Field required [type=missing, input_value={'title': 'Holiday Lunch'...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.5.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.6.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.7.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.8.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.9.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.10.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.11.confidence\n  Field required [type=missing, input_value={'title': 'Mad about Plai....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.12.confidence\n  Field required [type=missing, input_value={'title': 'Write a letter....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.13.confidence\n  Field required [type=missing, input_value={'title': 'HoHoHo (Santa ....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.14.confidence\n  Field required [type=missing, input_value={'title': 'Candy Cane Day....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.15.confidence\n  Field required [type=missing, input_value={'title': 'Ugly Sweater D....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.16.confidence\n  Field required [type=missing, input_value={'title': 'Rudolf Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.17.confidence\n  Field required [type=missing, input_value={'title': 'Movie Day - Th....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.18.confidence\n  Field required [type=missing, input_value={'title': 'Christmas Part....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.19.confidence\n  Field required [type=missing, input_value={'title': \"Ms Noella's Bi....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.20.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: 21 validation errors for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Christmas Eve ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.1.confidence\n  Field required [type=missing, input_value={'title': 'Christmas Day ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.2.confidence\n  Field required [type=missing, input_value={'title': \"New Year's Eve...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.3.confidence\n  Field required [type=missing, input_value={'title': \"New Year's Day...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.4.confidence\n  Field required [type=missing, input_value={'title': 'Holiday Lunch'...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.5.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.6.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.7.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.8.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.9.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.10.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.11.confidence\n  Field required [type=missing, input_value={'title': 'Mad about Plai....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.12.confidence\n  Field required [type=missing, input_value={'title': 'Write a letter....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.13.confidence\n  Field required [type=missing, input_value={'title': 'HoHoHo (Santa ....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.14.confidence\n  Field required [type=missing, input_value={'title': 'Candy Cane Day....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.15.confidence\n  Field required [type=missing, input_value={'title': 'Ugly Sweater D....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.16.confidence\n  Field required [type=missing, input_value={'title': 'Rudolf Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.17.confidence\n  Field required [type=missing, input_value={'title': 'Movie Day - Th....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.18.confidence\n  Field required [type=missing, input_value={'title': 'Christmas Part....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.19.confidence\n  Field required [type=missing, input_value={'title': \"Ms Noella's Bi....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.20.confidence\n  Field required [type=missing, input_value={'title': 'Pajama Day', '....9, 'importance': 'fyi'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "tokens": {
+    "prompt_tokens": 7423,
+    "completion_tokens": 6217,
+    "total_tokens": 13640
+  },
+  "cost": 0.0
+}

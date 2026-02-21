@@ -1,0 +1,125 @@
+{
+  "fixture_name": "recurring/quarterly_review_04",
+  "fixture_hash": "e2cabde367dae0b7b4b68c4f9af229fec088f13ce5bdd26863099dc4c11d5cd0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:05:03.521184+00:00",
+  "duration_ms": 26828,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:04:36.691311+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:04:36.691319+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:04:36.709341+00:00",
+      "duration_ms": 26810
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:05:03.519854+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Quarterly business review meeting",
+  "difficulty": "easy",
+  "tags": [
+    "recurring",
+    "quarterly",
+    "review",
+    "business"
+  ],
+  "input_summary": {
+    "subject": "Q2 2026 Business Review - Calendar Hold",
+    "from": "ops@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q2 2026 Business Review",
+        "start_datetime": "2026-04-15T09:00:00",
+        "end_datetime": "2026-04-15T12:00:00",
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly business review meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q2 2026 Quarterly Business Review",
+        "start_datetime": "2026-04-15T09:00:00+00:00",
+        "end_datetime": "2026-04-15T12:00:00+00:00",
+        "all_day": false,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Date: Wednesday, April 15, 2026\\nTime: 9:00 AM - 12:00 PM\\nLocation: Executive Conference Room (HQ, 10th Floor)\\nAgenda (Tentative):\\n9:00 AM - CEO Opening Remarks; 9:15 AM - Financial Review (CFO); 9:45 AM - Sales & Revenue Update; 10:15 AM - Break; 10:30 AM - Product Roadmap; 11:00 AM - Operations Update; 11:30 AM - Strategic Initiatives; 12:00 PM - Closing & Next Steps\\nPresentation materials due: April 8, 2026\\nSubmit to: ops@company.com\\nReminder: This is a recurring quarterly meeting.\\nFuture dates: July 15, October 14, January 13\\nPlease confirm attendance.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8214285714285714,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1256,
+    "completion_tokens": 3419,
+    "total_tokens": 4675
+  },
+  "cost": 0.0014304
+}

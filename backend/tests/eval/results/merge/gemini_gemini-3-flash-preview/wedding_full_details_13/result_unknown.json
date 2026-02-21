@@ -1,0 +1,42 @@
+{
+  "fixture_name": "wedding_full_details_13",
+  "fixture_hash": "6b1539a71a03952c225842b2271c0caac67e3133aead651aa0cce93e0653071c",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:50:29.063611+00:00",
+  "duration_ms": 0,
+  "description": "Wedding: save-the-date has basic info, formal invitation adds full venue details and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "wedding",
+    "social"
+  ],
+  "expected": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description_contains": [
+      "wedding celebration",
+      "ceremony",
+      "reception",
+      "cocktail attire",
+      "hotel block"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "gemini API error: 3 validation errors for Schema\nproperties.end_datetime.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum\nproperties.location.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum\nproperties.description.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

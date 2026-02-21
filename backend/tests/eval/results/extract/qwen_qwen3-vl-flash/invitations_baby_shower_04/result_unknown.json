@@ -1,0 +1,97 @@
+{
+  "fixture_name": "invitations/baby_shower_04",
+  "fixture_hash": "09ebc91ae47d2f0d1a34b20353211dcfaca1fa2586246e8b29f97fb57cd9394f",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:34:41.394230+00:00",
+  "duration_ms": 2709,
+  "category": "invitations",
+  "description": "Baby shower invitation with brunch timing",
+  "difficulty": "easy",
+  "tags": [
+    "baby-shower",
+    "brunch",
+    "weekend"
+  ],
+  "input_summary": {
+    "subject": "Baby Shower for Amanda!",
+    "from": "kelly.martinez@yahoo.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amanda's Baby Shower",
+        "start_datetime": "2026-03-15T11:00:00",
+        "end_datetime": "2026-03-15T14:00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch for Amanda Rodriguez",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Baby Shower for Amanda!",
+        "start_datetime": "2026-03-15T11:00:00+00:00",
+        "end_datetime": "2026-03-15T14:00:00+00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Please join us for a baby shower brunch honoring mom-to-be Amanda Rodriguez on Sunday, March 15, 2026, from 11:00 AM to 2:00 PM at Kelly's home. Light brunch will be served. Registry available at Amazon & Target. RSVP to Kelly at kelly.martinez@yahoo.com or (512) 555-8910 by March 8th. It's a BOY! \ud83d\udc99",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5116279069767442,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1203,
+    "completion_tokens": 232,
+    "total_tokens": 1435
+  },
+  "cost": 0.00025400000000000005
+}

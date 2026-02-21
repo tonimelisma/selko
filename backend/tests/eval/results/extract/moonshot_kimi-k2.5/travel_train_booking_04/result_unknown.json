@@ -1,0 +1,54 @@
+{
+  "fixture_name": "travel/train_booking_04",
+  "fixture_hash": "d2452a946c1eed36c1dae0b9a05f0c435f7d6674ef83529d46ce9e25af2fa6ef",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "run_at": "2026-02-16T17:33:32.153762+00:00",
+  "duration_ms": 225,
+  "category": "travel",
+  "description": "Amtrak train reservation",
+  "difficulty": "easy",
+  "tags": [
+    "train",
+    "amtrak",
+    "booking"
+  ],
+  "input_summary": {
+    "subject": "Amtrak Reservation Confirmation",
+    "from": "reservations@amtrak.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151 - Washington to New York",
+        "start_datetime": "2026-03-02T07:05:00",
+        "end_datetime": "2026-03-02T10:00:00",
+        "location": "Union Station, Washington DC",
+        "description": "Amtrak Acela train to New York Penn Station",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "auto_score": {
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

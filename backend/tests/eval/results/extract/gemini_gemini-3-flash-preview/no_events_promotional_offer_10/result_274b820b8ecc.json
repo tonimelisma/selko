@@ -1,0 +1,78 @@
+{
+  "fixture_name": "no_events/promotional_offer_10",
+  "fixture_hash": "18357a48402472a59a078bb0752031ff31e5587be3961a7473f2cf7dcb459449",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:20:35.991904+00:00",
+  "duration_ms": 22662,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:20:13.328195+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:20:13.328205+00:00",
+      "duration_ms": 28
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:20:13.357010+00:00",
+      "duration_ms": 22634
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:20:35.991231+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Limited time promotional offer with deadline",
+  "difficulty": "hard",
+  "tags": [
+    "promo",
+    "offer",
+    "deadline",
+    "tricky",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Exclusive Offer Expires Tomorrow at Midnight!",
+    "from": "offers@subscription.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Subscription Offer Expiration Deadline",
+        "start_datetime": "2026-02-20T23:59:00+00:00",
+        "end_datetime": "2026-02-20T23:59:00+00:00",
+        "location": "Online - Subscription Service Website",
+        "description": "Final reminder to claim 40% OFF an annual subscription (Premium Annual Plan). Regular Price: $199/year, Offer Price: $119/year. Offer expires at 11:59 PM PST on February 20, 2026.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 811,
+    "completion_tokens": 196,
+    "total_tokens": 1007
+  },
+  "cost": 0.00023925
+}

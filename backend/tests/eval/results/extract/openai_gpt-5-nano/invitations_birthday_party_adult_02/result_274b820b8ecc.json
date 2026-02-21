@@ -1,0 +1,98 @@
+{
+  "fixture_name": "invitations/birthday_party_adult_02",
+  "fixture_hash": "583e4f78d37e94d4586ba3b15ad4c52ddd54b8a571b716d08919ffb4dc6405c6",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "run_at": "2026-02-17T17:21:22.397541+00:00",
+  "duration_ms": 30572,
+  "category": "invitations",
+  "description": "Adult milestone birthday party at restaurant",
+  "difficulty": "easy",
+  "tags": [
+    "birthday",
+    "adult",
+    "restaurant",
+    "evening"
+  ],
+  "input_summary": {
+    "subject": "\ud83c\udf89 Surprise! You're Invited to Mark's 40th Birthday Bash!",
+    "from": "jennifer.wilson@outlook.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Mark's 40th Birthday Party",
+        "start_datetime": "2026-03-06T19:30:00",
+        "end_datetime": null,
+        "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
+        "description": "Surprise 40th birthday dinner for Mark",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Mark's 40th Birthday Bash",
+        "start_datetime": "2026-03-06T19:30:00+00:00",
+        "end_datetime": null,
+        "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
+        "description": "Dinner and drinks to celebrate Mark's 40th birthday. Date: Friday, March 6, 2026. Time: 7:30 PM. Location: The Capital Grille, 150 E 42nd Street, New York, NY 10017. Arrive by 7:00 PM. Dress code: Smart casual. RSVP by Feb 28 to jennifer.wilson@outlook.com.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8627450980392157,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 960,
+    "completion_tokens": 3599,
+    "total_tokens": 4559
+  },
+  "cost": 0.0014876000000000002
+}

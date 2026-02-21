@@ -1,0 +1,76 @@
+{
+  "fixture_name": "conferences/workshop_03",
+  "fixture_hash": "d57f192314d0c881c9590688e2dbd9edd4bf21859d2f50a96c5a9d963f603db6",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "none",
+  "run_at": "2026-02-20T23:58:28.175251+00:00",
+  "duration_ms": 153,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:58:28.021354+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:58:28.021370+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:58:28.051677+00:00",
+      "duration_ms": 123
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:58:28.174964+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "In-person professional workshop",
+  "difficulty": "easy",
+  "tags": [
+    "workshop",
+    "training",
+    "professional",
+    "in-person"
+  ],
+  "input_summary": {
+    "subject": "Workshop Confirmation: Leadership Essentials",
+    "from": "training@leadershipinstitute.org",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00",
+        "end_datetime": "2026-03-07T16:00:00",
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Full-day leadership workshop",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

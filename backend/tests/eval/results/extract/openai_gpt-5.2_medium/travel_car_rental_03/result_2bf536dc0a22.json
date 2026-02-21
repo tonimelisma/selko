@@ -1,0 +1,125 @@
+{
+  "fixture_name": "travel/car_rental_03",
+  "fixture_hash": "a7b951ba2268a3d1b4c07d10276c7c9b098fcc151c2d6c64648550f24e5181d2",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:17.908652+00:00",
+  "duration_ms": 7318,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:10.588610+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:10.588616+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:10.603762+00:00",
+      "duration_ms": 7303
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:17.907316+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Car rental reservation confirmation",
+  "difficulty": "medium",
+  "tags": [
+    "car",
+    "rental",
+    "pickup",
+    "dropoff"
+  ],
+  "input_summary": {
+    "subject": "Your Hertz Reservation is Confirmed",
+    "from": "reservations@hertz.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Rental - Hertz LAX",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": "2026-02-25T18:00:00",
+        "location": "Hertz LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Full size car rental (Toyota Camry or similar)",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Hertz car rental (Pickup LAX / Return Feb 25)",
+        "start_datetime": "2026-02-21T10:00:00-08:00",
+        "end_datetime": "2026-02-25T18:00:00-08:00",
+        "all_day": false,
+        "location": "Hertz \u2013 Los Angeles LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Hertz Reservation Confirmed (Gold Plus Rewards)\nConfirmation #: H12345678\n\nPICK-UP:\n- Date/Time: Saturday, February 21, 2026 at 10:00 AM\n- Location: Los Angeles LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045\n\nDROP-OFF:\n- Date/Time: Wednesday, February 25, 2026 at 6:00 PM\n- Location: Same as pick-up\n\nVehicle: Full Size (Toyota Camry or similar) \u2014 A/C, Automatic, 4 doors\nEstimated Total: $287.45 (includes taxes and fees)\nNotes: Gold Plus Members can skip the counter and go directly to the Hertz Gold area.\nManage reservation: https://hertz.com/myreservations",
+        "confidence": 0.97,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.44776119402985076,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8939393939393939,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.97,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1219,
+    "completion_tokens": 453,
+    "total_tokens": 1672
+  },
+  "cost": 0.00847525
+}

@@ -1,0 +1,111 @@
+{
+  "fixture_name": "meetings/board_meeting_03",
+  "fixture_hash": "c6579a34c703aa4c652b98b549f1a0735e9e2d69898785899fcf083180028e52",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:38:49.019494+00:00",
+  "duration_ms": 43650,
+  "category": "meetings",
+  "description": "Quarterly board meeting notice",
+  "difficulty": "easy",
+  "tags": [
+    "board",
+    "quarterly",
+    "formal",
+    "executive"
+  ],
+  "input_summary": {
+    "subject": "Q1 2026 Board Meeting - March 15th",
+    "from": "board-secretary@acmecorp.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-15T10:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Quarterly board of directors meeting",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-15T10:00:00-05:00",
+        "end_datetime": "2026-03-15T16:00:00-05:00",
+        "location": "Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166; Zoom Meeting ID: 987 654 3210 (Passcode: Board2026)",
+        "description": "Official Q1 2026 Board of Directors Meeting. Agenda includes Call to Order, CEO Report, CFO Financial Review, Working Lunch, Strategic Initiatives, Committee Reports, and New Business. Board materials will be distributed one week prior.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "RSVP Deadline: Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-01T23:59:59-05:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to confirm attendance for the Q1 2026 Board of Directors Meeting.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.6384976525821596,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 843,
+    "completion_tokens": 292,
+    "total_tokens": 1135
+  },
+  "cost": 0.00030165
+}

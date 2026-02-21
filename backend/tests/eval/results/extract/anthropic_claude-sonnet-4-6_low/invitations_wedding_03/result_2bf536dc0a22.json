@@ -1,0 +1,125 @@
+{
+  "fixture_name": "invitations/wedding_03",
+  "fixture_hash": "f85ad4ab1f782e7ceecc9537b392fedda489aed9d867a00cbafce98015b8b9e4",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:15:39.069067+00:00",
+  "duration_ms": 2647,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:15:36.419972+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:15:36.419985+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:15:36.435829+00:00",
+      "duration_ms": 2632
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:15:39.068636+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Formal wedding invitation with ceremony and reception times",
+  "difficulty": "medium",
+  "tags": [
+    "wedding",
+    "formal",
+    "multi-part",
+    "all-day"
+  ],
+  "input_summary": {
+    "subject": "Save the Date: Sarah & Michael's Wedding",
+    "from": "sarah.johnson@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Sarah & Michael's Wedding",
+        "start_datetime": "2026-06-21T16:00:00",
+        "end_datetime": "2026-06-22T00:00:00",
+        "location": "Rosewood Estate, 2500 Vineyard Road, Napa Valley, California 94558",
+        "description": "Wedding ceremony at 4:00 PM, reception at 6:00 PM, dinner and dancing until midnight",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Sarah & Michael's Wedding",
+        "start_datetime": "2026-06-21T16:00:00",
+        "end_datetime": "2026-06-22T00:00:00",
+        "all_day": false,
+        "location": "Rosewood Estate, 2500 Vineyard Road, Napa Valley, California 94558",
+        "description": "Wedding ceremony at 4:00 PM followed by reception at 6:00 PM. Dinner and dancing until midnight. Black tie optional. RSVP by May 15th, 2026 at sarahandmichael2026.com.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1686,
+    "completion_tokens": 161,
+    "total_tokens": 1847
+  },
+  "cost": 0.007473
+}

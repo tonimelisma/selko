@@ -1,0 +1,77 @@
+{
+  "fixture_name": "no_events/survey_request_09",
+  "fixture_hash": "97d4d69c1f8a766a7b1e45197110e171e26de77d34474f8d79a21eb491b85726",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:20:17.565236+00:00",
+  "duration_ms": 1896,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:20:15.667299+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:20:15.667307+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:20:15.696791+00:00",
+      "duration_ms": 1867
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:20:17.564368+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Customer satisfaction survey request",
+  "difficulty": "easy",
+  "tags": [
+    "survey",
+    "feedback",
+    "customer-service",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "How was your recent experience? Quick survey inside",
+    "from": "feedback@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Survey Deadline - Chance to win $50 gift card",
+        "start_datetime": "2026-02-24T23:59:59+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to complete the customer feedback survey for a chance to win a $50 gift card. Survey relates to order #12345678 (Premium Widget Pro) purchased on February 10, 2026.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 759,
+    "completion_tokens": 123,
+    "total_tokens": 882
+  },
+  "cost": 0.00018764999999999998
+}

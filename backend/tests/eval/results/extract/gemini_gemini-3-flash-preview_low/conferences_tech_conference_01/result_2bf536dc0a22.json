@@ -1,0 +1,76 @@
+{
+  "fixture_name": "conferences/tech_conference_01",
+  "fixture_hash": "baba32425cb75fcf26cf072c2214a4b90650dfe9e2a86ceef8a17609a0240ee8",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:14.705811+00:00",
+  "duration_ms": 134,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:14.570364+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:14.570380+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:14.601146+00:00",
+      "duration_ms": 104
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:14.705505+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Multi-day tech conference registration",
+  "difficulty": "medium",
+  "tags": [
+    "conference",
+    "tech",
+    "multi-day",
+    "registration"
+  ],
+  "input_summary": {
+    "subject": "Registration Confirmed: TechSummit 2026",
+    "from": "registration@techsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechSummit 2026",
+        "start_datetime": "2026-03-18T08:00:00",
+        "end_datetime": "2026-03-20T16:00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "3-day technology conference",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

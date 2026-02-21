@@ -1,0 +1,53 @@
+{
+  "fixture_name": "same_wedding_05",
+  "fixture_hash": "0e99db6db6315dbd8ea8eba08af78f9b41f957195cb0583aa5afb841a0ede572",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:41.036690+00:00",
+  "duration_ms": 3660,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:37.375591+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:37.375599+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:37.404994+00:00",
+      "duration_ms": 3631
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:41.036272+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "social"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 370,
+    "completion_tokens": 61,
+    "total_tokens": 431
+  },
+  "cost": 9.209999999999999e-05
+}

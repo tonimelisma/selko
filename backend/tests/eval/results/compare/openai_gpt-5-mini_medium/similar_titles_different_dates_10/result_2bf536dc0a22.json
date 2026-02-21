@@ -1,0 +1,53 @@
+{
+  "fixture_name": "similar_titles_different_dates_10",
+  "fixture_hash": "fb2caa5eebd9dbb2da73352be02b5b163ebfa3d626ef2388683563d42a359e70",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:11:30.861194+00:00",
+  "duration_ms": 12232,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:18.628191+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:18.628195+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:18.644537+00:00",
+      "duration_ms": 12216
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:11:30.860750+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Similar titles but different dates - weekly meetings - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-date"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 351,
+    "completion_tokens": 399,
+    "total_tokens": 750
+  },
+  "cost": 0.00088575
+}

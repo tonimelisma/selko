@@ -1,0 +1,76 @@
+{
+  "fixture_name": "recurring/biweekly_one_on_one_03",
+  "fixture_hash": "85d4061104742a1c88d0a1c8b48069cc24bd4faf6938a04609ff327364bde0ce",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:19.005963+00:00",
+  "duration_ms": 2613,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:16.391530+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:16.391536+00:00",
+      "duration_ms": 61
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:16.452857+00:00",
+      "duration_ms": 2552
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:19.005595+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Bi-weekly recurring 1:1 meeting",
+  "difficulty": "medium",
+  "tags": [
+    "recurring",
+    "biweekly",
+    "1:1",
+    "manager"
+  ],
+  "input_summary": {
+    "subject": "Updated: 1:1 Moving to Bi-Weekly",
+    "from": "mark.chen@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Mark Chen",
+        "start_datetime": "2026-02-13T15:00:00",
+        "end_datetime": "2026-02-13T15:30:00",
+        "location": "Mark's office or Zoom",
+        "description": "Bi-weekly 1:1 meeting",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,125 @@
+{
+  "fixture_name": "conferences/tech_conference_01",
+  "fixture_hash": "baba32425cb75fcf26cf072c2214a4b90650dfe9e2a86ceef8a17609a0240ee8",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:09:35.969857+00:00",
+  "duration_ms": 19824,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:09:16.143662+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:09:16.143669+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:09:16.160076+00:00",
+      "duration_ms": 19808
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:09:35.968396+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Multi-day tech conference registration",
+  "difficulty": "medium",
+  "tags": [
+    "conference",
+    "tech",
+    "multi-day",
+    "registration"
+  ],
+  "input_summary": {
+    "subject": "Registration Confirmed: TechSummit 2026",
+    "from": "registration@techsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechSummit 2026",
+        "start_datetime": "2026-03-18T08:00:00",
+        "end_datetime": "2026-03-20T16:00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "3-day technology conference",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechSummit 2026 \u2014 Full Conference (3-Day)",
+        "start_datetime": "2026-03-18T08:00:00-07:00",
+        "end_datetime": "2026-03-20T16:00:00-07:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Registration confirmed for TechSummit 2026 (Attendee: Alex Chen; Registration #: TS2026-78901; Pass Type: Full Conference - 3-Day).\n\nConference dates and primary schedule (local San Francisco time):\n- Dates: March 18\u201320, 2026\n\nDay 1 \u2014 Wednesday, March 18\n- 8:00 AM \u2014 Registration & Breakfast\n- 9:00 AM \u2014 Opening Keynote\n- 10:00 AM\u20136:00 PM \u2014 Sessions\n- 7:00 PM \u2014 Welcome Reception\n\nDay 2 \u2014 Thursday, March 19\n- 8:00 AM\u20136:00 PM \u2014 Sessions & Workshops\n- 12:00 PM \u2014 Networking Lunch\n\nDay 3 \u2014 Friday, March 20\n- 8:00 AM\u20133:00 PM \u2014 Sessions\n- 3:00 PM \u2014 Closing Keynote\n- 4:00 PM \u2014 Conference Ends\n\nBadge pickup: Pick up at Registration Desk on site; bring photo ID.\nOther info: Download the TechSummit app for schedule and networking. For questions: support@techsummit.com.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5357142857142857,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1305,
+    "completion_tokens": 1511,
+    "total_tokens": 2816
+  },
+  "cost": 0.00334825
+}

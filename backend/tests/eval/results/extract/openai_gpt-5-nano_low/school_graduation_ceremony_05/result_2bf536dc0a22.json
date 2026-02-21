@@ -1,0 +1,125 @@
+{
+  "fixture_name": "school/graduation_ceremony_05",
+  "fixture_hash": "cd9a2a3e5b20651bed43cb790aa6b9ed9626cdf9ad6a86dd53763bc361fc6038",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:29.916622+00:00",
+  "duration_ms": 6175,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:23.738927+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:23.738933+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:23.755491+00:00",
+      "duration_ms": 6159
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:29.915243+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "School graduation ceremony details",
+  "difficulty": "easy",
+  "tags": [
+    "graduation",
+    "ceremony",
+    "school",
+    "formal"
+  ],
+  "input_summary": {
+    "subject": "8th Grade Graduation Ceremony - Save the Date",
+    "from": "principal@middleschool.edu",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "8th Grade Graduation Ceremony",
+        "start_datetime": "2026-06-12T18:00:00",
+        "end_datetime": "2026-06-12T20:00:00",
+        "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
+        "description": "8th grade graduation ceremony with reception to follow",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Riverside Middle School Class of 2026 Graduation Ceremony",
+        "start_datetime": "2026-06-12T18:00:00-07:00",
+        "end_datetime": "2026-06-12T20:00:00-07:00",
+        "all_day": false,
+        "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
+        "description": "Graduation ceremony for Riverside Middle School Class of 2026.\n\nSchedule:\n- 5:30 PM: Doors open\n- 6:00 PM: Processional\n- 6:15 PM: Welcome & National Anthem\n- 6:20 PM: Student Speeches\n- 6:40 PM: Guest Speaker\n- 7:00 PM: Diploma Presentation\n- 7:45 PM: Closing Remarks\n- 8:00 PM: Reception in Courtyard\n\nNotes:\n- Seating is first-come, first-served\n- Tickets: 4 tickets per family (distributed in May)\n- Dress code: Semi-formal attire\n- Parking: School parking lot and street parking\n- Professional photos available for purchase\n\nAdditional details to follow.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5348837209302325,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.9,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1289,
+    "completion_tokens": 794,
+    "total_tokens": 2083
+  },
+  "cost": 0.00038205
+}

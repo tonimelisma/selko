@@ -1,0 +1,55 @@
+{
+  "fixture_name": "conferences/workshop_03",
+  "fixture_hash": "089e26e7deb3efc0bc452035f80c32db922dea526511a6b3762671d02447e748",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:45:59.616537+00:00",
+  "duration_ms": 21285,
+  "category": "conferences",
+  "description": "In-person professional workshop",
+  "difficulty": "easy",
+  "tags": [
+    "workshop",
+    "training",
+    "professional",
+    "in-person"
+  ],
+  "input_summary": {
+    "subject": "Workshop Confirmation: Leadership Essentials",
+    "from": "training@leadershipinstitute.org",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00",
+        "end_datetime": "2026-03-07T16:00:00",
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Full-day leadership workshop",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 884,
+    "completion_tokens": 1704,
+    "total_tokens": 2588
+  },
+  "cost": 0.0
+}

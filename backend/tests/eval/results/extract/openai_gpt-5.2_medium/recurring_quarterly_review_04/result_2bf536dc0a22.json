@@ -1,0 +1,139 @@
+{
+  "fixture_name": "recurring/quarterly_review_04",
+  "fixture_hash": "e2cabde367dae0b7b4b68c4f9af229fec088f13ce5bdd26863099dc4c11d5cd0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:14:08.045551+00:00",
+  "duration_ms": 17193,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:50.850389+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:50.850396+00:00",
+      "duration_ms": 20
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:50.871044+00:00",
+      "duration_ms": 17173
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:08.044906+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Quarterly business review meeting",
+  "difficulty": "easy",
+  "tags": [
+    "recurring",
+    "quarterly",
+    "review",
+    "business"
+  ],
+  "input_summary": {
+    "subject": "Q2 2026 Business Review - Calendar Hold",
+    "from": "ops@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q2 2026 Business Review",
+        "start_datetime": "2026-04-15T09:00:00",
+        "end_datetime": "2026-04-15T12:00:00",
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly business review meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q2 2026 Quarterly Business Review",
+        "start_datetime": "2026-04-15T09:00:00-04:00",
+        "end_datetime": "2026-04-15T12:00:00-04:00",
+        "all_day": false,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Q2 2026 Quarterly Business Review (QBR) for the Leadership Team.\n\nDate: Wednesday, April 15, 2026\nTime: 9:00 AM \u2013 12:00 PM\nLocation: Executive Conference Room (HQ, 10th Floor)\n\nTentative agenda:\n- 9:00 AM CEO Opening Remarks\n- 9:15 AM Financial Review (CFO)\n- 9:45 AM Sales & Revenue Update\n- 10:15 AM Break\n- 10:30 AM Product Roadmap\n- 11:00 AM Operations Update\n- 11:30 AM Strategic Initiatives\n- 12:00 PM Closing & Next Steps\n\nNote: Email indicates this is a recurring quarterly meeting; future dates mentioned: July 15, October 14, January 13 (no times/years specified for those future dates).",
+        "confidence": 0.93,
+        "importance": "action_required"
+      },
+      {
+        "title": "Presentation materials due for Q2 2026 Business Review",
+        "start_datetime": "2026-04-08T00:00:00-04:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Deadline to submit presentation materials for the Q2 2026 Quarterly Business Review.\n\nDue date: April 8, 2026\nSubmit to: ops@company.com",
+        "confidence": 0.86,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8214285714285714,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.93,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1256,
+    "completion_tokens": 1002,
+    "total_tokens": 2258
+  },
+  "cost": 0.016226
+}

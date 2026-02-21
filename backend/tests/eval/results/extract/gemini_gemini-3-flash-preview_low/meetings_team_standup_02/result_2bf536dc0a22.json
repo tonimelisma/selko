@@ -1,0 +1,76 @@
+{
+  "fixture_name": "meetings/team_standup_02",
+  "fixture_hash": "5c2629cafad3e531e41ea2d60936671d3d62a0b67e700ad88b88742ce03fc786",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:13.075931+00:00",
+  "duration_ms": 132,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:12.942550+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:12.942566+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:12.973352+00:00",
+      "duration_ms": 102
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:13.075621+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Daily team standup meeting change",
+  "difficulty": "medium",
+  "tags": [
+    "standup",
+    "team",
+    "daily",
+    "time-change"
+  ],
+  "input_summary": {
+    "subject": "Team Standup Moving to New Time",
+    "from": "priya.sharma@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Team Standup",
+        "start_datetime": "2026-02-09T09:30:00",
+        "end_datetime": "2026-02-09T09:45:00",
+        "location": "Conference Room B",
+        "description": "Daily team standup meeting (new time)",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

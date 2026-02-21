@@ -1,0 +1,124 @@
+{
+  "fixture_name": "invitations/retirement_party_08",
+  "fixture_hash": "d5e82623a6e613fbf7217cbf6e56f3e36212f5268dc9183bc0279643be624508",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:35.336360+00:00",
+  "duration_ms": 2943,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:32.391714+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:32.391729+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:32.407040+00:00",
+      "duration_ms": 2928
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:35.335978+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Retirement celebration lunch",
+  "difficulty": "easy",
+  "tags": [
+    "retirement",
+    "lunch",
+    "celebration"
+  ],
+  "input_summary": {
+    "subject": "Retirement Celebration for Bob Williams",
+    "from": "nancy.clark@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Bob Williams' Retirement Celebration",
+        "start_datetime": "2026-02-26T12:00:00",
+        "end_datetime": "2026-02-26T14:00:00",
+        "location": "Ocean View Restaurant, 500 Harbor Boulevard, San Diego, CA 92101",
+        "description": "Retirement luncheon celebrating Bob Williams' 35 years of service",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Retirement Celebration Luncheon for Bob Williams",
+        "start_datetime": "2026-02-26T12:00:00",
+        "end_datetime": "2026-02-26T14:00:00",
+        "all_day": false,
+        "location": "Ocean View Restaurant, Private Dining Room, 500 Harbor Boulevard, San Diego, CA 92101",
+        "description": "Retirement celebration luncheon honoring Bob Williams after 35 years of dedicated service. Lunch will be provided. If you'd like to contribute to a group gift, contact Nancy Clark at nancy.clark@company.com. RSVP deadline was February 19th to nancy.clark@company.com.",
+        "confidence": 0.99,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5238095238095238,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8590604026845637,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.99,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1690,
+    "completion_tokens": 226,
+    "total_tokens": 1916
+  },
+  "cost": 0.00846
+}

@@ -1,0 +1,53 @@
+{
+  "fixture_name": "same_parent_teacher_08",
+  "fixture_hash": "f8cf81aa24634194f42aa1a81aa9e5658c808a5130cb3b43aa977e9e291b82f7",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:37.704801+00:00",
+  "duration_ms": 3331,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:34.372406+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:34.372414+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:34.401830+00:00",
+      "duration_ms": 3302
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:37.704418+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same parent-teacher conference with reminder vs original - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 377,
+    "completion_tokens": 68,
+    "total_tokens": 445
+  },
+  "cost": 9.735e-05
+}

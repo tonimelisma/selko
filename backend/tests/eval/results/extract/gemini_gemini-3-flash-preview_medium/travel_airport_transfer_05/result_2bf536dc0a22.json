@@ -1,0 +1,76 @@
+{
+  "fixture_name": "travel/airport_transfer_05",
+  "fixture_hash": "98b327e08b23119b31d433355808a96201ff28cbc57a7a4b390868b2fbfae4ec",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:09.638421+00:00",
+  "duration_ms": 119,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:09.517883+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:09.517899+00:00",
+      "duration_ms": 31
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:09.549638+00:00",
+      "duration_ms": 88
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:09.638085+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Airport shuttle/transfer booking",
+  "difficulty": "easy",
+  "tags": [
+    "transfer",
+    "shuttle",
+    "airport",
+    "pickup"
+  ],
+  "input_summary": {
+    "subject": "Your SuperShuttle Reservation",
+    "from": "confirm@supershuttle.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Airport Shuttle Pickup - SuperShuttle",
+        "start_datetime": "2026-02-28T05:30:00",
+        "end_datetime": null,
+        "location": "123 Main Street, Apt 4B, San Diego, CA 92101",
+        "description": "SuperShuttle pickup to San Diego Airport Terminal 2",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

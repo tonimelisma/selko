@@ -1,0 +1,125 @@
+{
+  "fixture_name": "appointments/car_service_03",
+  "fixture_hash": "83c4f14042cbe32bc4a9df89539be9bb892a54c924ee3fc02a1b40687a06b6de",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:38.094001+00:00",
+  "duration_ms": 3822,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:34.270668+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:34.270678+00:00",
+      "duration_ms": 21
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:34.291837+00:00",
+      "duration_ms": 3801
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:38.093270+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Auto service appointment confirmation",
+  "difficulty": "easy",
+  "tags": [
+    "car",
+    "service",
+    "auto",
+    "morning"
+  ],
+  "input_summary": {
+    "subject": "Your Service Appointment is Confirmed",
+    "from": "service@hondasanjose.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Service - Honda of San Jose",
+        "start_datetime": "2026-02-07T08:00:00",
+        "end_datetime": "2026-02-07T12:00:00",
+        "location": "Honda of San Jose Service Center, 4321 Stevens Creek Blvd, San Jose, CA 95129",
+        "description": "30,000 mile maintenance for 2023 Honda Accord",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Honda Service Appointment \u2013 30,000 Mile Maintenance",
+        "start_datetime": "2026-02-07T08:00:00",
+        "end_datetime": "2026-02-07T12:00:00",
+        "all_day": false,
+        "location": "Honda of San Jose Service Center, 4321 Stevens Creek Blvd, San Jose, CA 95129",
+        "description": "Confirmed service appointment at Honda of San Jose.\n\nVehicle: 2023 Honda Accord\nVIN: 1HGCV1F34PA123456\n\nService Type: 30,000 Mile Maintenance\n- Oil change\n- Tire rotation\n- Multi-point inspection\n- Brake inspection\n\nDrop-off Time: 8:00 AM\nEstimated Completion: 12:00 PM\n\nService Advisor: Marcus Johnson\nPhone: (408) 555-2345\n\nFree WiFi and coffee available in the waiting area, or complimentary shuttle service is offered.\n\nQuestions? Reply to the confirmation email or call the service center.",
+        "confidence": 0.99,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.36585365853658536,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.99,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1733,
+    "completion_tokens": 339,
+    "total_tokens": 2072
+  },
+  "cost": 0.010284
+}

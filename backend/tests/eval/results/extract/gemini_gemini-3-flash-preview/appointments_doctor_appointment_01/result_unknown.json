@@ -1,0 +1,97 @@
+{
+  "fixture_name": "appointments/doctor_appointment_01",
+  "fixture_hash": "62f3b3cf0f5c765f3c4fe47d51b139365f7c8491c2d8619bcc44c8d7de695b98",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:37:40.917684+00:00",
+  "duration_ms": 19826,
+  "category": "appointments",
+  "description": "Standard doctor appointment confirmation",
+  "difficulty": "easy",
+  "tags": [
+    "medical",
+    "doctor",
+    "confirmation"
+  ],
+  "input_summary": {
+    "subject": "Appointment Confirmation - Dr. Jennifer Smith",
+    "from": "appointments@valleymedical.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Doctor Appointment - Dr. Jennifer Smith",
+        "start_datetime": "2026-02-03T10:30:00",
+        "end_datetime": "2026-02-03T11:00:00",
+        "location": "Valley Medical Center, 1500 Medical Plaza Drive, Suite 200, San Jose, CA 95128",
+        "description": "Internal Medicine appointment with Dr. Jennifer Smith",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Appointment with Dr. Jennifer Smith",
+        "start_datetime": "2026-02-03T10:30:00+00:00",
+        "end_datetime": "2026-02-03T11:00:00+00:00",
+        "location": "Valley Medical Center, 1500 Medical Plaza Drive, Suite 200, San Jose, CA 95128",
+        "description": "Provider: Dr. Jennifer Smith, MD (Internal Medicine). Please arrive 15 minutes early to complete paperwork. Bring your insurance card and a valid photo ID. To reschedule or cancel, call (408) 555-1234 at least 24 hours in advance.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8378378378378378,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 741,
+    "completion_tokens": 178,
+    "total_tokens": 919
+  },
+  "cost": 0.00021794999999999999
+}

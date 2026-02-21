@@ -1,0 +1,139 @@
+{
+  "fixture_name": "conferences/virtual_summit_05",
+  "fixture_hash": "03e1176a2229fd67d468580ddb0b54d68d556753384baa53ccb566ee6ca4be3a",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:15:51.349608+00:00",
+  "duration_ms": 5292,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:15:46.055480+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:15:46.055489+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:15:46.072367+00:00",
+      "duration_ms": 5276
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:15:51.348882+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Multi-day virtual summit with session schedule",
+  "difficulty": "hard",
+  "tags": [
+    "summit",
+    "virtual",
+    "multi-day",
+    "multiple-sessions"
+  ],
+  "input_summary": {
+    "subject": "Your Product Management Virtual Summit Access",
+    "from": "events@pmsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "PM Summit 2026 - Day 1",
+        "start_datetime": "2026-04-07T09:00:00",
+        "end_datetime": "2026-04-07T16:00:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 1 - Keynotes and track sessions",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "PM Summit 2026 - Day 2",
+        "start_datetime": "2026-04-08T09:00:00",
+        "end_datetime": "2026-04-08T16:30:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 2 - Workshops and closing keynote",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "PM Summit 2026 Virtual Conference",
+        "start_datetime": "2026-04-07T09:00:00-07:00",
+        "end_datetime": "2026-04-08T16:30:00-07:00",
+        "all_day": false,
+        "location": "https://hopin.com/events/pmsummit2026",
+        "description": "PM Summit 2026 - The Premier Product Management Virtual Event\n\nRegistrant: David Lee | All-Access Pass | Order #PMS-2026-12345\nLogin: david.lee@example.com\n\nDAY 1 - April 7:\n9:00 AM Opening Keynote: 'The Future of Product'\n10:30 AM Track Sessions (4 concurrent tracks)\n12:00 PM Lunch & Networking\n1:00 PM Afternoon Sessions\n4:00 PM Day 1 Closing Panel\n\nDAY 2 - April 8:\n9:00 AM Day 2 Kickoff\n9:30 AM Workshop Sessions\n12:00 PM Lunch Break\n1:00 PM Afternoon Sessions\n3:30 PM Closing Keynote: 'Building Products That Matter'\n4:30 PM Summit Concludes\n\nPlatform: Hopin (no download required). Opens 30 min before each day. All sessions recorded, available 90 days post-event.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5818181818181818,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 1470.0,
+          "match": false
+        },
+        "location": {
+          "similarity": 0.23076923076923078,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 2061,
+    "completion_tokens": 361,
+    "total_tokens": 2422
+  },
+  "cost": 0.011598
+}

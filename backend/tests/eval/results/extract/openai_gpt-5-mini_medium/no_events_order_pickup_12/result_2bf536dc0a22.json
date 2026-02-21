@@ -1,0 +1,112 @@
+{
+  "fixture_name": "no_events/order_pickup_12",
+  "fixture_hash": "f3cb7d203c2dd284bfa06fb44a2d1084a5b6f80adb79d41b1e40e5e8c721697d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:10:48.950934+00:00",
+  "duration_ms": 20558,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:10:28.390032+00:00",
+      "duration_ms": 4
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:10:28.394805+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:10:28.411069+00:00",
+      "duration_ms": 20538
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:10:48.949678+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Real-world Target Drive Up order pickup confirmation - past event, not a calendar item",
+  "difficulty": "easy",
+  "tags": [
+    "order",
+    "receipt",
+    "retail",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Beep beep! Your Drive Up order ending in 4284 was picked up.",
+    "from": "orders@oe.target.com",
+    "has_attachments": true,
+    "attachment_count": 21,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 851774
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Drive Up order picked up (Order #912003258284284)",
+        "start_datetime": "2026-02-08T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": "Walnut Creek",
+        "description": "Target Drive Up order #912003258284284 was picked up on Sun, Feb 8 at Walnut Creek. Items listed in the receipt include: Red Cookie Icing (3), Barbie Eyewear (1), Hot Dog Buns (2), Applegate Grassfed The Great Organic Uncured Beef Hot Dog (2), Fresh Banana (6), Fresh Sweet Corn (1), Fresh Golden Potatoes (1), White Cookie Icing (3). Order identifiers: VCD 758-257-646; scan code: 2-6039-3991-2671-9500-5. Total paid $53.65. (Pickup confirmation email from Target.)",
+        "confidence": 0.95,
+        "importance": "fyi"
+      },
+      {
+        "title": "Order eligible for online support begins",
+        "start_datetime": "2026-02-09T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "The email states: \u201cThis order will be eligible for online support tomorrow.\u201d Based on the email sent date (Sun, Feb 8, 2026), online support eligibility begins on Mon, Feb 9, 2026. Relevant details: you can save time and fix issues like missing or incorrect items online (link/text: \u201cFix an issue\u201d). Order #912003258284284 and identifiers (VCD 758-257-646; scan 2-6039-3991-2671-9500-5) may be needed for support.",
+        "confidence": 0.7,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 4982,
+    "completion_tokens": 1480,
+    "total_tokens": 6462
+  },
+  "cost": 0.0042055
+}

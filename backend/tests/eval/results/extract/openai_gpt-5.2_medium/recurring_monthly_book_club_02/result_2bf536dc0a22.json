@@ -1,0 +1,125 @@
+{
+  "fixture_name": "recurring/monthly_book_club_02",
+  "fixture_hash": "05698819e927f6140af9e77b98d0ce265fda62fd723f264bfa56e7aac16cdafb",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:52.559595+00:00",
+  "duration_ms": 3826,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:48.732880+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:48.732884+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:48.749032+00:00",
+      "duration_ms": 3810
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:52.559181+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Monthly book club meeting invitation",
+  "difficulty": "medium",
+  "tags": [
+    "recurring",
+    "monthly",
+    "book-club",
+    "social"
+  ],
+  "input_summary": {
+    "subject": "Book Club - March Meeting Details",
+    "from": "jessica.moore@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Book Club - The Midnight Library",
+        "start_datetime": "2026-03-05T19:00:00",
+        "end_datetime": "2026-03-05T21:00:00",
+        "location": "42 Reading Lane, Cupertino, CA 95014",
+        "description": "Monthly book club meeting to discuss The Midnight Library by Matt Haig",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Book Club Meeting (March) \u2014 The Midnight Library discussion",
+        "start_datetime": "2026-03-05T19:00:00-08:00",
+        "end_datetime": "2026-03-05T21:00:00-08:00",
+        "all_day": false,
+        "location": "Jessica's house, 42 Reading Lane, Cupertino, CA 95014",
+        "description": "March Book Club meeting.\n\nBook: \"The Midnight Library\" by Matt Haig\nTime: 7:00 PM \u2013 9:00 PM\nHost/Location: Jessica's house, 42 Reading Lane, Cupertino, CA 95014\nNotes: Bring your own beverage; light snacks provided; no spoilers until discussion starts.\nRSVP requested by March 3 (included as a note; not a separate event). April's book pick will be voted on at the meeting.",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6813186813186813,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8089887640449438,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1180,
+    "completion_tokens": 207,
+    "total_tokens": 1387
+  },
+  "cost": 0.004963
+}

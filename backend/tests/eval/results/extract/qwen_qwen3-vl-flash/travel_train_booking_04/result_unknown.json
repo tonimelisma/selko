@@ -1,0 +1,97 @@
+{
+  "fixture_name": "travel/train_booking_04",
+  "fixture_hash": "d2452a946c1eed36c1dae0b9a05f0c435f7d6674ef83529d46ce9e25af2fa6ef",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:36:16.972370+00:00",
+  "duration_ms": 3098,
+  "category": "travel",
+  "description": "Amtrak train reservation",
+  "difficulty": "easy",
+  "tags": [
+    "train",
+    "amtrak",
+    "booking"
+  ],
+  "input_summary": {
+    "subject": "Amtrak Reservation Confirmation",
+    "from": "reservations@amtrak.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151 - Washington to New York",
+        "start_datetime": "2026-03-02T07:05:00",
+        "end_datetime": "2026-03-02T10:00:00",
+        "location": "Union Station, Washington DC",
+        "description": "Amtrak Acela train to New York Penn Station",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151 Trip",
+        "start_datetime": "2026-03-02T07:05:00+00:00",
+        "end_datetime": "2026-03-02T10:00:00+00:00",
+        "location": "Washington, DC (WAS) Union Station to New York, NY (NYP) Penn Station",
+        "description": "Confirmed Amtrak reservation for passenger Jane Smith on Acela 2151 train. Departs Washington, DC Union Station at 7:05 AM on Monday, March 2, 2026. Arrives at New York Penn Station at 10:00 AM. Duration: 2 hours 55 minutes. Class: Business Class, Seat 12A. eTicket available via mobile. Total fare: $189.00. Includes complimentary WiFi, power outlets, and cafe car access. Manage trip at amtrak.com/mytrip.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.59375,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.3917525773195876,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1315,
+    "completion_tokens": 263,
+    "total_tokens": 1578
+  },
+  "cost": 0.00028404
+}

@@ -1,0 +1,53 @@
+{
+  "fixture_name": "same_doctor_appointment_02",
+  "fixture_hash": "c89bf260f3791245af39eee4706e16d67b7857b0adfdef20d6662545990ba040",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:11:18.224068+00:00",
+  "duration_ms": 3527,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:14.696057+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:14.696064+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:14.711275+00:00",
+      "duration_ms": 3512
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:11:18.223781+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same doctor appointment with different description details - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 358,
+    "completion_tokens": 218,
+    "total_tokens": 576
+  },
+  "cost": 0.0005255
+}

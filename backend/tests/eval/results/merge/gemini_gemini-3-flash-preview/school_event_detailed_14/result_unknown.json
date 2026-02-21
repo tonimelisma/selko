@@ -1,0 +1,42 @@
+{
+  "fixture_name": "school_event_detailed_14",
+  "fixture_hash": "b8b88cefaf3b5cadd7959f1a5121c7798f81fc6a9abf014fd4e419a376411e77",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:50:28.944780+00:00",
+  "duration_ms": 0,
+  "description": "School event: newsletter brief mention, then dedicated email with volunteer needs and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "school",
+    "family"
+  ],
+  "expected": {
+    "title": "Spring Science Fair",
+    "start_datetime": "2026-05-14T17:00:00",
+    "end_datetime": "2026-05-14T19:00:00",
+    "all_day": false,
+    "location": "Lincoln Elementary School - Main Gymnasium",
+    "description_contains": [
+      "student projects",
+      "grades 3-5",
+      "volunteers",
+      "awards ceremony",
+      "parking"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "gemini API error: 3 validation errors for Schema\nproperties.end_datetime.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum\nproperties.location.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum\nproperties.description.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

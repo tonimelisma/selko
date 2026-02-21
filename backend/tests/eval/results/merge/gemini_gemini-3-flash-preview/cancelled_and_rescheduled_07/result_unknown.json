@@ -1,0 +1,41 @@
+{
+  "fixture_name": "cancelled_and_rescheduled_07",
+  "fixture_hash": "8cc9ae11b263dfa8552c7e534a4e7a5e636a86fdf61d79d2cf603ccf7fcddf7b",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:50:28.664214+00:00",
+  "duration_ms": 0,
+  "description": "Event cancelled and rescheduled to new date - complex cancellation with new time",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "cancellation",
+    "reschedule"
+  ],
+  "expected": {
+    "title": "CANCELLED: Webinar: Cloud Security Best Practices",
+    "start_datetime": "2026-06-17T15:00:00",
+    "end_datetime": "2026-06-17T16:00:00",
+    "all_day": false,
+    "location": "https://webinar.example.com/cloudsec-new",
+    "description_contains": [
+      "cloud security",
+      "cancelled",
+      "rescheduled",
+      "June 17",
+      "AWS"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "gemini API error: 3 validation errors for Schema\nproperties.end_datetime.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum\nproperties.location.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum\nproperties.description.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,46 @@
+{
+  "fixture_name": "no_events/order_pickup_12",
+  "fixture_hash": "f3cb7d203c2dd284bfa06fb44a2d1084a5b6f80adb79d41b1e40e5e8c721697d",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:39:06.932739+00:00",
+  "duration_ms": 3456,
+  "category": "no_events",
+  "description": "Real-world Target Drive Up order pickup confirmation - past event, not a calendar item",
+  "difficulty": "easy",
+  "tags": [
+    "order",
+    "receipt",
+    "retail",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Beep beep! Your Drive Up order ending in 4284 was picked up.",
+    "from": "orders@oe.target.com",
+    "has_attachments": true,
+    "attachment_count": 21
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "qwen API error: Error code: 400 - {'error': {'message': '<400> InternalError.Algo.InvalidParameter: The image length and width do not meet the model restrictions. [height:1 or width:1 must be larger than 10]', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_parameter_error'}, 'id': 'chatcmpl-098af000-bd83-9d34-bbc5-d749e3a92e63', 'request_id': '098af000-bd83-9d34-bbc5-d749e3a92e63'}"
+  },
+  "auto_score": {
+    "error": "qwen API error: Error code: 400 - {'error': {'message': '<400> InternalError.Algo.InvalidParameter: The image length and width do not meet the model restrictions. [height:1 or width:1 must be larger than 10]', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_parameter_error'}, 'id': 'chatcmpl-098af000-bd83-9d34-bbc5-d749e3a92e63', 'request_id': '098af000-bd83-9d34-bbc5-d749e3a92e63'}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

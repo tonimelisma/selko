@@ -1,0 +1,125 @@
+{
+  "fixture_name": "invitations/birthday_party_adult_02",
+  "fixture_hash": "901ed4de8654a6c6d38a972a38c65dbcf52525c51efddba82d94c61e104d0f97",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:11:50.100722+00:00",
+  "duration_ms": 3468,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:46.630821+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:46.630835+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:46.646462+00:00",
+      "duration_ms": 3453
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:11:50.100319+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Adult milestone birthday party at restaurant",
+  "difficulty": "easy",
+  "tags": [
+    "birthday",
+    "adult",
+    "restaurant",
+    "evening"
+  ],
+  "input_summary": {
+    "subject": "\ud83c\udf89 Surprise! You're Invited to Mark's 40th Birthday Bash!",
+    "from": "jennifer.wilson@outlook.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Mark's 40th Birthday Party",
+        "start_datetime": "2026-03-06T19:30:00",
+        "end_datetime": null,
+        "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
+        "description": "Surprise 40th birthday dinner for Mark",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Surprise 40th Birthday Dinner & Drinks for Mark",
+        "start_datetime": "2026-03-06T19:30:00-05:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
+        "description": "Surprise 40th birthday celebration for Mark (dinner and drinks).\n\nDate: Friday, March 6, 2026\nTime: 7:30 PM (Mark arrives at 7:30 PM)\nImportant: Please arrive by 7:00 PM for the surprise.\nDress code: Smart casual\nRSVP: jennifer.wilson@outlook.com by Feb 28 (not a separate calendar event).",
+        "confidence": 0.93,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5205479452054794,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.93,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1161,
+    "completion_tokens": 189,
+    "total_tokens": 1350
+  },
+  "cost": 0.00467775
+}

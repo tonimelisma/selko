@@ -1,0 +1,125 @@
+{
+  "fixture_name": "recurring/biweekly_one_on_one_03",
+  "fixture_hash": "85d4061104742a1c88d0a1c8b48069cc24bd4faf6938a04609ff327364bde0ce",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:53.825148+00:00",
+  "duration_ms": 6952,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:46.870855+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:46.870863+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:46.886711+00:00",
+      "duration_ms": 6937
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:53.823850+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Bi-weekly recurring 1:1 meeting",
+  "difficulty": "medium",
+  "tags": [
+    "recurring",
+    "biweekly",
+    "1:1",
+    "manager"
+  ],
+  "input_summary": {
+    "subject": "Updated: 1:1 Moving to Bi-Weekly",
+    "from": "mark.chen@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Mark Chen",
+        "start_datetime": "2026-02-13T15:00:00",
+        "end_datetime": "2026-02-13T15:30:00",
+        "location": "Mark's office or Zoom",
+        "description": "Bi-weekly 1:1 meeting",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "1:1 with Mark (bi-weekly)",
+        "start_datetime": "2026-02-13T15:00:00+00:00",
+        "end_datetime": "2026-02-13T15:30:00+00:00",
+        "all_day": false,
+        "location": "Mark's office or Zoom (https://zoom.us/j/markchen1on1)",
+        "description": "Recurring 1:1 meeting with Mark Chen moved to a bi-weekly cadence.\n\nSchedule details:\n- Frequency: Every other Friday (bi-weekly)\n- Time: 3:00 PM \u2013 3:30 PM\n- First meeting: Friday, February 13, 2026\n- Subsequent examples given: Feb 27, March 13, March 27, etc.\n\nLinks:\n- Zoom (same as before): https://zoom.us/j/markchen1on1\n- Agenda doc: https://docs.google.com/d/xxx\n\nNote: Mark indicates the calendar invite has been updated and asks you to accept it when received.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6976744186046512,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.56,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1188,
+    "completion_tokens": 417,
+    "total_tokens": 1605
+  },
+  "cost": 0.007917
+}

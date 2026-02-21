@@ -1,0 +1,171 @@
+{
+  "fixture_name": "recurring/quarterly_review_04",
+  "fixture_hash": "389161a2157346291d6f3b6ffe6e33a8e0436672d4abbf9525665f0ef2097a14",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:20:12.344937+00:00",
+  "duration_ms": 3765,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:20:08.578462+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:20:08.578472+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:20:08.609368+00:00",
+      "duration_ms": 3735
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:20:12.344573+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Quarterly business review meeting",
+  "difficulty": "easy",
+  "tags": [
+    "recurring",
+    "quarterly",
+    "review",
+    "business"
+  ],
+  "input_summary": {
+    "subject": "Q2 2026 Business Review - Calendar Hold",
+    "from": "ops@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q2 2026 Business Review",
+        "start_datetime": "2026-04-15T09:00:00",
+        "end_datetime": "2026-04-15T12:00:00",
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly business review meeting",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q2 2026 Business Review",
+        "start_datetime": "2026-04-15T09:00:00+00:00",
+        "end_datetime": "2026-04-15T12:00:00+00:00",
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly Business Review for leadership team. Agenda includes CEO Opening Remarks, Financial Review, Sales & Revenue Update, Product Roadmap, Operations Update, and Strategic Initiatives.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Q2 2026 Presentation Materials Due",
+        "start_datetime": "2026-04-08T00:00:00+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to submit presentation materials for the Q2 2026 Business Review to ops@company.com.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Q3 2026 Business Review",
+        "start_datetime": "2026-07-15T00:00:00+00:00",
+        "end_datetime": null,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Recurring quarterly business review meeting. Note: Time likely 9:00 AM - 12:00 PM based on Q2 schedule.",
+        "confidence": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Q4 2026 Business Review",
+        "start_datetime": "2026-10-14T00:00:00+00:00",
+        "end_datetime": null,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Recurring quarterly business review meeting. Note: Time likely 9:00 AM - 12:00 PM based on Q2 schedule.",
+        "confidence": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Q1 2027 Business Review",
+        "start_datetime": "2027-01-13T00:00:00+00:00",
+        "end_datetime": null,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Recurring quarterly business review meeting. Note: Time likely 9:00 AM - 12:00 PM based on Q2 schedule.",
+        "confidence": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 854,
+    "completion_tokens": 529,
+    "total_tokens": 1383
+  },
+  "cost": 0.0004455
+}

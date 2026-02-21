@@ -1,0 +1,67 @@
+{
+  "fixture_name": "no_events/social_notification_05",
+  "fixture_hash": "b678a4bf962a9a98c75dca441e423cb81c8e3234d1b0b1a858012ce027117529",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:49.480485+00:00",
+  "duration_ms": 1463,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:48.016236+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:48.016245+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:48.033842+00:00",
+      "duration_ms": 1446
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:49.480163+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Social media notification",
+  "difficulty": "easy",
+  "tags": [
+    "social",
+    "notification",
+    "linkedin",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Sarah Johnson and 5 others viewed your profile",
+    "from": "notifications@linkedin.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1194,
+    "completion_tokens": 85,
+    "total_tokens": 1279
+  },
+  "cost": 9.37e-05
+}

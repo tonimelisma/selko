@@ -1,0 +1,98 @@
+{
+  "fixture_name": "reminder_adds_parking_09",
+  "fixture_hash": "965393a8c920259649bae97933a0380bf59da11a6d58aaab28e30fa7beecf50d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:15:32.149341+00:00",
+  "duration_ms": 1766,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:15:30.382234+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:15:30.382242+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:15:30.398810+00:00",
+      "duration_ms": 1750
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:15:32.149008+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Reminder email adds parking instructions to existing event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "logistics"
+  ],
+  "expected": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description_contains": [
+      "annual checkup",
+      "15 min early",
+      "parking",
+      "insurance card"
+    ]
+  },
+  "actual": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description": "Annual checkup appointment\n\nReminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "annual checkup",
+        "15 min early",
+        "parking",
+        "insurance card"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 610,
+    "completion_tokens": 138,
+    "total_tokens": 748
+  },
+  "cost": 0.0039
+}

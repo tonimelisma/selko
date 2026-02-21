@@ -1,0 +1,32 @@
+{
+  "fixture_name": "same_flight_04",
+  "fixture_hash": "36d8ec55968eb0bed4c10329ced2a82958341c528a9ddb4eb406c781c0217e37",
+  "code_hash": "unknown",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:50:28.372743+00:00",
+  "duration_ms": 0,
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "travel"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "error": "gemini API error: 1 validation error for Schema\nproperties.matched_event_id.type\n  Input should be 'TYPE_UNSPECIFIED', 'STRING', 'NUMBER', 'INTEGER', 'BOOLEAN', 'ARRAY', 'OBJECT' or 'NULL' [type=enum, input_value=['string', 'null'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.12/v/enum"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

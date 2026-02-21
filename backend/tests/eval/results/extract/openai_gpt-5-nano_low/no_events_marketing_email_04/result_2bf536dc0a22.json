@@ -1,0 +1,78 @@
+{
+  "fixture_name": "no_events/marketing_email_04",
+  "fixture_hash": "814fe4ce8cc9ddb5a21a23d235168151a07b07f3c59cd70ab2f28a9a411e0c86",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:48.014730+00:00",
+  "duration_ms": 5351,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:42.662331+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:42.662342+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:42.679060+00:00",
+      "duration_ms": 5335
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:48.014389+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Promotional marketing email with sale dates",
+  "difficulty": "medium",
+  "tags": [
+    "marketing",
+    "sale",
+    "promo",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "\ud83c\udf89 Presidents Day Sale - Up to 50% Off!",
+    "from": "deals@bigstore.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Presidents Day Sale",
+        "start_datetime": "2026-02-14T00:00:00+00:00",
+        "end_datetime": "2026-02-17T23:59:00+00:00",
+        "all_day": true,
+        "location": "Online",
+        "description": "Presidents Day Sale period: up to 50% off everything across categories (furniture, bedding, kitchen, electronics). Sale dates: February 14\u201317, 2026. Online only. Code PRES20 offers additional 20% off. Free shipping on orders over $49. Regular store hours noted for physical locations are not relevant to this online sale.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1257,
+    "completion_tokens": 607,
+    "total_tokens": 1864
+  },
+  "cost": 0.00030565000000000003
+}

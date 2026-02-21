@@ -1,0 +1,41 @@
+{
+  "fixture_name": "inperson_to_virtual_05",
+  "fixture_hash": "2cc8cbe32bb227cfa9cf77404742d0fe0254ceee8f318ceb23dddbc2aca27b5d",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:56:27.431460+00:00",
+  "duration_ms": 9202,
+  "description": "In-person meeting changed to virtual with Zoom link",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "location-update",
+    "virtual",
+    "modality-change"
+  ],
+  "expected": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description_contains": [
+      "Q1 results",
+      "ABC Corp",
+      "moved to Zoom",
+      "virtual format"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "Event merge failed: invalid JSON response: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 357,
+    "completion_tokens": 880,
+    "total_tokens": 1237
+  },
+  "cost": 0.0
+}

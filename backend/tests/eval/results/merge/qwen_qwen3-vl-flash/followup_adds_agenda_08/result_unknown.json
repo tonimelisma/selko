@@ -1,0 +1,79 @@
+{
+  "fixture_name": "followup_adds_agenda_08",
+  "fixture_hash": "e1ada744b8d8c54c831f27c276c4a73e3fdd69b9e7722c9443c351f763126cc8",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:39:58.644940+00:00",
+  "duration_ms": 2026,
+  "description": "Follow-up email adds agenda details to existing meeting",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "agenda"
+  ],
+  "expected": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description_contains": [
+      "quarterly",
+      "financial review",
+      "product roadmap",
+      "breakfast provided"
+    ]
+  },
+  "actual": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description": "Quarterly board meeting\nAgenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "quarterly",
+        "financial review",
+        "product roadmap",
+        "breakfast provided"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 520,
+    "completion_tokens": 126,
+    "total_tokens": 646
+  },
+  "cost": 0.00012728000000000001
+}

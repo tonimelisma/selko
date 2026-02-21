@@ -1,0 +1,32 @@
+{
+  "fixture_name": "same_flight_04",
+  "fixture_hash": "36d8ec55968eb0bed4c10329ced2a82958341c528a9ddb4eb406c781c0217e37",
+  "code_hash": "unknown",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:54:54.853380+00:00",
+  "duration_ms": 2470,
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "travel"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "error": "Event comparison failed: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 405,
+    "completion_tokens": 221,
+    "total_tokens": 626
+  },
+  "cost": 0.0
+}

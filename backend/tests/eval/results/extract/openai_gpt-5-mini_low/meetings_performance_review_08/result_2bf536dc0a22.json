@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/performance_review_08",
+  "fixture_hash": "fca028efd0fe6c440e7cb4b79c7586a471f65b34a3f42d7ebd6744e7ee112273",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:07:12.146222+00:00",
+  "duration_ms": 10700,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:01.445447+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:01.445454+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:01.461477+00:00",
+      "duration_ms": 10684
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:07:12.145750+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Annual performance review scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "performance",
+    "review",
+    "hr",
+    "annual"
+  ],
+  "input_summary": {
+    "subject": "Your Annual Performance Review - Scheduled",
+    "from": "manager@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Performance Review with Robert Chen",
+        "start_datetime": "2026-03-05T15:00:00",
+        "end_datetime": "2026-03-05T16:00:00",
+        "location": "Room 512",
+        "description": "Annual performance review meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Performance Review - with Robert Chen",
+        "start_datetime": "2026-03-05T15:00:00+00:00",
+        "end_datetime": "2026-03-05T16:00:00+00:00",
+        "all_day": false,
+        "location": "My Office (Room 512)",
+        "description": "Performance review meeting scheduled by Robert Chen (Engineering Director).\nDate: Thursday, March 5, 2026\nTime: 3:00 PM - 4:00 PM\nLocation: My Office (Room 512)\nScope: Annual review covering March 2025 to February 2026.\nBefore the meeting (action items):\n- Complete your self-assessment in Workday by March 1, 2026.\n- Reflect on key accomplishments.\n- Think about areas for growth and development.\n- Prepare questions about career progression.\nDuring the meeting:\n- Discuss performance and contributions.\n- Review goals and set new ones.\n- Talk about development opportunities and compensation (if applicable).\nNote: The self-assessment deadline (March 1) is noted above and should be completed prior to the meeting.",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.9767441860465116,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5714285714285714,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1196,
+    "completion_tokens": 460,
+    "total_tokens": 1656
+  },
+  "cost": 0.001219
+}

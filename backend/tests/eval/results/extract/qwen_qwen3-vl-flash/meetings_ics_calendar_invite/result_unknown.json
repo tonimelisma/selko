@@ -1,0 +1,57 @@
+{
+  "fixture_name": "meetings/ics_calendar_invite",
+  "fixture_hash": "ee24b291405da1a708063eed06c849a8cc394cd5e9d093528b9154a438e688d1",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:35:41.987781+00:00",
+  "duration_ms": 978,
+  "category": "meetings",
+  "description": "Meeting with ICS calendar file attachment",
+  "difficulty": "medium",
+  "tags": [
+    "meeting",
+    "attachment",
+    "ics",
+    "calendar"
+  ],
+  "input_summary": {
+    "subject": "Meeting Invitation: Product Launch Planning",
+    "from": "john.smith@example.com",
+    "has_attachments": true,
+    "attachment_count": 1
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Product Launch Planning Meeting",
+        "start_datetime": "2026-03-15T14:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "Innovation Hub, Room 501",
+        "description": "Meeting to finalize Q2 product launch strategy",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1097,
+    "completion_tokens": 15,
+    "total_tokens": 1112
+  },
+  "cost": 9.796e-05
+}

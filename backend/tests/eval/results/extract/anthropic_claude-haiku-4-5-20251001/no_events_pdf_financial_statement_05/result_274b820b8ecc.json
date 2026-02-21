@@ -1,0 +1,45 @@
+{
+  "fixture_name": "no_events/pdf_financial_statement_05",
+  "fixture_hash": "2c0546b61f56acd57d1232a4085041545e480e64ddc50dd7e840e0cbfbfc401d",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:23:56.377693+00:00",
+  "duration_ms": 177,
+  "category": "no_events",
+  "description": "HOA financial statement PDF with dates and amounts - negative test (no events)",
+  "difficulty": "medium",
+  "tags": [
+    "no_events",
+    "pdf",
+    "financial",
+    "negative-test",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Your Walnut Heights Statement",
+    "from": "billing@walnutheightshoa.com",
+    "has_attachments": true,
+    "attachment_count": 1
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "anthropic API error: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': \"messages.0.content.2.image.source.base64.media_type: Input should be 'image/jpeg', 'image/png', 'image/gif' or 'image/webp'\"}, 'request_id': 'req_011CYE2gNarfDyo4VhjfwiwX'}"
+  },
+  "auto_score": {
+    "error": "anthropic API error: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': \"messages.0.content.2.image.source.base64.media_type: Input should be 'image/jpeg', 'image/png', 'image/gif' or 'image/webp'\"}, 'request_id': 'req_011CYE2gNarfDyo4VhjfwiwX'}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

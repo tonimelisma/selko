@@ -1,0 +1,110 @@
+{
+  "fixture_name": "invitations/baby_shower_04",
+  "fixture_hash": "09ebc91ae47d2f0d1a34b20353211dcfaca1fa2586246e8b29f97fb57cd9394f",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:20:29.362747+00:00",
+  "duration_ms": 2393,
+  "category": "invitations",
+  "description": "Baby shower invitation with brunch timing",
+  "difficulty": "easy",
+  "tags": [
+    "baby-shower",
+    "brunch",
+    "weekend"
+  ],
+  "input_summary": {
+    "subject": "Baby Shower for Amanda!",
+    "from": "kelly.martinez@yahoo.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amanda's Baby Shower",
+        "start_datetime": "2026-03-15T11:00:00",
+        "end_datetime": "2026-03-15T14:00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch for Amanda Rodriguez",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Baby Shower for Amanda Rodriguez",
+        "start_datetime": "2026-03-15T11:00:00",
+        "end_datetime": "2026-03-15T14:00:00",
+        "location": "Kelly's home, 789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch honoring mom-to-be Amanda Rodriguez. Light brunch will be served. Registry items available at Amazon & Target. It's a boy! RSVP required to Kelly Martinez at kelly.martinez@yahoo.com or (512) 555-8910 by March 8th, 2026.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Baby Shower RSVP Deadline",
+        "start_datetime": "2026-03-08T23:59:59",
+        "end_datetime": null,
+        "location": null,
+        "description": "RSVP deadline for Amanda Rodriguez's baby shower. Respond to Kelly Martinez at kelly.martinez@yahoo.com or (512) 555-8910.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.4230769230769231,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8292682926829268,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1396,
+    "completion_tokens": 330,
+    "total_tokens": 1726
+  },
+  "cost": 0.0024368000000000003
+}

@@ -1,0 +1,46 @@
+{
+  "fixture_name": "no_events/password_reset_06",
+  "fixture_hash": "672621788bd627e829c9fea63434085ba64d213b1f6306a5246636b0a738619f",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:53:08.272129+00:00",
+  "duration_ms": 2487,
+  "category": "no_events",
+  "description": "Password reset request email",
+  "difficulty": "easy",
+  "tags": [
+    "security",
+    "password",
+    "account",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Reset your password",
+    "from": "security@service.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 725,
+    "completion_tokens": 146,
+    "total_tokens": 871
+  },
+  "cost": 0.0
+}

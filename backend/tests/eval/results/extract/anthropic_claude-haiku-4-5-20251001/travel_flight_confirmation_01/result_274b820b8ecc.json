@@ -1,0 +1,146 @@
+{
+  "fixture_name": "travel/flight_confirmation_01",
+  "fixture_hash": "9fb6719c7697b45ceed9594f84672335a33a38b6e202ea133631d70ef4f79bad",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:21:54.131583+00:00",
+  "duration_ms": 5901,
+  "category": "travel",
+  "description": "Flight booking confirmation with departure and arrival times",
+  "difficulty": "medium",
+  "tags": [
+    "flight",
+    "airline",
+    "booking",
+    "multiple-events"
+  ],
+  "input_summary": {
+    "subject": "Your Flight Confirmation - United Airlines",
+    "from": "reservations@united.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Flight UA 1234 - SFO to JFK",
+        "start_datetime": "2026-03-13T08:00:00",
+        "end_datetime": "2026-03-13T16:35:00",
+        "location": "San Francisco International Airport (SFO)",
+        "description": "United Airlines flight to New York JFK",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight UA 5678 - JFK to SFO",
+        "start_datetime": "2026-03-15T19:00:00",
+        "end_datetime": "2026-03-15T22:15:00",
+        "location": "John F. Kennedy International Airport (JFK)",
+        "description": "United Airlines return flight to San Francisco",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "United Airlines Flight UA 1234 - San Francisco to New York",
+        "start_datetime": "2026-03-13T08:00:00",
+        "end_datetime": "2026-03-13T16:35:00",
+        "location": "San Francisco (SFO) to New York JFK (JFK)",
+        "description": "Outbound flight confirmation. Flight UA 1234, Confirmation Number ABC123. Passenger: JOHN DOE. Depart San Francisco (SFO) at 8:00 AM, arrive New York JFK at 4:35 PM. Duration: 5 hours 35 minutes. Economy class (K), Seat 24A (Window). Ticket Number: 0167891234567.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "United Airlines Flight UA 5678 - New York to San Francisco",
+        "start_datetime": "2026-03-15T19:00:00",
+        "end_datetime": "2026-03-15T22:15:00",
+        "location": "New York JFK (JFK) to San Francisco (SFO)",
+        "description": "Return flight confirmation. Flight UA 5678, Confirmation Number ABC123. Passenger: JOHN DOE. Depart New York JFK at 7:00 PM, arrive San Francisco (SFO) at 10:15 PM. Duration: 6 hours 15 minutes. Economy class (K), Seat 18F (Window). Ticket Number: 0167891234567.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5882352941176471,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.4634146341463415,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5882352941176471,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.2619047619047619,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1566,
+    "completion_tokens": 445,
+    "total_tokens": 2011
+  },
+  "cost": 0.0030328
+}

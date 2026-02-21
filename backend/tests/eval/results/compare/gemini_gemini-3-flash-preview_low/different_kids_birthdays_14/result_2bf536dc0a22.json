@@ -1,0 +1,51 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "fixture_hash": "075709b179cbc1e3166a98740f4d24696c9730ae203ffc45bbc398a047bdb529",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:34.447088+00:00",
+  "duration_ms": 662,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:33.783751+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:33.783758+00:00",
+      "duration_ms": 37
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:33.821413+00:00",
+      "duration_ms": 625
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:34.446843+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "error": "Failed after 1 retries (rate limited)"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

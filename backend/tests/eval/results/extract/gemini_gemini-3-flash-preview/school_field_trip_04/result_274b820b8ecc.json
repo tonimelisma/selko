@@ -1,0 +1,134 @@
+{
+  "fixture_name": "school/field_trip_04",
+  "fixture_hash": "68100ecd7dd1cda16919e3ae833fce6fbcada86581ce1317428caddc02ad5ddf",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:20:01.435525+00:00",
+  "duration_ms": 3434,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:19:57.999076+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:19:57.999252+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:19:58.030228+00:00",
+      "duration_ms": 3404
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:20:01.434539+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "School field trip permission and details",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "field-trip",
+    "permission",
+    "kids"
+  ],
+  "input_summary": {
+    "subject": "Field Trip Permission - Science Museum (March 12)",
+    "from": "mrjohnson@oakridgeelementary.edu",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "text"
+    ],
+    "total_attachment_bytes": 1360
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Field Trip - California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00",
+        "end_datetime": "2026-03-12T15:00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th grade field trip to science museum with guided tour and planetarium show",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Field Trip: California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00+00:00",
+        "end_datetime": "2026-03-12T15:00:00+00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th Grade field trip to the California Science Museum. Schedule includes: Depart school at 8:30 AM, Museum tour at 9:30 AM, Lunch (bring bag lunch) at 11:30 AM, Planetarium show at 12:15 PM, Depart museum at 2:00 PM, and return to school by 3:00 PM. Students should bring a bag lunch, water bottle, walking shoes, and a light jacket. Cost is $15.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Deadline: Field Trip Payment and Permission Form",
+        "start_datetime": "2026-03-05T23:59:59+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to submit the $15 payment and the signed permission form for the California Science Museum field trip.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.96,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 919,
+    "completion_tokens": 297,
+    "total_tokens": 1216
+  },
+  "cost": 0.00031604999999999996
+}

@@ -1,0 +1,125 @@
+{
+  "fixture_name": "invitations/engagement_party_10",
+  "fixture_hash": "b84e2b5c53712ebfdb5d5c07e18725c88abd8a5f94048b25648cda9d69cae06c",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:06:51.851583+00:00",
+  "duration_ms": 5693,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:06:46.156508+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:06:46.156523+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:06:46.173150+00:00",
+      "duration_ms": 5677
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:06:51.851112+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Engagement celebration at winery",
+  "difficulty": "medium",
+  "tags": [
+    "engagement",
+    "winery",
+    "afternoon",
+    "outdoor"
+  ],
+  "input_summary": {
+    "subject": "Join Us! Rachel & David's Engagement Celebration",
+    "from": "susan.miller@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Rachel & David's Engagement Party",
+        "start_datetime": "2026-04-04T16:00:00",
+        "end_datetime": null,
+        "location": "Stonegate Winery, 7801 Silverado Trail, Napa, CA 94558",
+        "description": "Engagement celebration with wine tasting and hors d'oeuvres at winery",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Rachel & David's Engagement Celebration",
+        "start_datetime": "2026-04-04T16:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Stonegate Winery, 7801 Silverado Trail, Napa, CA 94558",
+        "description": "Rachel & David invite you to celebrate their engagement on Saturday, April 4, 2026 at 4:00 PM at Stonegate Winery, 7801 Silverado Trail, Napa, CA 94558. Join for wine tasting, hors d'oeuvres, and sunset views in the vineyard. Please RSVP to susan.miller@gmail.com by March 25th. (Invitation sent by Susan Miller.)",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8333333333333334,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1122,
+    "completion_tokens": 368,
+    "total_tokens": 1490
+  },
+  "cost": 0.0010165
+}

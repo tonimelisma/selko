@@ -1,0 +1,302 @@
+{
+  "fixture_name": "meetings/one_on_one_01",
+  "fixture_hash": "710658fb824d2ee56efb4b3758dcc8bbdf1c2ad476ec8f5576bb171bd000dc26",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "thinking": "none",
+  "run_at": "2026-02-21T04:05:02.396085+00:00",
+  "duration_ms": 29612,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T04:04:32.266803+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T04:04:32.781379+00:00",
+      "duration_ms": 229
+    },
+    "api_call": {
+      "started_at": "2026-02-21T04:04:33.010780+00:00",
+      "duration_ms": 29383
+    },
+    "scoring": {
+      "started_at": "2026-02-21T04:05:02.394417+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Manager 1:1 meeting invitation",
+  "difficulty": "easy",
+  "tags": [
+    "1:1",
+    "manager",
+    "work",
+    "calendar-invite"
+  ],
+  "input_summary": {
+    "subject": "1:1 with Alex - Weekly Sync",
+    "from": "alex.rivera@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Alex Rivera",
+        "start_datetime": "2026-02-03T14:00:00",
+        "end_datetime": "2026-02-03T14:30:00",
+        "location": "Room 401 or Zoom",
+        "description": "Weekly 1:1 sync meeting",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: Invalid control character at: line 9 column 76 (char 285)"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: Invalid control character at: line 9 column 76 (char 285)"
+  },
+  "tokens": {
+    "prompt_tokens": 840,
+    "completion_tokens": 2236,
+    "total_tokens": 3076
+  },
+  "cost": 0.0,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3235
+      },
+      {
+        "type": "text",
+        "length": 403
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"1:1\u4f1a\u8bae - \u5468\u5ea6\u540c\u6b65\",\n      \"start_date_time\": \"2026-02-03T14:00:00\",\n      \"end_date_time\": \"2026-02-03T14:30:00\",\n      \"location\": \"\u6211\u7684\u529e\u516c\u5ba4\uff08\u623f\u95f4401\uff09\u6216Zoom\",\n      \"description\": \"I'd like to set up our weekly 1:1 meeting. How about:\nWhen: Every Tuesday, starting February 3rd\nTime: 2:00 PM - 2:30 PM\nWhere: My office (Room 401) or Zoom\n\nAgenda:\n- Project updates\n- Blockers and support needed\n- Career development\n- Open discussion\n\nLet me know if this time works for you or suggest an alternative.\",\n      \"all_day\": false,\n      \"confidence_score\": 0.9,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "fixture_name": "no_events/survey_request_09",
+  "fixture_hash": "97d4d69c1f8a766a7b1e45197110e171e26de77d34474f8d79a21eb491b85726",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:05:25.186081+00:00",
+  "duration_ms": 21167,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:05:04.017257+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:05:04.017264+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:05:04.033678+00:00",
+      "duration_ms": 21151
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:05:25.185321+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Customer satisfaction survey request",
+  "difficulty": "easy",
+  "tags": [
+    "survey",
+    "feedback",
+    "customer-service",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "How was your recent experience? Quick survey inside",
+    "from": "feedback@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Survey closes",
+        "start_datetime": "2026-02-24T00:00:00+00:00",
+        "end_datetime": "2026-02-24T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Survey closes on February 24, 2026. The email invites the recipient to take a quick survey (link labeled 'Take Survey - 2 minutes') and notes a chance to win a $50 gift card upon completion.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1180,
+    "completion_tokens": 2689,
+    "total_tokens": 3869
+  },
+  "cost": 0.0011346000000000001
+}

@@ -1,0 +1,98 @@
+{
+  "fixture_name": "conferences/webinar_02",
+  "fixture_hash": "4090a5f785c4a0a0ca754cd0e434eab54e2b8d2c59b2d48c1d6b7b138c06016d",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:36:59.134510+00:00",
+  "duration_ms": 2606,
+  "category": "conferences",
+  "description": "Online webinar registration confirmation",
+  "difficulty": "easy",
+  "tags": [
+    "webinar",
+    "online",
+    "virtual",
+    "tech"
+  ],
+  "input_summary": {
+    "subject": "You're Registered: AI in Practice Webinar",
+    "from": "webinars@learningplatform.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "AI in Practice Webinar",
+        "start_datetime": "2026-02-24T13:00:00",
+        "end_datetime": "2026-02-24T14:30:00",
+        "location": "Zoom",
+        "description": "Webinar on AI implementation strategies with Dr. Maria Santos",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "AI in Practice Webinar",
+        "start_datetime": "2026-02-24T13:00:00-05:00",
+        "end_datetime": "2026-02-24T14:30:00-05:00",
+        "location": "Zoom Webinar",
+        "description": "Live webinar titled 'AI in Practice: From Theory to Deployment' on Tuesday, February 24, 2026, from 1:00 PM to 2:30 PM EST. Presenter: Dr. Maria Santos, Chief AI Officer at TechCorp. Topics include real-world AI implementation strategies, common pitfalls, case studies from Fortune 500 companies, and Q&A. Join via Zoom link: https://zoom.us/j/webinar2026. Meeting ID: 456 789 0123, Passcode: AIWebinar. Recording will be sent within 24 hours if unable to attend live.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1365,
+    "completion_tokens": 267,
+    "total_tokens": 1632
+  },
+  "cost": 0.00029076
+}

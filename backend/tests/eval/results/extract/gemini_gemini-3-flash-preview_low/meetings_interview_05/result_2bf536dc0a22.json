@@ -1,0 +1,76 @@
+{
+  "fixture_name": "meetings/interview_05",
+  "fixture_hash": "3c8a7bfeed0e8a8065f3fa4f1bbf605a98dd3917303ac4dcd8830a49c47ac05d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:12.050653+00:00",
+  "duration_ms": 118,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:11.931204+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:11.931217+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:11.962170+00:00",
+      "duration_ms": 88
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:12.050410+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Job interview scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "interview",
+    "job",
+    "hr",
+    "hiring"
+  ],
+  "input_summary": {
+    "subject": "Interview Confirmation - Senior Software Engineer Position",
+    "from": "recruiting@innovatetech.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Interview - InnovateTech Senior Software Engineer",
+        "start_datetime": "2026-02-12T13:00:00",
+        "end_datetime": "2026-02-12T15:00:00",
+        "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
+        "description": "On-site interview for Senior Software Engineer position",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

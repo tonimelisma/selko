@@ -1,0 +1,98 @@
+{
+  "fixture_name": "travel/hotel_reservation_02",
+  "fixture_hash": "c827a3e01d153d43c447d3d509e08063c912f8831f4f7cac8097be30bda809e9",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "run_at": "2026-02-17T17:34:40.516681+00:00",
+  "duration_ms": 19732,
+  "category": "travel",
+  "description": "Hotel booking confirmation with check-in/check-out",
+  "difficulty": "medium",
+  "tags": [
+    "hotel",
+    "booking",
+    "checkin",
+    "checkout"
+  ],
+  "input_summary": {
+    "subject": "Reservation Confirmed - Marriott Times Square",
+    "from": "confirm@marriott.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hotel Stay - Marriott Times Square",
+        "start_datetime": "2026-03-13T15:00:00",
+        "end_datetime": "2026-03-15T11:00:00",
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "2-night hotel stay, King Room with City View",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Hotel stay: Marriott Times Square reservation",
+        "start_datetime": "2026-03-13T15:00:00-04:00",
+        "end_datetime": "2026-03-15T11:00:00-04:00",
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "Reservation Confirmed: Marriott Times Square. Confirmation Number: 89XYZ456. Guest: John Doe. Check-in: Friday, March 13, 2026 from 3:00 PM. Check-out: Sunday, March 15, 2026 by 11:00 AM. Room Type: King Room, City View. Nights: 2. Guests: 1 Adult. Rate Details: Room Rate: $299.00/night; Taxes & Fees: $89.70; TOTAL: $687.70. Payment: Visa ending in 1234. Bonvoy Points Earned: 1,196. Mobile Check-in available via Marriott app. Need to modify? Visit marriott.com/reservations",
+        "confidence": 0.92,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.810126582278481,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1049,
+    "completion_tokens": 2428,
+    "total_tokens": 3477
+  },
+  "cost": 0.00102365
+}
