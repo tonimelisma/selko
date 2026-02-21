@@ -1,0 +1,112 @@
+{
+  "fixture_name": "same_flight_04",
+  "fixture_hash": "36d8ec55968eb0bed4c10329ced2a82958341c528a9ddb4eb406c781c0217e37",
+  "code_hash": "30cd65771a20",
+  "prompt_hash": "a4676fd5ac0b",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T19:02:33.419427+00:00",
+  "duration_ms": 2187,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T19:02:31.227540+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T19:02:31.227548+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T19:02:31.243866+00:00",
+      "duration_ms": 2171
+    },
+    "scoring": {
+      "started_at": "2026-02-21T19:02:33.415396+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "travel"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 444,
+    "completion_tokens": 85,
+    "total_tokens": 529
+  },
+  "cost": 0.000281,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1213,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Flight to Denver - UA 1234\n- Start: 2026-05-10T08:15:00\n- End: 2026-05-10T11:45:00\n- Location: SFO to DEN\n- Description: United Airlines confirmation #ABC123XYZ. Seat 12A.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Pack for Trip\n   - Start: 2026-05-09T20:00:00\n   - End: 2026-05-09T21:00:00\n   - Location: Home\n   - Description: Pack bags for Denver\n\n2. Event ID: event-002\n   - Title: UA1234 - San Francisco to Denver\n   - Start: 2026-05-10T08:15:00\n   - End: 2026-05-10T11:45:00\n   - Location: SFO Terminal 3\n   - Description: Flight itinerary - departs 8:15am, arrives 11:45am MT\n\n3. Event ID: event-003\n   - Title: Hotel Check-in Denver\n   - Start: 2026-05-10T15:00:00\n   - End: 2026-05-10T15:30:00\n   - Location: Hyatt Regency Denver\n   - Description: Reservation #456789\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-002\",\"reasoning\":\"Matches event-002: same flight number (UA 1234 / UA1234), identical start and end times (2026-05-10 08:15\u201311:45), and same route (San Francisco/SFO to Denver), so they refer to the same real-world flight.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

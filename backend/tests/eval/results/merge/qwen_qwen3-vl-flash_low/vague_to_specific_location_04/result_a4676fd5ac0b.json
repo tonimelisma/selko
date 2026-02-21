@@ -1,0 +1,168 @@
+{
+  "fixture_name": "vague_to_specific_location_04",
+  "fixture_hash": "4fb757d48d855190a46748ba65af249c8d478924ad06625312e145cd0e7e3aee",
+  "code_hash": "30cd65771a20",
+  "prompt_hash": "a4676fd5ac0b",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T19:03:48.774083+00:00",
+  "duration_ms": 14112,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T19:03:34.656891+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T19:03:34.656899+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T19:03:34.671360+00:00",
+      "duration_ms": 14098
+    },
+    "scoring": {
+      "started_at": "2026-02-21T19:03:48.769555+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Vague location updated to specific address - prefer specific location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "location-update",
+    "specificity"
+  ],
+  "expected": {
+    "title": "Team Dinner",
+    "start_datetime": "2026-05-22T19:00:00",
+    "end_datetime": "2026-05-22T21:00:00",
+    "all_day": false,
+    "location": "Pasta Bella, 456 Main St",
+    "description_contains": [
+      "team celebration",
+      "reservation confirmed",
+      "8 people"
+    ]
+  },
+  "actual": {
+    "title": "Team Dinner",
+    "start_datetime": "2026-05-22T19:00:00",
+    "end_datetime": "2026-05-22T21:00:00",
+    "all_day": false,
+    "location": "Pasta Bella, 456 Main St",
+    "description": "Team celebration dinner Reservation confirmed at Pasta Bella for 8 people",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "team celebration",
+        "reservation confirmed",
+        "8 people"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 529,
+    "completion_tokens": 2166,
+    "total_tokens": 2695
+  },
+  "cost": 0.0015152,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1187,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Team Dinner\n- Start: 2026-05-22T19:00:00\n- End: 2026-05-22T21:00:00\n- All Day: False\n- Location: Italian restaurant downtown\n- Description: Team celebration dinner\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Team Dinner\n- Start: 2026-05-22T19:00:00\n- End: 2026-05-22T21:00:00\n- All Day: False\n- Location: Pasta Bella, 456 Main St\n- Description: Reservation confirmed at Pasta Bella for 8 people\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n    \"title\": \"Team Dinner\",\n    \"start_datetime\": \"2026-05-22T19:00:00\",\n    \"end_datetime\": \"2026-05-22T21:00:00\",\n    \"all_day\": false,\n    \"location\": \"Pasta Bella, 456 Main St\",\n    \"description\": \"Team celebration dinner Reservation confirmed at Pasta Bella for 8 people\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

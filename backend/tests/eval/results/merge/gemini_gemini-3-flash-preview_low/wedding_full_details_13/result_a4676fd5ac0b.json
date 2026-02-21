@@ -1,0 +1,211 @@
+{
+  "fixture_name": "wedding_full_details_13",
+  "fixture_hash": "6b1539a71a03952c225842b2271c0caac67e3133aead651aa0cce93e0653071c",
+  "code_hash": "30cd65771a20",
+  "prompt_hash": "a4676fd5ac0b",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T19:03:21.864373+00:00",
+  "duration_ms": 1550,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T19:03:20.307306+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T19:03:20.307313+00:00",
+      "duration_ms": 28
+    },
+    "api_call": {
+      "started_at": "2026-02-21T19:03:20.336230+00:00",
+      "duration_ms": 1522
+    },
+    "scoring": {
+      "started_at": "2026-02-21T19:03:21.858302+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Wedding: save-the-date has basic info, formal invitation adds full venue details and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "wedding",
+    "social"
+  ],
+  "expected": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description_contains": [
+      "wedding celebration",
+      "ceremony",
+      "reception",
+      "cocktail attire",
+      "hotel block"
+    ]
+  },
+  "actual": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description": "Save the date! Wedding celebration for Sarah and Michael Ceremony at 4pm, reception follows at 5:30pm. Cocktail attire. RSVP by June 15. Hotel block available under 'Chen-Anderson wedding'.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "wedding celebration",
+        "ceremony",
+        "reception",
+        "cocktail attire",
+        "hotel block"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 432,
+    "completion_tokens": 135,
+    "total_tokens": 567
+  },
+  "cost": 0.00014580000000000002,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1342,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-07-25T00:00:00\n- End: 2026-07-25T23:59:59\n- All Day: True\n- Location: Seaside Resort\n- Description: Save the date! Wedding celebration for Sarah and Michael\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-07-25T16:00:00\n- End: 2026-07-25T22:00:00\n- All Day: False\n- Location: Seaside Resort - Garden Pavilion, 123 Ocean Drive\n- Description: Ceremony at 4pm, reception follows at 5:30pm. Cocktail attire. RSVP by June 15. Hotel block available under 'Chen-Anderson wedding'.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\"title\":\"Sarah & Michael's Wedding\",\"start_datetime\":\"2026-07-25T16:00:00\",\"end_datetime\":\"2026-07-25T22:00:00\",\"all_day\":false,\"location\":\"Seaside Resort - Garden Pavilion, 123 Ocean Drive\",\"description\":\"Save the date! Wedding celebration for Sarah and Michael Ceremony at 4pm, reception follows at 5:30pm. Cocktail attire. RSVP by June 15. Hotel block available under 'Chen-Anderson wedding'.\",\"importance\":\"action_required\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

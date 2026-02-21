@@ -1,0 +1,450 @@
+{
+  "fixture_name": "travel/travel_itinerary_06",
+  "fixture_hash": "62d3fcaaf95126b9bb7dee2f9c1028091dede49daccfcf156f8f35c7ef1f93d3",
+  "code_hash": "30cd65771a20",
+  "prompt_hash": "a4676fd5ac0b",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T19:01:57.851371+00:00",
+  "duration_ms": 21837,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T19:01:36.006750+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T19:01:36.006763+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T19:01:36.022527+00:00",
+      "duration_ms": 21821
+    },
+    "scoring": {
+      "started_at": "2026-02-21T19:01:57.843629+00:00",
+      "duration_ms": 1
+    }
+  },
+  "category": "travel",
+  "description": "Complete travel itinerary with multiple events",
+  "difficulty": "hard",
+  "tags": [
+    "itinerary",
+    "multiple-events",
+    "complex",
+    "multi-day"
+  ],
+  "input_summary": {
+    "subject": "Your Complete Travel Itinerary - Tokyo Trip",
+    "from": "bookings@travelagency.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "events": [
+      {
+        "title": "Flight JL 001 - SFO to Tokyo",
+        "start_datetime": "2026-04-10T11:30:00",
+        "end_datetime": null,
+        "location": "San Francisco International Airport (SFO)",
+        "description": "Japan Airlines flight to Tokyo Narita",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Airport Transfer - Narita to Shinjuku",
+        "start_datetime": "2026-04-11T16:30:00",
+        "end_datetime": "2026-04-11T18:30:00",
+        "location": "Narita Airport",
+        "description": "Limousine bus to Shinjuku Bus Terminal",
+        "all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel Stay - Park Hyatt Tokyo",
+        "start_datetime": "2026-04-11T15:00:00",
+        "end_datetime": "2026-04-18T12:00:00",
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo",
+        "description": "7-night hotel stay",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight JL 002 - Tokyo to SFO",
+        "start_datetime": "2026-04-18T17:00:00",
+        "end_datetime": null,
+        "location": "Tokyo Narita Airport (NRT)",
+        "description": "Japan Airlines return flight to San Francisco",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Outbound Flight to Tokyo",
+        "start_datetime": "2026-04-10T11:30:00",
+        "end_datetime": "2026-04-11T03:30:00",
+        "all_day": false,
+        "location": null,
+        "description": "Japan Airlines JL 001 flight. Depart San Francisco (SFO) 11:30 AM, arrive Tokyo Narita (NRT) 3:30 PM (April 11). Duration: 11h 0m. Seat: 32K.",
+        "confidence": 0.95,
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Airport Transfer to Shinjuku",
+        "start_datetime": "2026-04-11T16:30:00",
+        "end_datetime": "2026-04-11T18:30:00",
+        "all_day": false,
+        "location": "Narita Airport to Shinjuku Bus Terminal",
+        "description": "Limousine Bus - Narita to Shinjuku. Depart 4:30 PM from Narita Airport, arrive ~6:30 PM at Shinjuku Bus Terminal. Prepaid ticket, show email.",
+        "confidence": 0.9,
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Hotel Check-in at Park Hyatt Tokyo",
+        "start_datetime": "2026-04-11T15:00:00",
+        "end_datetime": "2026-04-18T12:00:00",
+        "all_day": false,
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055",
+        "description": "Check-in from 3:00 PM at Park Hyatt Tokyo. 7-night stay (April 11-18). Confirmation: 12345PH.",
+        "confidence": 0.95,
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Hotel Check-out at Park Hyatt Tokyo",
+        "start_datetime": "2026-04-18T12:00:00",
+        "end_datetime": "2026-04-18T12:00:00",
+        "all_day": false,
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055",
+        "description": "Check-out by 12:00 PM on April 18. Return flight departs at 5:00 PM.",
+        "confidence": 0.9,
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Return Flight to San Francisco",
+        "start_datetime": "2026-04-18T17:00:00",
+        "end_datetime": "2026-04-18T22:30:00",
+        "all_day": false,
+        "location": null,
+        "description": "Japan Airlines JL 002 flight. Depart Tokyo Narita (NRT) 5:00 PM, arrive San Francisco (SFO) 10:30 AM (same day). Duration: 9h 30m. Seat: 31K.",
+        "confidence": 0.95,
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5769230769230769,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.8615384615384616,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5283018867924528,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.7619047619047619,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9302325581395349,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.4482758620689655,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1999,
+    "completion_tokens": 2952,
+    "total_tokens": 4951
+  },
+  "cost": 0.00216728,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3848,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Your Complete Travel Itinerary - Tokyo Trip\n- From: Premier Travel Agency <bookings@travelagency.com>\n- Date Sent: 2026-02-15T11:30:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Confidence score (0.0-1.0) based on clarity of information\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Include uncertainty in confidence scores (e.g., 0.7 if time is ambiguous)\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events (do NOT extract these):**\n\u2717 Commercial transactions: receipts, shipping notifications, payment reminders, subscription renewals, promotional offers\n\u2717 Administrative notices: terms of service updates, privacy policies, password resets, account statements, survey requests\n\u2717 Content without actionable dates: newsletters, social media notifications, general announcements without specific event details\n\u2717 Emails where event details (date, time) must be inferred or guessed from context \u2014 only extract events with explicitly stated dates and times\n\u2717 Estimated delivery/shipping dates \u2014 these are logistical estimates, not scheduled appointments\n\u2717 Completed/past events in order confirmations or pickup receipts\n\u2717 Financial statement dates, billing cycles, and payment due dates\n\u2717 Government comment periods and regulatory deadlines (unless a specific hearing or meeting)\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 1337,
+        "text": "\n**Email Body:**\nPREMIER TRAVEL AGENCY\nYour Complete Itinerary\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nTOKYO ADVENTURE\nApril 10-17, 2026\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nTraveler: Sarah Johnson\nBooking Ref: PTT-2026-4589\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nDAY 1 - FRIDAY, APRIL 10\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n\u2708\ufe0f OUTBOUND FLIGHT\nJapan Airlines JL 001\nDepart: San Francisco (SFO) 11:30 AM\nArrive: Tokyo Narita (NRT) 3:30 PM +1 day (April 11)\nDuration: 11h 0m\nSeat: 32K\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nDAY 2 - SATURDAY, APRIL 11\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n\ud83d\ude8c AIRPORT TRANSFER\nLimousine Bus - Narita to Shinjuku\nDepart: 4:30 PM from Narita Airport\nArrive: ~6:30 PM at Shinjuku Bus Terminal\nTicket: Prepaid, show email\n\n\ud83c\udfe8 HOTEL CHECK-IN\nPark Hyatt Tokyo\n3-7-1-2 Nishi Shinjuku\nShinjuku-ku, Tokyo 163-1055\nCheck-in: From 3:00 PM\nConfirmation: 12345PH\n7 nights (April 11-18)\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nDAY 8 - SATURDAY, APRIL 18\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n\ud83c\udfe8 HOTEL CHECK-OUT\nBy 12:00 PM\n\n\u2708\ufe0f RETURN FLIGHT\nJapan Airlines JL 002\nDepart: Tokyo Narita (NRT) 5:00 PM\nArrive: San Francisco (SFO) 10:30 AM (same day)\nDuration: 9h 30m\nSeat: 31K\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nEmergency Contact: +1-800-555-TRAV\n24/7 Support: support@travelagency.com\n\nHave a wonderful trip!"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Outbound Flight to Tokyo\",\n      \"start_datetime\": \"2026-04-10T11:30:00\",\n      \"end_datetime\": \"2026-04-11T03:30:00\",\n      \"location\": null,\n      \"description\": \"Japan Airlines JL 001 flight. Depart San Francisco (SFO) 11:30 AM, arrive Tokyo Narita (NRT) 3:30 PM (April 11). Duration: 11h 0m. Seat: 32K.\",\n      \"all_day\": false,\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Airport Transfer to Shinjuku\",\n      \"start_datetime\": \"2026-04-11T16:30:00\",\n      \"end_datetime\": \"2026-04-11T18:30:00\",\n      \"location\": \"Narita Airport to Shinjuku Bus Terminal\",\n      \"description\": \"Limousine Bus - Narita to Shinjuku. Depart 4:30 PM from Narita Airport, arrive ~6:30 PM at Shinjuku Bus Terminal. Prepaid ticket, show email.\",\n      \"all_day\": false,\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Hotel Check-in at Park Hyatt Tokyo\",\n      \"start_datetime\": \"2026-04-11T15:00:00\",\n      \"end_datetime\": \"2026-04-18T12:00:00\",\n      \"location\": \"Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055\",\n      \"description\": \"Check-in from 3:00 PM at Park Hyatt Tokyo. 7-night stay (April 11-18). Confirmation: 12345PH.\",\n      \"all_day\": false,\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Hotel Check-out at Park Hyatt Tokyo\",\n      \"start_datetime\": \"2026-04-18T12:00:00\",\n      \"end_datetime\": \"2026-04-18T12:00:00\",\n      \"location\": \"Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055\",\n      \"description\": \"Check-out by 12:00 PM on April 18. Return flight departs at 5:00 PM.\",\n      \"all_day\": false,\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Return Flight to San Francisco\",\n      \"start_datetime\": \"2026-04-18T17:00:00\",\n      \"end_datetime\": \"2026-04-18T22:30:00\",\n      \"location\": null,\n      \"description\": \"Japan Airlines JL 002 flight. Depart Tokyo Narita (NRT) 5:00 PM, arrive San Francisco (SFO) 10:30 AM (same day). Duration: 9h 30m. Seat: 31K.\",\n      \"all_day\": false,\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
