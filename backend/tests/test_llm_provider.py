@@ -1,5 +1,6 @@
 """Tests for LLM Provider abstraction."""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -409,6 +410,44 @@ class TestStripMarkdownJson:
     def test_empty_string(self):
         """Test that empty string is returned unchanged."""
         assert _strip_markdown_json("") == ""
+
+    def test_strips_think_blocks(self):
+        """Test that <think>...</think> blocks are removed."""
+        text = '<think>analyzing...</think>\n{"events_found": true}'
+        result = _strip_markdown_json(text)
+        assert json.loads(result) == {"events_found": True}
+
+    def test_strips_stray_think_close_tags(self):
+        """Test that stray </think> tags are removed (ZAI-style output)."""
+        text = '{"schema": "echo"}\n</think>\ntext\n{"events_found": true}'
+        result = _strip_markdown_json(text)
+        assert json.loads(result) == {"events_found": True}
+
+    def test_extracts_last_json_from_multi_object_response(self):
+        """Test extraction of last JSON object when response contains multiple."""
+        text = (
+            '{"$defs": {"A": {"type": "object"}}}\n'
+            'End the code block.\n'
+            '{"events_found": true, "events": [{"title": "Test"}]}\n'
+            'End the code block.'
+        )
+        result = _strip_markdown_json(text)
+        parsed = json.loads(result)
+        assert parsed["events_found"] is True
+        assert parsed["events"][0]["title"] == "Test"
+
+    def test_handles_think_blocks_with_schema_echo(self):
+        """Test ZAI-style output: schema echo + think blocks + actual JSON."""
+        schema_json = json.dumps({"$defs": {"Event": {"type": "object"}}})
+        actual_json = json.dumps({"events_found": True, "events": []})
+        text = (
+            f"\n\n{schema_json}\n</think>\n"
+            f"I'll extract events.\n\n{actual_json}\n"
+            f"End block.\n</think>\n{actual_json}\nEnd block."
+        )
+        result = _strip_markdown_json(text)
+        parsed = json.loads(result)
+        assert parsed["events_found"] is True
 
 
 class TestOpenAIReasoningEffort:
@@ -880,6 +919,29 @@ class TestSanitizeSchemaForStrict:
         # Should not raise RecursionError
         result = _sanitize_schema_for_strict(schema)
         assert "$ref" not in str(result)
+
+    def test_strips_format_from_anyof_items(self):
+        """'format' must be removed from anyOf items (Moonshot rejects it)."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "start_datetime": {
+                    "anyOf": [
+                        {"format": "date-time", "type": "string"},
+                        {"type": "null"},
+                    ],
+                    "default": None,
+                },
+            },
+        }
+        result = _sanitize_schema_for_strict(schema)
+
+        prop = result["properties"]["start_datetime"]
+        assert "anyOf" in prop
+        for item in prop["anyOf"]:
+            assert "format" not in item, (
+                "format must be stripped from anyOf items for Moonshot compat"
+            )
 
 
 class TestSanitizeSchemaForGemini:
