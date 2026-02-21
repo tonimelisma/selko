@@ -18,6 +18,7 @@ import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.Email
 import net.melisma.selko.data.model.EventSource
+import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 
@@ -26,6 +27,7 @@ data class EventDetailUiState(
     val event: CalendarEvent? = null,
     val sources: List<EventSource> = emptyList(),
     val sourceEmail: Email? = null,
+    val sourceOrigin: SourceOrigin = SourceOrigin.EMAIL,
     val title: String = "",
     val startInstant: Instant? = null,
     val endInstant: Instant? = null,
@@ -63,7 +65,9 @@ class EventDetailViewModel(
                 is EventResult.Success -> {
                     val event = result.data
                     val sources = event.eventSources ?: emptyList()
-                    val sourceEmail = sources.firstOrNull()?.emails
+                    val firstSource = sources.firstOrNull()
+                    val sourceEmail = firstSource?.emails
+                    val sourceOrigin = firstSource?.sourceOrigin ?: SourceOrigin.EMAIL
 
                     _uiState.update {
                         it.copy(
@@ -71,6 +75,7 @@ class EventDetailViewModel(
                             event = event,
                             sources = sources,
                             sourceEmail = sourceEmail,
+                            sourceOrigin = sourceOrigin,
                             title = event.title,
                             startInstant = event.startDatetime,
                             endInstant = event.endDatetime,

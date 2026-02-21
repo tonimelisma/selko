@@ -14,6 +14,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import net.melisma.selko.R
 import net.melisma.selko.data.api.BackendApiClient
+import net.melisma.selko.data.model.Integration
+import net.melisma.selko.data.model.IntegrationProvider
+import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.CalendarSettingsRepository
@@ -220,5 +223,113 @@ class SettingsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify(exactly = 1) { senderRuleRepository.fetchRules() }
+    }
+
+    @Test
+    fun `Google Photos integration appears in integrations list`() = runTest {
+        val integrations = listOf(
+            Integration(
+                id = "int-1",
+                userId = "user-1",
+                provider = IntegrationProvider.GMAIL,
+                status = IntegrationStatus.ACTIVE,
+                providerEmail = "test@gmail.com"
+            ),
+            Integration(
+                id = "int-2",
+                userId = "user-1",
+                provider = IntegrationProvider.GOOGLE_PHOTOS,
+                status = IntegrationStatus.ACTIVE,
+                providerEmail = "test@gmail.com"
+            )
+        )
+        coEvery { integrationRepository.fetchIntegrations() } returns
+                IntegrationResult.Success(integrations)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals(2, state.integrations.size)
+            val photosIntegration = state.integrations.find { it.provider == IntegrationProvider.GOOGLE_PHOTOS }
+            assertEquals(IntegrationStatus.ACTIVE, photosIntegration?.status)
+            assertEquals("test@gmail.com", photosIntegration?.providerEmail)
+        }
+    }
+
+    @Test
+    fun `disconnect Google Photos calls repository with correct provider`() = runTest {
+        val integrations = listOf(
+            Integration(
+                id = "int-1",
+                userId = "user-1",
+                provider = IntegrationProvider.GOOGLE_PHOTOS,
+                status = IntegrationStatus.ACTIVE,
+                providerEmail = "test@gmail.com"
+            )
+        )
+        coEvery { integrationRepository.fetchIntegrations() } returns
+                IntegrationResult.Success(integrations)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+        coEvery { integrationRepository.deleteIntegration(IntegrationProvider.GOOGLE_PHOTOS) } returns
+                IntegrationResult.Success(Unit)
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.disconnectIntegration(IntegrationProvider.GOOGLE_PHOTOS)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { integrationRepository.deleteIntegration(IntegrationProvider.GOOGLE_PHOTOS) }
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.integrations.none { it.provider == IntegrationProvider.GOOGLE_PHOTOS })
+            assertFalse(state.isDisconnecting)
+        }
+    }
+
+    @Test
+    fun `disconnect Google Photos shows error on failure`() = runTest {
+        val integrations = listOf(
+            Integration(
+                id = "int-1",
+                userId = "user-1",
+                provider = IntegrationProvider.GOOGLE_PHOTOS,
+                status = IntegrationStatus.ACTIVE,
+                providerEmail = "test@gmail.com"
+            )
+        )
+        coEvery { integrationRepository.fetchIntegrations() } returns
+                IntegrationResult.Success(integrations)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+        coEvery { integrationRepository.deleteIntegration(IntegrationProvider.GOOGLE_PHOTOS) } returns
+                IntegrationResult.Error("Network error")
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.disconnectIntegration(IntegrationProvider.GOOGLE_PHOTOS)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals("Failed to disconnect", state.errorMessage)
+            assertFalse(state.isDisconnecting)
+        }
+    }
+
+    @Test
+    fun `getPhotosAuthUrl delegates to backendApiClient`() = runTest {
+        every { backendApiClient.getPhotosAuthUrl(any()) } returns "https://example.com/photos/auth"
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val url = viewModel.getPhotosAuthUrl()
+        assertEquals("https://example.com/photos/auth", url)
     }
 }

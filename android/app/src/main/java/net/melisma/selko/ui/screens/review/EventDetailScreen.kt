@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
@@ -63,6 +64,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.R
+import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -266,10 +268,18 @@ private fun EventDetailContent(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Source email section
-        uiState.sourceEmail?.let { email ->
-            SourceEmailCard(email = email)
-            Spacer(modifier = Modifier.height(16.dp))
+        // Source section
+        when (uiState.sourceOrigin) {
+            SourceOrigin.GOOGLE_PHOTOS -> {
+                SourcePhotoCard()
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            else -> {
+                uiState.sourceEmail?.let { email ->
+                    SourceEmailCard(email = email)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
         }
 
         // Event form fields
@@ -493,6 +503,36 @@ private fun EventDetailContent(
             ) {
                 TimePicker(state = timePickerState)
             }
+        }
+    }
+}
+
+@Composable
+private fun SourcePhotoCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PhotoCamera,
+                contentDescription = stringResource(R.string.source_photo_icon_description),
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.source_photo_label),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

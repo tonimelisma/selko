@@ -228,6 +228,15 @@ class BackendApiClient(
         return "$baseUrl/integrations/calendar/auth$params"
     }
 
+    /**
+     * Get the Google Photos OAuth authorization URL.
+     * User should be redirected to this URL in a web browser.
+     */
+    fun getPhotosAuthUrl(redirectUri: String? = null): String {
+        val params = redirectUri?.let { "?redirect_uri=$it" } ?: ""
+        return "$baseUrl/integrations/photos/auth$params"
+    }
+
     // ============================================================================
     // Health Check
     // ============================================================================
