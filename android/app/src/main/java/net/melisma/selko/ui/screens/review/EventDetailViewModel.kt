@@ -193,7 +193,16 @@ class EventDetailViewModel(
 
             // Save any pending changes first
             if (_uiState.value.hasUnsavedChanges) {
-                saveChangesSync()
+                val saved = saveChangesSync()
+                if (!saved) {
+                    _uiState.update {
+                        it.copy(
+                            isApproving = false,
+                            errorMessage = getString(R.string.event_detail_error_save)
+                        )
+                    }
+                    return@launch
+                }
             }
 
             when (eventRepository.approveEvent(eventId)) {
@@ -232,13 +241,13 @@ class EventDetailViewModel(
         }
     }
 
-    private suspend fun saveChangesSync() {
+    private suspend fun saveChangesSync(): Boolean {
         val state = _uiState.value
 
         val startInstant = state.startInstant
         val endInstant = state.endInstant
 
-        eventRepository.updateEvent(
+        return when (eventRepository.updateEvent(
             eventId = eventId,
             title = state.title,
             startDatetime = startInstant,
@@ -246,7 +255,10 @@ class EventDetailViewModel(
             location = state.location.ifBlank { null },
             description = state.description.ifBlank { null },
             allDay = state.allDay
-        )
+        )) {
+            is EventResult.Success -> true
+            is EventResult.Error -> false
+        }
     }
 
     fun clearError() {
