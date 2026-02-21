@@ -10,6 +10,7 @@ Run with: uv run python -m backend.tests.eval.run_eval --help
 
 import argparse
 import hashlib
+import inspect
 import json
 import sys
 import threading
@@ -57,6 +58,34 @@ def get_code_hash() -> str:
     return hashlib.sha256(code_path.read_bytes()).hexdigest()[:12]
 
 
+def get_prompt_hash() -> str:
+    """Short SHA256 hash of only the prompt-affecting functions and schemas.
+
+    Hashes: _build_prompt, compare_events, merge_event_data, CalendarEvent,
+    EventExtractionResponse (source + generated JSON schema).
+    Scaffolding changes outside these functions do not affect this hash.
+    """
+    try:
+        from selko.services import event_processing
+        from selko.api.schemas.calendar import CalendarEvent, EventExtractionResponse
+
+        parts = []
+        for fn in [
+            event_processing._build_prompt,
+            event_processing.compare_events,
+            event_processing.merge_event_data,
+        ]:
+            parts.append(inspect.getsource(fn))
+        for cls in [CalendarEvent, EventExtractionResponse]:
+            parts.append(inspect.getsource(cls))
+            parts.append(json.dumps(cls.model_json_schema(), sort_keys=True))
+
+        combined = "\n".join(parts).encode()
+        return hashlib.sha256(combined).hexdigest()[:12]
+    except Exception:
+        return "unknown"
+
+
 # ---------------------------------------------------------------------------
 # Cost estimation
 # ---------------------------------------------------------------------------
@@ -76,11 +105,11 @@ def estimate_cost(model: str, prompt_tokens: int | None, completion_tokens: int 
 # Per-model result path helpers
 # ---------------------------------------------------------------------------
 
-def get_result_path(operation: str, provider: str, model: str, fixture_name: str, code_hash: str, thinking: str = "low") -> Path:
-    """Get path for a result file: results/{op}/{provider}_{model}_{thinking}/{fixture}/result_{code_hash}.json"""
+def get_result_path(operation: str, provider: str, model: str, fixture_name: str, prompt_hash: str, thinking: str = "low") -> Path:
+    """Get path for a result file: results/{op}/{provider}_{model}_{thinking}/{fixture}/result_{prompt_hash}.json"""
     safe_name = fixture_name.replace("/", "_")
     model_dir = f"{provider}_{model}_{thinking}"
-    return RESULTS_DIR / operation / model_dir / safe_name / f"result_{code_hash}.json"
+    return RESULTS_DIR / operation / model_dir / safe_name / f"result_{prompt_hash}.json"
 
 
 def get_latest_result(operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> dict | None:
@@ -99,8 +128,8 @@ def get_latest_result(operation: str, provider: str, model: str, fixture_name: s
 
 def should_run(fixture_path: Path, operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> bool:
     """Check if eval needs to run (cache miss or hash mismatch)."""
-    code_hash = get_code_hash()
-    result_path = get_result_path(operation, provider, model, fixture_name, code_hash, thinking)
+    prompt_hash = get_prompt_hash()
+    result_path = get_result_path(operation, provider, model, fixture_name, prompt_hash, thinking)
     if not result_path.exists():
         return True
     try:
@@ -112,8 +141,8 @@ def should_run(fixture_path: Path, operation: str, provider: str, model: str, fi
 
 def save_result_new(result: dict, operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> None:
     """Save result to the new per-model directory structure."""
-    code_hash = result.get("code_hash", get_code_hash())
-    result_path = get_result_path(operation, provider, model, fixture_name, code_hash, thinking)
+    prompt_hash = result.get("prompt_hash", get_prompt_hash())
+    result_path = get_result_path(operation, provider, model, fixture_name, prompt_hash, thinking)
     result_path.parent.mkdir(parents=True, exist_ok=True)
     with open(result_path, "w") as f:
         json.dump(result, f, indent=2, default=str)
@@ -780,6 +809,7 @@ def run_extract_eval(
         "fixture_name": fixture_name,
         "fixture_hash": get_fixture_hash(fixture_path),
         "code_hash": get_code_hash(),
+        "prompt_hash": get_prompt_hash(),
         "operation": "extract",
         "provider": provider_name,
         "model": model_name,
@@ -914,6 +944,7 @@ def run_compare_eval(
         "fixture_name": fixture_name,
         "fixture_hash": get_fixture_hash(fixture_path),
         "code_hash": get_code_hash(),
+        "prompt_hash": get_prompt_hash(),
         "operation": "compare",
         "provider": provider_name,
         "model": model_name,
@@ -1040,6 +1071,7 @@ def run_merge_eval(
         "fixture_name": fixture_name,
         "fixture_hash": get_fixture_hash(fixture_path),
         "code_hash": get_code_hash(),
+        "prompt_hash": get_prompt_hash(),
         "operation": "merge",
         "provider": provider_name,
         "model": model_name,
@@ -1906,26 +1938,50 @@ def generate_markdown_report(output_path: str) -> None:
     line()
 
     # ---- Regression Analysis ----
-    # Check if there are multiple code versions for any model
-    code_versions: dict[str, set] = {}
+    # Collect code_hash → prompt_hash mapping across all results
+    version_map: dict[str, set] = {}  # code_hash → set of prompt_hashes
+    model_code_versions: dict[str, set] = {}  # model → set of code_hashes
     for r in all_results:
         model = r.get("model", "unknown")
         ch = r.get("code_hash", "")
+        ph = r.get("prompt_hash", "")
         if ch:
-            code_versions.setdefault(model, set()).add(ch)
+            model_code_versions.setdefault(model, set()).add(ch)
+            version_map.setdefault(ch, set())
+            if ph:
+                version_map[ch].add(ph)
 
-    has_regression = any(len(versions) > 1 for versions in code_versions.values())
+    has_regression = any(len(versions) > 1 for versions in model_code_versions.values())
     if has_regression:
         line("## Regression Analysis")
         line()
-        line("Multiple code versions detected — showing latest vs previous where applicable.")
+        line("Multiple code versions detected across results.")
         line()
-        # This is a simplified version; full comparison would require iterating
-        # through result files and comparing across code_hash versions
-        for model in models_sorted:
-            versions = code_versions.get(model, set())
-            if len(versions) > 1:
-                line(f"- **{model}**: {len(versions)} code versions: {', '.join(sorted(versions))}")
+        line("| code_hash | prompt_hash | Change Type |")
+        line("|-----------|-------------|-------------|")
+        all_code_hashes = sorted(version_map.keys())
+        for i, ch in enumerate(all_code_hashes):
+            prompt_hashes = version_map[ch]
+            ph_str = ", ".join(sorted(prompt_hashes)) if prompt_hashes else "N/A (pre-prompt_hash tracking)"
+            if i == 0 or not prompt_hashes:
+                change_type = "baseline"
+            else:
+                prev_ph = version_map.get(all_code_hashes[i - 1], set())
+                if prompt_hashes == prev_ph:
+                    change_type = "scaffolding-only (prompt unchanged)"
+                else:
+                    change_type = "prompt changed"
+            line(f"| `{ch}` | `{ph_str}` | {change_type} |")
+        line()
+
+        # Summarize whether prompt changed between versions
+        all_prompt_hashes: set[str] = set()
+        for ph_set in version_map.values():
+            all_prompt_hashes.update(ph_set)
+        if len(all_prompt_hashes) <= 1 and all_prompt_hashes:
+            line("> **Note:** All versions share the same `prompt_hash` — this is a scaffolding-only change. Scores should be identical; any differences are LLM non-determinism.")
+        elif len(all_prompt_hashes) > 1:
+            line("> **Note:** `prompt_hash` differs between versions — prompt was changed. Run `--compare-baseline` to see score differences.")
         line()
 
     # Write file
@@ -2003,6 +2059,23 @@ def compare_baseline(hash_a: str | None = None, hash_b: str | None = None) -> No
     print(f"Comparing code versions:")
     print(f"  Previous: {previous_hash} ({len(by_hash[previous_hash])} results)")
     print(f"  Current:  {current_hash} ({len(by_hash[current_hash])} results)")
+
+    # prompt_hash comparison
+    def get_prompt_hashes_for_version(results: list[dict]) -> set[str]:
+        return {r["prompt_hash"] for r in results if r.get("prompt_hash")}
+
+    prev_ph = get_prompt_hashes_for_version(by_hash[previous_hash])
+    curr_ph = get_prompt_hashes_for_version(by_hash[current_hash])
+    prev_ph_str = ", ".join(sorted(prev_ph)) if prev_ph else "N/A (pre-prompt_hash tracking)"
+    curr_ph_str = ", ".join(sorted(curr_ph)) if curr_ph else "N/A (pre-prompt_hash tracking)"
+    print(f"  prompt_hash previous: {prev_ph_str}")
+    print(f"  prompt_hash current:  {curr_ph_str}")
+    if prev_ph and curr_ph and prev_ph == curr_ph:
+        print("  => UNCHANGED — scaffolding-only change; score differences are LLM non-determinism")
+    elif prev_ph and curr_ph:
+        print("  => prompt changed — score differences may reflect prompt improvements or regressions")
+    else:
+        print("  => prompt_hash not available for one or both versions (pre-tracking results)")
     print()
 
     # Build lookup: (fixture_name, model, operation) → auto_rating for each version

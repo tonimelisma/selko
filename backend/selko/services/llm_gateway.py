@@ -264,11 +264,11 @@ class LLMGateway:
         raise LLMRateLimitError(f"Failed after {max_retries} retries")
 
     def _summarize_content_parts(self, contents: list[ContentPart]) -> list[dict[str, Any]]:
-        """Build a summary of content parts for tracing (no raw data)."""
+        """Build a summary of content parts for tracing (no raw image data)."""
         summary = []
         for item in contents:
             if isinstance(item, str):
-                summary.append({"type": "text", "length": len(item)})
+                summary.append({"type": "text", "length": len(item), "text": item})
             elif isinstance(item, ImageContent):
                 summary.append({
                     "type": "image",
