@@ -10,6 +10,8 @@ from typing import Any, Optional
 
 from supabase import Client, PostgrestAPIError
 
+from selko.services.retry_utils import calculate_retry_delay
+
 logger = logging.getLogger(__name__)
 
 
@@ -162,12 +164,8 @@ def fail_photo_processing(
         }
 
         if should_retry:
-            # Exponential backoff: 60s, 120s, 240s, ... capped at 3600s
-            base_delay = 60  # seconds
-            max_delay = 3600  # 1 hour
-            delay = min(base_delay * (2 ** (attempts - 1)), max_delay)
-            next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
-            update_data["next_retry_at"] = next_retry_at.isoformat()
+            delay, next_retry_at = calculate_retry_delay(attempts)
+            update_data["next_retry_at"] = next_retry_at
         else:
             # Dead letter: permanently failed
             update_data["dead_letter_reason"] = error

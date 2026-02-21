@@ -13,7 +13,8 @@ Note: The worker pool handles status updates (processed/failed).
 import hashlib
 import json
 import logging
-from datetime import datetime
+import os
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -145,7 +146,7 @@ async def process_photo(
 
     # Step 2: Upload to Supabase Storage
     content_hash = hashlib.sha256(photo_bytes).hexdigest()
-    safe_filename = filename.replace("/", "_").replace("\\", "_")[:100]
+    safe_filename = os.path.basename(filename).replace("..", "")[:100]
     unique_id = uuid4().hex[:12]
     storage_path = f"{user_id}/photos/{unique_id}_{safe_filename}"
 
@@ -170,7 +171,7 @@ async def process_photo(
         logger.warning(f"Failed to update photo storage path: {e}")
 
     # Step 3: Build LLM prompt
-    current_date = datetime.now().strftime("%Y-%m-%d")
+    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     prompt = _build_photo_prompt(photo, current_date)
 
     # Step 4: Call LLM with photo
@@ -224,7 +225,7 @@ async def process_photo(
     # Build extraction object for save_extracted_events
     extraction = CalendarEventExtraction(
         email_message_id="",  # Not from email
-        email_date=photo.get("date_taken", datetime.now().isoformat()),
+        email_date=photo.get("date_taken", datetime.now(timezone.utc).isoformat()),
         sender_name=None,
         sender_email="",
         events_found=llm_result.events_found,
@@ -280,6 +281,8 @@ def _create_photo_event(
         "status": "pending_review",
     }).execute()
 
+    if not event_result.data:
+        raise PhotosError(f"Failed to create event from photo {photo_id}: no data returned")
     event_id = event_result.data[0]["id"]
 
     # Create event_source link with google_photos origin

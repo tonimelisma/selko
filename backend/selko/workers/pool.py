@@ -315,14 +315,14 @@ class WorkerPool:
         logger.info(f"{worker_id}: Processing email {email_id}: {subject}")
 
         try:
-            async with asyncio.timeout(120):
+            async with asyncio.timeout(self.config.email_processing_timeout):
                 await process_email(client, self.config, email)
             complete_email_processing(client, email_id)
-            circuit_breaker.record_success("llm")
             logger.info(f"{worker_id}: Completed email {email_id}")
+            circuit_breaker.record_success("llm")
 
         except asyncio.TimeoutError:
-            error_msg = "Email processing timed out after 120s"
+            error_msg = f"Email processing timed out after {self.config.email_processing_timeout}s"
             circuit_breaker.record_failure("llm")
             logger.error(f"{worker_id}: {error_msg} for email {email_id}")
             try:
@@ -359,15 +359,15 @@ class WorkerPool:
         logger.info(f"{worker_id}: Processing photo {photo_id}: {filename}")
 
         try:
-            async with asyncio.timeout(120):
+            async with asyncio.timeout(self.config.photo_processing_timeout):
                 await process_photo(client, self.config, photo)
             complete_photo_processing(client, photo_id)
+            logger.info(f"{worker_id}: Completed photo {photo_id}")
             circuit_breaker.record_success("llm")
             circuit_breaker.record_success("google_photos")
-            logger.info(f"{worker_id}: Completed photo {photo_id}")
 
         except asyncio.TimeoutError:
-            error_msg = "Photo processing timed out after 120s"
+            error_msg = f"Photo processing timed out after {self.config.photo_processing_timeout}s"
             circuit_breaker.record_failure("llm")
             logger.error(f"{worker_id}: {error_msg} for photo {photo_id}")
             try:
@@ -404,14 +404,14 @@ class WorkerPool:
         logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
 
         try:
-            async with asyncio.timeout(60):
+            async with asyncio.timeout(self.config.event_sync_timeout):
                 google_event_id = await sync_event(client, self.config, event)
             complete_event_sync(client, event_id, google_event_id)
-            circuit_breaker.record_success("google_calendar")
             logger.info(f"{worker_id}: Completed event sync {event_id}")
+            circuit_breaker.record_success("google_calendar")
 
         except asyncio.TimeoutError:
-            error_msg = "Event sync timed out after 60s"
+            error_msg = f"Event sync timed out after {self.config.event_sync_timeout}s"
             circuit_breaker.record_failure("google_calendar")
             logger.error(f"{worker_id}: {error_msg} for event {event_id}")
             try:

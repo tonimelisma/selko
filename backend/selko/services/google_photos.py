@@ -77,6 +77,7 @@ def get_credentials(
                         logger.error(
                             "CRITICAL: Refreshed token could not be saved after 3 attempts"
                         )
+                        return None
 
         except RefreshError as e:
             logger.warning(f"Google Photos token refresh failed: {e}")

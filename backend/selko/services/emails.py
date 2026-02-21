@@ -23,6 +23,7 @@ from selko.services.gmail import (
     get_credentials,
 )
 from selko.services.attachments import AttachmentError, process_attachment, store_image_content
+from selko.services.retry_utils import calculate_retry_delay
 from selko.services.email_images import extract_data_uri_images, extract_linked_images
 
 logger = logging.getLogger(__name__)
@@ -458,7 +459,7 @@ def complete_email_processing(client: Client, email_id: str) -> None:
     try:
         client.table("emails").update({
             "processing_status": "processed",
-            "processed_at": datetime.now().isoformat(),
+            "processed_at": datetime.now(timezone.utc).isoformat(),
             "locked_by": None,
             "locked_until": None,
         }).eq("id", email_id).execute()
@@ -506,12 +507,8 @@ def fail_email_processing(
         }
 
         if should_retry:
-            # Exponential backoff: 60s, 120s, 240s, ... capped at 3600s
-            base_delay = 60  # seconds
-            max_delay = 3600  # 1 hour
-            delay = min(base_delay * (2 ** (attempts - 1)), max_delay)
-            next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
-            update_data["next_retry_at"] = next_retry_at.isoformat()
+            delay, next_retry_at = calculate_retry_delay(attempts)
+            update_data["next_retry_at"] = next_retry_at
         else:
             # Dead letter: permanently failed
             update_data["dead_letter_reason"] = error
