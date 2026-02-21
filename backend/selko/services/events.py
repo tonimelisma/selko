@@ -123,6 +123,7 @@ def normalize_event_data(
         "description": event.description,
         "source_quote": getattr(event, 'source_quote', ''),
         "importance": getattr(event, 'importance', 'action_required'),
+        "recurrence_rule": getattr(event, 'recurrence_rule', None),
     }
 
 
@@ -390,7 +391,7 @@ def create_event(
         UUID of created event.
     """
     # Create event record
-    event_result = supabase_client.table("events").insert({
+    insert_data = {
         "user_id": user_id,
         "title": event_data.get("title"),
         "start_datetime": event_data.get("start_datetime"),
@@ -400,7 +401,12 @@ def create_event(
         "description": event_data.get("description"),
         "importance": event_data.get("importance", "action_required"),
         "status": initial_status,
-    }).execute()
+    }
+    recurrence_rule = event_data.get("recurrence_rule")
+    if recurrence_rule:
+        insert_data["recurrence_rule"] = recurrence_rule
+
+    event_result = supabase_client.table("events").insert(insert_data).execute()
 
     event_id = event_result.data[0]["id"]
 

@@ -25,29 +25,19 @@
   },
   "expected": {
     "events_found": true,
-    "event_count": 2,
+    "event_count": 1,
     "events": [
       {
-        "title": "PM Summit 2026 - Day 1",
+        "title": "PM Summit 2026",
         "start_datetime": "2026-04-07T09:00:00",
-        "end_datetime": "2026-04-07T16:00:00",
-        "location": "Virtual (Hopin)",
-        "description": "Product Management Summit Day 1 - Keynotes and track sessions",
-        "all_day": false,
-        "confidence_min": 0.8,
-        "importance": "action_required"
-      },
-      {
-        "title": "PM Summit 2026 - Day 2",
-        "start_datetime": "2026-04-08T09:00:00",
         "end_datetime": "2026-04-08T16:30:00",
         "location": "Virtual (Hopin)",
-        "description": "Product Management Summit Day 2 - Workshops and closing keynote",
+        "description": "Product Management Virtual Summit - 2-day event with keynotes, track sessions, and workshops",
         "all_day": false,
         "confidence_min": 0.8,
         "importance": "action_required"
       }
     ]
   },
-  "notes": "Virtual summit with detailed multi-day schedule - tests extraction of separate day events"
+  "notes": "Multi-day virtual summit — prompt says 'multi-day events should be ONE event with start/end spanning the full duration'"
 }

@@ -35,9 +35,10 @@
         "description": "Quarterly business review meeting",
         "all_day": false,
         "confidence_min": 0.9,
-        "importance": "action_required"
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=MONTHLY;INTERVAL=3"
       }
     ]
   },
-  "notes": "Quarterly recurring meeting with single occurrence focus"
+  "notes": "Quarterly recurring business review — should extract with RRULE"
 }

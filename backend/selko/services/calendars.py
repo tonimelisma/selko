@@ -263,6 +263,11 @@ def _build_calendar_event_body(
                 calendar_event["end"]["dateTime"] = start_dt.isoformat()
             calendar_event["end"]["timeZone"] = user_tz
 
+    # Add recurrence rule if present
+    recurrence_rule = event.get("recurrence_rule")
+    if recurrence_rule:
+        calendar_event["recurrence"] = [recurrence_rule]
+
     # Add default invitees
     invitees = settings.get("default_invitees")
     if invitees:

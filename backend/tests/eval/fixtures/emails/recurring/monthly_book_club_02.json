@@ -35,9 +35,10 @@
         "description": "Monthly book club meeting to discuss The Midnight Library by Matt Haig",
         "all_day": false,
         "confidence_min": 0.85,
-        "importance": "action_required"
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=MONTHLY;BYDAY=1TH"
       }
     ]
   },
-  "notes": "Monthly book club with 'first Thursday of the month' pattern"
+  "notes": "Monthly book club on first Thursday of the month — should extract with RRULE"
 }
