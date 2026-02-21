@@ -31,15 +31,14 @@
     "events": [
       {
         "title": "Quarterly Planning Meeting",
-        "start_datetime": "2026-03-10T09:00:00",
-        "end_datetime": "2026-03-10T12:00:00",
-        "location": "Main Conference Room, Building A",
-        "description": "Quarterly planning meeting - Q1 review and Q2 planning",
-        "all_day": false,
-        "confidence_min": 0.85,
+        "start_datetime": "2026-03-10",
+        "location": null,
+        "description": "Quarterly planning meeting",
+        "all_day": true,
+        "confidence_min": 0.6,
         "importance": "action_required"
       }
     ]
   },
-  "notes": "Meeting details primarily in attachment - tests attachment parsing"
+  "notes": "Subject has 'March 10th' but body has NO time or location (those are in .txt attachment). Expect all-day event with no location."
 }

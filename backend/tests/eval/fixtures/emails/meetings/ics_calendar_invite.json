@@ -26,20 +26,9 @@
     ]
   },
   "expected": {
-    "events_found": true,
-    "event_count": 1,
-    "events": [
-      {
-        "title": "Product Launch Planning Meeting",
-        "start_datetime": "2026-03-15T14:00:00",
-        "end_datetime": "2026-03-15T16:00:00",
-        "location": "Innovation Hub, Room 501",
-        "description": "Meeting to finalize Q2 product launch strategy",
-        "all_day": false,
-        "confidence_min": 0.9,
-        "importance": "action_required"
-      }
-    ]
+    "events_found": false,
+    "event_count": 0,
+    "events": []
   },
-  "notes": "Calendar invite with ICS attachment - tests ICS parsing"
+  "notes": "ICS attachments are parsed deterministically by ics_parser (not by LLM). The LLM only sees a body that says 'Please see the attached calendar invitation' — no event details to extract."
 }

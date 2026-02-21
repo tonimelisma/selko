@@ -32,15 +32,15 @@
     "events": [
       {
         "title": "Python Programming Fundamentals Training",
-        "start_datetime": "2026-03-23T09:00:00",
-        "end_datetime": "2026-03-24T16:30:00",
+        "start_datetime": "2026-03-23",
+        "end_datetime": "2026-03-24",
         "location": "LearnTech Training Center, 100 Tech Blvd, Austin, TX 78701",
         "description": "2-day Python programming training course",
-        "all_day": false,
-        "confidence_min": 0.8,
+        "all_day": true,
+        "confidence_min": 0.7,
         "importance": "action_required"
       }
     ]
   },
-  "notes": "Training with CSV schedule attachment - tests CSV parsing"
+  "notes": "Body has dates and location but NO specific times (times only in CSV attachment). Expect all-day event with date-only values."
 }

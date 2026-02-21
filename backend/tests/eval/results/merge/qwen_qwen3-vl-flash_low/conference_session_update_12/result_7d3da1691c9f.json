@@ -1,0 +1,172 @@
+{
+  "fixture_name": "conference_session_update_12",
+  "fixture_hash": "a8eea36af795f4b29f8567847365d497be3ad91434d24cafd2e5511605794703",
+  "code_hash": "e48a4d609a11",
+  "prompt_hash": "7d3da1691c9f",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T18:09:37.294288+00:00",
+  "duration_ms": 15993,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T18:09:21.296114+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T18:09:21.296123+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T18:09:21.312743+00:00",
+      "duration_ms": 15977
+    },
+    "scoring": {
+      "started_at": "2026-02-21T18:09:37.289955+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Conference session: early-bird announcement has basic info, later update adds speaker and room details",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "conference"
+  ],
+  "expected": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description_contains": [
+      "AI trends",
+      "Dr. Jane Chen",
+      "TechCorp",
+      "Q&A",
+      "coffee"
+    ]
+  },
+  "actual": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description": "Opening keynote session about AI trends and predictions. Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "AI trends",
+        "Dr. Jane Chen",
+        "TechCorp",
+        "Q&A",
+        "coffee"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 575,
+    "completion_tokens": 2201,
+    "total_tokens": 2776
+  },
+  "cost": 0.00154268,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1328,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: DevCon 2026: Keynote - Future of AI\n- Start: 2026-09-12T09:00:00\n- End: 2026-09-12T10:30:00\n- All Day: False\n- Location: Convention Center\n- Description: Opening keynote session about AI trends and predictions\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: DevCon 2026: Keynote - Future of AI\n- Start: 2026-09-12T09:00:00\n- End: 2026-09-12T10:30:00\n- All Day: False\n- Location: Convention Center - Main Hall A\n- Description: Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n    \"title\": \"DevCon 2026: Keynote - Future of AI\",\n    \"start_datetime\": \"2026-09-12T09:00:00\",\n    \"end_datetime\": \"2026-09-12T10:30:00\",\n    \"all_day\": false,\n    \"location\": \"Convention Center - Main Hall A\",\n    \"description\": \"Opening keynote session about AI trends and predictions. Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

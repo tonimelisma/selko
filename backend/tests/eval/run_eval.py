@@ -327,6 +327,16 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
             "match": expected_importance == actual_importance,
         }
 
+    # Recurrence rule
+    expected_recurrence = expected.get("recurrence_rule")
+    if expected_recurrence is not None:
+        actual_recurrence = actual.get("recurrence_rule")
+        scores["recurrence_rule"] = {
+            "expected": expected_recurrence,
+            "actual": actual_recurrence,
+            "match": expected_recurrence == actual_recurrence,
+        }
+
     # Only core fields (times + all_day) gate overall_match.
     # Title, location, confidence, importance are still scored/reported
     # but don't determine pass/fail.
@@ -800,6 +810,7 @@ def run_extract_eval(
                     "description": e.description,
                     "confidence": e.confidence,
                     "importance": getattr(e, "importance", None),
+                    "recurrence_rule": getattr(e, "recurrence_rule", None),
                 }
                 for e in extraction.events
             ],

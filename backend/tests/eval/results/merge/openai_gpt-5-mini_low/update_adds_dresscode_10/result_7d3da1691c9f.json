@@ -1,0 +1,230 @@
+{
+  "fixture_name": "update_adds_dresscode_10",
+  "fixture_hash": "e61f28c2525d268ae4006a361582481380b5746e4686e89eac5349db82f0c374",
+  "code_hash": "e48a4d609a11",
+  "prompt_hash": "7d3da1691c9f",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T18:08:26.681767+00:00",
+  "duration_ms": 3979,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T18:08:22.697160+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T18:08:22.697163+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T18:08:22.715321+00:00",
+      "duration_ms": 3961
+    },
+    "scoring": {
+      "started_at": "2026-02-21T18:08:26.676698+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Update email adds dress code information to social event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "dress-code"
+  ],
+  "expected": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description_contains": [
+      "10 years",
+      "black tie",
+      "cocktail hour",
+      "plus-ones welcome"
+    ]
+  },
+  "actual": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description": "Annual company gala celebrating 10 years. Dress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "10 years",
+        "black tie",
+        "cocktail hour",
+        "plus-ones welcome"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 462,
+    "completion_tokens": 104,
+    "total_tokens": 566
+  },
+  "cost": 0.0003235,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1246,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Company Gala Dinner\n- Start: 2026-08-15T18:00:00\n- End: 2026-08-15T22:00:00\n- All Day: False\n- Location: Grand Ballroom Hotel\n- Description: Annual company gala celebrating 10 years\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Company Gala Dinner\n- Start: 2026-08-15T18:00:00\n- End: 2026-08-15T22:00:00\n- All Day: False\n- Location: Grand Ballroom Hotel\n- Description: Dress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "end_datetime",
+        "all_day",
+        "location",
+        "description",
+        "importance"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"title\":\"Company Gala Dinner\",\"start_datetime\":\"2026-08-15T18:00:00\",\"end_datetime\":\"2026-08-15T22:00:00\",\"all_day\":false,\"location\":\"Grand Ballroom Hotel\",\"description\":\"Annual company gala celebrating 10 years. Dress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!\",\"importance\":\"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
