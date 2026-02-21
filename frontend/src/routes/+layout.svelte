@@ -12,11 +12,11 @@
 	});
 </script>
 
-<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-base-100 focus:text-base-content">{$_('common.skipToContent')}</a>
-<div class="min-h-screen bg-base-100">
-	{#if $isLocaleLoading}
-		<!-- wait for locale to load -->
-	{:else}
+{#if $isLocaleLoading}
+	<div class="min-h-screen bg-base-100"></div>
+{:else}
+	<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-base-100 focus:text-base-content">{$_('common.skipToContent')}</a>
+	<div class="min-h-screen bg-base-100">
 		{@render children()}
-	{/if}
-</div>
+	</div>
+{/if}
