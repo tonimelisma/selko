@@ -115,4 +115,18 @@ class DeepLinkTest {
         val result = parseDeepLink("selko://")
         assertNull(result)
     }
+
+    @Test
+    fun `parseDeepLink decodes URL-encoded event ID`() {
+        val result = parseDeepLink("selko://event/abc%20def")
+        assertTrue(result is DeepLink.EventDetail)
+        assertEquals("abc def", (result as DeepLink.EventDetail).eventId)
+    }
+
+    @Test
+    fun `parseDeepLink decodes URL-encoded special characters in event ID`() {
+        val result = parseDeepLink("selko://event/event%2B123%26test")
+        assertTrue(result is DeepLink.EventDetail)
+        assertEquals("event+123&test", (result as DeepLink.EventDetail).eventId)
+    }
 }

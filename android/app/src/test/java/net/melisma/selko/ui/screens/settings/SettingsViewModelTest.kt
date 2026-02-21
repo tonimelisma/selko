@@ -68,6 +68,7 @@ class SettingsViewModelTest {
         every { application.getString(R.string.settings_error_load_rules) } returns "Failed to load automation rules"
         every { application.getString(R.string.settings_error_create_rule) } returns "Failed to create rule"
         every { application.getString(R.string.settings_error_delete_rule) } returns "Failed to delete rule"
+        every { application.getString(R.string.settings_error_save_calendar) } returns "Failed to save calendar settings"
         authRepository = mockk(relaxed = true)
         integrationRepository = mockk(relaxed = true)
         calendarSettingsRepository = mockk(relaxed = true)
@@ -331,5 +332,25 @@ class SettingsViewModelTest {
 
         val url = viewModel.getPhotosAuthUrl()
         assertEquals("https://example.com/photos/auth", url)
+    }
+
+    @Test
+    fun `saveCalendarSettings shows error on failure`() = runTest {
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+        coEvery {
+            calendarSettingsRepository.updateSettings(any(), any())
+        } returns RepositoryResult.Error("Save failed")
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.saveCalendarSettings()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals("Failed to save calendar settings", state.errorMessage)
+            assertFalse(state.isSavingCalendarSettings)
+        }
     }
 }

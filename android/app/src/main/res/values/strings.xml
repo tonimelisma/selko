@@ -68,6 +68,7 @@
     <string name="event_detail_cancel">Cancel</string>
     <string name="event_detail_error_approve">Failed to approve event</string>
     <string name="event_detail_error_reject">Failed to reject event</string>
+    <string name="event_detail_error_save">Failed to save changes. Please try again.</string>
 
     <!-- Source Photo Card -->
     <string name="source_photo_label">Source Photo</string>
@@ -134,6 +135,7 @@
     <string name="settings_default_invitees">Default Invitees</string>
     <string name="settings_default_invitees_placeholder">email1@example.com, email2@example.com</string>
     <string name="settings_save">Save</string>
+    <string name="settings_error_save_calendar">Failed to save calendar settings</string>
 
     <!-- Settings - Automation Rules -->
     <string name="settings_rules_empty">No automation rules yet. Add a rule to automatically approve or ignore emails from specific senders.</string>

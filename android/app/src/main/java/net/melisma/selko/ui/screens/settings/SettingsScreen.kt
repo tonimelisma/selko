@@ -198,8 +198,12 @@ private fun ConnectedAccountsSection(
                 isConnected = gmailIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
                 onConnect = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
-                    context.startActivity(intent)
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
+                        context.startActivity(intent)
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        // No browser available
+                    }
                 },
                 onDisconnect = { onDisconnect(IntegrationProvider.GMAIL) }
             )
@@ -214,8 +218,12 @@ private fun ConnectedAccountsSection(
                 isConnected = calendarIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
                 onConnect = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(calendarAuthUrl))
-                    context.startActivity(intent)
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(calendarAuthUrl))
+                        context.startActivity(intent)
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        // No browser available
+                    }
                 },
                 onDisconnect = { onDisconnect(IntegrationProvider.GOOGLE_CALENDAR) }
             )
@@ -230,8 +238,12 @@ private fun ConnectedAccountsSection(
                 isConnected = photosIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
                 onConnect = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(photosAuthUrl))
-                    context.startActivity(intent)
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(photosAuthUrl))
+                        context.startActivity(intent)
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        // No browser available
+                    }
                 },
                 onDisconnect = { onDisconnect(IntegrationProvider.GOOGLE_PHOTOS) }
             )

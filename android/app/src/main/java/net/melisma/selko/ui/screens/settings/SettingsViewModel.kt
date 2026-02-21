@@ -143,12 +143,22 @@ class SettingsViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingCalendarSettings = true) }
 
-            calendarSettingsRepository.updateSettings(
+            when (calendarSettingsRepository.updateSettings(
                 targetCalendarId = _uiState.value.selectedCalendarId,
                 defaultInvitees = _uiState.value.defaultInvitees.ifBlank { null }
-            )
-
-            _uiState.update { it.copy(isSavingCalendarSettings = false) }
+            )) {
+                is RepositoryResult.Success -> {
+                    _uiState.update { it.copy(isSavingCalendarSettings = false) }
+                }
+                is RepositoryResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isSavingCalendarSettings = false,
+                            errorMessage = getString(R.string.settings_error_save_calendar)
+                        )
+                    }
+                }
+            }
         }
     }
 
