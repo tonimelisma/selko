@@ -26,11 +26,13 @@ vi.mock('$lib/services/sender-rules.js', () => ({
 const mockSyncEventToCalendar = vi.fn();
 const mockInitiateGmailAuth = vi.fn();
 const mockInitiateCalendarAuth = vi.fn();
+const mockInitiatePhotosAuth = vi.fn();
 
 vi.mock('$lib/api/backend.js', () => ({
 	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
 	initiateGmailAuth: (...args) => mockInitiateGmailAuth(...args),
-	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args)
+	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args),
+	initiatePhotosAuth: (...args) => mockInitiatePhotosAuth(...args)
 }));
 
 // Import after mocking
@@ -389,5 +391,160 @@ describe('Review Queue (App Page)', () => {
 			});
 			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'approved');
 		});
+	});
+
+	it('hides sender rule buttons for photo source groups', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-photo-1',
+					title: 'Birthday Party',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							source_origin: 'google_photos'
+						}
+					]
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Birthday Party')).toBeInTheDocument();
+		});
+
+		// Sender rule buttons should not be present for photo sources
+		expect(screen.queryByText('Ignore sender')).not.toBeInTheDocument();
+		expect(screen.queryByText('Auto-approve sender')).not.toBeInTheDocument();
+	});
+
+	it('disables approve/reject buttons while event is processing', async () => {
+		const user = userEvent.setup();
+
+		// Make updateEventStatus hang so the event stays "processing"
+		let resolveUpdate;
+		mockUpdateEventStatus.mockImplementation(
+			() => new Promise((resolve) => { resolveUpdate = resolve; })
+		);
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Processing Test',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Test',
+								from_email: 'test@example.com',
+								from_name: 'Test',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Processing Test')).toBeInTheDocument();
+		});
+
+		const approveBtn = screen.getByRole('button', { name: /accept event/i });
+		const rejectBtn = screen.getByRole('button', { name: /reject event/i });
+
+		// Buttons should be enabled initially
+		expect(approveBtn).not.toBeDisabled();
+		expect(rejectBtn).not.toBeDisabled();
+
+		// Click approve — starts processing
+		await user.click(approveBtn);
+
+		// Buttons should be disabled while processing
+		await waitFor(() => {
+			expect(approveBtn).toBeDisabled();
+			expect(rejectBtn).toBeDisabled();
+		});
+
+		// Resolve the pending update to clean up
+		resolveUpdate({ data: null, error: null });
+	});
+
+	it('completes approval even when calendar sync fails', async () => {
+		const user = userEvent.setup();
+
+		mockSyncEventToCalendar.mockRejectedValue(new Error('Sync network error'));
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Sync Fail Event',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Event',
+								from_email: 'sender@example.com',
+								from_name: 'Sender',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Sync Fail Event')).toBeInTheDocument();
+		});
+
+		const approveBtn = screen.getByRole('button', { name: /accept event/i });
+		await user.click(approveBtn);
+
+		// Event should still be approved and removed from list despite sync failure
+		await waitFor(() => {
+			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'approved');
+			expect(screen.queryByText('Sync Fail Event')).not.toBeInTheDocument();
+		});
+
+		// Calendar sync was attempted
+		expect(mockSyncEventToCalendar).toHaveBeenCalledWith('evt-1');
 	});
 });

@@ -1,7 +1,7 @@
 <script>
 	import { _ } from 'svelte-i18n';
 
-	let { event, onapprove, onreject } = $props();
+	let { event, isProcessing = false, onapprove, onreject } = $props();
 
 	let sourceOrigin = $derived(() => {
 		const sources = event.event_sources || [];
@@ -67,7 +67,7 @@
 		<!-- Action buttons row -->
 		<div class="flex items-center gap-2 mt-2">
 			<!-- Accept: icon-only filled green button -->
-			<button class="btn btn-sm btn-success" onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')}>
+			<button class="btn btn-sm btn-success" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
 			</button>
 			<!-- Edit: filled primary button with icon + text -->
@@ -76,7 +76,7 @@
 				{$_('common.edit')}
 			</a>
 			<!-- Reject: icon-only filled red button -->
-			<button class="btn btn-sm btn-error" onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')}>
+			<button class="btn btn-sm btn-error" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
 			</button>
 		</div>
