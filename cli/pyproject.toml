@@ -14,7 +14,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["cli_user", "cli_auth_gmail", "cli_fetch_emails"]
+py-modules = ["cli_user", "cli_auth_gmail", "cli_fetch_emails", "cli_dead_letters"]
 
 [tool.uv.sources]
 selko = { workspace = true }
