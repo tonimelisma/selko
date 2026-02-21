@@ -217,6 +217,22 @@ async def google_oauth_callback(
         # Save credentials with EXPLICIT user_id
         save_oauth_credentials(client, user_id, provider, credentials, provider_email)
 
+        # Auto-detect timezone from Google Calendar settings
+        if provider == "google_calendar":
+            try:
+                from googleapiclient.discovery import build as build_google_service
+                cal_service = build_google_service("calendar", "v3", credentials=credentials)
+                tz_setting = cal_service.settings().get(setting="timezone").execute()
+                user_timezone = tz_setting.get("value")
+                if user_timezone:
+                    client.table("user_calendar_settings").upsert({
+                        "user_id": str(user_id),
+                        "timezone": user_timezone,
+                    }).execute()
+                    logger.info(f"Auto-detected timezone '{user_timezone}' for user {user_id}")
+            except Exception as e:
+                logger.warning(f"Could not auto-detect timezone for user {user_id}: {e}")
+
         logger.info(f"{provider} OAuth completed successfully for user {user_id}")
 
         # Build provider-specific success message

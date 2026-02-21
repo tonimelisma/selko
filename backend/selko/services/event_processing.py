@@ -11,6 +11,7 @@ import json
 import logging
 from datetime import datetime
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 from supabase import Client
 
@@ -52,10 +53,10 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 1. Analyze the email content and any attachments (including PDFs, images, calendars)
 2. Extract ALL calendar events mentioned — meetings, appointments, parties, closures, themed days, deadlines, etc.
 3. For each event, extract:
-   - Title (clear, concise event name)
+   - Title: clear, concise event name (under 60 chars). Include person name when relevant (e.g., "1:1 with Alex Rivera", not just "1:1"). For closures use format "[Organization] Closed - [Reason]". Do NOT just copy the email subject verbatim.
    - Start date/time (parse relative dates like "tomorrow", "next Friday")
    - End date/time (if mentioned)
-   - Location (physical address or virtual meeting link)
+   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.
    - Full description with all relevant details
    - Whether it's an all-day event (true/false)
    - Confidence score (0.0-1.0) based on clarity of information
@@ -100,6 +101,29 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 - Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events
 - Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs — note them in the main event's description instead
 - Only extract events with explicitly stated dates — do NOT infer dates from holidays, context, or subject lines
+- For recurring events (e.g., weekly meetings), extract only the NEXT upcoming occurrence based on the current date. Note the recurrence pattern in the description (e.g., "Recurring: every Tuesday at 10am").
+
+**Few-shot examples:**
+
+Example 1 — Meeting invitation:
+Email subject: "1:1 sync tomorrow at 2pm"
+From: Alex Rivera
+→ Extract:
+  title: "1:1 with Alex Rivera"
+  start_datetime: (tomorrow at 2:00 PM)
+  end_datetime: (tomorrow at 2:30 PM)
+  location: null  (no location mentioned)
+  all_day: false
+  importance: "action_required"
+
+Example 2 — School closure:
+Email: "Due to inclement weather, Lincoln Elementary will be closed on Friday, March 14."
+→ Extract:
+  title: "Lincoln Elementary Closed - Inclement Weather"
+  start_datetime: 2026-03-14
+  location: null  (school name is NOT a location)
+  all_day: true
+  importance: "action_required"
 """
     return prompt
 
@@ -206,7 +230,13 @@ def extract_calendar_events(
     Raises:
         LLMGatewayError: If extraction fails after retries.
     """
-    current_date = datetime.now().strftime("%Y-%m-%d")
+    user_tz_name = email_metadata.get("user_timezone", "America/New_York")
+    try:
+        user_tz = ZoneInfo(user_tz_name)
+    except (KeyError, ValueError):
+        logger.warning(f"Invalid timezone '{user_tz_name}', falling back to America/New_York")
+        user_tz = ZoneInfo("America/New_York")
+    current_date = datetime.now(user_tz).strftime("%Y-%m-%d")
     prompt = _build_prompt(email_metadata, current_date)
     content_parts = _build_content_parts(prompt, email_text, attachments, config=config)
 

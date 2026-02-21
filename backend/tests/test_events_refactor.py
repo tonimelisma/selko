@@ -114,8 +114,9 @@ class TestNormalizeEventData:
         result = normalize_event_data(event)
 
         assert result["title"] == "Team Meeting"
-        assert result["start_datetime"] == "2026-03-15T14:00:00"
-        assert result["end_datetime"] == "2026-03-15T15:00:00"
+        # Naive datetimes are localized to America/New_York (default); March 15 = EDT (-04:00)
+        assert result["start_datetime"] == "2026-03-15T14:00:00-04:00"
+        assert result["end_datetime"] == "2026-03-15T15:00:00-04:00"
         assert result["all_day"] is False
         assert result["location"] == "Room A"
         assert result["description"] == "Weekly sync"

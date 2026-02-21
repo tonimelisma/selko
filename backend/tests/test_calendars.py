@@ -39,6 +39,7 @@ class TestBuildCalendarEventBody:
         }
         settings = {
             "default_invitees": None,
+            "timezone": "UTC",
         }
 
         body = _build_calendar_event_body(event, settings)
