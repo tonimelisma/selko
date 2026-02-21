@@ -27,9 +27,25 @@ describe('SenderHeader', () => {
 		expect(screen.getByText('1 event')).toBeInTheDocument();
 	});
 
-	it('always shows the dropdown menu button', () => {
+	it('shows the dropdown menu button for non-photo sources', () => {
 		render(SenderHeader, {
 			props: { sender: 'John Doe', senderEmail: 'john@example.com', eventCount: 1 }
+		});
+
+		expect(screen.getByRole('button', { name: /actions for/i })).toBeInTheDocument();
+	});
+
+	it('hides the dropdown menu for photo source with single event', () => {
+		render(SenderHeader, {
+			props: { sender: 'Google Photos', senderEmail: '', eventCount: 1, isPhotoSource: true }
+		});
+
+		expect(screen.queryByRole('button', { name: /actions for/i })).not.toBeInTheDocument();
+	});
+
+	it('shows the dropdown menu for photo source with multiple events', () => {
+		render(SenderHeader, {
+			props: { sender: 'Google Photos', senderEmail: '', eventCount: 3, isPhotoSource: true }
 		});
 
 		expect(screen.getByRole('button', { name: /actions for/i })).toBeInTheDocument();
