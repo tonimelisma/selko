@@ -263,9 +263,9 @@ struct EventDetailView: View {
                         .font(.title2)
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Google Photos")
+                        Text(String(localized: "event_detail.photo_source_title"))
                             .font(.headline)
-                        Text("Event detected from photo")
+                        Text(String(localized: "event_detail.photo_source_description"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

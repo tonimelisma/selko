@@ -211,7 +211,10 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
     func getGmailAuthUrl(redirectUri: String? = nil) -> String {
         var urlString = "\(baseURL)/integrations/gmail/auth"
         if let redirectUri = redirectUri {
-            urlString += "?redirect_uri=\(redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+            guard let encodedRedirect = redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                return urlString
+            }
+            urlString += "?redirect_uri=\(encodedRedirect)"
         }
         return urlString
     }
@@ -219,7 +222,10 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
     func getCalendarAuthUrl(redirectUri: String? = nil) -> String {
         var urlString = "\(baseURL)/integrations/calendar/auth"
         if let redirectUri = redirectUri {
-            urlString += "?redirect_uri=\(redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+            guard let encodedRedirect = redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                return urlString
+            }
+            urlString += "?redirect_uri=\(encodedRedirect)"
         }
         return urlString
     }
@@ -227,7 +233,10 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
     func getPhotosAuthUrl(redirectUri: String? = nil) -> String {
         var urlString = "\(baseURL)/integrations/photos/auth"
         if let redirectUri = redirectUri {
-            urlString += "?redirect_uri=\(redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+            guard let encodedRedirect = redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                return urlString
+            }
+            urlString += "?redirect_uri=\(encodedRedirect)"
         }
         return urlString
     }
