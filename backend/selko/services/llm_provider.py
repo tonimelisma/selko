@@ -475,9 +475,16 @@ def _sanitize_schema_for_gemini(schema: dict) -> dict:
                     return resolved
                 return {"type": "STRING"}
 
+            # Don't recurse into "properties" or "items" generically —
+            # they're handled specially below.  Processing the properties
+            # container through _resolve would confuse property *names*
+            # (e.g. "title", "description") with schema *keywords*.
             resolved = {}
             for key, value in node.items():
-                resolved[key] = _resolve(value)
+                if key in ("properties", "items"):
+                    resolved[key] = value  # handled below
+                else:
+                    resolved[key] = _resolve(value)
 
             # Convert anyOf with null to nullable
             if "anyOf" in resolved:
@@ -496,11 +503,13 @@ def _sanitize_schema_for_gemini(schema: dict) -> dict:
                     del resolved["anyOf"]
                     resolved.update(non_null[0])
 
-            # Remove unsupported keywords
+            # Remove unsupported Gemini keywords (safe here because
+            # _resolve only processes actual schema nodes, never the
+            # properties container dict directly).
             for key in ("title", "default", "$defs", "additionalProperties"):
                 resolved.pop(key, None)
 
-            # Recurse into properties
+            # Recurse into properties values individually
             if "properties" in resolved:
                 resolved["properties"] = {
                     k: _resolve(v) for k, v in resolved["properties"].items()
