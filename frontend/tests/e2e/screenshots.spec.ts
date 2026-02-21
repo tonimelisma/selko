@@ -12,6 +12,19 @@ const VIEWPORTS = [
 ] as const;
 
 /**
+ * Wait for the login form to be fully rendered and hydrated.
+ *
+ * The root layout hides all children while svelte-i18n loads its locale JSON.
+ * Under parallel workers the async import can take 10+ seconds. After the form
+ * appears we add a stability delay so SvelteKit hydration completes and JS
+ * event handlers (like the form's onsubmit) are attached.
+ */
+async function waitForLoginForm(page: Page): Promise<void> {
+  await page.getByLabel('Email').waitFor({ state: 'visible', timeout: 30000 });
+  await page.waitForTimeout(1000);
+}
+
+/**
  * Create a new browser context at the given viewport, log in as the
  * screenshot user, and return the context + page (already at /app).
  */
@@ -23,17 +36,19 @@ async function createAuthContext(
   const page = await context.newPage();
 
   await page.goto('/login');
-  // Wait for SvelteKit hydration before interacting with form
-  await page.waitForLoadState('networkidle');
+  await waitForLoginForm(page);
   await page.getByLabel('Email').fill(SCREENSHOT_USER);
   await page.getByLabel('Password').fill(SCREENSHOT_PASS);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/app');
+  await page.waitForURL('/app', { timeout: 15000 });
 
   return { context, page };
 }
 
 test.describe('Screenshot capture', () => {
+  // i18n lazy-loading + SvelteKit hydration can be slow under parallel workers
+  test.setTimeout(60000);
+
   for (const vp of VIEWPORTS) {
     test.describe(`${vp.name} (${vp.width}x${vp.height})`, () => {
 
@@ -44,7 +59,7 @@ test.describe('Screenshot capture', () => {
         });
         const page = await context.newPage();
         await page.goto('/login');
-        await page.waitForLoadState('networkidle');
+        await waitForLoginForm(page);
         await page.screenshot({
           path: `${SCREENSHOT_DIR}/web-login-${vp.name}.png`,
           fullPage: false,
@@ -59,7 +74,8 @@ test.describe('Screenshot capture', () => {
         });
         const page = await context.newPage();
         await page.goto('/register');
-        await page.waitForLoadState('networkidle');
+        await page.getByLabel('Email').waitFor({ state: 'visible', timeout: 30000 });
+        await page.waitForTimeout(500);
         await page.screenshot({
           path: `${SCREENSHOT_DIR}/web-register-${vp.name}.png`,
           fullPage: false,
