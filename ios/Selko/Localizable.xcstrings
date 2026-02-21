@@ -1167,6 +1167,17 @@
         }
       }
     },
+    "settings.authErrorMessage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to open the authentication page. Please try again."
+          }
+        }
+      }
+    },
     "sender_rules.title" : {
       "extractionState" : "manual",
       "localizations" : {
