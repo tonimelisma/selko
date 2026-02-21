@@ -30,7 +30,7 @@ eval/
 │   ├── merge/               # Merge fixtures
 │   ├── attachments/         # Text/image attachment fixtures
 │   └── threads/             # Multi-email thread scenarios (4)
-├── results/                 # Cached evaluation results (gitignored)
+├── results/                 # Cached evaluation results (tracked in git)
 │   ├── extract/             # Per-model extract results
 │   ├── compare/             # Per-model compare results
 │   └── merge/               # Per-model merge results
@@ -271,13 +271,21 @@ Text-based attachments supported:
 
 ## Results Cache
 
-Results are cached in `results/` directory as JSON files:
+Results are cached in `results/` directory as JSON files and tracked in git for regression analysis.
+
+Result files are named `result_{prompt_hash}.json` where `prompt_hash` is a 12-char SHA256 of the
+prompt-affecting functions only (`_build_prompt`, `compare_events`, `merge_event_data`, `CalendarEvent`,
+`EventExtractionResponse`). This means scaffolding-only changes to `event_processing.py` (e.g., renaming
+a variable, adding a comment, changing a log statement) **do not** invalidate the cache. Use `--no-cache`
+to force a re-run regardless.
 
 ```json
 {
   "fixture_name": "birthday_party_01",
   "run_at": "2026-01-27T10:30:00Z",
   "model": "gemini-3-flash-preview",
+  "code_hash": "abc123def456",
+  "prompt_hash": "xyz789abc012",
   "duration_ms": 1234,
   "actual": {
     "events_found": true,
@@ -296,6 +304,9 @@ Results are cached in `results/` directory as JSON files:
   "manual_notes": null
 }
 ```
+
+- **`code_hash`**: SHA256 of the entire `event_processing.py` file. Stored for traceability.
+- **`prompt_hash`**: SHA256 of prompt-affecting functions only. Controls the cache key — same prompt → cached results reused even if scaffolding changed.
 
 ## Cost Estimation
 
