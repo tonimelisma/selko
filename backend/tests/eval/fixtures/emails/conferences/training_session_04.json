@@ -34,7 +34,6 @@
         "location": "Training Room A (Building 2, Floor 1)",
         "description": "Mandatory annual compliance training session",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

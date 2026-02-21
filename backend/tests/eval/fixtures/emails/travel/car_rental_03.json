@@ -34,7 +34,6 @@
         "location": "Hertz LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
         "description": "Full size car rental (Toyota Camry or similar)",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]

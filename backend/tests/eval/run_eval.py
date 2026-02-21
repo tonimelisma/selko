@@ -256,14 +256,13 @@ def time_difference_minutes(t1: str | None, t2: str | None) -> float | None:
 
 
 def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
-    """Auto-score a single event extraction."""
-    scores = {}
+    """Auto-score a single event extraction.
 
-    title_sim = string_similarity(expected.get("title"), actual.get("title"))
-    scores["title"] = {
-        "similarity": title_sim,
-        "match": title_sim >= AUTO_SCORE_THRESHOLDS["title_similarity"],
-    }
+    Only core fields (start_datetime, end_datetime, all_day) gate overall_match.
+    Title and location are NOT scored — algorithmic string similarity can't
+    determine semantic equivalence (e.g. "SFO" vs "San Francisco International Airport").
+    """
+    scores = {}
 
     start_diff = time_difference_minutes(
         expected.get("start_datetime"), actual.get("start_datetime")
@@ -283,26 +282,6 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
         or (isinstance(end_diff, (int, float)) and end_diff <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"]),
     }
 
-    loc_sim = string_similarity(expected.get("location"), actual.get("location"))
-    # If either side is null, treat location as a match — the event was
-    # correctly identified regardless of whether a location was extracted.
-    if expected.get("location") is None or actual.get("location") is None:
-        loc_match = True
-    else:
-        loc_match = loc_sim >= AUTO_SCORE_THRESHOLDS["location_similarity"]
-    scores["location"] = {
-        "similarity": loc_sim,
-        "match": loc_match,
-    }
-
-    actual_confidence = actual.get("confidence", 0)
-    min_confidence = expected.get("confidence_min", AUTO_SCORE_THRESHOLDS["confidence_min"])
-    scores["confidence"] = {
-        "actual": actual_confidence,
-        "required_min": min_confidence,
-        "match": actual_confidence >= min_confidence,
-    }
-
     # All day
     expected_all_day = expected.get("all_day")
     if expected_all_day is not None:
@@ -313,7 +292,7 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
             "match": expected_all_day == actual_all_day,
         }
 
-    # Importance
+    # Importance (reported but does not gate overall_match)
     expected_importance = expected.get("importance")
     actual_importance = actual.get("importance")
     if expected_importance is not None:
@@ -323,37 +302,36 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
             "match": expected_importance == actual_importance,
         }
 
-    # Recurrence rule
+    # Recurrence rule (reported but does not gate overall_match)
     expected_recurrence = expected.get("recurrence_rule")
+    actual_recurrence = actual.get("recurrence_rule")
     if expected_recurrence is not None:
-        actual_recurrence = actual.get("recurrence_rule")
         scores["recurrence_rule"] = {
             "expected": expected_recurrence,
             "actual": actual_recurrence,
             "match": expected_recurrence == actual_recurrence,
         }
 
-    # Recurring events: if both have recurrence_rule, relax date matching
-    # to only check day-of-week + time-of-day (any valid occurrence is acceptable)
-    if expected_recurrence and actual.get("recurrence_rule"):
+    # Recurring events: if EITHER expected or actual has recurrence_rule,
+    # skip date comparison — only compare time-of-day (the date the model
+    # picks is irrelevant for a recurring event).
+    has_recurrence = expected_recurrence or actual_recurrence
+    if has_recurrence:
         for dt_field in ("start_datetime", "end_datetime"):
             if not scores.get(dt_field, {}).get("match", True):
                 try:
                     exp_dt = datetime.fromisoformat(expected.get(dt_field, "").replace("Z", "+00:00"))
                     act_dt = datetime.fromisoformat(actual.get(dt_field, "").replace("Z", "+00:00"))
-                    same_weekday = exp_dt.weekday() == act_dt.weekday()
                     time_diff_mins = abs(
                         (exp_dt.hour * 60 + exp_dt.minute) - (act_dt.hour * 60 + act_dt.minute)
                     )
-                    if same_weekday and time_diff_mins <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"]:
+                    if time_diff_mins <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"]:
                         scores[dt_field]["match"] = True
                         scores[dt_field]["recurring_relaxed"] = True
                 except (ValueError, TypeError):
                     pass
 
     # Only core fields (times + all_day) gate overall_match.
-    # Title, location, confidence, importance are still scored/reported
-    # but don't determine pass/fail.
     CORE_MATCH_FIELDS = {"start_datetime", "end_datetime", "all_day"}
     scores["overall_match"] = all(
         s.get("match", True)
@@ -822,7 +800,6 @@ def run_extract_eval(
                     "all_day": getattr(e, "all_day", False),
                     "location": e.location,
                     "description": e.description,
-                    "confidence": e.confidence,
                     "importance": getattr(e, "importance", None),
                     "recurrence_rule": getattr(e, "recurrence_rule", None),
                 }
@@ -1237,7 +1214,6 @@ def run_thread_eval(
                         "start_datetime": e.start_datetime.isoformat() if e.start_datetime else None,
                         "end_datetime": e.end_datetime.isoformat() if e.end_datetime else None,
                         "location": e.location,
-                        "confidence": e.confidence,
                     }
                     for e in extraction.events
                 ],

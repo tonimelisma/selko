@@ -54,7 +54,6 @@
         "location": null,
         "description": "Staff development day, no school for students. Teachers learning about math curriculum updates and student writing.",
         "all_day": true,
-        "confidence_min": 0.5,
         "importance": "action_required"
       },
       {
@@ -64,7 +63,6 @@
         "location": null,
         "description": "President's Day weekend, no school Friday through Monday.",
         "all_day": true,
-        "confidence_min": 0.5,
         "importance": "action_required"
       },
       {
@@ -74,7 +72,6 @@
         "location": "Walnut Heights School",
         "description": "PTA meeting.",
         "all_day": false,
-        "confidence_min": 0.5,
         "importance": "action_required"
       },
       {
@@ -84,7 +81,6 @@
         "location": "Lamorinda Music, 81 Lafayette Cr, Lafayette, CA 94549",
         "description": "Free assembly event to build hygiene care kits for families in need, organized by Mindful Littles.",
         "all_day": false,
-        "confidence_min": 0.5,
         "importance": "action_required"
       },
       {
@@ -94,7 +90,6 @@
         "location": "Walnut Heights School",
         "description": "Lunar New Year activities at lunch.",
         "all_day": true,
-        "confidence_min": 0.5,
         "importance": "action_required"
       },
       {
@@ -104,7 +99,6 @@
         "location": "Walnut Heights School Cafe",
         "description": "PTA meeting in the cafe.",
         "all_day": false,
-        "confidence_min": 0.5,
         "importance": "action_required"
       },
       {
@@ -114,7 +108,6 @@
         "location": "Walnut Creek Downtown & Broadway Plaza",
         "description": "WCEF fundraiser event.",
         "all_day": false,
-        "confidence_min": 0.5,
         "importance": "action_required"
       },
       {
@@ -124,7 +117,6 @@
         "location": null,
         "description": "Spring break, no school.",
         "all_day": true,
-        "confidence_min": 0.5,
         "importance": "action_required"
       },
       {
@@ -134,7 +126,6 @@
         "location": "WCI gym, Walnut Creek Intermediate",
         "description": "Parent-only informational night about Walnut Creek Intermediate for incoming 6th graders.",
         "all_day": false,
-        "confidence_min": 0.7,
         "importance": "action_required"
       },
       {
@@ -144,7 +135,6 @@
         "location": "Walnut Creek Intermediate",
         "description": "Annual Open House - families invited to walk the campus, visit classrooms.",
         "all_day": false,
-        "confidence_min": 0.7,
         "importance": "action_required"
       }
     ]

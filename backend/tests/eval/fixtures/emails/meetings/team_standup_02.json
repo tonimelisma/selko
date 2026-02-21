@@ -34,10 +34,10 @@
         "location": "Conference Room B",
         "description": "Daily team standup meeting (new time)",
         "all_day": false,
-        "confidence_min": 0.8,
-        "importance": "action_required"
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
       }
     ]
   },
-  "notes": "Daily standup time change announcement - extract first occurrence"
+  "notes": "Daily standup time change announcement - tests extracting recurring weekday meeting"
 }

@@ -1,0 +1,112 @@
+{
+  "fixture_name": "same_school_play_07",
+  "fixture_hash": "383229ec54af3331fbff7d2bbf90ef2ebe78fe6a4ef571f6cb95b2104211299f",
+  "code_hash": "4dece2183c36",
+  "prompt_hash": "f127fc68f43d",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T22:36:16.688955+00:00",
+  "duration_ms": 2696,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T22:36:13.984481+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T22:36:13.984486+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T22:36:14.003075+00:00",
+      "duration_ms": 2678
+    },
+    "scoring": {
+      "started_at": "2026-02-21T22:36:16.681732+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 435,
+    "completion_tokens": 138,
+    "total_tokens": 573
+  },
+  "cost": 0.00038475,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1294,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Spring Musical: The Wizard of Oz\n- Start: 2026-04-25T19:00:00\n- End: 2026-04-25T21:00:00\n- Location: Lincoln Elementary Auditorium\n- Description: Your child's class is performing! Tickets available at the door, $5 per person.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: School Play - Wizard of Oz\n   - Start: 2026-04-25T19:00:00\n   - End: 2026-04-25T21:00:00\n   - Location: Lincoln Elementary\n   - Description: Annual spring performance by 3rd and 4th graders\n\n2. Event ID: event-002\n   - Title: PTA Meeting\n   - Start: 2026-04-24T18:30:00\n   - End: 2026-04-24T20:00:00\n   - Location: Lincoln Elementary Library\n   - Description: Monthly PTA meeting - all parents welcome\n\n3. Event ID: event-003\n   - Title: Soccer Practice\n   - Start: 2026-04-25T16:00:00\n   - End: 2026-04-25T17:30:00\n   - Location: Community Field\n   - Description: Regular Friday practice\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Same date and identical start/end times; titles both refer to 'Wizard of Oz' school performance and location is the same school (Auditorium vs Lincoln Elementary). Description matches (school spring performance), so this is the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

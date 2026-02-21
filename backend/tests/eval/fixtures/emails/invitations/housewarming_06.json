@@ -33,7 +33,6 @@
         "location": "567 Willow Way, Apt 12B, Seattle, WA 98101",
         "description": "Housewarming party - drop by anytime, BYOB",
         "all_day": false,
-        "confidence_min": 0.8,
         "importance": "action_required"
       }
     ]

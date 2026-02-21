@@ -43,5 +43,5 @@
     "event_count": 0,
     "events": []
   },
-  "notes": "Real-world Target Drive Up order pickup confirmation. The pickup already happened (past tense: 'was picked up on Sun, Feb 8'). Images include product photos, Target branding, Valentine's Day themed decorations, and a barcode. Should not extract any future calendar event."
+  "notes": "Real-world Target Drive Up order pickup confirmation. This is a receipt/order confirmation (NOT-events rule: transactional emails). Images include product photos, Target branding, Valentine's Day themed decorations, and a barcode. Should not extract any calendar event."
 }

@@ -34,7 +34,6 @@
         "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
         "description": "Quarterly board of directors meeting",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

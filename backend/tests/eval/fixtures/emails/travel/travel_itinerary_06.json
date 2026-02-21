@@ -34,7 +34,6 @@
         "location": "San Francisco International Airport (SFO)",
         "description": "Japan Airlines flight to Tokyo Narita",
         "all_day": false,
-        "confidence_min": 0.8,
         "importance": "action_required"
       },
       {
@@ -44,7 +43,6 @@
         "location": "Narita Airport",
         "description": "Limousine bus to Shinjuku Bus Terminal",
         "all_day": false,
-        "confidence_min": 0.7,
         "importance": "action_required"
       },
       {
@@ -54,7 +52,6 @@
         "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo",
         "description": "7-night hotel stay",
         "all_day": false,
-        "confidence_min": 0.8,
         "importance": "action_required"
       },
       {
@@ -64,7 +61,6 @@
         "location": "Tokyo Narita Airport (NRT)",
         "description": "Japan Airlines return flight to San Francisco",
         "all_day": false,
-        "confidence_min": 0.8,
         "importance": "action_required"
       }
     ]

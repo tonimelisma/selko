@@ -214,16 +214,6 @@ class TestParseIcsAttachments:
 
         assert result is None
 
-    def test_confidence_is_1(self):
-        attachments = [
-            {"data": BASIC_ICS, "mime_type": "text/calendar", "filename": "invite.ics"},
-        ]
-
-        result = parse_ics_attachments(attachments, EMAIL_METADATA)
-
-        assert result is not None
-        assert result.events[0].confidence == 1.0
-
     def test_timezone_aware_datetimes(self):
         attachments = [
             {"data": TIMEZONE_ICS, "mime_type": "text/calendar", "filename": "tz.ics"},

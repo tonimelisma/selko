@@ -34,7 +34,6 @@
         "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
         "description": "Estate planning consultation",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

@@ -34,7 +34,6 @@
         "location": "San Francisco International Airport (SFO)",
         "description": "United Airlines flight to New York JFK",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       },
       {
@@ -44,7 +43,6 @@
         "location": "John F. Kennedy International Airport (JFK)",
         "description": "United Airlines return flight to San Francisco",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]
