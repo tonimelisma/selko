@@ -1,0 +1,206 @@
+{
+  "fixture_name": "event_cancelled_06",
+  "fixture_hash": "3e4c1d2c17f2b9e11f399a3f37cb92e5a29a3518035703869efb1c5170d17075",
+  "code_hash": "c658e146c4ce",
+  "prompt_hash": "5cbb1c0e1e27",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T17:24:48.226667+00:00",
+  "duration_ms": 8847,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T17:24:39.373981+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T17:24:39.373995+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T17:24:39.404436+00:00",
+      "duration_ms": 8817
+    },
+    "scoring": {
+      "started_at": "2026-02-21T17:24:48.222044+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Event cancelled - title should get CANCELLED prefix",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "cancellation"
+  ],
+  "expected": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description_contains": [
+      "cancelled",
+      "team offsite",
+      "reschedule next week"
+    ]
+  },
+  "actual": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description": "Bi-weekly sprint review and retrospective. Meeting cancelled due to team offsite. Will reschedule next week.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "cancellation_prefix": true,
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "cancelled",
+        "team offsite",
+        "reschedule next week"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 390,
+    "completion_tokens": 99,
+    "total_tokens": 489
+  },
+  "cost": 0.0001179,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1214,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Sprint Review\n- Start: 2026-04-18T14:00:00\n- End: 2026-04-18T15:00:00\n- All Day: False\n- Location: Conference Room A\n- Description: Bi-weekly sprint review and retrospective\n- Importance: action_required\n\n**New Information (source type: cancellation):**\n- Title: Sprint Review\n- Start: 2026-04-18T14:00:00\n- End: 2026-04-18T15:00:00\n- All Day: False\n- Location: Conference Room A\n- Description: Meeting cancelled due to team offsite. Will reschedule next week.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\"title\":\"CANCELLED: Sprint Review\",\"start_datetime\":\"2026-04-18T14:00:00\",\"end_datetime\":\"2026-04-18T15:00:00\",\"all_day\":false,\"location\":\"Conference Room A\",\"description\":\"Bi-weekly sprint review and retrospective. Meeting cancelled due to team offsite. Will reschedule next week.\",\"importance\":\"action_required\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

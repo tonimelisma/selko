@@ -1,0 +1,453 @@
+{
+  "fixture_name": "school/registration_opens_09",
+  "fixture_hash": "d39e8686f186f45158e856282314f6e26bffb99caa7760d577abb40a9127adf0",
+  "code_hash": "c658e146c4ce",
+  "prompt_hash": "5cbb1c0e1e27",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T17:23:07.014672+00:00",
+  "duration_ms": 13381,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T17:22:53.623253+00:00",
+      "duration_ms": 7
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T17:22:53.631121+00:00",
+      "duration_ms": 25
+    },
+    "api_call": {
+      "started_at": "2026-02-21T17:22:53.656813+00:00",
+      "duration_ms": 13349
+    },
+    "scoring": {
+      "started_at": "2026-02-21T17:23:07.006050+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world city arts & rec spring registration announcement with specific open date/time - borderline calendar event",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "registration",
+    "community",
+    "borderline",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Spring 2026 Registration Starts 2/18",
+    "from": "artsrec@walnut-creek.org",
+    "has_attachments": true,
+    "attachment_count": 14,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 5028052
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Spring 2026 registration opens for Arts + Rec classes including youth programs, preschool, adult classes, and intergenerational programs",
+        "all_day": false,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Spring 2026 Arts + Rec Registration Opens (online)",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": null,
+        "description": "Spring 2026 registration for Walnut Creek Arts + Rec opens online on February 18, 2026 at 12:00 PM. Classes are currently viewable online. Registration includes general Spring 2026 classes and specifically notes that registration for Summer 2026 and School Year 2026\u201327 Community Arts Preschool classes also opens Wednesday, February 18 at 12:00 PM. Phone registration is available via Customer Support at (925) 295-1490 (reference course number). Questions: artsrec@walnutcreekca.gov. Printed copies of the Activity Guide will be available for pickup (while supplies last) at: Civic Park Community Center (1375 Civic Drive); Tice Valley Gym (2055 Tice Valley Boulevard); Shadelands Art Center (111 N. Wiget Lane); Walnut Creek City Hall (1666 N. Main Street). NOTE: many individual classes, camps, and events are listed in the Activity Guide and online; specific class dates/times are not provided in this email.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Family Art Day: Festivals of Spring (mentioned)",
+        "start_datetime": null,
+        "end_datetime": null,
+        "all_day": false,
+        "location": null,
+        "description": "Mentioned in the email as a spring youth event: \"Family Art Day: Festivals of Spring.\" No date, time, or location provided in the email.",
+        "confidence": 0.3,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.75,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 8791,
+    "completion_tokens": 813,
+    "total_tokens": 9604
+  },
+  "cost": 0.00382375,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3587,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Spring 2026 Registration Starts 2/18\n- From: Arts + Rec <artsrec@walnut-creek.org>\n- Date Sent: 2026-02-13T19:30:56Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Confidence score (0.0-1.0) based on clarity of information\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Include uncertainty in confidence scores (e.g., 0.7 if time is ambiguous)\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events (do NOT extract these):**\n\u2717 Newsletter content without specific dates\n\u2717 Receipts or order confirmations (unless they mention an appointment)\n\u2717 Financial statements or account summaries\n\u2717 General announcements without specific event details\n\u2717 Promotional offers, sales, or discount deadlines (\"offer expires\", \"sale ends\")\n\u2717 Survey, feedback, or review request deadlines\n\u2717 Terms of service or privacy policy effective dates\n\u2717 Public comment periods or administrative deadlines\n\u2717 Emails where event details (date, time) must be inferred or guessed from context \u2014 only extract events with explicitly stated dates and times\n\u2717 Package shipping or delivery notifications (estimated delivery dates are NOT calendar events)\n\u2717 Payment due dates, invoice deadlines, or billing cycle dates\n\u2717 Subscription renewal dates\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 2092,
+        "text": "\n**Email Body:**\nEmail from City of Walnut Creek\n\nRegistration Starts at @ 12PM! Classes are currently viewable online.\n\nSpring 2026 Registration Starts February 18 at 12:00 PM!\n\nSpring registration is almost here! Now is the perfect time to plan spring activities for you and your family. Make a note of the 5-digit course numbers so signing up is a breeze!\n\nView Offerings and Register Online\n\nClick through all the exciting options available to you this Spring online. If you\u2019d like a printed copy of the Activity Guide, limited quantities will be available at the following locations for pick up, as supplies last:\n\nCivic Park Community Center (1375 Civic Drive)\nTice Valley Gym (2055 Tice Valley Boulevard)\nShadelands Art Center (111 N. Wiget Lane)\nWalnut Creek City Hall (1666 N. Main Street)\n\nLook for NEW! classes this Spring marked by red throughout the Guide!\n\nReference Links\nAquatics Information\nRegistration Policies\nCommunity Workshops & Social Services\nPreschools\nScholarship Information\nView Classes Online\n\nTo register via phone, Contact Customer Support 925-295-1490 and reference the course number.\nEmail artsrec@walnutcreekca.gov with any questions.\n\nSection Highlights\n\nYouth Programs\nThis spring, child and teen programs include ceramics, dance classes, STEM, drama classes, and more!\n\nExplore Community Arts Preschool\nJoin Community Arts Preschool! Registration for Summer 2026 and School Year 2026\u201327 classes open on Wednesday, February 18 at 12:00 PM.\n\nExplore Intergenerational\nAttend art, music, or cooking classes with your family for these fun and educational intergenerational classes!\n\nExplore Adult Classes\nExplore adult programs like ceramics, culinary arts, dance, digital media, and more!\n\nExplore Spring Youth Events\nArts + Rec has tons of fun events for kids and teens this spring!\nFamily Art Day: Festivals of Spring\n\nContact Customer Support: artsrec@walnut-creek.org + (925) 295-1490\nAbout Arts + Rec | FAQs | Activity Guide | Registration Policies | Class Locations\n\nCity of Walnut Creek | 1666 North Main Street 9259435850 | Walnut Creek, CA 94596 US"
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 43
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 833822
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 2229016
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 113634
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 1743
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 1645056
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 118313
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 62484
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 1549
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 4151
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 3988
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 2301
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 2543
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 9409
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"events_found\":true,\"events\":[{\"title\":\"Spring 2026 Arts + Rec Registration Opens (online)\",\"start_datetime\":\"2026-02-18T12:00:00\",\"end_datetime\":null,\"all_day\":false,\"location\":null,\"description\":\"Spring 2026 registration for Walnut Creek Arts + Rec opens online on February 18, 2026 at 12:00 PM. Classes are currently viewable online. Registration includes general Spring 2026 classes and specifically notes that registration for Summer 2026 and School Year 2026\u201327 Community Arts Preschool classes also opens Wednesday, February 18 at 12:00 PM. Phone registration is available via Customer Support at (925) 295-1490 (reference course number). Questions: artsrec@walnutcreekca.gov. Printed copies of the Activity Guide will be available for pickup (while supplies last) at: Civic Park Community Center (1375 Civic Drive); Tice Valley Gym (2055 Tice Valley Boulevard); Shadelands Art Center (111 N. Wiget Lane); Walnut Creek City Hall (1666 N. Main Street). NOTE: many individual classes, camps, and events are listed in the Activity Guide and online; specific class dates/times are not provided in this email.\",\"confidence\":0.9,\"importance\":\"action_required\"},{\"title\":\"Family Art Day: Festivals of Spring (mentioned)\",\"start_datetime\":null,\"end_datetime\":null,\"all_day\":false,\"location\":null,\"description\":\"Mentioned in the email as a spring youth event: \\\"Family Art Day: Festivals of Spring.\\\" No date, time, or location provided in the email.\",\"confidence\":0.3,\"importance\":\"fyi\"}]}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
