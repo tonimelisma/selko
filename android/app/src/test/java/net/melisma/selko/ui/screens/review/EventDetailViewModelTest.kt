@@ -3,6 +3,7 @@ package net.melisma.selko.ui.screens.review
 import android.app.Application
 import app.cash.turbine.test
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -47,6 +49,7 @@ class EventDetailViewModelTest {
         application = mockk(relaxed = true)
         every { application.getString(R.string.event_detail_error_approve) } returns "Failed to approve event"
         every { application.getString(R.string.event_detail_error_reject) } returns "Failed to reject event"
+        every { application.getString(R.string.event_detail_error_save) } returns "Failed to save changes. Please try again."
         eventRepository = mockk(relaxed = true)
     }
 
@@ -170,5 +173,41 @@ class EventDetailViewModelTest {
             assertEquals(SourceOrigin.EMAIL, state.sourceOrigin)
             assertNull(state.sourceEmail)
         }
+    }
+
+    @Test
+    fun `approveEvent aborts when save fails`() = runTest {
+        val event = CalendarEvent(
+            id = "event-5",
+            userId = "user-1",
+            title = "Test Event",
+            status = EventStatus.PENDING_REVIEW,
+            eventSources = emptyList()
+        )
+        coEvery { eventRepository.getEventWithSources("event-5") } returns
+                EventResult.Success(event)
+        coEvery { eventRepository.updateEvent(any(), any(), any(), any(), any(), any(), any()) } returns
+                EventResult.Error("Save failed")
+
+        val viewModel = createViewModel("event-5")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Make a change to set hasUnsavedChanges = true
+        viewModel.onTitleChange("Updated Title")
+
+        // Attempt to approve
+        viewModel.approveEvent()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            // Approval should NOT have proceeded
+            assertFalse(state.isDone)
+            assertFalse(state.isApproving)
+            assertEquals("Failed to save changes. Please try again.", state.errorMessage)
+        }
+
+        // Verify approveEvent was never called on the repository
+        coVerify(exactly = 0) { eventRepository.approveEvent(any()) }
     }
 }

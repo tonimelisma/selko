@@ -84,8 +84,12 @@ class BackendApiClient(
             if (response.status.isSuccess()) {
                 Result.success(response.body())
             } else {
-                val error: ApiErrorResponse = response.body()
-                Result.failure(Exception(error.detail ?: "Sync failed"))
+                val errorMessage = try {
+                    response.body<ApiErrorResponse>().detail ?: "Sync failed"
+                } catch (_: Exception) {
+                    "Request failed with status ${response.status.value}"
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -112,8 +116,12 @@ class BackendApiClient(
             if (response.status.isSuccess()) {
                 Result.success(response.body())
             } else {
-                val error: ApiErrorResponse = response.body()
-                Result.failure(Exception(error.detail ?: "Processing failed"))
+                val errorMessage = try {
+                    response.body<ApiErrorResponse>().detail ?: "Processing failed"
+                } catch (_: Exception) {
+                    "Request failed with status ${response.status.value}"
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -138,8 +146,12 @@ class BackendApiClient(
             if (response.status.isSuccess()) {
                 Result.success(response.body())
             } else {
-                val error: ApiErrorResponse = response.body()
-                Result.failure(Exception(error.detail ?: "Batch processing failed"))
+                val errorMessage = try {
+                    response.body<ApiErrorResponse>().detail ?: "Batch processing failed"
+                } catch (_: Exception) {
+                    "Request failed with status ${response.status.value}"
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -170,8 +182,12 @@ class BackendApiClient(
             if (response.status.isSuccess()) {
                 Result.success(response.body())
             } else {
-                val error: ApiErrorResponse = response.body()
-                Result.failure(Exception(error.detail ?: "Failed to list calendars"))
+                val errorMessage = try {
+                    response.body<ApiErrorResponse>().detail ?: "Failed to list calendars"
+                } catch (_: Exception) {
+                    "Request failed with status ${response.status.value}"
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -198,8 +214,12 @@ class BackendApiClient(
             if (response.status.isSuccess()) {
                 Result.success(response.body())
             } else {
-                val error: ApiErrorResponse = response.body()
-                Result.failure(Exception(error.detail ?: "Calendar sync failed"))
+                val errorMessage = try {
+                    response.body<ApiErrorResponse>().detail ?: "Calendar sync failed"
+                } catch (_: Exception) {
+                    "Request failed with status ${response.status.value}"
+                }
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
             Result.failure(e)

@@ -1,6 +1,7 @@
 package net.melisma.selko.ui.navigation
 
 import android.net.Uri
+import java.net.URLDecoder
 
 /**
  * Sealed class representing deep link targets for the Selko app.
@@ -54,8 +55,11 @@ fun parseDeepLink(uriString: String?): DeepLink? {
         "history" -> DeepLink.HistoryTab
         "settings" -> DeepLink.SettingsTab
         "event" -> {
-            val eventId = segments.getOrNull(1)
-            if (eventId.isNullOrBlank()) null else DeepLink.EventDetail(eventId)
+            val rawEventId = segments.getOrNull(1)
+            if (rawEventId.isNullOrBlank()) null else {
+                val eventId = URLDecoder.decode(rawEventId, "UTF-8")
+                DeepLink.EventDetail(eventId)
+            }
         }
         else -> null
     }
