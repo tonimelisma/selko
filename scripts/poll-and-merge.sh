@@ -126,13 +126,28 @@ for pr in "$@"; do
                 echo "PR #${pr} merged."
                 MERGED_PRS+=("$pr")
                 # Get the merge commit SHA for post-merge tracking
-                merge_sha=$(gh pr view "$pr" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null || true)
+                # Retry up to 3 times with 2s delay — GitHub may not have propagated yet
+                for sha_attempt in 1 2 3; do
+                    merge_sha=$(gh pr view "$pr" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null || true)
+                    if [ -n "$merge_sha" ]; then
+                        break
+                    fi
+                    echo "  Waiting for merge SHA to propagate (attempt ${sha_attempt}/3)..."
+                    sleep 2
+                done
             else
                 # Merge might fail if already merged
                 if gh pr view "$pr" --json state -q '.state' 2>/dev/null | grep -qi "MERGED"; then
                     echo "PR #${pr} was already merged."
                     MERGED_PRS+=("$pr")
-                    merge_sha=$(gh pr view "$pr" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null || true)
+                    for sha_attempt in 1 2 3; do
+                        merge_sha=$(gh pr view "$pr" --json mergeCommit -q '.mergeCommit.oid' 2>/dev/null || true)
+                        if [ -n "$merge_sha" ]; then
+                            break
+                        fi
+                        echo "  Waiting for merge SHA to propagate (attempt ${sha_attempt}/3)..."
+                        sleep 2
+                    done
                 else
                     echo "Failed to merge PR #${pr}."
                     FAILED_PRS+=("$pr")
