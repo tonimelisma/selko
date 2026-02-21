@@ -24,6 +24,7 @@
 	let isLoadingEvents = $state(false);
 	let error = $state('');
 	let notification = $state('');
+	let processingEvents = $state(new Set());
 
 	let gmailIntegration = $derived(integrationsList.find((i) => i.provider === 'gmail'));
 	let gcalIntegration = $derived(
@@ -102,24 +103,44 @@
 
 	/** @param {any} event */
 	async function handleApprove(event) {
-		const { error: updateError } = await updateEventStatus(event.id, 'approved');
-		if (updateError) {
-			error = updateError.message;
-			return;
+		if (processingEvents.has(event.id)) return;
+		processingEvents = new Set([...processingEvents, event.id]);
+		try {
+			const { error: updateError } = await updateEventStatus(event.id, 'approved');
+			if (updateError) {
+				error = updateError.message;
+				return;
+			}
+			events = events.filter((e) => e.id !== event.id);
+			try {
+				await syncEventToCalendar(event.id);
+			} catch (syncError) {
+				console.error('Calendar sync failed after approval:', syncError);
+				// Don't block the approval — event is already approved
+			}
+		} finally {
+			const next = new Set(processingEvents);
+			next.delete(event.id);
+			processingEvents = next;
 		}
-		events = events.filter((e) => e.id !== event.id);
-		// Fire and forget calendar sync
-		syncEventToCalendar(event.id);
 	}
 
 	/** @param {any} event */
 	async function handleReject(event) {
-		const { error: updateError } = await updateEventStatus(event.id, 'rejected');
-		if (updateError) {
-			error = updateError.message;
-			return;
+		if (processingEvents.has(event.id)) return;
+		processingEvents = new Set([...processingEvents, event.id]);
+		try {
+			const { error: updateError } = await updateEventStatus(event.id, 'rejected');
+			if (updateError) {
+				error = updateError.message;
+				return;
+			}
+			events = events.filter((e) => e.id !== event.id);
+		} finally {
+			const next = new Set(processingEvents);
+			next.delete(event.id);
+			processingEvents = next;
 		}
-		events = events.filter((e) => e.id !== event.id);
 	}
 
 	/** @param {any[]} eventsList */
@@ -233,6 +254,7 @@
 					sender={senderGroup.senderName}
 					senderEmail={senderKey}
 					eventCount={senderGroup.events.length}
+					isPhotoSource={senderKey === 'google_photos'}
 					onapproveAll={() => handleApproveAll(senderGroup.events)}
 					onrejectAll={() => handleRejectAll(senderGroup.events)}
 					onignoreSender={() => handleIgnoreSender(senderKey, senderGroup.events)}
@@ -241,6 +263,7 @@
 				{#each senderGroup.events as event (event.id)}
 					<EventCard
 						{event}
+						isProcessing={processingEvents.has(event.id)}
 						onapprove={handleApprove}
 						onreject={handleReject}
 					/>
