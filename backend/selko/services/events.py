@@ -155,8 +155,30 @@ def save_extracted_events(
     num_updated = 0
     user_timezone = get_user_timezone(supabase_client, user_id)
 
+    # Filter out past events (>24h ago) — the LLM extracts all events with
+    # dates, and we filter here rather than asking the LLM to judge what's "past".
+    try:
+        user_tz = ZoneInfo(user_timezone)
+    except (KeyError, ValueError):
+        user_tz = ZoneInfo("America/New_York")
+    now = datetime.now(user_tz)
+    cutoff = now - timedelta(hours=24)
+
     for event in extraction.events:
         event_data = normalize_event_data(event, user_timezone=user_timezone)
+
+        # Skip past events
+        start_str = event_data.get("start_datetime")
+        if start_str:
+            try:
+                start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+                if start_dt.tzinfo is None:
+                    start_dt = start_dt.replace(tzinfo=user_tz)
+                if start_dt < cutoff:
+                    logger.info(f"Skipping past event: {event_data.get('title')} ({start_str})")
+                    continue
+            except (ValueError, TypeError):
+                pass  # Can't parse, keep it
 
         matched_event_id = find_matching_event(
             supabase_client, gateway, user_id, event_data

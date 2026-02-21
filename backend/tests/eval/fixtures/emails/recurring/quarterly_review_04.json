@@ -34,11 +34,10 @@
         "location": "Executive Conference Room (HQ, 10th Floor)",
         "description": "Quarterly business review meeting",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required",
         "recurrence_rule": "RRULE:FREQ=MONTHLY;INTERVAL=3"
       }
     ]
   },
-  "notes": "Quarterly recurring business review — should extract with RRULE"
+  "notes": "Quarterly recurring business review \u2014 should extract with RRULE"
 }

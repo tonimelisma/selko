@@ -34,10 +34,9 @@
         "location": "Virtual (Hopin)",
         "description": "Product Management Virtual Summit - 2-day event with keynotes, track sessions, and workshops",
         "all_day": false,
-        "confidence_min": 0.8,
         "importance": "action_required"
       }
     ]
   },
-  "notes": "Multi-day virtual summit — prompt says 'multi-day events should be ONE event with start/end spanning the full duration'"
+  "notes": "Multi-day virtual summit \u2014 prompt says 'multi-day events should be ONE event with start/end spanning the full duration'"
 }

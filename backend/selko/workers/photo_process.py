@@ -71,14 +71,12 @@ def _build_photo_prompt(photo: dict[str, Any], current_date: str) -> str:
    - Location (venue name, address, gate/seat info)
    - Full description with all relevant details visible in the photo
    - Whether it's an all-day event (true/false)
-   - Confidence score (0.0-1.0) based on clarity of information
    - Importance: "action_required" (events requiring user action) or "fyi" (informational)
 
 **Important:**
 - If NO calendar events are found in the photo, set events_found=false and return empty events list
 - Most photos will NOT contain calendar events - only extract when clearly visible
 - Parse dates carefully using the current date and photo date as context
-- Include uncertainty in confidence scores (e.g., 0.5 if text is partially obscured)
 - For tickets/boarding passes: extract venue, date, time, seat/gate info
 - For flyers/posters: extract event name, date, time, location
 - For invitations: extract event details, RSVP info, location

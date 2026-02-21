@@ -3,18 +3,29 @@
   "category": "school",
   "description": "Personal forward of KinderCare January calendar (Finnish subject, minimal body)",
   "difficulty": "hard",
-  "tags": ["school", "pdf", "calendar", "daycare", "forwarded", "real-world"],
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "forwarded",
+    "real-world"
+  ],
   "input": {
     "gmail_id": "eval-school-pdf-004",
     "thread_id": "thread-school-pdf-004",
     "subject": "Fwd: Tammikuun kalenteri",
     "from_email": "spouse@example.com",
     "from_name": "Spouse",
-    "to_emails": ["parent@example.com"],
+    "to_emails": [
+      "parent@example.com"
+    ],
     "date_sent": "2025-12-29T18:30:00Z",
     "snippet": "Calendar for January",
     "body_text": "Calendar for January",
-    "attachments": ["january_2026_kindercare.pdf"]
+    "attachments": [
+      "january_2026_kindercare.pdf"
+    ]
   },
   "expected": {
     "events_found": true,
@@ -24,70 +35,60 @@
         "title": "KinderCare Closed - New Year's Day",
         "start_datetime": "2026-01-01",
         "all_day": true,
-        "confidence_min": 0.8,
         "importance": "action_required"
       },
       {
         "title": "Wear Anything Sparkle Day",
         "start_datetime": "2026-01-02",
         "all_day": true,
-        "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Selfie Day",
         "start_datetime": "2026-01-05",
         "all_day": true,
-        "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Resolutions Day",
         "start_datetime": "2026-01-07",
         "all_day": true,
-        "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2026-01-09",
         "all_day": true,
-        "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Happy Birthday to Ms Ashley",
         "start_datetime": "2026-01-13",
         "all_day": true,
-        "confidence_min": 0.5,
         "importance": "fyi"
       },
       {
         "title": "Let's Make a Snowflake Day",
         "start_datetime": "2026-01-15",
         "all_day": true,
-        "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "KinderCare Closed - Martin Luther King Day",
         "start_datetime": "2026-01-19",
         "all_day": true,
-        "confidence_min": 0.8,
         "importance": "action_required"
       },
       {
         "title": "Pajama Day",
         "start_datetime": "2026-01-23",
         "all_day": true,
-        "confidence_min": 0.6,
         "importance": "fyi"
       },
       {
         "title": "Dress Like a Rainbow Day",
         "start_datetime": "2026-01-28",
         "all_day": true,
-        "confidence_min": 0.6,
         "importance": "fyi"
       }
     ]

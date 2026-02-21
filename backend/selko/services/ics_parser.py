@@ -158,7 +158,6 @@ def _vevent_to_calendar_event(
         end_datetime=end_dt,
         location=location,
         description=description,
-        confidence=1.0,
         recurrence_rule=recurrence_rule,
     )
 

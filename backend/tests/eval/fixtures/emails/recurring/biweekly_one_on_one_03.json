@@ -34,11 +34,10 @@
         "location": "Mark's office or Zoom",
         "description": "Bi-weekly 1:1 meeting",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required",
         "recurrence_rule": "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR"
       }
     ]
   },
-  "notes": "Bi-weekly (every other Friday) recurring 1:1 meeting — should extract with RRULE"
+  "notes": "Bi-weekly (every other Friday) recurring 1:1 meeting \u2014 should extract with RRULE"
 }

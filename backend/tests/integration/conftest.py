@@ -389,7 +389,6 @@ def mock_gemini_client():
                     all_day=False,
                     location="Mock Location",
                     description="This is a mock event for testing",
-                    confidence=0.9,
                 )
             ],
         )

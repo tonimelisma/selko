@@ -34,7 +34,6 @@
         "location": "Room 512",
         "description": "Annual performance review meeting",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

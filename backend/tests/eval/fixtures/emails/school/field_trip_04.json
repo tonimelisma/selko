@@ -36,7 +36,6 @@
         "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
         "description": "4th grade field trip to science museum with guided tour and planetarium show",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]

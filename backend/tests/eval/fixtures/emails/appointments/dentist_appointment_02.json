@@ -33,7 +33,6 @@
         "location": "Bright Smile Dental, 250 First Street, Suite 100, San Francisco, CA 94105",
         "description": "Routine cleaning and exam with Dr. Michael Chen",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

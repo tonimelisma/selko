@@ -18,24 +18,21 @@
         "start_datetime": "2026-02-10T09:00:00",
         "end_datetime": "2026-02-10T10:30:00",
         "location": "Main Hall, Convention Center",
-        "description": "Keynote address by Jane Tech, CEO of FutureCorp at TechSummit 2026",
-        "confidence": 0.96
+        "description": "Keynote address by Jane Tech, CEO of FutureCorp at TechSummit 2026"
       },
       {
         "title": "TechSummit 2026 - Workshop: AI in Practice",
         "start_datetime": "2026-02-10T14:00:00",
         "end_datetime": "2026-02-10T16:00:00",
         "location": "Room 204, Convention Center",
-        "description": "Workshop on AI in Practice led by Dr. Bob AI",
-        "confidence": 0.95
+        "description": "Workshop on AI in Practice led by Dr. Bob AI"
       },
       {
         "title": "TechSummit 2026 - Networking Breakfast",
         "start_datetime": "2026-02-11T08:00:00",
         "end_datetime": "2026-02-11T09:00:00",
         "location": "Atrium, Convention Center",
-        "description": "Networking breakfast at TechSummit 2026",
-        "confidence": 0.94
+        "description": "Networking breakfast at TechSummit 2026"
       }
     ]
   }

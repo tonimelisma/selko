@@ -34,7 +34,6 @@
         "location": "Happy Paws Veterinary Clinic, 2200 Pet Care Lane, Mountain View, CA 94043",
         "description": "Annual wellness exam and vaccinations for Max (Golden Retriever)",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

@@ -194,7 +194,6 @@ class TestGeminiRealAPI:
         for event in result.events:
             assert event.title
             assert event.start_datetime is not None
-            assert event.confidence > 0.0
 
     def test_thinking_level_low(self, gemini_client, fixtures_dir):
         """Test that thinking_level='low' is being used correctly."""

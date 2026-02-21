@@ -1100,7 +1100,7 @@ class TestSanitizeSchemaForGemini:
 
         expected_fields = [
             "title", "start_datetime", "end_datetime", "all_day",
-            "location", "description", "confidence", "importance",
+            "location", "description", "importance",
         ]
         for field in expected_fields:
             assert field in cal_props, f"CalendarEvent.{field} was stripped"

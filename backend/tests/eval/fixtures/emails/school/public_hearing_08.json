@@ -41,7 +41,6 @@
         "location": "960 Ygnacio Valley Road, Walnut Creek, CA 94596",
         "description": "Public hearing by Walnut Creek School District governing board regarding calling an election to levy new $98 education parcel tax",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]

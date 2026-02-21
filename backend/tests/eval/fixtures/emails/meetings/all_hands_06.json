@@ -34,7 +34,6 @@
         "location": "Main Auditorium",
         "description": "Monthly all-hands meeting with company updates and AMA",
         "all_day": false,
-        "confidence_min": 0.9,
         "importance": "action_required"
       }
     ]

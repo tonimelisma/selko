@@ -59,7 +59,6 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
    - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.
    - Full description with all relevant details
    - Whether it's an all-day event (true/false)
-   - Confidence score (0.0-1.0) based on clarity of information
    - Importance: "action_required" or "fyi" (see classification below)
    - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., "RRULE:FREQ=WEEKLY;BYDAY=MO"). Null for one-time events.
 
@@ -74,7 +73,6 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 **Important:**
 - If NO calendar events are found, set events_found=false and return empty events list
 - Parse dates carefully using the current date as context
-- Include uncertainty in confidence scores (e.g., 0.7 if time is ambiguous)
 - Extract ALL events including themed days and informational items — classify them as "fyi"
 - For PDFs: extract events from calendar grids, flyers, and schedules
 
@@ -87,15 +85,11 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 ✓ Staff birthdays (fyi)
 ✓ Conference registrations (action_required)
 
-**NOT events (do NOT extract these):**
-✗ Commercial transactions: receipts, shipping notifications, payment reminders, subscription renewals, promotional offers
-✗ Administrative notices: terms of service updates, privacy policies, password resets, account statements, survey requests
-✗ Content without actionable dates: newsletters, social media notifications, general announcements without specific event details
-✗ Emails where event details (date, time) must be inferred or guessed from context — only extract events with explicitly stated dates and times
-✗ Estimated delivery/shipping dates — these are logistical estimates, not scheduled appointments
-✗ Completed/past events in order confirmations or pickup receipts
-✗ Financial statement dates, billing cycles, and payment due dates
-✗ Government comment periods and regulatory deadlines (unless a specific hearing or meeting)
+**NOT events — do NOT extract these:**
+An event is something the recipient would put on their personal calendar to attend, participate in, or prepare for. Do NOT extract:
+✗ Transactional emails: order confirmations, shipping notifications, receipts, payment reminders, subscription renewals
+✗ Administrative/informational: account statements, terms updates, password resets, surveys, newsletters without specific event invitations
+✗ Dates that aren't events: delivery estimates, billing cycles, payment due dates, comment period deadlines, regulatory deadlines
 
 **Extraction rules:**
 - Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events

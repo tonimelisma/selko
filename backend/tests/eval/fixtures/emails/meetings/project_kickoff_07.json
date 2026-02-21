@@ -34,7 +34,6 @@
         "location": "Innovation Lab (3rd floor)",
         "description": "Project kickoff meeting with team introductions and planning",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required"
       }
     ]

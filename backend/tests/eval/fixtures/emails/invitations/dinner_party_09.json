@@ -34,7 +34,6 @@
         "location": "321 Elm Street, Portland, OR 97201",
         "description": "Dinner party at Tom and Maria's",
         "all_day": false,
-        "confidence_min": 0.75,
         "importance": "action_required"
       }
     ]

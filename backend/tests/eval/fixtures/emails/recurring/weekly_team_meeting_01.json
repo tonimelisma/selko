@@ -34,7 +34,6 @@
         "location": "Conference Room A",
         "description": "Weekly team sync meeting",
         "all_day": false,
-        "confidence_min": 0.85,
         "importance": "action_required",
         "recurrence_rule": "RRULE:FREQ=WEEKLY;BYDAY=MO"
       }
