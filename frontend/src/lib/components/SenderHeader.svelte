@@ -5,6 +5,7 @@
 		sender,
 		senderEmail = '',
 		eventCount = 0,
+		isPhotoSource = false,
 		onapproveAll,
 		onrejectAll,
 		onignoreSender,
@@ -38,20 +39,24 @@
 						{$_('senderActions.rejectAll')}
 					</button>
 				</li>
-				<div class="divider my-0"></div>
+				{#if !isPhotoSource}
+					<div class="divider my-0"></div>
+				{/if}
 			{/if}
-			<li>
-				<button onclick={() => { onautoApproveSender?.(); /** @type {HTMLElement} */ (document.activeElement)?.blur(); }}>
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-					{$_('senderActions.autoApproveSender')}
-				</button>
-			</li>
-			<li>
-				<button class="text-error" onclick={() => { onignoreSender?.(); /** @type {HTMLElement} */ (document.activeElement)?.blur(); }}>
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-					{$_('senderActions.ignoreSender')}
-				</button>
-			</li>
+			{#if !isPhotoSource}
+				<li>
+					<button onclick={() => { onautoApproveSender?.(); /** @type {HTMLElement} */ (document.activeElement)?.blur(); }}>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+						{$_('senderActions.autoApproveSender')}
+					</button>
+				</li>
+				<li>
+					<button class="text-error" onclick={() => { onignoreSender?.(); /** @type {HTMLElement} */ (document.activeElement)?.blur(); }}>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+						{$_('senderActions.ignoreSender')}
+					</button>
+				</li>
+			{/if}
 		</ul>
 	</div>
 </div>

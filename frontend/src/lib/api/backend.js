@@ -306,7 +306,14 @@ export function getGmailAuthUrl(redirectUri) {
  * @param {string} [redirectUri] - Optional custom redirect URI
  */
 export function initiateGmailAuth(redirectUri) {
-	window.location.href = getGmailAuthUrl(redirectUri);
+	const url = getGmailAuthUrl(redirectUri);
+	try {
+		new URL(url);
+		window.location.href = url;
+	} catch {
+		console.error('Invalid OAuth redirect URL:', url);
+		throw new Error('Failed to generate OAuth URL');
+	}
 }
 
 // ============================================================================
@@ -335,7 +342,14 @@ export function getCalendarAuthUrl(redirectUri) {
  * @param {string} [redirectUri] - Optional custom redirect URI
  */
 export function initiateCalendarAuth(redirectUri) {
-	window.location.href = getCalendarAuthUrl(redirectUri);
+	const url = getCalendarAuthUrl(redirectUri);
+	try {
+		new URL(url);
+		window.location.href = url;
+	} catch {
+		console.error('Invalid OAuth redirect URL:', url);
+		throw new Error('Failed to generate OAuth URL');
+	}
 }
 
 // ============================================================================
@@ -363,7 +377,14 @@ export function getPhotosAuthUrl(redirectUri) {
  * @param {string} [redirectUri] - Optional custom redirect URI
  */
 export function initiatePhotosAuth(redirectUri) {
-	window.location.href = getPhotosAuthUrl(redirectUri);
+	const url = getPhotosAuthUrl(redirectUri);
+	try {
+		new URL(url);
+		window.location.href = url;
+	} catch {
+		console.error('Invalid OAuth redirect URL:', url);
+		throw new Error('Failed to generate OAuth URL');
+	}
 }
 
 // ============================================================================
