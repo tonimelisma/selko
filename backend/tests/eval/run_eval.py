@@ -113,16 +113,12 @@ def get_result_path(operation: str, provider: str, model: str, fixture_name: str
 
 
 def get_latest_result(operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> dict | None:
-    """Get the most recent result file for a fixture (by mtime)."""
-    safe_name = fixture_name.replace("/", "_")
-    model_dir = f"{provider}_{model}_{thinking}"
-    result_dir = RESULTS_DIR / operation / model_dir / safe_name
-    if not result_dir.exists():
+    """Get the result file for the current prompt_hash."""
+    prompt_hash = get_prompt_hash()
+    result_path = get_result_path(operation, provider, model, fixture_name, prompt_hash, thinking)
+    if not result_path.exists():
         return None
-    results = sorted(result_dir.glob("result_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-    if not results:
-        return None
-    with open(results[0]) as f:
+    with open(result_path) as f:
         return json.load(f)
 
 
@@ -336,6 +332,24 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
             "actual": actual_recurrence,
             "match": expected_recurrence == actual_recurrence,
         }
+
+    # Recurring events: if both have recurrence_rule, relax date matching
+    # to only check day-of-week + time-of-day (any valid occurrence is acceptable)
+    if expected_recurrence and actual.get("recurrence_rule"):
+        for dt_field in ("start_datetime", "end_datetime"):
+            if not scores.get(dt_field, {}).get("match", True):
+                try:
+                    exp_dt = datetime.fromisoformat(expected.get(dt_field, "").replace("Z", "+00:00"))
+                    act_dt = datetime.fromisoformat(actual.get(dt_field, "").replace("Z", "+00:00"))
+                    same_weekday = exp_dt.weekday() == act_dt.weekday()
+                    time_diff_mins = abs(
+                        (exp_dt.hour * 60 + exp_dt.minute) - (act_dt.hour * 60 + act_dt.minute)
+                    )
+                    if same_weekday and time_diff_mins <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"]:
+                        scores[dt_field]["match"] = True
+                        scores[dt_field]["recurring_relaxed"] = True
+                except (ValueError, TypeError):
+                    pass
 
     # Only core fields (times + all_day) gate overall_match.
     # Title, location, confidence, importance are still scored/reported
@@ -1145,7 +1159,7 @@ def run_merge_eval(
 def run_thread_eval(
     scenario_name: str,
     scenario_path: Path,
-    use_cache: bool = False,
+    use_cache: bool = True,
     verbose: bool = False,
     dry_run: bool = False,
     provider_name: str | None = None,
@@ -1285,7 +1299,7 @@ def run_thread_eval(
 def run_single_eval(
     fixture_name: str,
     fixture_path: Path,
-    use_cache: bool = False,
+    use_cache: bool = True,
     verbose: bool = False,
     dry_run: bool = False,
 ) -> dict[str, Any]:
@@ -1643,6 +1657,7 @@ def generate_markdown_report(output_path: str) -> None:
     # Collect all results from new directory structure
     all_results: list[dict] = []
     results_base = RESULTS_DIR
+    prompt_hash = get_prompt_hash()
     for op_dir in sorted(results_base.iterdir()) if results_base.exists() else []:
         if not op_dir.is_dir() or op_dir.name.startswith("."):
             continue
@@ -1653,8 +1668,12 @@ def generate_markdown_report(output_path: str) -> None:
             for fixture_dir in sorted(model_dir.iterdir()):
                 if not fixture_dir.is_dir():
                     continue
-                # Get latest result
-                result_files = sorted(fixture_dir.glob("result_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+                # Prefer result matching current prompt_hash; fall back to mtime
+                current_result = fixture_dir / f"result_{prompt_hash}.json"
+                if current_result.exists():
+                    result_files = [current_result]
+                else:
+                    result_files = sorted(fixture_dir.glob("result_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
                 if result_files:
                     try:
                         with open(result_files[0]) as f:
@@ -2444,9 +2463,8 @@ Examples:
         "--difficulty", type=str, choices=DIFFICULTY_LEVELS, help="Filter by difficulty"
     )
 
-    # Cache options
-    parser.add_argument("--use-cache", action="store_true", help="Use cached results if available")
-    parser.add_argument("--no-cache", action="store_true", help="Force re-run, ignore cache")
+    # Cache options (cache is ON by default; use --no-cache to force re-run)
+    parser.add_argument("--no-cache", action="store_true", help="Force re-run, ignore cache (cache is ON by default)")
     parser.add_argument("--clear-cache", action="store_true", help="Clear all cached results")
 
     # View options
@@ -2658,7 +2676,7 @@ Examples:
                 print("Aborting due to preflight failures. Use --no-preflight to skip.")
                 sys.exit(1)
 
-        use_cache = args.use_cache and not args.no_cache
+        use_cache = not args.no_cache
         results = run_all_models(
             operations=operations,
             difficulty=args.difficulty,
@@ -2682,7 +2700,7 @@ Examples:
         if not threads:
             print("No thread scenarios found")
             sys.exit(0)
-        use_cache = args.use_cache and not args.no_cache
+        use_cache = not args.no_cache
         dry_run = args.dry_run
         print(f"\nRunning {len(threads)} thread scenarios...")
         if dry_run:
@@ -2705,7 +2723,7 @@ Examples:
         sys.exit(0)
 
     # Run operations
-    use_cache = args.use_cache and not args.no_cache
+    use_cache = not args.no_cache
     all_results = []
 
     if "extract" in operations:

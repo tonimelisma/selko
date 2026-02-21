@@ -92,6 +92,10 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 ✗ Administrative notices: terms of service updates, privacy policies, password resets, account statements, survey requests
 ✗ Content without actionable dates: newsletters, social media notifications, general announcements without specific event details
 ✗ Emails where event details (date, time) must be inferred or guessed from context — only extract events with explicitly stated dates and times
+✗ Estimated delivery/shipping dates — these are logistical estimates, not scheduled appointments
+✗ Completed/past events in order confirmations or pickup receipts
+✗ Financial statement dates, billing cycles, and payment due dates
+✗ Government comment periods and regulatory deadlines (unless a specific hearing or meeting)
 
 **Extraction rules:**
 - Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events

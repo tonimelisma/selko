@@ -1,0 +1,377 @@
+{
+  "fixture_name": "travel/train_booking_04",
+  "fixture_hash": "f1847d9ec9489efbcd23dcd79982abf1e7bc819891d109bce66bf23d9f9e357f",
+  "code_hash": "30cd65771a20",
+  "prompt_hash": "a4676fd5ac0b",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T19:01:17.616597+00:00",
+  "duration_ms": 11166,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T19:01:06.443788+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T19:01:06.443798+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T19:01:06.460281+00:00",
+      "duration_ms": 11150
+    },
+    "scoring": {
+      "started_at": "2026-02-21T19:01:17.611258+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Amtrak train reservation",
+  "difficulty": "easy",
+  "tags": [
+    "train",
+    "amtrak",
+    "booking"
+  ],
+  "input_summary": {
+    "subject": "Amtrak Reservation Confirmation",
+    "from": "reservations@amtrak.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151 - Washington to New York",
+        "start_datetime": "2026-03-02T07:05:00",
+        "end_datetime": "2026-03-02T10:00:00",
+        "location": "Union Station, Washington DC",
+        "description": "Amtrak Acela train to New York Penn Station",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151: Washington, DC to New York, NY",
+        "start_datetime": "2026-03-02T07:05:00-05:00",
+        "end_datetime": "2026-03-02T10:00:00-05:00",
+        "all_day": false,
+        "location": "Washington, DC \u2014 Union Station (WAS) \u2192 New York, NY \u2014 Penn Station (NYP)",
+        "description": "Amtrak reservation confirmation\nConfirmation Number: 2K9F8X\nPassenger: JANE SMITH\nTrain: Acela 2151\nDate: Monday, March 2, 2026\nDeparts: WASHINGTON, DC (WAS), Union Station \u2014 7:05 AM\nArrives: NEW YORK, NY (NYP), Penn Station \u2014 10:00 AM\nDuration: 2h 55m\nClass: Business Class\nSeat: Car 3, Seat 12A\nTicket: eTicket - show on mobile\nTotal: $189.00\nBenefits: Complimentary WiFi; Power outlets; Cafe car access\nManage trip: amtrak.com/mytrip",
+        "confidence": 0.95,
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8791208791208791,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.42,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1392,
+    "completion_tokens": 694,
+    "total_tokens": 2086
+  },
+  "cost": 0.001736,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3819,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Amtrak Reservation Confirmation\n- From: Amtrak <reservations@amtrak.com>\n- Date Sent: 2026-02-10T09:45:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Confidence score (0.0-1.0) based on clarity of information\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Include uncertainty in confidence scores (e.g., 0.7 if time is ambiguous)\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events (do NOT extract these):**\n\u2717 Commercial transactions: receipts, shipping notifications, payment reminders, subscription renewals, promotional offers\n\u2717 Administrative notices: terms of service updates, privacy policies, password resets, account statements, survey requests\n\u2717 Content without actionable dates: newsletters, social media notifications, general announcements without specific event details\n\u2717 Emails where event details (date, time) must be inferred or guessed from context \u2014 only extract events with explicitly stated dates and times\n\u2717 Estimated delivery/shipping dates \u2014 these are logistical estimates, not scheduled appointments\n\u2717 Completed/past events in order confirmations or pickup receipts\n\u2717 Financial statement dates, billing cycles, and payment due dates\n\u2717 Government comment periods and regulatory deadlines (unless a specific hearing or meeting)\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 734,
+        "text": "\n**Email Body:**\nAMTRAK\nAmerica's Railroad\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nRESERVATION CONFIRMED\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nConfirmation Number: 2K9F8X\nPassenger: JANE SMITH\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nYOUR TRIP\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nTrain: Acela 2151\nDate: Monday, March 2, 2026\n\nDeparts: WASHINGTON, DC (WAS)\n         Union Station\n         7:05 AM\n\nArrives: NEW YORK, NY (NYP)\n         Penn Station\n         10:00 AM\n\nDuration: 2h 55m\nClass: Business Class\nSeat: Car 3, Seat 12A\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nTicket: eTicket - show on mobile\nTotal: $189.00\n\nBenefits:\n- Complimentary WiFi\n- Power outlets\n- Cafe car access\n\nManage trip: amtrak.com/mytrip\n\nThank you for riding Amtrak!"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              },
+              "recurrence_rule": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events."
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance",
+              "recurrence_rule"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Amtrak Acela 2151: Washington, DC to New York, NY\",\n      \"start_datetime\": \"2026-03-02T07:05:00-05:00\",\n      \"end_datetime\": \"2026-03-02T10:00:00-05:00\",\n      \"all_day\": false,\n      \"location\": \"Washington, DC \u2014 Union Station (WAS) \u2192 New York, NY \u2014 Penn Station (NYP)\",\n      \"description\": \"Amtrak reservation confirmation\\nConfirmation Number: 2K9F8X\\nPassenger: JANE SMITH\\nTrain: Acela 2151\\nDate: Monday, March 2, 2026\\nDeparts: WASHINGTON, DC (WAS), Union Station \u2014 7:05 AM\\nArrives: NEW YORK, NY (NYP), Penn Station \u2014 10:00 AM\\nDuration: 2h 55m\\nClass: Business Class\\nSeat: Car 3, Seat 12A\\nTicket: eTicket - show on mobile\\nTotal: $189.00\\nBenefits: Complimentary WiFi; Power outlets; Cafe car access\\nManage trip: amtrak.com/mytrip\",\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
