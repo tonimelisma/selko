@@ -1938,8 +1938,13 @@ def generate_markdown_report(output_path: str) -> None:
 # Baseline comparison
 # ---------------------------------------------------------------------------
 
-def compare_baseline() -> None:
-    """Compare auto_ratings between the two most recent code versions."""
+def compare_baseline(hash_a: str | None = None, hash_b: str | None = None) -> None:
+    """Compare auto_ratings between two code versions.
+
+    Args:
+        hash_a: Previous code hash (optional — auto-selects 2nd most recent).
+        hash_b: Current code hash (optional — auto-selects most recent).
+    """
     results_base = RESULTS_DIR
     if not results_base.exists():
         print("No results directory found.")
@@ -1966,23 +1971,38 @@ def compare_baseline() -> None:
                     except Exception:
                         pass
 
-    if len(by_hash) < 2:
-        print(f"Need at least 2 code versions to compare. Found {len(by_hash)}.")
-        return
+    if hash_a and hash_b:
+        # Explicit hashes provided
+        if hash_a not in by_hash:
+            print(f"Code hash not found: {hash_a}")
+            print(f"Available hashes: {', '.join(sorted(by_hash.keys()))}")
+            return
+        if hash_b not in by_hash:
+            print(f"Code hash not found: {hash_b}")
+            print(f"Available hashes: {', '.join(sorted(by_hash.keys()))}")
+            return
+        previous_hash = hash_a
+        current_hash = hash_b
+    else:
+        if len(by_hash) < 2:
+            print(f"Need at least 2 code versions to compare. Found {len(by_hash)}.")
+            if by_hash:
+                print(f"Available hashes: {', '.join(sorted(by_hash.keys()))}")
+            return
 
-    # Find two most recent versions by newest result timestamp
-    version_times = []
-    for ch, results in by_hash.items():
-        newest = max(r.get("run_at", "") for r in results)
-        version_times.append((newest, ch))
-    version_times.sort(reverse=True)
+        # Find two most recent versions by newest result timestamp
+        version_times = []
+        for ch, results in by_hash.items():
+            newest = max(r.get("run_at", "") for r in results)
+            version_times.append((newest, ch))
+        version_times.sort(reverse=True)
 
-    current_hash = version_times[0][1]
-    previous_hash = version_times[1][1]
+        current_hash = version_times[0][1]
+        previous_hash = version_times[1][1]
 
     print(f"Comparing code versions:")
-    print(f"  Current:  {current_hash} ({len(by_hash[current_hash])} results)")
     print(f"  Previous: {previous_hash} ({len(by_hash[previous_hash])} results)")
+    print(f"  Current:  {current_hash} ({len(by_hash[current_hash])} results)")
     print()
 
     # Build lookup: (fixture_name, model, operation) → auto_rating for each version
@@ -1998,39 +2018,41 @@ def compare_baseline() -> None:
             lookup[key] = rating
         return lookup
 
-    current_lookup = build_lookup(by_hash[current_hash])
     previous_lookup = build_lookup(by_hash[previous_hash])
+    current_lookup = build_lookup(by_hash[current_hash])
 
-    # Compare
+    # Compare and build table
     all_keys = set(current_lookup.keys()) | set(previous_lookup.keys())
     improved = []
     regressed = []
     unchanged = 0
+    rows = []
 
     for key in sorted(all_keys):
+        fixture, model, op = key
         curr = current_lookup.get(key)
         prev = previous_lookup.get(key)
         if curr is not None and prev is not None:
-            if curr > prev:
+            delta = curr - prev
+            if delta > 0:
                 improved.append((key, prev, curr))
-            elif curr < prev:
+                delta_str = f"+{delta}"
+            elif delta < 0:
                 regressed.append((key, prev, curr))
+                delta_str = str(delta)
             else:
                 unchanged += 1
+                continue  # Skip unchanged from table
+            rows.append((fixture, model, op, prev, curr, delta_str))
 
-    print(f"Results: {len(improved)} improved, {len(regressed)} regressed, {unchanged} unchanged")
+    # Print markdown table
+    print(f"| {'Fixture':<40} | {'Model':<35} | {'Op':<8} | {'Prev':>4} | {'Curr':>4} | {'Delta':>5} |")
+    print(f"|{'-'*42}|{'-'*37}|{'-'*10}|{'-'*6}|{'-'*6}|{'-'*7}|")
+    for fixture, model, op, prev, curr, delta_str in rows:
+        print(f"| {fixture:<40} | {model:<35} | {op:<8} | {prev:>4} | {curr:>4} | {delta_str:>5} |")
     print()
 
-    if regressed:
-        print("REGRESSIONS:")
-        for (fixture, model, op), prev_rating, curr_rating in regressed:
-            print(f"  [{op}] {fixture} ({model}): {prev_rating} → {curr_rating}")
-        print()
-
-    if improved:
-        print("IMPROVEMENTS:")
-        for (fixture, model, op), prev_rating, curr_rating in improved:
-            print(f"  [{op}] {fixture} ({model}): {prev_rating} → {curr_rating}")
+    print(f"Summary: {len(improved)} improved, {len(regressed)} regressed, {unchanged} unchanged")
 
 
 # ---------------------------------------------------------------------------
@@ -2377,6 +2399,8 @@ Examples:
     # Validation and baseline
     parser.add_argument("--validate", action="store_true", help="Validate all fixture schemas")
     parser.add_argument("--compare-baseline", action="store_true", help="Compare latest vs previous code version results")
+    parser.add_argument("--compare-hash", nargs=2, metavar=("PREV", "CURR"),
+                        help="Compare specific code hashes (e.g., --compare-hash abc123 def456)")
 
     # Output options
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
@@ -2404,7 +2428,10 @@ Examples:
             print("All fixtures valid.")
         return
 
-    # Handle compare-baseline
+    # Handle compare-baseline / compare-hash
+    if args.compare_hash:
+        compare_baseline(hash_a=args.compare_hash[0], hash_b=args.compare_hash[1])
+        return
     if args.compare_baseline:
         compare_baseline()
         return

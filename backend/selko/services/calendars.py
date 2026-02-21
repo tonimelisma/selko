@@ -136,6 +136,7 @@ def get_calendar_settings(
             "target_calendar_id": None,
             "target_calendar_name": None,
             "default_invitees": None,
+            "timezone": "America/New_York",
         }
 
     settings = result.data[0]
@@ -156,6 +157,7 @@ def get_calendar_settings(
         "target_calendar_id": settings.get("target_calendar_id"),
         "target_calendar_name": calendar_name,
         "default_invitees": settings.get("default_invitees"),
+        "timezone": settings.get("timezone", "America/New_York"),
     }
 
 
@@ -220,6 +222,9 @@ def _build_calendar_event_body(
         },
     }
 
+    # Use user timezone from settings instead of hardcoded UTC
+    user_tz = settings.get("timezone", "America/New_York")
+
     # Handle dates
     if event.get("all_day"):
         # All-day event
@@ -242,21 +247,21 @@ def _build_calendar_event_body(
                 calendar_event["start"]["dateTime"] = start_dt
             else:
                 calendar_event["start"]["dateTime"] = start_dt.isoformat()
-            calendar_event["start"]["timeZone"] = "UTC"
+            calendar_event["start"]["timeZone"] = user_tz
 
         if end_dt:
             if isinstance(end_dt, str):
                 calendar_event["end"]["dateTime"] = end_dt
             else:
                 calendar_event["end"]["dateTime"] = end_dt.isoformat()
-            calendar_event["end"]["timeZone"] = "UTC"
+            calendar_event["end"]["timeZone"] = user_tz
         elif start_dt:
             # Default to same as start (1 hour duration handled by Calendar API)
             if isinstance(start_dt, str):
                 calendar_event["end"]["dateTime"] = start_dt
             else:
                 calendar_event["end"]["dateTime"] = start_dt.isoformat()
-            calendar_event["end"]["timeZone"] = "UTC"
+            calendar_event["end"]["timeZone"] = user_tz
 
     # Add default invitees
     invitees = settings.get("default_invitees")
@@ -518,6 +523,7 @@ def update_calendar_event(
         # Update dates
         start_dt = event.get("start_datetime")
         end_dt = event.get("end_datetime")
+        user_tz = settings.get("timezone", "America/New_York")
 
         if event.get("all_day"):
             if start_dt:
@@ -532,23 +538,23 @@ def update_calendar_event(
                 if isinstance(start_dt, str):
                     existing_event["start"] = {
                         "dateTime": start_dt,
-                        "timeZone": "UTC"
+                        "timeZone": user_tz
                     }
                 else:
                     existing_event["start"] = {
                         "dateTime": start_dt.isoformat(),
-                        "timeZone": "UTC"
+                        "timeZone": user_tz
                     }
             if end_dt:
                 if isinstance(end_dt, str):
                     existing_event["end"] = {
                         "dateTime": end_dt,
-                        "timeZone": "UTC"
+                        "timeZone": user_tz
                     }
                 else:
                     existing_event["end"] = {
                         "dateTime": end_dt.isoformat(),
-                        "timeZone": "UTC"
+                        "timeZone": user_tz
                     }
 
         # Update event
