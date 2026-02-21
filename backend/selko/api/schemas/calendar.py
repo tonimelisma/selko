@@ -34,6 +34,10 @@ class CalendarEvent(BaseModel):
             "informational items that are nice to know"
         ),
     )
+    recurrence_rule: Optional[str] = Field(
+        None,
+        description="RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+    )
 
 
 class EventExtractionResponse(BaseModel):

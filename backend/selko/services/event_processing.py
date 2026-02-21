@@ -61,6 +61,7 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
    - Whether it's an all-day event (true/false)
    - Confidence score (0.0-1.0) based on clarity of information
    - Importance: "action_required" or "fyi" (see classification below)
+   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., "RRULE:FREQ=WEEKLY;BYDAY=MO"). Null for one-time events.
 
 **Importance Classification:**
 - **action_required**: Events that require the recipient to take action or change their schedule.
@@ -87,18 +88,10 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 ✓ Conference registrations (action_required)
 
 **NOT events (do NOT extract these):**
-✗ Newsletter content without specific dates
-✗ Receipts or order confirmations (unless they mention an appointment)
-✗ Financial statements or account summaries
-✗ General announcements without specific event details
-✗ Promotional offers, sales, or discount deadlines ("offer expires", "sale ends")
-✗ Survey, feedback, or review request deadlines
-✗ Terms of service or privacy policy effective dates
-✗ Public comment periods or administrative deadlines
+✗ Commercial transactions: receipts, shipping notifications, payment reminders, subscription renewals, promotional offers
+✗ Administrative notices: terms of service updates, privacy policies, password resets, account statements, survey requests
+✗ Content without actionable dates: newsletters, social media notifications, general announcements without specific event details
 ✗ Emails where event details (date, time) must be inferred or guessed from context — only extract events with explicitly stated dates and times
-✗ Package shipping or delivery notifications (estimated delivery dates are NOT calendar events)
-✗ Payment due dates, invoice deadlines, or billing cycle dates
-✗ Subscription renewal dates
 
 **Extraction rules:**
 - Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events

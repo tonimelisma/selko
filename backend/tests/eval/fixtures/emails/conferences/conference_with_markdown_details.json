@@ -26,20 +26,9 @@
     ]
   },
   "expected": {
-    "events_found": true,
-    "event_count": 1,
-    "events": [
-      {
-        "title": "DevCon 2026",
-        "start_datetime": "2026-04-20T08:00:00",
-        "end_datetime": "2026-04-22T13:00:00",
-        "location": "San Jose Convention Center, 150 W San Carlos St, San Jose, CA 95113",
-        "description": "3-day developer conference with workshops",
-        "all_day": false,
-        "confidence_min": 0.8,
-        "importance": "action_required"
-      }
-    ]
+    "events_found": false,
+    "event_count": 0,
+    "events": []
   },
-  "notes": "Conference with markdown attachment - tests markdown parsing"
+  "notes": "Body has NO dates/times — all event details are in the unreadable .md attachment. LLM correctly returns no events."
 }

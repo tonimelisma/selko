@@ -146,6 +146,12 @@ def _vevent_to_calendar_event(
     location = str(vevent.get("LOCATION", "")).strip() or None
     description = str(vevent.get("DESCRIPTION", "")).strip()
 
+    # Extract RRULE for recurring events
+    rrule = vevent.get("RRULE")
+    recurrence_rule = None
+    if rrule:
+        recurrence_rule = f"RRULE:{rrule.to_ical().decode('utf-8')}"
+
     return CalendarEvent(
         title=summary,
         start_datetime=start_dt,
@@ -153,6 +159,7 @@ def _vevent_to_calendar_event(
         location=location,
         description=description,
         confidence=1.0,
+        recurrence_rule=recurrence_rule,
     )
 
 
