@@ -39,6 +39,7 @@ class LLMResponse:
     text: str
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
+    finish_reason: Optional[str] = None
 
 
 # Model registry: every supported model with provider, capabilities, and pricing
@@ -565,6 +566,7 @@ class GeminiProvider(LLMProvider):
         self.supports_json_schema = True
         self.thinking = thinking
         self.client = genai.Client(api_key=api_key)
+        self._last_sanitized_schema: Optional[dict] = None
         logger.debug(f"Initialized Gemini provider with model {model}, thinking={thinking}")
 
     def generate(
@@ -606,7 +608,9 @@ class GeminiProvider(LLMProvider):
         config_kwargs: dict[str, Any] = {}
         if json_schema is not None:
             config_kwargs["response_mime_type"] = "application/json"
-            config_kwargs["response_schema"] = _sanitize_schema_for_gemini(json_schema)
+            sanitized = _sanitize_schema_for_gemini(json_schema)
+            self._last_sanitized_schema = sanitized
+            config_kwargs["response_schema"] = sanitized
         if self.thinking != "none":
             config_kwargs["thinking_config"] = types.ThinkingConfig(
                 thinking_level=self.thinking
@@ -630,10 +634,18 @@ class GeminiProvider(LLMProvider):
                 response.usage_metadata, "candidates_token_count", None
             )
 
+        # Extract finish reason
+        finish_reason = None
+        if hasattr(response, "candidates") and response.candidates:
+            fr = getattr(response.candidates[0], "finish_reason", None)
+            if fr is not None:
+                finish_reason = str(fr)
+
         return LLMResponse(
             text=response.text,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            finish_reason=finish_reason,
         )
 
 
@@ -662,6 +674,7 @@ class OpenAICompatibleProvider(LLMProvider):
         self.qwen_thinking = qwen_thinking
         self.thinking = thinking
         self.client = OpenAI(api_key=api_key, base_url=base_url)
+        self._last_sanitized_schema: Optional[dict] = None
         logger.debug(
             f"Initialized {provider_name} provider with model {model} "
             f"at {base_url}, thinking={thinking}"
@@ -724,6 +737,7 @@ class OpenAICompatibleProvider(LLMProvider):
         if json_schema is not None:
             if self.supports_json_schema:
                 sanitized = _sanitize_schema_for_strict(json_schema)
+                self._last_sanitized_schema = sanitized
                 kwargs["response_format"] = {
                     "type": "json_schema",
                     "json_schema": {
@@ -760,10 +774,14 @@ class OpenAICompatibleProvider(LLMProvider):
             prompt_tokens = response.usage.prompt_tokens
             completion_tokens = response.usage.completion_tokens
 
+        # Extract finish reason
+        finish_reason = getattr(choice, "finish_reason", None)
+
         return LLMResponse(
             text=text,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            finish_reason=finish_reason,
         )
 
 
@@ -783,6 +801,7 @@ class AnthropicProvider(LLMProvider):
         self.thinking = thinking
         self.adaptive_thinking = adaptive_thinking
         self.client = anthropic.Anthropic(api_key=api_key)
+        self._last_sanitized_schema: Optional[dict] = None
         logger.debug(f"Initialized Anthropic provider with model {model}")
 
     def generate(
@@ -831,6 +850,7 @@ class AnthropicProvider(LLMProvider):
 
         # Handle JSON schema via prompt instruction (no native schema mode)
         if json_schema is not None:
+            self._last_sanitized_schema = json_schema  # No sanitization for Anthropic
             json_instruction = (
                 "\n\nYou MUST respond with valid JSON matching this schema:\n"
                 f"{json_schema}\n"
@@ -871,10 +891,14 @@ class AnthropicProvider(LLMProvider):
             prompt_tokens = response.usage.input_tokens
             completion_tokens = response.usage.output_tokens
 
+        # Extract finish reason
+        finish_reason = getattr(response, "stop_reason", None)
+
         return LLMResponse(
             text=text,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            finish_reason=finish_reason,
         )
 
 
