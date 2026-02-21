@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from supabase import Client
 
@@ -61,19 +62,62 @@ def should_skip_email(
     return bool(sender_rule and sender_rule.get("action") == "ignore")
 
 
-def normalize_event_data(event: CalendarEvent) -> dict[str, Any]:
+def get_user_timezone(supabase_client: Client, user_id: str) -> str:
+    """Get user's IANA timezone from calendar settings.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        user_id: UUID of user.
+
+    Returns:
+        IANA timezone string (e.g., "America/New_York"). Defaults to
+        "America/New_York" if not set.
+    """
+    try:
+        result = supabase_client.table("user_calendar_settings").select(
+            "timezone"
+        ).eq("user_id", user_id).execute()
+
+        if result.data:
+            return result.data[0].get("timezone") or "America/New_York"
+    except Exception as e:
+        logger.warning(f"Failed to fetch user timezone: {e}")
+
+    return "America/New_York"
+
+
+def normalize_event_data(
+    event: CalendarEvent,
+    user_timezone: str = "America/New_York",
+) -> dict[str, Any]:
     """Convert a CalendarEvent dataclass to a DB-ready dict.
+
+    Attaches the user's timezone to naive datetimes so they are stored
+    with correct timezone info. Already-aware datetimes pass through unchanged.
 
     Args:
         event: Extracted CalendarEvent from LLM.
+        user_timezone: IANA timezone string for naive datetime localization.
 
     Returns:
         Dict with isoformat datetimes suitable for DB insertion.
     """
+    try:
+        tz = ZoneInfo(user_timezone)
+    except (KeyError, ValueError):
+        tz = ZoneInfo("America/New_York")
+
+    def _localize(dt: Optional[datetime]) -> Optional[str]:
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=tz)
+        return dt.isoformat()
+
     return {
         "title": event.title,
-        "start_datetime": event.start_datetime.isoformat() if event.start_datetime else None,
-        "end_datetime": event.end_datetime.isoformat() if event.end_datetime else None,
+        "start_datetime": _localize(event.start_datetime),
+        "end_datetime": _localize(event.end_datetime),
         "all_day": getattr(event, 'all_day', False),
         "location": event.location,
         "description": event.description,
@@ -108,9 +152,10 @@ def save_extracted_events(
     """
     num_new = 0
     num_updated = 0
+    user_timezone = get_user_timezone(supabase_client, user_id)
 
     for event in extraction.events:
-        event_data = normalize_event_data(event)
+        event_data = normalize_event_data(event, user_timezone=user_timezone)
 
         matched_event_id = find_matching_event(
             supabase_client, gateway, user_id, event_data
@@ -170,6 +215,10 @@ def process_email_for_events(
         email_metadata, email_text, attachments = event_processing.fetch_email_with_attachments(
             supabase_client, email_id
         )
+
+        # Inject user timezone for timezone-aware current_date in prompt
+        email_metadata["user_timezone"] = get_user_timezone(supabase_client, user_id)
+
         sender_email = email_metadata.get("from_email", "")
 
         # Check sender rules: ignore, auto_approve, or no rule

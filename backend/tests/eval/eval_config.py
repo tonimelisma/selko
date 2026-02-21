@@ -42,7 +42,7 @@ RATING_SCALE = {
 
 # Auto-scoring thresholds (extraction)
 AUTO_SCORE_THRESHOLDS = {
-    "title_similarity": 0.8,  # Minimum string similarity for title match
+    "title_similarity": 0.7,  # Minimum string similarity for title match
     "time_tolerance_minutes": 30,  # Allow 30 min difference in times
     "location_similarity": 0.7,  # Minimum string similarity for location
     "confidence_min": 0.5,  # Minimum acceptable confidence
