@@ -1,0 +1,847 @@
+{
+  "fixture_name": "school/school_newsletter_multi_event_06",
+  "fixture_hash": "253f8afba1450b4709352b618d908c5f452af79f5d308201b7175f56e209da86",
+  "code_hash": "c658e146c4ce",
+  "prompt_hash": "5cbb1c0e1e27",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T17:24:02.037138+00:00",
+  "duration_ms": 34880,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T17:23:27.151371+00:00",
+      "duration_ms": 4
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T17:23:27.156233+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T17:23:27.172307+00:00",
+      "duration_ms": 34856
+    },
+    "scoring": {
+      "started_at": "2026-02-21T17:24:02.028454+00:00",
+      "duration_ms": 4
+    }
+  },
+  "category": "school",
+  "description": "Real-world school weekly newsletter digest with multiple future events buried in lengthy text",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "newsletter",
+    "digest",
+    "multi-event",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 11, 2026 Digest: 1 new message from Walnut Creek School District today",
+    "from": "donotreply+f44b5b2b-0fe1-53bf-b5c1-2dada4954bce@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 17,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 2662080
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "Staff Development Day - No School",
+        "start_datetime": "2026-02-12T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Staff development day, no school for students. Teachers learning about math curriculum updates and student writing.",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "President's Day Weekend - No School",
+        "start_datetime": "2026-02-13T00:00:00",
+        "end_datetime": "2026-02-16T00:00:00",
+        "location": null,
+        "description": "President's Day weekend, no school Friday through Monday.",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "PTA Meeting",
+        "start_datetime": "2026-02-19T19:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School",
+        "description": "PTA meeting.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hygiene Care Kits Assembly",
+        "start_datetime": "2026-02-22T16:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "location": "Lamorinda Music, 81 Lafayette Cr, Lafayette, CA 94549",
+        "description": "Free assembly event to build hygiene care kits for families in need, organized by Mindful Littles.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Lunar New Year Activities",
+        "start_datetime": "2026-02-23T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School",
+        "description": "Lunar New Year activities at lunch.",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "PTA Meeting",
+        "start_datetime": "2026-03-19T19:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School Cafe",
+        "description": "PTA meeting in the cafe.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Taste & Toast",
+        "start_datetime": "2026-03-25T17:30:00",
+        "end_datetime": "2026-03-25T20:30:00",
+        "location": "Walnut Creek Downtown & Broadway Plaza",
+        "description": "WCEF fundraiser event.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Break",
+        "start_datetime": "2026-03-30T00:00:00",
+        "end_datetime": "2026-04-03T00:00:00",
+        "location": null,
+        "description": "Spring break, no school.",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "WCI Parent Informational Night",
+        "start_datetime": "2026-04-09T18:30:00",
+        "end_datetime": "2026-04-09T19:30:00",
+        "location": "WCI gym, Walnut Creek Intermediate",
+        "description": "Parent-only informational night about Walnut Creek Intermediate for incoming 6th graders.",
+        "all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "WCI Open House",
+        "start_datetime": "2026-05-21T18:30:00",
+        "end_datetime": "2026-05-21T20:00:00",
+        "location": "Walnut Creek Intermediate",
+        "description": "Annual Open House - families invited to walk the campus, visit classrooms.",
+        "all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Youth Truth Survey Deadline",
+        "start_datetime": "2026-02-27T23:59:59",
+        "end_datetime": "2026-02-28T00:00:00",
+        "all_day": false,
+        "location": null,
+        "description": "Survey closes at midnight on February 27. Please take the survey before it closes at midnight on February 27 by clicking this link: ytsurvey.org/wcsdfamily26.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Staff Development Day - No School",
+        "start_datetime": "2026-02-12T00:00:00",
+        "end_datetime": "2026-02-12T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Teachers and staff will spend time learning about updates to math curriculum and focus on student writing (mentioned in email body: 'Our teachers and staff will be spending time together tomorrow to learn about updates to our math curriculum & focus on student writing!')",
+        "confidence": 0.85,
+        "importance": "action_required"
+      },
+      {
+        "title": "President's Weekend - No School",
+        "start_datetime": "2026-02-12T00:00:00",
+        "end_datetime": "2026-02-16T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "No school from February 12-16th. As stated in the email: 'February 12-16th is President's Weekend. There is no school tomorrow, Friday or next Monday.'",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "PTA Meeting",
+        "start_datetime": "2026-02-19T19:00:00",
+        "end_datetime": "2026-02-19T20:00:00",
+        "all_day": false,
+        "location": null,
+        "description": "Parents are invited to PTA meeting on February 19 at 7 PM (from Upcoming Dates snapshot).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Lunar New Year Activities at Lunch",
+        "start_datetime": "2026-02-23T12:00:00",
+        "end_datetime": "2026-02-23T13:00:00",
+        "all_day": false,
+        "location": null,
+        "description": "Lunar New Year activities during lunch on February 23 (from Upcoming Dates snapshot).",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Free Assembly Event: Hygiene Care Kits",
+        "start_datetime": "2026-02-22T16:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "all_day": false,
+        "location": "Lamorinda Music, 81 Lafayette Cir, Lafayette, CA 94549",
+        "description": "Bundle hygiene care kits together with families during community service event. Date/Time: Sunday, February 22, 4-5pm. Location: Lamorinda Music, 81 Lafayette Cir, Lafayette, CA 94549.",
+        "confidence": 0.95,
+        "importance": "fyi"
+      },
+      {
+        "title": "6th Grade Transition Visit",
+        "start_datetime": "2026-04-14T13:45:00",
+        "end_datetime": "2026-04-14T14:00:00",
+        "all_day": false,
+        "location": "Walnut Heights School",
+        "description": "Administrative and counseling team visit for 5th grade parents to preview WCI experience. Scheduled on April 14 at 1:45 pm (from email body: 'these visits give us a chance to preview the WCI experience and get students excited about middle school. We are scheduled to visit Walnut Heights on April 14 at 1:45 pm')",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Parent-Only Informational Night",
+        "start_datetime": "2026-04-09T18:30:00",
+        "end_datetime": "2026-04-09T19:30:00",
+        "all_day": false,
+        "location": "WCI gym",
+        "description": "Parents invited to parent-only informational night on April 9 from 6:30\u20137:30 pm in the WCI gym (from email body: 'Parents are invited to a parent-only informational night April 9 from 6:30\u20137:30 pm in the WCI gym')",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Annual Open House",
+        "start_datetime": "2026-05-21T18:30:00",
+        "end_datetime": "2026-05-21T20:00:00",
+        "all_day": false,
+        "location": "Walnut Creek Intermediate",
+        "description": "Unofficial kickoff to WCI experience on May 21 during annual Open House. From 6:30 - 8:00 pm, families invited to walk campus, visit classrooms (from email body: 'The unofficial (and my favorite) kickoff to the WCI experience happens on May 21 during our annual Open House. From 6:30 - 8:00 pm, families are invited to walk the campus, visit classrooms, and see firsthand what learning looks like at WCI')",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Spring Break",
+        "start_datetime": "2026-04-30T00:00:00",
+        "end_datetime": "2026-05-03T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Spring Break from April 30 to May 3 (from Upcoming Dates snapshot: '30 - April 3 Spring Break')",
+        "confidence": 0.85,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.9393939393939394,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 1440.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 1439.9833333333333,
+          "match": false
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.53125,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9906542056074766,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.847457627118644,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 720.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.8,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": false,
+          "match": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.21052631578947367,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 28500.016666666666,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.3076923076923077,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 28575.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 28410.0,
+          "match": false
+        },
+        "location": {
+          "similarity": 0.3728813559322034,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 44640.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 44639.98333333333,
+          "match": false
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.8524590163934426,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.34146341463414637,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.7,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.7096774193548387,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 7130,
+    "completion_tokens": 3660,
+    "total_tokens": 10790
+  },
+  "cost": 0.0030592,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3700,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-02-21\n\n**Email Metadata:**\n- Subject: Feb 11, 2026 Digest: 1 new message from Walnut Creek School District today\n- From: Walnut Creek School District via ParentSquare <donotreply+f44b5b2b-0fe1-53bf-b5c1-2dada4954bce@parentsquare.com>\n- Date Sent: 2026-02-12T02:35:15Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Confidence score (0.0-1.0) based on clarity of information\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Include uncertainty in confidence scores (e.g., 0.7 if time is ambiguous)\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events (do NOT extract these):**\n\u2717 Newsletter content without specific dates\n\u2717 Receipts or order confirmations (unless they mention an appointment)\n\u2717 Financial statements or account summaries\n\u2717 General announcements without specific event details\n\u2717 Promotional offers, sales, or discount deadlines (\"offer expires\", \"sale ends\")\n\u2717 Survey, feedback, or review request deadlines\n\u2717 Terms of service or privacy policy effective dates\n\u2717 Public comment periods or administrative deadlines\n\u2717 Emails where event details (date, time) must be inferred or guessed from context \u2014 only extract events with explicitly stated dates and times\n\u2717 Package shipping or delivery notifications (estimated delivery dates are NOT calendar events)\n\u2717 Payment due dates, invoice deadlines, or billing cycle dates\n\u2717 Subscription renewal dates\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 4209,
+        "text": "\n**Email Body:**\nDaily digest created for Toni Melisma\n\n1. WH Weekly eNews Feb 11, 2026: Enjoy the Long Weekend!\n\nPosted by Amy Romem on Wednesday, Feb 11 at 5:15 PM in Walnut Heights School\n\nWH Weekly eNews\n\nFebruary 11, 2026\n\nPrincipal's Message\n\nGood Evening WH Families!\n\nThank you to all of the families that supported WCEF's Turn Up the Heat. Our WCSD schools collectively raised almost $110,00. I will share final numbers for our school as soon as I have the update. We appreciate all of your support to our school programs and specials.\n\nReminder that February 12-16th is President's Weekend. There is no school tomorrow, Friday or next Monday. Enjoy your five day weekend!\n\nOur teachers and staff will be spending time together tomorrow to learn about updates to our math curriculum & focus on student writing!\n\nThere were quite a few celebrations in classes today. Please check your child's backpack for uneaten treats and goodies.\n\nParent Survey\n\nWe are currently at 5% participation! Our goal is 75%! Please take a (few) minute to give us feedback as a school and district and complete the Youth Truth Survey. YouthTruth, a nonprofit organization that supports hundreds of schools and districts across the country, conducts an anonymous survey on our behalf.\n\nPlease take the survey before it closes at midnight on February 27 by clicking this link: ytsurvey.org/wcsdfamily26.\n\nIt's a great day to be a Cougar!\n\nSincerely,\nAmy Romem, Principal\n\nWH Special Announcement!\n\nPlease join me in recognizing and celebrating our Walnut Heights Teacher of the Year and Staff Member of the Year!\n\nAlan Siegel - 4th Grade Teacher\n\nMany of you with older students know Mr. Siegel. A talented, experienced educator, he strives to get to know his students each and every year, and instill in them all the necessary learning, but especially a love of reading.\n\nKurenn Hisamoto - Attendance Clerk & Campus Supervisor\n\nIf your child has ever been sick, absent or tardy, you have likely interacted with Ms. Kurenn. She is detail-oriented, attentive, patient and above all, kind.\n\nIncoming 6th Grade - Welcome to WCI!\n\n5th grade parents should have received an email from WCI Principal Jason Law on Sunday evening.\n\nWelcome New Squire Families!\n\nWe are excited to welcome our incoming Class of 2026\u20132027 students & families to Walnut Creek Intermediate. Middle school is a big step, and while it can come with a few nerves, our goal is simple: Help your child feel confident, supported, and genuinely excited to become a Squire. It is time to be BRAVE!\n\nAs you start looking ahead to spring, we want to share a few important opportunities to get connected with WCI. A good place to start is OUR WEBSITE. In April, our administrative and counseling team will be visiting Walnut Heights students! These visits give us a chance to preview the WCI experience and get students excited about middle school. We are scheduled to visit Walnut Heights on April 14 at 1:45 pm.\n\nParents are invited to a parent-only informational night April 9 from 6:30\u20137:30 pm in the WCI gym. Learn about life at Walnut Creek Intermediate, ask questions, and get a sense of what the next three years will look like. Our PTA will be there to share how to stay involved and connected.\n\nBecause your child is already enrolled in a WCSD elementary school, there is nothing you need to do to enroll or register. Students will automatically transition to WCI. Sixth grade schedules are mostly predetermined, so there is not a traditional class selection process, with just a couple of exceptions that we will explain on April 9.\n\nThe unofficial (and my favorite) kickoff to the WCI experience happens on May 21 during our annual Open House. From 6:30 - 8:00 pm, families are invited to walk the campus, visit classrooms, and see firsthand what learning looks like at WCI. This is a great opportunity for both you and your child to experience the school together.\n\nAfter spending years at your neighborhood elementary school, we know the transition to middle school can feel like a big leap, for students and parents alike. Please know that you are not doing this alone.\n\nWelcome to Walnut Creek Intermediate.\nWelcome to the Squire family.\n\nJason Law"
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 15174
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 68768
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 171230
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 189101
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 26389
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 86414
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 179505
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 83519
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 129554
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 45259
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 27870
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 1097733
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 311313
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 217459
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 6301
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 6448
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 43
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Youth Truth Survey Deadline\",\n      \"start_datetime\": \"2026-02-27T23:59:59\",\n      \"end_datetime\": \"2026-02-28T00:00:00\",\n      \"all_day\": false,\n      \"location\": null,\n      \"description\": \"Survey closes at midnight on February 27. Please take the survey before it closes at midnight on February 27 by clicking this link: ytsurvey.org/wcsdfamily26.\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Staff Development Day - No School\",\n      \"start_datetime\": \"2026-02-12T00:00:00\",\n      \"end_datetime\": \"2026-02-12T23:59:59\",\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Teachers and staff will spend time learning about updates to math curriculum and focus on student writing (mentioned in email body: 'Our teachers and staff will be spending time together tomorrow to learn about updates to our math curriculum & focus on student writing!')\",\n      \"confidence\": 0.85,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"President's Weekend - No School\",\n      \"start_datetime\": \"2026-02-12T00:00:00\",\n      \"end_datetime\": \"2026-02-16T23:59:59\",\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"No school from February 12-16th. As stated in the email: 'February 12-16th is President's Weekend. There is no school tomorrow, Friday or next Monday.'\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"PTA Meeting\",\n      \"start_datetime\": \"2026-02-19T19:00:00\",\n      \"end_datetime\": \"2026-02-19T20:00:00\",\n      \"all_day\": false,\n      \"location\": null,\n      \"description\": \"Parents are invited to PTA meeting on February 19 at 7 PM (from Upcoming Dates snapshot).\",\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Lunar New Year Activities at Lunch\",\n      \"start_datetime\": \"2026-02-23T12:00:00\",\n      \"end_datetime\": \"2026-02-23T13:00:00\",\n      \"all_day\": false,\n      \"location\": null,\n      \"description\": \"Lunar New Year activities during lunch on February 23 (from Upcoming Dates snapshot).\",\n      \"confidence\": 0.8,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Free Assembly Event: Hygiene Care Kits\",\n      \"start_datetime\": \"2026-02-22T16:00:00\",\n      \"end_datetime\": \"2026-02-22T17:00:00\",\n      \"all_day\": false,\n      \"location\": \"Lamorinda Music, 81 Lafayette Cir, Lafayette, CA 94549\",\n      \"description\": \"Bundle hygiene care kits together with families during community service event. Date/Time: Sunday, February 22, 4-5pm. Location: Lamorinda Music, 81 Lafayette Cir, Lafayette, CA 94549.\",\n      \"confidence\": 0.95,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"6th Grade Transition Visit\",\n      \"start_datetime\": \"2026-04-14T13:45:00\",\n      \"end_datetime\": \"2026-04-14T14:00:00\",\n      \"all_day\": false,\n      \"location\": \"Walnut Heights School\",\n      \"description\": \"Administrative and counseling team visit for 5th grade parents to preview WCI experience. Scheduled on April 14 at 1:45 pm (from email body: 'these visits give us a chance to preview the WCI experience and get students excited about middle school. We are scheduled to visit Walnut Heights on April 14 at 1:45 pm')\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Parent-Only Informational Night\",\n      \"start_datetime\": \"2026-04-09T18:30:00\",\n      \"end_datetime\": \"2026-04-09T19:30:00\",\n      \"all_day\": false,\n      \"location\": \"WCI gym\",\n      \"description\": \"Parents invited to parent-only informational night on April 9 from 6:30\u20137:30 pm in the WCI gym (from email body: 'Parents are invited to a parent-only informational night April 9 from 6:30\u20137:30 pm in the WCI gym')\",\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Annual Open House\",\n      \"start_datetime\": \"2026-05-21T18:30:00\",\n      \"end_datetime\": \"2026-05-21T20:00:00\",\n      \"all_day\": false,\n      \"location\": \"Walnut Creek Intermediate\",\n      \"description\": \"Unofficial kickoff to WCI experience on May 21 during annual Open House. From 6:30 - 8:00 pm, families invited to walk campus, visit classrooms (from email body: 'The unofficial (and my favorite) kickoff to the WCI experience happens on May 21 during our annual Open House. From 6:30 - 8:00 pm, families are invited to walk the campus, visit classrooms, and see firsthand what learning looks like at WCI')\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Spring Break\",\n      \"start_datetime\": \"2026-04-30T00:00:00\",\n      \"end_datetime\": \"2026-05-03T23:59:59\",\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Spring Break from April 30 to May 3 (from Upcoming Dates snapshot: '30 - April 3 Spring Break')\",\n      \"confidence\": 0.85,\n      \"importance\": \"fyi\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
