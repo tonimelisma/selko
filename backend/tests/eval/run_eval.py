@@ -728,6 +728,7 @@ def run_extract_eval(
     # Phase 2: Gateway creation
     gateway_create_started_at = datetime.now(timezone.utc)
     gateway = _create_gateway(provider_name, model_name, thinking=thinking)
+    gateway.trace = {}  # Enable tracing
     gateway_create_ms = int((datetime.now(timezone.utc) - gateway_create_started_at).total_seconds() * 1000)
 
     email_metadata = {
@@ -824,6 +825,7 @@ def run_extract_eval(
             "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0),
         },
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
+        "trace": gateway.trace,
     }
 
     save_result_new(result, "extract", provider_name, model_name, fixture_name, thinking)
@@ -888,6 +890,7 @@ def run_compare_eval(
     # Phase 2: Gateway creation
     gateway_create_started_at = datetime.now(timezone.utc)
     gateway = _create_gateway(provider_name, model_name, thinking=thinking)
+    gateway.trace = {}  # Enable tracing
     gateway_create_ms = int((datetime.now(timezone.utc) - gateway_create_started_at).total_seconds() * 1000)
 
     # Phase 3: API call
@@ -947,6 +950,7 @@ def run_compare_eval(
             "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0),
         },
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
+        "trace": gateway.trace,
     }
 
     save_result_new(result, "compare", provider_name, model_name, fixture_name, thinking)
@@ -1012,6 +1016,7 @@ def run_merge_eval(
     # Phase 2: Gateway creation
     gateway_create_started_at = datetime.now(timezone.utc)
     gateway = _create_gateway(provider_name, model_name, thinking=thinking)
+    gateway.trace = {}  # Enable tracing
     gateway_create_ms = int((datetime.now(timezone.utc) - gateway_create_started_at).total_seconds() * 1000)
 
     # Phase 3: API call
@@ -1071,6 +1076,7 @@ def run_merge_eval(
             "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0),
         },
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
+        "trace": gateway.trace,
     }
 
     save_result_new(result, "merge", provider_name, model_name, fixture_name, thinking)
@@ -2233,6 +2239,39 @@ def run_all_models(
 # CLI
 # ---------------------------------------------------------------------------
 
+
+def _handle_show_trace(args) -> None:
+    """Load and pretty-print the trace from a cached result."""
+    fixture_name = args.show_trace
+    provider = args.provider or DEFAULT_PROVIDER
+    model = args.model or DEFAULT_MODEL
+    thinking = args.thinking
+
+    # Try all 3 operations and show whichever exists
+    found = False
+    for operation in ("extract", "compare", "merge"):
+        result = get_latest_result(operation, provider, model, fixture_name, thinking)
+        if result:
+            found = True
+            trace = result.get("trace")
+            print(f"\n{'='*60}")
+            print(f"Trace: {fixture_name}")
+            print(f"Operation: {operation} | Provider: {provider} | Model: {model} | Thinking: {thinking}")
+            print(f"Run at: {result.get('run_at', 'N/A')}")
+            print(f"{'='*60}")
+            if trace:
+                print(json.dumps(trace, indent=2, default=str))
+            else:
+                print("(no trace data — result was cached before tracing was enabled)")
+            print(f"{'='*60}\n")
+
+    if not found:
+        print(f"No result found for fixture '{fixture_name}' with {provider}/{model} (thinking={thinking})")
+        print("Check fixture name and ensure you've run the eval for this model.")
+
+
+# ---------------------------------------------------------------------------
+
 def main():
     parser = argparse.ArgumentParser(
         description="LLM Evaluation Runner — Multi-Model, Multi-Operation",
@@ -2266,6 +2305,9 @@ Examples:
   Use a specific model:
     uv run python -m backend.tests.eval.run_eval --all --provider moonshot --model kimi-k2.5
 
+  Show trace (schema, response, traceback) for a fixture:
+    uv run python -m backend.tests.eval.run_eval --show-trace invitations/baby_shower_04 --provider gemini --model gemini-3-flash-preview --thinking none
+
   For real-time output when redirecting to file:
     PYTHONUNBUFFERED=1 uv run python -m backend.tests.eval.run_eval ...
         """,
@@ -2293,6 +2335,8 @@ Examples:
     parser.add_argument("--report", action="store_true", help="Show console summary report")
     parser.add_argument("--report-md", type=str, help="Generate markdown report to file")
     parser.add_argument("--show", type=str, help="Show detailed result for fixture")
+    parser.add_argument("--show-trace", type=str, metavar="FIXTURE_NAME",
+                        help="Show full trace (schema, response, traceback) for a fixture result. Requires --provider/--model/--thinking.")
     parser.add_argument("--export", type=str, help="Export results to CSV file")
     parser.add_argument("--list", action="store_true", help="List all available fixtures")
 
@@ -2422,6 +2466,11 @@ Examples:
             print_detailed_result(result)
         else:
             print(f"No cached result for {args.show}")
+        return
+
+    # Handle show-trace
+    if args.show_trace:
+        _handle_show_trace(args)
         return
 
     # Handle export

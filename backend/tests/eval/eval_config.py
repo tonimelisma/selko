@@ -75,11 +75,9 @@ EVAL_MODELS = [
     ("openai", "gpt-5-mini", "medium"),
     ("openai", "gpt-5.2", "low"),
     ("openai", "gpt-5.2", "medium"),
-    # Anthropic Sonnet 4.6 — test at none, low, medium (adaptive thinking)
-    ("anthropic", "claude-sonnet-4-6", "none"),
-    ("anthropic", "claude-sonnet-4-6", "low"),
-    ("anthropic", "claude-sonnet-4-6", "medium"),
     # Anthropic Haiku — single mode (no adaptive thinking)
+    # Note: Sonnet removed from defaults (too expensive for routine evals — $3/$15 per MTok).
+    # Still accessible via: --provider anthropic --model claude-sonnet-4-6
     ("anthropic", "claude-haiku-4-5-20251001", "none"),
     # Qwen — thinking-capable models at none/low/medium, older at none
     ("qwen", "qwen3.5-plus", "none"),
