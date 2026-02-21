@@ -1,0 +1,98 @@
+{
+  "fixture_name": "invitations/dinner_party_09",
+  "fixture_hash": "6de5a9ddd82847684ff9ab41f4b29d93eb5ff94a1dc54108772c396877d3c5c6",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:34:49.340214+00:00",
+  "duration_ms": 2178,
+  "category": "invitations",
+  "description": "Casual dinner party at friend's home",
+  "difficulty": "easy",
+  "tags": [
+    "dinner",
+    "casual",
+    "evening",
+    "friends"
+  ],
+  "input_summary": {
+    "subject": "Dinner at our place next Saturday?",
+    "from": "tom.baker@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Dinner at Tom & Maria's",
+        "start_datetime": "2026-02-07T18:30:00",
+        "end_datetime": null,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Dinner party at Tom and Maria's",
+        "is_all_day": false,
+        "confidence_min": 0.75,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Dinner at Tom Baker's Place",
+        "start_datetime": "2026-02-07T18:30:00+00:00",
+        "end_datetime": null,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Dinner invitation for next Saturday, February 7th, at 6:30pm. Hosted by Tom Baker and Maria, who will be serving her famous lasagna. Guests are encouraged to bring a bottle of wine if desired. Please RSVP to confirm attendance.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.72,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.75,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1155,
+    "completion_tokens": 168,
+    "total_tokens": 1323
+  },
+  "cost": 0.00020664000000000001
+}

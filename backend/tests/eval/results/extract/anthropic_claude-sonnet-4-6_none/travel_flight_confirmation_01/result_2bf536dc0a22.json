@@ -1,0 +1,179 @@
+{
+  "fixture_name": "travel/flight_confirmation_01",
+  "fixture_hash": "2983d3d8691d06bdb48d4e9d418cd7641f62423b45603465f6c2511514e27ee7",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:47.442380+00:00",
+  "duration_ms": 5451,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:41.989792+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:41.989798+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:42.004884+00:00",
+      "duration_ms": 5436
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:47.441686+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Flight booking confirmation with departure and arrival times",
+  "difficulty": "medium",
+  "tags": [
+    "flight",
+    "airline",
+    "booking",
+    "multiple-events"
+  ],
+  "input_summary": {
+    "subject": "Your Flight Confirmation - United Airlines",
+    "from": "reservations@united.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Flight UA 1234 - SFO to JFK",
+        "start_datetime": "2026-03-13T08:00:00",
+        "end_datetime": "2026-03-13T16:35:00",
+        "location": "San Francisco International Airport (SFO)",
+        "description": "United Airlines flight to New York JFK",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight UA 5678 - JFK to SFO",
+        "start_datetime": "2026-03-15T19:00:00",
+        "end_datetime": "2026-03-15T22:15:00",
+        "location": "John F. Kennedy International Airport (JFK)",
+        "description": "United Airlines return flight to San Francisco",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Flight UA 1234: San Francisco \u2192 New York (SFO to JFK)",
+        "start_datetime": "2026-03-13T08:00:00",
+        "end_datetime": "2026-03-13T16:35:00",
+        "all_day": false,
+        "location": "San Francisco International Airport (SFO) \u2192 John F. Kennedy International Airport (JFK)",
+        "description": "United Airlines Flight UA 1234\nConfirmation Number: ABC123\nPassenger: JOHN DOE\n\nDeparts: San Francisco (SFO) at 8:00 AM\nArrives: New York JFK (JFK) at 4:35 PM\nDuration: 5h 35m\nClass: Economy (K)\nSeat: 24A (Window)\n\nTicket Number: 0167891234567\nTotal Paid: $456.78\nManage booking: united.com/mytrips",
+        "confidence": 0.99,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight UA 5678: New York \u2192 San Francisco (JFK to SFO)",
+        "start_datetime": "2026-03-15T19:00:00",
+        "end_datetime": "2026-03-15T22:15:00",
+        "all_day": false,
+        "location": "John F. Kennedy International Airport (JFK) \u2192 San Francisco International Airport (SFO)",
+        "description": "United Airlines Flight UA 5678\nConfirmation Number: ABC123\nPassenger: JOHN DOE\n\nDeparts: New York JFK (JFK) at 7:00 PM\nArrives: San Francisco (SFO) at 10:15 PM\nDuration: 6h 15m\nClass: Economy (K)\nSeat: 18F (Window)\n\nTicket Number: 0167891234567\nTotal Paid: $456.78\nManage booking: united.com/mytrips",
+        "confidence": 0.99,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.65,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.640625,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.99,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.65,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.6615384615384615,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.99,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1822,
+    "completion_tokens": 563,
+    "total_tokens": 2385
+  },
+  "cost": 0.013911
+}

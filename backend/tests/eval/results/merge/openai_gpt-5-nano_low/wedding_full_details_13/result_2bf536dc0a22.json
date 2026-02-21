@@ -1,0 +1,102 @@
+{
+  "fixture_name": "wedding_full_details_13",
+  "fixture_hash": "6b1539a71a03952c225842b2271c0caac67e3133aead651aa0cce93e0653071c",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:02:10.541744+00:00",
+  "duration_ms": 3554,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:02:06.985976+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:02:06.985980+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:02:07.004603+00:00",
+      "duration_ms": 3536
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:02:10.541144+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Wedding: save-the-date has basic info, formal invitation adds full venue details and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "wedding",
+    "social"
+  ],
+  "expected": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description_contains": [
+      "wedding celebration",
+      "ceremony",
+      "reception",
+      "cocktail attire",
+      "hotel block"
+    ]
+  },
+  "actual": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description": "Save the date! Wedding celebration for Sarah and Michael Ceremon y at 4pm, reception follows at 5:30pm. Cocktail attire. RSVP by June 15. Hotel block available under 'Chen-Anderson wedding'.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "wedding celebration",
+        "reception",
+        "cocktail attire",
+        "hotel block"
+      ],
+      "missing": [
+        "ceremony"
+      ],
+      "match": false
+    },
+    "fields_matched": 5,
+    "total_fields": 6,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 485,
+    "completion_tokens": 446,
+    "total_tokens": 931
+  },
+  "cost": 0.00020265
+}

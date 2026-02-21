@@ -1,0 +1,53 @@
+{
+  "fixture_name": "same_conference_06",
+  "fixture_hash": "0b7e35940e63d57575ed216cb5fcb9d8d321b5dbbae8046a9452eeb648602ec1",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:05:42.748811+00:00",
+  "duration_ms": 7831,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:05:34.915558+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:05:34.915566+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:05:34.931215+00:00",
+      "duration_ms": 7816
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:05:42.747782+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 429,
+    "completion_tokens": 1037,
+    "total_tokens": 1466
+  },
+  "cost": 0.00043625
+}

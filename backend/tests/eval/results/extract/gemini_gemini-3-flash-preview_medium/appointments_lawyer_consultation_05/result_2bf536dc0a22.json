@@ -1,0 +1,76 @@
+{
+  "fixture_name": "appointments/lawyer_consultation_05",
+  "fixture_hash": "09e5fbd19468135127e79e4e2e5be1bcb23be4d7bd9b9dc9f6c1e483e89849e0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:07.003184+00:00",
+  "duration_ms": 132,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:06.869900+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:06.869912+00:00",
+      "duration_ms": 33
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:06.903696+00:00",
+      "duration_ms": 99
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:07.002905+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Legal consultation appointment",
+  "difficulty": "easy",
+  "tags": [
+    "legal",
+    "lawyer",
+    "consultation",
+    "professional"
+  ],
+  "input_summary": {
+    "subject": "Confirmed: Initial Consultation with Attorney Williams",
+    "from": "scheduling@williamslaw.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Consultation with Attorney Williams",
+        "start_datetime": "2026-02-11T11:00:00",
+        "end_datetime": "2026-02-11T12:00:00",
+        "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
+        "description": "Estate planning consultation",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

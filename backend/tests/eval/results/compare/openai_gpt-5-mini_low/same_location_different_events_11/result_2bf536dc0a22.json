@@ -1,0 +1,53 @@
+{
+  "fixture_name": "same_location_different_events_11",
+  "fixture_hash": "00d5ee760bc0b4f5f9c6fa6931d1cd738beefbb7b03b1776a83e7243d573062a",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:08:13.529289+00:00",
+  "duration_ms": 3095,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:08:10.432993+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:08:10.433000+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:08:10.449626+00:00",
+      "duration_ms": 3079
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:08:13.528987+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same location but different events - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 416,
+    "completion_tokens": 174,
+    "total_tokens": 590
+  },
+  "cost": 0.000452
+}

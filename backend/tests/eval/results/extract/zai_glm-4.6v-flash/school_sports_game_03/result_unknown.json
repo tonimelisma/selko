@@ -1,0 +1,55 @@
+{
+  "fixture_name": "school/sports_game_03",
+  "fixture_hash": "e1868f85bfd4e6b9fd96ed6b42069e204b9e1325f8a937b98a2d7f33432b376c",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:50:50.421152+00:00",
+  "duration_ms": 22073,
+  "category": "school",
+  "description": "Youth sports game schedule",
+  "difficulty": "easy",
+  "tags": [
+    "sports",
+    "soccer",
+    "kids",
+    "game"
+  ],
+  "input_summary": {
+    "subject": "Soccer Game This Saturday - Wildcats vs. Eagles",
+    "from": "coach.davis@aysosoccer.org",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Soccer Game - Wildcats vs Eagles",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": null,
+        "location": "Sunnyvale Sports Complex, Field #3, 500 Athletic Way, Sunnyvale, CA 94086",
+        "description": "Youth soccer game - arrive by 9:30 AM",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: 1 validation error for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Wildcats vs. E...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: 1 validation error for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Wildcats vs. E...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "tokens": {
+    "prompt_tokens": 758,
+    "completion_tokens": 1730,
+    "total_tokens": 2488
+  },
+  "cost": 0.0
+}

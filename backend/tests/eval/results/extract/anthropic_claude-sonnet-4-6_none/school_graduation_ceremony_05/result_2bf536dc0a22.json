@@ -1,0 +1,125 @@
+{
+  "fixture_name": "school/graduation_ceremony_05",
+  "fixture_hash": "cd9a2a3e5b20651bed43cb790aa6b9ed9626cdf9ad6a86dd53763bc361fc6038",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:50.660440+00:00",
+  "duration_ms": 4120,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:46.539614+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:46.539622+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:46.554795+00:00",
+      "duration_ms": 4105
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:50.660042+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "School graduation ceremony details",
+  "difficulty": "easy",
+  "tags": [
+    "graduation",
+    "ceremony",
+    "school",
+    "formal"
+  ],
+  "input_summary": {
+    "subject": "8th Grade Graduation Ceremony - Save the Date",
+    "from": "principal@middleschool.edu",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "8th Grade Graduation Ceremony",
+        "start_datetime": "2026-06-12T18:00:00",
+        "end_datetime": "2026-06-12T20:00:00",
+        "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
+        "description": "8th grade graduation ceremony with reception to follow",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "8th Grade Graduation Ceremony - Riverside Middle School",
+        "start_datetime": "2026-06-12T18:00:00",
+        "end_datetime": "2026-06-12T20:00:00",
+        "all_day": false,
+        "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
+        "description": "8th Grade Graduation Ceremony for the Class of 2026 at Riverside Middle School.\n\nDoors open at 5:30 PM. Seating is first-come, first-served.\n\nCeremony Program:\n- 6:00 PM \u2013 Processional\n- 6:15 PM \u2013 Welcome & National Anthem\n- 6:20 PM \u2013 Student Speeches\n- 6:40 PM \u2013 Guest Speaker\n- 7:00 PM \u2013 Diploma Presentation\n- 7:45 PM \u2013 Closing Remarks\n- 8:00 PM \u2013 Reception in Courtyard\n\nTickets: 4 tickets per family (distributed in May).\nDress code: Semi-formal attire.\nParking: School parking lot and street parking available.\nProfessional photos available for purchase.\n\nMore details to follow from Principal Martinez.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6904761904761905,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1860,
+    "completion_tokens": 373,
+    "total_tokens": 2233
+  },
+  "cost": 0.011175
+}

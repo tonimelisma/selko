@@ -1,0 +1,110 @@
+{
+  "fixture_name": "invitations/graduation_party_05",
+  "fixture_hash": "2dd8d6126d4b684a3d9f195f2155bb0baec5ed338af814028a7022d2a22a71f5",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:36:47.361921+00:00",
+  "duration_ms": 13993,
+  "category": "invitations",
+  "description": "High school graduation party with afternoon timing",
+  "difficulty": "easy",
+  "tags": [
+    "graduation",
+    "party",
+    "afternoon"
+  ],
+  "input_summary": {
+    "subject": "Graduation Party for Tyler!",
+    "from": "dave.thompson@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Tyler Thompson's Graduation Party",
+        "start_datetime": "2026-06-13T15:00:00",
+        "end_datetime": "2026-06-13T19:00:00",
+        "location": "1234 Oak Drive, San Jose, CA 95123",
+        "description": "High school graduation celebration - backyard BBQ and pool party",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Tyler Thompson's High School Graduation Party",
+        "start_datetime": "2026-06-13T15:00:00+00:00",
+        "end_datetime": "2026-06-13T19:00:00+00:00",
+        "location": "The Thompson Residence, 1234 Oak Drive, San Jose, CA 95123",
+        "description": "Celebration for Tyler Thompson's high school graduation. Backyard BBQ & Pool Party. Bring your swimsuit. RSVP to dave.thompson@gmail.com by June 6th.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "RSVP Deadline: Tyler Thompson's Graduation Party",
+        "start_datetime": "2026-06-06T23:59:59+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Final day to RSVP for Tyler Thompson's graduation party to dave.thompson@gmail.com.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8461538461538461,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7391304347826086,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 692,
+    "completion_tokens": 232,
+    "total_tokens": 924
+  },
+  "cost": 0.000243
+}

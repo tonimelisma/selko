@@ -1,0 +1,98 @@
+{
+  "fixture_name": "invitations/holiday_party_07",
+  "fixture_hash": "3a158aaaac1eda4e94eb2d3792f917c63caab769d1683933c69d3b029766e80e",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "run_at": "2026-02-17T17:22:57.163206+00:00",
+  "duration_ms": 29936,
+  "category": "invitations",
+  "description": "Office holiday party invitation",
+  "difficulty": "easy",
+  "tags": [
+    "holiday",
+    "office",
+    "evening",
+    "formal"
+  ],
+  "input_summary": {
+    "subject": "You're Invited: TechCorp Annual Holiday Celebration",
+    "from": "hr@techcorp.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechCorp Annual Holiday Celebration",
+        "start_datetime": "2026-12-18T18:00:00",
+        "end_datetime": "2026-12-18T22:00:00",
+        "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
+        "description": "Annual holiday party with dinner, live band, and awards ceremony",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechCorp Annual Holiday Celebration",
+        "start_datetime": "2026-12-18T18:00:00-08:00",
+        "end_datetime": "2026-12-18T22:00:00-08:00",
+        "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
+        "description": "You're cordially invited to TechCorp's Annual Holiday Celebration. Date: Friday, December 18, 2026. Time: 6:00 PM - 10:00 PM. Location: Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105. Dress Code: Cocktail attire. Plus ones welcome. RSVP by December 4. Event activities include cocktail hour with passed appetizers, plated dinner with vegetarian options, live band and dancing, and the year-end awards ceremony. RSVP Now.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 963,
+    "completion_tokens": 3859,
+    "total_tokens": 4822
+  },
+  "cost": 0.0015917500000000003
+}

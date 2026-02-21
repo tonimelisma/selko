@@ -1,0 +1,319 @@
+{
+  "fixture_name": "conferences/virtual_summit_05",
+  "fixture_hash": "03e1176a2229fd67d468580ddb0b54d68d556753384baa53ccb566ee6ca4be3a",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:04:20.449050+00:00",
+  "duration_ms": 54785,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:03:25.660892+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:03:25.660897+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:03:25.676839+00:00",
+      "duration_ms": 54770
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:04:20.446852+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Multi-day virtual summit with session schedule",
+  "difficulty": "hard",
+  "tags": [
+    "summit",
+    "virtual",
+    "multi-day",
+    "multiple-sessions"
+  ],
+  "input_summary": {
+    "subject": "Your Product Management Virtual Summit Access",
+    "from": "events@pmsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "PM Summit 2026 - Day 1",
+        "start_datetime": "2026-04-07T09:00:00",
+        "end_datetime": "2026-04-07T16:00:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 1 - Keynotes and track sessions",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "PM Summit 2026 - Day 2",
+        "start_datetime": "2026-04-08T09:00:00",
+        "end_datetime": "2026-04-08T16:30:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 2 - Workshops and closing keynote",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "PM Summit 2026 (Virtual)",
+        "start_datetime": "2026-04-07T00:00:00-07:00",
+        "end_datetime": "2026-04-08T23:59:00-07:00",
+        "all_day": false,
+        "location": "Virtual (Hopin platform)",
+        "description": "PM Summit 2026 \u2014 Virtual conference spanning April 7\u20138, 2026. Platform: Hopin (no download required). Access Link: https://hopin.com/events/pmsummit2026. Your Login: david.lee@example.com. The platform opens 30 minutes before each day starts. All sessions will be recorded and available for 90 days. Build your schedule at pmsummit.com/schedule.",
+        "confidence": 0.92,
+        "importance": "fyi"
+      },
+      {
+        "title": "Opening Keynote: The Future of Product",
+        "start_datetime": "2026-04-07T09:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 1 \u2014 9:00 AM PT: Opening Keynote, \u201cThe Future of Product\u201d led by the CEO, ProductCo. Includes session details and access info for the virtual platform.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Track Sessions Begin",
+        "start_datetime": "2026-04-07T10:30:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 1 \u2014 10:30 AM PT: Track sessions begin. Choose from 4 concurrent tracks.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Lunch Break & Networking",
+        "start_datetime": "2026-04-07T12:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 1 \u2014 12:00 PM PT: Lunch Break & Networking.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Afternoon Sessions",
+        "start_datetime": "2026-04-07T13:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 1 \u2014 1:00 PM PT: Afternoon Sessions.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Day 1 Closing Panel",
+        "start_datetime": "2026-04-07T16:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 1 \u2014 4:00 PM PT: Closing Panel.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Day 2 Kickoff",
+        "start_datetime": "2026-04-08T09:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 2 \u2014 9:00 AM PT: Day 2 Kickoff.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Day 2 Workshop Sessions",
+        "start_datetime": "2026-04-08T09:30:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 2 \u2014 9:30 AM PT: Hands-on, interactive workshop sessions.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Day 2 Lunch Break",
+        "start_datetime": "2026-04-08T12:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 2 \u2014 12:00 PM PT: Lunch Break.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Day 2 Afternoon Sessions",
+        "start_datetime": "2026-04-08T13:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 2 \u2014 1:00 PM PT: Afternoon Sessions.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Day 2 Closing Keynote: Building Products That Matter",
+        "start_datetime": "2026-04-08T15:30:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 2 \u2014 3:30 PM PT: Closing Keynote, \u201cBuilding Products That Matter.\u201d",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Summit Concludes",
+        "start_datetime": "2026-04-08T16:30:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Hopin platform (Virtual)",
+        "description": "Day 2 \u2014 4:30 PM PT: Summit Concludes.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.23333333333333334,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.41025641025641024,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.2857142857142857,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.41025641025641024,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.8,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1404,
+    "completion_tokens": 5473,
+    "total_tokens": 6877
+  },
+  "cost": 0.0022594
+}

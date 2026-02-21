@@ -1,0 +1,98 @@
+{
+  "fixture_name": "appointments/car_service_03",
+  "fixture_hash": "35b13d7c4541c47c9b349ffe3be8d0b41e8609cb30fb84bba4cded6d2ec617bf",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "run_at": "2026-02-17T17:25:39.103865+00:00",
+  "duration_ms": 18341,
+  "category": "appointments",
+  "description": "Auto service appointment confirmation",
+  "difficulty": "easy",
+  "tags": [
+    "car",
+    "service",
+    "auto",
+    "morning"
+  ],
+  "input_summary": {
+    "subject": "Your Service Appointment is Confirmed",
+    "from": "service@hondasanjose.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Service - Honda of San Jose",
+        "start_datetime": "2026-02-07T08:00:00",
+        "end_datetime": "2026-02-07T12:00:00",
+        "location": "Honda of San Jose Service Center, 4321 Stevens Creek Blvd, San Jose, CA 95129",
+        "description": "30,000 mile maintenance for 2023 Honda Accord",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Honda Service Appointment for 2023 Honda Accord",
+        "start_datetime": "2026-02-07T08:00:00-08:00",
+        "end_datetime": "2026-02-07T12:00:00-08:00",
+        "location": "Honda of San Jose Service Center, 4321 Stevens Creek Blvd, San Jose, CA 95129",
+        "description": "30,000 Mile Maintenance: Oil change, Tire rotation, Multi-point inspection, Brake inspection. Appointment Date: Saturday, February 7, 2026. Drop-off Time: 8:00 AM. Estimated Completion: 12:00 PM. Service Advisor: Marcus Johnson. Phone: (408) 555-2345. Honda of San Jose Service Center. Free WiFi and coffee available in waiting area; complimentary shuttle service.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.46153846153846156,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 994,
+    "completion_tokens": 2120,
+    "total_tokens": 3114
+  },
+  "cost": 0.0008977000000000001
+}

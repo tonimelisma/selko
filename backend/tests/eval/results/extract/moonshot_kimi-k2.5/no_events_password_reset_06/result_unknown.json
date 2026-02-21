@@ -1,0 +1,44 @@
+{
+  "fixture_name": "no_events/password_reset_06",
+  "fixture_hash": "672621788bd627e829c9fea63434085ba64d213b1f6306a5246636b0a738619f",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "run_at": "2026-02-16T17:34:57.275380+00:00",
+  "duration_ms": 220,
+  "category": "no_events",
+  "description": "Password reset request email",
+  "difficulty": "easy",
+  "tags": [
+    "security",
+    "password",
+    "account",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Reset your password",
+    "from": "security@service.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "auto_score": {
+    "error": "moonshot API error: Error code: 400 - {'error': {'message': \"Invalid request: response_format.json_schema is not a valid moonshot flavored json schema, details: <At path '$defs.CalendarEvent.properties.end_datetime': keyword 'default' is not allowed at the same level as anyOf>\", 'type': 'invalid_request_error'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

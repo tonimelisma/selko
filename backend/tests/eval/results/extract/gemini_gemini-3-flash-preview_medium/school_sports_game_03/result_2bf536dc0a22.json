@@ -1,0 +1,76 @@
+{
+  "fixture_name": "school/sports_game_03",
+  "fixture_hash": "4e3b364e97fde3f8bde010ad285f3862889865eb8233e0b0111e5ea24680b98d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:16.389925+00:00",
+  "duration_ms": 1805,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:14.583211+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:14.583224+00:00",
+      "duration_ms": 31
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:14.614894+00:00",
+      "duration_ms": 1774
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:16.389416+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Youth sports game schedule",
+  "difficulty": "easy",
+  "tags": [
+    "sports",
+    "soccer",
+    "kids",
+    "game"
+  ],
+  "input_summary": {
+    "subject": "Soccer Game This Saturday - Wildcats vs. Eagles",
+    "from": "coach.davis@aysosoccer.org",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Soccer Game - Wildcats vs Eagles",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": null,
+        "location": "Sunnyvale Sports Complex, Field #3, 500 Athletic Way, Sunnyvale, CA 94086",
+        "description": "Youth soccer game - arrive by 9:30 AM",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

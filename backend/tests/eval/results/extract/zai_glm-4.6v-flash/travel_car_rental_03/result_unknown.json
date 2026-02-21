@@ -1,0 +1,55 @@
+{
+  "fixture_name": "travel/car_rental_03",
+  "fixture_hash": "1fc56b84b9a505a06d58300671d665965c131692af6a4537beca2eaaafeabdfd",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:42:44.629769+00:00",
+  "duration_ms": 38979,
+  "category": "travel",
+  "description": "Car rental reservation confirmation",
+  "difficulty": "medium",
+  "tags": [
+    "car",
+    "rental",
+    "pickup",
+    "dropoff"
+  ],
+  "input_summary": {
+    "subject": "Your Hertz Reservation is Confirmed",
+    "from": "reservations@hertz.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Rental - Hertz LAX",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": "2026-02-25T18:00:00",
+        "location": "Hertz LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Full size car rental (Toyota Camry or similar)",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 763,
+    "completion_tokens": 1976,
+    "total_tokens": 2739
+  },
+  "cost": 0.0
+}

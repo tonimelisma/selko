@@ -1,0 +1,78 @@
+{
+  "fixture_name": "meetings/meeting_with_agenda_attachment",
+  "fixture_hash": "4ae19d277ea851dc857bedd2132486fdd2600b62b9c5362a061fd59ff9f0aef8",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:12.296316+00:00",
+  "duration_ms": 161,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:12.134153+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:12.134416+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:12.164520+00:00",
+      "duration_ms": 131
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:12.296008+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Meeting invitation with attached agenda document",
+  "difficulty": "medium",
+  "tags": [
+    "meeting",
+    "attachment",
+    "agenda",
+    "txt"
+  ],
+  "input_summary": {
+    "subject": "Quarterly Planning Meeting - March 10th (Agenda Attached)",
+    "from": "planning@company.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "text"
+    ],
+    "total_attachment_bytes": 878
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Quarterly Planning Meeting",
+        "start_datetime": "2026-03-10T09:00:00",
+        "end_datetime": "2026-03-10T12:00:00",
+        "location": "Main Conference Room, Building A",
+        "description": "Quarterly planning meeting - Q1 review and Q2 planning",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

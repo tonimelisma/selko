@@ -1,0 +1,161 @@
+{
+  "fixture_name": "school/school_digest_author_visit_07",
+  "fixture_hash": "f3579b3cd55e3c49c8641768d3fc789af716d9fc0817e6f764944534bb895fef",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:23:10.087115+00:00",
+  "duration_ms": 6121,
+  "category": "school",
+  "description": "Real-world school digest with Valentine's Day party photos (past) and newsletter with future author visit",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "digest",
+    "newsletter",
+    "author-visit",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 12, 2026 Digest: 2 new messages from Walnut Heights School today",
+    "from": "donotreply+b8892cdd-b853-59af-bbf0-af20434c9aeb@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 6
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
+        "is_all_day": true,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00",
+        "end_datetime": null,
+        "location": "Walnut Heights MPR",
+        "description": "TK and K music showcase. Livestream available.",
+        "is_all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00+00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Double author visit on March 12th. Students can pre-order books through Rakestraw Bookstore to have them signed by the authors on the day of the visit. Books will be delivered on the day of the visit. Shipping address for orders is the school's address: 4064 Walnut Blvd, Walnut Creek, CA 94596.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "No School - Presidents Day",
+        "start_datetime": "2026-02-12T00:00:00+00:00",
+        "end_datetime": "2026-02-16T23:59:59+00:00",
+        "location": null,
+        "description": "School closure for Presidents Day. No school February 12th-16th. This is the 'super long weekend' mentioned in the parent message.",
+        "confidence": 0.98,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00+00:00",
+        "end_datetime": "2026-03-24T10:00:00+00:00",
+        "location": "Walnut Heights School, MPR (Multi-Purpose Room)",
+        "description": "Spring Music Showcase featuring TK and Kindergarten students. Event will be held at 9:30 am in the MPR. Students have been working on this performance in Music class with Mrs. Gold. A livestream will be available for those who cannot attend in person. The livestream link will be sent out a few days before the event. Contact Mrs. Gold at jcousins@walnutcreeksd.org with questions.",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.6,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.2978723404255319,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.5,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 4429,
+    "completion_tokens": 544,
+    "total_tokens": 4973
+  },
+  "cost": 0.005719200000000001
+}

@@ -1,0 +1,301 @@
+{
+  "fixture_name": "travel/travel_itinerary_06",
+  "fixture_hash": "62d3fcaaf95126b9bb7dee2f9c1028091dede49daccfcf156f8f35c7ef1f93d3",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:07:28.007964+00:00",
+  "duration_ms": 18786,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:09.219971+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:09.219978+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:09.238563+00:00",
+      "duration_ms": 18766
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:07:28.004986+00:00",
+      "duration_ms": 2
+    }
+  },
+  "category": "travel",
+  "description": "Complete travel itinerary with multiple events",
+  "difficulty": "hard",
+  "tags": [
+    "itinerary",
+    "multiple-events",
+    "complex",
+    "multi-day"
+  ],
+  "input_summary": {
+    "subject": "Your Complete Travel Itinerary - Tokyo Trip",
+    "from": "bookings@travelagency.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "events": [
+      {
+        "title": "Flight JL 001 - SFO to Tokyo",
+        "start_datetime": "2026-04-10T11:30:00",
+        "end_datetime": null,
+        "location": "San Francisco International Airport (SFO)",
+        "description": "Japan Airlines flight to Tokyo Narita",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Airport Transfer - Narita to Shinjuku",
+        "start_datetime": "2026-04-11T16:30:00",
+        "end_datetime": "2026-04-11T18:30:00",
+        "location": "Narita Airport",
+        "description": "Limousine bus to Shinjuku Bus Terminal",
+        "all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel Stay - Park Hyatt Tokyo",
+        "start_datetime": "2026-04-11T15:00:00",
+        "end_datetime": "2026-04-18T12:00:00",
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo",
+        "description": "7-night hotel stay",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight JL 002 - Tokyo to SFO",
+        "start_datetime": "2026-04-18T17:00:00",
+        "end_datetime": null,
+        "location": "Tokyo Narita Airport (NRT)",
+        "description": "Japan Airlines return flight to San Francisco",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Japan Airlines JL 001 \u2014 Depart San Francisco (Outbound Flight)",
+        "start_datetime": "2026-04-10T11:30:00-07:00",
+        "end_datetime": "2026-04-11T15:30:00+09:00",
+        "all_day": false,
+        "location": "San Francisco International Airport (SFO) \u2192 Tokyo Narita (NRT)",
+        "description": "Japan Airlines JL 001 outbound flight from San Francisco (SFO) to Tokyo Narita (NRT).\n- Depart: San Francisco (SFO) 11:30 AM on April 10, 2026\n- Arrive: Tokyo Narita (NRT) 3:30 PM on April 11, 2026 (+1 day)\n- Duration: 11h 0m\n- Seat: 32K\n- Booking Ref: PTT-2026-4589\nTraveler: Sarah Johnson",
+        "confidence": 0.98,
+        "importance": "action_required"
+      },
+      {
+        "title": "Limousine Bus \u2014 Narita to Shinjuku (Airport Transfer)",
+        "start_datetime": "2026-04-11T16:30:00+09:00",
+        "end_datetime": "2026-04-11T18:30:00+09:00",
+        "all_day": false,
+        "location": "Depart Narita Airport \u2014 Arrive Shinjuku Bus Terminal",
+        "description": "Prepaid limousine bus transfer from Narita Airport to Shinjuku.\n- Depart: 4:30 PM from Narita Airport on April 11, 2026\n- Arrive: approximately 6:30 PM at Shinjuku Bus Terminal\n- Ticket: Prepaid, show email\nBooking Ref: PTT-2026-4589\nTraveler: Sarah Johnson",
+        "confidence": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel Check-in \u2014 Park Hyatt Tokyo (Start of stay)",
+        "start_datetime": "2026-04-11T15:00:00+09:00",
+        "end_datetime": "2026-04-18T12:00:00+09:00",
+        "all_day": false,
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055",
+        "description": "Park Hyatt Tokyo reservation for Sarah Johnson.\n- Check-in: From 3:00 PM on April 11, 2026\n- Stay: 7 nights (April 11\u201318, 2026)\n- Confirmation: 12345PH\n- Check-out: By 12:00 PM on April 18, 2026\nBooking Ref: PTT-2026-4589\nNote: Check-out deadline listed separately as an event; this event spans full stay for calendar purposes.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel Check-out \u2014 Park Hyatt Tokyo (End of stay)",
+        "start_datetime": "2026-04-18T12:00:00+09:00",
+        "end_datetime": "2026-04-18T12:00:00+09:00",
+        "all_day": false,
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055",
+        "description": "Hotel check-out deadline.\n- Check-out: By 12:00 PM on April 18, 2026\n- Hotel: Park Hyatt Tokyo\n- Confirmation: 12345PH\nTraveler: Sarah Johnson\nBooking Ref: PTT-2026-4589",
+        "confidence": 0.97,
+        "importance": "action_required"
+      },
+      {
+        "title": "Japan Airlines JL 002 \u2014 Return Flight (Depart Tokyo Narita)",
+        "start_datetime": "2026-04-18T17:00:00+09:00",
+        "end_datetime": "2026-04-18T10:30:00-07:00",
+        "all_day": false,
+        "location": "Tokyo Narita (NRT) \u2192 San Francisco International Airport (SFO)",
+        "description": "Japan Airlines JL 002 return flight from Tokyo Narita to San Francisco.\n- Depart: Tokyo Narita (NRT) 5:00 PM on April 18, 2026\n- Arrive: San Francisco (SFO) 10:30 AM (same day, April 18, 2026)\n- Duration: 9h 30m\n- Seat: 31K\nBooking Ref: PTT-2026-4589\nTraveler: Sarah Johnson",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.4222222222222222,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7961165048543689,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5333333333333333,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.42424242424242425,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.8,
+          "required_min": 0.7,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.6153846153846154,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9302325581395349,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.41379310344827586,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5227272727272727,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1439,
+    "completion_tokens": 1346,
+    "total_tokens": 2785
+  },
+  "cost": 0.00305175
+}

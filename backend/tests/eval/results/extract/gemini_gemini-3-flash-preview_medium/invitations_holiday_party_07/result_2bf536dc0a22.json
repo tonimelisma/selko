@@ -1,0 +1,76 @@
+{
+  "fixture_name": "invitations/holiday_party_07",
+  "fixture_hash": "b09521de0696713fdb22e4651c4077d77e0053cd2ea3cafd6194d23970d84e33",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:04.983892+00:00",
+  "duration_ms": 144,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:04.839311+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:04.839325+00:00",
+      "duration_ms": 31
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:04.870522+00:00",
+      "duration_ms": 113
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:04.983592+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Office holiday party invitation",
+  "difficulty": "easy",
+  "tags": [
+    "holiday",
+    "office",
+    "evening",
+    "formal"
+  ],
+  "input_summary": {
+    "subject": "You're Invited: TechCorp Annual Holiday Celebration",
+    "from": "hr@techcorp.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechCorp Annual Holiday Celebration",
+        "start_datetime": "2026-12-18T18:00:00",
+        "end_datetime": "2026-12-18T22:00:00",
+        "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
+        "description": "Annual holiday party with dinner, live band, and awards ceremony",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

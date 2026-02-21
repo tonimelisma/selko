@@ -1,0 +1,65 @@
+{
+  "fixture_name": "no_events/order_receipt_02",
+  "fixture_hash": "85fb4acf07842ae6feefa19be7d7b03ad916012f73e09ccbb636eb4c87ea2cb1",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "none",
+  "run_at": "2026-02-20T23:58:35.727757+00:00",
+  "duration_ms": 1019,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:58:34.707986+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:58:34.707993+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:58:34.738129+00:00",
+      "duration_ms": 989
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:58:35.727397+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "E-commerce order confirmation/receipt",
+  "difficulty": "easy",
+  "tags": [
+    "receipt",
+    "order",
+    "shopping",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Amazon.com order #112-3456789-0123456",
+    "from": "auto-confirm@amazon.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,113 @@
+{
+  "fixture_name": "school/registration_opens_09",
+  "fixture_hash": "1055090b4a735542636fb743165b1f555bebf3f2755ad547ee23393c08d0c3d6",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:23:03.939152+00:00",
+  "duration_ms": 11006,
+  "category": "school",
+  "description": "Real-world city arts & rec spring registration announcement with specific open date/time - borderline calendar event",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "registration",
+    "community",
+    "borderline",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Spring 2026 Registration Starts 2/18",
+    "from": "artsrec@walnut-creek.org",
+    "has_attachments": true,
+    "attachment_count": 14
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Spring 2026 registration opens for Arts + Rec classes including youth programs, preschool, adult classes, and intergenerational programs",
+        "is_all_day": false,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": "Online at artsrec.walnut-creek.org",
+        "description": "Spring 2026 registration for Arts + Rec classes opens at 12:00 PM on February 18, 2026. Users can register online for youth programs (ceramics, dance, STEM, drama), adult classes (ceramics, culinary arts, dance, digital media), intergenerational classes, and more. Course numbers are available for reference. Registration can also be completed by phone at (925) 295-1490. Printed Activity Guides will be available for pickup at: Civic Park Community Center (1375 Civic Drive), Tice Valley Gym (2055 Tice Valley Boulevard), Shadelands Art Center (111 N. Wiget Lane), and Walnut Creek City Hall (1666 N. Main Street).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Community Arts Preschool Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": "Online",
+        "description": "Registration for Community Arts Preschool Summer 2026 and School Year 2026-27 classes opens on Wednesday, February 18 at 12:00 PM. Parents can register online or contact Customer Support at (925) 295-1490.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.6,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 9272,
+    "completion_tokens": 436,
+    "total_tokens": 9708
+  },
+  "cost": 0.0091616
+}

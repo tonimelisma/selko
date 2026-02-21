@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/interview_05",
+  "fixture_hash": "3c8a7bfeed0e8a8065f3fa4f1bbf605a98dd3917303ac4dcd8830a49c47ac05d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:42.195578+00:00",
+  "duration_ms": 3693,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:38.501330+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:38.501336+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:38.516505+00:00",
+      "duration_ms": 3678
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:42.195137+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Job interview scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "interview",
+    "job",
+    "hr",
+    "hiring"
+  ],
+  "input_summary": {
+    "subject": "Interview Confirmation - Senior Software Engineer Position",
+    "from": "recruiting@innovatetech.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Interview - InnovateTech Senior Software Engineer",
+        "start_datetime": "2026-02-12T13:00:00",
+        "end_datetime": "2026-02-12T15:00:00",
+        "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
+        "description": "On-site interview for Senior Software Engineer position",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Senior Software Engineer Interview - InnovateTech",
+        "start_datetime": "2026-02-12T13:00:00-08:00",
+        "end_datetime": "2026-02-12T15:00:00-08:00",
+        "all_day": false,
+        "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
+        "description": "On-site interview for the Senior Software Engineer position at InnovateTech.\n\nInterview Schedule:\n- 1:00 PM - Technical Interview (coding)\n- 2:00 PM - System Design Discussion\n- 2:45 PM - Team Fit / Q&A\n\nCheck in at the front desk and ask for Emily Rodriguez.\n\nWhat to Bring:\n- Government-issued photo ID\n- Portfolio or examples of work (optional)\n\nParking is available in the visitor lot.\n\nAction Required: Please confirm attendance by replying to recruiting@innovatetech.com.\n\nContact: Emily Rodriguez, Talent Acquisition, InnovateTech",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.4897959183673469,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1771,
+    "completion_tokens": 329,
+    "total_tokens": 2100
+  },
+  "cost": 0.010248
+}

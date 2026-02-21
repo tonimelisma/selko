@@ -1,0 +1,125 @@
+{
+  "fixture_name": "recurring/weekly_team_meeting_01",
+  "fixture_hash": "523aa082cd60a14018cdb236419f4f763684bf31731bd3f25fdeb16337a65ec2",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:07:50.723765+00:00",
+  "duration_ms": 5759,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:44.962833+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:44.962841+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:44.978826+00:00",
+      "duration_ms": 5744
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:07:50.722861+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Weekly recurring team meeting setup",
+  "difficulty": "medium",
+  "tags": [
+    "recurring",
+    "weekly",
+    "meeting",
+    "team"
+  ],
+  "input_summary": {
+    "subject": "New Recurring Meeting: Weekly Team Sync",
+    "from": "calendar@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Weekly Team Sync",
+        "start_datetime": "2026-02-09T10:00:00",
+        "end_datetime": "2026-02-09T10:30:00",
+        "location": "Conference Room A",
+        "description": "Weekly team sync meeting",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Weekly Team Sync",
+        "start_datetime": "2026-02-09T10:00:00+00:00",
+        "end_datetime": "2026-02-09T10:30:00+00:00",
+        "all_day": false,
+        "location": "Conference Room A / Zoom (https://zoom.us/j/teamsync2026)",
+        "description": "Organizer: Sarah Kim (sarah.kim@company.com)\nRecurrence: Weekly on Mondays, starting February 9, 2026 \u2014 ends: never\nWhen: Every Monday, 10:00 AM - 10:30 AM (first instance: 2026-02-09)\nWhere: Conference Room A / Zoom \u2014 https://zoom.us/j/teamsync2026\nDescription: Weekly sync to discuss:\n- Project updates\n- Blockers\n- Upcoming priorities\nNotes: This is a recurring meeting request; the invitation includes options to Accept | Decline | Tentative.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.4594594594594595,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1159,
+    "completion_tokens": 353,
+    "total_tokens": 1512
+  },
+  "cost": 0.00099575
+}

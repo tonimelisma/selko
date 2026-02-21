@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/project_kickoff_07",
+  "fixture_hash": "e6d9c90441619dccf1a66649dfdc3012870fe65f9539ebe5bcb6b152889b74d4",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:42.261526+00:00",
+  "duration_ms": 2993,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:39.267326+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:39.267342+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:39.282892+00:00",
+      "duration_ms": 2978
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:42.261189+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Internal project kickoff meeting",
+  "difficulty": "easy",
+  "tags": [
+    "project",
+    "kickoff",
+    "internal",
+    "planning"
+  ],
+  "input_summary": {
+    "subject": "Project Phoenix Kickoff - Please Join!",
+    "from": "daniel.kim@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Phoenix Kickoff",
+        "start_datetime": "2026-02-18T10:00:00",
+        "end_datetime": "2026-02-18T11:30:00",
+        "location": "Innovation Lab (3rd floor)",
+        "description": "Project kickoff meeting with team introductions and planning",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Project Phoenix Kickoff Meeting",
+        "start_datetime": "2026-02-18T10:00:00",
+        "end_datetime": "2026-02-18T11:30:00",
+        "all_day": false,
+        "location": "Innovation Lab (3rd floor)",
+        "description": "Project Phoenix kickoff meeting organized by Daniel Kim (Senior Product Manager).\n\nAgenda:\n1. Project overview and goals\n2. Team introductions and roles\n3. Technical architecture overview\n4. Sprint planning approach\n5. Communication and tooling\n6. Q&A\n\nPre-work (optional but helpful):\n- Review the PRD doc\n- Think about potential risks\n- Bring your questions\n\nNote: A calendar invite will be sent separately.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8518518518518519,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1704,
+    "completion_tokens": 253,
+    "total_tokens": 1957
+  },
+  "cost": 0.008907
+}

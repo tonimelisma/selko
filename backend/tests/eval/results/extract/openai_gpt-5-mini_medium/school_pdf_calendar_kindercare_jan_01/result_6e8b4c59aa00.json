@@ -1,0 +1,813 @@
+{
+  "fixture_name": "school/pdf_calendar_kindercare_jan_01",
+  "fixture_hash": "b926d1040ca1b4189fd31584aae49e730b2c308ca6728429feb5867edddaea88",
+  "code_hash": "6e8b4c59aa00",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T04:46:40.552046+00:00",
+  "duration_ms": 36822,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T04:46:03.348152+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T04:46:03.725869+00:00",
+      "duration_ms": 193
+    },
+    "api_call": {
+      "started_at": "2026-02-21T04:46:03.919853+00:00",
+      "duration_ms": 36621
+    },
+    "scoring": {
+      "started_at": "2026-02-21T04:46:40.541828+00:00",
+      "duration_ms": 8
+    }
+  },
+  "category": "school",
+  "description": "KinderCare January 2026 calendar PDF with closures and themed days",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "January Calendar",
+    "from": "center@kindercare.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 1251936
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions Day",
+        "start_datetime": "2026-01-07",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-13",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake Day",
+        "start_datetime": "2026-01-15",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "KinderCare Closed - Martin Luther King Day",
+        "start_datetime": "2026-01-19",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow Day",
+        "start_datetime": "2026-01-28",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Happy New Year \u2014 Center Closed",
+        "start_datetime": "2026-01-01T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: \"Happy New Year! CLOSED\" on January 1, 2026. No time or location listed; center closure for the day.",
+        "confidence": 0.98,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle (themed dress-up)",
+        "start_datetime": "2026-01-02T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: themed day on January 2, 2026 labeled \"Wear anything sparkle.\" No time or location listed; appears to be a center dress-up/theme day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: \"Selfie Day\" on January 5, 2026. No time or location listed; themed/activity day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions (themed day)",
+        "start_datetime": "2026-01-07T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: themed entry on January 7, 2026 reading \"Resolutions.\" No time or location listed; likely a classroom/theme activity.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: \"PAJAMA DAY\" on January 9, 2026. No time or location listed; themed dress-up day.",
+        "confidence": 0.95,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday \u2014 Ms. Ashley",
+        "start_datetime": "2026-01-13T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: \"Happy Birthday to Ms Ashley\" on January 13, 2026. No time or location listed; staff birthday noted on calendar.",
+        "confidence": 0.95,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake (activity)",
+        "start_datetime": "2026-01-15T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: \"Lets make a Snowflake\" on January 15, 2026. No time or location listed; classroom/activity event.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Martin Luther King Day \u2014 Center Closed",
+        "start_datetime": "2026-01-19T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: \"Martin Luther King Day\" with \"CLOSED\" on January 19, 2026. No time or location listed; center closure for the federal holiday.",
+        "confidence": 0.98,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: another \"PAJAMA DAY\" on January 23, 2026. No time or location listed; themed dress-up day.",
+        "confidence": 0.95,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow (themed dress-up)",
+        "start_datetime": "2026-01-28T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "From KinderCare January 2026 calendar: \"Dress like a Rainbow\" on January 28, 2026 with rainbow graphic. No time or location listed; themed dress-up day.",
+        "confidence": 0.95,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.375,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.71875,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.7692307692307693,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.9259259259259259,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.847457627118644,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.55,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.7096774193548387,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 2829,
+    "completion_tokens": 2261,
+    "total_tokens": 5090
+  },
+  "cost": 0.00522925,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3238
+      },
+      {
+        "type": "text",
+        "length": 25
+      },
+      {
+        "type": "image",
+        "mime_type": "application/pdf",
+        "size_bytes": 1251936
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Happy New Year \u2014 Center Closed\",\n      \"start_datetime\": \"2026-01-01\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: \\\"Happy New Year! CLOSED\\\" on January 1, 2026. No time or location listed; center closure for the day.\",\n      \"confidence\": 0.98,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Wear Anything Sparkle (themed dress-up)\",\n      \"start_datetime\": \"2026-01-02\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: themed day on January 2, 2026 labeled \\\"Wear anything sparkle.\\\" No time or location listed; appears to be a center dress-up/theme day.\",\n      \"confidence\": 0.90,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Selfie Day\",\n      \"start_datetime\": \"2026-01-05\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: \\\"Selfie Day\\\" on January 5, 2026. No time or location listed; themed/activity day.\",\n      \"confidence\": 0.90,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Resolutions (themed day)\",\n      \"start_datetime\": \"2026-01-07\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: themed entry on January 7, 2026 reading \\\"Resolutions.\\\" No time or location listed; likely a classroom/theme activity.\",\n      \"confidence\": 0.85,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2026-01-09\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: \\\"PAJAMA DAY\\\" on January 9, 2026. No time or location listed; themed dress-up day.\",\n      \"confidence\": 0.95,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Happy Birthday \u2014 Ms. Ashley\",\n      \"start_datetime\": \"2026-01-13\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: \\\"Happy Birthday to Ms Ashley\\\" on January 13, 2026. No time or location listed; staff birthday noted on calendar.\",\n      \"confidence\": 0.95,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Let's Make a Snowflake (activity)\",\n      \"start_datetime\": \"2026-01-15\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: \\\"Lets make a Snowflake\\\" on January 15, 2026. No time or location listed; classroom/activity event.\",\n      \"confidence\": 0.90,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Martin Luther King Day \u2014 Center Closed\",\n      \"start_datetime\": \"2026-01-19\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: \\\"Martin Luther King Day\\\" with \\\"CLOSED\\\" on January 19, 2026. No time or location listed; center closure for the federal holiday.\",\n      \"confidence\": 0.98,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2026-01-23\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: another \\\"PAJAMA DAY\\\" on January 23, 2026. No time or location listed; themed dress-up day.\",\n      \"confidence\": 0.95,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Dress Like a Rainbow (themed dress-up)\",\n      \"start_datetime\": \"2026-01-28\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"From KinderCare January 2026 calendar: \\\"Dress like a Rainbow\\\" on January 28, 2026 with rainbow graphic. No time or location listed; themed dress-up day.\",\n      \"confidence\": 0.95,\n      \"importance\": \"fyi\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

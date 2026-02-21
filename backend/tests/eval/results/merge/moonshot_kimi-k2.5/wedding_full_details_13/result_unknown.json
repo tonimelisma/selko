@@ -1,0 +1,82 @@
+{
+  "fixture_name": "wedding_full_details_13",
+  "fixture_hash": "6b1539a71a03952c225842b2271c0caac67e3133aead651aa0cce93e0653071c",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "run_at": "2026-02-16T17:44:41.593265+00:00",
+  "duration_ms": 24666,
+  "description": "Wedding: save-the-date has basic info, formal invitation adds full venue details and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "wedding",
+    "social"
+  ],
+  "expected": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description_contains": [
+      "wedding celebration",
+      "ceremony",
+      "reception",
+      "cocktail attire",
+      "hotel block"
+    ]
+  },
+  "actual": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "all_day": false,
+    "importance": "action_required",
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description": "Save the date! Wedding celebration for Sarah and Michael\n\nCeremony at 4pm, reception follows at 5:30pm. Cocktail attire. RSVP by June 15. Hotel block available under 'Chen-Anderson wedding'.",
+    "end_datetime": "2026-07-25T22:00:00"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "wedding celebration",
+        "ceremony",
+        "reception",
+        "cocktail attire",
+        "hotel block"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 381,
+    "completion_tokens": 1172,
+    "total_tokens": 1553
+  },
+  "cost": 0.0037446
+}

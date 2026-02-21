@@ -1,0 +1,65 @@
+{
+  "fixture_name": "conferences/virtual_summit_05",
+  "fixture_hash": "fb74effd55f6d523f8d3f32458198534e0b00b1afde4490b361d36d2bc15bf91",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:45:27.896546+00:00",
+  "duration_ms": 30459,
+  "category": "conferences",
+  "description": "Multi-day virtual summit with session schedule",
+  "difficulty": "hard",
+  "tags": [
+    "summit",
+    "virtual",
+    "multi-day",
+    "multiple-sessions"
+  ],
+  "input_summary": {
+    "subject": "Your Product Management Virtual Summit Access",
+    "from": "events@pmsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "PM Summit 2026 - Day 1",
+        "start_datetime": "2026-04-07T09:00:00",
+        "end_datetime": "2026-04-07T16:00:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 1 - Keynotes and track sessions",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "PM Summit 2026 - Day 2",
+        "start_datetime": "2026-04-08T09:00:00",
+        "end_datetime": "2026-04-08T16:30:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 2 - Workshops and closing keynote",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: 11 validation errors for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'The Future of ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.1.confidence\n  Field required [type=missing, input_value={'title': 'Track Sessions...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.2.confidence\n  Field required [type=missing, input_value={'title': 'Lunch Break & ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.3.confidence\n  Field required [type=missing, input_value={'title': 'Afternoon Sess...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.4.confidence\n  Field required [type=missing, input_value={'title': 'Day 1 Closing ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.5.confidence\n  Field required [type=missing, input_value={'title': 'Day 2 Kickoff'...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.6.confidence\n  Field required [type=missing, input_value={'title': 'Workshop Sessi...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.7.confidence\n  Field required [type=missing, input_value={'title': 'Lunch Break', ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.8.confidence\n  Field required [type=missing, input_value={'title': 'Afternoon Sess...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.9.confidence\n  Field required [type=missing, input_value={'title': 'Closing Keynot...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.10.confidence\n  Field required [type=missing, input_value={'title': 'Summit Conclud...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: 11 validation errors for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'The Future of ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.1.confidence\n  Field required [type=missing, input_value={'title': 'Track Sessions...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.2.confidence\n  Field required [type=missing, input_value={'title': 'Lunch Break & ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.3.confidence\n  Field required [type=missing, input_value={'title': 'Afternoon Sess...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.4.confidence\n  Field required [type=missing, input_value={'title': 'Day 1 Closing ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.5.confidence\n  Field required [type=missing, input_value={'title': 'Day 2 Kickoff'...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.6.confidence\n  Field required [type=missing, input_value={'title': 'Workshop Sessi...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.7.confidence\n  Field required [type=missing, input_value={'title': 'Lunch Break', ...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.8.confidence\n  Field required [type=missing, input_value={'title': 'Afternoon Sess...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.9.confidence\n  Field required [type=missing, input_value={'title': 'Closing Keynot...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nevents.10.confidence\n  Field required [type=missing, input_value={'title': 'Summit Conclud...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "tokens": {
+    "prompt_tokens": 985,
+    "completion_tokens": 2805,
+    "total_tokens": 3790
+  },
+  "cost": 0.0
+}

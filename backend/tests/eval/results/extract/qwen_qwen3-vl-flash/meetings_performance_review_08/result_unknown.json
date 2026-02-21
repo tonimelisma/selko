@@ -1,0 +1,111 @@
+{
+  "fixture_name": "meetings/performance_review_08",
+  "fixture_hash": "a7b47cf37582075417e477a4de61fb361e0ca625343464fb9a728d5e52930e07",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:35:53.127252+00:00",
+  "duration_ms": 4113,
+  "category": "meetings",
+  "description": "Annual performance review scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "performance",
+    "review",
+    "hr",
+    "annual"
+  ],
+  "input_summary": {
+    "subject": "Your Annual Performance Review - Scheduled",
+    "from": "manager@company.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Performance Review with Robert Chen",
+        "start_datetime": "2026-03-05T15:00:00",
+        "end_datetime": "2026-03-05T16:00:00",
+        "location": "Room 512",
+        "description": "Annual performance review meeting",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Performance Review Meeting",
+        "start_datetime": "2026-03-05T15:00:00+00:00",
+        "end_datetime": "2026-03-05T16:00:00+00:00",
+        "location": "My Office (Room 512)",
+        "description": "Your annual performance review covering the period from March 2025 to February 2026. Before the meeting, complete your self-assessment in Workday by March 1st, reflect on key accomplishments, think about areas for growth and development, and prepare questions about career progression. During the meeting, you\u2019ll discuss performance, contributions, goals, development opportunities, and compensation (if applicable). Please notify if you have conflicts with this time.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Workday Self-Assessment Deadline",
+        "start_datetime": "2026-03-01T00:00:00+00:00",
+        "end_datetime": "2026-03-01T23:59:59+00:00",
+        "location": null,
+        "description": "Complete your self-assessment in Workday by March 1, 2026. This is a prerequisite for the upcoming annual performance review meeting on March 5, 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7466666666666667,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5714285714285714,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1258,
+    "completion_tokens": 355,
+    "total_tokens": 1613
+  },
+  "cost": 0.00034204
+}

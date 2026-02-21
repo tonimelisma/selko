@@ -1,0 +1,215 @@
+{
+  "fixture_name": "conferences/tech_conference_01",
+  "fixture_hash": "0ddd48e539b83207c9db42a94da90e9a4b39f573913bbb7d2bd8cf264e383a30",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:36:38.451810+00:00",
+  "duration_ms": 12373,
+  "category": "conferences",
+  "description": "Multi-day tech conference registration",
+  "difficulty": "medium",
+  "tags": [
+    "conference",
+    "tech",
+    "multi-day",
+    "registration"
+  ],
+  "input_summary": {
+    "subject": "Registration Confirmed: TechSummit 2026",
+    "from": "registration@techsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechSummit 2026",
+        "start_datetime": "2026-03-18T08:00:00",
+        "end_datetime": "2026-03-20T16:00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "3-day technology conference",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechSummit 2026 - Registration Confirmed",
+        "start_datetime": "2026-03-18T08:00:00+00:00",
+        "end_datetime": "2026-03-20T16:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Full Conference Pass (3-Day) for Alex Chen. Includes registration, breakfast, keynote speeches, sessions, workshops, networking lunch, welcome reception, and closing keynote. Badge pick-up at Registration Desk. Event runs March 18-20, 2026. App available for schedule and networking.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Registration & Breakfast",
+        "start_datetime": "2026-03-18T08:00:00+00:00",
+        "end_datetime": "2026-03-18T09:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Day 1 of TechSummit 2026. Attendees must register and enjoy breakfast before the opening keynote at 9:00 AM.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Opening Keynote",
+        "start_datetime": "2026-03-18T09:00:00+00:00",
+        "end_datetime": "2026-03-18T10:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "First session of TechSummit 2026 on Wednesday, March 18, 2026. Scheduled from 9:00 AM to 10:00 AM.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Sessions (Day 1)",
+        "start_datetime": "2026-03-18T10:00:00+00:00",
+        "end_datetime": "2026-03-18T18:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Day 1 sessions run from 10:00 AM to 6:00 PM on Wednesday, March 18, 2026. Multiple tracks available.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Welcome Reception",
+        "start_datetime": "2026-03-18T19:00:00+00:00",
+        "end_datetime": "2026-03-18T21:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Evening social event on Day 1 of TechSummit 2026, held after sessions conclude at 6:00 PM.",
+        "confidence": 0.85,
+        "importance": "action_required"
+      },
+      {
+        "title": "Sessions & Workshops (Day 2)",
+        "start_datetime": "2026-03-19T08:00:00+00:00",
+        "end_datetime": "2026-03-19T18:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Day 2 sessions and workshops run from 8:00 AM to 6:00 PM on Thursday, March 19, 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Networking Lunch",
+        "start_datetime": "2026-03-19T12:00:00+00:00",
+        "end_datetime": "2026-03-19T13:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Lunch break scheduled at noon on Thursday, March 19, 2026, for networking during TechSummit 2026.",
+        "confidence": 0.85,
+        "importance": "action_required"
+      },
+      {
+        "title": "Sessions (Day 3)",
+        "start_datetime": "2026-03-20T08:00:00+00:00",
+        "end_datetime": "2026-03-20T15:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Final day sessions run from 8:00 AM to 3:00 PM on Friday, March 20, 2026. Conference ends at 4:00 PM.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Closing Keynote",
+        "start_datetime": "2026-03-20T15:00:00+00:00",
+        "end_datetime": "2026-03-20T16:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Closing keynote speech on Friday, March 20, 2026, starting at 3:00 PM and ending at 4:00 PM.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Conference Ends",
+        "start_datetime": "2026-03-20T16:00:00+00:00",
+        "end_datetime": "2026-03-20T16:00:00+00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Official end of TechSummit 2026 conference at 4:00 PM on Friday, March 20, 2026.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5454545454545454,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1426,
+    "completion_tokens": 1588,
+    "total_tokens": 3014
+  },
+  "cost": 0.00119392
+}

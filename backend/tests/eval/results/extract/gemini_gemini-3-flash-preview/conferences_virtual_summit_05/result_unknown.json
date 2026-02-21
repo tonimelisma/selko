@@ -1,0 +1,146 @@
+{
+  "fixture_name": "conferences/virtual_summit_05",
+  "fixture_hash": "fb74effd55f6d523f8d3f32458198534e0b00b1afde4490b361d36d2bc15bf91",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:43:17.725816+00:00",
+  "duration_ms": 43684,
+  "category": "conferences",
+  "description": "Multi-day virtual summit with session schedule",
+  "difficulty": "hard",
+  "tags": [
+    "summit",
+    "virtual",
+    "multi-day",
+    "multiple-sessions"
+  ],
+  "input_summary": {
+    "subject": "Your Product Management Virtual Summit Access",
+    "from": "events@pmsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "PM Summit 2026 - Day 1",
+        "start_datetime": "2026-04-07T09:00:00",
+        "end_datetime": "2026-04-07T16:00:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 1 - Keynotes and track sessions",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "PM Summit 2026 - Day 2",
+        "start_datetime": "2026-04-08T09:00:00",
+        "end_datetime": "2026-04-08T16:30:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 2 - Workshops and closing keynote",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "PM Summit 2026 - Day 1",
+        "start_datetime": "2026-04-07T09:00:00+00:00",
+        "end_datetime": "2026-04-07T16:00:00+00:00",
+        "location": "https://hopin.com/events/pmsummit2026",
+        "description": "Day 1 of the PM Summit 2026. Includes Opening Keynote: 'The Future of Product' at 9:00 AM PT, track sessions at 10:30 AM PT, lunch/networking at 12:00 PM PT, afternoon sessions at 1:00 PM PT, and a closing panel at 4:00 PM PT. Platform opens 30 minutes early. All times in PT.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "PM Summit 2026 - Day 2",
+        "start_datetime": "2026-04-08T09:00:00+00:00",
+        "end_datetime": "2026-04-08T16:30:00+00:00",
+        "location": "https://hopin.com/events/pmsummit2026",
+        "description": "Day 2 of the PM Summit 2026. Includes Day 2 Kickoff at 9:00 AM PT, Workshop Sessions at 9:30 AM PT, lunch at 12:00 PM PT, afternoon sessions at 1:00 PM PT, and a closing keynote 'Building Products That Matter' at 3:30 PM PT. Summit concludes at 4:30 PM PT. Platform opens 30 minutes early. All times in PT.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.23076923076923078,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.23076923076923078,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1008,
+    "completion_tokens": 407,
+    "total_tokens": 1415
+  },
+  "cost": 0.00039539999999999996
+}

@@ -1,0 +1,65 @@
+{
+  "fixture_name": "no_events/password_reset_06",
+  "fixture_hash": "672621788bd627e829c9fea63434085ba64d213b1f6306a5246636b0a738619f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:29.939293+00:00",
+  "duration_ms": 4437,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:25.500925+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:25.500931+00:00",
+      "duration_ms": 32
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:25.532951+00:00",
+      "duration_ms": 4405
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:29.938943+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Password reset request email",
+  "difficulty": "easy",
+  "tags": [
+    "security",
+    "password",
+    "account",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Reset your password",
+    "from": "security@service.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

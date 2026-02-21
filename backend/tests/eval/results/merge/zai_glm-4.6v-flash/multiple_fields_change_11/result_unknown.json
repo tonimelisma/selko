@@ -1,0 +1,41 @@
+{
+  "fixture_name": "multiple_fields_change_11",
+  "fixture_hash": "0ca78555801aae2a288e2b82a7e742ba3011872c59d1d784825157abcfa52253",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:56:43.893770+00:00",
+  "duration_ms": 9192,
+  "description": "Multiple fields change simultaneously - time, location, and description all updated",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "multi-field-update",
+    "complex"
+  ],
+  "expected": {
+    "title": "Customer Workshop",
+    "start_datetime": "2026-04-22T13:00:00",
+    "end_datetime": "2026-04-22T16:00:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/987654321",
+    "description_contains": [
+      "product training",
+      "new customers",
+      "virtual",
+      "Q&A session",
+      "materials"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "Event merge failed: invalid JSON response: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 360,
+    "completion_tokens": 733,
+    "total_tokens": 1093
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,55 @@
+{
+  "fixture_name": "invitations/wedding_03",
+  "fixture_hash": "04c4600002b6c9754fd58ced8810ce77b4287376adb99f9e3b9f4a9fed7243e8",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:37:38.767686+00:00",
+  "duration_ms": 5409,
+  "category": "invitations",
+  "description": "Formal wedding invitation with ceremony and reception times",
+  "difficulty": "medium",
+  "tags": [
+    "wedding",
+    "formal",
+    "multi-part",
+    "all-day"
+  ],
+  "input_summary": {
+    "subject": "Save the Date: Sarah & Michael's Wedding",
+    "from": "sarah.johnson@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Sarah & Michael's Wedding",
+        "start_datetime": "2026-06-21T16:00:00",
+        "end_datetime": "2026-06-22T00:00:00",
+        "location": "Rosewood Estate, 2500 Vineyard Road, Napa Valley, California 94558",
+        "description": "Wedding ceremony at 4:00 PM, reception at 6:00 PM, dinner and dancing until midnight",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: 1 validation error for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': \"Sarah & Michae...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: 1 validation error for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': \"Sarah & Michae...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "tokens": {
+    "prompt_tokens": 674,
+    "completion_tokens": 473,
+    "total_tokens": 1147
+  },
+  "cost": 0.0
+}

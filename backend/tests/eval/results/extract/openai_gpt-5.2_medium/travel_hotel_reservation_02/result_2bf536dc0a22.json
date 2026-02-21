@@ -1,0 +1,153 @@
+{
+  "fixture_name": "travel/hotel_reservation_02",
+  "fixture_hash": "589c33759f2431646d458df3ff9e696aec2b2779983cfb678594919b69763c94",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:22.116838+00:00",
+  "duration_ms": 8099,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:14.015271+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:14.015276+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:14.029996+00:00",
+      "duration_ms": 8085
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:22.115536+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Hotel booking confirmation with check-in/check-out",
+  "difficulty": "medium",
+  "tags": [
+    "hotel",
+    "booking",
+    "checkin",
+    "checkout"
+  ],
+  "input_summary": {
+    "subject": "Reservation Confirmed - Marriott Times Square",
+    "from": "confirm@marriott.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hotel Stay - Marriott Times Square",
+        "start_datetime": "2026-03-13T15:00:00",
+        "end_datetime": "2026-03-15T11:00:00",
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "2-night hotel stay, King Room with City View",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Hotel stay: Marriott Times Square (Check-in)",
+        "start_datetime": "2026-03-13T15:00:00-04:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "Marriott reservation confirmed (Confirmation #: 89XYZ456) for guest John Doe.\n\nCheck-in: Friday, March 13, 2026 from 3:00 PM.\nHotel: Marriott Times Square, 1535 Broadway, New York, NY 10036. Phone: (212) 555-1234.\nRoom: King Room, City View. 2 nights. 1 adult.\nNotes: Mobile check-in available via Marriott app. Payment: Visa ending in 1234.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel stay: Marriott Times Square (Check-out)",
+        "start_datetime": "2026-03-15T11:00:00-04:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "Marriott reservation confirmed (Confirmation #: 89XYZ456) for guest John Doe.\n\nCheck-out: Sunday, March 15, 2026 by 11:00 AM.\nHotel: Marriott Times Square, 1535 Broadway, New York, NY 10036. Phone: (212) 555-1234.\nNotes: Reservation dates span March 13\u201315, 2026 (2 nights).",
+        "confidence": 0.92,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel stay: Marriott Times Square",
+        "start_datetime": "2026-03-13T15:00:00-04:00",
+        "end_datetime": "2026-03-15T11:00:00-04:00",
+        "all_day": false,
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "Marriott reservation confirmed (Confirmation #: 89XYZ456) for guest John Doe.\n\nStay dates: Check-in Friday, March 13, 2026 from 3:00 PM; Check-out Sunday, March 15, 2026 by 11:00 AM.\nHotel: Marriott Times Square, 1535 Broadway, New York, NY 10036. Phone: (212) 555-1234.\nRoom: King Room, City View. 2 nights. 1 adult.\nOther info: Mobile check-in available via Marriott app. Bonvoy points earned: 1,196. Payment: Visa ending in 1234.",
+        "confidence": 0.97,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8205128205128205,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1250,
+    "completion_tokens": 587,
+    "total_tokens": 1837
+  },
+  "cost": 0.0104055
+}

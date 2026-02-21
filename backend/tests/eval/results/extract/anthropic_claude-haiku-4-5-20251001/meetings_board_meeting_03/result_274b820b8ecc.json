@@ -1,0 +1,124 @@
+{
+  "fixture_name": "meetings/board_meeting_03",
+  "fixture_hash": "c6579a34c703aa4c652b98b549f1a0735e9e2d69898785899fcf083180028e52",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:21:23.731697+00:00",
+  "duration_ms": 3643,
+  "category": "meetings",
+  "description": "Quarterly board meeting notice",
+  "difficulty": "easy",
+  "tags": [
+    "board",
+    "quarterly",
+    "formal",
+    "executive"
+  ],
+  "input_summary": {
+    "subject": "Q1 2026 Board Meeting - March 15th",
+    "from": "board-secretary@acmecorp.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-15T10:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Quarterly board of directors meeting",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q1 2026 Board of Directors Meeting",
+        "start_datetime": "2026-03-15T10:00:00-05:00",
+        "end_datetime": "2026-03-15T16:00:00-05:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166 (or via Zoom: Meeting ID 987 654 3210)",
+        "description": "Official Q1 2026 Board of Directors Meeting. In-person at ACME Corp Headquarters or via Zoom video conference (ID: 987 654 3210, Passcode: Board2026). Agenda includes: Call to Order (10:00 AM), CEO Report (10:15 AM), CFO Financial Review (11:00 AM), Working Lunch (12:00 PM), Strategic Initiatives (1:00 PM), Committee Reports (2:30 PM), New Business (3:30 PM), and Adjournment (4:00 PM). Board materials will be distributed one week prior. Attendance confirmation required by March 1st, 2026.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Board Meeting Attendance Confirmation Deadline",
+        "start_datetime": "2026-03-01T23:59:59-05:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to confirm attendance for the Q1 2026 Board of Directors Meeting scheduled for March 15, 2026. Recipients must respond to the Board Secretary by this date.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Board Meeting Materials Distribution",
+        "start_datetime": "2026-03-08T00:00:00-05:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Board materials for the Q1 2026 Board of Directors Meeting will be distributed one week prior to the meeting (approximately March 8, 2026).",
+        "confidence": 0.75,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7636363636363637,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8251121076233184,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1529,
+    "completion_tokens": 578,
+    "total_tokens": 2107
+  },
+  "cost": 0.0035351999999999996
+}

@@ -1,0 +1,53 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "9dee5b65d2bfa1e5f9a9375250a1149ca1e06e0c707c6a690936f140925156eb",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:11:28.625596+00:00",
+  "duration_ms": 10551,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:18.072000+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:18.072002+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:18.086947+00:00",
+      "duration_ms": 10537
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:11:28.624422+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 414,
+    "completion_tokens": 265,
+    "total_tokens": 679
+  },
+  "cost": 0.0006335
+}

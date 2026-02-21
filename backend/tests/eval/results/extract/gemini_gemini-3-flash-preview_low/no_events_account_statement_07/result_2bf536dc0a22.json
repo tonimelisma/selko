@@ -1,0 +1,65 @@
+{
+  "fixture_name": "no_events/account_statement_07",
+  "fixture_hash": "3fd9e364309c62cc623e213fc970f5993209d5bdd237288ef27fb52ba8f544d4",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:24.824314+00:00",
+  "duration_ms": 2426,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:22.397179+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:22.397186+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:22.426622+00:00",
+      "duration_ms": 2397
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:24.824039+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Bank account statement notification",
+  "difficulty": "medium",
+  "tags": [
+    "bank",
+    "statement",
+    "financial",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your January 2026 Statement is Ready",
+    "from": "statements@firstbank.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

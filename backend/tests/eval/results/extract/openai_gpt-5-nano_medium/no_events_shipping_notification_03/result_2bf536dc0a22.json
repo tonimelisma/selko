@@ -1,0 +1,78 @@
+{
+  "fixture_name": "no_events/shipping_notification_03",
+  "fixture_hash": "e9ec530c80c65c58943683c0e5697296ab5756aa12957c216b9fc8a3d1b4ec0f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:05:22.235817+00:00",
+  "duration_ms": 19240,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:05:02.993240+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:05:02.993249+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:05:03.012044+00:00",
+      "duration_ms": 19222
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:05:22.234598+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Package shipped notification",
+  "difficulty": "medium",
+  "tags": [
+    "shipping",
+    "delivery",
+    "tracking",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your package has shipped! Tracking #1Z999AA10123456784",
+    "from": "shipping@store.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Package delivery window for order ST-2026-789456",
+        "start_datetime": "2026-02-14T00:00:00+00:00",
+        "end_datetime": "2026-02-16T23:59:59+00:00",
+        "all_day": true,
+        "location": "Delivery address: 456 Oak Avenue, Apt 7, San Francisco, CA 94102",
+        "description": "Delivery window for order ST-2026-789456. Carrier: UPS Ground. Tracking: 1Z999AA10123456784. Shipped: 2026-02-11. Estimated delivery window: February 14-16, 2026. Recipient: Jane Doe. Shipping to: 456 Oak Avenue, Apt 7, San Francisco, CA 94102. Items in shipment: Running Shoes - Size 8 (x1); Athletic Socks 6-Pack (x1). Contact: support@store.com.",
+        "confidence": 0.95,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1210,
+    "completion_tokens": 2539,
+    "total_tokens": 3749
+  },
+  "cost": 0.0010761
+}

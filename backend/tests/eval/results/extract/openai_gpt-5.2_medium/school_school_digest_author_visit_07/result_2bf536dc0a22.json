@@ -1,0 +1,202 @@
+{
+  "fixture_name": "school/school_digest_author_visit_07",
+  "fixture_hash": "a0d43983314dce4f4fe12fe52123995371e9a04d101df783c1ed57d6e15c2800",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:53.354326+00:00",
+  "duration_ms": 20327,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:33.024709+00:00",
+      "duration_ms": 1
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:33.026202+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:33.041419+00:00",
+      "duration_ms": 20311
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:53.353262+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world school digest with Valentine's Day party photos (past) and newsletter with future author visit",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "digest",
+    "newsletter",
+    "author-visit",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 12, 2026 Digest: 2 new messages from Walnut Heights School today",
+    "from": "donotreply+b8892cdd-b853-59af-bbf0-af20434c9aeb@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 6,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 666684
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00",
+        "end_datetime": null,
+        "location": "Walnut Heights MPR",
+        "description": "TK and K music showcase. Livestream available.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "No School \u2013 Presidents Day (Walnut Heights)",
+        "start_datetime": "2026-02-12T00:00:00-08:00",
+        "end_datetime": "2026-02-17T00:00:00-08:00",
+        "all_day": true,
+        "location": "Walnut Heights Elementary School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "School closed for Presidents Day break. Newsletter \u2018Upcoming Events\u2019 lists: \u201cFebruary 12th-16th: No School - Presidents Day.\u201d",
+        "confidence": 0.92,
+        "importance": "action_required"
+      },
+      {
+        "title": "Double Author Visit (Walnut Heights)",
+        "start_datetime": "2026-03-12T00:00:00-07:00",
+        "end_datetime": "2026-03-13T00:00:00-07:00",
+        "all_day": true,
+        "location": "Walnut Heights Elementary School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Two authors will visit the school on March 12 (date changed). If students want to order books to be signed on the day of the visit, order through Rakestraw Bookstore; books will be delivered on the day of the visit and signed. Shipping address for orders: 4064 Walnut Blvd, Walnut Creek, CA 94596.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Spring Music Showcase (TK and Kindergarten)",
+        "start_datetime": "2026-03-24T09:30:00-07:00",
+        "end_datetime": "2026-03-24T10:00:00-07:00",
+        "all_day": false,
+        "location": "Walnut Heights Elementary School \u2013 MPR, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Spring Music Showcase for TK and Kindergarten students. Takes place Tuesday, March 24, 2026 from 9:30\u201310:00 AM in the MPR. A livestream will be available for those who cannot attend in person; the link will be sent out a few days before the event. Contact: Mrs. Gold (jcousins@walnutcreeksd.org).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.22580645161290322,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 40320.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9197080291970803,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.65625,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.3673469387755102,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 4193,
+    "completion_tokens": 1102,
+    "total_tokens": 5295
+  },
+  "cost": 0.02276575
+}

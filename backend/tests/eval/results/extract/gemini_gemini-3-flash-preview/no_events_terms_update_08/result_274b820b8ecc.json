@@ -1,0 +1,77 @@
+{
+  "fixture_name": "no_events/terms_update_08",
+  "fixture_hash": "2674381c24e39d6fc84d6cf7ec756d7c30407a2cf9415ef0a5ec7ba1538cbcef",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:20:18.178341+00:00",
+  "duration_ms": 1642,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:20:16.535089+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:20:16.535097+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:20:16.564964+00:00",
+      "duration_ms": 1613
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:20:18.178120+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Terms of service update notification",
+  "difficulty": "medium",
+  "tags": [
+    "legal",
+    "terms",
+    "policy",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Important: Updates to our Terms of Service (Effective March 1)",
+    "from": "legal@platform.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Platform Terms of Service Update Effective Date",
+        "start_datetime": "2026-03-01T00:00:00+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "New Terms of Service and Privacy Policy go into effect. Changes include enhanced data privacy measures, updated user content guidelines, two-factor authentication requirements, and updated dispute resolution procedures. Continued use of the service after this date constitutes agreement to these terms.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 789,
+    "completion_tokens": 119,
+    "total_tokens": 908
+  },
+  "cost": 0.00018975
+}

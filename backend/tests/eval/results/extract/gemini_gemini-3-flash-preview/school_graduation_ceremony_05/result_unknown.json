@@ -1,0 +1,111 @@
+{
+  "fixture_name": "school/graduation_ceremony_05",
+  "fixture_hash": "1892d7999d1d382295704c7c8c95a158364a76e2c77af8b0af498446ccb73458",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:44:03.279130+00:00",
+  "duration_ms": 36323,
+  "category": "school",
+  "description": "School graduation ceremony details",
+  "difficulty": "easy",
+  "tags": [
+    "graduation",
+    "ceremony",
+    "school",
+    "formal"
+  ],
+  "input_summary": {
+    "subject": "8th Grade Graduation Ceremony - Save the Date",
+    "from": "principal@middleschool.edu",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "8th Grade Graduation Ceremony",
+        "start_datetime": "2026-06-12T18:00:00",
+        "end_datetime": "2026-06-12T20:00:00",
+        "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
+        "description": "8th grade graduation ceremony with reception to follow",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "8th Grade Graduation Ceremony",
+        "start_datetime": "2026-06-12T18:00:00+00:00",
+        "end_datetime": "2026-06-12T20:00:00+00:00",
+        "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
+        "description": "Class of 2026 Graduation Ceremony. Doors open at 5:30 PM. Ceremony includes Processional, Student Speeches, Guest Speaker, and Diploma Presentation. Reception follows in the courtyard at 8:00 PM. Each family receives 4 tickets (distributed in May). Dress code is semi-formal.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "8th Grade Graduation Reception",
+        "start_datetime": "2026-06-12T20:00:00+00:00",
+        "end_datetime": null,
+        "location": "Riverside Middle School Courtyard",
+        "description": "Reception following the graduation ceremony.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 869,
+    "completion_tokens": 245,
+    "total_tokens": 1114
+  },
+  "cost": 0.00027735000000000005
+}

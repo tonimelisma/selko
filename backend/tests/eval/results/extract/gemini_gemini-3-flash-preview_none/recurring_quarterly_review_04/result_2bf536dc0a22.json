@@ -1,0 +1,76 @@
+{
+  "fixture_name": "recurring/quarterly_review_04",
+  "fixture_hash": "e2cabde367dae0b7b4b68c4f9af229fec088f13ce5bdd26863099dc4c11d5cd0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "none",
+  "run_at": "2026-02-20T23:58:34.707308+00:00",
+  "duration_ms": 2229,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:58:32.477158+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:58:32.477169+00:00",
+      "duration_ms": 34
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:58:32.511307+00:00",
+      "duration_ms": 2195
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:58:34.707074+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Quarterly business review meeting",
+  "difficulty": "easy",
+  "tags": [
+    "recurring",
+    "quarterly",
+    "review",
+    "business"
+  ],
+  "input_summary": {
+    "subject": "Q2 2026 Business Review - Calendar Hold",
+    "from": "ops@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q2 2026 Business Review",
+        "start_datetime": "2026-04-15T09:00:00",
+        "end_datetime": "2026-04-15T12:00:00",
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly business review meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,65 @@
+{
+  "fixture_name": "no_events/marketing_email_04",
+  "fixture_hash": "814fe4ce8cc9ddb5a21a23d235168151a07b07f3c59cd70ab2f28a9a411e0c86",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:21.309087+00:00",
+  "duration_ms": 2537,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:18.771149+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:18.771156+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:18.801740+00:00",
+      "duration_ms": 2507
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:21.308787+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Promotional marketing email with sale dates",
+  "difficulty": "medium",
+  "tags": [
+    "marketing",
+    "sale",
+    "promo",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "\ud83c\udf89 Presidents Day Sale - Up to 50% Off!",
+    "from": "deals@bigstore.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

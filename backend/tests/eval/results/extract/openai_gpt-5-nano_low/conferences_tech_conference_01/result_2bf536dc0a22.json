@@ -1,0 +1,125 @@
+{
+  "fixture_name": "conferences/tech_conference_01",
+  "fixture_hash": "baba32425cb75fcf26cf072c2214a4b90650dfe9e2a86ceef8a17609a0240ee8",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:28.291790+00:00",
+  "duration_ms": 8854,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:19.435808+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:19.435814+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:19.451296+00:00",
+      "duration_ms": 8839
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:28.291253+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Multi-day tech conference registration",
+  "difficulty": "medium",
+  "tags": [
+    "conference",
+    "tech",
+    "multi-day",
+    "registration"
+  ],
+  "input_summary": {
+    "subject": "Registration Confirmed: TechSummit 2026",
+    "from": "registration@techsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechSummit 2026",
+        "start_datetime": "2026-03-18T08:00:00",
+        "end_datetime": "2026-03-20T16:00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "3-day technology conference",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechSummit 2026 Conference",
+        "start_datetime": "2026-03-18T08:00:00+00:00",
+        "end_datetime": "2026-03-20T16:00:00+00:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Registration confirmed for TechSummit 2026 (3-Day Conference).\nDates: March 18\u201320, 2026\nLocation: Moscone Center, 747 Howard Street, San Francisco, CA 94103\nOverview: The Future of Technology.\nDay 1 \u2013 Wednesday, March 18: 8:00 AM Registration & Breakfast; 9:00 AM Opening Keynote; 10:00 AM\u20136:00 PM Sessions; 7:00 PM Welcome Reception.\nDay 2 \u2013 Thursday, March 19: 8:00 AM\u20136:00 PM Sessions & Workshops; 12:00 PM Networking Lunch.\nDay 3 \u2013 Friday, March 20: 8:00 AM\u20133:00 PM Sessions; 3:00 PM Closing Keynote; 4:00 PM Conference Ends.\nBadge pickup at Registration Desk with photo ID; download TechSummit app for schedule and networking.\nContact: support@techsummit.com\nNote: This entry represents the full multi-day event; RSVP deadlines or separate registrations are not listed here.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7317073170731707,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1305,
+    "completion_tokens": 975,
+    "total_tokens": 2280
+  },
+  "cost": 0.00045525
+}

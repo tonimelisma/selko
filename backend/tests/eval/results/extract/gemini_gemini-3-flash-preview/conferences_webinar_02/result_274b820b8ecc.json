@@ -1,0 +1,119 @@
+{
+  "fixture_name": "conferences/webinar_02",
+  "fixture_hash": "4090a5f785c4a0a0ca754cd0e434eab54e2b8d2c59b2d48c1d6b7b138c06016d",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-18T04:19:58.617465+00:00",
+  "duration_ms": 2473,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-18T04:19:56.142410+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-18T04:19:56.142419+00:00",
+      "duration_ms": 32
+    },
+    "api_call": {
+      "started_at": "2026-02-18T04:19:56.174799+00:00",
+      "duration_ms": 2441
+    },
+    "scoring": {
+      "started_at": "2026-02-18T04:19:58.616155+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Online webinar registration confirmation",
+  "difficulty": "easy",
+  "tags": [
+    "webinar",
+    "online",
+    "virtual",
+    "tech"
+  ],
+  "input_summary": {
+    "subject": "You're Registered: AI in Practice Webinar",
+    "from": "webinars@learningplatform.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "AI in Practice Webinar",
+        "start_datetime": "2026-02-24T13:00:00",
+        "end_datetime": "2026-02-24T14:30:00",
+        "location": "Zoom",
+        "description": "Webinar on AI implementation strategies with Dr. Maria Santos",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "AI in Practice: From Theory to Deployment Webinar",
+        "start_datetime": "2026-02-24T13:00:00-05:00",
+        "end_datetime": "2026-02-24T14:30:00-05:00",
+        "location": "https://zoom.us/j/webinar2026",
+        "description": "Live webinar presented by Dr. Maria Santos (Chief AI Officer, TechCorp). Topics include real-world AI implementation strategies, common pitfalls, case studies, and a Q&A session. Meeting ID: 456 789 0123, Passcode: AIWebinar.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6197183098591549,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.24242424242424243,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 821,
+    "completion_tokens": 220,
+    "total_tokens": 1041
+  },
+  "cost": 0.00025515
+}

@@ -208,7 +208,7 @@ Naming convention: `{date}-{description}.md`
 
 This creates a historical record. Compare reports manually by diffing pass rates and failure lists.
 
-Reports are saved in `backend/tests/eval/reports/` (gitignored results cache is in `backend/tests/eval/results/`).
+Reports are saved in `backend/tests/eval/reports/`. Raw results are in `backend/tests/eval/results/` — both are tracked in git for regression analysis.
 
 ---
 

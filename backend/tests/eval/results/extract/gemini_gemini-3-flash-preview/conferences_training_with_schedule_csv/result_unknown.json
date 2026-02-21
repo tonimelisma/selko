@@ -1,0 +1,112 @@
+{
+  "fixture_name": "conferences/training_with_schedule_csv",
+  "fixture_hash": "d0473ba5597869ea48ceb551e94a88c3f70ea549c7eeb31e883b5b151e748b4f",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:42:34.001430+00:00",
+  "duration_ms": 4855,
+  "category": "conferences",
+  "description": "Training registration with CSV schedule attachment",
+  "difficulty": "hard",
+  "tags": [
+    "training",
+    "attachment",
+    "csv",
+    "schedule",
+    "multiple-events"
+  ],
+  "input_summary": {
+    "subject": "Python Training Registration Confirmed - Schedule Attached",
+    "from": "training@learntech.com",
+    "has_attachments": true,
+    "attachment_count": 1
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Python Programming Fundamentals Training",
+        "start_datetime": "2026-03-23T09:00:00",
+        "end_datetime": "2026-03-24T16:30:00",
+        "location": "LearnTech Training Center, 100 Tech Blvd, Austin, TX 78701",
+        "description": "2-day Python programming training course",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Python Programming Fundamentals - Day 1",
+        "start_datetime": "2026-03-23T09:00:00+00:00",
+        "end_datetime": "2026-03-23T17:00:00+00:00",
+        "location": "LearnTech Training Center, 100 Tech Blvd, Austin, TX 78701",
+        "description": "First day of Python Programming Fundamentals training. Bring a laptop with Python 3.10+ installed and a notebook for notes.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Python Programming Fundamentals - Day 2",
+        "start_datetime": "2026-03-24T09:00:00+00:00",
+        "end_datetime": "2026-03-24T17:00:00+00:00",
+        "location": "LearnTech Training Center, 100 Tech Blvd, Austin, TX 78701",
+        "description": "Second day of Python Programming Fundamentals training. Bring a laptop with Python 3.10+ installed and a notebook for notes.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8354430379746836,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 679,
+    "completion_tokens": 337,
+    "total_tokens": 1016
+  },
+  "cost": 0.00030404999999999994
+}

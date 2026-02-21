@@ -1,0 +1,59 @@
+{
+  "fixture_name": "allday_gets_time_02",
+  "fixture_hash": "02216bb3f203000a12ea4f91fe284365ce99e83912cd98c9c8d502d80188c96a",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:00:00.698484+00:00",
+  "duration_ms": 125,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:00.572159+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:00.572165+00:00",
+      "duration_ms": 34
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:00.606342+00:00",
+      "duration_ms": 91
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:00.698216+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "All-day event gets specific time - should prefer specific time over vague all-day",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "all-day-to-timed",
+    "specificity"
+  ],
+  "expected": {
+    "title": "Annual Company Picnic",
+    "start_datetime": "2026-07-20T11:00:00",
+    "end_datetime": "2026-07-20T15:00:00",
+    "all_day": false,
+    "location": "City Park - Pavilion 3",
+    "description_contains": [
+      "summer picnic",
+      "employees and families",
+      "BBQ lunch",
+      "noon"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

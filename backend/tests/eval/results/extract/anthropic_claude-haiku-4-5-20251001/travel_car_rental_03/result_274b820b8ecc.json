@@ -1,0 +1,111 @@
+{
+  "fixture_name": "travel/car_rental_03",
+  "fixture_hash": "1fc56b84b9a505a06d58300671d665965c131692af6a4537beca2eaaafeabdfd",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:21:48.191079+00:00",
+  "duration_ms": 2424,
+  "category": "travel",
+  "description": "Car rental reservation confirmation",
+  "difficulty": "medium",
+  "tags": [
+    "car",
+    "rental",
+    "pickup",
+    "dropoff"
+  ],
+  "input_summary": {
+    "subject": "Your Hertz Reservation is Confirmed",
+    "from": "reservations@hertz.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Rental - Hertz LAX",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": "2026-02-25T18:00:00",
+        "location": "Hertz LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Full size car rental (Toyota Camry or similar)",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Hertz Car Rental - Pick-up",
+        "start_datetime": "2026-02-21T10:00:00+00:00",
+        "end_datetime": null,
+        "location": "Los Angeles LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Car rental pick-up at Los Angeles LAX Airport. Reservation confirmation #H12345678. Vehicle: Full Size (Toyota Camry or similar) with A/C, Automatic transmission, 4 doors. Gold Plus member - skip the counter and go directly to the Hertz Gold area.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hertz Car Rental - Drop-off",
+        "start_datetime": "2026-02-25T18:00:00+00:00",
+        "end_datetime": null,
+        "location": "Los Angeles LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Car rental drop-off at Los Angeles LAX Airport. Return the rented vehicle by 6:00 PM on Wednesday, February 25, 2026. Reservation confirmation #H12345678. Estimated total cost: $287.45 (includes taxes and fees).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5416666666666666,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8870967741935484,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1544,
+    "completion_tokens": 375,
+    "total_tokens": 1919
+  },
+  "cost": 0.0027351999999999997
+}

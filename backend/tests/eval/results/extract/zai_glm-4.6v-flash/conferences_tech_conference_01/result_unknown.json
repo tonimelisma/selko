@@ -1,0 +1,202 @@
+{
+  "fixture_name": "conferences/tech_conference_01",
+  "fixture_hash": "0ddd48e539b83207c9db42a94da90e9a4b39f573913bbb7d2bd8cf264e383a30",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:44:40.469695+00:00",
+  "duration_ms": 35989,
+  "category": "conferences",
+  "description": "Multi-day tech conference registration",
+  "difficulty": "medium",
+  "tags": [
+    "conference",
+    "tech",
+    "multi-day",
+    "registration"
+  ],
+  "input_summary": {
+    "subject": "Registration Confirmed: TechSummit 2026",
+    "from": "registration@techsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechSummit 2026",
+        "start_datetime": "2026-03-18T08:00:00",
+        "end_datetime": "2026-03-20T16:00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "3-day technology conference",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechSummit 2026 - Registration & Breakfast",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Registration and breakfast for TechSummit 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechSummit 2026 - Opening Keynote",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Opening keynote session for TechSummit 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechSummit 2026 - Sessions (Day 1)",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Session and workshop sessions from 10:00 AM to 6:00 PM on Day 1 of TechSummit 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechSummit 2026 - Welcome Reception",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Welcome reception event for TechSummit 2026.",
+        "confidence": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechSummit 2026 - Sessions & Workshops (Day 2)",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Sessions and workshops from 8:00 AM to 6:00 PM on Day 2 of TechSummit 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechSummit 2026 - Networking Lunch",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Networking lunch event during Day 2 of TechSummit 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechSummit 2026 - Sessions (Day 3)",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Session and workshop sessions from 8:00 AM to 3:00 PM on Day 3 of TechSummit 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechSummit 2026 - Closing Keynote",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Closing keynote session for TechSummit 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "TechSummit 2026 - Conference Ends",
+        "start_datetime": null,
+        "end_datetime": null,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "Conference concludes at 4:00 PM on Day 3 of TechSummit 2026.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5263157894736842,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 867,
+    "completion_tokens": 3952,
+    "total_tokens": 4819
+  },
+  "cost": 0.0
+}

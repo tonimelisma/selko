@@ -1,0 +1,125 @@
+{
+  "fixture_name": "appointments/accountant_meeting_06",
+  "fixture_hash": "0afb24c86c9ce20f1ebbfc006b5af0bc6e760e7c89335e4bee4e00da159a7495",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:06:58.878934+00:00",
+  "duration_ms": 7024,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:06:51.853218+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:06:51.853223+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:06:51.869053+00:00",
+      "duration_ms": 7009
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:06:58.878315+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Tax preparation meeting with CPA",
+  "difficulty": "easy",
+  "tags": [
+    "accountant",
+    "tax",
+    "cpa",
+    "financial"
+  ],
+  "input_summary": {
+    "subject": "Tax Preparation Meeting Scheduled",
+    "from": "linda.park@parkaccounting.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Tax Preparation Meeting - Linda Park CPA",
+        "start_datetime": "2026-03-02T16:00:00",
+        "end_datetime": null,
+        "location": "Park Accounting Services, 555 Main Street, Suite 300, Sunnyvale, CA 94086",
+        "description": "Tax preparation meeting with accountant",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Tax preparation meeting with Linda Park, CPA",
+        "start_datetime": "2026-03-02T16:00:00-08:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Park Accounting Services, 555 Main Street, Suite 300, Sunnyvale, CA 94086 \u2014 or Video Call (Zoom link to be sent)",
+        "description": "Tax preparation meeting scheduled with Linda Park, CPA.\nDate: Monday, March 2, 2026\nTime: 4:00 PM (local time, Sunnyvale, CA)\nLocation: Park Accounting Services, 555 Main Street, Suite 300, Sunnyvale, CA 94086 \u2014 or Video Call (Zoom link will be sent if preferred).\nRequested documents to bring or upload in advance: W-2s from all employers; 1099 forms; last year\u2019s tax return; mortgage interest statements (1098); property tax bills; charitable donation receipts.\nSecure upload URL: https://parkaccounting.com/upload\nOrganizer: Linda Park, CPA (Park Accounting Services), (408) 555-8901\nNotes: Client may choose in-person or virtual. No end time specified in the email.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.9285714285714286,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7891891891891892,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1192,
+    "completion_tokens": 408,
+    "total_tokens": 1600
+  },
+  "cost": 0.001114
+}

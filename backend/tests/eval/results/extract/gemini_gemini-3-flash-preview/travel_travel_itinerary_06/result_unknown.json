@@ -1,0 +1,255 @@
+{
+  "fixture_name": "travel/travel_itinerary_06",
+  "fixture_hash": "57171f757aec59fa8a69369fb8e52ea422cdbf29127dfe2eb351cdfb26262a17",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:41:08.838888+00:00",
+  "duration_ms": 4057,
+  "category": "travel",
+  "description": "Complete travel itinerary with multiple events",
+  "difficulty": "hard",
+  "tags": [
+    "itinerary",
+    "multiple-events",
+    "complex",
+    "multi-day"
+  ],
+  "input_summary": {
+    "subject": "Your Complete Travel Itinerary - Tokyo Trip",
+    "from": "bookings@travelagency.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "events": [
+      {
+        "title": "Flight JL 001 - SFO to Tokyo",
+        "start_datetime": "2026-04-10T11:30:00",
+        "end_datetime": null,
+        "location": "San Francisco International Airport (SFO)",
+        "description": "Japan Airlines flight to Tokyo Narita",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Airport Transfer - Narita to Shinjuku",
+        "start_datetime": "2026-04-11T16:30:00",
+        "end_datetime": "2026-04-11T18:30:00",
+        "location": "Narita Airport",
+        "description": "Limousine bus to Shinjuku Bus Terminal",
+        "is_all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel Stay - Park Hyatt Tokyo",
+        "start_datetime": "2026-04-11T15:00:00",
+        "end_datetime": "2026-04-18T12:00:00",
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo",
+        "description": "7-night hotel stay",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight JL 002 - Tokyo to SFO",
+        "start_datetime": "2026-04-18T17:00:00",
+        "end_datetime": null,
+        "location": "Tokyo Narita Airport (NRT)",
+        "description": "Japan Airlines return flight to San Francisco",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Outbound Flight: SFO to NRT (JL 001)",
+        "start_datetime": "2026-04-10T11:30:00+00:00",
+        "end_datetime": "2026-04-11T15:30:00+00:00",
+        "location": "San Francisco (SFO)",
+        "description": "Japan Airlines JL 001. Seat 32K. Duration: 11h 0m. Arrives in Tokyo Narita at 3:30 PM on April 11.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Airport Transfer: Limousine Bus to Shinjuku",
+        "start_datetime": "2026-04-11T16:30:00+00:00",
+        "end_datetime": "2026-04-11T18:30:00+00:00",
+        "location": "Narita Airport",
+        "description": "Limousine Bus from Narita to Shinjuku Bus Terminal. Ticket: Prepaid, show email.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel Check-in: Park Hyatt Tokyo",
+        "start_datetime": "2026-04-11T15:00:00+00:00",
+        "end_datetime": null,
+        "location": "3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055",
+        "description": "Confirmation: 12345PH. Stay for 7 nights (April 11-18).",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hotel Check-out: Park Hyatt Tokyo",
+        "start_datetime": "2026-04-18T12:00:00+00:00",
+        "end_datetime": null,
+        "location": "3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055",
+        "description": "Check-out by 12:00 PM.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Return Flight: NRT to SFO (JL 002)",
+        "start_datetime": "2026-04-18T17:00:00+00:00",
+        "end_datetime": "2026-04-18T10:30:00+00:00",
+        "location": "Tokyo Narita (NRT)",
+        "description": "Japan Airlines JL 002. Seat 31K. Duration: 9h 30m. Arrives in San Francisco at 10:30 AM (same day).",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.46875,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.6333333333333333,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.75,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.7868852459016393,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7567567567567568,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.36065573770491804,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.15584415584415584,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1040,
+    "completion_tokens": 598,
+    "total_tokens": 1638
+  },
+  "cost": 0.0005147999999999999
+}

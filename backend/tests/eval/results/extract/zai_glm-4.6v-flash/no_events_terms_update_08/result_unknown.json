@@ -1,0 +1,46 @@
+{
+  "fixture_name": "no_events/terms_update_08",
+  "fixture_hash": "2674381c24e39d6fc84d6cf7ec756d7c30407a2cf9415ef0a5ec7ba1538cbcef",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:53:57.200797+00:00",
+  "duration_ms": 1786,
+  "category": "no_events",
+  "description": "Terms of service update notification",
+  "difficulty": "medium",
+  "tags": [
+    "legal",
+    "terms",
+    "policy",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Important: Updates to our Terms of Service (Effective March 1)",
+    "from": "legal@platform.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 786,
+    "completion_tokens": 162,
+    "total_tokens": 948
+  },
+  "cost": 0.0
+}

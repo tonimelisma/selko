@@ -1,0 +1,55 @@
+{
+  "fixture_name": "appointments/accountant_meeting_06",
+  "fixture_hash": "42e203ef3d261147ba13ca66cf7e8e2e35fdcbe31b665a1909c221c60519e755",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:37:44.878380+00:00",
+  "duration_ms": 6087,
+  "category": "appointments",
+  "description": "Tax preparation meeting with CPA",
+  "difficulty": "easy",
+  "tags": [
+    "accountant",
+    "tax",
+    "cpa",
+    "financial"
+  ],
+  "input_summary": {
+    "subject": "Tax Preparation Meeting Scheduled",
+    "from": "linda.park@parkaccounting.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Tax Preparation Meeting - Linda Park CPA",
+        "start_datetime": "2026-03-02T16:00:00",
+        "end_datetime": null,
+        "location": "Park Accounting Services, 555 Main Street, Suite 300, Sunnyvale, CA 94086",
+        "description": "Tax preparation meeting with accountant",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 725,
+    "completion_tokens": 450,
+    "total_tokens": 1175
+  },
+  "cost": 0.0
+}

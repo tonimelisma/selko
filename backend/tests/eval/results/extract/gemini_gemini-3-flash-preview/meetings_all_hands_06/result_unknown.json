@@ -1,0 +1,98 @@
+{
+  "fixture_name": "meetings/all_hands_06",
+  "fixture_hash": "c38099178391051a150b532aa9918e0b9972ea689393ffd8f17a53a65e60bdc6",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:38:05.323083+00:00",
+  "duration_ms": 2944,
+  "category": "meetings",
+  "description": "Company all-hands meeting announcement",
+  "difficulty": "easy",
+  "tags": [
+    "all-hands",
+    "company",
+    "announcement",
+    "town-hall"
+  ],
+  "input_summary": {
+    "subject": "[All Company] February All-Hands Meeting",
+    "from": "ceo@startupco.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Company All-Hands Meeting",
+        "start_datetime": "2026-02-27T16:00:00",
+        "end_datetime": "2026-02-27T17:00:00",
+        "location": "Main Auditorium",
+        "description": "Monthly all-hands meeting with company updates and AMA",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "February All-Hands Meeting",
+        "start_datetime": "2026-02-27T16:00:00-08:00",
+        "end_datetime": "2026-02-27T17:00:00-08:00",
+        "location": "Main Auditorium + Zoom (https://zoom.us/j/allhands2026)",
+        "description": "Monthly mandatory All-Hands meeting featuring company performance updates, Q2 roadmap preview, new hire introductions, AMA with leadership, and a surprise announcement. Snacks and drinks provided for in-office attendees. Meeting ID: 111 222 3333.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7843137254901961,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.42857142857142855,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 763,
+    "completion_tokens": 172,
+    "total_tokens": 935
+  },
+  "cost": 0.00021765
+}

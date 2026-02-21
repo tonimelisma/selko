@@ -1,0 +1,53 @@
+{
+  "fixture_name": "similar_titles_different_dates_10",
+  "fixture_hash": "fb2caa5eebd9dbb2da73352be02b5b163ebfa3d626ef2388683563d42a359e70",
+  "code_hash": "2bf536dc0a22",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:40.266414+00:00",
+  "duration_ms": 3428,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:36.837776+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:36.837779+00:00",
+      "duration_ms": 53
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:36.890865+00:00",
+      "duration_ms": 3375
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:40.266084+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Similar titles but different dates - weekly meetings - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-date"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 356,
+    "completion_tokens": 84,
+    "total_tokens": 440
+  },
+  "cost": 0.0001038
+}

@@ -1,0 +1,125 @@
+{
+  "fixture_name": "conferences/training_session_04",
+  "fixture_hash": "549306b894eed5dfa27bf6ff3543193924718a66114093c578e03954faf729d5",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:27.728657+00:00",
+  "duration_ms": 7903,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:19.822979+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:19.822984+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:19.840908+00:00",
+      "duration_ms": 7886
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:27.727253+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Corporate training session invitation",
+  "difficulty": "easy",
+  "tags": [
+    "training",
+    "corporate",
+    "internal",
+    "mandatory"
+  ],
+  "input_summary": {
+    "subject": "[Required] Annual Compliance Training - Your Session",
+    "from": "learning@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Compliance Training",
+        "start_datetime": "2026-02-25T10:00:00",
+        "end_datetime": "2026-02-25T12:00:00",
+        "location": "Training Room A (Building 2, Floor 1)",
+        "description": "Mandatory annual compliance training session",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Compliance Training Session",
+        "start_datetime": "2026-02-25T10:00:00+00:00",
+        "end_datetime": "2026-02-25T12:00:00+00:00",
+        "all_day": false,
+        "location": "Training Room A (Building 2, Floor 1)",
+        "description": "Mandatory training session: Annual Compliance Training. Agenda includes Code of Conduct Review, Data Privacy & Security, Anti-Harassment Policy, Ethics & Reporting, and a Quiz & Certification. Virtual option available: https://company.zoom.us/j/compliance2026 (Passcode: comply26). Must be completed by March 31, 2026. If you cannot attend, you must reschedule by contacting learning@company.com. Non-completion may affect your performance review.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8666666666666667,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1260,
+    "completion_tokens": 1022,
+    "total_tokens": 2282
+  },
+  "cost": 0.00047180000000000003
+}

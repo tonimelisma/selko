@@ -1,0 +1,55 @@
+{
+  "fixture_name": "meetings/client_call_04",
+  "fixture_hash": "71dd5d4dba0431e399e1bbac6f9f398fbacf1273d8177daf8cb247e7cd118e75",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:39:07.180936+00:00",
+  "duration_ms": 18120,
+  "category": "meetings",
+  "description": "Client project kickoff call",
+  "difficulty": "easy",
+  "tags": [
+    "client",
+    "call",
+    "kickoff",
+    "project"
+  ],
+  "input_summary": {
+    "subject": "Re: Project Kickoff Call - GlobalTech Partnership",
+    "from": "james.wong@globaltech.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Kickoff - GlobalTech Partnership",
+        "start_datetime": "2026-02-10T11:00:00",
+        "end_datetime": "2026-02-10T12:30:00",
+        "location": "Microsoft Teams",
+        "description": "Project kickoff call with GlobalTech",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

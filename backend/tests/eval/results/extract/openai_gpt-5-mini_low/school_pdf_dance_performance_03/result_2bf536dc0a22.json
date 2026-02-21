@@ -1,0 +1,276 @@
+{
+  "fixture_name": "school/pdf_dance_performance_03",
+  "fixture_hash": "49d8f880257b345a7aaf2c8377ef855323f1c6805d0ae0cc93ad5b49cbd503c5",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:07:50.209220+00:00",
+  "duration_ms": 26932,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:07:23.273274+00:00",
+      "duration_ms": 1
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:07:23.274807+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:07:23.294128+00:00",
+      "duration_ms": 26911
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:07:50.206106+00:00",
+      "duration_ms": 1
+    }
+  },
+  "category": "school",
+  "description": "Dance studio winter performance with PDF flyer containing venue and per-class times",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "performance",
+    "extracurricular",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Winter Dance Performance - December 11th",
+    "from": "info@studio8dance.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 4886106
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "events": [
+      {
+        "title": "Winter Dance Performance - Pre-Ballet",
+        "start_datetime": "2025-12-11T15:55:00",
+        "end_datetime": "2025-12-11T16:15:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Jazz Ballet Tap",
+        "start_datetime": "2025-12-11T16:40:00",
+        "end_datetime": "2025-12-11T17:00:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Jr Hip Hop",
+        "start_datetime": "2025-12-11T17:25:00",
+        "end_datetime": "2025-12-11T17:45:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Hip Hop",
+        "start_datetime": "2025-12-11T18:10:00",
+        "end_datetime": "2025-12-11T18:30:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Winter Dance Performance (In-class) - Studio 8 Dance",
+        "start_datetime": "2025-12-11T00:00:00-08:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": "111 N Wiget Lane, Walnut Creek, CA (see flyer)",
+        "description": "Studio 8 Dance Winter Dance Performance for all students. Date: Thursday, December 11, 2025. In-class performances for all students; see flyer for class-specific performance times and venue address (111 N Wiget Lane, Walnut Creek, CA). Studio contact/address in email: Studio 8 Dance, 3233 Danville Blvd, Alamo, CA 94507.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pre-Ballet performance \u2014 Winter Dance Performance",
+        "start_datetime": "2025-12-11T15:55:00-08:00",
+        "end_datetime": "2025-12-11T16:15:00-08:00",
+        "all_day": false,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Pre-Ballet class performance as part of Studio 8 Dance Winter Dance Performance. Date: Thursday, December 11, 2025. Time: 3:55\u20134:15 PM (performances take place during the last 20 minutes of the dancer's class). Location per flyer: 111 N Wiget Lane, Walnut Creek, CA.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Jazz Ballet Tap performance \u2014 Winter Dance Performance",
+        "start_datetime": "2025-12-11T16:40:00-08:00",
+        "end_datetime": "2025-12-11T17:00:00-08:00",
+        "all_day": false,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Jazz ballet tap class performance as part of Studio 8 Dance Winter Dance Performance. Date: Thursday, December 11, 2025. Time: 4:40\u20135:00 PM (performances take place during the last 20 minutes of the dancer's class). Location per flyer: 111 N Wiget Lane, Walnut Creek, CA.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Jr Hip Hop performance \u2014 Winter Dance Performance (time on flyer appears inconsistent)",
+        "start_datetime": "2025-12-11T17:25:00-08:00",
+        "end_datetime": "2025-12-11T16:45:00-08:00",
+        "all_day": false,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Jr Hip Hop class performance as listed on the Winter Dance Performance flyer. Date: Thursday, December 11, 2025. Flyer lists time: 5:25\u20134:45 PM (this appears reversed/inconsistent on the flyer \u2014 end time is earlier than start). Performances take place during the last 20 minutes of the dancer's class. Location per flyer: 111 N Wiget Lane, Walnut Creek, CA. Confirm correct time with the studio.",
+        "confidence": 0.4,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hip Hop performance \u2014 Winter Dance Performance",
+        "start_datetime": "2025-12-11T18:10:00-08:00",
+        "end_datetime": "2025-12-11T18:30:00-08:00",
+        "all_day": false,
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "description": "Hip Hop class performance as part of Studio 8 Dance Winter Dance Performance. Date: Thursday, December 11, 2025. Time: 6:10\u20136:30 PM (performances take place during the last 20 minutes of the dancer's class). Location per flyer: 111 N Wiget Lane, Walnut Creek, CA.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5581395348837209,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.651685393258427,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 1045.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.85,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.6,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 2887,
+    "completion_tokens": 1789,
+    "total_tokens": 4676
+  },
+  "cost": 0.00429975
+}

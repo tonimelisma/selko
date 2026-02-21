@@ -1,0 +1,80 @@
+{
+  "fixture_name": "meetings/ics_calendar_invite",
+  "fixture_hash": "c64a9b7a6f3762ae1facbb81bdf5183f86aa498bbd4ca07cbcfa989c420d85a8",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:14.579772+00:00",
+  "duration_ms": 2343,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:12.235374+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:12.235575+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:12.250611+00:00",
+      "duration_ms": 2328
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:14.579468+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Meeting with ICS calendar file attachment",
+  "difficulty": "medium",
+  "tags": [
+    "meeting",
+    "attachment",
+    "ics",
+    "calendar"
+  ],
+  "input_summary": {
+    "subject": "Meeting Invitation: Product Launch Planning",
+    "from": "john.smith@example.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "text"
+    ],
+    "total_attachment_bytes": 586
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Product Launch Planning Meeting",
+        "start_datetime": "2026-03-15T14:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "Innovation Hub, Room 501",
+        "description": "Meeting to finalize Q2 product launch strategy",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1046,
+    "completion_tokens": 149,
+    "total_tokens": 1195
+  },
+  "cost": 0.00011190000000000001
+}

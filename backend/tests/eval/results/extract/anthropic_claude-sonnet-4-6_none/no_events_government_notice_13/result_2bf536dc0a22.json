@@ -1,0 +1,90 @@
+{
+  "fixture_name": "no_events/government_notice_13",
+  "fixture_hash": "c8d63c186c84a17b5873a37ce8aa4174d6b1fadb5cd4dfacfca61bfaf4ab3c4e",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:15:10.069013+00:00",
+  "duration_ms": 6795,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:15:03.272545+00:00",
+      "duration_ms": 2
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:15:03.274979+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:15:03.290182+00:00",
+      "duration_ms": 6778
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:15:10.068575+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Real-world city government notification about safety element update with comment period but no specific meeting dates",
+  "difficulty": "medium",
+  "tags": [
+    "government",
+    "city",
+    "public-comment",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Walnut Creek is updating its safety element",
+    "from": "CityofWalnutCreek@public.govdelivery.com",
+    "has_attachments": true,
+    "attachment_count": 9,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 548705
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Walnut Creek Safety Element Public Comment Period",
+        "start_datetime": "2026-02-09T00:00:00+00:00",
+        "end_datetime": "2026-03-11T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "The City of Walnut Creek has posted the draft Safety Element and associated environmental review for a 30-day public comment period. The Safety Element is a required component of the City's General Plan focusing on protecting the community from natural and manmade hazards (fire, floods, earthquake, extreme weather). Written comments may be submitted via email to rustick@walnutcreekca.gov. The draft will also be presented to the Planning Commission and City Council, where community members may provide comments at both meetings. More information is available on the City website.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 2615,
+    "completion_tokens": 253,
+    "total_tokens": 2868
+  },
+  "cost": 0.01164
+}

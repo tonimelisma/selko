@@ -1,0 +1,56 @@
+{
+  "fixture_name": "no_events/marketing_email_04",
+  "fixture_hash": "814fe4ce8cc9ddb5a21a23d235168151a07b07f3c59cd70ab2f28a9a411e0c86",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:23:52.785233+00:00",
+  "duration_ms": 2990,
+  "category": "no_events",
+  "description": "Promotional marketing email with sale dates",
+  "difficulty": "medium",
+  "tags": [
+    "marketing",
+    "sale",
+    "promo",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "\ud83c\udf89 Presidents Day Sale - Up to 50% Off!",
+    "from": "deals@bigstore.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "BigStore Presidents Day Sale",
+        "start_datetime": "2026-02-14T10:00:00+00:00",
+        "end_datetime": "2026-02-17T21:00:00+00:00",
+        "location": "BigStore locations",
+        "description": "Presidents Day Sale with up to 50% off everything. Sale runs February 14-17, 2026. Featuring furniture (50% off select sofas), bedding (buy 2 get 1 free), kitchen (40% off cookware sets), and electronics (up to $200 off TVs). Use code PRES20 for extra 20% off online orders. Free shipping on orders over $49. Regular store hours: Mon-Sat 10AM-9PM, Sun 11AM-6PM. Some exclusions apply.",
+        "confidence": 0.95,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1725,
+    "completion_tokens": 247,
+    "total_tokens": 1972
+  },
+  "cost": 0.002368
+}

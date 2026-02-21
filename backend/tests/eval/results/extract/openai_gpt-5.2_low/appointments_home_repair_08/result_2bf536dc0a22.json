@@ -1,0 +1,125 @@
+{
+  "fixture_name": "appointments/home_repair_08",
+  "fixture_hash": "b009b62dae71401a86c10f378c98e36cbc9fef9665681a52e187648c6b052e39",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:11:54.505428+00:00",
+  "duration_ms": 3661,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:50.843769+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:50.843778+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:50.859038+00:00",
+      "duration_ms": 3646
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:11:54.505042+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Home repair service appointment with time window",
+  "difficulty": "medium",
+  "tags": [
+    "home",
+    "repair",
+    "service",
+    "time-window"
+  ],
+  "input_summary": {
+    "subject": "Your Plumbing Service Appointment is Confirmed",
+    "from": "dispatch@aceplumbing.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Plumbing Service - Ace Plumbing",
+        "start_datetime": "2026-02-24T13:00:00",
+        "end_datetime": "2026-02-24T16:00:00",
+        "location": "456 Homeowner Drive, Santa Clara, CA 95050",
+        "description": "Water heater inspection and repair - technician will call 30 minutes before arrival",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Ace Plumbing Service Appointment \u2014 Water Heater Inspection & Repair",
+        "start_datetime": "2026-02-24T13:00:00-08:00",
+        "end_datetime": "2026-02-24T16:00:00-08:00",
+        "all_day": false,
+        "location": "456 Homeowner Drive, Santa Clara, CA 95050",
+        "description": "Service appointment confirmed with Ace Plumbing Services.\n\nService: Water Heater Inspection & Repair\nTime window: 1:00 PM\u20134:00 PM (Technician arrival within this window)\nTechnician: Mike Rodriguez (will call ~30 minutes before arrival)\nNotes: Diagnostic fee $89 (waived if proceeding with repair). Written estimate provided before any work. Repairs include a 1-year warranty.\nReschedule: Call (408) 555-PIPE or reply to the email.",
+        "confidence": 0.98,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.42857142857142855,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.98,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1185,
+    "completion_tokens": 204,
+    "total_tokens": 1389
+  },
+  "cost": 0.00492975
+}

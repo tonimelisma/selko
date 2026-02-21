@@ -1,0 +1,125 @@
+{
+  "fixture_name": "invitations/dinner_party_09",
+  "fixture_hash": "073ecd22c110761c7aa0eeeeb1d9cdbddfeb4da43662c2a913286380b9b479ad",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:34.269792+00:00",
+  "duration_ms": 2892,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:31.376667+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:31.376678+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:31.391923+00:00",
+      "duration_ms": 2877
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:34.269446+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Casual dinner party at friend's home",
+  "difficulty": "easy",
+  "tags": [
+    "dinner",
+    "casual",
+    "evening",
+    "friends"
+  ],
+  "input_summary": {
+    "subject": "Dinner at our place next Saturday?",
+    "from": "tom.baker@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Dinner at Tom & Maria's",
+        "start_datetime": "2026-02-07T18:30:00",
+        "end_datetime": null,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Dinner party at Tom and Maria's",
+        "all_day": false,
+        "confidence_min": 0.75,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Dinner at Tom & Maria's",
+        "start_datetime": "2026-02-07T18:30:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Dinner invitation at Tom Baker's place. Maria is making her famous lasagna. Tom suggests bringing a bottle of wine. RSVP required \u2014 let Tom know if you can make it.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.75,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1618,
+    "completion_tokens": 173,
+    "total_tokens": 1791
+  },
+  "cost": 0.007449
+}

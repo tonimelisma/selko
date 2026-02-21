@@ -1,0 +1,216 @@
+{
+  "fixture_name": "school/school_digest_author_visit_07",
+  "fixture_hash": "a0d43983314dce4f4fe12fe52123995371e9a04d101df783c1ed57d6e15c2800",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:44.119028+00:00",
+  "duration_ms": 14922,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:29.194417+00:00",
+      "duration_ms": 1
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:29.196021+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:29.211082+00:00",
+      "duration_ms": 14906
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:44.117100+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world school digest with Valentine's Day party photos (past) and newsletter with future author visit",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "digest",
+    "newsletter",
+    "author-visit",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 12, 2026 Digest: 2 new messages from Walnut Heights School today",
+    "from": "donotreply+b8892cdd-b853-59af-bbf0-af20434c9aeb@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 6,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 666684
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00",
+        "end_datetime": null,
+        "location": "Walnut Heights MPR",
+        "description": "TK and K music showcase. Livestream available.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Valentine's Day party - Kindergarten Koeltl",
+        "start_datetime": "2026-02-11T00:00:00+00:00",
+        "end_datetime": "2026-02-11T23:59:59+00:00",
+        "all_day": true,
+        "location": "Kindergarten-Koeltl classroom",
+        "description": "Valentine\u2019s Day party for the Kindergarten-Koeltl class. Posted in the Vday Party Photos post; no specific start time listed in the digest.",
+        "confidence": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "No School - Presidents Day (Winter Break/Closure)",
+        "start_datetime": "2026-02-12T00:00:00+00:00",
+        "end_datetime": "2026-02-16T23:59:59+00:00",
+        "all_day": true,
+        "location": "School campus",
+        "description": "Upcoming Events note: No School from February 12th through February 16th in observance of Presidents Day. Families advised to note school closure.",
+        "confidence": 0.85,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00+00:00",
+        "end_datetime": "2026-03-24T10:00:00+00:00",
+        "all_day": false,
+        "location": "Walnut Heights at the MPR (Music performance space)",
+        "description": "Spring Music Showcase for TK and K students. Date: March 24, 2026. Doors open at 9:30 am; performance from 9:30-10:00 am. Livestream will be available for those who cannot attend in person; link to livestream will be sent a few days before the event.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Author Visit Change to March 12 (Double Author Visit)",
+        "start_datetime": "2026-03-12T00:00:00+00:00",
+        "end_datetime": "2026-03-12T23:59:59+00:00",
+        "all_day": true,
+        "location": "School",
+        "description": "Two authors will visit the school on March 12 (date changed). Orders for signed books can be placed through Rakestraw Bookstore; books delivered on the day of the visit. Details about the event and ordering are provided in the newsletter; travel logistics and livestream info may apply.",
+        "confidence": 0.7,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.20588235294117646,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 40320.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.23684210526315788,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5217391304347826,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 4903,
+    "completion_tokens": 1330,
+    "total_tokens": 6233
+  },
+  "cost": 0.00077715
+}

@@ -1,0 +1,124 @@
+{
+  "fixture_name": "invitations/housewarming_06",
+  "fixture_hash": "12dfd4a064bdf926f8dee183d09691aea13998891cebe0050e1852560d3cc633",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:00.612619+00:00",
+  "duration_ms": 2509,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:12:58.102552+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:12:58.102568+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:12:58.118799+00:00",
+      "duration_ms": 2493
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:00.612265+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Housewarming party with open house style timing",
+  "difficulty": "easy",
+  "tags": [
+    "housewarming",
+    "open-house",
+    "casual"
+  ],
+  "input_summary": {
+    "subject": "We moved! Come see our new place",
+    "from": "chris.nguyen@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Chris & Jamie's Housewarming Party",
+        "start_datetime": "2026-02-28T16:00:00",
+        "end_datetime": "2026-02-28T21:00:00",
+        "location": "567 Willow Way, Apt 12B, Seattle, WA 98101",
+        "description": "Housewarming party - drop by anytime, BYOB",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Chris & Jamie Housewarming Party",
+        "start_datetime": "2026-02-28T16:00:00-08:00",
+        "end_datetime": "2026-02-28T21:00:00-08:00",
+        "all_day": false,
+        "location": "567 Willow Way, Apt 12B, Seattle, WA 98101",
+        "description": "Housewarming party at Chris & Jamie's new place.\n\nDate: Saturday, February 28, 2026\nTime: 4:00 PM \u2013 9:00 PM (drop by anytime during the party)\nLocation: 567 Willow Way, Apt 12B, Seattle, WA 98101\nNotes: BYOB; snacks provided; no gifts necessary.",
+        "confidence": 0.97,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.9696969696969697,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.97,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1122,
+    "completion_tokens": 179,
+    "total_tokens": 1301
+  },
+  "cost": 0.0044695
+}

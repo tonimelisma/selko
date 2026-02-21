@@ -1,0 +1,631 @@
+{
+  "fixture_name": "school/school_newsletter_multi_event_06",
+  "fixture_hash": "253f8afba1450b4709352b618d908c5f452af79f5d308201b7175f56e209da86",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:14:17.933272+00:00",
+  "duration_ms": 39107,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:38.823704+00:00",
+      "duration_ms": 4
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:38.828389+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:38.844099+00:00",
+      "duration_ms": 39083
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:17.927116+00:00",
+      "duration_ms": 5
+    }
+  },
+  "category": "school",
+  "description": "Real-world school weekly newsletter digest with multiple future events buried in lengthy text",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "newsletter",
+    "digest",
+    "multi-event",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 11, 2026 Digest: 1 new message from Walnut Creek School District today",
+    "from": "donotreply+f44b5b2b-0fe1-53bf-b5c1-2dada4954bce@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 17,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 2662080
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "Staff Development Day - No School",
+        "start_datetime": "2026-02-12T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Staff development day, no school for students. Teachers learning about math curriculum updates and student writing.",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "President's Day Weekend - No School",
+        "start_datetime": "2026-02-13T00:00:00",
+        "end_datetime": "2026-02-16T00:00:00",
+        "location": null,
+        "description": "President's Day weekend, no school Friday through Monday.",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "PTA Meeting",
+        "start_datetime": "2026-02-19T19:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School",
+        "description": "PTA meeting.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hygiene Care Kits Assembly",
+        "start_datetime": "2026-02-22T16:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "location": "Lamorinda Music, 81 Lafayette Cr, Lafayette, CA 94549",
+        "description": "Free assembly event to build hygiene care kits for families in need, organized by Mindful Littles.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Lunar New Year Activities",
+        "start_datetime": "2026-02-23T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School",
+        "description": "Lunar New Year activities at lunch.",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "PTA Meeting",
+        "start_datetime": "2026-03-19T19:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School Cafe",
+        "description": "PTA meeting in the cafe.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Taste & Toast",
+        "start_datetime": "2026-03-25T17:30:00",
+        "end_datetime": "2026-03-25T20:30:00",
+        "location": "Walnut Creek Downtown & Broadway Plaza",
+        "description": "WCEF fundraiser event.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Break",
+        "start_datetime": "2026-03-30T00:00:00",
+        "end_datetime": "2026-04-03T00:00:00",
+        "location": null,
+        "description": "Spring break, no school.",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "WCI Parent Informational Night",
+        "start_datetime": "2026-04-09T18:30:00",
+        "end_datetime": "2026-04-09T19:30:00",
+        "location": "WCI gym, Walnut Creek Intermediate",
+        "description": "Parent-only informational night about Walnut Creek Intermediate for incoming 6th graders.",
+        "all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "WCI Open House",
+        "start_datetime": "2026-05-21T18:30:00",
+        "end_datetime": "2026-05-21T20:00:00",
+        "location": "Walnut Creek Intermediate",
+        "description": "Annual Open House - families invited to walk the campus, visit classrooms.",
+        "all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "No School (Staff Development Day & President\u2019s Weekend)",
+        "start_datetime": "2026-02-12T00:00:00-08:00",
+        "end_datetime": "2026-02-17T00:00:00-08:00",
+        "all_day": true,
+        "location": null,
+        "description": "Walnut Heights reminder: Feb 12\u201316 is President\u2019s Weekend/extended break with no school. Specifically called out: Feb 12 Staff Development Day (no school), and Feb 13\u201316 President\u2019s Day Weekend (no school).",
+        "confidence": 0.92,
+        "importance": "action_required"
+      },
+      {
+        "title": "Walnut Heights PTA Meeting",
+        "start_datetime": "2026-02-19T19:00:00-08:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": null,
+        "description": "PTA Meeting listed in Upcoming Dates snapshot: Feb 19 at 7:00 PM. Location not specified in the email snapshot (likely on campus; check ParentSquare calendar for details).",
+        "confidence": 0.75,
+        "importance": "action_required"
+      },
+      {
+        "title": "Lunar New Year Activities (at lunch)",
+        "start_datetime": "2026-02-23T00:00:00-08:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": null,
+        "description": "Upcoming Dates snapshot item: Lunar New Year Activities at lunch on Feb 23 (time not specified beyond \u2018at lunch\u2019).",
+        "confidence": 0.7,
+        "importance": "fyi"
+      },
+      {
+        "title": "Mindful Littles: Hygiene Care Kits for Families in Need (Free Assembly Event)",
+        "start_datetime": "2026-02-22T16:00:00-08:00",
+        "end_datetime": "2026-02-22T17:00:00-08:00",
+        "all_day": false,
+        "location": "Lamorinda Music, 81 Lafayette Cir, Lafayette, CA 94549",
+        "description": "Flyer event: Free assembly event to bundle hygiene care kits together with families during a community service event. Date/Time: Sunday, February 22, 4\u20135 PM. Location: Lamorinda Music, 81 Lafayette Cir, Lafayette, CA 94549. Registration indicated via QR code (\u2018Register for Free\u2019).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Walnut Creek Intermediate (WCI) Parent-Only Informational Night (Incoming 6th Grade)",
+        "start_datetime": "2026-04-09T18:30:00-07:00",
+        "end_datetime": "2026-04-09T19:30:00-07:00",
+        "all_day": false,
+        "location": "Walnut Creek Intermediate (WCI) Gym",
+        "description": "Parent-only informational night for incoming 6th grade families. Date: April 9. Time: 6:30\u20137:30 PM. Location: WCI gym. Learn about life at Walnut Creek Intermediate, ask questions; PTA will share ways to stay involved. They will also explain the few scheduling/class-selection exceptions.",
+        "confidence": 0.93,
+        "importance": "action_required"
+      },
+      {
+        "title": "WCI Administrative/Counseling Visit to Walnut Heights (Incoming 6th Grade Preview)",
+        "start_datetime": "2026-04-14T13:45:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Walnut Heights School",
+        "description": "WCI team scheduled to visit Walnut Heights to preview the WCI experience for students. Scheduled date/time: April 14 at 1:45 PM. End time not provided.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "WCI Open House (Incoming 6th Grade)",
+        "start_datetime": "2026-05-21T18:30:00-07:00",
+        "end_datetime": "2026-05-21T20:00:00-07:00",
+        "all_day": false,
+        "location": "Walnut Creek Intermediate (WCI) campus",
+        "description": "Annual WCI Open House (described as the unofficial kickoff to the WCI experience). Date: May 21. Time: 6:30\u20138:00 PM. Families invited to walk the campus, visit classrooms, and see learning firsthand.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      },
+      {
+        "title": "Walnut Heights PTA Meeting (in the Cafe)",
+        "start_datetime": "2026-03-19T19:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Walnut Heights Cafe",
+        "description": "Upcoming Dates snapshot item: March 19 PTA Meeting at 7:00 PM (in the Cafe). End time not provided.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Break (Walnut Heights)",
+        "start_datetime": "2026-03-30T00:00:00-07:00",
+        "end_datetime": "2026-04-04T00:00:00-07:00",
+        "all_day": true,
+        "location": null,
+        "description": "Upcoming Dates snapshot item: Spring Break from March 30 through April 3 (inclusive).",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "WCEF Taste & Toast",
+        "start_datetime": "2026-03-25T17:30:00-07:00",
+        "end_datetime": "2026-03-25T20:30:00-07:00",
+        "all_day": false,
+        "location": "Walnut Creek Downtown & Broadway Plaza",
+        "description": "Flyer image: \u2018Taste & Toast\u2019 on March 25, 5:30\u20138:30 PM. Location listed as Walnut Creek Downtown & Broadway Plaza (Broadway Plaza shown on the flyer).",
+        "confidence": 0.88,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5681818181818182,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.10256410256410256,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 87225.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": false,
+          "match": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5945945945945946,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.75,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5048543689320388,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9906542056074766,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.819672131147541,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.7,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": false,
+          "match": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.43137254901960786,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8444444444444444,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.8387096774193549,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.88,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.5853658536585366,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 1440.0,
+          "match": false
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5263157894736842,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7246376811594203,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.93,
+          "required_min": 0.7,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5714285714285714,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7936507936507936,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.7,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 7683,
+    "completion_tokens": 2319,
+    "total_tokens": 10002
+  },
+  "cost": 0.04591125
+}

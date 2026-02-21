@@ -1,0 +1,39 @@
+{
+  "fixture_name": "meeting_rescheduled_01",
+  "fixture_hash": "1d2c242ce2e61e827cbcca81a44ef6a981c57ad101dc8ea0a7d0ab3d834d9b83",
+  "code_hash": "unknown",
+  "operation": "merge",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:56:34.681113+00:00",
+  "duration_ms": 7230,
+  "description": "Meeting rescheduled to new time - simple time change with same location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "time-update",
+    "reschedule"
+  ],
+  "expected": {
+    "title": "Q1 Planning Meeting",
+    "start_datetime": "2026-03-15T16:00:00",
+    "end_datetime": "2026-03-15T17:00:00",
+    "all_day": false,
+    "location": "Conference Room B",
+    "description_contains": [
+      "quarterly planning",
+      "department heads",
+      "moved to 4pm"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "Event merge failed: invalid JSON response: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 343,
+    "completion_tokens": 599,
+    "total_tokens": 942
+  },
+  "cost": 0.0
+}

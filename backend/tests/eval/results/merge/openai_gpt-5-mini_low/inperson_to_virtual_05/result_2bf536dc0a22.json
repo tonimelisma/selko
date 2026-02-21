@@ -1,0 +1,99 @@
+{
+  "fixture_name": "inperson_to_virtual_05",
+  "fixture_hash": "2cc8cbe32bb227cfa9cf77404742d0fe0254ceee8f318ceb23dddbc2aca27b5d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:08:23.316619+00:00",
+  "duration_ms": 7018,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:08:16.296937+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:08:16.296945+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:08:16.312592+00:00",
+      "duration_ms": 7003
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:08:23.315988+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "In-person meeting changed to virtual with Zoom link",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "location-update",
+    "virtual",
+    "modality-change"
+  ],
+  "expected": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description_contains": [
+      "Q1 results",
+      "ABC Corp",
+      "moved to Zoom",
+      "virtual format"
+    ]
+  },
+  "actual": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description": "Q1 results presentation for ABC Corp. Meeting moved to Zoom. Client requested virtual format. Same agenda.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "Q1 results",
+        "ABC Corp",
+        "moved to Zoom",
+        "virtual format"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 461,
+    "completion_tokens": 440,
+    "total_tokens": 901
+  },
+  "cost": 0.00099525
+}

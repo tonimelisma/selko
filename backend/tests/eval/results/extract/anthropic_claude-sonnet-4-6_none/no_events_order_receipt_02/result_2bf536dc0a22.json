@@ -1,0 +1,67 @@
+{
+  "fixture_name": "no_events/order_receipt_02",
+  "fixture_hash": "85fb4acf07842ae6feefa19be7d7b03ad916012f73e09ccbb636eb4c87ea2cb1",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:15:05.949224+00:00",
+  "duration_ms": 974,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:15:04.973651+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:15:04.973655+00:00",
+      "duration_ms": 24
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:15:04.998062+00:00",
+      "duration_ms": 950
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:15:05.948939+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "E-commerce order confirmation/receipt",
+  "difficulty": "easy",
+  "tags": [
+    "receipt",
+    "order",
+    "shopping",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your Amazon.com order #112-3456789-0123456",
+    "from": "auto-confirm@amazon.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1805,
+    "completion_tokens": 15,
+    "total_tokens": 1820
+  },
+  "cost": 0.00564
+}

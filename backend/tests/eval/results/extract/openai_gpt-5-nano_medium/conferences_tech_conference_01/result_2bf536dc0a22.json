@@ -1,0 +1,125 @@
+{
+  "fixture_name": "conferences/tech_conference_01",
+  "fixture_hash": "baba32425cb75fcf26cf072c2214a4b90650dfe9e2a86ceef8a17609a0240ee8",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:03:44.809647+00:00",
+  "duration_ms": 24957,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:03:19.850930+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:03:19.850940+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:03:19.868291+00:00",
+      "duration_ms": 24940
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:03:44.808990+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Multi-day tech conference registration",
+  "difficulty": "medium",
+  "tags": [
+    "conference",
+    "tech",
+    "multi-day",
+    "registration"
+  ],
+  "input_summary": {
+    "subject": "Registration Confirmed: TechSummit 2026",
+    "from": "registration@techsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechSummit 2026",
+        "start_datetime": "2026-03-18T08:00:00",
+        "end_datetime": "2026-03-20T16:00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "3-day technology conference",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "TechSummit 2026 Conference",
+        "start_datetime": "2026-03-18T08:00:00+00:00",
+        "end_datetime": "2026-03-20T16:00:00+00:00",
+        "all_day": false,
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "TechSummit 2026 conference. Dates: March 18-20, 2026. Location: Moscone Center, 747 Howard Street, San Francisco, CA 94103. Schedule: Day 1 (Wed, Mar 18): 8:00 AM Registration & Breakfast; 9:00 AM Opening Keynote; 10:00 AM - 6:00 PM Sessions; 7:00 PM Welcome Reception. Day 2 (Thu, Mar 19): 8:00 AM - 6:00 PM Sessions & Workshops; 12:00 PM Networking Lunch. Day 3 (Fri, Mar 20): 8:00 AM - 3:00 PM Sessions; 3:00 PM Closing Keynote; 4:00 PM Conference Ends. Badge pickup at Registration Desk; Bring photo ID. Pass Type: Full Conference (3-Day). Attendee: Alex Chen (Registration #: TS2026-78901). Questions? support@techsummit.com",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7317073170731707,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1305,
+    "completion_tokens": 3579,
+    "total_tokens": 4884
+  },
+  "cost": 0.00149685
+}

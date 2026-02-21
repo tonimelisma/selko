@@ -1,0 +1,67 @@
+{
+  "fixture_name": "no_events/survey_request_09",
+  "fixture_hash": "97d4d69c1f8a766a7b1e45197110e171e26de77d34474f8d79a21eb491b85726",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:10:38.579450+00:00",
+  "duration_ms": 3647,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:10:34.931346+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:10:34.931354+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:10:34.946987+00:00",
+      "duration_ms": 3632
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:10:38.579126+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Customer satisfaction survey request",
+  "difficulty": "easy",
+  "tags": [
+    "survey",
+    "feedback",
+    "customer-service",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "How was your recent experience? Quick survey inside",
+    "from": "feedback@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1180,
+    "completion_tokens": 218,
+    "total_tokens": 1398
+  },
+  "cost": 0.000731
+}

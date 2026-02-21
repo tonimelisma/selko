@@ -1,0 +1,67 @@
+{
+  "fixture_name": "no_events/government_notice_13",
+  "fixture_hash": "c8d63c186c84a17b5873a37ce8aa4174d6b1fadb5cd4dfacfca61bfaf4ab3c4e",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:23:49.772467+00:00",
+  "duration_ms": 5417,
+  "category": "no_events",
+  "description": "Real-world city government notification about safety element update with comment period but no specific meeting dates",
+  "difficulty": "medium",
+  "tags": [
+    "government",
+    "city",
+    "public-comment",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Walnut Creek is updating its safety element",
+    "from": "CityofWalnutCreek@public.govdelivery.com",
+    "has_attachments": true,
+    "attachment_count": 9
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Safety Element Public Comment Period - Open",
+        "start_datetime": "2026-02-09T00:00:00+00:00",
+        "end_datetime": "2026-03-11T23:59:59+00:00",
+        "location": null,
+        "description": "30-day public review and comment period for the City of Walnut Creek's draft Safety Element update. Residents may submit written comments via email to rustick@walnutcreekca.gov during this period. The Safety Element is a required component of the City's General Plan that guides development and decision-making. It focuses on protecting the community from natural and manmade hazards such as fire, floods, earthquakes, and extreme weather. The update addresses new state law requirements for wildfire risk, climate change adaptation, flood and fire hazards, and emergency evacuation routes. Community members will also have opportunities to comment when the draft is presented to the Planning Commission and City Council.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Safety Element Draft and Environmental Review Posted for Public Review",
+        "start_datetime": "2026-02-09T00:00:00+00:00",
+        "end_datetime": null,
+        "location": "City of Walnut Creek website",
+        "description": "The draft Safety Element and associated environmental review documents have been posted on the City's website for public review. Information about the Safety Element, including upcoming public meeting dates with the Planning Commission and City Council, is available on the City website.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 2363,
+    "completion_tokens": 409,
+    "total_tokens": 2772
+  },
+  "cost": 0.0035264000000000003
+}

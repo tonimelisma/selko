@@ -1,0 +1,79 @@
+{
+  "fixture_name": "event_time_extended_03",
+  "fixture_hash": "5863c6ac9ea6d95b418eca3d91838337be38f0ccff75754cb0fe26af4c28cdf8",
+  "code_hash": "274b820b8ecc",
+  "operation": "merge",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:24:39.813166+00:00",
+  "duration_ms": 996,
+  "description": "Event end time extended - same start time but longer duration",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "duration-change",
+    "time-update"
+  ],
+  "expected": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description_contains": [
+      "Python workshop",
+      "basics",
+      "extended",
+      "hands-on project"
+    ]
+  },
+  "actual": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description": "Beginner-friendly Python workshop covering basics. Extended session - now includes hands-on project time until 4:30pm",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "Python workshop",
+        "basics",
+        "extended",
+        "hands-on project"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 599,
+    "completion_tokens": 129,
+    "total_tokens": 728
+  },
+  "cost": 0.0009952000000000001
+}

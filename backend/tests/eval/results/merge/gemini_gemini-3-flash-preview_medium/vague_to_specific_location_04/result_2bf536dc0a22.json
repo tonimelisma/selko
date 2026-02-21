@@ -1,0 +1,58 @@
+{
+  "fixture_name": "vague_to_specific_location_04",
+  "fixture_hash": "4fb757d48d855190a46748ba65af249c8d478924ad06625312e145cd0e7e3aee",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:01:00.630464+00:00",
+  "duration_ms": 146,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:00.483385+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:00.483394+00:00",
+      "duration_ms": 50
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:00.534066+00:00",
+      "duration_ms": 96
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:00.630175+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Vague location updated to specific address - prefer specific location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "location-update",
+    "specificity"
+  ],
+  "expected": {
+    "title": "Team Dinner",
+    "start_datetime": "2026-05-22T19:00:00",
+    "end_datetime": "2026-05-22T21:00:00",
+    "all_day": false,
+    "location": "Pasta Bella, 456 Main St",
+    "description_contains": [
+      "team celebration",
+      "reservation confirmed",
+      "8 people"
+    ]
+  },
+  "actual": {},
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,585 @@
+{
+  "fixture_name": "school/pdf_calendar_personal_fwd_04",
+  "fixture_hash": "9362bc7e4c0e0f0fc0cb3ae8c8f1f1eced48c49b0ee2d14af191566b927e5c1f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:13:52.180658+00:00",
+  "duration_ms": 25098,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:13:27.079833+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:13:27.080031+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:13:27.095925+00:00",
+      "duration_ms": 25080
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:13:52.176790+00:00",
+      "duration_ms": 3
+    }
+  },
+  "category": "school",
+  "description": "Personal forward of KinderCare January calendar (Finnish subject, minimal body)",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "forwarded",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Fwd: Tammikuun kalenteri",
+    "from": "spouse@example.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 1251936
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions Day",
+        "start_datetime": "2026-01-07",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-13",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake Day",
+        "start_datetime": "2026-01-15",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "KinderCare Closed - Martin Luther King Day",
+        "start_datetime": "2026-01-19",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow Day",
+        "start_datetime": "2026-01-28",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Closed \u2013 New Year's Day",
+        "start_datetime": "2026-01-01T00:00:00+00:00",
+        "end_datetime": "2026-01-02T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar notes: \"Happy New Year!\" and \"CLOSED\" on Thursday, Jan 1, 2026.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle (themed day)",
+        "start_datetime": "2026-01-02T00:00:00+00:00",
+        "end_datetime": "2026-01-03T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar theme day: \"Wear anything sparkle\" on Friday, Jan 2, 2026.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day (themed day)",
+        "start_datetime": "2026-01-05T00:00:00+00:00",
+        "end_datetime": "2026-01-06T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar theme day: \"Selfie Day\" on Monday, Jan 5, 2026.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions (themed day)",
+        "start_datetime": "2026-01-07T00:00:00+00:00",
+        "end_datetime": "2026-01-08T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar includes the word \"Resolutions\" placed on/around Wednesday, Jan 7, 2026. Exact intent (theme vs. decoration) is slightly unclear, but it appears date-specific on the calendar.",
+        "confidence": 0.55,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day (themed day)",
+        "start_datetime": "2026-01-09T00:00:00+00:00",
+        "end_datetime": "2026-01-10T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar theme day: \"PAJAMA DAY\" on Friday, Jan 9, 2026.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-13T00:00:00+00:00",
+        "end_datetime": "2026-01-14T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar note: \"Happy Birthday to Ms Ashley\" on Tuesday, Jan 13, 2026.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake (activity)",
+        "start_datetime": "2026-01-15T00:00:00+00:00",
+        "end_datetime": "2026-01-16T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar activity: \"Lets make a Snowflake\" on Thursday, Jan 15, 2026.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Closed \u2013 Martin Luther King Day",
+        "start_datetime": "2026-01-19T00:00:00+00:00",
+        "end_datetime": "2026-01-20T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar notes: \"Martin Luther King Day\" and \"CLOSED\" on Monday, Jan 19, 2026.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day (themed day)",
+        "start_datetime": "2026-01-23T00:00:00+00:00",
+        "end_datetime": "2026-01-24T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar theme day: \"PAJAMA DAY\" on Friday, Jan 23, 2026.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow (themed day)",
+        "start_datetime": "2026-01-28T00:00:00+00:00",
+        "end_datetime": "2026-01-29T00:00:00+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Calendar theme day: \"Dress like a Rainbow\" on Wednesday, Jan 28, 2026.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7719298245614035,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.847457627118644,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.6060606060606061,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.7692307692307693,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.55,
+          "required_min": 0.6,
+          "match": false
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.6060606060606061,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.847457627118644,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.821917808219178,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.6060606060606061,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.8421052631578947,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 2834,
+    "completion_tokens": 1440,
+    "total_tokens": 4274
+  },
+  "cost": 0.0251195
+}

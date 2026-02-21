@@ -1,0 +1,76 @@
+{
+  "fixture_name": "recurring/monthly_book_club_02",
+  "fixture_hash": "05698819e927f6140af9e77b98d0ce265fda62fd723f264bfa56e7aac16cdafb",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:22.835138+00:00",
+  "duration_ms": 1669,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:21.164181+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:21.164187+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:21.193965+00:00",
+      "duration_ms": 1640
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:22.834867+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Monthly book club meeting invitation",
+  "difficulty": "medium",
+  "tags": [
+    "recurring",
+    "monthly",
+    "book-club",
+    "social"
+  ],
+  "input_summary": {
+    "subject": "Book Club - March Meeting Details",
+    "from": "jessica.moore@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Book Club - The Midnight Library",
+        "start_datetime": "2026-03-05T19:00:00",
+        "end_datetime": "2026-03-05T21:00:00",
+        "location": "42 Reading Lane, Cupertino, CA 95014",
+        "description": "Monthly book club meeting to discuss The Midnight Library by Matt Haig",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

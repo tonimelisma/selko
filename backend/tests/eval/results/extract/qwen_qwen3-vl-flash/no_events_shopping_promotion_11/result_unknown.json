@@ -1,0 +1,46 @@
+{
+  "fixture_name": "no_events/shopping_promotion_11",
+  "fixture_hash": "ac19009bdd7da80a28a32c5f5495318a81033541f60603daef4b6dfa857623e0",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:39:17.174124+00:00",
+  "duration_ms": 2335,
+  "category": "no_events",
+  "description": "Real-world shopping mall promotional email with vague event mention but no specific date/time",
+  "difficulty": "medium",
+  "tags": [
+    "shopping",
+    "promotional",
+    "mall",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "\ud83d\udc98 Book Now: CHANEL Fragrance and Beauty Boutique Shopping Event",
+    "from": "BroadwayPlaza@email.macerich.com",
+    "has_attachments": true,
+    "attachment_count": 12
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "qwen API error: Error code: 400 - {'error': {'message': '<400> InternalError.Algo.InvalidParameter: The image length and width do not meet the model restrictions. [height:1 or width:1 must be larger than 10]', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_parameter_error'}, 'id': 'chatcmpl-e9961862-2394-9c7f-a352-b4cfe395ca59', 'request_id': 'e9961862-2394-9c7f-a352-b4cfe395ca59'}"
+  },
+  "auto_score": {
+    "error": "qwen API error: Error code: 400 - {'error': {'message': '<400> InternalError.Algo.InvalidParameter: The image length and width do not meet the model restrictions. [height:1 or width:1 must be larger than 10]', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_parameter_error'}, 'id': 'chatcmpl-e9961862-2394-9c7f-a352-b4cfe395ca59', 'request_id': 'e9961862-2394-9c7f-a352-b4cfe395ca59'}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,98 @@
+{
+  "fixture_name": "school/parent_teacher_01",
+  "fixture_hash": "c51c597be3470e9fa2ffbc6505925d210ffc9d48a0194e9dcd9e324a16a37841",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:37:10.300416+00:00",
+  "duration_ms": 2435,
+  "category": "school",
+  "description": "Parent-teacher conference scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "parent-teacher",
+    "conference",
+    "education"
+  ],
+  "input_summary": {
+    "subject": "Parent-Teacher Conference Scheduled - Emma Johnson",
+    "from": "mrsthompson@lincolnelementary.edu",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Parent-Teacher Conference - Emma Johnson",
+        "start_datetime": "2026-02-19T16:15:00",
+        "end_datetime": "2026-02-19T16:35:00",
+        "location": "Room 203, Lincoln Elementary, 500 School Lane, Pleasantville, CA 94025",
+        "description": "Conference with Mrs. Thompson about Emma's progress",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Parent-Teacher Conference - Emma Johnson",
+        "start_datetime": "2026-02-19T16:15:00+00:00",
+        "end_datetime": "2026-02-19T16:35:00+00:00",
+        "location": "Room 203, Lincoln Elementary, 500 School Lane, Pleasantville, CA 94025",
+        "description": "Parent-teacher conference for Emma Johnson (3rd Grade) with Mrs. Thompson. Discusses academic progress, social development, upcoming curriculum, and addresses any questions or concerns. Please arrive on time as conferences are scheduled back-to-back. Rescheduling is possible by contacting the teacher.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1315,
+    "completion_tokens": 200,
+    "total_tokens": 1515
+  },
+  "cost": 0.00024119999999999998
+}

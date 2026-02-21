@@ -1,0 +1,81 @@
+{
+  "fixture_name": "no_events/pdf_financial_statement_05",
+  "fixture_hash": "2c0546b61f56acd57d1232a4085041545e480e64ddc50dd7e840e0cbfbfc401d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:10:57.111549+00:00",
+  "duration_ms": 26761,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:10:30.349057+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:10:30.349298+00:00",
+      "duration_ms": 25
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:10:30.375123+00:00",
+      "duration_ms": 26736
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:10:57.111130+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "HOA financial statement PDF with dates and amounts - negative test (no events)",
+  "difficulty": "medium",
+  "tags": [
+    "no_events",
+    "pdf",
+    "financial",
+    "negative-test",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Your Walnut Heights Statement",
+    "from": "billing@walnutheightshoa.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 16790
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Statement Payment Due",
+        "start_datetime": "2026-01-31T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": "Walnut Heights Kids Club (Walnut Creek, CA)",
+        "description": "Statement for Toni Melisma (110 Norlyn Dr., Walnut Creek, CA) indicates an amount due of $732.88 with a due date of 01/31/26. Statement line items referenced on the statement: 12/31/25 Balance forward $634.50; 01/06/26 PMT - School yr. tuition (-$634.50); 01/15/26 INV #78407 - missing signature out on roster for Sofia on 1/12/26 ($10.00); 01/27/26 INV #78526 - February childcare for Sofia, 59.25 hrs. + 2 full days at flat rate fee ($722.88). Aging summary shows $732.88 in 1-30 days past due. See attached statement for full details.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 2854,
+    "completion_tokens": 1721,
+    "total_tokens": 4575
+  },
+  "cost": 0.0041555
+}

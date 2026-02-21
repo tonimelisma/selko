@@ -1,0 +1,125 @@
+{
+  "fixture_name": "conferences/webinar_02",
+  "fixture_hash": "d5a970019f68a5bda3d0bb593f3cd86adb62b0205ac7a66fc5677897ace2c814",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:28.293586+00:00",
+  "duration_ms": 6430,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:21.861343+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:21.861355+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:21.878290+00:00",
+      "duration_ms": 6414
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:28.293280+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Online webinar registration confirmation",
+  "difficulty": "easy",
+  "tags": [
+    "webinar",
+    "online",
+    "virtual",
+    "tech"
+  ],
+  "input_summary": {
+    "subject": "You're Registered: AI in Practice Webinar",
+    "from": "webinars@learningplatform.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "AI in Practice Webinar",
+        "start_datetime": "2026-02-24T13:00:00",
+        "end_datetime": "2026-02-24T14:30:00",
+        "location": "Zoom",
+        "description": "Webinar on AI implementation strategies with Dr. Maria Santos",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "AI IN PRACTICE: From Theory to Deployment webinar",
+        "start_datetime": "2026-02-24T13:00:00-05:00",
+        "end_datetime": "2026-02-24T14:30:00-05:00",
+        "all_day": false,
+        "location": "https://zoom.us/j/webinar2026 (Zoom) / Meeting ID: 456 789 0123 / Passcode: AIWebinar",
+        "description": "Registration Confirmed for: AI IN PRACTICE: FROM THEORY TO DEPLOYMENT\nDate: Tuesday, February 24, 2026\nTime: 1:00 PM - 2:30 PM EST\nFormat: Live Webinar (Zoom)\nPresenter: Dr. Maria Santos, Chief AI Officer, TechCorp\nLearn objectives:\n- Real-world AI implementation strategies\n- Common pitfalls and how to avoid them\n- Case studies from Fortune 500 companies\n- Q&A with the presenter\nJoin link: https://zoom.us/j/webinar2026\nMeeting ID: 456 789 0123\nPasscode: AIWebinar\nAdd to Calendar: ICS file attached\nRecording will be sent within 24 hours if you cannot attend live.\nQuestions? Reply to this email.\n",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6197183098591549,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0898876404494382,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1234,
+    "completion_tokens": 613,
+    "total_tokens": 1847
+  },
+  "cost": 0.00030690000000000003
+}

@@ -1,0 +1,75 @@
+{
+  "fixture_name": "appointments/salon_appointment_04",
+  "fixture_hash": "ad275c2ff2c0c7b872991b65221df16842a5871de956a5e2a92134013fbfa873",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:10.905868+00:00",
+  "duration_ms": 197,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:10.707587+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:10.707621+00:00",
+      "duration_ms": 32
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:10.740580+00:00",
+      "duration_ms": 165
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:10.905670+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Hair salon appointment booking",
+  "difficulty": "easy",
+  "tags": [
+    "salon",
+    "haircut",
+    "personal-care"
+  ],
+  "input_summary": {
+    "subject": "Your Appointment at Style Studio",
+    "from": "bookings@stylestudio.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hair Appointment - Style Studio",
+        "start_datetime": "2026-02-12T15:30:00",
+        "end_datetime": "2026-02-12T17:30:00",
+        "location": "Style Studio Salon, 890 University Avenue, Palo Alto, CA 94301",
+        "description": "Haircut and color with Amanda Torres",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

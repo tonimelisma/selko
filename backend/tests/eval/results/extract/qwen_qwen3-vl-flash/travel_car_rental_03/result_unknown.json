@@ -1,0 +1,111 @@
+{
+  "fixture_name": "travel/car_rental_03",
+  "fixture_hash": "1fc56b84b9a505a06d58300671d665965c131692af6a4537beca2eaaafeabdfd",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:36:05.988392+00:00",
+  "duration_ms": 4270,
+  "category": "travel",
+  "description": "Car rental reservation confirmation",
+  "difficulty": "medium",
+  "tags": [
+    "car",
+    "rental",
+    "pickup",
+    "dropoff"
+  ],
+  "input_summary": {
+    "subject": "Your Hertz Reservation is Confirmed",
+    "from": "reservations@hertz.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Rental - Hertz LAX",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": "2026-02-25T18:00:00",
+        "location": "Hertz LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Full size car rental (Toyota Camry or similar)",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Hertz Car Pick-Up",
+        "start_datetime": "2026-02-21T10:00:00+00:00",
+        "end_datetime": null,
+        "location": "Los Angeles LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Confirmed Hertz reservation pickup at Los Angeles LAX Airport on Saturday, February 21, 2026, at 10:00 AM. Vehicle class: Full Size (Toyota Camry or similar). Gold Plus members can skip the counter and go directly to the Hertz Gold area.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Hertz Car Drop-Off",
+        "start_datetime": "2026-02-25T18:00:00+00:00",
+        "end_datetime": null,
+        "location": "Same as pick-up: Los Angeles LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Confirmed Hertz reservation drop-off at Los Angeles LAX Airport on Wednesday, February 25, 2026, at 6:00 PM. Vehicle class: Full Size (Toyota Camry or similar).",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.358974358974359,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8870967741935484,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1308,
+    "completion_tokens": 337,
+    "total_tokens": 1645
+  },
+  "cost": 0.00033380000000000004
+}

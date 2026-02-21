@@ -1,0 +1,57 @@
+{
+  "fixture_name": "school/registration_opens_09",
+  "fixture_hash": "1055090b4a735542636fb743165b1f555bebf3f2755ad547ee23393c08d0c3d6",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:50:10.799480+00:00",
+  "duration_ms": 3994,
+  "category": "school",
+  "description": "Real-world city arts & rec spring registration announcement with specific open date/time - borderline calendar event",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "registration",
+    "community",
+    "borderline",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Spring 2026 Registration Starts 2/18",
+    "from": "artsrec@walnut-creek.org",
+    "has_attachments": true,
+    "attachment_count": 14
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Spring 2026 registration opens for Arts + Rec classes including youth programs, preschool, adult classes, and intergenerational programs",
+        "is_all_day": false,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "zai API error: Error code: 400 - {'error': {'code': '1210', 'message': '\u56fe\u7247\u8f93\u5165\u683c\u5f0f/\u89e3\u6790\u9519\u8bef'}}"
+  },
+  "auto_score": {
+    "error": "zai API error: Error code: 400 - {'error': {'code': '1210', 'message': '\u56fe\u7247\u8f93\u5165\u683c\u5f0f/\u89e3\u6790\u9519\u8bef'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

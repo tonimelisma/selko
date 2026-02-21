@@ -1,0 +1,124 @@
+{
+  "fixture_name": "invitations/graduation_party_05",
+  "fixture_hash": "51127eac44acd8debf7ac709feaa8fd050235414d028b18bdf61923fc7dc7aa1",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:07.394088+00:00",
+  "duration_ms": 5427,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:01.963972+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:01.963984+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:01.980746+00:00",
+      "duration_ms": 5411
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:07.392156+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "High school graduation party with afternoon timing",
+  "difficulty": "easy",
+  "tags": [
+    "graduation",
+    "party",
+    "afternoon"
+  ],
+  "input_summary": {
+    "subject": "Graduation Party for Tyler!",
+    "from": "dave.thompson@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Tyler Thompson's Graduation Party",
+        "start_datetime": "2026-06-13T15:00:00",
+        "end_datetime": "2026-06-13T19:00:00",
+        "location": "1234 Oak Drive, San Jose, CA 95123",
+        "description": "High school graduation celebration - backyard BBQ and pool party",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Tyler Thompson Graduation Party (High School)",
+        "start_datetime": "2026-06-13T15:00:00+00:00",
+        "end_datetime": "2026-06-13T19:00:00+00:00",
+        "all_day": false,
+        "location": "The Thompson Residence, 1234 Oak Drive, San Jose, CA 95123",
+        "description": "Graduation celebration for Tyler Thompson. Saturday, June 13, 2026 from 3:00 PM to 7:00 PM at the Thompson residence. Backyard BBQ & Pool Party; guests are invited to bring swimsuits. RSVP requested by June 6 to dave.thompson@gmail.com.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7948717948717948,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7391304347826086,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1120,
+    "completion_tokens": 494,
+    "total_tokens": 1614
+  },
+  "cost": 0.00025360000000000004
+}

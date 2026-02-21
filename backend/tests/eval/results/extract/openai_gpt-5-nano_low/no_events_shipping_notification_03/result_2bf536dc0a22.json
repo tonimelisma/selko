@@ -1,0 +1,78 @@
+{
+  "fixture_name": "no_events/shipping_notification_03",
+  "fixture_hash": "e9ec530c80c65c58943683c0e5697296ab5756aa12957c216b9fc8a3d1b4ec0f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:50.023237+00:00",
+  "duration_ms": 3526,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:46.496176+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:46.496185+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:46.512583+00:00",
+      "duration_ms": 3510
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:50.022931+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Package shipped notification",
+  "difficulty": "medium",
+  "tags": [
+    "shipping",
+    "delivery",
+    "tracking",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Your package has shipped! Tracking #1Z999AA10123456784",
+    "from": "shipping@store.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Estimated delivery window for Order ST-2026-789456",
+        "start_datetime": "2026-02-14T00:00:00+00:00",
+        "end_datetime": "2026-02-16T23:59:59+00:00",
+        "all_day": true,
+        "location": "456 Oak Avenue, Apt 7, San Francisco, CA 94102",
+        "description": "Estimated delivery window for package ST-2026-789456. Shipped Feb 11, 2026. Carrier: UPS Ground. Tracking: 1Z999AA10123456784. Estimated Delivery: Feb 14\u201316, 2026.",
+        "confidence": 0.75,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1210,
+    "completion_tokens": 416,
+    "total_tokens": 1626
+  },
+  "cost": 0.0002269
+}

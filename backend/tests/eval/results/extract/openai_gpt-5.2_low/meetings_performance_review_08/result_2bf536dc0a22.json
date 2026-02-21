@@ -1,0 +1,139 @@
+{
+  "fixture_name": "meetings/performance_review_08",
+  "fixture_hash": "fca028efd0fe6c440e7cb4b79c7586a471f65b34a3f42d7ebd6744e7ee112273",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:12:00.136609+00:00",
+  "duration_ms": 4950,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:55.184808+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:55.184814+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:55.215596+00:00",
+      "duration_ms": 4920
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:12:00.136195+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Annual performance review scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "performance",
+    "review",
+    "hr",
+    "annual"
+  ],
+  "input_summary": {
+    "subject": "Your Annual Performance Review - Scheduled",
+    "from": "manager@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Performance Review with Robert Chen",
+        "start_datetime": "2026-03-05T15:00:00",
+        "end_datetime": "2026-03-05T16:00:00",
+        "location": "Room 512",
+        "description": "Annual performance review meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Performance Review Meeting",
+        "start_datetime": "2026-03-05T15:00:00-05:00",
+        "end_datetime": "2026-03-05T16:00:00-05:00",
+        "all_day": false,
+        "location": "My Office (Room 512)",
+        "description": "Annual performance review meeting.\n\nDetails:\n- Date: Thursday, March 5, 2026\n- Time: 3:00 PM \u2013 4:00 PM\n- Location: My Office (Room 512)\n\nCovers review period: March 2025 to February 2026.\n\nPreparation notes (from email):\n- Complete self-assessment in Workday by March 1\n- Reflect on key accomplishments\n- Consider areas for growth/development\n- Prepare questions about career progression\n\nAgenda highlights:\n- Discuss performance and contributions\n- Review goals and set new ones\n- Development opportunities\n- Compensation (if applicable)",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Self-assessment due in Workday (for performance review)",
+        "start_datetime": "2026-03-01T00:00:00-05:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Deadline to complete your self-assessment in Workday ahead of the annual performance review meeting.\n\nStated in email under \u201cBEFORE THE MEETING\u201d: \u201cComplete your self-assessment in Workday by March 1st.\u201d",
+        "confidence": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7466666666666667,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5714285714285714,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1196,
+    "completion_tokens": 340,
+    "total_tokens": 1536
+  },
+  "cost": 0.006853
+}

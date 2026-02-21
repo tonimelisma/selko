@@ -1,0 +1,98 @@
+{
+  "fixture_name": "travel/airport_transfer_05",
+  "fixture_hash": "0c8a40e1fb3efc2263a7777f041b85dbef3d4ed58678129b708185e2f7da9e42",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:21:45.731039+00:00",
+  "duration_ms": 1577,
+  "category": "travel",
+  "description": "Airport shuttle/transfer booking",
+  "difficulty": "easy",
+  "tags": [
+    "transfer",
+    "shuttle",
+    "airport",
+    "pickup"
+  ],
+  "input_summary": {
+    "subject": "Your SuperShuttle Reservation",
+    "from": "confirm@supershuttle.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Airport Shuttle Pickup - SuperShuttle",
+        "start_datetime": "2026-02-28T05:30:00",
+        "end_datetime": null,
+        "location": "123 Main Street, Apt 4B, San Diego, CA 92101",
+        "description": "SuperShuttle pickup to San Diego Airport Terminal 2",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "SuperShuttle Airport Pickup",
+        "start_datetime": "2026-02-28T05:30:00",
+        "end_datetime": null,
+        "location": "123 Main Street, Apt 4B, San Diego, CA 92101",
+        "description": "SuperShuttle ride to San Diego International Airport (SAN), Terminal 2. Confirmation #: SS789456. 1 passenger with 2 checked bags. Driver will call 10-15 minutes before arrival. Look for blue SuperShuttle van. Total cost: $32.00 (prepaid). For changes, call 1-800-258-3826 or visit supershuttle.com.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.375,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1536,
+    "completion_tokens": 223,
+    "total_tokens": 1759
+  },
+  "cost": 0.0021208000000000004
+}

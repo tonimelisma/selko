@@ -1,0 +1,55 @@
+{
+  "fixture_name": "appointments/home_repair_08",
+  "fixture_hash": "831eeb728117beb5cb1ecd4b10d9617dce5770c38c4e08dfb601e1a7dbf3ec9a",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:38:59.018295+00:00",
+  "duration_ms": 7086,
+  "category": "appointments",
+  "description": "Home repair service appointment with time window",
+  "difficulty": "medium",
+  "tags": [
+    "home",
+    "repair",
+    "service",
+    "time-window"
+  ],
+  "input_summary": {
+    "subject": "Your Plumbing Service Appointment is Confirmed",
+    "from": "dispatch@aceplumbing.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Plumbing Service - Ace Plumbing",
+        "start_datetime": "2026-02-24T13:00:00",
+        "end_datetime": "2026-02-24T16:00:00",
+        "location": "456 Homeowner Drive, Santa Clara, CA 95050",
+        "description": "Water heater inspection and repair - technician will call 30 minutes before arrival",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: 1 validation error for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Plumbing Servi...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: 1 validation error for EventExtractionResponse\nevents.0.confidence\n  Field required [type=missing, input_value={'title': 'Plumbing Servi...nce': 'action_required'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+  },
+  "tokens": {
+    "prompt_tokens": 714,
+    "completion_tokens": 711,
+    "total_tokens": 1425
+  },
+  "cost": 0.0
+}

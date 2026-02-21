@@ -1,0 +1,125 @@
+{
+  "fixture_name": "invitations/dinner_party_09",
+  "fixture_hash": "073ecd22c110761c7aa0eeeeb1d9cdbddfeb4da43662c2a913286380b9b479ad",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:11:52.198755+00:00",
+  "duration_ms": 5160,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:11:47.037177+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:11:47.037192+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:11:47.052847+00:00",
+      "duration_ms": 5145
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:11:52.198276+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Casual dinner party at friend's home",
+  "difficulty": "easy",
+  "tags": [
+    "dinner",
+    "casual",
+    "evening",
+    "friends"
+  ],
+  "input_summary": {
+    "subject": "Dinner at our place next Saturday?",
+    "from": "tom.baker@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Dinner at Tom & Maria's",
+        "start_datetime": "2026-02-07T18:30:00",
+        "end_datetime": null,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Dinner party at Tom and Maria's",
+        "all_day": false,
+        "confidence_min": 0.75,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Dinner at Tom & Maria\u2019s (lasagna night)",
+        "start_datetime": "2026-02-07T18:30:00-08:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Tom invites you over for dinner on Saturday, February 7th. Arrive around 6:30pm. Maria is making lasagna. Address: 321 Elm Street, Portland, OR 97201. Tom asks to let him know if you can make it (optional: bring a bottle of wine).",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7096774193548387,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.75,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1096,
+    "completion_tokens": 266,
+    "total_tokens": 1362
+  },
+  "cost": 0.005642
+}

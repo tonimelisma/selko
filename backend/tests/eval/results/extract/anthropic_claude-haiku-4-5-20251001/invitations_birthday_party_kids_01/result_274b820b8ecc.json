@@ -1,0 +1,111 @@
+{
+  "fixture_name": "invitations/birthday_party_kids_01",
+  "fixture_hash": "2c39cd241b4d173a4e1fb4e485ec038ac1bfc693cfe8558b76de393603778ffd",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:20:33.858317+00:00",
+  "duration_ms": 2241,
+  "category": "invitations",
+  "description": "Child's birthday party with time range and venue address",
+  "difficulty": "easy",
+  "tags": [
+    "birthday",
+    "kids",
+    "time-range",
+    "venue"
+  ],
+  "input_summary": {
+    "subject": "You're Invited! Emma's 6th Birthday Party!",
+    "from": "lisa.chen@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Emma's 6th Birthday Party",
+        "start_datetime": "2026-02-22T14:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "location": "FunZone Play Center, 456 Rainbow Lane, Pleasantville, CA 94123",
+        "description": "Unicorns & Rainbows theme birthday party for Emma",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Emma's 6th Birthday Party",
+        "start_datetime": "2026-02-22T14:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "location": "FunZone Play Center, 456 Rainbow Lane, Pleasantville, CA 94123",
+        "description": "Emma's 6th birthday celebration with a Unicorns & Rainbows theme. RSVP required by February 15th, 2026 to lisa.chen@gmail.com or (555) 123-4567.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "RSVP Deadline - Emma's Birthday Party",
+        "start_datetime": "2026-02-15T23:59:59",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to RSVP for Emma's 6th birthday party. Contact lisa.chen@gmail.com or text (555) 123-4567 to confirm attendance.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1404,
+    "completion_tokens": 325,
+    "total_tokens": 1729
+  },
+  "cost": 0.0024232
+}

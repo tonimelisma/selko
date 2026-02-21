@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/all_hands_06",
+  "fixture_hash": "30878ae07194a64f4510a93d74e7f5424a814daf264dcb07f5cec058a75605e9",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "thinking": "none",
+  "run_at": "2026-02-21T00:14:40.687500+00:00",
+  "duration_ms": 3422,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:14:37.263384+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:14:37.263392+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:14:37.279269+00:00",
+      "duration_ms": 3407
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:14:40.687068+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Company all-hands meeting announcement",
+  "difficulty": "easy",
+  "tags": [
+    "all-hands",
+    "company",
+    "announcement",
+    "town-hall"
+  ],
+  "input_summary": {
+    "subject": "[All Company] February All-Hands Meeting",
+    "from": "ceo@startupco.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Company All-Hands Meeting",
+        "start_datetime": "2026-02-27T16:00:00",
+        "end_datetime": "2026-02-27T17:00:00",
+        "location": "Main Auditorium",
+        "description": "Monthly all-hands meeting with company updates and AMA",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "All-Hands Meeting - February 2026",
+        "start_datetime": "2026-02-27T16:00:00-08:00",
+        "end_datetime": "2026-02-27T17:00:00-08:00",
+        "all_day": false,
+        "location": "Main Auditorium + Zoom: https://zoom.us/j/allhands2026 (Meeting ID: 111 222 3333)",
+        "description": "Monthly company All-Hands meeting hosted by CEO Michelle Park. This meeting is mandatory for all employees. If you cannot attend, notify your manager.\n\nAgenda:\n- Company performance update\n- Q2 roadmap preview\n- New hire introductions\n- AMA with leadership team\n- Surprise announcement \ud83c\udf89\n\nSnacks and drinks will be provided for in-office attendees.\n\nZoom Link: https://zoom.us/j/allhands2026\nMeeting ID: 111 222 3333",
+        "confidence": 0.99,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5862068965517241,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.3125,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.99,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1728,
+    "completion_tokens": 306,
+    "total_tokens": 2034
+  },
+  "cost": 0.009774
+}

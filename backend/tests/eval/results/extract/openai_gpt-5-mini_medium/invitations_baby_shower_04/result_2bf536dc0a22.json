@@ -1,0 +1,124 @@
+{
+  "fixture_name": "invitations/baby_shower_04",
+  "fixture_hash": "9756cd77f76b3c599829d0259eded3b5205978a7ef3ec88506cbd62ea658c284",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:08:41.143017+00:00",
+  "duration_ms": 8815,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:08:32.325775+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:08:32.325783+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:08:32.342811+00:00",
+      "duration_ms": 8798
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:08:41.141639+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Baby shower invitation with brunch timing",
+  "difficulty": "easy",
+  "tags": [
+    "baby-shower",
+    "brunch",
+    "weekend"
+  ],
+  "input_summary": {
+    "subject": "Baby Shower for Amanda!",
+    "from": "kelly.martinez@yahoo.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amanda's Baby Shower",
+        "start_datetime": "2026-03-15T11:00:00",
+        "end_datetime": "2026-03-15T14:00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch for Amanda Rodriguez",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Baby Shower for Amanda Rodriguez",
+        "start_datetime": "2026-03-15T11:00:00-05:00",
+        "end_datetime": "2026-03-15T14:00:00-05:00",
+        "all_day": false,
+        "location": "Kelly's home \u2014 789 Maple Street, Austin, TX 78701",
+        "description": "Please join us for a baby shower brunch honoring mom-to-be AMANDA RODRIGUEZ.\nDate & time: Sunday, March 15, 2026, 11:00 AM - 2:00 PM.\nHosted at Kelly's home: 789 Maple Street, Austin, TX 78701.\nLight brunch will be served. Registry: Amazon & Target.\nRSVP to Kelly at kelly.martinez@yahoo.com or (512) 555-8910 by March 8th.\nNote: It's a BOY!",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.4230769230769231,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8192771084337349,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1131,
+    "completion_tokens": 607,
+    "total_tokens": 1738
+  },
+  "cost": 0.00149675
+}

@@ -1,0 +1,98 @@
+{
+  "fixture_name": "meetings/team_standup_02",
+  "fixture_hash": "b74fb303b71767b23b1d895dfeab0836134b6fc63556eddeeaad89a2a4e63fb5",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "run_at": "2026-02-17T17:32:48.797064+00:00",
+  "duration_ms": 33664,
+  "category": "meetings",
+  "description": "Daily team standup meeting change",
+  "difficulty": "medium",
+  "tags": [
+    "standup",
+    "team",
+    "daily",
+    "time-change"
+  ],
+  "input_summary": {
+    "subject": "Team Standup Moving to New Time",
+    "from": "priya.sharma@company.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Team Standup",
+        "start_datetime": "2026-02-09T09:30:00",
+        "end_datetime": "2026-02-09T09:45:00",
+        "location": "Conference Room B",
+        "description": "Daily team standup meeting (new time)",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Daily Standup - 9:30 AM PST",
+        "start_datetime": "2026-02-09T09:30:00-08:00",
+        "end_datetime": "2026-02-09T09:45:00-08:00",
+        "location": "Conference Room B; Zoom: https://zoom.us/j/123456789",
+        "description": "Starting next week, daily standup time moved to 9:30 AM PST (from 10:00 AM) to better accommodate colleagues in different time zones. Duration: 15 minutes. Room: Conference Room B. Zoom: https://zoom.us/j/123456789. The format stays the same: 1) What did you accomplish yesterday? 2) What are you working on today? 3) Any blockers? Please update your calendars accordingly.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.46153846153846156,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.4927536231884058,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 957,
+    "completion_tokens": 3272,
+    "total_tokens": 4229
+  },
+  "cost": 0.00135665
+}

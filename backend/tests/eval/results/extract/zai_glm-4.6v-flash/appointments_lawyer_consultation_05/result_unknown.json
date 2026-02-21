@@ -1,0 +1,55 @@
+{
+  "fixture_name": "appointments/lawyer_consultation_05",
+  "fixture_hash": "13101ecb76366acb8446d60b19654102429088545fc456a890b7a50d6cc0c4af",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:39:21.778839+00:00",
+  "duration_ms": 22739,
+  "category": "appointments",
+  "description": "Legal consultation appointment",
+  "difficulty": "easy",
+  "tags": [
+    "legal",
+    "lawyer",
+    "consultation",
+    "professional"
+  ],
+  "input_summary": {
+    "subject": "Confirmed: Initial Consultation with Attorney Williams",
+    "from": "scheduling@williamslaw.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Consultation with Attorney Williams",
+        "start_datetime": "2026-02-11T11:00:00",
+        "end_datetime": "2026-02-11T12:00:00",
+        "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
+        "description": "Estate planning consultation",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 717,
+    "completion_tokens": 1651,
+    "total_tokens": 2368
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,98 @@
+{
+  "fixture_name": "allday_gets_time_02",
+  "fixture_hash": "02216bb3f203000a12ea4f91fe284365ce99e83912cd98c9c8d502d80188c96a",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:06:16.766919+00:00",
+  "duration_ms": 13907,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:06:02.858416+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:06:02.858423+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:06:02.877756+00:00",
+      "duration_ms": 13888
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:06:16.766396+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "All-day event gets specific time - should prefer specific time over vague all-day",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "all-day-to-timed",
+    "specificity"
+  ],
+  "expected": {
+    "title": "Annual Company Picnic",
+    "start_datetime": "2026-07-20T11:00:00",
+    "end_datetime": "2026-07-20T15:00:00",
+    "all_day": false,
+    "location": "City Park - Pavilion 3",
+    "description_contains": [
+      "summer picnic",
+      "employees and families",
+      "BBQ lunch",
+      "noon"
+    ]
+  },
+  "actual": {
+    "title": "Annual Company Picnic",
+    "start_datetime": "2026-07-20T11:00:00",
+    "end_datetime": "2026-07-20T15:00:00",
+    "all_day": false,
+    "location": "City Park - Pavilion 3",
+    "description": "Annual summer picnic for all employees and families. Annual summer picnic starts at 11am. Bring your family! BBQ lunch served at noon.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "summer picnic",
+        "employees and families",
+        "BBQ lunch",
+        "noon"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 458,
+    "completion_tokens": 1508,
+    "total_tokens": 1966
+  },
+  "cost": 0.0006261
+}

@@ -1,0 +1,111 @@
+{
+  "fixture_name": "meetings/board_meeting_03",
+  "fixture_hash": "c6579a34c703aa4c652b98b549f1a0735e9e2d69898785899fcf083180028e52",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "run_at": "2026-02-17T17:28:43.359680+00:00",
+  "duration_ms": 38437,
+  "category": "meetings",
+  "description": "Quarterly board meeting notice",
+  "difficulty": "easy",
+  "tags": [
+    "board",
+    "quarterly",
+    "formal",
+    "executive"
+  ],
+  "input_summary": {
+    "subject": "Q1 2026 Board Meeting - March 15th",
+    "from": "board-secretary@acmecorp.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-15T10:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Quarterly board of directors meeting",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q1 2026 Board of Directors Meeting",
+        "start_datetime": "2026-03-15T10:00:00-04:00",
+        "end_datetime": "2026-03-15T16:00:00-04:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166; Zoom Meeting ID: 987 654 3210, Passcode: Board2026",
+        "description": "Q1 2026 Board of Directors Meeting. Date: Sunday, March 15, 2026. Time: 10:00 AM \u2013 4:00 PM (EDT). Location: ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166. Video conference option: Zoom \u2013 Meeting ID 987 654 3210, Passcode: Board2026. Tentative agenda: 10:00 AM Call to Order; 10:15 AM CEO Report; 11:00 AM CFO Financial Review; 12:00 PM Working Lunch; 1:00 PM Strategic Initiatives; 2:30 PM Committee Reports; 3:30 PM New Business; 4:00 PM Adjournment. Board materials will be distributed one week prior to the meeting. Please confirm your attendance by March 1, 2026.",
+        "confidence": 0.92,
+        "importance": "action_required"
+      },
+      {
+        "title": "RSVP deadline: Q1 2026 Board of Directors Meeting",
+        "start_datetime": "2026-03-01T23:59:00-05:00",
+        "end_datetime": "2026-03-01T23:59:00-05:00",
+        "location": "N/A",
+        "description": "Deadline to confirm attendance for the Q1 2026 Board of Directors Meeting. Please RSVP by March 1, 2026.",
+        "confidence": 0.6,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7636363636363637,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7796610169491526,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.92,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1049,
+    "completion_tokens": 4008,
+    "total_tokens": 5057
+  },
+  "cost": 0.00165565
+}

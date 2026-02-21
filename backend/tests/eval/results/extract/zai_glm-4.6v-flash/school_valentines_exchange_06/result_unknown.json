@@ -1,0 +1,52 @@
+{
+  "fixture_name": "school/valentines_exchange_06",
+  "fixture_hash": "9ff8fd10c04a5e6ba846edddbe86aa360fdd1ab13bdce04afb0beca9149d04cd",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:51:08.683428+00:00",
+  "duration_ms": 18200,
+  "category": "school",
+  "description": "Valentine's Day gift exchange at daycare - text only, no attachments",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "daycare",
+    "holiday",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Valentine's Day Exchange - Feb 13th",
+    "from": "teacher@kindercare.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Valentine's Day Gift Exchange at KinderCare",
+        "start_datetime": "2026-02-13",
+        "is_all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "auto_score": {
+    "error": "Failed to extract events: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 628,
+    "completion_tokens": 1463,
+    "total_tokens": 2091
+  },
+  "cost": 0.0
+}

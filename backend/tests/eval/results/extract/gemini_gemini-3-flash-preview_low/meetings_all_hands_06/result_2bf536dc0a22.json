@@ -1,0 +1,76 @@
+{
+  "fixture_name": "meetings/all_hands_06",
+  "fixture_hash": "30878ae07194a64f4510a93d74e7f5424a814daf264dcb07f5cec058a75605e9",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-20T23:59:11.231491+00:00",
+  "duration_ms": 116,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:59:11.113527+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:59:11.113539+00:00",
+      "duration_ms": 28
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:59:11.142513+00:00",
+      "duration_ms": 88
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:59:11.231194+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Company all-hands meeting announcement",
+  "difficulty": "easy",
+  "tags": [
+    "all-hands",
+    "company",
+    "announcement",
+    "town-hall"
+  ],
+  "input_summary": {
+    "subject": "[All Company] February All-Hands Meeting",
+    "from": "ceo@startupco.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Company All-Hands Meeting",
+        "start_datetime": "2026-02-27T16:00:00",
+        "end_datetime": "2026-02-27T17:00:00",
+        "location": "Main Auditorium",
+        "description": "Monthly all-hands meeting with company updates and AMA",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

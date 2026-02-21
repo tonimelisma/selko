@@ -1,0 +1,78 @@
+{
+  "fixture_name": "no_events/password_reset_06",
+  "fixture_hash": "672621788bd627e829c9fea63434085ba64d213b1f6306a5246636b0a738619f",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:12:35.342491+00:00",
+  "duration_ms": 7021,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:12:28.320029+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:12:28.320034+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:12:28.334908+00:00",
+      "duration_ms": 7007
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:12:35.341981+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Password reset request email",
+  "difficulty": "easy",
+  "tags": [
+    "security",
+    "password",
+    "account",
+    "negative-test"
+  ],
+  "input_summary": {
+    "subject": "Reset your password",
+    "from": "security@service.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Service.com password reset link expires",
+        "start_datetime": "2026-02-16T10:15:00-08:00",
+        "end_datetime": "2026-02-17T10:15:00-08:00",
+        "all_day": false,
+        "location": null,
+        "description": "Service.com password reset request. The reset link in the email will expire in 24 hours. Request time noted in the email: February 16, 2026 at 10:15 AM PST (San Francisco, CA; IP 192.168.1.1). If you did not request this, you can ignore the email and no changes will be made.",
+        "confidence": 0.86,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 1163,
+    "completion_tokens": 376,
+    "total_tokens": 1539
+  },
+  "cost": 0.00729925
+}

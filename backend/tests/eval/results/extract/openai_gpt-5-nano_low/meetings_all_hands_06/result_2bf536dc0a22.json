@@ -1,0 +1,125 @@
+{
+  "fixture_name": "meetings/all_hands_06",
+  "fixture_hash": "30878ae07194a64f4510a93d74e7f5424a814daf264dcb07f5cec058a75605e9",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:01:15.610716+00:00",
+  "duration_ms": 4955,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:01:10.654221+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:01:10.654226+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:01:10.671118+00:00",
+      "duration_ms": 4939
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:01:15.610322+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Company all-hands meeting announcement",
+  "difficulty": "easy",
+  "tags": [
+    "all-hands",
+    "company",
+    "announcement",
+    "town-hall"
+  ],
+  "input_summary": {
+    "subject": "[All Company] February All-Hands Meeting",
+    "from": "ceo@startupco.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Company All-Hands Meeting",
+        "start_datetime": "2026-02-27T16:00:00",
+        "end_datetime": "2026-02-27T17:00:00",
+        "location": "Main Auditorium",
+        "description": "Monthly all-hands meeting with company updates and AMA",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "February All-Hands Meeting",
+        "start_datetime": "2026-02-27T16:00:00-08:00",
+        "end_datetime": "2026-02-27T17:00:00-08:00",
+        "all_day": false,
+        "location": "Main Auditorium + Zoom for remote team",
+        "description": "All-Hands meeting for the company. WHEN: Friday, February 27, 2026, 4:00 PM \u2013 5:00 PM PST. WHERE: Main Auditorium + Zoom for remote team. Zoom Link: https://zoom.us/j/allhands2026 (Meeting ID: 111 222 3333). Agenda includes: Company performance update, Q2 roadmap preview, new hire introductions, AMA with leadership team, and a surprise announcement. Snacks and drinks will be provided for in-office attendees. This meeting is mandatory for all employees; if you cannot attend, please inform your manager.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7843137254901961,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5660377358490566,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1185,
+    "completion_tokens": 540,
+    "total_tokens": 1725
+  },
+  "cost": 0.00027525
+}

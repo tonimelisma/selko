@@ -1,0 +1,316 @@
+{
+  "fixture_name": "invitations/ysc_newsletter_multi_event_11",
+  "fixture_hash": "e9a83e625c2333ebb519730076c54b246937569f8f7a5306060992a0f5aa7e7a",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "run_at": "2026-02-17T17:24:52.628562+00:00",
+  "duration_ms": 44525,
+  "category": "invitations",
+  "description": "YSC community newsletter with 5 events buried in board updates, cabin rental info, and booking rules",
+  "difficulty": "hard",
+  "tags": [
+    "multi-event",
+    "newsletter",
+    "community",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Welcome New YSC Board Members",
+    "from": "info@ysc.org",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 5,
+    "events": [
+      {
+        "title": "YSC Happy Hour at Transamerica Building",
+        "start_datetime": "2026-02-19T17:30:00",
+        "end_datetime": null,
+        "location": "Transamerica Building, 48th Floor",
+        "description": "YSC Happy Hour with breathtaking views of San Francisco",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Happy Hour at The Royal Cuckoo",
+        "start_datetime": "2026-03-19T17:30:00",
+        "end_datetime": null,
+        "location": "The Royal Cuckoo",
+        "description": "YSC Happy Hour at The Royal Cuckoo cocktail bar",
+        "is_all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Bus Trip to Wine Country",
+        "start_datetime": "2026-03-28",
+        "end_datetime": null,
+        "location": null,
+        "description": "Bus trip to wine country, details coming soon",
+        "is_all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint YSC-SSCC Easter Luncheon",
+        "start_datetime": "2026-04-04",
+        "end_datetime": null,
+        "location": null,
+        "description": "Traditional Scandinavian Luncheon",
+        "is_all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint YSC-SSCC Kids Easter & Crafts",
+        "start_datetime": "2026-04-05",
+        "end_datetime": null,
+        "location": "Scandinavian School and Cultural Center",
+        "description": "Kids and family friendly Easter and crafts event",
+        "is_all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Meeting at Swedish American Hall",
+        "start_datetime": "2026-02-01T13:00:00-08:00",
+        "end_datetime": null,
+        "location": "Swedish American Hall, San Francisco, CA",
+        "description": "Annual meeting. Afternoon social hour started at 1:00 PM with drinks and mingling; about 40 attendees. Noted welcome of several newcomers and recap of club activities.",
+        "confidence": 0.75,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Hour Above the City in the Transamerica Building",
+        "start_datetime": "2026-02-19T17:30:00-08:00",
+        "end_datetime": null,
+        "location": "Transamerica Building \u2013 48th Floor, San Francisco, CA",
+        "description": "Evening Happy Hour (timed entry required) hosted by Polina and Mary. RSVP required in advance. Arrival time slots: 5:30 PM, 6:00 PM, 6:30 PM. RSVP via Partiful: https://partiful.com/e/g1hU5HXmUnfJwxpW8u8M?c=fLU6roGc",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Happy Hour at The Royal Cuckoo",
+        "start_datetime": "2026-03-19T17:30:00-07:00",
+        "end_datetime": null,
+        "location": "The Royal Cuckoo, San Francisco, CA",
+        "description": "YSC Happy Hour on Thursday, March 19th, from 5:30 PM at The Royal Cuckoo. Live music, exclusive drink specials, cozy vintage atmosphere, and Danish-influenced vibes.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "YSC Bus Trip to Wine Country",
+        "start_datetime": "2026-03-28T00:00:00-07:00",
+        "end_datetime": null,
+        "location": "Wine Country (bus trip)",
+        "description": "Bus trip to wine country. Save the date; details to follow.",
+        "confidence": 0.75,
+        "importance": "fyi"
+      },
+      {
+        "title": "Joint YSC-SSCC Easter Luncheon",
+        "start_datetime": "2026-04-04T00:00:00-07:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Joint YSC-SSCC Easter Luncheon (Save the date). Traditional Scandinavian Luncheon. More info to follow. If you\u2019d like to help organize, please fill out the form.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Joint YSC-SSCC Kids Easter & Crafts",
+        "start_datetime": "2026-04-05T00:00:00-07:00",
+        "end_datetime": null,
+        "location": "Scandinavian School and Cultural Center",
+        "description": "Kids and family friendly event at the Scandinavian School and Cultural Center.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Full moon hike",
+        "start_datetime": "2026-01-30T00:00:00-08:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Fun Full moon hike (noted in the Ps section of the email).",
+        "confidence": 0.4,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.38461538461538464,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.410958904109589,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.75,
+          "required_min": 0.8,
+          "match": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.45454545454545453,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.2028985507246377,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.3548387096774194,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.2413793103448276,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.75,
+          "required_min": 0.5,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.7076923076923077,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.8,
+          "required_min": 0.5,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1931,
+    "completion_tokens": 5152,
+    "total_tokens": 7083
+  },
+  "cost": 0.00215735
+}

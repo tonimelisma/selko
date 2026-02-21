@@ -1,0 +1,111 @@
+{
+  "fixture_name": "school/field_trip_04",
+  "fixture_hash": "68100ecd7dd1cda16919e3ae833fce6fbcada86581ce1317428caddc02ad5ddf",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "run_at": "2026-02-16T17:43:26.916636+00:00",
+  "duration_ms": 3224,
+  "category": "school",
+  "description": "School field trip permission and details",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "field-trip",
+    "permission",
+    "kids"
+  ],
+  "input_summary": {
+    "subject": "Field Trip Permission - Science Museum (March 12)",
+    "from": "mrjohnson@oakridgeelementary.edu",
+    "has_attachments": true,
+    "attachment_count": 1
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Field Trip - California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00",
+        "end_datetime": "2026-03-12T15:00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th grade field trip to science museum with guided tour and planetarium show",
+        "is_all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "4th Grade Field Trip - California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00+00:00",
+        "end_datetime": "2026-03-12T15:00:00+00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th grade field trip to the California Science Museum. Schedule: 8:30 AM Departure, 9:30 AM Arrival, 9:30-11:30 AM Guided tour, 11:30 AM-12:15 PM Lunch (bag lunch required), 12:15-1:30 PM Planetarium show & free exploration, 2:00 PM Departure, 3:00 PM Return. Cost is $15. Students should bring a bag lunch, water bottle, walking shoes, and a light jacket.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Field Trip Payment & Permission Form Deadline",
+        "start_datetime": "2026-03-05T23:59:59+00:00",
+        "end_datetime": null,
+        "location": "Oakridge Elementary School",
+        "description": "Deadline to submit the $15 payment and signed permission form for the California Science Museum field trip.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8837209302325582,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 919,
+    "completion_tokens": 394,
+    "total_tokens": 1313
+  },
+  "cost": 0.00037425
+}

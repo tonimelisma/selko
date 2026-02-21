@@ -1,0 +1,34 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "fixture_hash": "777f6d839c488eec093dc3afb600571cd65b8544e749bfdf1616d573b085fe22",
+  "code_hash": "unknown",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:39:46.664325+00:00",
+  "duration_ms": 1443,
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 512,
+    "completion_tokens": 69,
+    "total_tokens": 581
+  },
+  "cost": 8.787999999999999e-05
+}

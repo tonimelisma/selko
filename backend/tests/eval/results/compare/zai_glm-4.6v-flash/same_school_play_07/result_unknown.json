@@ -1,0 +1,32 @@
+{
+  "fixture_name": "same_school_play_07",
+  "fixture_hash": "383229ec54af3331fbff7d2bbf90ef2ebe78fe6a4ef571f6cb95b2104211299f",
+  "code_hash": "unknown",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.6v-flash",
+  "run_at": "2026-02-16T17:55:06.591134+00:00",
+  "duration_ms": 4258,
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "error": "Event comparison failed: Expecting value: line 2 column 1 (char 1)"
+  },
+  "tokens": {
+    "prompt_tokens": 397,
+    "completion_tokens": 348,
+    "total_tokens": 745
+  },
+  "cost": 0.0
+}

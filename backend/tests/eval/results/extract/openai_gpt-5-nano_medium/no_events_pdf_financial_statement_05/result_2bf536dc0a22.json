@@ -1,0 +1,81 @@
+{
+  "fixture_name": "no_events/pdf_financial_statement_05",
+  "fixture_hash": "2c0546b61f56acd57d1232a4085041545e480e64ddc50dd7e840e0cbfbfc401d",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-nano",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:05:33.887951+00:00",
+  "duration_ms": 33237,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:05:00.648051+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:05:00.648261+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:05:00.663796+00:00",
+      "duration_ms": 33222
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:05:33.886046+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "HOA financial statement PDF with dates and amounts - negative test (no events)",
+  "difficulty": "medium",
+  "tags": [
+    "no_events",
+    "pdf",
+    "financial",
+    "negative-test",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Your Walnut Heights Statement",
+    "from": "billing@walnutheightshoa.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 16790
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Walnut Heights HOA payment due",
+        "start_datetime": "2026-01-31T00:00:00+00:00",
+        "end_datetime": "2026-01-31T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Statement due date on the HOA bill: 01/31/26. Amount due: $732.88. This balance results from a balance forward (12/31/25) of 634.50 and charges/credits including: PMT - School yr. tuition (01/06/26) - 634.50; INV #78407 - missing signature out on roster for Sofia on 1/12/26 (10.00); INV #78526 - February childcare for Sofia, 59.25 hrs. + 2 full days at flat rate fee (722.88). Current status shows 1-30 days past due: 732.88; Amount due: 732.88.",
+        "confidence": 0.65,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 3302,
+    "completion_tokens": 4651,
+    "total_tokens": 7953
+  },
+  "cost": 0.0020255
+}

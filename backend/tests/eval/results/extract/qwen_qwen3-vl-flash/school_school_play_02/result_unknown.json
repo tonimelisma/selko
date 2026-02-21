@@ -1,0 +1,243 @@
+{
+  "fixture_name": "school/school_play_02",
+  "fixture_hash": "2b7fc169626d6dca91c609ffc265b5354156c8f352d3ab3523b2c03001f7179d",
+  "code_hash": "unknown",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "run_at": "2026-02-16T17:38:36.374686+00:00",
+  "duration_ms": 7512,
+  "category": "school",
+  "description": "School play/performance announcement",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "play",
+    "performance",
+    "arts",
+    "multiple-shows"
+  ],
+  "input_summary": {
+    "subject": "Invitation: Spring Musical - 'The Wizard of Oz'",
+    "from": "drama@woodsidehigh.edu",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "events": [
+      {
+        "title": "The Wizard of Oz - School Musical",
+        "start_datetime": "2026-04-03T19:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical performance",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical (Matinee)",
+        "start_datetime": "2026-04-04T14:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Saturday matinee",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical",
+        "start_datetime": "2026-04-04T19:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Saturday evening",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical (Matinee)",
+        "start_datetime": "2026-04-05T14:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Sunday matinee",
+        "is_all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Spring Musical - 'The Wizard of Oz' - Friday Performance",
+        "start_datetime": "2026-04-03T19:00:00+00:00",
+        "end_datetime": "2026-04-03T21:30:00+00:00",
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Friday, April 3, 2026 at 7:00 PM. Doors open 30 minutes before showtime. Concessions available at intermission. Tickets: Adults $15, Students/Seniors $10, Children under 5 Free. Purchase online at woodsidedrama.org/tickets or at the door (cash/card accepted).",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Musical - 'The Wizard of Oz' - Saturday Matinee",
+        "start_datetime": "2026-04-04T14:00:00+00:00",
+        "end_datetime": "2026-04-04T16:30:00+00:00",
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Saturday, April 4, 2026 at 2:00 PM (Matinee). Doors open 30 minutes before showtime. Concessions available at intermission. Tickets: Adults $15, Students/Seniors $10, Children under 5 Free. Purchase online at woodsidedrama.org/tickets or at the door (cash/card accepted).",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Musical - 'The Wizard of Oz' - Saturday Evening Performance",
+        "start_datetime": "2026-04-04T19:00:00+00:00",
+        "end_datetime": "2026-04-04T21:30:00+00:00",
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Saturday, April 4, 2026 at 7:00 PM. Doors open 30 minutes before showtime. Concessions available at intermission. Tickets: Adults $15, Students/Seniors $10, Children under 5 Free. Purchase online at woodsidedrama.org/tickets or at the door (cash/card accepted).",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Musical - 'The Wizard of Oz' - Sunday Matinee",
+        "start_datetime": "2026-04-05T14:00:00+00:00",
+        "end_datetime": "2026-04-05T16:30:00+00:00",
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Sunday, April 5, 2026 at 2:00 PM (Matinee). Doors open 30 minutes before showtime. Concessions available at intermission. Tickets: Adults $15, Students/Seniors $10, Children under 5 Free. Purchase online at woodsidedrama.org/tickets or at the door (cash/card accepted).",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.449438202247191,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5773195876288659,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.42424242424242425,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.5894736842105263,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.8,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "tokens": {
+    "prompt_tokens": 1362,
+    "completion_tokens": 846,
+    "total_tokens": 2208
+  },
+  "cost": 0.0006842400000000001
+}

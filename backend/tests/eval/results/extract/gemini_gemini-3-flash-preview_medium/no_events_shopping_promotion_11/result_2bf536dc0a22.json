@@ -1,0 +1,80 @@
+{
+  "fixture_name": "no_events/shopping_promotion_11",
+  "fixture_hash": "ac19009bdd7da80a28a32c5f5495318a81033541f60603daef4b6dfa857623e0",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T00:00:28.568562+00:00",
+  "duration_ms": 6473,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:00:22.093577+00:00",
+      "duration_ms": 2
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:00:22.095870+00:00",
+      "duration_ms": 29
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:00:22.125294+00:00",
+      "duration_ms": 6442
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:00:28.567344+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Real-world shopping mall promotional email with vague event mention but no specific date/time",
+  "difficulty": "medium",
+  "tags": [
+    "shopping",
+    "promotional",
+    "mall",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "\ud83d\udc98 Book Now: CHANEL Fragrance and Beauty Boutique Shopping Event",
+    "from": "BroadwayPlaza@email.macerich.com",
+    "has_attachments": true,
+    "attachment_count": 12,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 297276
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

@@ -1,0 +1,440 @@
+{
+  "fixture_name": "school/school_digest_author_visit_07",
+  "fixture_hash": "a0d43983314dce4f4fe12fe52123995371e9a04d101df783c1ed57d6e15c2800",
+  "code_hash": "6e8b4c59aa00",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "medium",
+  "run_at": "2026-02-21T04:45:44.036322+00:00",
+  "duration_ms": 49462,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T04:44:54.196084+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T04:44:54.568922+00:00",
+      "duration_ms": 863
+    },
+    "api_call": {
+      "started_at": "2026-02-21T04:44:55.432784+00:00",
+      "duration_ms": 48599
+    },
+    "scoring": {
+      "started_at": "2026-02-21T04:45:44.032202+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world school digest with Valentine's Day party photos (past) and newsletter with future author visit",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "digest",
+    "newsletter",
+    "author-visit",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 12, 2026 Digest: 2 new messages from Walnut Heights School today",
+    "from": "donotreply+b8892cdd-b853-59af-bbf0-af20434c9aeb@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 6,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 666684
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00",
+        "end_datetime": null,
+        "location": "Walnut Heights MPR",
+        "description": "TK and K music showcase. Livestream available.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "No School - Presidents Day",
+        "start_datetime": "2026-02-12T00:00:00+00:00",
+        "end_datetime": "2026-02-16T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "School closed for Presidents Day long weekend from February 12th through February 16th.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": "4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Two authors will be visiting the school. If students would like to order books and have them signed on the day of the visit, please place orders through Rakestraw Bookstore. The books will be delivered on the day of the visit, and the authors will sign them for students. Note: Shipping address for orders should be the school's address.",
+        "confidence": 1.0,
+        "importance": "fyi"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00+00:00",
+        "end_datetime": "2026-03-24T10:00:00+00:00",
+        "all_day": false,
+        "location": "MPR, Walnut Heights Elementary School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "TK and Kindergarten only. Music showcase featuring what students have been working on in Music class with Mrs. Gold. There will be a livestream of the showcase for anyone who cannot attend in person; the link will be sent out a few days before the event. For questions, contact Mrs. Gold at jcousins@walnutcreeksd.org.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.7766990291262136,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.35051546391752575,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 6563,
+    "completion_tokens": 554,
+    "total_tokens": 7117
+  },
+  "cost": 0.0013168499999999998,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3344
+      },
+      {
+        "type": "text",
+        "length": 1226
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 16357
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 463699
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 173836
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 6301
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 6448
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 43
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "confidence"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"No School - Presidents Day\",\n      \"start_datetime\": \"2026-02-12T00:00:00Z\",\n      \"end_datetime\": \"2026-02-16T23:59:59Z\",\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"School closed for Presidents Day long weekend from February 12th through February 16th.\",\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Double Author Visit\",\n      \"start_datetime\": \"2026-03-12T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": \"4064 Walnut Blvd, Walnut Creek, CA 94596\",\n      \"description\": \"Two authors will be visiting the school. If students would like to order books and have them signed on the day of the visit, please place orders through Rakestraw Bookstore. The books will be delivered on the day of the visit, and the authors will sign them for students. Note: Shipping address for orders should be the school's address.\",\n      \"confidence\": 1.0,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Spring Music Showcase\",\n      \"start_datetime\": \"2026-03-24T09:30:00Z\",\n      \"end_datetime\": \"2026-03-24T10:00:00Z\",\n      \"all_day\": false,\n      \"location\": \"MPR, Walnut Heights Elementary School, 4064 Walnut Blvd, Walnut Creek, CA 94596\",\n      \"description\": \"TK and Kindergarten only. Music showcase featuring what students have been working on in Music class with Mrs. Gold. There will be a livestream of the showcase for anyone who cannot attend in person; the link will be sent out a few days before the event. For questions, contact Mrs. Gold at jcousins@walnutcreeksd.org.\",\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 1,
+    "error_traceback": "Traceback (most recent call last):\n  File \"/Users/tonimelisma/Development/selko/backend/selko/services/llm_gateway.py\", line 184, in call\n    response = self.provider.generate(\n  File \"/Users/tonimelisma/Development/selko/backend/selko/services/llm_provider.py\", line 673, in generate\n    response = self.client.models.generate_content(\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/models.py\", line 5227, in generate_content\n    response = self._generate_content(\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/models.py\", line 4009, in _generate_content\n    response = self._api_client.request(\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1386, in request\n    response = self._request(http_request, http_options, stream=False)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1222, in _request\n    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 477, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 378, in iter\n    result = action(retry_state)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 420, in exc_check\n    raise retry_exc.reraise()\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 187, in reraise\n    raise self.last_attempt.result()\n  File \"/Users/tonimelisma/.local/share/uv/python/cpython-3.10.17-macos-aarch64-none/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/Users/tonimelisma/.local/share/uv/python/cpython-3.10.17-macos-aarch64-none/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 480, in __call__\n    result = fn(*args, **kwargs)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1199, in _request_once\n    errors.APIError.raise_for_response(response)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/errors.py\", line 121, in raise_for_response\n    cls.raise_error(response.status_code, response_json, response)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/errors.py\", line 148, in raise_error\n    raise ServerError(status_code, response_json, response)\ngoogle.genai.errors.ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}\n"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "fixture_name": "appointments/doctor_appointment_01",
+  "fixture_hash": "af4d2a6999ecae160c4f20fd266631f9e33107419f8327be2cc1ad81b9c53864",
+  "code_hash": "2bf536dc0a22",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "none",
+  "run_at": "2026-02-20T23:58:22.676442+00:00",
+  "duration_ms": 124,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-20T23:58:22.551205+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-20T23:58:22.551220+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-20T23:58:22.581341+00:00",
+      "duration_ms": 94
+    },
+    "scoring": {
+      "started_at": "2026-02-20T23:58:22.676144+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Standard doctor appointment confirmation",
+  "difficulty": "easy",
+  "tags": [
+    "medical",
+    "doctor",
+    "confirmation"
+  ],
+  "input_summary": {
+    "subject": "Appointment Confirmation - Dr. Jennifer Smith",
+    "from": "appointments@valleymedical.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Doctor Appointment - Dr. Jennifer Smith",
+        "start_datetime": "2026-02-03T10:30:00",
+        "end_datetime": "2026-02-03T11:00:00",
+        "location": "Valley Medical Center, 1500 Medical Plaza Drive, Suite 200, San Jose, CA 95128",
+        "description": "Internal Medicine appointment with Dr. Jennifer Smith",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": false,
+    "events": [],
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "auto_score": {
+    "error": "gemini API error: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': '* GenerateContentRequest.generation_config.response_schema.properties[events].items.required[0]: property is not defined\\n', 'status': 'INVALID_ARGUMENT'}}"
+  },
+  "tokens": {
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "total_tokens": 0
+  },
+  "cost": 0.0
+}

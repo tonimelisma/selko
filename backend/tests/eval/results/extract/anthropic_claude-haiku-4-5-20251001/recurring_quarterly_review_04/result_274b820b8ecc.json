@@ -1,0 +1,150 @@
+{
+  "fixture_name": "recurring/quarterly_review_04",
+  "fixture_hash": "389161a2157346291d6f3b6ffe6e33a8e0436672d4abbf9525665f0ef2097a14",
+  "code_hash": "274b820b8ecc",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "run_at": "2026-02-17T17:23:41.916452+00:00",
+  "duration_ms": 3604,
+  "category": "recurring",
+  "description": "Quarterly business review meeting",
+  "difficulty": "easy",
+  "tags": [
+    "recurring",
+    "quarterly",
+    "review",
+    "business"
+  ],
+  "input_summary": {
+    "subject": "Q2 2026 Business Review - Calendar Hold",
+    "from": "ops@company.com",
+    "has_attachments": false,
+    "attachment_count": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q2 2026 Business Review",
+        "start_datetime": "2026-04-15T09:00:00",
+        "end_datetime": "2026-04-15T12:00:00",
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly business review meeting",
+        "is_all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q2 2026 Quarterly Business Review",
+        "start_datetime": "2026-04-15T09:00:00+00:00",
+        "end_datetime": "2026-04-15T12:00:00+00:00",
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly Business Review meeting with agenda including CEO Opening Remarks, Financial Review by CFO, Sales & Revenue Update, Product Roadmap, Operations Update, and Strategic Initiatives. This is a recurring quarterly meeting.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Q2 2026 Business Review - Presentation Materials Deadline",
+        "start_datetime": "2026-04-08T23:59:59+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Deadline to submit presentation materials for the Q2 2026 Quarterly Business Review. Submit to ops@company.com.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Q3 2026 Quarterly Business Review (Recurring)",
+        "start_datetime": "2026-07-15T09:00:00+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Future recurring quarterly business review scheduled for July 15, 2026. Date provided as informational reference.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Q4 2026 Quarterly Business Review (Recurring)",
+        "start_datetime": "2026-10-14T09:00:00+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Future recurring quarterly business review scheduled for October 14, 2026. Date provided as informational reference.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Q1 2027 Quarterly Business Review (Recurring)",
+        "start_datetime": "2027-01-13T09:00:00+00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Future recurring quarterly business review scheduled for January 13, 2027. Date provided as informational reference.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8214285714285714,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": null,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1566,
+    "completion_tokens": 635,
+    "total_tokens": 2201
+  },
+  "cost": 0.0037928000000000003
+}

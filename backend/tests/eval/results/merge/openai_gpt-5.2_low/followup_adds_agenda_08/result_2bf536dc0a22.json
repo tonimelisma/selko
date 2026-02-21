@@ -1,0 +1,98 @@
+{
+  "fixture_name": "followup_adds_agenda_08",
+  "fixture_hash": "e1ada744b8d8c54c831f27c276c4a73e3fdd69b9e7722c9443c351f763126cc8",
+  "code_hash": "2bf536dc0a22",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5.2",
+  "thinking": "low",
+  "run_at": "2026-02-21T00:12:54.278039+00:00",
+  "duration_ms": 1665,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T00:12:52.611137+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T00:12:52.611144+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T00:12:52.627146+00:00",
+      "duration_ms": 1650
+    },
+    "scoring": {
+      "started_at": "2026-02-21T00:12:54.277729+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Follow-up email adds agenda details to existing meeting",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "agenda"
+  ],
+  "expected": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description_contains": [
+      "quarterly",
+      "financial review",
+      "product roadmap",
+      "breakfast provided"
+    ]
+  },
+  "actual": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description": "Quarterly board meeting\n\nAgenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "quarterly",
+        "financial review",
+        "product roadmap",
+        "breakfast provided"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 457,
+    "completion_tokens": 95,
+    "total_tokens": 552
+  },
+  "cost": 0.00212975
+}
