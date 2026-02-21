@@ -82,45 +82,46 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "pricing": {"input": 2.00, "output": 5.00},
     },
     # --- Z.AI / Zhipu (6 models) ---
+    # Z.AI strict mode doesn't enforce field names; use prompt-based JSON
     "glm-5": {
         "provider": "zai",
         "vision": False,
-        "json_schema": True,
+        "json_schema": False,
         "base_url": "https://api.z.ai/api/paas/v4/",
         "pricing": {"input": 1.00, "output": 3.20},
     },
     "glm-4.6v": {
         "provider": "zai",
         "vision": True,
-        "json_schema": True,
+        "json_schema": False,
         "base_url": "https://api.z.ai/api/paas/v4/",
         "pricing": {"input": 0.30, "output": 0.90},
     },
     "glm-4.6v-flashx": {
         "provider": "zai",
         "vision": True,
-        "json_schema": True,
+        "json_schema": False,
         "base_url": "https://api.z.ai/api/paas/v4/",
         "pricing": {"input": 0.04, "output": 0.40},
     },
     "glm-4.6v-flash": {
         "provider": "zai",
         "vision": True,
-        "json_schema": True,
+        "json_schema": False,
         "base_url": "https://api.z.ai/api/paas/v4/",
         "pricing": {"input": 0.00, "output": 0.00},
     },
     "glm-4.5v": {
         "provider": "zai",
         "vision": True,
-        "json_schema": True,
+        "json_schema": False,
         "base_url": "https://api.z.ai/api/paas/v4/",
         "pricing": {"input": 0.60, "output": 1.80},
     },
     "glm-4.7-flash": {
         "provider": "zai",
         "vision": False,
-        "json_schema": True,
+        "json_schema": False,
         "base_url": "https://api.z.ai/api/paas/v4/",
         "pricing": {"input": 0.00, "output": 0.00},
     },
@@ -178,17 +179,18 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "pricing": {"input": 0.05, "output": 0.35},
     },
     # --- DeepSeek (2 models, text-only) ---
+    # DeepSeek doesn't support json_schema response_format; use prompt-based JSON
     "deepseek-chat": {
         "provider": "deepseek",
         "vision": False,
-        "json_schema": True,
+        "json_schema": False,
         "base_url": "https://api.deepseek.com/v1",
         "pricing": {"input": 0.27, "output": 1.10},
     },
     "deepseek-reasoner": {
         "provider": "deepseek",
         "vision": False,
-        "json_schema": True,
+        "json_schema": False,
         "base_url": "https://api.deepseek.com/v1",
         "pricing": {"input": 0.55, "output": 2.19},
     },
@@ -352,16 +354,61 @@ _MARKDOWN_JSON_RE = re.compile(
     r"^\s*```(?:json)?\s*\n?(.*?)\n?\s*```\s*$", re.DOTALL
 )
 
+_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+_THINK_OPEN_RE = re.compile(r"</think>")
+
 
 def _strip_markdown_json(text: str) -> str:
-    """Strip markdown code-block wrapping from JSON responses.
+    """Strip markdown code-block wrapping and think blocks from JSON responses.
 
-    Models without native JSON mode (e.g. Anthropic Claude) often wrap
-    JSON in ```json ... ``` markers. This function removes them so the
-    raw JSON can be parsed with json.loads().
+    Handles:
+    - Markdown code blocks: ```json ... ```
+    - Think blocks: <think>...</think> and stray </think> tags
+    - Extra text before/after the JSON object
+
+    Falls back to finding the last top-level {...} JSON object when
+    the response contains multiple JSON objects or surrounding text.
     """
+    # First try the simple markdown match
     m = _MARKDOWN_JSON_RE.match(text)
-    return m.group(1).strip() if m else text
+    if m:
+        return m.group(1).strip()
+
+    # Strip think blocks (some models like ZAI produce these)
+    cleaned = _THINK_BLOCK_RE.sub("", text)
+    cleaned = _THINK_OPEN_RE.sub("", cleaned)
+    cleaned = cleaned.strip()
+
+    # Try to parse as-is first — if it works, no extraction needed
+    if cleaned.startswith("{") and cleaned.endswith("}"):
+        import json
+
+        try:
+            json.loads(cleaned)
+            return cleaned
+        except json.JSONDecodeError:
+            pass
+
+    # Find the last top-level JSON object (skip echoed schemas, extra text, etc.)
+    brace_depth = 0
+    end_pos = None
+    start_pos = None
+    for i in range(len(cleaned) - 1, -1, -1):
+        ch = cleaned[i]
+        if ch == "}":
+            if brace_depth == 0:
+                end_pos = i
+            brace_depth += 1
+        elif ch == "{":
+            brace_depth -= 1
+            if brace_depth == 0 and end_pos is not None:
+                start_pos = i
+                break
+
+    if start_pos is not None and end_pos is not None:
+        return cleaned[start_pos : end_pos + 1]
+
+    return text
 
 
 def _sanitize_schema_for_strict(schema: dict) -> dict:
@@ -403,6 +450,12 @@ def _sanitize_schema_for_strict(schema: dict) -> dict:
             # Remove 'default' when 'anyOf' is present (strict mode incompatibility)
             if "anyOf" in resolved and "default" in resolved:
                 del resolved["default"]
+
+            # Strip 'format' from anyOf items (Moonshot rejects format inside anyOf)
+            if "anyOf" in resolved and isinstance(resolved["anyOf"], list):
+                for item in resolved["anyOf"]:
+                    if isinstance(item, dict):
+                        item.pop("format", None)
 
             # Remove 'title' from property-level nodes (not root)
             if "title" in resolved and "type" in resolved:
