@@ -222,7 +222,7 @@ def extract_calendar_events(
         )
 
         # Parse response JSON
-        parsed = json.loads(response.text)
+        parsed = json.loads(response.text, strict=False)
         llm_result = EventExtractionResponse.model_validate(parsed)
 
         logger.info(
@@ -412,7 +412,7 @@ Return the matching Event ID (or null if no match) and brief reasoning.
             json_schema=compare_schema,
         )
 
-        parsed = json.loads(response.text)
+        parsed = json.loads(response.text, strict=False)
         matched_id = parsed.get("matched_event_id")
         reasoning = parsed.get("reasoning", "")
         logger.info(f"Event comparison result: {matched_id} ({reasoning})")
@@ -521,7 +521,7 @@ Output JSON with merged event data:
             json_schema=merge_schema,
         )
 
-        merged = json.loads(response.text)
+        merged = json.loads(response.text, strict=False)
         logger.info(f"Event merge complete: {merged.get('title')}")
         return merged
 
