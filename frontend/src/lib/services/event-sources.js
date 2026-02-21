@@ -16,10 +16,15 @@ import { parseSupabaseError } from '$lib/errors.js';
  */
 
 /**
+ * @typedef {'email' | 'google_calendar' | 'google_photos'} SourceOrigin
+ */
+
+/**
  * @typedef {Object} EventSource
  * @property {string} id - UUID
  * @property {string} event_id - UUID
- * @property {string} email_id - UUID
+ * @property {string} [email_id] - UUID (required for email sources)
+ * @property {SourceOrigin} source_origin - Source type: email, google_calendar, or google_photos
  * @property {SourceType} source_type
  * @property {ExtractedData} [extracted_data]
  * @property {Object} [event_snapshot_before]

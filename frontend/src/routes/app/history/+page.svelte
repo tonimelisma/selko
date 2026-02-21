@@ -112,6 +112,11 @@
 	function getSourceInfo(event) {
 		const sources = event.event_sources || [];
 		const firstSource = sources[0];
+
+		if (firstSource?.source_origin === 'google_photos') {
+			return $_('history.fromPhoto');
+		}
+
 		const email = firstSource?.emails;
 		if (email) {
 			const name = email.from_name || email.from_email || $_('history.unknownSender');

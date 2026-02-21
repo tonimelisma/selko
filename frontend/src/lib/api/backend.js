@@ -339,6 +339,34 @@ export function initiateCalendarAuth(redirectUri) {
 }
 
 // ============================================================================
+// Google Photos OAuth Operations
+// ============================================================================
+
+/**
+ * Get the Google Photos OAuth authorization URL
+ * @param {string} [redirectUri] - Optional custom redirect URI
+ * @returns {string} The authorization URL
+ */
+export function getPhotosAuthUrl(redirectUri) {
+	const baseUrl = getApiBaseUrl();
+	const params = new URLSearchParams();
+	if (redirectUri) {
+		params.set('redirect_uri', redirectUri);
+	}
+	const queryString = params.toString();
+	return `${baseUrl}/integrations/photos/auth${queryString ? `?${queryString}` : ''}`;
+}
+
+/**
+ * Initiate Google Photos OAuth flow
+ * Opens OAuth consent screen in current window
+ * @param {string} [redirectUri] - Optional custom redirect URI
+ */
+export function initiatePhotosAuth(redirectUri) {
+	window.location.href = getPhotosAuthUrl(redirectUri);
+}
+
+// ============================================================================
 // Health Check
 // ============================================================================
 

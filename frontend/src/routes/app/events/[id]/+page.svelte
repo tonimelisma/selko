@@ -23,6 +23,8 @@
 	let sourceEmail = $state(null);
 	/** @type {any[]} */
 	let attachments = $state([]);
+	/** @type {string} */
+	let sourceOrigin = $state('email');
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let error = $state('');
@@ -80,8 +82,13 @@
 			}
 		}
 
-		// Load source email if available
-		if (sources.length > 0 && sources[0].email_id) {
+		// Determine the source origin
+		if (sources.length > 0) {
+			sourceOrigin = sources[0].source_origin || 'email';
+		}
+
+		// Load source email if available (email sources only)
+		if (sources.length > 0 && sources[0].email_id && sourceOrigin === 'email') {
 			const emailId = sources[0].email_id;
 			const [emailResult, attachResult] = await Promise.all([
 				getEmail(emailId),
@@ -172,7 +179,7 @@
 	{/if}
 
 	<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-		<!-- Source email - desktop sidebar -->
+		<!-- Source sidebar -->
 		{#if sourceEmail}
 			<div class="lg:col-span-2 order-1 lg:order-1">
 				<!-- Desktop: always visible -->
@@ -240,10 +247,49 @@
 					</div>
 				</div>
 			</div>
+		{:else if sourceOrigin === 'google_photos'}
+			<div class="lg:col-span-2 order-1 lg:order-1">
+				<!-- Desktop: always visible -->
+				<div class="hidden lg:block">
+					<div class="card bg-base-200">
+						<div class="card-body">
+							<h3 class="card-title text-sm">{$_('eventSource.sourcePhoto')}</h3>
+							<div class="space-y-2 text-sm">
+								<p class="text-base-content/70">{$_('eventSource.sourcePhotoDescription')}</p>
+								{#if event.source_attribution}
+									<div class="mt-3 p-3 bg-base-100 rounded text-base-content/70">
+										{event.source_attribution}
+									</div>
+								{/if}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Mobile/Tablet: collapsible -->
+				<div class="lg:hidden">
+					<div class="collapse collapse-arrow bg-base-200">
+						<input type="checkbox" bind:checked={sourceExpanded} />
+						<div class="collapse-title font-medium">
+							{$_('eventSource.viewSourcePhoto')}
+						</div>
+						<div class="collapse-content">
+							<div class="space-y-2 text-sm">
+								<p class="text-base-content/70">{$_('eventSource.sourcePhotoDescription')}</p>
+								{#if event.source_attribution}
+									<div class="mt-3 p-3 bg-base-100 rounded text-base-content/70">
+										{event.source_attribution}
+									</div>
+								{/if}
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 		{/if}
 
 		<!-- Event form -->
-		<div class="{sourceEmail ? 'lg:col-span-3' : 'lg:col-span-5'} order-2 lg:order-2">
+		<div class="{sourceEmail || sourceOrigin === 'google_photos' ? 'lg:col-span-3' : 'lg:col-span-5'} order-2 lg:order-2">
 			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-4 pb-24 lg:pb-0">
 				<div class="form-control">
 					<label class="label" for="event-title">
