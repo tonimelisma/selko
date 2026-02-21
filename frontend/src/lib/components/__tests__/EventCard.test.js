@@ -93,4 +93,30 @@ describe('EventCard', () => {
 		render(EventCard, { props: { event: fyiEvent } });
 		expect(screen.getByText('FYI')).toBeInTheDocument();
 	});
+
+	it('shows email icon by default', () => {
+		render(EventCard, { props: { event: mockEvent } });
+		const emailIcon = document.querySelector('svg[aria-label="From email"]');
+		expect(emailIcon).toBeInTheDocument();
+	});
+
+	it('shows photo icon for google_photos source', () => {
+		const photoEvent = {
+			...mockEvent,
+			event_sources: [{ source_origin: 'google_photos' }]
+		};
+		render(EventCard, { props: { event: photoEvent } });
+		const photoIcon = document.querySelector('svg[aria-label="From photo"]');
+		expect(photoIcon).toBeInTheDocument();
+	});
+
+	it('shows email icon for email source', () => {
+		const emailEvent = {
+			...mockEvent,
+			event_sources: [{ source_origin: 'email', email_id: 'email-1' }]
+		};
+		render(EventCard, { props: { event: emailEvent } });
+		const emailIcon = document.querySelector('svg[aria-label="From email"]');
+		expect(emailIcon).toBeInTheDocument();
+	});
 });

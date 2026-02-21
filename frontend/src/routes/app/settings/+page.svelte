@@ -6,7 +6,7 @@
 	import { supabase } from '$lib/supabase.js';
 	import { fetchIntegrations, disconnectIntegration } from '$lib/services/integrations.js';
 	import { getCalendarSettings, updateCalendarSettings } from '$lib/services/calendar-settings.js';
-	import { listCalendars, initiateGmailAuth, initiateCalendarAuth } from '$lib/api/backend.js';
+	import { listCalendars, initiateGmailAuth, initiateCalendarAuth, initiatePhotosAuth } from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -97,7 +97,13 @@
 	function handleDisconnectRequest(integrationId) {
 		const integration = integrationsList.find((i) => i.id === integrationId);
 		disconnectTargetId = integrationId;
-		disconnectTargetName = integration?.provider === 'gmail' ? $_('integrations.gmail') : $_('integrations.googleCalendar');
+		/** @type {Record<string, string>} */
+		const providerNames = {
+			gmail: $_('integrations.gmail'),
+			google_calendar: $_('integrations.googleCalendar'),
+			google_photos: $_('integrations.googlePhotos')
+		};
+		disconnectTargetName = providerNames[integration?.provider] || integration?.provider || '';
 		showDisconnectModal = true;
 	}
 
@@ -123,6 +129,8 @@
 			initiateGmailAuth();
 		} else if (provider === 'google_calendar') {
 			initiateCalendarAuth();
+		} else if (provider === 'google_photos') {
+			initiatePhotosAuth();
 		}
 	}
 

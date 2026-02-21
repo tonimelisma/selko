@@ -8,7 +8,7 @@
 	} from '$lib/services/events.js';
 	import { createSenderRule } from '$lib/services/sender-rules.js';
 	import { syncEventToCalendar } from '$lib/api/backend.js';
-	import { initiateGmailAuth, initiateCalendarAuth } from '$lib/api/backend.js';
+	import { initiateGmailAuth, initiateCalendarAuth, initiatePhotosAuth } from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import SenderHeader from '$lib/components/SenderHeader.svelte';
 	import EventCard from '$lib/components/EventCard.svelte';
@@ -39,13 +39,23 @@
 		for (const event of events) {
 			const sources = event.event_sources || [];
 			const firstSource = sources[0];
-			const email = firstSource?.emails;
-			const senderKey = email?.from_email || $_('common.unknownSender');
+
+			let senderKey;
+			let senderName;
+
+			if (firstSource?.source_origin === 'google_photos') {
+				senderKey = 'google_photos';
+				senderName = $_('integrations.googlePhotos');
+			} else {
+				const email = firstSource?.emails;
+				senderKey = email?.from_email || $_('common.unknownSender');
+				senderName = email?.from_name || senderKey;
+			}
 
 			if (!senderMap.has(senderKey)) {
 				senderMap.set(senderKey, {
 					sender: senderKey,
-					senderName: email?.from_name || senderKey,
+					senderName: senderName,
 					events: []
 				});
 			}
@@ -176,6 +186,8 @@
 			initiateGmailAuth();
 		} else if (provider === 'google_calendar') {
 			initiateCalendarAuth();
+		} else if (provider === 'google_photos') {
+			initiatePhotosAuth();
 		}
 	}
 </script>
