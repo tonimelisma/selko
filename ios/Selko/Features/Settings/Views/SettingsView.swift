@@ -7,6 +7,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @State private var viewModel = SettingsViewModel()
+    @State private var showAuthError = false
 
     var body: some View {
         Form {
@@ -40,6 +41,11 @@ struct SettingsView: View {
             if let error = viewModel.errorMessage {
                 Text(error)
             }
+        }
+        .alert("Connection Error", isPresented: $showAuthError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(String(localized: "settings.authErrorMessage"))
         }
     }
 
@@ -188,7 +194,11 @@ struct SettingsView: View {
         }
 
         if let url = URL(string: urlString) {
-            UIApplication.shared.open(url)
+            UIApplication.shared.open(url) { success in
+                if !success {
+                    showAuthError = true
+                }
+            }
         }
     }
 }
