@@ -69,6 +69,10 @@
     <string name="event_detail_error_approve">Failed to approve event</string>
     <string name="event_detail_error_reject">Failed to reject event</string>
 
+    <!-- Source Photo Card -->
+    <string name="source_photo_label">Source Photo</string>
+    <string name="source_photo_icon_description">Photo</string>
+
     <!-- Source Email Card -->
     <string name="source_email_label">Source Email</string>
     <string name="source_email_icon_description">Email</string>
@@ -116,6 +120,7 @@
     <!-- Settings - Connected Accounts -->
     <string name="settings_gmail">Gmail</string>
     <string name="settings_google_calendar">Google Calendar</string>
+    <string name="settings_google_photos">Google Photos</string>
     <string name="settings_connected">Connected</string>
     <string name="settings_disconnect">Disconnect</string>
     <string name="settings_connect">Connect</string>
