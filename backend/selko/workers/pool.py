@@ -1,10 +1,11 @@
 """Worker pool for continuously processing background work.
 
 This module implements a pool of long-running asyncio tasks that continuously
-poll for work from three sources:
-1. Scheduled tasks (e.g., email_fetch)
+poll for work from four sources:
+1. Scheduled tasks (e.g., email_fetch, photo_fetch)
 2. Pending emails (status-based claiming)
-3. Approved events (status-based claiming)
+3. Pending photos (status-based claiming)
+4. Approved events (status-based claiming)
 
 This replaces the job queue with direct status-based polling of data tables.
 """
@@ -34,6 +35,12 @@ from selko.services.events import (
     claim_approved_event_for_sync,
     complete_event_sync,
     fail_event_sync,
+)
+from selko.services.photos import (
+    PhotosError,
+    claim_pending_photo,
+    complete_photo_processing,
+    fail_photo_processing,
 )
 
 logger = logging.getLogger(__name__)
@@ -131,10 +138,11 @@ class WorkerPool:
     async def _worker_loop(self, worker_id: str) -> None:
         """Main worker loop - continuously find and process work.
 
-        This loop runs until self.running becomes False. It polls three sources:
-        1. Scheduled tasks (email_fetch)
+        This loop runs until self.running becomes False. It polls four sources:
+        1. Scheduled tasks (email_fetch, photo_fetch)
         2. Pending emails (for LLM processing)
-        3. Approved events (for calendar sync)
+        3. Pending photos (for LLM processing)
+        4. Approved events (for calendar sync)
 
         Args:
             worker_id: Unique identifier for this worker.
@@ -166,9 +174,10 @@ class WorkerPool:
         """Try to find and process work from any source.
 
         Polls in priority order:
-        1. Scheduled tasks (periodic operations like email_fetch)
+        1. Scheduled tasks (periodic operations like email_fetch, photo_fetch)
         2. Pending emails (need LLM processing)
-        3. Approved events (need calendar sync)
+        3. Pending photos (need LLM processing)
+        4. Approved events (need calendar sync)
 
         Args:
             worker_id: Unique identifier for this worker.
@@ -181,10 +190,16 @@ class WorkerPool:
 
         client = get_service_client(self.config)
 
-        # 1. Try scheduled tasks first (email_fetch) - requires Gmail
+        # 1. Try scheduled tasks first (email_fetch, photo_fetch)
+        task_types = []
         if circuit_breaker.is_available("gmail"):
+            task_types.append("email_fetch")
+        if circuit_breaker.is_available("google_photos"):
+            task_types.append("photo_fetch")
+
+        if task_types:
             try:
-                task = claim_scheduled_task(client, ["email_fetch"], worker_id)
+                task = claim_scheduled_task(client, task_types, worker_id)
                 if task:
                     await self._process_scheduled_task(client, worker_id, task)
                     return True
@@ -203,7 +218,19 @@ class WorkerPool:
             except EmailError as e:
                 logger.error(f"{worker_id}: Error claiming email: {e}")
 
-        # 3. Try approved events - requires Google Calendar
+        # 3. Try pending photos - requires LLM and Google Photos
+        if circuit_breaker.is_available("llm") and circuit_breaker.is_available("google_photos"):
+            try:
+                photo = claim_pending_photo(
+                    client, worker_id, lock_duration_seconds=600,
+                )
+                if photo:
+                    await self._process_photo(client, worker_id, photo)
+                    return True
+            except PhotosError as e:
+                logger.error(f"{worker_id}: Error claiming photo: {e}")
+
+        # 4. Try approved events - requires Google Calendar
         if circuit_breaker.is_available("google_calendar"):
             try:
                 event = claim_approved_event_for_sync(
@@ -223,7 +250,7 @@ class WorkerPool:
         worker_id: str,
         task: dict[str, Any],
     ) -> None:
-        """Process a scheduled task (e.g., email_fetch).
+        """Process a scheduled task (e.g., email_fetch, photo_fetch).
 
         Args:
             client: Supabase client.
@@ -231,25 +258,36 @@ class WorkerPool:
             task: The claimed scheduled task.
         """
         from selko.workers.email_fetch import process_email_fetch_task
+        from selko.workers.photo_fetch import process_photo_fetch_task
 
         task_id = task["id"]
         task_type = task["task_type"]
         payload = task["payload"]
 
+        # Map task types to their circuit breaker service
+        task_service_map = {
+            "email_fetch": "gmail",
+            "photo_fetch": "google_photos",
+        }
+
         logger.info(f"{worker_id}: Processing scheduled task {task_id}: {task_type}")
+
+        service_name = task_service_map.get(task_type, task_type)
 
         try:
             if task_type == "email_fetch":
                 await process_email_fetch_task(client, self.config, payload)
+            elif task_type == "photo_fetch":
+                await process_photo_fetch_task(client, self.config, payload)
             else:
                 raise ValueError(f"Unknown scheduled task type: {task_type}")
 
             complete_scheduled_task(client, task_id)
-            circuit_breaker.record_success("gmail")
+            circuit_breaker.record_success(service_name)
             logger.info(f"{worker_id}: Completed scheduled task {task_id}")
 
         except Exception as e:
-            circuit_breaker.record_failure("gmail")
+            circuit_breaker.record_failure(service_name)
             logger.error(f"{worker_id}: Scheduled task {task_id} failed: {e}", exc_info=True)
             try:
                 fail_scheduled_task(client, task_id, str(e))
@@ -299,6 +337,51 @@ class WorkerPool:
                 fail_email_processing(client, email_id, str(e))
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark email as failed: {fail_error}")
+
+    async def _process_photo(
+        self,
+        client: Any,
+        worker_id: str,
+        photo: dict[str, Any],
+    ) -> None:
+        """Process a photo for event extraction.
+
+        Args:
+            client: Supabase client.
+            worker_id: Unique identifier for this worker.
+            photo: The claimed photo record.
+        """
+        from selko.workers.photo_process import process_photo
+
+        photo_id = photo["id"]
+        filename = photo.get("filename", "(unknown)")[:50]
+
+        logger.info(f"{worker_id}: Processing photo {photo_id}: {filename}")
+
+        try:
+            async with asyncio.timeout(120):
+                await process_photo(client, self.config, photo)
+            complete_photo_processing(client, photo_id)
+            circuit_breaker.record_success("llm")
+            circuit_breaker.record_success("google_photos")
+            logger.info(f"{worker_id}: Completed photo {photo_id}")
+
+        except asyncio.TimeoutError:
+            error_msg = "Photo processing timed out after 120s"
+            circuit_breaker.record_failure("llm")
+            logger.error(f"{worker_id}: {error_msg} for photo {photo_id}")
+            try:
+                fail_photo_processing(client, photo_id, error_msg)
+            except Exception as fail_error:
+                logger.error(f"{worker_id}: Failed to mark photo as failed: {fail_error}")
+
+        except Exception as e:
+            circuit_breaker.record_failure("llm")
+            logger.error(f"{worker_id}: Photo {photo_id} failed: {e}", exc_info=True)
+            try:
+                fail_photo_processing(client, photo_id, str(e))
+            except Exception as fail_error:
+                logger.error(f"{worker_id}: Failed to mark photo as failed: {fail_error}")
 
     async def _process_event_sync(
         self,

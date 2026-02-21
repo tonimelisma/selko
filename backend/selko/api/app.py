@@ -18,15 +18,18 @@ from selko.api.routes import (
     events_router,
     health_router,
     integrations_router,
+    photos_router,
 )
 from selko.services.auth import AuthenticationError
 from selko.services.calendars import CalendarsError
 from selko.services.emails import EmailError
 from selko.services.events import EventsError
 from selko.services.integrations import IntegrationError, OAuthStateError
+from selko.services.photos import PhotosError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.workers.email_fetch import schedule_email_fetches
+from selko.workers.photo_fetch import schedule_photo_fetches
 from selko.workers.pool import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -102,17 +105,20 @@ async def lifespan(app: FastAPI):
         from selko.services.auth import get_service_client
         from selko.services.emails import unlock_expired_email_locks
         from selko.services.events import unlock_expired_event_locks
+        from selko.services.photos import unlock_expired_photo_locks
         from selko.services.scheduled_tasks import unlock_expired_scheduled_tasks
 
         service_client = get_service_client(config)
         emails_unlocked = unlock_expired_email_locks(service_client)
         events_unlocked = unlock_expired_event_locks(service_client)
+        photos_unlocked = unlock_expired_photo_locks(service_client)
         tasks_unlocked = unlock_expired_scheduled_tasks(service_client)
 
-        if emails_unlocked or events_unlocked or tasks_unlocked:
+        if emails_unlocked or events_unlocked or photos_unlocked or tasks_unlocked:
             logger.info(
                 f"Recovered stale jobs on startup: "
-                f"{emails_unlocked} emails, {events_unlocked} events, {tasks_unlocked} tasks"
+                f"{emails_unlocked} emails, {events_unlocked} events, "
+                f"{photos_unlocked} photos, {tasks_unlocked} tasks"
             )
 
         # Start APScheduler for cron-like periodic tasks
@@ -125,6 +131,16 @@ async def lifespan(app: FastAPI):
             minutes=15,
             id="email_fetch_scheduler",
             name="Email Fetch Scheduler",
+            max_instances=1,
+        )
+
+        # Photo fetch scheduler - creates photo_fetch tasks every 30 minutes
+        scheduler.add_job(
+            schedule_photo_fetches,
+            "interval",
+            minutes=30,
+            id="photo_fetch_scheduler",
+            name="Photo Fetch Scheduler",
             max_instances=1,
         )
 
@@ -206,6 +222,7 @@ def create_app() -> FastAPI:
     app.include_router(integrations_router)
     app.include_router(events_router)
     app.include_router(calendars_router)
+    app.include_router(photos_router)
 
     # Exception handlers for service errors
     @app.exception_handler(AuthenticationError)
@@ -254,6 +271,14 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={"error": "calendars_error", "detail": "Calendar operation failed"},
+        )
+
+    @app.exception_handler(PhotosError)
+    async def photos_error_handler(request: Request, exc: PhotosError):
+        logger.error(f"Photos service error: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "photos_error", "detail": "Photos operation failed"},
         )
 
     @app.exception_handler(RateLimitExceeded)

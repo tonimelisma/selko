@@ -28,6 +28,9 @@ CALENDAR_SCOPES = [
     "https://www.googleapis.com/auth/calendar.events",
 ]
 
+# Google Photos scopes
+PHOTOS_SCOPES = ["https://www.googleapis.com/auth/photoslibrary.readonly"]
+
 
 class IntegrationError(Exception):
     """Raised when integration operations fail."""
@@ -377,6 +380,8 @@ def initiate_oauth_flow(
         scopes = GMAIL_SCOPES
     elif provider == "google_calendar":
         scopes = CALENDAR_SCOPES
+    elif provider == "google_photos":
+        scopes = PHOTOS_SCOPES
     else:
         raise IntegrationError(f"Unsupported provider: {provider}")
 
@@ -459,6 +464,8 @@ def complete_oauth_flow(
         scopes = GMAIL_SCOPES
     elif provider == "google_calendar":
         scopes = CALENDAR_SCOPES
+    elif provider == "google_photos":
+        scopes = PHOTOS_SCOPES
     else:
         raise IntegrationError(f"Unsupported provider: {provider}")
 
