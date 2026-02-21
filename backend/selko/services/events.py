@@ -11,6 +11,7 @@ from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.config import Config
 from selko.services import calendars, event_processing, ics_parser
 from selko.services.llm_gateway import LLMGateway
+from selko.services.retry_utils import calculate_retry_delay
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ def mark_email_status(
     """
     update_data: dict[str, Any] = {"processing_status": status}
     if status == "processing":
-        update_data["processed_at"] = datetime.now().isoformat()
+        update_data["processed_at"] = datetime.now(timezone.utc).isoformat()
     if error is not None:
         update_data["processing_error"] = error
     supabase_client.table("emails").update(update_data).eq("id", email_id).execute()
@@ -499,7 +500,7 @@ def update_event(
         "location": merged_data.get("location"),
         "description": merged_data.get("description"),
         "importance": merged_data.get("importance", "action_required"),
-        "updated_at": datetime.now().isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     # Re-queue synced events for re-sync so updated data reaches Google Calendar
@@ -810,7 +811,7 @@ def complete_event_sync(client: Client, event_id: str, google_event_id: str) -> 
         client.table("events").update({
             "status": "synced",
             "google_calendar_event_id": google_event_id,
-            "synced_at": datetime.now().isoformat(),
+            "synced_at": datetime.now(timezone.utc).isoformat(),
             "sync_error": None,
             "locked_by": None,
             "locked_until": None,
@@ -859,12 +860,8 @@ def fail_event_sync(
         }
 
         if should_retry:
-            # Exponential backoff: 60s, 120s, 240s, ... capped at 3600s
-            base_delay = 60  # seconds
-            max_delay = 3600  # 1 hour
-            delay = min(base_delay * (2 ** (sync_attempts - 1)), max_delay)
-            next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
-            update_data["next_retry_at"] = next_retry_at.isoformat()
+            delay, next_retry_at = calculate_retry_delay(sync_attempts)
+            update_data["next_retry_at"] = next_retry_at
         else:
             # Dead letter: permanently failed
             update_data["dead_letter_reason"] = error

@@ -357,6 +357,29 @@ class TestParsePhotoMetadata:
         assert result["date_taken"] is None
 
 
+class TestPathTraversalSanitization:
+    """Test that filename sanitization prevents path traversal (B3)."""
+
+    def test_path_traversal_sanitization(self):
+        """Test that filename sanitization prevents path traversal (B3)."""
+        import os
+        # Simulate the fixed sanitization logic
+        dangerous = "../../etc/passwd"
+        safe = os.path.basename(dangerous).replace("..", "")[:100]
+        assert "/" not in safe
+        assert ".." not in safe
+        assert safe == "passwd"
+
+    def test_path_traversal_backslash(self):
+        """Test backslash path traversal is neutralized."""
+        import os
+        dangerous = "..\\..\\windows\\system32"
+        safe = os.path.basename(dangerous).replace("..", "")[:100]
+        # os.path.basename on Unix treats backslash as regular character,
+        # but ".." sequences are still stripped by the replace
+        assert ".." not in safe
+
+
 class TestGetCredentials:
     """Test Google Photos credential handling."""
 

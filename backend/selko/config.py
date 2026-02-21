@@ -71,6 +71,11 @@ class Config:
     worker_idle_sleep_seconds: float = 1.0
     worker_error_backoff_seconds: float = 5.0
 
+    # Processing timeouts (seconds)
+    email_processing_timeout: int = 120
+    photo_processing_timeout: int = 120
+    event_sync_timeout: int = 60
+
     # Background processing (workers + scheduler)
     enable_background_processing: bool = False
 
@@ -196,6 +201,9 @@ def load_config(env_override: Optional[str] = None) -> Config:
         worker_pool_size=int(os.getenv("WORKER_POOL_SIZE", "3")),
         worker_idle_sleep_seconds=float(os.getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
         worker_error_backoff_seconds=float(os.getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
+        email_processing_timeout=int(os.getenv("EMAIL_PROCESSING_TIMEOUT", "120")),
+        photo_processing_timeout=int(os.getenv("PHOTO_PROCESSING_TIMEOUT", "120")),
+        event_sync_timeout=int(os.getenv("EVENT_SYNC_TIMEOUT", "60")),
         enable_background_processing=os.getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true",
         allowed_origins=_parse_allowed_origins(),
         max_pdf_pages_for_llm=int(os.getenv("MAX_PDF_PAGES_FOR_LLM", "10")),
