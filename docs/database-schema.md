@@ -36,6 +36,7 @@ OAuth tokens for external providers.
 | `scopes` | text[] | OAuth scopes granted |
 | `provider_email` | text | Email associated with integration |
 | `last_history_id` | text | Gmail sync cursor |
+| `last_photo_sync_at` | timestamptz | Last Google Photos sync time |
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
 
@@ -270,6 +271,46 @@ Audit log of all LLM API calls with prompts, responses, token usage, latency, an
 - `(operation_type)` — filter by operation type
 - `(success) WHERE success = false` — quickly find failed calls
 
+### `photos`
+
+Synced Google Photos with status-based worker claiming for LLM processing.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Photo ID |
+| `user_id` | uuid, FK | References `users.id` |
+| `google_photo_id` | text | Google Photos media item ID |
+| `filename` | text | Original filename |
+| `description` | text | Photo description from Google Photos |
+| `mime_type` | text | MIME type (image/jpeg, image/png, etc.) |
+| `date_taken` | timestamptz | When the photo was taken |
+| `width` | integer | Photo width in pixels |
+| `height` | integer | Photo height in pixels |
+| `location_latitude` | numeric | GPS latitude |
+| `location_longitude` | numeric | GPS longitude |
+| `location_display_name` | text | Human-readable location name |
+| `storage_path` | text | Supabase Storage path |
+| `content_hash` | text | SHA-256 for deduplication |
+| `processing_status` | text | `pending`, `processing`, `processed`, `failed`, `skipped` |
+| `processing_error` | text | Last processing error message |
+| `processed_at` | timestamptz | When processing completed |
+| `locked_until` | timestamptz | Worker lock expiration |
+| `locked_by` | text | Worker ID that claimed this photo |
+| `attempts` | integer | Number of processing attempts (default: 0) |
+| `max_attempts` | integer | Maximum attempts before permanent failure (default: 3) |
+| `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry (60s * 2^attempts, max 1h) |
+| `dead_letter_reason` | text, nullable | Reason for permanent failure (set when max_attempts exceeded) |
+| `dead_letter_at` | timestamptz, nullable | When the photo was moved to dead letter |
+| `created_at` | timestamptz | Auto-set |
+
+**RLS Policies:** Users manage own photos only. Service role has full access.
+
+**Indexes:**
+- `(processing_status, created_at) WHERE processing_status = 'pending'` for efficient claiming
+- `(user_id, created_at DESC)` for user photo listing
+
+**Unique Constraint:** `(user_id, google_photo_id)` prevents duplicate photo records.
+
 ## RPC Functions
 
 ### Claiming Functions
@@ -277,6 +318,7 @@ Audit log of all LLM API calls with prompts, responses, token usage, latency, an
 | Function | Description |
 |----------|-------------|
 | `claim_unprocessed_email(worker_id, lock_duration)` | Atomically claim next pending email |
+| `claim_pending_photo(worker_id, lock_duration)` | Atomically claim next pending photo |
 | `claim_approved_event(worker_id, lock_duration)` | Atomically claim next approved event |
 | `claim_next_scheduled_task(task_types, worker_id, lock_duration)` | Atomically claim next scheduled task |
 
@@ -285,6 +327,7 @@ Audit log of all LLM API calls with prompts, responses, token usage, latency, an
 | Function | Description |
 |----------|-------------|
 | `unlock_expired_email_locks()` | Reset expired email locks to pending |
+| `unlock_expired_photo_locks()` | Reset expired photo locks to pending |
 | `unlock_expired_event_locks()` | Reset expired event locks to approved |
 | `unlock_expired_scheduled_tasks()` | Reset expired scheduled task locks |
 
@@ -302,7 +345,7 @@ Audit log of all LLM API calls with prompts, responses, token usage, latency, an
 |---------|-------|
 | Access | Private (not publicly accessible) |
 | Max file size | 50 MB |
-| Path format | `{user_id}/{unique_id}_{filename}` |
+| Path format | `{user_id}/{unique_id}_{filename}` (emails) or `{user_id}/photos/{unique_id}_{filename}` (photos) |
 
 **RLS Policies:** Users can only access files in their own folder (`{user_id}/`).
 
