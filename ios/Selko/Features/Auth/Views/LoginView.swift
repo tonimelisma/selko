@@ -31,7 +31,7 @@ private struct PlaceholderTextField: UIViewRepresentable {
         field.keyboardType = keyboardType
         field.autocorrectionType = .no
         field.autocapitalizationType = .none
-        field.accessibilityLabel = "Email address"
+        field.accessibilityLabel = String(localized: "Email address")
         field.accessibilityIdentifier = accessibilityIdentifier
         field.delegate = context.coordinator
         field.setContentHuggingPriority(.defaultHigh, for: .vertical)
