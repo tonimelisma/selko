@@ -86,10 +86,8 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 ✓ Conference registrations (action_required)
 
 **NOT events — do NOT extract these:**
-An event is something the recipient would put on their personal calendar to attend, participate in, or prepare for. Do NOT extract:
-✗ Transactional emails: order confirmations, shipping notifications, receipts, payment reminders, subscription renewals
-✗ Administrative/informational: account statements, terms updates, password resets, surveys, newsletters without specific event invitations
-✗ Dates that aren't events: delivery estimates, billing cycles, payment due dates, comment period deadlines, regulatory deadlines
+An event is something the recipient would put on their personal calendar to attend, participate in, or prepare for.
+If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) with no event the recipient needs to attend or prepare for, set events_found=false.
 
 **Extraction rules:**
 - Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events
@@ -207,7 +205,7 @@ def extract_calendar_events(
     except (KeyError, ValueError):
         logger.warning(f"Invalid timezone '{user_tz_name}', falling back to America/New_York")
         user_tz = ZoneInfo("America/New_York")
-    current_date = datetime.now(user_tz).strftime("%Y-%m-%d")
+    current_date = email_metadata.get("current_date_override") or datetime.now(user_tz).strftime("%Y-%m-%d")
     prompt = _build_prompt(email_metadata, current_date)
     content_parts = _build_content_parts(prompt, email_text, attachments, config=config)
 
