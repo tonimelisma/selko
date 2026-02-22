@@ -1,9 +1,9 @@
 {
-  "name": "government_notice_13",
-  "category": "no_events",
-  "description": "Real-world city government notification about safety element update with comment period but no specific meeting dates",
+  "name": "government_comment_period_13",
+  "category": "school",
+  "description": "Real-world city government notification about safety element update with 30-day public comment period",
   "difficulty": "medium",
-  "tags": ["government", "city", "public-comment", "negative-test", "real-world", "images"],
+  "tags": ["government", "city", "public-comment", "real-world", "images"],
   "input": {
     "gmail_id": "eval-noev-013",
     "thread_id": "thread-noev-013",
@@ -27,9 +27,17 @@
     ]
   },
   "expected": {
-    "events_found": false,
-    "event_count": 0,
-    "events": []
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Public Comment Period - Safety Element",
+        "start_datetime": "2026-02-09",
+        "end_datetime": "2026-03-11",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
   },
-  "notes": "Real-world city government notification about Safety Element update. Mentions a 30-day public comment period (Feb 9 - Mar 11) and future Planning Commission/City Council meetings, but no specific meeting dates or times are given. The comment period is a deadline range, not a calendar event. Images are city logo, social media icons, and GovDelivery branding. Should not extract a calendar event."
+  "notes": "Real-world city government notification about Safety Element update. Has a 30-day public comment period (Feb 9 - Mar 11) which is a calendar-worthy deadline range. Residents may submit written comments via email to rustick@walnutcreekca.gov. Images are city logo, social media icons, and GovDelivery branding."
 }

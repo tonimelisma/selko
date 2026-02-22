@@ -31,13 +31,13 @@
     "events": [
       {
         "title": "Quarterly Planning Meeting",
-        "start_datetime": "2026-03-10",
-        "location": null,
-        "description": "Quarterly planning meeting",
-        "all_day": true,
+        "start_datetime": "2026-03-10T09:00:00",
+        "end_datetime": "2026-03-10T12:00:00",
+        "location": "Main Conference Room, Building A",
+        "all_day": false,
         "importance": "action_required"
       }
     ]
   },
-  "notes": "Subject has 'March 10th' but body has NO time or location (those are in .txt attachment). Expect all-day event with no location."
+  "notes": "Subject has 'March 10th', body says 'Details in attachment'. The .txt attachment has specific time (9 AM - 12 PM) and location (Main Conference Room, Building A). LLM should extract details from both body and attachment."
 }
