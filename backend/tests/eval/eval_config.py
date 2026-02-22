@@ -88,9 +88,6 @@ EVAL_MODELS = [
     # Other providers — single mode (no thinking support)
     ("moonshot", "kimi-k2.5", "none"),
     ("zai", "glm-4.6v-flash", "none"),
-    ("deepseek", "deepseek-chat", "none"),
-    ("deepseek", "deepseek-reasoner", "none"),
-    ("minimax", "MiniMax-M2.5", "none"),
 ]
 
 # Monthly cost projection tiers
