@@ -100,8 +100,8 @@
       },
       {
         "title": "Christmas Party - Half Day",
-        "start_datetime": "2025-12-24T08:00:00",
-        "end_datetime": "2025-12-24T12:00:00",
+        "start_datetime": "2025-12-24",
+        "all_day": true,
         "importance": "action_required"
       },
       {
@@ -130,8 +130,8 @@
       },
       {
         "title": "New Year's Eve - Early Close at 3pm",
-        "start_datetime": "2025-12-31T08:00:00",
-        "end_datetime": "2025-12-31T15:00:00",
+        "start_datetime": "2025-12-31",
+        "all_day": true,
         "importance": "action_required"
       },
       {

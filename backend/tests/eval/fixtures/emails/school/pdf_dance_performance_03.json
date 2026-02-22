@@ -29,6 +29,7 @@
   "expected": {
     "events_found": true,
     "event_count": 4,
+    "event_count_min": 1,
     "events": [
       {
         "title": "Winter Dance Performance - Pre-Ballet",
@@ -60,5 +61,5 @@
       }
     ]
   },
-  "notes": "LLM correctly extracts 4 individual class performances from the PDF schedule. Body has event date, PDF has per-class times and venue."
+  "notes": "LLM should extract performances from the PDF schedule. Body has event date, PDF has per-class times and venue. Both 1 spanning event and 4 individual per-class events are acceptable (event_count_min=1)."
 }

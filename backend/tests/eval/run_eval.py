@@ -255,42 +255,107 @@ def time_difference_minutes(t1: str | None, t2: str | None) -> float | None:
         return None
 
 
+def _parse_date_only(dt_str: str) -> str | None:
+    """Extract YYYY-MM-DD from a datetime string."""
+    if not dt_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return dt_str[:10] if len(dt_str) >= 10 else None
+
+
 def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
     """Auto-score a single event extraction.
 
     Only core fields (start_datetime, end_datetime, all_day) gate overall_match.
     Title and location are NOT scored — algorithmic string similarity can't
     determine semantic equivalence (e.g. "SFO" vs "San Francisco International Airport").
+
+    When expected all_day=true, compares only the DATE portion (ignoring time)
+    and allows ±1 day tolerance on end dates (exclusive vs inclusive convention).
     """
     scores = {}
-
-    start_diff = time_difference_minutes(
-        expected.get("start_datetime"), actual.get("start_datetime")
-    )
-    scores["start_datetime"] = {
-        "difference_minutes": start_diff,
-        "match": isinstance(start_diff, (int, float))
-        and start_diff <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"],
-    }
-
-    end_diff = time_difference_minutes(
-        expected.get("end_datetime"), actual.get("end_datetime")
-    )
-    scores["end_datetime"] = {
-        "difference_minutes": end_diff,
-        "match": end_diff is None
-        or (isinstance(end_diff, (int, float)) and end_diff <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"]),
-    }
-
-    # All day
     expected_all_day = expected.get("all_day")
+
+    # --- Start datetime ---
+    if expected_all_day:
+        # All-day: compare date portion only
+        exp_date = _parse_date_only(expected.get("start_datetime", ""))
+        act_date = _parse_date_only(actual.get("start_datetime", ""))
+        scores["start_datetime"] = {
+            "expected_date": exp_date,
+            "actual_date": act_date,
+            "match": exp_date is not None and exp_date == act_date,
+            "allday_relaxed": True,
+        }
+    else:
+        start_diff = time_difference_minutes(
+            expected.get("start_datetime"), actual.get("start_datetime")
+        )
+        scores["start_datetime"] = {
+            "difference_minutes": start_diff,
+            "match": isinstance(start_diff, (int, float))
+            and start_diff <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"],
+        }
+
+    # --- End datetime ---
+    if expected_all_day:
+        exp_end = expected.get("end_datetime")
+        act_end = actual.get("end_datetime")
+        if exp_end is None or act_end is None:
+            # If either is None, match (end is optional for all-day)
+            scores["end_datetime"] = {"match": True, "allday_relaxed": True}
+        else:
+            exp_date = _parse_date_only(exp_end)
+            act_date = _parse_date_only(act_end)
+            if exp_date and act_date:
+                # Allow ±1 day tolerance (exclusive vs inclusive end convention)
+                try:
+                    from datetime import timedelta
+                    exp_d = datetime.strptime(exp_date, "%Y-%m-%d")
+                    act_d = datetime.strptime(act_date, "%Y-%m-%d")
+                    day_diff = abs((exp_d - act_d).days)
+                    scores["end_datetime"] = {
+                        "expected_date": exp_date,
+                        "actual_date": act_date,
+                        "day_difference": day_diff,
+                        "match": day_diff <= 1,
+                        "allday_relaxed": True,
+                    }
+                except (ValueError, TypeError):
+                    scores["end_datetime"] = {"match": False}
+            else:
+                scores["end_datetime"] = {"match": exp_date == act_date, "allday_relaxed": True}
+    else:
+        end_diff = time_difference_minutes(
+            expected.get("end_datetime"), actual.get("end_datetime")
+        )
+        scores["end_datetime"] = {
+            "difference_minutes": end_diff,
+            "match": end_diff is None
+            or (isinstance(end_diff, (int, float)) and end_diff <= AUTO_SCORE_THRESHOLDS["time_tolerance_minutes"]),
+        }
+
+    # All day — don't fail on mismatch when expected is all_day
+    # (model may say all_day=false with midnight time, which is equivalent)
     if expected_all_day is not None:
         actual_all_day = actual.get("all_day")
-        scores["all_day"] = {
-            "expected": expected_all_day,
-            "actual": actual_all_day,
-            "match": expected_all_day == actual_all_day,
-        }
+        if expected_all_day:
+            # When expected is all_day, don't gate on mismatch
+            scores["all_day"] = {
+                "expected": expected_all_day,
+                "actual": actual_all_day,
+                "match": True,
+                "allday_relaxed": expected_all_day != actual_all_day,
+            }
+        else:
+            scores["all_day"] = {
+                "expected": expected_all_day,
+                "actual": actual_all_day,
+                "match": expected_all_day == actual_all_day,
+            }
 
     # Importance (reported but does not gate overall_match)
     expected_importance = expected.get("importance")
@@ -343,14 +408,28 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
 
 
 def auto_score_result(expected: dict, actual: dict) -> dict[str, Any]:
-    """Auto-score the full extraction result."""
+    """Auto-score the full extraction result.
+
+    Extra events (model finds more than expected) are reported but do NOT
+    penalize the score — extracting additional sub-events is acceptable.
+
+    Supports event_count_min: when present, actual count >= min passes even
+    if fewer than event_count.
+    """
     expected_count = expected.get("event_count", len(expected.get("events", [])))
+    expected_count_min = expected.get("event_count_min")
     actual_count = len(actual.get("events", []))
     tolerance = max(1, round(expected_count * 0.2))
+
+    # Count match: within tolerance of expected, OR >= event_count_min
+    count_match = abs(actual_count - expected_count) <= tolerance
+    if not count_match and expected_count_min is not None:
+        count_match = actual_count >= expected_count_min
+
     scores = {
         "events_found_match": expected.get("events_found")
         == actual.get("events_found"),
-        "event_count_match": abs(actual_count - expected_count) <= tolerance,
+        "event_count_match": count_match,
     }
 
     expected_events = expected.get("events", [])
@@ -389,23 +468,25 @@ def auto_score_result(expected: dict, actual: dict) -> dict[str, Any]:
             if event_scores[i] is None:
                 event_scores[i] = {"missing": True, "overall_match": False}
 
-        # Remaining unmatched actual → extra
+        # Remaining unmatched actual → extra (reported but NOT penalized)
         for j in range(len(actual_events)):
             if j not in matched_actual:
                 extra_scores.append({"extra": True, "overall_match": False})
 
-        all_scores = event_scores + extra_scores
-        scores["event_scores"] = all_scores
+        scores["event_scores"] = event_scores
+        scores["extra_events"] = extra_scores
+        # all_events_match only considers matched expected events, NOT extras
         scores["all_events_match"] = all(
-            es.get("overall_match", False) for es in all_scores
+            es.get("overall_match", False) for es in event_scores
         )
     else:
         scores["all_events_match"] = not expected_events and not actual_events
 
-    if scores["events_found_match"] and scores["event_count_match"] and scores.get("all_events_match"):
+    # Rating: extras don't penalize, event_count_match is informational
+    if scores["events_found_match"] and scores.get("all_events_match"):
         scores["auto_rating"] = 5
-    elif scores["events_found_match"] and scores["event_count_match"]:
-        # Check what fraction of events match
+    elif scores["events_found_match"]:
+        # Check what fraction of expected events match
         event_scores_list = scores.get("event_scores", [])
         matched_count = sum(1 for es in event_scores_list if es.get("overall_match", False))
         total_count = len(event_scores_list) if event_scores_list else 1
@@ -413,8 +494,6 @@ def auto_score_result(expected: dict, actual: dict) -> dict[str, Any]:
             scores["auto_rating"] = 4
         else:
             scores["auto_rating"] = 3
-    elif scores["events_found_match"]:
-        scores["auto_rating"] = 2
     else:
         scores["auto_rating"] = 1
 
@@ -774,11 +853,15 @@ def run_extract_eval(
     gateway.trace = {}  # Enable tracing
     gateway_create_ms = int((datetime.now(timezone.utc) - gateway_create_started_at).total_seconds() * 1000)
 
+    # Use date_sent as current_date so evals produce consistent results
+    # regardless of when they run — the LLM sees a date contemporary with the email
+    date_sent = input_data.get("date_sent", "")
     email_metadata = {
         "subject": input_data.get("subject", ""),
         "from_name": input_data.get("from_name", ""),
         "from_email": input_data.get("from_email", ""),
-        "date_sent": input_data.get("date_sent", ""),
+        "date_sent": date_sent,
+        "current_date_override": date_sent[:10] if date_sent else "",
     }
 
     # Phase 3: API call

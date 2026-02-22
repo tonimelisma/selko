@@ -42,18 +42,26 @@
   },
   "expected": {
     "events_found": true,
-    "event_count": 1,
+    "event_count": 2,
+    "event_count_min": 1,
     "events": [
       {
         "title": "Spring 2026 Registration Opens",
         "start_datetime": "2026-02-18T12:00:00",
         "end_datetime": null,
         "location": null,
-        "description": "Spring 2026 registration opens for Arts + Rec classes including youth programs, preschool, adult classes, and intergenerational programs",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "Community Arts Preschool Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
         "all_day": false,
         "importance": "action_required"
       }
     ]
   },
-  "notes": "Real-world City of Walnut Creek Arts + Rec email announcing spring registration opening. Has a specific date and time (February 18 at 12:00 PM) which many parents would add to their calendar as a reminder to register. Borderline case - 'registration opens' is an action deadline, not an event to attend. Images include program photos, class highlights, activity guide images, and social media/branding. Medium difficulty due to borderline nature of whether registration opening is a calendar event."
+  "notes": "Real-world City of Walnut Creek Arts + Rec email announcing spring registration opening. Has a specific date and time (February 18 at 12:00 PM). Also mentions preschool registration opening separately on same date. Models may extract 1 combined event or 2 separate events — both are acceptable (event_count_min=1)."
 }
