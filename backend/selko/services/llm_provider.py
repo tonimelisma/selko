@@ -125,14 +125,22 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.z.ai/api/paas/v4/",
         "pricing": {"input": 0.00, "output": 0.00},
     },
-    # --- Alibaba / Qwen (7 models) ---
+    # --- Alibaba / Qwen (8 models) ---
     "qwen3.5-plus": {
         "provider": "qwen",
         "vision": True,
         "json_schema": False,
         "qwen_thinking": True,
         "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.80, "output": 6.40},
+        "pricing": {"input": 0.40, "output": 2.40},
+    },
+    "qwen3.5-flash": {
+        "provider": "qwen",
+        "vision": True,
+        "json_schema": False,
+        "qwen_thinking": True,
+        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        "pricing": {"input": 0.10, "output": 0.40},
     },
     "qwen3-vl-plus": {
         "provider": "qwen",
@@ -140,7 +148,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "json_schema": False,
         "qwen_thinking": True,
         "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.40, "output": 3.20},
+        "pricing": {"input": 0.20, "output": 1.60},
     },
     "qwen3-vl-flash": {
         "provider": "qwen",
@@ -148,7 +156,7 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "json_schema": False,
         "qwen_thinking": True,
         "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.08, "output": 0.68},
+        "pricing": {"input": 0.05, "output": 0.40},
     },
     "qwen-vl-max": {
         "provider": "qwen",
