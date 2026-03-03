@@ -53,8 +53,8 @@ MERGE_SCORE_THRESHOLDS = {
 }
 
 # Provider and model configuration (env overrides)
-DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", os.environ.get("SELKO_EVAL_PROVIDER", "gemini"))
-DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "gemini-3-flash-preview"))
+DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", os.environ.get("SELKO_EVAL_PROVIDER", "qwen"))
+DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "qwen3.5-flash"))
 
 # Default models for multi-model evals: (provider, model, thinking_level)
 # Thinking levels: "none", "low", "medium" — providers without thinking support ignore the level

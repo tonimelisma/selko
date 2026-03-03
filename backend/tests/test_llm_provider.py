@@ -103,19 +103,19 @@ class TestModelRegistry:
 class TestCreateProvider:
     """Test provider factory function."""
 
-    def test_create_gemini_provider(self):
-        """Test creating a Gemini provider."""
+    def test_create_default_qwen_provider(self):
+        """Test creating the default Qwen provider."""
         config = MagicMock()
-        config.llm_provider = "gemini"
+        config.llm_provider = "qwen"
         config.llm_model = None
-        config.gemini_api_key = "test-key"
+        config.alibaba_api_key = "test-key"
 
-        with patch("google.genai.Client"):
+        with patch("openai.OpenAI"):
             provider = create_provider(config)
 
-        assert isinstance(provider, GeminiProvider)
-        assert provider.model == "gemini-3-flash-preview"
-        assert provider.provider_name == "gemini"
+        assert isinstance(provider, OpenAICompatibleProvider)
+        assert provider.model == "qwen3.5-flash"
+        assert provider.provider_name == "qwen"
 
     def test_create_openai_compatible_provider(self):
         """Test creating an OpenAI-compatible provider."""

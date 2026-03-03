@@ -283,7 +283,7 @@ PROVIDER_DEFAULT_MODEL = {
     "gemini": "gemini-3-flash-preview",
     "moonshot": "kimi-k2.5",
     "zai": "glm-4.6v-flash",
-    "qwen": "qwen3-vl-flash",
+    "qwen": "qwen3.5-flash",
     "deepseek": "deepseek-chat",
     "minimax": "MiniMax-M2.5",
     "openai": "gpt-5-nano",
@@ -973,7 +973,7 @@ def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
     """Create an LLM provider from configuration.
 
     Uses LLM_PROVIDER to select the API key and LLM_MODEL to select
-    the model from the registry. Falls back to Gemini with default model.
+    the model from the registry. Falls back to Qwen with default model.
 
     Args:
         config: Config object with provider settings and API keys.
@@ -987,7 +987,7 @@ def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
     Raises:
         LLMProviderError: If API key is missing or model is invalid.
     """
-    provider_name = getattr(config, "llm_provider", "gemini")
+    provider_name = getattr(config, "llm_provider", "qwen")
     model_name = getattr(config, "llm_model", None)
 
     # Determine model

@@ -6,7 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from selko.api.schemas.calendar import CalendarEventExtraction, EventExtractionResponse
+from datetime import datetime, timezone
+
+from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
 from selko.services.event_processing import (
     compare_events,
@@ -62,6 +64,43 @@ def mock_gateway(mock_provider):
     """Create a mock LLMGateway with mock provider."""
     gateway = LLMGateway(mock_provider)
     return gateway
+
+
+class TestT24DatetimeSanitization:
+    """Regression tests for T24:XX:XX datetime handling (Qwen LLM output)."""
+
+    def test_t24_converts_to_next_day_midnight(self):
+        """T24:00:00Z should become next day T00:00:00Z."""
+        event = CalendarEvent(
+            title="Test",
+            start_datetime="2025-06-15T24:00:00Z",
+            description="test",
+        )
+        assert event.start_datetime == datetime(2025, 6, 16, 0, 0, 0, tzinfo=timezone.utc)
+
+    def test_t24_end_datetime(self):
+        """T24:00:00 on end_datetime should also be sanitized."""
+        event = CalendarEvent(
+            title="Test",
+            end_datetime="2025-12-31T24:00:00Z",
+            description="test",
+        )
+        assert event.end_datetime == datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+    def test_normal_datetime_unchanged(self):
+        """Normal datetimes should pass through unmodified."""
+        event = CalendarEvent(
+            title="Test",
+            start_datetime="2025-06-15T09:30:00Z",
+            description="test",
+        )
+        assert event.start_datetime == datetime(2025, 6, 15, 9, 30, 0, tzinfo=timezone.utc)
+
+    def test_none_datetime_unchanged(self):
+        """None datetimes should remain None."""
+        event = CalendarEvent(title="Test", description="test")
+        assert event.start_datetime is None
+        assert event.end_datetime is None
 
 
 class TestExtractCalendarEvents:

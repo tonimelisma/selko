@@ -1,9 +1,10 @@
 """Calendar event Pydantic schemas for LLM extraction."""
 
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CalendarEvent(BaseModel):
@@ -16,6 +17,23 @@ class CalendarEvent(BaseModel):
     end_datetime: Optional[datetime] = Field(
         None, description="The event end date and time (ISO 8601)"
     )
+
+    @field_validator("start_datetime", "end_datetime", mode="before")
+    @classmethod
+    def sanitize_t24_datetime(cls, v: object) -> object:
+        """Fix T24:XX:XX datetimes that some LLMs produce.
+
+        ISO 8601 allows T24:00:00 to mean midnight ending the day, but
+        pydantic's datetime parser rejects hour=24. Convert to T00 + 1 day.
+        """
+        if not isinstance(v, str):
+            return v
+        m = re.match(r"^(\d{4}-\d{2}-\d{2})T24:(\d{2}:\d{2}.*)$", v)
+        if not m:
+            return v
+        base_date = datetime.strptime(m.group(1), "%Y-%m-%d")
+        next_day = base_date + timedelta(days=1)
+        return f"{next_day.strftime('%Y-%m-%d')}T00:{m.group(2)}"
     all_day: bool = Field(False, description="Whether this is an all-day event")
     location: Optional[str] = Field(None, description="The event location or venue")
     description: str = Field(
