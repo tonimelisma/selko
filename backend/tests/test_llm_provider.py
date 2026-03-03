@@ -28,9 +28,9 @@ from selko.services.llm_provider import (
 class TestModelRegistry:
     """Test the model registry."""
 
-    def test_registry_has_28_models(self):
-        """Test that all 28 models are in the registry."""
-        assert len(MODEL_REGISTRY) == 28
+    def test_registry_has_29_models(self):
+        """Test that all 29 models are in the registry."""
+        assert len(MODEL_REGISTRY) == 29
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -85,7 +85,7 @@ class TestModelRegistry:
 
     def test_qwen_thinking_models_have_flag(self):
         """Test that Qwen3-VL and Qwen3.5 models have qwen_thinking flag."""
-        thinking_models = ["qwen3.5-plus", "qwen3-vl-plus", "qwen3-vl-flash"]
+        thinking_models = ["qwen3.5-plus", "qwen3.5-flash", "qwen3-vl-plus", "qwen3-vl-flash"]
         for model_name in thinking_models:
             assert MODEL_REGISTRY[model_name].get("qwen_thinking") is True, (
                 f"{model_name} should have qwen_thinking=True"

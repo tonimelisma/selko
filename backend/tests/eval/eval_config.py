@@ -76,14 +76,15 @@ EVAL_MODELS = [
     # Note: Sonnet removed from defaults (too expensive for routine evals — $3/$15 per MTok).
     # Still accessible via: --provider anthropic --model claude-sonnet-4-6
     ("anthropic", "claude-haiku-4-5-20251001", "none"),
-    # Qwen — thinking-capable models at none/low/medium, older at none
+    # Qwen — thinking mode tested but dropped from defaults:
+    # - qwen3.5-plus thinking: marginal quality gain (+2 pass at low), 3-5x cost/latency
+    # - qwen3.5-flash thinking: quality *degrades* (3→5→6 fails), not worth the cost
+    # - qwen3-vl-plus thinking: catastrophically broken (returns bare floats, not JSON)
+    # Still accessible via: --provider qwen --model <model> --thinking low/medium
     ("qwen", "qwen3.5-plus", "none"),
-    ("qwen", "qwen3.5-plus", "low"),
-    ("qwen", "qwen3.5-plus", "medium"),
+    ("qwen", "qwen3.5-flash", "none"),
     ("qwen", "qwen3-vl-flash", "none"),
     ("qwen", "qwen3-vl-plus", "none"),
-    ("qwen", "qwen3-vl-plus", "low"),
-    ("qwen", "qwen3-vl-plus", "medium"),
     ("qwen", "qwen-vl-max", "none"),
     # Other providers — single mode (no thinking support)
     ("moonshot", "kimi-k2.5", "none"),
