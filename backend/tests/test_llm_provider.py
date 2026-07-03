@@ -28,9 +28,9 @@ from selko.services.llm_provider import (
 class TestModelRegistry:
     """Test the model registry."""
 
-    def test_registry_has_29_models(self):
-        """Test that all 29 models are in the registry."""
-        assert len(MODEL_REGISTRY) == 29
+    def test_registry_has_30_models(self):
+        """Test that all 30 models are in the registry."""
+        assert len(MODEL_REGISTRY) == 30
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -76,8 +76,14 @@ class TestModelRegistry:
             )
 
     def test_sonnet_has_adaptive_thinking(self):
-        """Test that Sonnet 4.6 has adaptive_thinking flag."""
+        """Test that Sonnet models have the adaptive_thinking flag."""
+        assert MODEL_REGISTRY["claude-sonnet-5"].get("adaptive_thinking") is True
         assert MODEL_REGISTRY["claude-sonnet-4-6"].get("adaptive_thinking") is True
+
+    def test_anthropic_default_is_sonnet_5(self):
+        """Test that the Anthropic provider defaults to Claude Sonnet 5."""
+        assert PROVIDER_DEFAULT_MODEL["anthropic"] == "claude-sonnet-5"
+        assert "claude-sonnet-5" in MODEL_REGISTRY
 
     def test_haiku_has_no_adaptive_thinking(self):
         """Test that Haiku 4.5 does not have adaptive_thinking flag."""
