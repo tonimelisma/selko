@@ -250,7 +250,14 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.openai.com/v1",
         "pricing": {"input": 0.05, "output": 0.40},
     },
-    # --- Anthropic / Claude (2 models) ---
+    # --- Anthropic / Claude (3 models) ---
+    "claude-sonnet-5": {
+        "provider": "anthropic",
+        "vision": True,
+        "json_schema": False,
+        "adaptive_thinking": True,
+        "pricing": {"input": 3.00, "output": 15.00},
+    },
     "claude-sonnet-4-6": {
         "provider": "anthropic",
         "vision": True,
@@ -287,7 +294,7 @@ PROVIDER_DEFAULT_MODEL = {
     "deepseek": "deepseek-chat",
     "minimax": "MiniMax-M2.5",
     "openai": "gpt-5-nano",
-    "anthropic": "claude-sonnet-4-6",
+    "anthropic": "claude-sonnet-5",
 }
 
 

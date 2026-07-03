@@ -40,7 +40,7 @@ class Config:
     google_client_secret: Optional[str] = None
 
     # LLM provider configuration
-    llm_provider: str = "qwen"  # gemini|moonshot|zai|qwen|deepseek|minimax|openai|anthropic
+    llm_provider: str = "anthropic"  # gemini|moonshot|zai|qwen|deepseek|minimax|openai|anthropic
     llm_model: Optional[str] = None  # specific model ID (None = provider default)
 
     # API keys (one per provider)
@@ -186,7 +186,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
         google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-        llm_provider=os.getenv("LLM_PROVIDER", "qwen"),
+        llm_provider=os.getenv("LLM_PROVIDER", "anthropic"),
         llm_model=os.getenv("LLM_MODEL") or None,
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
         moonshot_api_key=os.getenv("MOONSHOT_API_KEY"),
