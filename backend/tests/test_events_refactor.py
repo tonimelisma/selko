@@ -26,11 +26,17 @@ from selko.services.events import (
 
 
 def _make_calendar_event(**overrides):
-    """Build a CalendarEvent with sensible defaults."""
+    """Build a CalendarEvent with sensible defaults.
+
+    Default start/end are dynamically future-dated so events aren't dropped by
+    the past-event filter in save_extracted_events. Tests that assert on exact
+    serialized datetimes should pass explicit dates via overrides.
+    """
+    future = datetime.now() + timedelta(days=30)
     defaults = {
         "title": "Team Meeting",
-        "start_datetime": datetime(2026, 3, 15, 14, 0),
-        "end_datetime": datetime(2026, 3, 15, 15, 0),
+        "start_datetime": future.replace(hour=14, minute=0, second=0, microsecond=0),
+        "end_datetime": future.replace(hour=15, minute=0, second=0, microsecond=0),
         "location": "Room A",
         "description": "Weekly sync",
     }
@@ -109,7 +115,11 @@ class TestNormalizeEventData:
     """Tests for normalize_event_data helper."""
 
     def test_converts_all_fields(self):
-        event = _make_calendar_event()
+        # Explicit fixed dates so the exact-ISO assertions below are stable.
+        event = _make_calendar_event(
+            start_datetime=datetime(2026, 3, 15, 14, 0),
+            end_datetime=datetime(2026, 3, 15, 15, 0),
+        )
         result = normalize_event_data(event)
 
         assert result["title"] == "Team Meeting"

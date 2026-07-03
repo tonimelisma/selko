@@ -1,25 +1,30 @@
 # Selko
 
-AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems.
+**Your inbox and camera roll, quietly turned into an organized life.** Selko is an AI-powered personal assistant that reads your emails and photos, understands what actually matters, and keeps your calendar, to-do lists, and digital filing in order — so you don't have to.
 
 ## Project Status
 
-**Phase 1 (POC)**: Validating core functionality with local Python scripts before building the full cloud-based web application.
+**Live in production.** Selko is running today for real users across web, iOS, and Android — turning everyday email and photos into calendar events, with you always in the loop. Powered by [Anthropic's Claude](https://www.anthropic.com/claude).
+
+## The AI behind Selko
+
+Selko's intelligence runs on **Claude (Sonnet 5)**, a state-of-the-art multimodal LLM. Instead of brittle rules and keyword matching, Selko reasons over the *whole* message the way a sharp personal assistant would:
+
+- **Reads everything** — full email threads plus attachments: PDFs, images, itineraries, invitations, tickets. Multimodal understanding means the details buried in a scanned flyer are just as usable as plain text.
+- **Understands intent** — resolves dates, times, time zones, locations, and recurrence, and knows the difference between "let's grab lunch sometime" and a confirmed 2 PM booking.
+- **Stays accurate** — extractions are continuously benchmarked against a curated evaluation suite, so quality is measured, not assumed.
+- **Provider-flexible** — six LLM providers are supported under the hood, with Claude as the default engine.
 
 ## Features
 
-### Implemented (POC)
-- Email inbox monitoring via Gmail API
-- Attachment extraction and storage (Supabase Storage)
-- Content deduplication (SHA-256 hashing)
-- Multi-environment support (development/staging/production)
-- User authentication with Row-Level Security (RLS)
-- OAuth token storage in database
-- AI-powered event extraction via Gemini LLM
+- **Smart email understanding** — Gmail inbox monitoring with AI-powered event extraction
+- **Multimodal attachment processing** — pulls events out of PDFs and images, not just text
+- **Google Calendar sync** — creates and updates events automatically
+- **Human-in-the-loop review** — you approve or edit before anything is committed; you're always in control
+- **Cross-platform apps** — native web, iOS, and Android clients
+- **Secure by design** — per-user Row-Level Security, OAuth token storage, content deduplication, and isolated dev/staging/production environments
 
-### Planned (MVP)
-- Google Calendar sync (create/update events)
-- Human-in-the-loop review interface
+### On the roadmap
 - Undo/Redo with compensating transactions
 - Automation rules for trusted sources
 
@@ -40,7 +45,7 @@ Frontend (Web/Android/iOS)
 
 - **Data Layer**: Supabase (PostgreSQL + Auth + Storage + RLS)
 - **Server-Side API**: Python, FastAPI (only for operations requiring secrets)
-- **AI**: Google Gemini (multimodal LLM)
+- **AI**: Anthropic Claude — Sonnet 5 (multimodal LLM); 6 providers supported, Claude default
 - **Frontends**: Svelte (Web), Kotlin (Android), Swift (iOS)
 - **Package Manager**: [uv](https://github.com/astral-sh/uv)
 
@@ -147,12 +152,12 @@ selko/
 │   ├── job-queue.md          # Job queue architecture
 │   ├── ci-cd.md              # CI/CD pipeline
 │   ├── gmail-integration.md  # Gmail API guide
-│   └── gemini-integration.md # LLM integration guide
+│   └── llm-integration.md    # LLM integration guide
 │
 ├── supabase/                  # Database migrations
-├── web/                       # Web frontend (placeholder)
-├── ios/                       # iOS app (placeholder)
-├── android/                   # Android app (placeholder)
+├── frontend/                  # Web app (SvelteKit)
+├── ios/                       # iOS app (SwiftUI)
+├── android/                   # Android app (Jetpack Compose)
 │
 ├── CLAUDE.md                  # Development guidelines
 ├── PRD_ARCH.md               # Product requirements & architecture
@@ -247,7 +252,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed test configuration and markers.
 | [docs/job-queue.md](docs/job-queue.md) | Job queue architecture |
 | [docs/ci-cd.md](docs/ci-cd.md) | CI/CD pipeline details |
 | [docs/gmail-integration.md](docs/gmail-integration.md) | Gmail API integration |
-| [docs/gemini-integration.md](docs/gemini-integration.md) | LLM integration patterns |
+| [docs/llm-integration.md](docs/llm-integration.md) | LLM integration patterns |
 
 ## License
 

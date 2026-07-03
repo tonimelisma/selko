@@ -182,7 +182,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 
 - **Direct Supabase Access:** Frontends query Supabase directly. Python API only for operations requiring secrets (OAuth, Gmail sync, LLM processing).
 - **End-to-End First:** Complete full journeys before expanding scope. First journey: Email → Calendar Event.
-- **LLM-Centric AI:** All intelligence uses multimodal LLMs (6 providers supported, Qwen default).
+- **LLM-Centric AI:** All intelligence uses multimodal LLMs (6 providers supported, Claude Sonnet 5 default).
 - **YAGNI:** Add complexity only when measured need exists.
 
 **Details:** `PRD_ARCH.md`
