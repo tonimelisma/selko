@@ -1,0 +1,250 @@
+{
+  "fixture_name": "school/valentines_exchange_06",
+  "fixture_hash": "f4cf000b13e958443ae38942a6c42b5e7c87b36c695707e0797e33962c68cef6",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:20:02.456293+00:00",
+  "duration_ms": 16285,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:46.169356+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:46.169365+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:46.188311+00:00",
+      "duration_ms": 16267
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:20:02.455625+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Valentine's Day gift exchange at daycare - text only, no attachments",
+  "difficulty": "easy",
+  "tags": [
+    "school",
+    "daycare",
+    "holiday",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Valentine's Day Exchange - Feb 13th",
+    "from": "teacher@kindercare.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Valentine's Day Gift Exchange at KinderCare",
+        "start_datetime": "2026-02-13",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Valentine's Day Gift Exchange",
+        "start_datetime": "2026-02-13T00:00:00",
+        "end_datetime": "2026-02-13T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Valentine's Day gift exchange on Friday, February 13th. Please bring goodies or valentines for 12 students in our class. Classroom is nut-free zone - no nuts or nut products in any treats. Event occurs during school hours (typically 9:00 AM - 3:00 PM).",
+        "confidence": 0.85,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8055555555555556,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1688,
+    "completion_tokens": 2243,
+    "total_tokens": 3931
+  },
+  "cost": 0.0016602799999999999,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4451
+      },
+      {
+        "type": "text",
+        "length": 370
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Valentine's Day Gift Exchange\",\n      \"start_datetime\": \"2026-02-13T00:00:00\",\n      \"end_datetime\": \"2026-02-13T23:59:59\",\n      \"location\": null,\n      \"description\": \"Valentine's Day gift exchange on Friday, February 13th. Please bring goodies or valentines for 12 students in our class. Classroom is nut-free zone - no nuts or nut products in any treats. Event occurs during school hours (typically 9:00 AM - 3:00 PM).\",\n      \"all_day\": true,\n      \"confidence\": 0.85,\n      \"importance\": \"fyi\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "fixture_name": "similar_titles_different_dates_10",
+  "fixture_hash": "fb2caa5eebd9dbb2da73352be02b5b163ebfa3d626ef2388683563d42a359e70",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:22:54.100694+00:00",
+  "duration_ms": 15153,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:22:38.945881+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:22:38.945886+00:00",
+      "duration_ms": 33
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:22:38.979022+00:00",
+      "duration_ms": 15120
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:22:54.099540+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Similar titles but different dates - weekly meetings - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-date"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 356,
+    "completion_tokens": 84,
+    "total_tokens": 440
+  },
+  "cost": 0.0001038,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1012
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event occurs on 2026-04-10, whereas event-001 occurs on a different date (2026-04-03) and refers to a different sprint. event-002 is a different meeting type (Sprint Planning) occurring at a different time on the same day.\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

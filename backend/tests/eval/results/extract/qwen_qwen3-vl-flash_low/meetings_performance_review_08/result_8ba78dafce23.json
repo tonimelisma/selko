@@ -1,0 +1,267 @@
+{
+  "fixture_name": "meetings/performance_review_08",
+  "fixture_hash": "fca028efd0fe6c440e7cb4b79c7586a471f65b34a3f42d7ebd6744e7ee112273",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:09.451612+00:00",
+  "duration_ms": 16371,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:53.079179+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:53.079186+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:53.094545+00:00",
+      "duration_ms": 16356
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:09.451103+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Annual performance review scheduling",
+  "difficulty": "easy",
+  "tags": [
+    "performance",
+    "review",
+    "hr",
+    "annual"
+  ],
+  "input_summary": {
+    "subject": "Your Annual Performance Review - Scheduled",
+    "from": "manager@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Performance Review with Robert Chen",
+        "start_datetime": "2026-03-05T15:00:00",
+        "end_datetime": "2026-03-05T16:00:00",
+        "location": "Room 512",
+        "description": "Annual performance review meeting",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Annual Performance Review Meeting",
+        "start_datetime": "2026-03-05T15:00:00",
+        "end_datetime": "2026-03-05T16:00:00",
+        "all_day": false,
+        "location": "My Office (Room 512)",
+        "description": "Annual performance review covering March 2025 - February 2026 period. Meeting scheduled for Thursday, March 5, 2026, from 3:00 PM to 4:00 PM in My Office (Room 512). Discussion will cover performance contributions, goals, development opportunities, and compensation (if applicable). Please confirm if you have scheduling conflicts.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Self-Assessment Deadline",
+        "start_datetime": "2026-03-01T00:00:00",
+        "end_datetime": "2026-03-01T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Must complete self-assessment in Workday by March 1, 2026. Includes reflecting on key accomplishments, areas for growth, and preparing questions about career progression for the performance review meeting.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.7466666666666667,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.5714285714285714,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1789,
+    "completion_tokens": 2407,
+    "total_tokens": 4196
+  },
+  "cost": 0.0017798800000000002,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4453
+      },
+      {
+        "type": "text",
+        "length": 801
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Annual Performance Review Meeting\",\n      \"start_datetime\": \"2026-03-05T15:00:00\",\n      \"end_datetime\": \"2026-03-05T16:00:00\",\n      \"location\": \"My Office (Room 512)\",\n      \"description\": \"Annual performance review covering March 2025 - February 2026 period. Meeting scheduled for Thursday, March 5, 2026, from 3:00 PM to 4:00 PM in My Office (Room 512). Discussion will cover performance contributions, goals, development opportunities, and compensation (if applicable). Please confirm if you have scheduling conflicts.\",\n      \"all_day\": false,\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Self-Assessment Deadline\",\n      \"start_datetime\": \"2026-03-01T00:00:00\",\n      \"end_datetime\": \"2026-03-01T23:59:59\",\n      \"location\": null,\n      \"description\": \"Must complete self-assessment in Workday by March 1, 2026. Includes reflecting on key accomplishments, areas for growth, and preparing questions about career progression for the performance review meeting.\",\n      \"all_day\": true,\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

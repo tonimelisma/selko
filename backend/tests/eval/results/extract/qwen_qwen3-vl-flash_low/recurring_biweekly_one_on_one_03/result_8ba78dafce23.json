@@ -1,0 +1,253 @@
+{
+  "fixture_name": "recurring/biweekly_one_on_one_03",
+  "fixture_hash": "85d4061104742a1c88d0a1c8b48069cc24bd4faf6938a04609ff327364bde0ce",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:20:06.512390+00:00",
+  "duration_ms": 17464,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:49.046657+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:49.046664+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:49.062060+00:00",
+      "duration_ms": 17449
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:20:06.511770+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "recurring",
+  "description": "Bi-weekly recurring 1:1 meeting",
+  "difficulty": "medium",
+  "tags": [
+    "recurring",
+    "biweekly",
+    "1:1",
+    "manager"
+  ],
+  "input_summary": {
+    "subject": "Updated: 1:1 Moving to Bi-Weekly",
+    "from": "mark.chen@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Mark Chen",
+        "start_datetime": "2026-02-13T15:00:00",
+        "end_datetime": "2026-02-13T15:30:00",
+        "location": "Mark's office or Zoom",
+        "description": "Bi-weekly 1:1 meeting",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "1:1 with Mark Chen",
+        "start_datetime": "2026-02-27T15:00:00",
+        "end_datetime": "2026-02-27T15:30:00",
+        "all_day": false,
+        "location": "https://zoom.us/j/markchen1on1",
+        "description": "Bi-weekly 1:1 meeting with Mark Chen. Frequency: every other Friday. Time: 3:00 PM - 3:30 PM. Location: Mark's office or Zoom. Next meeting after February 13, 2026. Zoom link provided. Agenda doc: https://docs.google.com/d/xxx. Calendar invite updated.",
+        "confidence": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 20160.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 20160.0,
+          "match": false
+        },
+        "location": {
+          "similarity": 0.19607843137254902,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1784,
+    "completion_tokens": 2261,
+    "total_tokens": 4045
+  },
+  "cost": 0.0016802,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4443
+      },
+      {
+        "type": "text",
+        "length": 644
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"1:1 with Mark Chen\",\n      \"start_datetime\": \"2026-02-27T15:00:00\",\n      \"end_datetime\": \"2026-02-27T15:30:00\",\n      \"location\": \"https://zoom.us/j/markchen1on1\",\n      \"all_day\": false,\n      \"description\": \"Bi-weekly 1:1 meeting with Mark Chen. Frequency: every other Friday. Time: 3:00 PM - 3:30 PM. Location: Mark's office or Zoom. Next meeting after February 13, 2026. Zoom link provided. Agenda doc: https://docs.google.com/d/xxx. Calendar invite updated.\",\n      \"confidence\": 0.85,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

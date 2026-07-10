@@ -1,0 +1,112 @@
+{
+  "fixture_name": "same_doctor_appointment_02",
+  "fixture_hash": "c89bf260f3791245af39eee4706e16d67b7857b0adfdef20d6662545990ba040",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-22T07:03:06.058179+00:00",
+  "duration_ms": 2319,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:03:03.732208+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:03:03.732216+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:03:03.751834+00:00",
+      "duration_ms": 2300
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:03:06.052591+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same doctor appointment with different description details - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 358,
+    "completion_tokens": 131,
+    "total_tokens": 489
+  },
+  "cost": 0.0003515,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dr. Smith - Annual Physical\n- Start: 2026-04-22T10:30:00\n- End: 2026-04-22T11:30:00\n- Location: Riverside Medical Center, Suite 200\n- Description: Appointment confirmation for annual physical exam. Please arrive 15 minutes early to complete paperwork.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Annual Physical Exam\n   - Start: 2026-04-22T10:30:00\n   - End: 2026-04-22T11:30:00\n   - Location: Riverside Medical Center\n   - Description: Dr. Smith - yearly checkup\n\n2. Event ID: event-002\n   - Title: Grocery Shopping\n   - Start: 2026-04-22T14:00:00\n   - End: 2026-04-22T15:00:00\n   - Location: Whole Foods\n   - Description: Weekly shopping\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Same date and identical start/end times, same location (Riverside Medical Center, new event adds suite), and matching subject (annual physical / Dr. Smith). These refer to the same real-world appointment.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

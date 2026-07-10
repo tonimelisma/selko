@@ -1,0 +1,349 @@
+{
+  "fixture_name": "invitations/wedding_03",
+  "fixture_hash": "f85ad4ab1f782e7ceecc9537b392fedda489aed9d867a00cbafce98015b8b9e4",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:22.459255+00:00",
+  "duration_ms": 8045,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:14.413224+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:14.413243+00:00",
+      "duration_ms": 21
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:14.434505+00:00",
+      "duration_ms": 8024
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:22.458895+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Formal wedding invitation with ceremony and reception times",
+  "difficulty": "medium",
+  "tags": [
+    "wedding",
+    "formal",
+    "multi-part",
+    "all-day"
+  ],
+  "input_summary": {
+    "subject": "Save the Date: Sarah & Michael's Wedding",
+    "from": "sarah.johnson@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Sarah & Michael's Wedding",
+        "start_datetime": "2026-06-21T16:00:00",
+        "end_datetime": "2026-06-22T00:00:00",
+        "location": "Rosewood Estate, 2500 Vineyard Road, Napa Valley, California 94558",
+        "description": "Wedding ceremony at 4:00 PM, reception at 6:00 PM, dinner and dancing until midnight",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Wedding - Sarah Johnson & Michael Thompson",
+        "start_datetime": "2026-06-21T16:00:00-07:00",
+        "end_datetime": "2026-06-22T00:00:00-07:00",
+        "all_day": false,
+        "location": "Rosewood Estate, 2500 Vineyard Road, Napa Valley, California 94558",
+        "description": "Wedding celebration for Sarah Elizabeth Johnson and Michael David Thompson.\n- Ceremony: Saturday, June 21, 2026 at 4:00 PM\n- Reception: to follow at 6:00 PM\n- Dinner and dancing until midnight\n- Dress code: Black tie optional\n- RSVP requested by May 15, 2026 (RSVP online at sarahandmichael2026.com)\nHosts: Together with their families. (Invitation sent by Sarah & Michael.)",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5074626865671642,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1452,
+    "completion_tokens": 499,
+    "total_tokens": 1951
+  },
+  "cost": 0.001361,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4457
+      },
+      {
+        "type": "text",
+        "length": 515
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Wedding - Sarah Johnson & Michael Thompson\",\n      \"start_datetime\": \"2026-06-21T16:00:00-07:00\",\n      \"end_datetime\": \"2026-06-22T00:00:00-07:00\",\n      \"all_day\": false,\n      \"location\": \"Rosewood Estate, 2500 Vineyard Road, Napa Valley, California 94558\",\n      \"description\": \"Wedding celebration for Sarah Elizabeth Johnson and Michael David Thompson.\\n- Ceremony: Saturday, June 21, 2026 at 4:00 PM\\n- Reception: to follow at 6:00 PM\\n- Dinner and dancing until midnight\\n- Dress code: Black tie optional\\n- RSVP requested by May 15, 2026 (RSVP online at sarahandmichael2026.com)\\nHosts: Together with their families. (Invitation sent by Sarah & Michael.)\",\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

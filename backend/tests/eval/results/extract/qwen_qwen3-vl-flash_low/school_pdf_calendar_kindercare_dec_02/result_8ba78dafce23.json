@@ -1,0 +1,1133 @@
+{
+  "fixture_name": "school/pdf_calendar_kindercare_dec_02",
+  "fixture_hash": "f6874253a43bd91e0504668b7caed4dcd5c7a9cd1a33a0aadd67d5a9d56b366e",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:20:00.390246+00:00",
+  "duration_ms": 35517,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:24.870801+00:00",
+      "duration_ms": 3
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:24.873875+00:00",
+      "duration_ms": 20
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:24.894068+00:00",
+      "duration_ms": 35485
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:20:00.379753+00:00",
+      "duration_ms": 9
+    }
+  },
+  "category": "school",
+  "description": "KinderCare December 2025 calendar with 2 PDFs + email body mentioning closures",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "multi-attachment",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "December Calendar & Holiday Lunch",
+    "from": "center@kindercare.com",
+    "has_attachments": true,
+    "attachment_count": 2,
+    "attachment_types": [
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 4517352
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 19,
+    "events": [
+      {
+        "title": "Mad about Plaid! Day",
+        "start_datetime": "2025-12-01",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Write a Letter to Santa Day",
+        "start_datetime": "2025-12-03",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-05",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Wear a Santa Hat Day",
+        "start_datetime": "2025-12-09",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Candy Cane Day",
+        "start_datetime": "2025-12-11",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-12",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Ugly Sweater Day",
+        "start_datetime": "2025-12-15",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Rudolf Day",
+        "start_datetime": "2025-12-17",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Movie Day - The Grinch",
+        "start_datetime": "2025-12-19",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-22",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-23",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Christmas Party - Half Day",
+        "start_datetime": "2025-12-24T08:00:00",
+        "end_datetime": "2025-12-24T12:00:00",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - Christmas Day",
+        "start_datetime": "2025-12-25",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Happy Birthday to Ms Noella",
+        "start_datetime": "2025-12-26",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-29",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-30",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "New Year's Eve - Early Close at 3pm",
+        "start_datetime": "2025-12-31T08:00:00",
+        "end_datetime": "2025-12-31T15:00:00",
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Holiday Lunch",
+        "start_datetime": "2025-12-24T12:00:00+00:00",
+        "end_datetime": "2025-12-24T13:00:00+00:00",
+        "all_day": false,
+        "location": "KinderCare Walnut Blvd - 070347",
+        "description": "Holiday Lunch on December 24th, 2025 at 12pm. Includes carol singing, lunch, cookies, hot coco. Pick up for all kids is at 12pm. Event details from attached holiday lunch invitation.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - Christmas Eve (Half Day)",
+        "start_datetime": "2025-12-24T12:00:00+00:00",
+        "end_datetime": "2025-12-24T12:00:00+00:00",
+        "all_day": false,
+        "location": null,
+        "description": "Center closes at 12pm for Christmas Eve (December 24th).",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - Christmas Day",
+        "start_datetime": "2025-12-25T00:00:00+00:00",
+        "end_datetime": "2025-12-25T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Center closed for Christmas Day (December 25th).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Early Closing - New Year's Eve",
+        "start_datetime": "2025-12-31T15:00:00+00:00",
+        "end_datetime": "2025-12-31T15:00:00+00:00",
+        "all_day": false,
+        "location": null,
+        "description": "Center closes early at 3pm for New Year's Eve (December 31st).",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01T00:00:00+00:00",
+        "end_datetime": "2026-01-01T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Center closed for New Year's Day (January 1st).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "Mad about Plaid! Wear fav flannel",
+        "start_datetime": "2025-12-01T00:00:00+00:00",
+        "end_datetime": "2025-12-01T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 1st: Wear your favorite flannel.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Write a Letter to Santa",
+        "start_datetime": "2025-12-03T00:00:00+00:00",
+        "end_datetime": "2025-12-03T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 3rd: Write a letter to Santa.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-05T00:00:00+00:00",
+        "end_datetime": "2025-12-05T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 5th: Pajama Day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "HOHOHO Wear a Santa Hat",
+        "start_datetime": "2025-12-08T00:00:00+00:00",
+        "end_datetime": "2025-12-08T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 8th: Wear a Santa Hat.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Candy Cane Day wear red & white",
+        "start_datetime": "2025-12-11T00:00:00+00:00",
+        "end_datetime": "2025-12-11T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 11th: Wear red and white for Candy Cane Day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Ugly Sweater Day",
+        "start_datetime": "2025-12-15T00:00:00+00:00",
+        "end_datetime": "2025-12-15T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 15th: Ugly Sweater Day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Rudolf Day Paint nose RED & wear Antlers",
+        "start_datetime": "2025-12-17T00:00:00+00:00",
+        "end_datetime": "2025-12-17T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 17th: Paint your nose red and wear antlers for Rudolf Day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Movie Day The Grinch",
+        "start_datetime": "2025-12-19T00:00:00+00:00",
+        "end_datetime": "2025-12-19T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 19th: Movie Day featuring The Grinch.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-22T00:00:00+00:00",
+        "end_datetime": "2025-12-22T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 22nd: Pajama Day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-23T00:00:00+00:00",
+        "end_datetime": "2025-12-23T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 23rd: Pajama Day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-29T00:00:00+00:00",
+        "end_datetime": "2025-12-29T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 29th: Pajama Day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-30T00:00:00+00:00",
+        "end_datetime": "2025-12-30T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Themed day on December 30th: Pajama Day.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Noella",
+        "start_datetime": "2025-12-26T00:00:00+00:00",
+        "end_datetime": "2025-12-26T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Staff birthday on December 26th: Happy Birthday to Ms Noella.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6792452830188679,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.92,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.7441860465116279,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 1440.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.6222222222222222,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.2608695652173913,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 18000.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": false,
+          "match": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "action_required",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.4,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.9523809523809523,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.5428571428571428,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 240.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.3684210526315789,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 420.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 6519,
+    "completion_tokens": 4329,
+    "total_tokens": 10848
+  },
+  "cost": 0.00346524,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4462
+      },
+      {
+        "type": "text",
+        "length": 379
+      },
+      {
+        "type": "image",
+        "mime_type": "application/pdf",
+        "size_bytes": 1758865
+      },
+      {
+        "type": "image",
+        "mime_type": "application/pdf",
+        "size_bytes": 2758487
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Holiday Lunch\",\n      \"start_datetime\": \"2025-12-24T12:00:00Z\",\n      \"end_datetime\": \"2025-12-24T13:00:00Z\",\n      \"location\": \"KinderCare Walnut Blvd - 070347\",\n      \"all_day\": false,\n      \"description\": \"Holiday Lunch on December 24th, 2025 at 12pm. Includes carol singing, lunch, cookies, hot coco. Pick up for all kids is at 12pm. Event details from attached holiday lunch invitation.\",\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"KinderCare Closed - Christmas Eve (Half Day)\",\n      \"start_datetime\": \"2025-12-24T12:00:00Z\",\n      \"end_datetime\": \"2025-12-24T12:00:00Z\",\n      \"location\": null,\n      \"all_day\": false,\n      \"description\": \"Center closes at 12pm for Christmas Eve (December 24th).\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"KinderCare Closed - Christmas Day\",\n      \"start_datetime\": \"2025-12-25T00:00:00Z\",\n      \"end_datetime\": \"2025-12-25T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Center closed for Christmas Day (December 25th).\",\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"KinderCare Early Closing - New Year's Eve\",\n      \"start_datetime\": \"2025-12-31T15:00:00Z\",\n      \"end_datetime\": \"2025-12-31T15:00:00Z\",\n      \"location\": null,\n      \"all_day\": false,\n      \"description\": \"Center closes early at 3pm for New Year's Eve (December 31st).\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"KinderCare Closed - New Year's Day\",\n      \"start_datetime\": \"2026-01-01T00:00:00Z\",\n      \"end_datetime\": \"2026-01-01T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Center closed for New Year's Day (January 1st).\",\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Mad about Plaid! Wear fav flannel\",\n      \"start_datetime\": \"2025-12-01T00:00:00Z\",\n      \"end_datetime\": \"2025-12-01T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 1st: Wear your favorite flannel.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Write a Letter to Santa\",\n      \"start_datetime\": \"2025-12-03T00:00:00Z\",\n      \"end_datetime\": \"2025-12-03T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 3rd: Write a letter to Santa.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2025-12-05T00:00:00Z\",\n      \"end_datetime\": \"2025-12-05T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 5th: Pajama Day.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"HOHOHO Wear a Santa Hat\",\n      \"start_datetime\": \"2025-12-08T00:00:00Z\",\n      \"end_datetime\": \"2025-12-08T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 8th: Wear a Santa Hat.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Candy Cane Day wear red & white\",\n      \"start_datetime\": \"2025-12-11T00:00:00Z\",\n      \"end_datetime\": \"2025-12-11T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 11th: Wear red and white for Candy Cane Day.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Ugly Sweater Day\",\n      \"start_datetime\": \"2025-12-15T00:00:00Z\",\n      \"end_datetime\": \"2025-12-15T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 15th: Ugly Sweater Day.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Rudolf Day Paint nose RED & wear Antlers\",\n      \"start_datetime\": \"2025-12-17T00:00:00Z\",\n      \"end_datetime\": \"2025-12-17T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 17th: Paint your nose red and wear antlers for Rudolf Day.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Movie Day The Grinch\",\n      \"start_datetime\": \"2025-12-19T00:00:00Z\",\n      \"end_datetime\": \"2025-12-19T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 19th: Movie Day featuring The Grinch.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2025-12-22T00:00:00Z\",\n      \"end_datetime\": \"2025-12-22T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 22nd: Pajama Day.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2025-12-23T00:00:00Z\",\n      \"end_datetime\": \"2025-12-23T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 23rd: Pajama Day.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2025-12-29T00:00:00Z\",\n      \"end_datetime\": \"2025-12-29T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 29th: Pajama Day.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2025-12-30T00:00:00Z\",\n      \"end_datetime\": \"2025-12-30T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Themed day on December 30th: Pajama Day.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Happy Birthday to Ms Noella\",\n      \"start_datetime\": \"2025-12-26T00:00:00Z\",\n      \"end_datetime\": \"2025-12-26T23:59:59Z\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Staff birthday on December 26th: Happy Birthday to Ms Noella.\",\n      \"confidence\": 0.85,\n      \"importance\": \"fyi\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

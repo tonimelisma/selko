@@ -1,0 +1,111 @@
+{
+  "fixture_name": "similar_titles_different_dates_10",
+  "fixture_hash": "fb2caa5eebd9dbb2da73352be02b5b163ebfa3d626ef2388683563d42a359e70",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "thinking": "none",
+  "run_at": "2026-02-22T07:02:09.280283+00:00",
+  "duration_ms": 1363,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:02:07.909199+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:02:07.909207+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:02:07.924347+00:00",
+      "duration_ms": 1348
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:02:09.272798+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Similar titles but different dates - weekly meetings - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-date"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 413,
+    "completion_tokens": 121,
+    "total_tokens": 534
+  },
+  "cost": 0.0008144000000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1012,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Team Retrospective\n- Start: 2026-04-10T14:00:00\n- End: 2026-04-10T15:00:00\n- Location: Conference Room B\n- Description: Sprint 12 retrospective - discuss what went well and what to improve\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Team Retrospective\n   - Start: 2026-04-03T14:00:00\n   - End: 2026-04-03T15:00:00\n   - Location: Conference Room B\n   - Description: Sprint 11 retrospective meeting\n\n2. Event ID: event-002\n   - Title: Sprint Planning\n   - Start: 2026-04-10T10:00:00\n   - End: 2026-04-10T12:00:00\n   - Location: Conference Room A\n   - Description: Plan sprint 13\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event is for Sprint 12 retrospective on 2026-04-10, while event-001 is for Sprint 11 retrospective on 2026-04-03. Although both are team retrospectives with the same title and location, they refer to different sprints on different dates, making them distinct real-world events. Event-002 is also different (Sprint Planning, different time and location). No match found.\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

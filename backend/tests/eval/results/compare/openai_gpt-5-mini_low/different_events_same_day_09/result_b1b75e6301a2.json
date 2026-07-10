@@ -1,0 +1,112 @@
+{
+  "fixture_name": "different_events_same_day_09",
+  "fixture_hash": "a37020bb4bbe4a8b306ed6637d57a90eb6ffd01aeae2c01d243ba195feaf7c15",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-22T07:03:08.237833+00:00",
+  "duration_ms": 5312,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:03:02.919637+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:03:02.919642+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:03:02.935214+00:00",
+      "duration_ms": 5297
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:03:08.232699+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 422,
+    "completion_tokens": 226,
+    "total_tokens": 648
+  },
+  "cost": 0.0005575,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1188,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Max's 5th Birthday Party\n- Start: 2026-03-21T15:00:00\n- End: 2026-03-21T18:00:00\n- Location: Bounce House Adventure\n- Description: Celebrating Max turning 5! Bounce houses, pizza, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Daily Standup\n   - Start: 2026-03-21T09:00:00\n   - End: 2026-03-21T09:15:00\n   - Location: Office - Conference Room A\n   - Description: Team sync meeting\n\n2. Event ID: event-002\n   - Title: Lunch with Client\n   - Start: 2026-03-21T12:00:00\n   - End: 2026-03-21T13:30:00\n   - Location: The Blue Bistro\n   - Description: Quarterly business lunch\n\n3. Event ID: event-003\n   - Title: Gym Session\n   - Start: 2026-03-21T18:30:00\n   - End: 2026-03-21T19:30:00\n   - Location: 24 Hour Fitness\n   - Description: Evening workout\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"No match. The new event (Max's birthday, 15:00\u201318:00 at Bounce House Adventure) differs in title, time, location and description from all existing events (standup 09:00, lunch 12:00\u201313:30, gym 18:30\u201319:30), so it does not refer to any of them.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

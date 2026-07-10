@@ -1,0 +1,88 @@
+{
+  "fixture_name": "same_wedding_05",
+  "fixture_hash": "0e99db6db6315dbd8ea8eba08af78f9b41f957195cb0583aa5afb841a0ede572",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:20:43.680800+00:00",
+  "duration_ms": 10077,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:20:33.601370+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:20:33.601373+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:20:33.616792+00:00",
+      "duration_ms": 10062
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:20:43.679594+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "social"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 443,
+    "completion_tokens": 1494,
+    "total_tokens": 1937
+  },
+  "cost": 0.00105136,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1062
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event shares the same start and end time (2026-06-20T16:00:00 to 2026-06-20T22:00:00), the same venue (Sunset Gardens) with a minor location variation (Napa Valley vs Napa, which is consistent with the same location), and both refer to the wedding of Sarah and Michael. The descriptions are different but describe the same event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

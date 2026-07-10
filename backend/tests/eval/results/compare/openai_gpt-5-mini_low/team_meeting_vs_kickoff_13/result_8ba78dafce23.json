@@ -1,0 +1,110 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "fixture_hash": "777f6d839c488eec093dc3afb600571cd65b8544e749bfdf1616d573b085fe22",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:51.302035+00:00",
+  "duration_ms": 2122,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:49.178634+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:49.178637+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:49.194075+00:00",
+      "duration_ms": 2107
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:51.301664+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 423,
+    "completion_tokens": 85,
+    "total_tokens": 508
+  },
+  "cost": 0.00027575,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1221
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"No match. The new event is a 10:00\u201312:00 Phoenix project kickoff in the Large Conference Room; none of the existing events have matching title, time window, or location (they are short unrelated meetings at 09:00, 14:00, and 15:00).\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

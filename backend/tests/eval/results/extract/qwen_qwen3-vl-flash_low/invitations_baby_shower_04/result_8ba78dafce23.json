@@ -1,0 +1,252 @@
+{
+  "fixture_name": "invitations/baby_shower_04",
+  "fixture_hash": "9756cd77f76b3c599829d0259eded3b5205978a7ef3ec88506cbd62ea658c284",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:35.852281+00:00",
+  "duration_ms": 18417,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:17.065551+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:17.433489+00:00",
+      "duration_ms": 238
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:17.671640+00:00",
+      "duration_ms": 18179
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:35.851269+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Baby shower invitation with brunch timing",
+  "difficulty": "easy",
+  "tags": [
+    "baby-shower",
+    "brunch",
+    "weekend"
+  ],
+  "input_summary": {
+    "subject": "Baby Shower for Amanda!",
+    "from": "kelly.martinez@yahoo.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amanda's Baby Shower",
+        "start_datetime": "2026-03-15T11:00:00",
+        "end_datetime": "2026-03-15T14:00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch for Amanda Rodriguez",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Baby Shower for Amanda Rodriguez",
+        "start_datetime": "2026-03-15T11:00:00+00:00",
+        "end_datetime": "2026-03-15T14:00:00+00:00",
+        "all_day": false,
+        "location": "Kelly's home, 789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch honoring mom-to-be Amanda Rodriguez. Sunday, March 15, 2026, 11:00 AM - 2:00 PM at Kelly's home, 789 Maple Street, Austin, TX 78701. Light brunch will be served. Registry: Amazon & Target. RSVP to Kelly at kelly.martinez@yahoo.com or (512) 555-8910 by March 8th. It's a boy! \ud83d\udc99",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.4230769230769231,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8292682926829268,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1734,
+    "completion_tokens": 2306,
+    "total_tokens": 4040
+  },
+  "cost": 0.0017068000000000003,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4442
+      },
+      {
+        "type": "text",
+        "length": 355
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Baby Shower for Amanda Rodriguez\",\n      \"start_datetime\": \"2026-03-15T11:00:00Z\",\n      \"end_datetime\": \"2026-03-15T14:00:00Z\",\n      \"location\": \"Kelly's home, 789 Maple Street, Austin, TX 78701\",\n      \"description\": \"Baby shower brunch honoring mom-to-be Amanda Rodriguez. Sunday, March 15, 2026, 11:00 AM - 2:00 PM at Kelly's home, 789 Maple Street, Austin, TX 78701. Light brunch will be served. Registry: Amazon & Target. RSVP to Kelly at kelly.martinez@yahoo.com or (512) 555-8910 by March 8th. It's a boy! \ud83d\udc99\",\n      \"all_day\": false,\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

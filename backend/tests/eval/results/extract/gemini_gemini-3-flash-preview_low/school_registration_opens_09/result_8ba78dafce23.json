@@ -1,0 +1,420 @@
+{
+  "fixture_name": "school/registration_opens_09",
+  "fixture_hash": "d39e8686f186f45158e856282314f6e26bffb99caa7760d577abb40a9127adf0",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:58.484369+00:00",
+  "duration_ms": 7116,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:51.366802+00:00",
+      "duration_ms": 5
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:51.372684+00:00",
+      "duration_ms": 32
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:51.404866+00:00",
+      "duration_ms": 7079
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:58.483977+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world city arts & rec spring registration announcement with specific open date/time - borderline calendar event",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "registration",
+    "community",
+    "borderline",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Spring 2026 Registration Starts 2/18",
+    "from": "artsrec@walnut-creek.org",
+    "has_attachments": true,
+    "attachment_count": 14,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 5028052
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Spring 2026 registration opens for Arts + Rec classes including youth programs, preschool, adult classes, and intergenerational programs",
+        "all_day": false,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Spring 2026 Arts + Rec Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00+00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": null,
+        "description": "Registration for Spring 2026 classes and youth programs (ceramics, dance, STEM, drama, etc.) begins at 12:00 PM. Includes registration for Summer 2026 and School Year 2026-27 Community Arts Preschool classes. Participants can register online or by phone at 925-295-1490.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8450704225352113,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 15754,
+    "completion_tokens": 206,
+    "total_tokens": 15960
+  },
+  "cost": 0.0024866999999999997,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4451
+      },
+      {
+        "type": "text",
+        "length": 2092
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 43
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 833822
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 2229016
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 113634
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 1743
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 1645056
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 118313
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 62484
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 1549
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 4151
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 3988
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 2301
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 2543
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 9409
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "confidence"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Spring 2026 Arts + Rec Registration Opens\",\n      \"start_datetime\": \"2026-02-18T12:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": false,\n      \"location\": null,\n      \"description\": \"Registration for Spring 2026 classes and youth programs (ceramics, dance, STEM, drama, etc.) begins at 12:00 PM. Includes registration for Summer 2026 and School Year 2026-27 Community Arts Preschool classes. Participants can register online or by phone at 925-295-1490.\",\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

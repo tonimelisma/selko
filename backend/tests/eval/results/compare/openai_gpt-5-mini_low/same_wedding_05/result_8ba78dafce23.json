@@ -1,0 +1,110 @@
+{
+  "fixture_name": "same_wedding_05",
+  "fixture_hash": "0e99db6db6315dbd8ea8eba08af78f9b41f957195cb0583aa5afb841a0ede572",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:50.788042+00:00",
+  "duration_ms": 1903,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:48.883357+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:48.883360+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:48.901140+00:00",
+      "duration_ms": 1886
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:50.787684+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "social"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 361,
+    "completion_tokens": 75,
+    "total_tokens": 436
+  },
+  "cost": 0.00024025,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1062
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Matches event-001 \u2014 same date and exact start/end times, same venue (Sunset Gardens, Napa/Napa Valley), and title/description indicate the same wedding (minor wording differences). event-002 is a different event on a different date.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

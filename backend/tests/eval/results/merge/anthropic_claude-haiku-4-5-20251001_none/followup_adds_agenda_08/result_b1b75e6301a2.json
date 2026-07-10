@@ -1,0 +1,226 @@
+{
+  "fixture_name": "followup_adds_agenda_08",
+  "fixture_hash": "e1ada744b8d8c54c831f27c276c4a73e3fdd69b9e7722c9443c351f763126cc8",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "merge",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "thinking": "none",
+  "run_at": "2026-02-22T07:02:11.984775+00:00",
+  "duration_ms": 920,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:02:11.057940+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:02:11.057949+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:02:11.077925+00:00",
+      "duration_ms": 901
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:02:11.979534+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Follow-up email adds agenda details to existing meeting",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "agenda"
+  ],
+  "expected": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description_contains": [
+      "quarterly",
+      "financial review",
+      "product roadmap",
+      "breakfast provided"
+    ]
+  },
+  "actual": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description": "Quarterly board meeting. Agenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "quarterly",
+        "financial review",
+        "product roadmap",
+        "breakfast provided"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 602,
+    "completion_tokens": 135,
+    "total_tokens": 737
+  },
+  "cost": 0.0010216000000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1224,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Board Meeting\n- Start: 2026-05-05T09:00:00\n- End: 2026-05-05T12:00:00\n- All Day: False\n- Location: Executive Boardroom\n- Description: Quarterly board meeting\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Board Meeting\n- Start: 2026-05-05T09:00:00\n- End: 2026-05-05T12:00:00\n- All Day: False\n- Location: Executive Boardroom\n- Description: Agenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n    \"title\": \"Board Meeting\",\n    \"start_datetime\": \"2026-05-05T09:00:00\",\n    \"end_datetime\": \"2026-05-05T12:00:00\",\n    \"all_day\": false,\n    \"location\": \"Executive Boardroom\",\n    \"description\": \"Quarterly board meeting. Agenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided.\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

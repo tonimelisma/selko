@@ -1,0 +1,112 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "fixture_hash": "075709b179cbc1e3166a98740f4d24696c9730ae203ffc45bbc398a047bdb529",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-22T07:03:08.166756+00:00",
+  "duration_ms": 5040,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:03:03.120675+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:03:03.120683+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:03:03.139816+00:00",
+      "duration_ms": 5021
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:03:08.161342+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 437,
+    "completion_tokens": 192,
+    "total_tokens": 629
+  },
+  "cost": 0.00049325,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1257,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sophie's 6th Birthday Party\n- Start: 2026-08-15T13:00:00\n- End: 2026-08-15T16:00:00\n- Location: Rainbow Play Center\n- Description: Join us for Sophie's princess-themed birthday bash! Arts and crafts, games, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Lucas's 8th Birthday Celebration\n   - Start: 2026-08-22T14:00:00\n   - End: 2026-08-22T17:00:00\n   - Location: Laser Tag Arena\n   - Description: Laser tag party for Lucas turning 8!\n\n2. Event ID: event-002\n   - Title: Swimming Lesson\n   - Start: 2026-08-15T10:00:00\n   - End: 2026-08-15T11:00:00\n   - Location: Community Pool\n   - Description: Level 3 swimming class\n\n3. Event ID: event-003\n   - Title: Book Club\n   - Start: 2026-08-15T19:00:00\n   - End: 2026-08-15T21:00:00\n   - Location: Barnes & Noble Cafe\n   - Description: Discussing 'The Midnight Library'\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"No match. The new event (Sophie's birthday on 2026-08-15 13:00\u201316:00 at Rainbow Play Center) does not correspond to any existing event: event-001 is on a different date (2026-08-22) and different details; event-002 is a morning swimming lesson at a different location and time (10:00\u201311:00); event-003 is an evening book club at a different location and time (19:00\u201321:00).\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

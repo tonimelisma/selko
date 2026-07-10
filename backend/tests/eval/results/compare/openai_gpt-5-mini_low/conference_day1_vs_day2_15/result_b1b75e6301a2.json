@@ -1,0 +1,112 @@
+{
+  "fixture_name": "conference_day1_vs_day2_15",
+  "fixture_hash": "1032db195dcbb5b6e3fd88cee872f02fa43e0e1f6b04e8cd16b030a424bd35f9",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-22T07:03:06.723436+00:00",
+  "duration_ms": 4206,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:03:02.511223+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:03:02.511228+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:03:02.527099+00:00",
+      "duration_ms": 4191
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:03:06.718661+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Conference day 1 vs day 2 - multi-day event different days - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "conference"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 438,
+    "completion_tokens": 253,
+    "total_tokens": 691
+  },
+  "cost": 0.0006155,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1293,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: DevOps Summit - Day 2\n- Start: 2026-10-16T09:00:00\n- End: 2026-10-16T18:00:00\n- Location: Convention Center, Hall B\n- Description: Second day of DevOps Summit. Featured talks on Kubernetes and CI/CD pipelines.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: DevOps Summit - Day 1\n   - Start: 2026-10-15T09:00:00\n   - End: 2026-10-15T18:00:00\n   - Location: Convention Center, Hall B\n   - Description: Opening day of DevOps Summit with keynote speakers\n\n2. Event ID: event-002\n   - Title: Flight Home\n   - Start: 2026-10-17T14:30:00\n   - End: 2026-10-17T17:15:00\n   - Location: Airport\n   - Description: Return flight after conference\n\n3. Event ID: event-003\n   - Title: Networking Dinner\n   - Start: 2026-10-16T19:00:00\n   - End: 2026-10-16T22:00:00\n   - Location: The Waterfront Restaurant\n   - Description: Evening networking event for DevOps Summit attendees\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"No match. The new event is the conference Day 2 (2026-10-16, 09:00\u201318:00 at Convention Center Hall B). event-001 is Day 1 on 2026-10-15 (different date), event-002 is a flight on 2026-10-17, and event-003 is an evening networking dinner (19:00\u201322:00, different time, location and purpose). None refer to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

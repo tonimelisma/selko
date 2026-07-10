@@ -1,0 +1,110 @@
+{
+  "fixture_name": "different_events_same_day_09",
+  "fixture_hash": "a37020bb4bbe4a8b306ed6637d57a90eb6ffd01aeae2c01d243ba195feaf7c15",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:48.531596+00:00",
+  "duration_ms": 2266,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:46.264107+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:46.264114+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:46.283514+00:00",
+      "duration_ms": 2247
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:48.531282+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 422,
+    "completion_tokens": 162,
+    "total_tokens": 584
+  },
+  "cost": 0.0004295,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1188
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"No match. The new event is a children's birthday party (15:00\u201318:00 at Bounce House Adventure) while all existing events have different titles, times, locations and purposes (standup 09:00, lunch 12:00\u201313:30, gym 18:30\u201319:30). No reasonable overlap indicating the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

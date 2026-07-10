@@ -1,0 +1,103 @@
+{
+  "fixture_name": "different_events_same_day_09",
+  "fixture_hash": "a37020bb4bbe4a8b306ed6637d57a90eb6ffd01aeae2c01d243ba195feaf7c15",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:22:38.414043+00:00",
+  "duration_ms": 7405,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:22:31.007732+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:22:31.007744+00:00",
+      "duration_ms": 36
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:22:31.044186+00:00",
+      "duration_ms": 7369
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:22:38.413213+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 444,
+    "completion_tokens": 70,
+    "total_tokens": 514
+  },
+  "cost": 0.0001086,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1188
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event is for a birthday party at a bounce house in the mid-afternoon, whereas the existing events describe a professional meeting, a business lunch, and a personal gym session at different times. No overlap in content or time exists.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

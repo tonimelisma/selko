@@ -1,0 +1,349 @@
+{
+  "fixture_name": "school/graduation_ceremony_05",
+  "fixture_hash": "cd9a2a3e5b20651bed43cb790aa6b9ed9626cdf9ad6a86dd53763bc361fc6038",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:55.160604+00:00",
+  "duration_ms": 8519,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:46.639510+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:46.639517+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:46.654266+00:00",
+      "duration_ms": 8505
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:55.160212+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "School graduation ceremony details",
+  "difficulty": "easy",
+  "tags": [
+    "graduation",
+    "ceremony",
+    "school",
+    "formal"
+  ],
+  "input_summary": {
+    "subject": "8th Grade Graduation Ceremony - Save the Date",
+    "from": "principal@middleschool.edu",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "8th Grade Graduation Ceremony",
+        "start_datetime": "2026-06-12T18:00:00",
+        "end_datetime": "2026-06-12T20:00:00",
+        "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
+        "description": "8th grade graduation ceremony with reception to follow",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Riverside Middle School 8th Grade Graduation",
+        "start_datetime": "2026-06-12T18:00:00-07:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123",
+        "description": "Graduation ceremony for Riverside Middle School Class of 2026.\n\nDate: Friday, June 12, 2026\nTime: 6:00 PM (doors open at 5:30 PM)\nLocation: Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123\n\nProgram (approximate):\n- 6:00 PM - Processional\n- 6:15 PM - Welcome & National Anthem\n- 6:20 PM - Student Speeches\n- 6:40 PM - Guest Speaker\n- 7:00 PM - Diploma Presentation\n- 7:45 PM - Closing Remarks\n- 8:00 PM - Reception in Courtyard\n\nTickets: 4 tickets per family (distributed in May).\nSeating: first-come, first-served.\nDress code: Semi-formal attire.\nParking: School parking lot and street parking.\nProfessional photos available for purchase.\n\nMore details to follow. Sent by Principal Martinez, Riverside Middle School.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.547945205479452,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1596,
+    "completion_tokens": 637,
+    "total_tokens": 2233
+  },
+  "cost": 0.001673,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4470
+      },
+      {
+        "type": "text",
+        "length": 1125
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"events_found\":true,\"events\":[{\"title\":\"Riverside Middle School 8th Grade Graduation\",\"start_datetime\":\"2026-06-12T18:00:00-07:00\",\"end_datetime\":null,\"all_day\":false,\"location\":\"Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123\",\"description\":\"Graduation ceremony for Riverside Middle School Class of 2026.\\n\\nDate: Friday, June 12, 2026\\nTime: 6:00 PM (doors open at 5:30 PM)\\nLocation: Riverside Middle School Gymnasium, 200 Riverside Drive, San Jose, CA 95123\\n\\nProgram (approximate):\\n- 6:00 PM - Processional\\n- 6:15 PM - Welcome & National Anthem\\n- 6:20 PM - Student Speeches\\n- 6:40 PM - Guest Speaker\\n- 7:00 PM - Diploma Presentation\\n- 7:45 PM - Closing Remarks\\n- 8:00 PM - Reception in Courtyard\\n\\nTickets: 4 tickets per family (distributed in May).\\nSeating: first-come, first-served.\\nDress code: Semi-formal attire.\\nParking: School parking lot and street parking.\\nProfessional photos available for purchase.\\n\\nMore details to follow. Sent by Principal Martinez, Riverside Middle School.\",\"confidence\":0.95,\"importance\":\"action_required\"}]}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "fixture_hash": "075709b179cbc1e3166a98740f4d24696c9730ae203ffc45bbc398a047bdb529",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:22:43.536968+00:00",
+  "duration_ms": 12325,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:22:31.210307+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:22:31.210316+00:00",
+      "duration_ms": 33
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:22:31.243872+00:00",
+      "duration_ms": 12292
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:22:43.536439+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 464,
+    "completion_tokens": 106,
+    "total_tokens": 570
+  },
+  "cost": 0.00013319999999999999,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1257
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is a birthday party for Sophie on 2026-08-15 from 13:00 to 16:00. Comparing it to existing events: event-001 is for a different child on a different date; event-002 is a swimming lesson at a different time; and event-003 is a book club at a different time. No matching event exists.\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

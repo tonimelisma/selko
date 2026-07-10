@@ -1,0 +1,209 @@
+{
+  "fixture_name": "inperson_to_virtual_05",
+  "fixture_hash": "2cc8cbe32bb227cfa9cf77404742d0fe0254ceee8f318ceb23dddbc2aca27b5d",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-22T07:04:41.215258+00:00",
+  "duration_ms": 17431,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:04:23.777943+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:04:23.777951+00:00",
+      "duration_ms": 35
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:04:23.813341+00:00",
+      "duration_ms": 17396
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:04:41.210152+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "In-person meeting changed to virtual with Zoom link",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "location-update",
+    "virtual",
+    "modality-change"
+  ],
+  "expected": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description_contains": [
+      "Q1 results",
+      "ABC Corp",
+      "moved to Zoom",
+      "virtual format"
+    ]
+  },
+  "actual": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description": "Q1 results presentation for ABC Corp. Meeting moved to Zoom. Client requested virtual format. Same agenda.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "Q1 results",
+        "ABC Corp",
+        "moved to Zoom",
+        "virtual format"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 415,
+    "completion_tokens": 135,
+    "total_tokens": 550
+  },
+  "cost": 0.00014325,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1261,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Client Presentation\n- Start: 2026-03-25T10:00:00\n- End: 2026-03-25T11:30:00\n- All Day: False\n- Location: Client office - 789 Business Plaza\n- Description: Q1 results presentation for ABC Corp\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Client Presentation (Virtual)\n- Start: 2026-03-25T10:00:00\n- End: 2026-03-25T11:30:00\n- All Day: False\n- Location: Zoom: https://zoom.us/j/123456789\n- Description: Meeting moved to Zoom. Client requested virtual format. Same agenda.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n\"title\": \"Client Presentation (Virtual)\",\n\"start_datetime\": \"2026-03-25T10:00:00\",\n\"end_datetime\": \"2026-03-25T11:30:00\",\n\"all_day\": false,\n\"location\": \"Zoom: https://zoom.us/j/123456789\",\n\"description\": \"Q1 results presentation for ABC Corp. Meeting moved to Zoom. Client requested virtual format. Same agenda.\",\n\"importance\": \"action_required\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
