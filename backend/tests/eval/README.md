@@ -1,6 +1,6 @@
 # LLM Evaluation Test Suite
 
-Multi-model, multi-operation evaluation framework for testing LLM email processing quality across 6 providers.
+Multi-model, multi-operation evaluation framework for testing LLM email processing quality across 8 providers.
 
 ## Overview
 
@@ -44,12 +44,12 @@ eval/
 ### Prerequisites
 
 ```bash
-# Set at least one provider API key (Gemini is the default)
-export GEMINI_API_KEY="your-api-key"
+# Set the API key for the provider you want to test
+export ANTHROPIC_API_KEY="your-api-key"
 
 # Or use a different provider
 export LLM_PROVIDER=moonshot
-export LLM_MODEL=kimi-k2.5
+export LLM_MODEL=kimi-k2.6
 export MOONSHOT_API_KEY="your-api-key"
 ```
 
@@ -62,7 +62,7 @@ uv run python -m backend.tests.eval.run_eval --all
 # Run all 3 operations (extract + compare + merge)
 uv run python -m backend.tests.eval.run_eval --all --all-operations
 
-# Run all operations across all 6 default models
+# Run all operations across the configured frontier model matrix
 uv run python -m backend.tests.eval.run_eval --all --all-operations --all-models
 
 # Run specific category

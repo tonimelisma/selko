@@ -28,9 +28,9 @@ from selko.services.llm_provider import (
 class TestModelRegistry:
     """Test the model registry."""
 
-    def test_registry_has_30_models(self):
-        """Test that all 30 models are in the registry."""
-        assert len(MODEL_REGISTRY) == 30
+    def test_registry_has_37_models(self):
+        """Test that all 37 models are in the registry."""
+        assert len(MODEL_REGISTRY) == 37
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -69,7 +69,7 @@ class TestModelRegistry:
     def test_gpt5_models_have_reasoning_flag(self):
         """Test that all GPT-5 models are marked as reasoning models."""
         gpt5_models = [m for m in MODEL_REGISTRY if m.startswith("gpt-5")]
-        assert len(gpt5_models) == 4
+        assert len(gpt5_models) == 7
         for model_name in gpt5_models:
             assert MODEL_REGISTRY[model_name].get("reasoning") is True, (
                 f"{model_name} should have reasoning=True"
@@ -79,6 +79,30 @@ class TestModelRegistry:
         """Test that Sonnet models have the adaptive_thinking flag."""
         assert MODEL_REGISTRY["claude-sonnet-5"].get("adaptive_thinking") is True
         assert MODEL_REGISTRY["claude-sonnet-4-6"].get("adaptive_thinking") is True
+
+    def test_requested_frontier_models_are_registered(self):
+        """The July 2026 frontier eval targets remain available by exact ID."""
+        expected = {
+            "glm-5.2",
+            "kimi-k2.6",
+            "kimi-k2.7-code",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.6-luna",
+            "claude-sonnet-5",
+            "claude-opus-4-8",
+        }
+        assert expected <= MODEL_REGISTRY.keys()
+
+    def test_frontier_provider_defaults(self):
+        """Providers default to the requested frontier generation."""
+        assert PROVIDER_DEFAULT_MODEL["moonshot"] == "kimi-k2.6"
+        assert PROVIDER_DEFAULT_MODEL["zai"] == "glm-5.2"
+        assert PROVIDER_DEFAULT_MODEL["openai"] == "gpt-5.6-sol"
+
+    def test_opus_4_8_has_adaptive_thinking(self):
+        """Claude Opus 4.8 uses Anthropic adaptive thinking."""
+        assert MODEL_REGISTRY["claude-opus-4-8"].get("adaptive_thinking") is True
 
     def test_anthropic_default_is_sonnet_5(self):
         """Test that the Anthropic provider defaults to Claude Sonnet 5."""
