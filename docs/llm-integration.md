@@ -2,18 +2,20 @@
 
 ## Overview
 
-Selko uses a provider-agnostic LLM abstraction layer (`LLMProvider` + `LLMGateway`) that supports 6 providers and 21+ models. The default provider is Alibaba Qwen (`qwen3.5-flash`), but any provider can be selected via `LLM_PROVIDER` and `LLM_MODEL` environment variables.
+Selko uses a provider-agnostic LLM abstraction layer (`LLMProvider` + `LLMGateway`) that supports 8 providers and 37 models. The application default is Anthropic Claude Sonnet 5, but any registered provider/model can be selected via `LLM_PROVIDER` and `LLM_MODEL`.
 
 ### Supported Providers
 
 | Provider | Env Var Key | Default Model | Vision |
 |----------|-------------|---------------|--------|
 | Gemini | `GEMINI_API_KEY` | `gemini-3-flash-preview` | Yes |
-| Moonshot (Kimi) | `MOONSHOT_API_KEY` | `kimi-k2.5` | Yes |
-| ZAI (GLM) | `ZAI_API_KEY` | `glm-4.6v-flash` | Yes |
-| Qwen | `QWEN_API_KEY` | `qwen3.5-flash` | Yes |
+| Moonshot (Kimi) | `MOONSHOT_API_KEY` | `kimi-k2.6` | Yes |
+| ZAI (GLM) | `ZAI_API_KEY` | `glm-5.2` | Yes |
+| Qwen | `ALIBABA_API_KEY` | `qwen3.5-flash` | Yes |
 | DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-chat` | No |
 | MiniMax | `MINIMAX_API_KEY` | `MiniMax-M2.5` | No |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5.6-sol` | Yes |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-sonnet-5` | Yes |
 
 See `backend/selko/services/llm_provider.py` for the full `MODEL_REGISTRY` with pricing, context windows, and capabilities.
 

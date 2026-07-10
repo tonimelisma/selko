@@ -58,24 +58,25 @@ DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "
 
 # Default models for multi-model evals: (provider, model, thinking_level)
 # Thinking levels: "none", "low", "medium" — providers without thinking support ignore the level
-# Gemini supports none/low/medium; OpenAI GPT-5 supports low/medium; Anthropic Sonnet 4.6 supports none/low/medium
+# Gemini supports none/low/medium; OpenAI GPT-5 supports low/medium; current Claude models support none/low/medium
 # Qwen3-VL/3.5 supports none/low/medium (enable_thinking + thinking_budget)
 EVAL_MODELS = [
     # Gemini — test at none, low, medium
     ("gemini", "gemini-3-flash-preview", "none"),
     ("gemini", "gemini-3-flash-preview", "low"),
     ("gemini", "gemini-3-flash-preview", "medium"),
-    # OpenAI GPT-5 — test at low, medium (reasoning models, can't disable reasoning)
-    ("openai", "gpt-5-nano", "low"),
-    ("openai", "gpt-5-nano", "medium"),
-    ("openai", "gpt-5-mini", "low"),
-    ("openai", "gpt-5-mini", "medium"),
-    ("openai", "gpt-5.2", "low"),
-    ("openai", "gpt-5.2", "medium"),
-    # Anthropic Haiku — single mode (no adaptive thinking)
-    # Note: Sonnet removed from defaults (too expensive for routine evals — $3/$15 per MTok).
-    # Still accessible via: --provider anthropic --model claude-sonnet-4-6
-    ("anthropic", "claude-haiku-4-5-20251001", "none"),
+    # OpenAI GPT-5.6 preview variants — test at low and medium reasoning.
+    ("openai", "gpt-5.6-sol", "low"),
+    ("openai", "gpt-5.6-sol", "medium"),
+    ("openai", "gpt-5.6-terra", "low"),
+    ("openai", "gpt-5.6-terra", "medium"),
+    ("openai", "gpt-5.6-luna", "low"),
+    ("openai", "gpt-5.6-luna", "medium"),
+    # Anthropic frontier models — compare no-thinking and adaptive low effort.
+    ("anthropic", "claude-sonnet-5", "none"),
+    ("anthropic", "claude-sonnet-5", "low"),
+    ("anthropic", "claude-opus-4-8", "none"),
+    ("anthropic", "claude-opus-4-8", "low"),
     # Qwen — thinking mode tested but dropped from defaults:
     # - qwen3.5-plus thinking: marginal quality gain (+2 pass at low), 3-5x cost/latency
     # - qwen3.5-flash thinking: quality *degrades* (3→5→6 fails), not worth the cost
@@ -86,9 +87,11 @@ EVAL_MODELS = [
     ("qwen", "qwen3-vl-flash", "none"),
     ("qwen", "qwen3-vl-plus", "none"),
     ("qwen", "qwen-vl-max", "none"),
-    # Other providers — single mode (no thinking support)
-    ("moonshot", "kimi-k2.5", "none"),
-    ("zai", "glm-4.6v-flash", "none"),
+    # Moonshot — K2.6 is the general-purpose default; compare the code-tuned K2.7.
+    ("moonshot", "kimi-k2.6", "none"),
+    ("moonshot", "kimi-k2.7-code", "none"),
+    # Other frontier providers — single mode.
+    ("zai", "glm-5.2", "none"),
 ]
 
 # Monthly cost projection tiers

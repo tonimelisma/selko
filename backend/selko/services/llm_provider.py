@@ -52,7 +52,25 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "json_schema": True,
         "pricing": {"input": 0.15, "output": 0.60},
     },
-    # --- Moonshot/Kimi (4 models) ---
+    # --- Moonshot/Kimi (6 models) ---
+    "kimi-k2.7-code": {
+        "provider": "moonshot",
+        "vision": True,
+        "json_schema": True,
+        "base_url": "https://api.moonshot.ai/v1",
+        # Public pricing has not caught up with the authenticated model catalog.
+        "pricing": {"input": 0.60, "output": 3.00},
+        "pricing_estimated": True,
+    },
+    "kimi-k2.6": {
+        "provider": "moonshot",
+        "vision": True,
+        "json_schema": True,
+        "base_url": "https://api.moonshot.ai/v1",
+        # Public pricing has not caught up with the authenticated model catalog.
+        "pricing": {"input": 0.60, "output": 3.00},
+        "pricing_estimated": True,
+    },
     "kimi-k2.5": {
         "provider": "moonshot",
         "vision": True,
@@ -81,8 +99,17 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.moonshot.ai/v1",
         "pricing": {"input": 2.00, "output": 5.00},
     },
-    # --- Z.AI / Zhipu (6 models) ---
+    # --- Z.AI / Zhipu (7 models) ---
     # Z.AI strict mode doesn't enforce field names; use prompt-based JSON
+    "glm-5.2": {
+        "provider": "zai",
+        "vision": True,
+        "json_schema": False,
+        "base_url": "https://api.z.ai/api/paas/v4/",
+        # Estimated from the prior GLM-5.x public price until 5.2 is published.
+        "pricing": {"input": 1.40, "output": 4.40},
+        "pricing_estimated": True,
+    },
     "glm-5": {
         "provider": "zai",
         "vision": False,
@@ -217,7 +244,37 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.minimax.io/v1",
         "pricing": {"input": 0.20, "output": 1.10},
     },
-    # --- OpenAI (4 models, all GPT-5 reasoning) ---
+    # --- OpenAI (7 models, all GPT-5 reasoning) ---
+    "gpt-5.6-sol": {
+        "provider": "openai",
+        "vision": True,
+        "json_schema": True,
+        "reasoning": True,
+        "base_url": "https://api.openai.com/v1",
+        # Preview pricing is not public; estimate at the GPT-5.5 API rate.
+        "pricing": {"input": 5.00, "output": 30.00},
+        "pricing_estimated": True,
+    },
+    "gpt-5.6-terra": {
+        "provider": "openai",
+        "vision": True,
+        "json_schema": True,
+        "reasoning": True,
+        "base_url": "https://api.openai.com/v1",
+        # Preview pricing is not public; estimate at the GPT-5.5 API rate.
+        "pricing": {"input": 5.00, "output": 30.00},
+        "pricing_estimated": True,
+    },
+    "gpt-5.6-luna": {
+        "provider": "openai",
+        "vision": True,
+        "json_schema": True,
+        "reasoning": True,
+        "base_url": "https://api.openai.com/v1",
+        # Preview pricing is not public; estimate at the GPT-5.5 API rate.
+        "pricing": {"input": 5.00, "output": 30.00},
+        "pricing_estimated": True,
+    },
     "gpt-5.2": {
         "provider": "openai",
         "vision": True,
@@ -250,13 +307,21 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "base_url": "https://api.openai.com/v1",
         "pricing": {"input": 0.05, "output": 0.40},
     },
-    # --- Anthropic / Claude (3 models) ---
+    # --- Anthropic / Claude (4 models) ---
     "claude-sonnet-5": {
         "provider": "anthropic",
         "vision": True,
         "json_schema": False,
         "adaptive_thinking": True,
-        "pricing": {"input": 3.00, "output": 15.00},
+        # Introductory price through 2026-08-31.
+        "pricing": {"input": 2.00, "output": 10.00},
+    },
+    "claude-opus-4-8": {
+        "provider": "anthropic",
+        "vision": True,
+        "json_schema": False,
+        "adaptive_thinking": True,
+        "pricing": {"input": 5.00, "output": 25.00},
     },
     "claude-sonnet-4-6": {
         "provider": "anthropic",
@@ -288,12 +353,12 @@ PROVIDER_API_KEY_MAP = {
 # Default model per provider (first listed model)
 PROVIDER_DEFAULT_MODEL = {
     "gemini": "gemini-3-flash-preview",
-    "moonshot": "kimi-k2.5",
-    "zai": "glm-4.6v-flash",
+    "moonshot": "kimi-k2.6",
+    "zai": "glm-5.2",
     "qwen": "qwen3.5-flash",
     "deepseek": "deepseek-chat",
     "minimax": "MiniMax-M2.5",
-    "openai": "gpt-5-nano",
+    "openai": "gpt-5.6-sol",
     "anthropic": "claude-sonnet-5",
 }
 
