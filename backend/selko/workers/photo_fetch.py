@@ -8,6 +8,7 @@ Photos are automatically picked up by the worker pool for LLM processing
 because they're saved with processing_status='pending'.
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -26,21 +27,12 @@ from selko.services.scheduled_tasks import enqueue_scheduled_task
 logger = logging.getLogger(__name__)
 
 
-async def process_photo_fetch_task(
+def _process_photo_fetch_sync(
     client: Client,
     config: Config,
     payload: dict[str, Any],
 ) -> None:
-    """Process a photo_fetch scheduled task.
-
-    Args:
-        client: Supabase client (with service role).
-        config: Application configuration.
-        payload: Task payload with {user_id: str, max_photos: int}.
-
-    Raises:
-        PhotosError: If Google Photos API calls fail.
-    """
+    """Synchronous Google Photos fetch body (run via asyncio.to_thread)."""
     user_id = payload.get("user_id")
     max_photos = payload.get("max_photos", 100)
 
@@ -107,6 +99,24 @@ async def process_photo_fetch_task(
         }).eq("user_id", user_id).eq("provider", "google_photos").execute()
     except Exception as e:
         logger.warning(f"Failed to update last_photo_sync_at: {e}")
+
+
+async def process_photo_fetch_task(
+    client: Client,
+    config: Config,
+    payload: dict[str, Any],
+) -> None:
+    """Process a photo_fetch scheduled task.
+
+    Args:
+        client: Supabase client (with service role).
+        config: Application configuration.
+        payload: Task payload with {user_id: str, max_photos: int}.
+
+    Raises:
+        PhotosError: If Google Photos API calls fail.
+    """
+    await asyncio.to_thread(_process_photo_fetch_sync, client, config, payload)
 
 
 async def schedule_photo_fetches() -> None:

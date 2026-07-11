@@ -8,6 +8,7 @@ This worker:
 Note: The worker pool handles status updates (synced/sync_failed).
 """
 
+import asyncio
 import logging
 from typing import Any
 
@@ -46,9 +47,11 @@ async def sync_event(
 
     logger.info(f"Syncing event {event_id} to Google Calendar: {title[:50]}")
 
-    # Sync to Google Calendar using the calendars service
+    # Sync to Google Calendar using the calendars service (off event loop)
     try:
-        google_event_id = sync_event_to_calendar(client, user_id, event_id)
+        google_event_id = await asyncio.to_thread(
+            sync_event_to_calendar, client, user_id, event_id
+        )
         logger.info(f"Synced event {event_id} to Google Calendar: {google_event_id}")
         return google_event_id
     except CalendarsError as e:

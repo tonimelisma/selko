@@ -76,7 +76,9 @@ class CalendarEventExtraction(BaseModel):
     """
 
     email_message_id: str = Field(description="The Gmail message ID")
-    email_date: datetime = Field(description="The date the email was sent")
+    email_date: Optional[datetime] = Field(
+        None, description="The date the email was sent (null if unknown)"
+    )
     sender_name: Optional[str] = Field(None, description="Name of the email sender")
     sender_email: str = Field(description="Email address of the sender")
     events_found: bool = Field(

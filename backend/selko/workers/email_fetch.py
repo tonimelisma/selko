@@ -8,6 +8,7 @@ Emails are automatically picked up by the worker pool for LLM processing
 because they're saved with processing_status='pending'.
 """
 
+import asyncio
 import logging
 from typing import Any
 
@@ -26,22 +27,12 @@ from selko.services.scheduled_tasks import enqueue_scheduled_task
 logger = logging.getLogger(__name__)
 
 
-async def process_email_fetch_task(
+def _process_email_fetch_sync(
     client: Client,
     config: Config,
     payload: dict[str, Any],
 ) -> None:
-    """Process an email_fetch scheduled task.
-
-    Args:
-        client: Supabase client (with service role).
-        config: Application configuration.
-        payload: Task payload with {user_id: str, max_emails: int}.
-
-    Raises:
-        GmailError: If Gmail API calls fail.
-        EmailError: If email processing fails.
-    """
+    """Synchronous Gmail fetch body (run via asyncio.to_thread)."""
     user_id = payload.get("user_id")
     max_emails = payload.get("max_emails", 50)
 
@@ -81,6 +72,25 @@ async def process_email_fetch_task(
     except EmailError as e:
         logger.error(f"Error saving emails for user {user_id}: {e}")
         raise
+
+
+async def process_email_fetch_task(
+    client: Client,
+    config: Config,
+    payload: dict[str, Any],
+) -> None:
+    """Process an email_fetch scheduled task.
+
+    Args:
+        client: Supabase client (with service role).
+        config: Application configuration.
+        payload: Task payload with {user_id: str, max_emails: int}.
+
+    Raises:
+        GmailError: If Gmail API calls fail.
+        EmailError: If email processing fails.
+    """
+    await asyncio.to_thread(_process_email_fetch_sync, client, config, payload)
 
 
 # Keep old function signature for backwards compatibility
