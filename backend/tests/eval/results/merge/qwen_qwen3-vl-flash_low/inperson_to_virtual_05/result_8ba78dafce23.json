@@ -1,0 +1,169 @@
+{
+  "fixture_name": "inperson_to_virtual_05",
+  "fixture_hash": "2cc8cbe32bb227cfa9cf77404742d0fe0254ceee8f318ceb23dddbc2aca27b5d",
+  "code_hash": "8ba78dafce23",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:21:03.186611+00:00",
+  "duration_ms": 15870,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:20:47.315981+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:20:47.315989+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:20:47.334129+00:00",
+      "duration_ms": 15852
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:21:03.186247+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "In-person meeting changed to virtual with Zoom link",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "location-update",
+    "virtual",
+    "modality-change"
+  ],
+  "expected": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description_contains": [
+      "Q1 results",
+      "ABC Corp",
+      "moved to Zoom",
+      "virtual format"
+    ]
+  },
+  "actual": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description": "Q1 results presentation for ABC Corp Meeting moved to Zoom. Client requested virtual format. Same agenda.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "Q1 results",
+        "ABC Corp",
+        "moved to Zoom",
+        "virtual format"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 552,
+    "completion_tokens": 2182,
+    "total_tokens": 2734
+  },
+  "cost": 0.0015279200000000003,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1261
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n    \"title\": \"Client Presentation (Virtual)\",\n    \"start_datetime\": \"2026-03-25T10:00:00\",\n    \"end_datetime\": \"2026-03-25T11:30:00\",\n    \"all_day\": false,\n    \"location\": \"Zoom: https://zoom.us/j/123456789\",\n    \"description\": \"Q1 results presentation for ABC Corp Meeting moved to Zoom. Client requested virtual format. Same agenda.\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "fixture_name": "same_flight_04",
+  "fixture_hash": "36d8ec55968eb0bed4c10329ced2a82958341c528a9ddb4eb406c781c0217e37",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:20:34.681838+00:00",
+  "duration_ms": 9855,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:20:24.824443+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:20:24.824460+00:00",
+      "duration_ms": 21
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:20:24.845738+00:00",
+      "duration_ms": 9834
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:20:34.680641+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "travel"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 555,
+    "completion_tokens": 1460,
+    "total_tokens": 2015
+  },
+  "cost": 0.0010372,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1213
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event has identical start and end times (2026-05-10T08:15:00 to 2026-05-10T11:45:00) as event-002. While the titles differ slightly, both describe the same flight (UA 1234) from San Francisco to Denver. The location in the new event ('SFO to DEN') is a general description consistent with event-002's specific terminal ('SFO Terminal 3'), and the additional details in the new event's description (confirmation number and seat) are typical for a flight event without contradicting the existing event. Thus, they refer to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

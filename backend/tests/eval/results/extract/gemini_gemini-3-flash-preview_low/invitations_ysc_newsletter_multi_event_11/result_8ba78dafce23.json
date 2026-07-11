@@ -1,0 +1,549 @@
+{
+  "fixture_name": "invitations/ysc_newsletter_multi_event_11",
+  "fixture_hash": "2c1b2a9d2debfe3bd38ac38e11d391d62b2dcf3cc9d46d1b6afa853092539402",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:23.678857+00:00",
+  "duration_ms": 5865,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:17.811488+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:17.811496+00:00",
+      "duration_ms": 28
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:17.840147+00:00",
+      "duration_ms": 5835
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:23.676144+00:00",
+      "duration_ms": 2
+    }
+  },
+  "category": "invitations",
+  "description": "YSC community newsletter with 5 events buried in board updates, cabin rental info, and booking rules",
+  "difficulty": "hard",
+  "tags": [
+    "multi-event",
+    "newsletter",
+    "community",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Welcome New YSC Board Members",
+    "from": "info@ysc.org",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 5,
+    "events": [
+      {
+        "title": "YSC Happy Hour at Transamerica Building",
+        "start_datetime": "2026-02-19T17:30:00",
+        "end_datetime": null,
+        "location": "Transamerica Building, 48th Floor",
+        "description": "YSC Happy Hour with breathtaking views of San Francisco",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Happy Hour at The Royal Cuckoo",
+        "start_datetime": "2026-03-19T17:30:00",
+        "end_datetime": null,
+        "location": "The Royal Cuckoo",
+        "description": "YSC Happy Hour at The Royal Cuckoo cocktail bar",
+        "all_day": false,
+        "confidence_min": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Bus Trip to Wine Country",
+        "start_datetime": "2026-03-28",
+        "end_datetime": null,
+        "location": null,
+        "description": "Bus trip to wine country, details coming soon",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint YSC-SSCC Easter Luncheon",
+        "start_datetime": "2026-04-04",
+        "end_datetime": null,
+        "location": null,
+        "description": "Traditional Scandinavian Luncheon",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint YSC-SSCC Kids Easter & Crafts",
+        "start_datetime": "2026-04-05",
+        "end_datetime": null,
+        "location": "Scandinavian School and Cultural Center",
+        "description": "Kids and family friendly Easter and crafts event",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "YSC Happy Hour at the Transamerica Building",
+        "start_datetime": "2026-02-19T17:30:00+00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Transamerica Building \u2013 48th Floor",
+        "description": "Exclusive YSC Happy Hour experience on the 48th-floor bar with views of San Francisco. Entry is by registration only and must be coordinated directly through Mary. Guests must check in at specific arrival time slots (5:30 PM, 6:00 PM, or 6:30 PM) due to building security. RSVP via Partiful: https://partiful.com/e/g1hU5HXmUnfJwxpW8u8M?c=fLU6roGc",
+        "confidence": 0.95,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Happy Hour at The Royal Cuckoo",
+        "start_datetime": "2026-03-19T17:30:00+00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "The Royal Cuckoo",
+        "description": "Join YSC at one of SF\u2019s unique cocktail bars. Enjoy exclusive drink specials, vintage atmosphere, Aquavit, and live music.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Bus Trip to Wine Country",
+        "start_datetime": "2026-03-28T00:00:00+00:00",
+        "end_datetime": "2026-03-28T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "Bus trip to wine country. Details are coming soon.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Joint YSC-SSCC Easter Luncheon",
+        "start_datetime": "2026-04-04T00:00:00+00:00",
+        "end_datetime": "2026-04-04T23:59:59+00:00",
+        "all_day": true,
+        "location": null,
+        "description": "A traditional Scandinavian Luncheon hosted by YSC and SSCC. More info to follow.",
+        "confidence": 0.85,
+        "importance": "fyi"
+      },
+      {
+        "title": "Joint YSC-SSCC Kids Easter & Crafts",
+        "start_datetime": "2026-04-05T00:00:00+00:00",
+        "end_datetime": "2026-04-05T23:59:59+00:00",
+        "all_day": true,
+        "location": "Scandinavian School and Cultural Center",
+        "description": "Kids and family friendly event featuring Easter crafts.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.9512195121951219,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9552238805970149,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.7,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.85,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 2282,
+    "completion_tokens": 784,
+    "total_tokens": 3066
+  },
+  "cost": 0.0008127000000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4425
+      },
+      {
+        "type": "text",
+        "length": 4880
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "confidence"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"YSC Happy Hour at the Transamerica Building\",\n      \"start_datetime\": \"2026-02-19T17:30:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": false,\n      \"location\": \"Transamerica Building \u2013 48th Floor\",\n      \"description\": \"Exclusive YSC Happy Hour experience on the 48th-floor bar with views of San Francisco. Entry is by registration only and must be coordinated directly through Mary. Guests must check in at specific arrival time slots (5:30 PM, 6:00 PM, or 6:30 PM) due to building security. RSVP via Partiful: https://partiful.com/e/g1hU5HXmUnfJwxpW8u8M?c=fLU6roGc\",\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"YSC Happy Hour at The Royal Cuckoo\",\n      \"start_datetime\": \"2026-03-19T17:30:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": false,\n      \"location\": \"The Royal Cuckoo\",\n      \"description\": \"Join YSC at one of SF\u2019s unique cocktail bars. Enjoy exclusive drink specials, vintage atmosphere, Aquavit, and live music.\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"YSC Bus Trip to Wine Country\",\n      \"start_datetime\": \"2026-03-28T00:00:00Z\",\n      \"end_datetime\": \"2026-03-28T23:59:59Z\",\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Bus trip to wine country. Details are coming soon.\",\n      \"confidence\": 0.85,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Joint YSC-SSCC Easter Luncheon\",\n      \"start_datetime\": \"2026-04-04T00:00:00Z\",\n      \"end_datetime\": \"2026-04-04T23:59:59Z\",\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"A traditional Scandinavian Luncheon hosted by YSC and SSCC. More info to follow.\",\n      \"confidence\": 0.85,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Joint YSC-SSCC Kids Easter & Crafts\",\n      \"start_datetime\": \"2026-04-05T00:00:00Z\",\n      \"end_datetime\": \"2026-04-05T23:59:59Z\",\n      \"all_day\": true,\n      \"location\": \"Scandinavian School and Cultural Center\",\n      \"description\": \"Kids and family friendly event featuring Easter crafts.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    }\n  ]\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

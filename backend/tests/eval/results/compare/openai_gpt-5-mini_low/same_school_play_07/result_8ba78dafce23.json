@@ -1,0 +1,110 @@
+{
+  "fixture_name": "same_school_play_07",
+  "fixture_hash": "383229ec54af3331fbff7d2bbf90ef2ebe78fe6a4ef571f6cb95b2104211299f",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:53.877749+00:00",
+  "duration_ms": 5343,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:48.532979+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:48.532982+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:48.549723+00:00",
+      "duration_ms": 5327
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:53.877089+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 435,
+    "completion_tokens": 74,
+    "total_tokens": 509
+  },
+  "cost": 0.00025675,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1294
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Same date and exact same start/end times; titles both reference the school production of The Wizard of Oz; locations both at Lincoln Elementary (auditorium vs building); descriptions indicate a school spring performance \u2014 these refer to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

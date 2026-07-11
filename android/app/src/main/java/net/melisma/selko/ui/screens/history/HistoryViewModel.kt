@@ -111,7 +111,7 @@ class HistoryViewModel(
                 ?.toLocalDateTime(tz)
                 ?.date
             date?.let {
-                "${it.dayOfMonth} ${it.month.name.lowercase().replaceFirstChar { c -> c.uppercase() }} ${it.year}"
+                "${it.day} ${it.month.name.lowercase().replaceFirstChar { c -> c.uppercase() }} ${it.year}"
             } ?: getString(R.string.history_unknown_date)
         }.map { (dateLabel, groupEvents) ->
             DateGroup(dateLabel = dateLabel, events = groupEvents)

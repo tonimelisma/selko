@@ -1,0 +1,363 @@
+{
+  "fixture_name": "conferences/virtual_summit_05",
+  "fixture_hash": "03e1176a2229fd67d468580ddb0b54d68d556753384baa53ccb566ee6ca4be3a",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:53.909389+00:00",
+  "duration_ms": 11010,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:42.898119+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:42.898127+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:42.915770+00:00",
+      "duration_ms": 10993
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:53.908849+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "Multi-day virtual summit with session schedule",
+  "difficulty": "hard",
+  "tags": [
+    "summit",
+    "virtual",
+    "multi-day",
+    "multiple-sessions"
+  ],
+  "input_summary": {
+    "subject": "Your Product Management Virtual Summit Access",
+    "from": "events@pmsummit.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "PM Summit 2026 - Day 1",
+        "start_datetime": "2026-04-07T09:00:00",
+        "end_datetime": "2026-04-07T16:00:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 1 - Keynotes and track sessions",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "PM Summit 2026 - Day 2",
+        "start_datetime": "2026-04-08T09:00:00",
+        "end_datetime": "2026-04-08T16:30:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Summit Day 2 - Workshops and closing keynote",
+        "all_day": false,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "PM Summit 2026 (Virtual Conference)",
+        "start_datetime": "2026-04-07T09:00:00-07:00",
+        "end_datetime": "2026-04-08T16:30:00-07:00",
+        "all_day": false,
+        "location": "https://hopin.com/events/pmsummit2026",
+        "description": "PM Summit 2026 \u2014 two-day virtual product management conference for which the recipient (Registrant: David Lee) is registered (Ticket: All-Access Pass; Order #: PMS-2026-12345). Event dates and primary schedule (all times Pacific Time, PT):\n\nDay 1 \u2014 Tuesday, April 7, 2026\n- 9:00 AM \u2014 Opening Keynote: \u201cThe Future of Product\u201d (CEO, ProductCo)\n- 10:30 AM \u2014 Track sessions begin (4 concurrent tracks)\n- 12:00 PM \u2014 Lunch Break & Networking\n- 1:00 PM \u2014 Afternoon Sessions\n- 4:00 PM \u2014 Day 1 Closing Panel\n\nDay 2 \u2014 Wednesday, April 8, 2026\n- 9:00 AM \u2014 Day 2 Kickoff\n- 9:30 AM \u2014 Workshop Sessions (hands-on)\n- 12:00 PM \u2014 Lunch Break\n- 1:00 PM \u2014 Afternoon Sessions\n- 3:30 PM \u2014 Closing Keynote: \u201cBuilding Products That Matter\u201d\n- 4:30 PM \u2014 Summit Concludes\n\nAccess information:\n- Platform: Hopin (no download required)\n- Access Link: https://hopin.com/events/pmsummit2026\n- Your Login: david.lee@example.com\n- Note: The platform opens 30 minutes before each day starts.\n\nAdditional details:\n- All sessions recorded and available for 90 days.\n- Build your personal schedule at pmsummit.com/schedule.\n- Registrant and ticket details included above (keep for access/support).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.5614035087719298,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 1470.0,
+          "match": false
+        },
+        "location": {
+          "similarity": 0.23076923076923078,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 1711,
+    "completion_tokens": 835,
+    "total_tokens": 2546
+  },
+  "cost": 0.00209775,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4459
+      },
+      {
+        "type": "text",
+        "length": 1635
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"events_found\":true,\"events\":[{\"title\":\"PM Summit 2026 (Virtual Conference)\",\"start_datetime\":\"2026-04-07T09:00:00-07:00\",\"end_datetime\":\"2026-04-08T16:30:00-07:00\",\"all_day\":false,\"location\":\"https://hopin.com/events/pmsummit2026\",\"description\":\"PM Summit 2026 \u2014 two-day virtual product management conference for which the recipient (Registrant: David Lee) is registered (Ticket: All-Access Pass; Order #: PMS-2026-12345). Event dates and primary schedule (all times Pacific Time, PT):\\n\\nDay 1 \u2014 Tuesday, April 7, 2026\\n- 9:00 AM \u2014 Opening Keynote: \u201cThe Future of Product\u201d (CEO, ProductCo)\\n- 10:30 AM \u2014 Track sessions begin (4 concurrent tracks)\\n- 12:00 PM \u2014 Lunch Break & Networking\\n- 1:00 PM \u2014 Afternoon Sessions\\n- 4:00 PM \u2014 Day 1 Closing Panel\\n\\nDay 2 \u2014 Wednesday, April 8, 2026\\n- 9:00 AM \u2014 Day 2 Kickoff\\n- 9:30 AM \u2014 Workshop Sessions (hands-on)\\n- 12:00 PM \u2014 Lunch Break\\n- 1:00 PM \u2014 Afternoon Sessions\\n- 3:30 PM \u2014 Closing Keynote: \u201cBuilding Products That Matter\u201d\\n- 4:30 PM \u2014 Summit Concludes\\n\\nAccess information:\\n- Platform: Hopin (no download required)\\n- Access Link: https://hopin.com/events/pmsummit2026\\n- Your Login: david.lee@example.com\\n- Note: The platform opens 30 minutes before each day starts.\\n\\nAdditional details:\\n- All sessions recorded and available for 90 days.\\n- Build your personal schedule at pmsummit.com/schedule.\\n- Registrant and ticket details included above (keep for access/support).\",\"confidence\":0.95,\"importance\":\"action_required\"}]}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

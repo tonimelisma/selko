@@ -1,0 +1,387 @@
+{
+  "fixture_name": "travel/flight_confirmation_01",
+  "fixture_hash": "2983d3d8691d06bdb48d4e9d418cd7641f62423b45603465f6c2511514e27ee7",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:48.153637+00:00",
+  "duration_ms": 13075,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:35.076078+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:35.076089+00:00",
+      "duration_ms": 36
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:35.113048+00:00",
+      "duration_ms": 13039
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:48.152783+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "travel",
+  "description": "Flight booking confirmation with departure and arrival times",
+  "difficulty": "medium",
+  "tags": [
+    "flight",
+    "airline",
+    "booking",
+    "multiple-events"
+  ],
+  "input_summary": {
+    "subject": "Your Flight Confirmation - United Airlines",
+    "from": "reservations@united.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Flight UA 1234 - SFO to JFK",
+        "start_datetime": "2026-03-13T08:00:00",
+        "end_datetime": "2026-03-13T16:35:00",
+        "location": "San Francisco International Airport (SFO)",
+        "description": "United Airlines flight to New York JFK",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight UA 5678 - JFK to SFO",
+        "start_datetime": "2026-03-15T19:00:00",
+        "end_datetime": "2026-03-15T22:15:00",
+        "location": "John F. Kennedy International Airport (JFK)",
+        "description": "United Airlines return flight to San Francisco",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Flight UA 1234: SFO to JFK",
+        "start_datetime": "2026-03-13T08:00:00+00:00",
+        "end_datetime": "2026-03-13T16:35:00+00:00",
+        "all_day": false,
+        "location": "San Francisco (SFO)",
+        "description": "United Airlines Flight UA 1234 departing from San Francisco (SFO) at 8:00 AM and arriving at New York JFK (JFK) at 4:35 PM. Seat: 24A (Window). Confirmation Number: ABC123.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight UA 5678: JFK to SFO",
+        "start_datetime": "2026-03-15T19:00:00+00:00",
+        "end_datetime": "2026-03-15T22:15:00+00:00",
+        "all_day": false,
+        "location": "New York JFK (JFK)",
+        "description": "United Airlines Flight UA 5678 departing from New York JFK (JFK) at 7:00 PM and arriving at San Francisco (SFO) at 10:15 PM. Seat: 18F (Window). Confirmation Number: ABC123.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.9433962264150944,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.6333333333333333,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.9433962264150944,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.36065573770491804,
+          "match": false
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1402,
+    "completion_tokens": 401,
+    "total_tokens": 1803
+  },
+  "cost": 0.00045089999999999996,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4461
+      },
+      {
+        "type": "text",
+        "length": 831
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "confidence"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Flight UA 1234: SFO to JFK\",\n      \"start_datetime\": \"2026-03-13T08:00:00Z\",\n      \"end_datetime\": \"2026-03-13T16:35:00Z\",\n      \"all_day\": false,\n      \"location\": \"San Francisco (SFO)\",\n      \"description\": \"United Airlines Flight UA 1234 departing from San Francisco (SFO) at 8:00 AM and arriving at New York JFK (JFK) at 4:35 PM. Seat: 24A (Window). Confirmation Number: ABC123.\",\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Flight UA 5678: JFK to SFO\",\n      \"start_datetime\": \"2026-03-15T19:00:00Z\",\n      \"end_datetime\": \"2026-03-15T22:15:00Z\",\n      \"all_day\": false,\n      \"location\": \"New York JFK (JFK)\",\n      \"description\": \"United Airlines Flight UA 5678 departing from New York JFK (JFK) at 7:00 PM and arriving at San Francisco (SFO) at 10:15 PM. Seat: 18F (Window). Confirmation Number: ABC123.\",\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

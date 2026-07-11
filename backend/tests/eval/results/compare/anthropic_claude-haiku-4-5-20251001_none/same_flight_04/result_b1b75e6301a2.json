@@ -1,0 +1,111 @@
+{
+  "fixture_name": "same_flight_04",
+  "fixture_hash": "36d8ec55968eb0bed4c10329ced2a82958341c528a9ddb4eb406c781c0217e37",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "thinking": "none",
+  "run_at": "2026-02-22T07:02:08.382053+00:00",
+  "duration_ms": 1682,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:02:06.694413+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:02:06.694420+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:02:06.709940+00:00",
+      "duration_ms": 1667
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:02:08.377843+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "travel"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 518,
+    "completion_tokens": 154,
+    "total_tokens": 672
+  },
+  "cost": 0.0010304000000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1213,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Flight to Denver - UA 1234\n- Start: 2026-05-10T08:15:00\n- End: 2026-05-10T11:45:00\n- Location: SFO to DEN\n- Description: United Airlines confirmation #ABC123XYZ. Seat 12A.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Pack for Trip\n   - Start: 2026-05-09T20:00:00\n   - End: 2026-05-09T21:00:00\n   - Location: Home\n   - Description: Pack bags for Denver\n\n2. Event ID: event-002\n   - Title: UA1234 - San Francisco to Denver\n   - Start: 2026-05-10T08:15:00\n   - End: 2026-05-10T11:45:00\n   - Location: SFO Terminal 3\n   - Description: Flight itinerary - departs 8:15am, arrives 11:45am MT\n\n3. Event ID: event-003\n   - Title: Hotel Check-in Denver\n   - Start: 2026-05-10T15:00:00\n   - End: 2026-05-10T15:30:00\n   - Location: Hyatt Regency Denver\n   - Description: Reservation #456789\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-002\",\n  \"reasoning\": \"The new event and event-002 refer to the same real-world flight. Both have identical start/end times (2026-05-10T08:15:00 to 2026-05-10T11:45:00), the same flight number (UA1234), and the same route (SFO to DEN). The differences are minor variations in how the information is presented: the new event includes the seat number and confirmation number, while the existing event includes the terminal and arrival time in MT. These are clearly the same flight event with slightly different detail levels.\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -1,0 +1,253 @@
+{
+  "fixture_name": "invitations/engagement_party_10",
+  "fixture_hash": "b84e2b5c53712ebfdb5d5c07e18725c88abd8a5f94048b25648cda9d69cae06c",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:32.990505+00:00",
+  "duration_ms": 15105,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:17.883063+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:17.883079+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:17.899267+00:00",
+      "duration_ms": 15089
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:32.988820+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Engagement celebration at winery",
+  "difficulty": "medium",
+  "tags": [
+    "engagement",
+    "winery",
+    "afternoon",
+    "outdoor"
+  ],
+  "input_summary": {
+    "subject": "Join Us! Rachel & David's Engagement Celebration",
+    "from": "susan.miller@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Rachel & David's Engagement Party",
+        "start_datetime": "2026-04-04T16:00:00",
+        "end_datetime": null,
+        "location": "Stonegate Winery, 7801 Silverado Trail, Napa, CA 94558",
+        "description": "Engagement celebration with wine tasting and hors d'oeuvres at winery",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Rachel & David's Engagement Celebration",
+        "start_datetime": "2026-04-04T16:00:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Stonegate Winery\n7801 Silverado Trail\nNapa, CA 94558",
+        "description": "Rachel & David invite you to celebrate their engagement. Join us for wine tasting, hors d'oeuvres, and sunset views in the vineyard. Please RSVP to susan.miller@gmail.com by March 25th.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.8333333333333334,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.9433962264150944,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1719,
+    "completion_tokens": 2225,
+    "total_tokens": 3944
+  },
+  "cost": 0.00165052,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4463
+      },
+      {
+        "type": "text",
+        "length": 391
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Rachel & David's Engagement Celebration\",\n      \"start_datetime\": \"2026-04-04T16:00:00\",\n      \"end_datetime\": null,\n      \"location\": \"Stonegate Winery\\n7801 Silverado Trail\\nNapa, CA 94558\",\n      \"description\": \"Rachel & David invite you to celebrate their engagement. Join us for wine tasting, hors d'oeuvres, and sunset views in the vineyard. Please RSVP to susan.miller@gmail.com by March 25th.\",\n      \"all_day\": false,\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

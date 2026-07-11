@@ -4,9 +4,9 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
-import kotlinx.datetime.Instant
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
+import kotlin.time.Instant
 
 sealed class EventResult<out T> {
     data class Success<T>(val data: T) : EventResult<T>()

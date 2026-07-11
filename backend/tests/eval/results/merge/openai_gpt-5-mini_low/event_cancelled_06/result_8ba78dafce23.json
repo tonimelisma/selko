@@ -1,0 +1,226 @@
+{
+  "fixture_name": "event_cancelled_06",
+  "fixture_hash": "3e4c1d2c17f2b9e11f399a3f37cb92e5a29a3518035703869efb1c5170d17075",
+  "code_hash": "8ba78dafce23",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:58.058981+00:00",
+  "duration_ms": 3570,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:54.487364+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:54.487372+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:54.504210+00:00",
+      "duration_ms": 3554
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:58.058633+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Event cancelled - title should get CANCELLED prefix",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "cancellation"
+  ],
+  "expected": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description_contains": [
+      "cancelled",
+      "team offsite",
+      "reschedule next week"
+    ]
+  },
+  "actual": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description": "Bi-weekly sprint review and retrospective\nMeeting cancelled due to team offsite. Will reschedule next week.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "cancellation_prefix": true,
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "cancelled",
+        "team offsite",
+        "reschedule next week"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 448,
+    "completion_tokens": 179,
+    "total_tokens": 627
+  },
+  "cost": 0.00047,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1214
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "end_datetime",
+        "all_day",
+        "location",
+        "description",
+        "importance"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"title\": \"CANCELLED: Sprint Review\",\n  \"start_datetime\": \"2026-04-18T14:00:00\",\n  \"end_datetime\": \"2026-04-18T15:00:00\",\n  \"all_day\": false,\n  \"location\": \"Conference Room A\",\n  \"description\": \"Bi-weekly sprint review and retrospective\\nMeeting cancelled due to team offsite. Will reschedule next week.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

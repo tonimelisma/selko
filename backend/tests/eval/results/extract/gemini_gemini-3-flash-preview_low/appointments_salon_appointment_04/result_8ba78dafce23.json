@@ -1,0 +1,332 @@
+{
+  "fixture_name": "appointments/salon_appointment_04",
+  "fixture_hash": "ad275c2ff2c0c7b872991b65221df16842a5871de956a5e2a92134013fbfa873",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:28.268078+00:00",
+  "duration_ms": 4964,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:23.302721+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:23.302731+00:00",
+      "duration_ms": 33
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:23.336375+00:00",
+      "duration_ms": 4931
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:28.267595+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "appointments",
+  "description": "Hair salon appointment booking",
+  "difficulty": "easy",
+  "tags": [
+    "salon",
+    "haircut",
+    "personal-care"
+  ],
+  "input_summary": {
+    "subject": "Your Appointment at Style Studio",
+    "from": "bookings@stylestudio.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hair Appointment - Style Studio",
+        "start_datetime": "2026-02-12T15:30:00",
+        "end_datetime": "2026-02-12T17:30:00",
+        "location": "Style Studio Salon, 890 University Avenue, Palo Alto, CA 94301",
+        "description": "Haircut and color with Amanda Torres",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Haircut & Color with Amanda Torres",
+        "start_datetime": "2026-02-12T15:30:00+00:00",
+        "end_datetime": "2026-02-12T17:30:00+00:00",
+        "all_day": false,
+        "location": "890 University Avenue, Palo Alto, CA 94301",
+        "description": "Haircut & Color appointment with Amanda Torres at Style Studio Salon. Duration is approximately 2 hours. Note: Please provide at least 24 hours notice for cancellations to avoid a fee.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.27692307692307694,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.8076923076923077,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1240,
+    "completion_tokens": 196,
+    "total_tokens": 1436
+  },
+  "cost": 0.0003036,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4455
+      },
+      {
+        "type": "text",
+        "length": 458
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "confidence"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Haircut & Color with Amanda Torres\",\n      \"start_datetime\": \"2026-02-12T15:30:00Z\",\n      \"end_datetime\": \"2026-02-12T17:30:00Z\",\n      \"all_day\": false,\n      \"location\": \"890 University Avenue, Palo Alto, CA 94301\",\n      \"description\": \"Haircut & Color appointment with Amanda Torres at Style Studio Salon. Duration is approximately 2 hours. Note: Please provide at least 24 hours notice for cancellations to avoid a fee.\",\n      \"confidence\": 1.0,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 1,
+    "error_traceback": "Traceback (most recent call last):\n  File \"/Users/tonimelisma/Development/selko/backend/selko/services/llm_gateway.py\", line 184, in call\n    response = self.provider.generate(\n  File \"/Users/tonimelisma/Development/selko/backend/selko/services/llm_provider.py\", line 673, in generate\n    response = self.client.models.generate_content(\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/models.py\", line 5227, in generate_content\n    response = self._generate_content(\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/models.py\", line 4009, in _generate_content\n    response = self._api_client.request(\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1386, in request\n    response = self._request(http_request, http_options, stream=False)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1222, in _request\n    return self._retry(self._request_once, http_request, stream)  # type: ignore[no-any-return]\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 477, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 378, in iter\n    result = action(retry_state)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 420, in exc_check\n    raise retry_exc.reraise()\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 187, in reraise\n    raise self.last_attempt.result()\n  File \"/Users/tonimelisma/.local/share/uv/python/cpython-3.10.17-macos-aarch64-none/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/Users/tonimelisma/.local/share/uv/python/cpython-3.10.17-macos-aarch64-none/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 480, in __call__\n    result = fn(*args, **kwargs)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/_api_client.py\", line 1199, in _request_once\n    errors.APIError.raise_for_response(response)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/errors.py\", line 121, in raise_for_response\n    cls.raise_error(response.status_code, response_json, response)\n  File \"/Users/tonimelisma/Development/selko/.venv/lib/python3.10/site-packages/google/genai/errors.py\", line 148, in raise_error\n    raise ServerError(status_code, response_json, response)\ngoogle.genai.errors.ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}\n"
+  }
+}

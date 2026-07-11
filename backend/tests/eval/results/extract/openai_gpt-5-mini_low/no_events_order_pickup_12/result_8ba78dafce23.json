@@ -1,0 +1,420 @@
+{
+  "fixture_name": "no_events/order_pickup_12",
+  "fixture_hash": "f3cb7d203c2dd284bfa06fb44a2d1084a5b6f80adb79d41b1e40e5e8c721697d",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:18.244946+00:00",
+  "duration_ms": 3790,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:14.452730+00:00",
+      "duration_ms": 4
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:14.457265+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:14.472685+00:00",
+      "duration_ms": 3771
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:18.244477+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "Real-world Target Drive Up order pickup confirmation - past event, not a calendar item",
+  "difficulty": "easy",
+  "tags": [
+    "order",
+    "receipt",
+    "retail",
+    "negative-test",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Beep beep! Your Drive Up order ending in 4284 was picked up.",
+    "from": "orders@oe.target.com",
+    "has_attachments": true,
+    "attachment_count": 21,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 851774
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": false,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 5289,
+    "completion_tokens": 154,
+    "total_tokens": 5443
+  },
+  "cost": 0.00163025,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4467
+      },
+      {
+        "type": "text",
+        "length": 930
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 43
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 3465
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 39230
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 4038
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 453
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 19052
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 5100
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 21119
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 63164
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 10177
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 29803
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 17526
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 17305
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 286048
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 41741
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 26550
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 20138
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 20347
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 37728
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 117269
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 71478
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"events_found\": false,\n  \"events\": []\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

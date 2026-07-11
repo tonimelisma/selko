@@ -1,0 +1,103 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "9dee5b65d2bfa1e5f9a9375250a1149ca1e06e0c707c6a690936f140925156eb",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:22:39.698540+00:00",
+  "duration_ms": 4684,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:22:35.013142+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:22:35.013151+00:00",
+      "duration_ms": 35
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:22:35.048620+00:00",
+      "duration_ms": 4649
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:22:39.698238+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 437,
+    "completion_tokens": 72,
+    "total_tokens": 509
+  },
+  "cost": 0.00010875,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1190
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event and event-002 share the same start/end times and date. The titles 'Q2 Planning Session' and 'Engineering Q2 Planning' along with descriptions referring to quarterly engineering planning indicate they represent the same real-world event.\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

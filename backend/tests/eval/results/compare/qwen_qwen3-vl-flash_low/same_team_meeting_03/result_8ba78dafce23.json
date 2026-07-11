@@ -1,0 +1,88 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "9dee5b65d2bfa1e5f9a9375250a1149ca1e06e0c707c6a690936f140925156eb",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:20:41.124908+00:00",
+  "duration_ms": 9013,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:20:32.110593+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:20:32.110597+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:20:32.127781+00:00",
+      "duration_ms": 8996
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:20:41.123897+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 509,
+    "completion_tokens": 1335,
+    "total_tokens": 1844
+  },
+  "cost": 0.0009485200000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1190
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event shares the same start and end times (13:00-15:00) as event-002. The titles are similar (both about Q2 planning for engineering) and descriptions are comparable. The missing location in event-002 is acceptable per the criteria (events are the same even if one has more details).\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

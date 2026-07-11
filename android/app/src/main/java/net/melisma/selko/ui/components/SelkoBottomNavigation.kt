@@ -18,7 +18,7 @@ import net.melisma.selko.ui.navigation.Review
 import net.melisma.selko.ui.navigation.Settings
 
 data class BottomNavItem(
-    @StringRes val labelResId: Int,
+    @param:StringRes val labelResId: Int,
     val icon: ImageVector,
     val route: Any
 )

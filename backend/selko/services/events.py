@@ -161,6 +161,7 @@ def save_extracted_events(
     email_id: str,
     extraction: CalendarEventExtraction,
     initial_status: str = "pending_review",
+    current_time: Optional[datetime] = None,
 ) -> tuple[int, int]:
     """Deduplicate and persist extracted events into New or Changes lanes.
 
@@ -169,6 +170,14 @@ def save_extracted_events(
     - Match + noop changeset → silent skip.
     - Match + real change → Changes lane (``pending_change``), or apply immediately
       when ``initial_status == "approved"`` (sender auto_approve).
+    Args:
+        supabase_client: Authenticated Supabase client.
+        gateway: LLMGateway instance for LLM operations.
+        user_id: UUID of user.
+        email_id: UUID of source email.
+        extraction: LLM extraction result containing events.
+        initial_status: Status for newly created events (default: pending_review).
+        current_time: Optional current time override for deterministic testing.
 
     Returns:
         Tuple of (num_new, num_updated) event counts. Skips are not counted.
@@ -182,7 +191,12 @@ def save_extracted_events(
         user_tz = ZoneInfo(user_timezone)
     except (KeyError, ValueError):
         user_tz = ZoneInfo("America/New_York")
-    now = datetime.now(user_tz)
+    if current_time is None:
+        now = datetime.now(user_tz)
+    elif current_time.tzinfo is None:
+        now = current_time.replace(tzinfo=user_tz)
+    else:
+        now = current_time.astimezone(user_tz)
     cutoff = now - timedelta(hours=24)
 
     for event in extraction.events:

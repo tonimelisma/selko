@@ -1,9 +1,9 @@
 package net.melisma.selko.data.model
 
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import kotlin.time.Instant
 
 @Serializable
 enum class SourceType {

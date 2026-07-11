@@ -1,0 +1,110 @@
+{
+  "fixture_name": "same_parent_teacher_08",
+  "fixture_hash": "f8cf81aa24634194f42aa1a81aa9e5658c808a5130cb3b43aa977e9e291b82f7",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:49.788698+00:00",
+  "duration_ms": 2098,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:47.689163+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:47.689172+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:47.708843+00:00",
+      "duration_ms": 2079
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:49.788292+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same parent-teacher conference with reminder vs original - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 366,
+    "completion_tokens": 68,
+    "total_tokens": 434
+  },
+  "cost": 0.0002275,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Same person and purpose (parent\u2011teacher conference with Mrs. Johnson about Jake), identical start/end times and same location (Room 204, Lincoln Elementary). Wording differs but refers to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

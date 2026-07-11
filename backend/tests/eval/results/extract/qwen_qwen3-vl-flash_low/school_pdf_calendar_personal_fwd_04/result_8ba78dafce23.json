@@ -1,0 +1,678 @@
+{
+  "fixture_name": "school/pdf_calendar_personal_fwd_04",
+  "fixture_hash": "9362bc7e4c0e0f0fc0cb3ae8c8f1f1eced48c49b0ee2d14af191566b927e5c1f",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:51.396560+00:00",
+  "duration_ms": 24598,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:26.795689+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:26.796241+00:00",
+      "duration_ms": 18
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:26.815149+00:00",
+      "duration_ms": 24578
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:51.393852+00:00",
+      "duration_ms": 2
+    }
+  },
+  "category": "school",
+  "description": "Personal forward of KinderCare January calendar (Finnish subject, minimal body)",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "forwarded",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Fwd: Tammikuun kalenteri",
+    "from": "spouse@example.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 1251936
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions Day",
+        "start_datetime": "2026-01-07",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-13",
+        "all_day": true,
+        "confidence_min": 0.5,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake Day",
+        "start_datetime": "2026-01-15",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "KinderCare Closed - Martin Luther King Day",
+        "start_datetime": "2026-01-19",
+        "all_day": true,
+        "confidence_min": 0.8,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow Day",
+        "start_datetime": "2026-01-28",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "January 1 Closed - Happy New Year",
+        "start_datetime": "2026-01-01T00:00:00",
+        "end_datetime": "2026-01-01T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "School closed for New Year's Day celebration.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle Day",
+        "start_datetime": "2026-01-02T00:00:00",
+        "end_datetime": "2026-01-02T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Wear anything sparkle on January 2nd.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05T00:00:00",
+        "end_datetime": "2026-01-05T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Participate in Selfie Day on January 5th.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions Day",
+        "start_datetime": "2026-01-07T00:00:00",
+        "end_datetime": "2026-01-07T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Make resolutions on January 7th.",
+        "confidence": 0.8,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09T00:00:00",
+        "end_datetime": "2026-01-09T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Wear pajamas on January 9th.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-12T00:00:00",
+        "end_datetime": "2026-01-12T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Celebration for Ms Ashley's birthday on January 12th.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Martin Luther King Day Closed",
+        "start_datetime": "2026-01-19T00:00:00",
+        "end_datetime": "2026-01-19T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "School closed in observance of Martin Luther King Jr. Day on January 19th.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23T00:00:00",
+        "end_datetime": "2026-01-23T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Wear pajamas on January 23rd.",
+        "confidence": 0.9,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress like a Rainbow",
+        "start_datetime": "2026-01-28T00:00:00",
+        "end_datetime": "2026-01-28T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Wear colorful clothing on January 28th (Rainbow Day).",
+        "confidence": 0.9,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6268656716417911,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.8,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 1440.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.6197183098591549,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.8,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "title": {
+          "similarity": 0.9090909090909091,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.9,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 3912,
+    "completion_tokens": 3105,
+    "total_tokens": 7017
+  },
+  "cost": 0.00242436,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4429
+      },
+      {
+        "type": "text",
+        "length": 37
+      },
+      {
+        "type": "image",
+        "mime_type": "application/pdf",
+        "size_bytes": 1251936
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"January 1 Closed - Happy New Year\",\n      \"start_datetime\": \"2026-01-01T00:00:00\",\n      \"end_datetime\": \"2026-01-01T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"School closed for New Year's Day celebration.\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Wear Anything Sparkle Day\",\n      \"start_datetime\": \"2026-01-02T00:00:00\",\n      \"end_datetime\": \"2026-01-02T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Wear anything sparkle on January 2nd.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Selfie Day\",\n      \"start_datetime\": \"2026-01-05T00:00:00\",\n      \"end_datetime\": \"2026-01-05T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Participate in Selfie Day on January 5th.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Resolutions Day\",\n      \"start_datetime\": \"2026-01-07T00:00:00\",\n      \"end_datetime\": \"2026-01-07T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Make resolutions on January 7th.\",\n      \"confidence\": 0.8,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2026-01-09T00:00:00\",\n      \"end_datetime\": \"2026-01-09T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Wear pajamas on January 9th.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Happy Birthday to Ms Ashley\",\n      \"start_datetime\": \"2026-01-12T00:00:00\",\n      \"end_datetime\": \"2026-01-12T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Celebration for Ms Ashley's birthday on January 12th.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Martin Luther King Day Closed\",\n      \"start_datetime\": \"2026-01-19T00:00:00\",\n      \"end_datetime\": \"2026-01-19T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"School closed in observance of Martin Luther King Jr. Day on January 19th.\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2026-01-23T00:00:00\",\n      \"end_datetime\": \"2026-01-23T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Wear pajamas on January 23rd.\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    },\n    {\n      \"title\": \"Dress like a Rainbow\",\n      \"start_datetime\": \"2026-01-28T00:00:00\",\n      \"end_datetime\": \"2026-01-28T23:59:59\",\n      \"location\": null,\n      \"all_day\": true,\n      \"description\": \"Wear colorful clothing on January 28th (Rainbow Day).\",\n      \"confidence\": 0.9,\n      \"importance\": \"fyi\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "fixture_name": "reminder_adds_parking_09",
+  "fixture_hash": "965393a8c920259649bae97933a0380bf59da11a6d58aaab28e30fa7beecf50d",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-22T07:04:36.571279+00:00",
+  "duration_ms": 12174,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:04:24.390024+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:04:24.390031+00:00",
+      "duration_ms": 32
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:04:24.422653+00:00",
+      "duration_ms": 12142
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:04:36.565127+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Reminder email adds parking instructions to existing event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "logistics"
+  ],
+  "expected": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description_contains": [
+      "annual checkup",
+      "15 min early",
+      "parking",
+      "insurance card"
+    ]
+  },
+  "actual": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description": "Annual checkup appointment. Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "annual checkup",
+        "15 min early",
+        "parking",
+        "insurance card"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 416,
+    "completion_tokens": 133,
+    "total_tokens": 549
+  },
+  "cost": 0.0001422,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1284,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Medical Appointment - Dr. Smith\n- Start: 2026-03-30T11:00:00\n- End: 2026-03-30T11:30:00\n- All Day: False\n- Location: Downtown Medical Center, Suite 405\n- Description: Annual checkup appointment\n- Importance: action_required\n\n**New Information (source type: reminder):**\n- Title: Medical Appointment - Dr. Smith\n- Start: 2026-03-30T11:00:00\n- End: 2026-03-30T11:30:00\n- All Day: False\n- Location: Downtown Medical Center, Suite 405\n- Description: Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n\"title\": \"Medical Appointment - Dr. Smith\",\n\"start_datetime\": \"2026-03-30T11:00:00\",\n\"end_datetime\": \"2026-03-30T11:30:00\",\n\"all_day\": false,\n\"location\": \"Downtown Medical Center, Suite 405\",\n\"description\": \"Annual checkup appointment. Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.\",\n\"importance\": \"action_required\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

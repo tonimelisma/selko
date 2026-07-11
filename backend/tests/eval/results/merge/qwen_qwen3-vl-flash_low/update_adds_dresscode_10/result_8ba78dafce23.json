@@ -1,0 +1,168 @@
+{
+  "fixture_name": "update_adds_dresscode_10",
+  "fixture_hash": "e61f28c2525d268ae4006a361582481380b5746e4686e89eac5349db82f0c374",
+  "code_hash": "8ba78dafce23",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:21:10.778503+00:00",
+  "duration_ms": 10346,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:21:00.430208+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:21:00.430215+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:21:00.445906+00:00",
+      "duration_ms": 10331
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:21:10.777073+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Update email adds dress code information to social event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "dress-code"
+  ],
+  "expected": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description_contains": [
+      "10 years",
+      "black tie",
+      "cocktail hour",
+      "plus-ones welcome"
+    ]
+  },
+  "actual": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description": "Annual company gala celebrating 10 years Dress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "10 years",
+        "black tie",
+        "cocktail hour",
+        "plus-ones welcome"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 548,
+    "completion_tokens": 1455,
+    "total_tokens": 2003
+  },
+  "cost": 0.00103324,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1246
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"title\": \"Company Gala Dinner\", \"start_datetime\": \"2026-08-15T18:00:00\", \"end_datetime\": \"2026-08-15T22:00:00\", \"all_day\": false, \"location\": \"Grand Ballroom Hotel\", \"description\": \"Annual company gala celebrating 10 years Dress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!\", \"importance\": \"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

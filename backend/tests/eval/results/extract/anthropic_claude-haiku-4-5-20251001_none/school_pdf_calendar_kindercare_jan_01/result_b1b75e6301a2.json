@@ -1,0 +1,746 @@
+{
+  "fixture_name": "school/pdf_calendar_kindercare_jan_01",
+  "fixture_hash": "7a9c1f46ad57f1643bf09ff5e1e8b12f97adb8b7f4d29eff362916821f563236",
+  "code_hash": "31dbdc522bf1",
+  "prompt_hash": "b1b75e6301a2",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5-20251001",
+  "thinking": "none",
+  "run_at": "2026-02-22T07:01:56.686364+00:00",
+  "duration_ms": 6502,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-22T07:01:50.175385+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-22T07:01:50.176021+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-22T07:01:50.191828+00:00",
+      "duration_ms": 6487
+    },
+    "scoring": {
+      "started_at": "2026-02-22T07:01:56.679790+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "KinderCare January 2026 calendar PDF with closures and themed days",
+  "difficulty": "hard",
+  "tags": [
+    "school",
+    "pdf",
+    "calendar",
+    "daycare",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "January Calendar",
+    "from": "center@kindercare.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 1251936
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions Day",
+        "start_datetime": "2026-01-07",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-13",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake Day",
+        "start_datetime": "2026-01-15",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "KinderCare Closed - Martin Luther King Day",
+        "start_datetime": "2026-01-19",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow Day",
+        "start_datetime": "2026-01-28",
+        "all_day": true,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Happy New Year!",
+        "start_datetime": "2026-01-01T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Happy New Year celebration",
+        "importance": "fyi",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Center Closed",
+        "start_datetime": "2026-01-01T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "KinderCare center closed for New Year's Day",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Wear anything sparkle",
+        "start_datetime": "2026-01-02T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Themed dress-up day - wear anything sparkle",
+        "importance": "fyi",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Selfie Day - themed activity day",
+        "importance": "fyi",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Resolutions",
+        "start_datetime": "2026-01-07T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Resolutions activity",
+        "importance": "fyi",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Pajama Day - wear pajamas to school",
+        "importance": "fyi",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-13T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Staff birthday celebration for Ms Ashley",
+        "importance": "fyi",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Let's make a Snowflake",
+        "start_datetime": "2026-01-15T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Winter activity - make a snowflake craft",
+        "importance": "fyi",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Martin Luther King Day - Center Closed",
+        "start_datetime": "2026-01-19T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "KinderCare center closed for Martin Luther King Jr. Day",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Pajama Day - wear pajamas to school",
+        "importance": "fyi",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Dress like a Rainbow",
+        "start_datetime": "2026-01-28T00:00:00+00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Themed dress-up day - dress like a rainbow",
+        "importance": "fyi",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-01",
+          "actual_date": "2026-01-01",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-02",
+          "actual_date": "2026-01-02",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-05",
+          "actual_date": "2026-01-05",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-07",
+          "actual_date": "2026-01-07",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-09",
+          "actual_date": "2026-01-09",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-13",
+          "actual_date": "2026-01-13",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-15",
+          "actual_date": "2026-01-15",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-19",
+          "actual_date": "2026-01-19",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-23",
+          "actual_date": "2026-01-23",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-28",
+          "actual_date": "2026-01-28",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 3106,
+    "completion_tokens": 1118,
+    "total_tokens": 4224
+  },
+  "cost": 0.0069568,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 3180,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2025-12-28\n\n**Email Metadata:**\n- Subject: January Calendar\n- From: KinderCare Learning Centers <center@kindercare.com>\n- Date Sent: 2025-12-28T10:00:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time (parse relative dates like \"tomorrow\", \"next Friday\")\n   - End date/time (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events \u2014 do NOT extract these:**\nAn event is something the recipient would put on their personal calendar to attend, participate in, or prepare for.\nIf the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) with no event the recipient needs to attend or prepare for, set events_found=false.\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 25,
+        "text": "\n**Email Body:**\nCalendar"
+      },
+      {
+        "type": "image",
+        "mime_type": "application/pdf",
+        "size_bytes": 1251936
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Happy New Year!\",\n      \"start_datetime\": \"2026-01-01T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Happy New Year celebration\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Center Closed\",\n      \"start_datetime\": \"2026-01-01T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"KinderCare center closed for New Year's Day\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Wear anything sparkle\",\n      \"start_datetime\": \"2026-01-02T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Themed dress-up day - wear anything sparkle\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Selfie Day\",\n      \"start_datetime\": \"2026-01-05T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Selfie Day - themed activity day\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Resolutions\",\n      \"start_datetime\": \"2026-01-07T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Resolutions activity\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2026-01-09T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Pajama Day - wear pajamas to school\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Happy Birthday to Ms Ashley\",\n      \"start_datetime\": \"2026-01-13T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Staff birthday celebration for Ms Ashley\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Let's make a Snowflake\",\n      \"start_datetime\": \"2026-01-15T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Winter activity - make a snowflake craft\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Martin Luther King Day - Center Closed\",\n      \"start_datetime\": \"2026-01-19T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"KinderCare center closed for Martin Luther King Jr. Day\",\n      \"importance\": \"action_required\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Pajama Day\",\n      \"start_datetime\": \"2026-01-23T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Pajama Day - wear pajamas to school\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    },\n    {\n      \"title\": \"Dress like a Rainbow\",\n      \"start_datetime\": \"2026-01-28T00:00:00Z\",\n      \"end_datetime\": null,\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Themed dress-up day - dress like a rainbow\",\n      \"importance\": \"fyi\",\n      \"recurrence_rule\": null\n    }\n  ]\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

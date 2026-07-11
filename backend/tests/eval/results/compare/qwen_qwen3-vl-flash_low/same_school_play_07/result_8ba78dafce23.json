@@ -1,0 +1,88 @@
+{
+  "fixture_name": "same_school_play_07",
+  "fixture_hash": "383229ec54af3331fbff7d2bbf90ef2ebe78fe6a4ef571f6cb95b2104211299f",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:20:39.709363+00:00",
+  "duration_ms": 8447,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:20:31.260310+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:20:31.260318+00:00",
+      "duration_ms": 20
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:20:31.280428+00:00",
+      "duration_ms": 8427
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:20:39.708025+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 535,
+    "completion_tokens": 1097,
+    "total_tokens": 1632
+  },
+  "cost": 0.00078876,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1294
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{ \"matched_event_id\": \"event-001\", \"reasoning\": \"The new event shares the same date (2026-04-25), start and end times (19:00-21:00), and location (Lincoln Elementary Auditorium is part of Lincoln Elementary). The titles are similar ('Wizard of Oz' performance) and descriptions are consistent (both refer to a spring school performance). Slight wording differences and additional details (like ticket price) do not change the fact that they are the same real-world event.\" }",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
