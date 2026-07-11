@@ -71,7 +71,7 @@ class TestGeminiRealAPI:
         input_data = fixture["input"]
 
         email_metadata = {
-            "gmail_id": input_data["gmail_id"],
+            "provider_message_id": input_data["provider_message_id"],
             "subject": input_data["subject"],
             "from_name": input_data.get("from_name"),
             "from_email": input_data["from_email"],
@@ -101,7 +101,7 @@ class TestGeminiRealAPI:
         input_data = fixture["input"]
 
         email_metadata = {
-            "gmail_id": input_data["gmail_id"],
+            "provider_message_id": input_data["provider_message_id"],
             "subject": input_data["subject"],
             "from_name": input_data.get("from_name"),
             "from_email": input_data["from_email"],
@@ -127,7 +127,7 @@ class TestGeminiRealAPI:
         input_data = fixture["input"]
 
         email_metadata = {
-            "gmail_id": input_data["gmail_id"],
+            "provider_message_id": input_data["provider_message_id"],
             "subject": input_data["subject"],
             "from_name": input_data.get("from_name"),
             "from_email": input_data["from_email"],
@@ -150,7 +150,7 @@ class TestGeminiRealAPI:
         input_data = fixture["input"]
 
         email_metadata = {
-            "gmail_id": input_data["gmail_id"],
+            "provider_message_id": input_data["provider_message_id"],
             "subject": input_data["subject"],
             "from_name": input_data.get("from_name"),
             "from_email": input_data["from_email"],
@@ -173,7 +173,7 @@ class TestGeminiRealAPI:
         input_data = fixture["input"]
 
         email_metadata = {
-            "gmail_id": input_data["gmail_id"],
+            "provider_message_id": input_data["provider_message_id"],
             "subject": input_data["subject"],
             "from_name": input_data.get("from_name"),
             "from_email": input_data["from_email"],
@@ -201,7 +201,7 @@ class TestGeminiRealAPI:
         input_data = fixture["input"]
 
         email_metadata = {
-            "gmail_id": input_data["gmail_id"],
+            "provider_message_id": input_data["provider_message_id"],
             "subject": input_data["subject"],
             "from_name": input_data.get("from_name"),
             "from_email": input_data["from_email"],
@@ -259,7 +259,7 @@ class TestGeminiWithDatabase:
         )
 
         # Verify fetch succeeded
-        assert email_metadata["gmail_id"]
+        assert email_metadata["provider_message_id"]
         assert email_metadata["subject"] == subject
 
         # Extract events
@@ -272,8 +272,8 @@ class TestGeminiWithDatabase:
 
         # Verify extraction completed
         assert isinstance(extraction_result, CalendarEventExtraction)
-        # email_message_id should match the gmail_id from the email
-        assert extraction_result.email_message_id == email_metadata["gmail_id"]
+        # email_message_id should match the provider_message_id from the email
+        assert extraction_result.email_message_id == email_metadata["provider_message_id"]
         assert extraction_result.sender_email == email_metadata["from_email"]
 
     def test_fetch_nonexistent_email(self, authenticated_client):
@@ -310,7 +310,7 @@ class TestLLMGatewayErrorHandling:
         gateway = LLMGateway(provider)
 
         email_metadata = {
-            "gmail_id": "test-123",
+            "provider_message_id": "test-123",
             "subject": "Test",
             "from_email": "test@example.com",
             "date_sent": "2026-01-20T10:00:00Z",

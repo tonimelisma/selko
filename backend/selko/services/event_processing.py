@@ -209,7 +209,7 @@ def extract_calendar_events(
     Args:
         gateway: LLMGateway instance (with user/email context already set).
         email_text: Email body text (plain text or HTML).
-        email_metadata: Dict with keys: gmail_id, subject, from_name, from_email, date_sent.
+        email_metadata: Dict with keys: provider_message_id, subject, from_name, from_email, date_sent.
         attachments: Optional list of attachment dicts with keys: data (bytes), mime_type.
         max_retries: Maximum retries for rate-limited requests.
         config: Optional Config for per-type attachment size limits.
@@ -256,7 +256,7 @@ def extract_calendar_events(
 
         # Wrap with email metadata to create full extraction result
         result = CalendarEventExtraction(
-            email_message_id=email_metadata.get("gmail_id", ""),
+            email_message_id=email_metadata.get("provider_message_id", ""),
             email_date=email_metadata.get("date_sent") or None,
             sender_name=email_metadata.get("from_name"),
             sender_email=email_metadata.get("from_email", ""),
@@ -283,7 +283,7 @@ def fetch_email_with_attachments(
 
     Returns:
         Tuple of (email_metadata, email_text, attachments_list).
-        - email_metadata: Dict with gmail_id, subject, from_name, from_email, date_sent
+        - email_metadata: Dict with provider_message_id, subject, from_name, from_email, date_sent
         - email_text: Email body text (full body_text if available, else snippet)
         - attachments_list: List of dicts with keys: data (bytes), mime_type, filename
 
@@ -308,7 +308,7 @@ def fetch_email_with_attachments(
 
         # Build metadata
         email_metadata = {
-            "gmail_id": email.get("gmail_id", ""),
+            "provider_message_id": email.get("provider_message_id", ""),
             "subject": email.get("subject", ""),
             "from_name": email.get("from_name", ""),
             "from_email": email.get("from_email", ""),

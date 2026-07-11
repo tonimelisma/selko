@@ -9,7 +9,7 @@
     "casual"
   ],
   "input": {
-    "gmail_id": "eval-inv-006",
+    "provider_message_id": "eval-inv-006",
     "thread_id": "thread-inv-006",
     "subject": "We moved! Come see our new place",
     "from_email": "chris.nguyen@gmail.com",

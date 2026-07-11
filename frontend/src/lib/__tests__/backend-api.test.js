@@ -249,6 +249,13 @@ describe('Backend API Client', () => {
 		});
 	});
 
+	describe('getOutlookAuthUrl', () => {
+		it('returns the Outlook auth endpoint', async () => {
+			const { getOutlookAuthUrl } = await import('../api/backend.js');
+			expect(getOutlookAuthUrl()).toBe('http://localhost:8000/integrations/outlook/auth');
+		});
+	});
+
 	describe('initiateGmailAuth', () => {
 		it('fetches auth_url with bearer token then navigates', async () => {
 			const hrefSetter = vi.fn();

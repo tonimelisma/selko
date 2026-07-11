@@ -213,6 +213,8 @@ class SettingsViewModel(
 
     fun getGmailAuthUrl(): String = backendApiClient.getGmailAuthUrl()
 
+    fun getOutlookAuthUrl(): String = backendApiClient.getOutlookAuthUrl()
+
     fun getCalendarAuthUrl(): String = backendApiClient.getCalendarAuthUrl()
 
     fun getPhotosAuthUrl(): String = backendApiClient.getPhotosAuthUrl()

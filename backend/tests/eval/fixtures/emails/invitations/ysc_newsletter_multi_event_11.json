@@ -10,7 +10,7 @@
     "real-world"
   ],
   "input": {
-    "gmail_id": "eval-inv-011",
+    "provider_message_id": "eval-inv-011",
     "thread_id": "thread-inv-011",
     "subject": "Welcome New YSC Board Members",
     "from_email": "info@ysc.org",

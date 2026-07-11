@@ -10,7 +10,7 @@
     "multiple-events"
   ],
   "input": {
-    "gmail_id": "eval-travel-001",
+    "provider_message_id": "eval-travel-001",
     "thread_id": "thread-travel-001",
     "subject": "Your Flight Confirmation - United Airlines",
     "from_email": "reservations@united.com",

@@ -8,7 +8,7 @@ import logging
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -71,6 +71,33 @@ class OAuthStateError(IntegrationError):
     pass
 
 
+def get_provider_integration(
+    client: Client,
+    provider: str,
+    user_id: Optional[str] = None,
+) -> dict[str, Any] | None:
+    """Load one provider integration row for a user."""
+    if user_id is None:
+        user_id = get_current_user_id(client)
+
+    try:
+        result = (
+            client.table("integrations")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("provider", provider)
+            .maybe_single()
+            .execute()
+        )
+        return result.data if result and result.data else None
+    except APIError as e:
+        if e.code == "204":
+            return None
+        raise IntegrationError(f"Failed to get {provider} integration: {e.message}") from e
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to get {provider} integration: {e.message}") from e
+
+
 def save_oauth_credentials(
     client: Client,
     user_id: str,
@@ -112,6 +139,51 @@ def save_oauth_credentials(
             data, on_conflict="user_id,provider"
         ).execute()
         logger.info(f"Saved {provider} integration for user {user_id}")
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to save integration: {e.message}") from e
+
+
+def save_provider_tokens(
+    client: Client,
+    user_id: str,
+    provider: str,
+    token_result: dict[str, Any],
+    provider_email: str | None = None,
+) -> None:
+    """Save a non-Google OAuth token result, such as an MSAL response."""
+    access_token = token_result.get("access_token")
+    if not access_token:
+        raise IntegrationError("OAuth token response did not include an access token")
+
+    expires_in = token_result.get("expires_in")
+    token_expiry = None
+    if expires_in is not None:
+        token_expiry = (
+            datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
+        ).isoformat()
+
+    raw_scope = token_result.get("scope")
+    if isinstance(raw_scope, str):
+        scopes = raw_scope.split()
+    else:
+        scopes = list(token_result.get("scopes") or [])
+
+    data = {
+        "user_id": user_id,
+        "provider": provider,
+        "status": "active",
+        "access_token": access_token,
+        "refresh_token": token_result.get("refresh_token"),
+        "token_expiry": token_expiry,
+        "scopes": scopes,
+        "provider_email": provider_email,
+    }
+
+    try:
+        client.table("integrations").upsert(
+            data, on_conflict="user_id,provider"
+        ).execute()
+        logger.info("Saved %s integration for user %s", provider, user_id)
     except PostgrestAPIError as e:
         raise IntegrationError(f"Failed to save integration: {e.message}") from e
 
@@ -250,6 +322,39 @@ def update_oauth_credentials(
         logger.debug(f"Updated {provider} OAuth tokens")
     except PostgrestAPIError as e:
         raise IntegrationError(f"Failed to update tokens: {e.message}") from e
+
+
+def update_provider_tokens(
+    client: Client,
+    provider: str,
+    *,
+    access_token: str,
+    refresh_token: str | None,
+    token_expiry: datetime | str | None,
+    user_id: Optional[str] = None,
+) -> None:
+    """Persist refreshed tokens for a provider-agnostic OAuth integration."""
+    if user_id is None:
+        user_id = get_current_user_id(client)
+
+    if isinstance(token_expiry, datetime):
+        token_expiry_value = token_expiry.astimezone(timezone.utc).isoformat()
+    else:
+        token_expiry_value = token_expiry
+
+    try:
+        client.table("integrations").update(
+            {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_expiry": token_expiry_value,
+                "status": "active",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ).eq("user_id", user_id).eq("provider", provider).execute()
+        logger.debug("Updated %s provider tokens", provider)
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to update provider tokens: {e.message}") from e
 
 
 def get_credentials(
@@ -454,7 +559,18 @@ def initiate_oauth_flow(
     Raises:
         IntegrationError: If client credentials not configured or invalid provider.
     """
-    # Determine scopes based on provider
+    # Microsoft has its own MSAL authorization flow but shares state storage.
+    if provider == "outlook":
+        from selko.services.outlook import build_auth_url
+
+        state = secrets.token_urlsafe(32)
+        _save_oauth_state(state, user_id, provider, redirect_uri)
+        _clean_expired_oauth_states()
+        return {
+            "auth_url": build_auth_url(config, state, redirect_uri),
+            "state": state,
+        }
+
     if provider == "gmail":
         scopes = GMAIL_SCOPES
     elif provider == "google_calendar":
@@ -516,7 +632,7 @@ def complete_oauth_flow(
     config: Config,
     code: str,
     state: str,
-) -> tuple[Credentials, str, str]:
+) -> tuple[Credentials | dict[str, Any], str, str]:
     """Complete OAuth flow by exchanging authorization code for tokens.
 
     Args:
@@ -537,6 +653,13 @@ def complete_oauth_flow(
     user_id = state_data["user_id"]
     provider = state_data["provider"]
     redirect_uri = state_data["redirect_uri"]
+
+    if provider == "outlook":
+        from selko.services.outlook import exchange_code
+
+        token_result = exchange_code(config, code, redirect_uri)
+        logger.info("OAuth flow completed for Outlook (user %s)", user_id)
+        return token_result, user_id, provider
 
     # Determine scopes based on provider
     if provider == "gmail":

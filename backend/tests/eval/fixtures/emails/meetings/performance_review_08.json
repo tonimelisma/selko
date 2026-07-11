@@ -10,7 +10,7 @@
     "annual"
   ],
   "input": {
-    "gmail_id": "eval-mtg-008",
+    "provider_message_id": "eval-mtg-008",
     "thread_id": "thread-mtg-008",
     "subject": "Your Annual Performance Review - Scheduled",
     "from_email": "manager@company.com",

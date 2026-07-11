@@ -62,6 +62,8 @@ describe('IntegrationStatus', () => {
 
 		expect(screen.getByText('Google Photos')).toBeInTheDocument();
 		expect(screen.getByText('Scan photos for event details')).toBeInTheDocument();
+		expect(screen.getByText('Outlook')).toBeInTheDocument();
+		expect(screen.getByText('Read Outlook emails to find calendar events')).toBeInTheDocument();
 	});
 
 	it('shows Google Photos as partially connected in setup mode', () => {

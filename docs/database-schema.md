@@ -28,14 +28,14 @@ OAuth tokens for external providers.
 |--------|------|-------------|
 | `id` | uuid, PK | Integration ID |
 | `user_id` | uuid, FK | References `users.id` |
-| `provider` | text | `gmail`, `google_photos`, `google_calendar` |
+| `provider` | text | `gmail`, `outlook`, `google_photos`, `google_calendar` |
 | `status` | text | `active`, `expired`, `revoked`, `error` |
 | `access_token` | text | OAuth access token |
 | `refresh_token` | text | OAuth refresh token |
 | `token_expiry` | timestamptz | Token expiration time |
 | `scopes` | text[] | OAuth scopes granted |
 | `provider_email` | text | Email associated with integration |
-| `last_history_id` | text | Gmail sync cursor |
+| `sync_cursor` | text | Provider sync cursor (Gmail history ID or Outlook delta link) |
 | `last_photo_sync_at` | timestamptz | Last Google Photos sync time |
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
@@ -44,20 +44,21 @@ OAuth tokens for external providers.
 
 ### `emails`
 
-Synced Gmail messages with status-based worker claiming.
+Synced Gmail and Outlook messages with status-based worker claiming.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | uuid, PK | Email ID |
 | `user_id` | uuid, FK | References `users.id` |
-| `gmail_id` | text | Gmail message ID |
-| `thread_id` | text | Gmail thread ID |
+| `email_provider` | text | Ingestion provider (`gmail` or `outlook`) |
+| `provider_message_id` | text | Opaque provider message ID |
+| `thread_id` | text | Provider conversation/thread ID |
 | `subject` | text | Email subject |
 | `from_email` | text | Sender email |
 | `from_name` | text | Sender name |
 | `to_emails` | text[] | Recipient emails |
 | `date_sent` | timestamptz | When email was sent |
-| `gmail_label_ids` | text[] | Raw labels from Gmail API |
+| `provider_labels` | text[] | Raw provider labels or synthesized Outlook tokens |
 | `is_spam` | boolean | Auto-computed from labels |
 | `is_trash` | boolean | Auto-computed from labels |
 | `is_promotions` | boolean | Auto-computed from labels |
@@ -78,7 +79,8 @@ Synced Gmail messages with status-based worker claiming.
 
 **RLS Policies:** Users manage own emails only.
 
-**Triggers:** Auto-compute `is_spam`, `is_trash`, `is_promotions` from `gmail_label_ids`.
+**Triggers:** Auto-compute the `is_*` flags from `provider_labels`. Outlook uses
+Gmail-style `UNREAD`, `IMPORTANT`, and `STARRED` tokens for the shared trigger.
 
 **Indexes:** Partial index on `(processing_status, created_at) WHERE processing_status = 'pending'` for efficient claiming.
 
@@ -91,7 +93,7 @@ Email attachment metadata.
 | `id` | uuid, PK | Attachment ID |
 | `email_id` | uuid, FK | References `emails.id` |
 | `user_id` | uuid, FK | References `users.id` |
-| `gmail_attachment_id` | text | Gmail attachment ID |
+| `provider_attachment_id` | text | Opaque provider attachment ID |
 | `filename` | text | Original filename |
 | `mime_type` | text | MIME type |
 | `size_bytes` | integer | File size |

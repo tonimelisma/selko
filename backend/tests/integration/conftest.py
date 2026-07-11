@@ -184,17 +184,17 @@ def temp_user_client(config, temp_user):
 @pytest.fixture(scope="function")
 def cleanup_emails(authenticated_client, test_user_id):
     """Delete test emails after test completes."""
-    created_gmail_ids = []
+    created_provider_message_ids = []
 
-    yield created_gmail_ids  # Test can append gmail_ids to this list
+    yield created_provider_message_ids  # Test can append provider_message_ids to this list
 
     # Cleanup
-    if created_gmail_ids:
+    if created_provider_message_ids:
         try:
-            for gmail_id in created_gmail_ids:
+            for provider_message_id in created_provider_message_ids:
                 authenticated_client.table("emails").delete().eq(
                     "user_id", test_user_id
-                ).eq("gmail_id", gmail_id).execute()
+                ).eq("provider_message_id", provider_message_id).execute()
         except Exception:
             pass
 
@@ -245,7 +245,7 @@ def sample_email_data():
     current_time = datetime.now(timezone.utc).isoformat()
 
     return {
-        "gmail_id": f"test_msg_{uuid4().hex[:8]}",
+        "provider_message_id": f"test_msg_{uuid4().hex[:8]}",
         "thread_id": f"test_thread_{uuid4().hex[:8]}",
         "subject": "Test Email Subject",
         "from_email": "sender@example.com",
@@ -253,7 +253,7 @@ def sample_email_data():
         "to_emails": ["recipient@example.com"],
         "date_sent": current_time,
         "snippet": "This is a test email snippet",
-        "gmail_label_ids": ["INBOX", "UNREAD"],
+        "provider_labels": ["INBOX", "UNREAD"],
         "has_attachments": False,
     }
 

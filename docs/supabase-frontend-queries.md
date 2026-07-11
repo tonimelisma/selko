@@ -634,7 +634,8 @@ See `frontend/src/lib/types.js` for canonical type definitions.
 data class Email(
     val id: String,
     @SerialName("user_id") val userId: String,
-    @SerialName("gmail_id") val gmailId: String,
+    @SerialName("email_provider") val emailProvider: String,
+    @SerialName("provider_message_id") val providerMessageId: String,
     val subject: String?,
     @SerialName("from_email") val fromEmail: String?,
     @SerialName("from_name") val fromName: String?,
@@ -675,7 +676,8 @@ data class Integration(
 struct Email: Codable {
     let id: UUID
     let userId: UUID
-    let gmailId: String
+    let emailProvider: String
+    let providerMessageId: String
     let subject: String?
     let fromEmail: String?
     let fromName: String?
@@ -688,7 +690,8 @@ struct Email: Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
-        case gmailId = "gmail_id"
+        case emailProvider = "email_provider"
+        case providerMessageId = "provider_message_id"
         case subject
         case fromEmail = "from_email"
         case fromName = "from_name"

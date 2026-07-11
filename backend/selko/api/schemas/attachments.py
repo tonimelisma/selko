@@ -11,7 +11,7 @@ class AttachmentResponse(BaseModel):
     id: str
     email_id: str
     user_id: str
-    gmail_attachment_id: str
+    provider_attachment_id: str
     filename: str
     mime_type: str
     size_bytes: int

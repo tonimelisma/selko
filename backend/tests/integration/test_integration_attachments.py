@@ -28,15 +28,15 @@ from selko.services.gmail import (
 @pytest.fixture
 def test_email(authenticated_client, test_user_id, cleanup_emails):
     """Create a test email for attachment tests."""
-    gmail_id = f"test_att_email_{uuid4().hex[:8]}"
-    cleanup_emails.append(gmail_id)
+    provider_message_id = f"test_att_email_{uuid4().hex[:8]}"
+    cleanup_emails.append(provider_message_id)
 
     email_data = {
-        "gmail_id": gmail_id,
+        "provider_message_id": provider_message_id,
         "thread_id": f"thread_{uuid4().hex[:8]}",
         "subject": "Test email with attachments",
         "from_email": "sender@example.com",
-        "gmail_label_ids": ["INBOX"],
+        "provider_labels": ["INBOX"],
         "date_sent": "2026-01-22T10:00:00+00:00",
         "user_id": test_user_id,
     }
@@ -134,7 +134,7 @@ class TestAttachmentMetadata:
         record = save_attachment_metadata(
             client=authenticated_client,
             email_id=test_email["id"],
-            gmail_attachment_id="gmail_att_123",
+            provider_attachment_id="gmail_att_123",
             filename="test_document.pdf",
             mime_type="application/pdf",
             size_bytes=1024,
@@ -162,7 +162,7 @@ class TestAttachmentMetadata:
         record1 = save_attachment_metadata(
             client=authenticated_client,
             email_id=test_email["id"],
-            gmail_attachment_id="gmail_att_dup1",
+            provider_attachment_id="gmail_att_dup1",
             filename="original.pdf",
             mime_type="application/pdf",
             size_bytes=len(test_content),
@@ -201,7 +201,7 @@ class TestAttachmentDeletion:
         record = save_attachment_metadata(
             client=authenticated_client,
             email_id=test_email["id"],
-            gmail_attachment_id="gmail_att_del",
+            provider_attachment_id="gmail_att_del",
             filename="to_delete.pdf",
             mime_type="application/pdf",
             size_bytes=100,
@@ -246,7 +246,7 @@ class TestAttachmentRLS:
         record = save_attachment_metadata(
             client=authenticated_client,
             email_id=test_email["id"],
-            gmail_attachment_id="gmail_att_rls",
+            provider_attachment_id="gmail_att_rls",
             filename="my_file.pdf",
             mime_type="application/pdf",
             size_bytes=100,

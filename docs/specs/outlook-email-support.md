@@ -1,6 +1,6 @@
 # Spec: Outlook.com email support (Microsoft Graph)
 
-**Status:** Planned — not yet implemented
+**Status:** Implemented
 **Author:** Design plan (see git history)
 **Related reference docs:** [`docs/gmail-integration.md`](../gmail-integration.md), [`docs/database-schema.md`](../database-schema.md), [`docs/job-queue.md`](../job-queue.md)
 
@@ -85,7 +85,8 @@ az ad app create \
   --sign-in-audience AzureADandPersonalMicrosoftAccount \
   --web-redirect-uris \
       "http://localhost:8000/integrations/microsoft/callback" \
-      "https://api.selko.app/integrations/microsoft/callback"
+      "https://api.selko.app/integrations/microsoft/callback" \
+      "http://localhost:8080"
 # note the returned "appId"
 
 # 2. (Optional but recommended) declare delegated Graph permissions in the manifest.
@@ -184,7 +185,7 @@ We sync **only the Inbox**, so `is_spam`/`is_trash` are always false for Outlook
 
 Two migration files (the enum `ADD VALUE` must be isolated — see note).
 
-### `supabase/migrations/20260710000001_generalize_email_provider_columns.sql`
+### `supabase/migrations/20260711000001_generalize_email_provider_columns.sql`
 
 ```sql
 -- Rename Gmail-specific columns to provider-agnostic names
@@ -232,7 +233,7 @@ create trigger parse_provider_labels_trigger
     for each row execute function public.parse_provider_labels();
 ```
 
-### `supabase/migrations/20260710000002_add_outlook_provider.sql`
+### `supabase/migrations/20260711000002_add_outlook_provider.sql`
 
 ```sql
 -- Must be its own migration: a new enum value cannot be used in the same

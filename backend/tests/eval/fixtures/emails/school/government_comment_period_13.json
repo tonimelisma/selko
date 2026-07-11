@@ -5,7 +5,7 @@
   "difficulty": "medium",
   "tags": ["government", "city", "public-comment", "real-world", "images"],
   "input": {
-    "gmail_id": "eval-noev-013",
+    "provider_message_id": "eval-noev-013",
     "thread_id": "thread-noev-013",
     "subject": "Walnut Creek is updating its safety element",
     "from_email": "CityofWalnutCreek@public.govdelivery.com",

@@ -702,7 +702,7 @@ Tests the complete email fetch → parse → store pipeline.
 |------|-------------|---------|------------|
 | Parse Gmail message structure | ✓ | ✓ | ✗ |
 | Store email in database | ✓ | ✓ | ✗ |
-| Upsert on duplicate gmail_id | ✓ | ✓ | ✗ |
+| Upsert on duplicate provider message ID | ✓ | ✓ | ✗ |
 | Trigger parses labels into flags | ✓ | ✓ | ✗ |
 | Content hash deduplication | ✓ | ✓ | ✗ |
 | RLS: user sees only own emails | ✓ | ✓ | ✗ |

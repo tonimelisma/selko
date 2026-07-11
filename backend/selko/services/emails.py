@@ -147,7 +147,8 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
     body_text, body_html = _extract_body_from_payload(payload)
 
     result = {
-        "gmail_id": email["id"],
+        "email_provider": "gmail",
+        "provider_message_id": email["id"],
         "thread_id": email.get("threadId"),
         "subject": headers.get("subject"),
         "from_email": from_email,
@@ -155,7 +156,7 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
         "to_emails": to_emails if to_emails else None,
         "date_sent": date_sent,
         "snippet": email.get("snippet"),
-        "gmail_label_ids": email.get("labelIds", []),
+        "provider_labels": email.get("labelIds", []),
         "has_attachments": has_attachments,
     }
 
@@ -208,7 +209,7 @@ def save_emails(
         try:
             # Single upsert instead of SELECT + INSERT/UPDATE
             result = client.table("emails").upsert(
-                parsed, on_conflict="user_id,gmail_id"
+                parsed, on_conflict="user_id,email_provider,provider_message_id"
             ).execute()
             if result.data:
                 saved_records.append(result.data[0])
@@ -279,16 +280,20 @@ def fetch_emails_for_user(
     if fetch_attachments:
         logger.info("Fetching attachments and images for saved emails...")
 
-        # Map gmail_id to saved record and parsed data for lookup
-        gmail_id_to_record = {r["gmail_id"]: r for r in saved_records}
-        gmail_id_to_parsed = {p["gmail_id"]: p for p in parsed}
+        # Map provider message IDs to saved records and parsed data for lookup
+        provider_message_id_to_record = {
+            r["provider_message_id"]: r for r in saved_records
+        }
+        provider_message_id_to_parsed = {
+            p["provider_message_id"]: p for p in parsed
+        }
 
         for msg in messages:
-            gmail_id = msg["id"]
-            email_record = gmail_id_to_record.get(gmail_id)
+            provider_message_id = msg["id"]
+            email_record = provider_message_id_to_record.get(provider_message_id)
 
             if not email_record:
-                logger.warning(f"No saved record for message {gmail_id}")
+                logger.warning(f"No saved record for message {provider_message_id}")
                 continue
 
             email_id = email_record["id"]
@@ -308,7 +313,7 @@ def fetch_emails_for_user(
                             client=client,
                             gmail_service=service,
                             email_id=email_id,
-                            message_id=gmail_id,
+                            message_id=provider_message_id,
                             attachment_part=att_part,
                             config=config,
                         )
@@ -326,7 +331,7 @@ def fetch_emails_for_user(
                         client=client,
                         gmail_service=service,
                         email_id=email_id,
-                        message_id=gmail_id,
+                        message_id=provider_message_id,
                         attachment_part=inline_part,
                         config=config,
                     )
@@ -337,7 +342,7 @@ def fetch_emails_for_user(
                     continue
 
             # Get HTML body for linked and data URI extraction
-            parsed_email = gmail_id_to_parsed.get(gmail_id, {})
+            parsed_email = provider_message_id_to_parsed.get(provider_message_id, {})
             body_html = parsed_email.get("body_html")
 
             if body_html:

@@ -491,7 +491,7 @@ END:VCALENDAR"""
 
         with patch("selko.services.events.mark_email_status"), \
              patch("selko.services.events.event_processing.fetch_email_with_attachments",
-                   return_value=({"gmail_id": "msg-1", "from_email": "sender@example.com",
+                   return_value=({"provider_message_id": "msg-1", "from_email": "sender@example.com",
                                   "date_sent": "2026-03-15T10:00:00Z"}, "text", attachments)), \
              patch("selko.services.events.check_sender_rules", return_value=None), \
              patch("selko.services.events.event_processing.extract_calendar_events") as mock_llm, \
@@ -523,7 +523,7 @@ END:VCALENDAR"""
 
         with patch("selko.services.events.mark_email_status"), \
              patch("selko.services.events.event_processing.fetch_email_with_attachments",
-                   return_value=({"gmail_id": "msg-1", "from_email": "sender@example.com",
+                   return_value=({"provider_message_id": "msg-1", "from_email": "sender@example.com",
                                   "date_sent": "2026-03-15T10:00:00Z"}, "text", attachments)), \
              patch("selko.services.events.check_sender_rules", return_value=None), \
              patch("selko.services.events.event_processing.extract_calendar_events",

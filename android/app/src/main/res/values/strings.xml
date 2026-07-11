@@ -120,6 +120,7 @@
 
     <!-- Settings - Connected Accounts -->
     <string name="settings_gmail">Gmail</string>
+    <string name="settings_outlook">Outlook</string>
     <string name="settings_google_calendar">Google Calendar</string>
     <string name="settings_google_photos">Google Photos</string>
     <string name="settings_connected">Connected</string>

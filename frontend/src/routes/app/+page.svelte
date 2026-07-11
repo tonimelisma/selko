@@ -12,6 +12,7 @@
 		rejectEventChange,
 		syncEventToCalendar,
 		initiateGmailAuth,
+		initiateOutlookAuth,
 		initiateCalendarAuth,
 		initiatePhotosAuth
 	} from '$lib/api/backend.js';
@@ -34,12 +35,14 @@
 	let processingEvents = $state(new Set());
 
 	let gmailIntegration = $derived(integrationsList.find((i) => i.provider === 'gmail'));
+	let outlookIntegration = $derived(integrationsList.find((i) => i.provider === 'outlook'));
 	let gcalIntegration = $derived(
 		integrationsList.find((i) => i.provider === 'google_calendar')
 	);
-	let fullyConnected = $derived(
-		gmailIntegration?.status === 'active' && gcalIntegration?.status === 'active'
+	let emailConnected = $derived(
+		gmailIntegration?.status === 'active' || outlookIntegration?.status === 'active'
 	);
+	let fullyConnected = $derived(emailConnected && gcalIntegration?.status === 'active');
 
 	let newEvents = $derived(events.filter((e) => e.status === 'pending_review'));
 	let changeEvents = $derived(events.filter((e) => e.status === 'pending_change'));
@@ -106,7 +109,8 @@
 		isLoadingIntegrations = false;
 
 		if (
-			integrationsList.find((i) => i.provider === 'gmail')?.status === 'active' &&
+			(integrationsList.find((i) => i.provider === 'gmail')?.status === 'active' ||
+				integrationsList.find((i) => i.provider === 'outlook')?.status === 'active') &&
 			integrationsList.find((i) => i.provider === 'google_calendar')?.status === 'active'
 		) {
 			await loadEvents();
@@ -281,6 +285,8 @@
 	function handleAuthorize(provider) {
 		if (provider === 'gmail') {
 			initiateGmailAuth();
+		} else if (provider === 'outlook') {
+			initiateOutlookAuth();
 		} else if (provider === 'google_calendar') {
 			initiateCalendarAuth();
 		} else if (provider === 'google_photos') {

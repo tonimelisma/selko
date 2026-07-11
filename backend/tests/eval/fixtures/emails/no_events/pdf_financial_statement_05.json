@@ -5,7 +5,7 @@
   "difficulty": "medium",
   "tags": ["no_events", "pdf", "financial", "negative-test", "real-world"],
   "input": {
-    "gmail_id": "eval-noevents-pdf-005",
+    "provider_message_id": "eval-noevents-pdf-005",
     "thread_id": "thread-noevents-pdf-005",
     "subject": "Your Walnut Heights Statement",
     "from_email": "billing@walnutheightshoa.com",

@@ -2,7 +2,7 @@
   "name": "meeting_request",
   "description": "Work meeting request with Zoom link",
   "input": {
-    "gmail_id": "fixture-003",
+    "provider_message_id": "fixture-003",
     "subject": "Team Sync - Q1 Planning",
     "from_email": "manager@techcorp.com",
     "from_name": "Alice Manager",

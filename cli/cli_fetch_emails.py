@@ -49,6 +49,7 @@ Examples:
 Note:
   Requires TEST_USER_EMAIL and TEST_USER_PASSWORD in .env
   Run cli_auth_gmail first to authenticate with Gmail.
+  This command is Gmail-only; Outlook uses cli_auth_outlook plus the scheduled worker.
         """,
     )
     add_logging_arguments(parser)
@@ -114,15 +115,15 @@ Note:
         total_processed = 0
         total_skipped = 0
 
-        # Map gmail_id to saved record for lookup
-        gmail_id_to_record = {r["gmail_id"]: r for r in saved_records}
+        # Map provider_message_id to saved record for lookup
+        provider_message_id_to_record = {r["provider_message_id"]: r for r in saved_records}
 
         for msg in messages:
-            gmail_id = msg["id"]
-            email_record = gmail_id_to_record.get(gmail_id)
+            provider_message_id = msg["id"]
+            email_record = provider_message_id_to_record.get(provider_message_id)
 
             if not email_record:
-                logger.warning(f"No saved record for message {gmail_id}")
+                logger.warning(f"No saved record for message {provider_message_id}")
                 continue
 
             attachments = extract_attachments(msg)
@@ -140,7 +141,7 @@ Note:
                         client=client,
                         gmail_service=service,
                         email_id=email_record["id"],
-                        message_id=gmail_id,
+                        message_id=provider_message_id,
                         attachment_part=att_part,
                         config=config,
                     )

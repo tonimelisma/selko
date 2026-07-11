@@ -23,6 +23,7 @@ class IntegrationRepository(
 
     private fun providerToString(provider: IntegrationProvider): String = when (provider) {
         IntegrationProvider.GMAIL -> "gmail"
+        IntegrationProvider.OUTLOOK -> "outlook"
         IntegrationProvider.GOOGLE_PHOTOS -> "google_photos"
         IntegrationProvider.GOOGLE_CALENDAR -> "google_calendar"
     }

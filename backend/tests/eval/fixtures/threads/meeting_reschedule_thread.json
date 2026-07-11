@@ -19,7 +19,7 @@
   ],
   "thread_emails": [
     {
-      "gmail_id": "thread-rs-001",
+      "provider_message_id": "thread-rs-001",
       "thread_id": "thread-reschedule",
       "subject": "Team Review Meeting - February 20th",
       "from_email": "manager@company.com",
@@ -28,7 +28,7 @@
       "body_text": "Hi team,\n\nLet's meet to review our progress.\n\nWhen: Friday, February 20, 2026\nTime: 2:00 PM - 3:00 PM\nWhere: Conference Room C\n\nPlease confirm your attendance.\n\nSarah"
     },
     {
-      "gmail_id": "thread-rs-002",
+      "provider_message_id": "thread-rs-002",
       "thread_id": "thread-reschedule",
       "subject": "Re: Team Review Meeting - RESCHEDULED to February 23rd",
       "from_email": "manager@company.com",

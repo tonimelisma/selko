@@ -10,7 +10,7 @@
     "friends"
   ],
   "input": {
-    "gmail_id": "eval-inv-009",
+    "provider_message_id": "eval-inv-009",
     "thread_id": "thread-inv-009",
     "subject": "Dinner at our place next Saturday?",
     "from_email": "tom.baker@gmail.com",

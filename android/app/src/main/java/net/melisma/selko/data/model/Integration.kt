@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class IntegrationProvider {
     @SerialName("gmail") GMAIL,
+    @SerialName("outlook") OUTLOOK,
     @SerialName("google_photos") GOOGLE_PHOTOS,
     @SerialName("google_calendar") GOOGLE_CALENDAR
 }

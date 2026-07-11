@@ -5,7 +5,7 @@
   "difficulty": "easy",
   "tags": ["social", "notification", "linkedin", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-005",
+    "provider_message_id": "eval-noev-005",
     "thread_id": "thread-noev-005",
     "subject": "Sarah Johnson and 5 others viewed your profile",
     "from_email": "notifications@linkedin.com",

@@ -142,7 +142,7 @@ Rating scale:
   "difficulty": "easy",
   "tags": ["birthday", "kids", "time-parsing"],
   "input": {
-    "gmail_id": "eval-inv-001",
+    "provider_message_id": "eval-inv-001",
     "thread_id": "thread-001",
     "subject": "You're invited to Jake's 7th Birthday!",
     "from_email": "sarah@example.com",

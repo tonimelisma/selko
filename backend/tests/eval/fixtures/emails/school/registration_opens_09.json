@@ -12,7 +12,7 @@
     "images"
   ],
   "input": {
-    "gmail_id": "eval-school-009",
+    "provider_message_id": "eval-school-009",
     "thread_id": "thread-school-009",
     "subject": "Spring 2026 Registration Starts 2/18",
     "from_email": "artsrec@walnut-creek.org",

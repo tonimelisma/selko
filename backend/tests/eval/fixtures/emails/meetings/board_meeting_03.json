@@ -10,7 +10,7 @@
     "executive"
   ],
   "input": {
-    "gmail_id": "eval-mtg-003",
+    "provider_message_id": "eval-mtg-003",
     "thread_id": "thread-mtg-003",
     "subject": "Q1 2026 Board Meeting - March 15th",
     "from_email": "board-secretary@acmecorp.com",

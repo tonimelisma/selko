@@ -10,7 +10,7 @@
     "morning"
   ],
   "input": {
-    "gmail_id": "eval-appt-003",
+    "provider_message_id": "eval-appt-003",
     "thread_id": "thread-appt-003",
     "subject": "Your Service Appointment is Confirmed",
     "from_email": "service@hondasanjose.com",

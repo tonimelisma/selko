@@ -24,15 +24,15 @@ class TestCrossUserRLSIsolation:
     ):
         """User A cannot read User B's emails."""
         # Create email as User A (the authenticated test user)
-        gmail_id = f"rls_test_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"rls_test_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         email_data = {
-            "gmail_id": gmail_id,
+            "provider_message_id": provider_message_id,
             "thread_id": "thread_rls_test",
             "subject": "User A's private email",
             "from_email": "sender@example.com",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
             "date_sent": "2026-01-22T10:00:00+00:00",
         }
         saved = save_emails(authenticated_client, [email_data])
@@ -71,15 +71,15 @@ class TestCrossUserRLSIsolation:
     ):
         """User A cannot update User B's emails."""
         # Create email as User A
-        gmail_id = f"rls_update_test_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"rls_update_test_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         email_data = {
-            "gmail_id": gmail_id,
+            "provider_message_id": provider_message_id,
             "thread_id": "thread_rls_update",
             "subject": "Original subject",
             "from_email": "sender@example.com",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
             "date_sent": "2026-01-22T10:00:00+00:00",
         }
         saved = save_emails(authenticated_client, [email_data])
@@ -122,15 +122,15 @@ class TestCrossUserRLSIsolation:
     ):
         """User A cannot delete User B's emails."""
         # Create email as User A
-        gmail_id = f"rls_delete_test_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"rls_delete_test_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         email_data = {
-            "gmail_id": gmail_id,
+            "provider_message_id": provider_message_id,
             "thread_id": "thread_rls_delete",
             "subject": "Don't delete me",
             "from_email": "sender@example.com",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
             "date_sent": "2026-01-22T10:00:00+00:00",
         }
         saved = save_emails(authenticated_client, [email_data])
@@ -172,15 +172,15 @@ class TestCrossUserRLSIsolation:
     ):
         """User A cannot read User B's attachments."""
         # Create email and attachment as User A
-        gmail_id = f"rls_att_test_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"rls_att_test_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         email_data = {
-            "gmail_id": gmail_id,
+            "provider_message_id": provider_message_id,
             "thread_id": "thread_att_rls",
             "subject": "Email with attachment",
             "from_email": "sender@example.com",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
             "date_sent": "2026-01-22T10:00:00+00:00",
         }
         saved = save_emails(authenticated_client, [email_data])
@@ -194,7 +194,7 @@ class TestCrossUserRLSIsolation:
                 {
                     "user_id": test_user_id,
                     "email_id": email_id,
-                    "gmail_attachment_id": "att_123",
+                    "provider_attachment_id": "att_123",
                     "filename": "private.pdf",
                     "mime_type": "application/pdf",
                     "size_bytes": 1000,
@@ -305,7 +305,7 @@ class TestCrossUserRLSIsolation:
 
         try:
             # User B tries to insert email with User A's ID
-            gmail_id = f"inject_test_{uuid4().hex[:8]}"
+            provider_message_id = f"inject_test_{uuid4().hex[:8]}"
 
             # This should either fail or insert with User B's ID, not User A's
             # due to RLS with check policies
@@ -315,11 +315,11 @@ class TestCrossUserRLSIsolation:
                     .insert(
                         {
                             "user_id": test_user_id,  # Trying to use User A's ID
-                            "gmail_id": gmail_id,
+                            "provider_message_id": provider_message_id,
                             "thread_id": "injected",
                             "subject": "Injected email",
                             "from_email": "attacker@example.com",
-                            "gmail_label_ids": ["INBOX"],
+                            "provider_labels": ["INBOX"],
                             "date_sent": "2026-01-22T10:00:00+00:00",
                         }
                     )
@@ -332,7 +332,7 @@ class TestCrossUserRLSIsolation:
                         "Insert should use authenticated user's ID, not the provided one"
                     # Cleanup
                     user_b_client.table("emails").delete().eq(
-                        "gmail_id", gmail_id
+                        "provider_message_id", provider_message_id
                     ).execute()
 
             except Exception:
@@ -353,18 +353,18 @@ class TestCrossUserRLSIsolationStaging:
     ):
         """RLS is enforced in staging environment."""
         # Create email as test user
-        gmail_id = f"staging_rls_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"staging_rls_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         saved = save_emails(
             authenticated_client,
             [
                 {
-                    "gmail_id": gmail_id,
+                    "provider_message_id": provider_message_id,
                     "thread_id": "staging_test",
                     "subject": "Staging RLS test",
                     "from_email": "test@example.com",
-                    "gmail_label_ids": ["INBOX"],
+                    "provider_labels": ["INBOX"],
                     "date_sent": "2026-01-22T10:00:00+00:00",
                 }
             ],
@@ -382,7 +382,7 @@ class TestCrossUserRLSIsolationStaging:
             result = (
                 user_b_client.table("emails")
                 .select("*")
-                .eq("gmail_id", gmail_id)
+                .eq("provider_message_id", provider_message_id)
                 .execute()
             )
             assert len(result.data) == 0

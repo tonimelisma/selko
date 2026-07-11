@@ -2,7 +2,7 @@
   "name": "order_receipt_no_event",
   "description": "Order confirmation receipt with no calendar event",
   "input": {
-    "gmail_id": "fixture-005",
+    "provider_message_id": "fixture-005",
     "subject": "Your Amazon.com order #123-4567890",
     "from_email": "auto-confirm@amazon.com",
     "from_name": "Amazon.com",
