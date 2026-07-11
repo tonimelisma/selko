@@ -164,39 +164,120 @@ class TestSaveExtractedEvents:
         assert num_updated == 0
         mock_create.assert_called_once()
 
-    def test_adopts_gcal_match(self):
+    def test_skips_noop_gcal_match(self):
+        from selko.services.event_diff import EventChangeSet
+        from selko.services.events import EventMatch
+
         mock_client = MagicMock()
         mock_gateway = MagicMock()
         extraction = _make_extraction(events=[_make_calendar_event()])
+        match = EventMatch(
+            match_id="gcal:abc-123",
+            baseline={"title": "Team Meeting", "start_datetime": "2026-03-15T14:00:00Z"},
+        )
 
-        with patch("selko.services.events.find_matching_event", return_value="gcal:abc-123"), \
-             patch("selko.services.events.create_event_from_gcal_match", return_value="new-id") as mock_gcal:
+        with patch("selko.services.events.find_matching_event", return_value=match), \
+             patch(
+                 "selko.services.events.event_processing.propose_event_update",
+                 return_value=EventChangeSet(kind="noop", changes=[]),
+             ), \
+             patch("selko.services.events.create_pending_change_from_gcal") as mock_gcal:
             num_new, num_updated = save_extracted_events(
                 mock_client, mock_gateway, "user-1", "email-1", extraction
             )
 
-        assert num_new == 1
+        assert num_new == 0
         assert num_updated == 0
-        mock_gcal.assert_called_once()
-        # Verify gcal_id was extracted correctly
-        assert mock_gcal.call_args[0][4] == "abc-123"
+        mock_gcal.assert_not_called()
 
-    def test_updates_existing_event(self):
+    def test_proposes_gcal_change_when_material(self):
+        from selko.services.event_diff import EventChangeSet, FieldChange
+        from selko.services.events import EventMatch
+
         mock_client = MagicMock()
         mock_gateway = MagicMock()
         extraction = _make_extraction(events=[_make_calendar_event()])
+        match = EventMatch(
+            match_id="gcal:abc-123",
+            baseline={
+                "title": "Team Meeting",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "status": "synced",
+            },
+        )
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[
+                FieldChange(
+                    field="start_datetime",
+                    before="2026-03-15T14:00:00Z",
+                    after="2026-03-15T15:00:00Z",
+                )
+            ],
+        )
 
-        with patch("selko.services.events.find_matching_event", return_value="event-456"), \
-             patch("selko.services.events.update_event") as mock_update:
+        with patch("selko.services.events.find_matching_event", return_value=match), \
+             patch(
+                 "selko.services.events.event_processing.propose_event_update",
+                 return_value=change_set,
+             ), \
+             patch(
+                 "selko.services.events.create_pending_change_from_gcal",
+                 return_value="new-id",
+             ) as mock_gcal:
             num_new, num_updated = save_extracted_events(
                 mock_client, mock_gateway, "user-1", "email-1", extraction
             )
 
         assert num_new == 0
         assert num_updated == 1
-        mock_update.assert_called_once()
+        mock_gcal.assert_called_once()
+        assert mock_gcal.call_args[0][4] == "abc-123"
+
+    def test_proposes_local_change_when_material(self):
+        from selko.services.event_diff import EventChangeSet, FieldChange
+        from selko.services.events import EventMatch
+
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        extraction = _make_extraction(events=[_make_calendar_event()])
+        match = EventMatch(
+            match_id="event-456",
+            baseline={
+                "title": "Team Meeting",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "status": "synced",
+            },
+        )
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[
+                FieldChange(
+                    field="location",
+                    before="Room A",
+                    after="Room B",
+                )
+            ],
+        )
+
+        with patch("selko.services.events.find_matching_event", return_value=match), \
+             patch(
+                 "selko.services.events.event_processing.propose_event_update",
+                 return_value=change_set,
+             ), \
+             patch("selko.services.events.propose_local_change") as mock_propose:
+            num_new, num_updated = save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction
+            )
+
+        assert num_new == 0
+        assert num_updated == 1
+        mock_propose.assert_called_once()
 
     def test_handles_multiple_events(self):
+        from selko.services.event_diff import EventChangeSet, FieldChange
+        from selko.services.events import EventMatch
+
         mock_client = MagicMock()
         mock_gateway = MagicMock()
         extraction = _make_extraction(events=[
@@ -204,10 +285,25 @@ class TestSaveExtractedEvents:
             _make_calendar_event(title="Event 2"),
             _make_calendar_event(title="Event 3"),
         ])
+        match = EventMatch(
+            match_id="event-1",
+            baseline={"title": "Event 2", "start_datetime": "2026-03-15T14:00:00Z"},
+        )
+        change_set = EventChangeSet(
+            kind="enrichment",
+            changes=[FieldChange(field="description", before="a", after="b")],
+        )
 
-        with patch("selko.services.events.find_matching_event", side_effect=[None, "event-1", None]), \
+        with patch(
+            "selko.services.events.find_matching_event",
+            side_effect=[None, match, None],
+        ), \
              patch("selko.services.events.create_event", return_value="new-id"), \
-             patch("selko.services.events.update_event"):
+             patch(
+                 "selko.services.events.event_processing.propose_event_update",
+                 return_value=change_set,
+             ), \
+             patch("selko.services.events.propose_local_change"):
             num_new, num_updated = save_extracted_events(
                 mock_client, mock_gateway, "user-1", "email-1", extraction
             )
@@ -228,6 +324,9 @@ class TestSaveExtractedEvents:
         assert num_updated == 0
 
     def test_counts_are_correct_with_mixed_results(self):
+        from selko.services.event_diff import EventChangeSet, FieldChange
+        from selko.services.events import EventMatch
+
         mock_client = MagicMock()
         mock_gateway = MagicMock()
         extraction = _make_extraction(events=[
@@ -236,19 +335,39 @@ class TestSaveExtractedEvents:
             _make_calendar_event(title="Update Existing"),
             _make_calendar_event(title="Another New"),
         ])
+        gcal_match = EventMatch(
+            match_id="gcal:g1",
+            baseline={"title": "GCal Match", "start_datetime": "2026-03-15T14:00:00Z"},
+        )
+        local_match = EventMatch(
+            match_id="event-1",
+            baseline={"title": "Update Existing", "start_datetime": "2026-03-15T14:00:00Z"},
+        )
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[FieldChange(field="location", before="A", after="B")],
+        )
 
-        with patch("selko.services.events.find_matching_event",
-                    side_effect=[None, "gcal:g1", "event-1", None]), \
+        with patch(
+            "selko.services.events.find_matching_event",
+            side_effect=[None, gcal_match, local_match, None],
+        ), \
              patch("selko.services.events.create_event", return_value="new-id"), \
-             patch("selko.services.events.create_event_from_gcal_match", return_value="new-id"), \
-             patch("selko.services.events.update_event"):
+             patch(
+                 "selko.services.events.event_processing.propose_event_update",
+                 return_value=change_set,
+             ), \
+             patch(
+                 "selko.services.events.create_pending_change_from_gcal",
+                 return_value="new-id",
+             ), \
+             patch("selko.services.events.propose_local_change"):
             num_new, num_updated = save_extracted_events(
                 mock_client, mock_gateway, "user-1", "email-1", extraction
             )
 
-        assert num_new == 3  # 1 new + 1 gcal + 1 new
-        assert num_updated == 1
-
+        assert num_new == 2
+        assert num_updated == 2
 
 class TestProcessEmailPipeline:
     """Tests for the slimmed-down process_email_for_events orchestrator."""

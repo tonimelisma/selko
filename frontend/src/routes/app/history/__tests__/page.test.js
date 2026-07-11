@@ -12,9 +12,11 @@ vi.mock('$lib/services/events.js', () => ({
 }));
 
 const mockSyncEventToCalendar = vi.fn();
+const mockUndoHistoryEvent = vi.fn();
 
 vi.mock('$lib/api/backend.js', () => ({
-	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args)
+	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
+	undoHistoryEvent: (...args) => mockUndoHistoryEvent(...args)
 }));
 
 const { default: HistoryPage } = await import('../+page.svelte');
@@ -24,6 +26,7 @@ describe('History Page', () => {
 		vi.clearAllMocks();
 		mockUpdateEventStatus.mockResolvedValue({ data: null, error: null });
 		mockSyncEventToCalendar.mockResolvedValue({ data: null, error: null });
+		mockUndoHistoryEvent.mockResolvedValue({ data: { event_id: 'evt-1', status: 'pending_review' }, error: null });
 	});
 
 	it('shows loading skeleton initially', () => {
@@ -117,7 +120,7 @@ describe('History Page', () => {
 		});
 	});
 
-	it('calls updateEventStatus on undo', async () => {
+	it('calls undoHistoryEvent on undo', async () => {
 		const user = userEvent.setup();
 		const now = new Date();
 		mockFetchActivityEvents.mockResolvedValue({
@@ -142,7 +145,7 @@ describe('History Page', () => {
 
 		await user.click(screen.getByText('Undo'));
 
-		expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'pending_review');
+		expect(mockUndoHistoryEvent).toHaveBeenCalledWith('evt-1');
 	});
 
 	it('shows Load More button when more events available', async () => {

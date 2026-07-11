@@ -1,8 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
-	import { fetchActivityEvents, updateEventStatus } from '$lib/services/events.js';
-	import { syncEventToCalendar } from '$lib/api/backend.js';
+	import { fetchActivityEvents } from '$lib/services/events.js';
+	import { syncEventToCalendar, undoHistoryEvent } from '$lib/api/backend.js';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -19,7 +19,6 @@
 
 	let hasMore = $derived(events.length < totalCount);
 
-	// Group events by date
 	let groupedByDate = $derived(() => {
 		const groups = new Map();
 		const today = new Date();
@@ -84,7 +83,82 @@
 	}
 
 	/** @param {any} event */
+	function isChangeEvent(event) {
+		const sources = event.event_sources || [];
+		return sources.some(
+			/** @param {any} s */
+			(s) =>
+				!s.is_undone &&
+				(s.source_type === 'update' || s.source_type === 'cancellation') &&
+				s.change_set
+		);
+	}
+
+	/** @param {any} event */
+	function getChangeSet(event) {
+		const sources = event.event_sources || [];
+		for (const source of sources) {
+			if (
+				!source.is_undone &&
+				(source.source_type === 'update' || source.source_type === 'cancellation') &&
+				source.change_set
+			) {
+				return source.change_set;
+			}
+		}
+		return null;
+	}
+
+	/** @param {string} field */
+	function fieldLabel(field) {
+		/** @type {Record<string, string>} */
+		const map = {
+			title: $_('events.fieldTitle'),
+			start_datetime: $_('events.fieldStart'),
+			end_datetime: $_('events.fieldEnd'),
+			location: $_('events.fieldLocation'),
+			description: $_('events.fieldDescription'),
+			status: $_('events.fieldStatus'),
+			all_day: $_('events.fieldAllDay')
+		};
+		return map[field] || field;
+	}
+
+	/** @param {any} value */
+	function formatValue(value) {
+		if (value === null || value === undefined || value === '') return $_('events.none');
+		if (typeof value === 'string' && value.includes('T')) {
+			try {
+				return new Date(value).toLocaleString(undefined, {
+					month: 'short',
+					day: 'numeric',
+					hour: 'numeric',
+					minute: '2-digit'
+				});
+			} catch {
+				return String(value);
+			}
+		}
+		return String(value);
+	}
+
+	/** @param {any} event */
+	function getChangeSummary(event) {
+		const changeSet = getChangeSet(event);
+		if (!changeSet?.changes?.length) return '';
+		return changeSet.changes
+			.map(
+				(/** @type {any} */ c) =>
+					`${fieldLabel(c.field)}: ${formatValue(c.before)} → ${formatValue(c.after)}`
+			)
+			.join('; ');
+	}
+
+	/** @param {any} event */
 	function getActionDescription(event) {
+		if (isChangeEvent(event)) {
+			return $_('history.actionChangeApplied');
+		}
 		/** @type {Record<string, string>} */
 		const statusMap = {
 			approved: $_('history.statusApproved'),
@@ -93,6 +167,9 @@
 			rejected: $_('history.statusRejected'),
 			cancelled: $_('history.statusCancelled')
 		};
+		if (event.status === 'synced' || event.status === 'approved') {
+			return $_('history.actionNewEvent');
+		}
 		return statusMap[event.status] || event.status;
 	}
 
@@ -127,9 +204,9 @@
 
 	/** @param {any} event */
 	async function handleUndo(event) {
-		const { error: updateError } = await updateEventStatus(event.id, 'pending_review');
-		if (updateError) {
-			error = updateError.message;
+		const { error: undoError } = await undoHistoryEvent(event.id);
+		if (undoError) {
+			error = undoError.message;
 			return;
 		}
 		events = events.filter((e) => e.id !== event.id);
@@ -143,10 +220,7 @@
 			error = result.error.message;
 			return;
 		}
-		// Update local state
-		events = events.map((e) =>
-			e.id === event.id ? { ...e, status: 'synced' } : e
-		);
+		events = events.map((e) => (e.id === event.id ? { ...e, status: 'synced' } : e));
 	}
 </script>
 
@@ -173,19 +247,29 @@
 				<h2 class="text-sm font-semibold text-base-content/60 mb-3">{dateLabel}</h2>
 				<div>
 					{#each dateEvents as event (event.id)}
-						<div class="flex items-center justify-between p-3 border-b border-base-200">
+						<div class="flex items-start justify-between p-3 border-b border-base-200">
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2 flex-wrap">
 									<span class="font-medium text-sm">{event.title}</span>
 									<StatusBadge status={event.status} />
+									{#if isChangeEvent(event)}
+										<span class="badge badge-sm badge-outline">{$_('home.changesSection')}</span>
+									{:else}
+										<span class="badge badge-sm badge-outline">{$_('home.newSection')}</span>
+									{/if}
 								</div>
-								<div class="flex items-center gap-2 mt-1 text-xs text-base-content/60">
+								<div class="flex items-center gap-2 mt-1 text-xs text-base-content/60 flex-wrap">
 									<span>{getActionTime(event)}</span>
 									<span>{getActionDescription(event)}</span>
 									{#if getSourceInfo(event)}
 										<span>- {getSourceInfo(event)}</span>
 									{/if}
 								</div>
+								{#if isChangeEvent(event) && getChangeSummary(event)}
+									<p class="text-xs text-base-content/70 mt-1">
+										{$_('history.changeSummary', { values: { summary: getChangeSummary(event) } })}
+									</p>
+								{/if}
 							</div>
 							<div class="flex items-center gap-1 flex-shrink-0 ml-2">
 								{#if event.status === 'sync_failed'}
@@ -197,10 +281,7 @@
 									</button>
 								{/if}
 								{#if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
-									<button
-										class="btn btn-outline btn-xs"
-										onclick={() => handleUndo(event)}
-									>
+									<button class="btn btn-outline btn-xs" onclick={() => handleUndo(event)}>
 										{$_('history.undo')}
 									</button>
 								{/if}
@@ -213,11 +294,7 @@
 
 		{#if hasMore}
 			<div class="text-center py-4">
-				<button
-					class="btn btn-ghost"
-					onclick={loadMore}
-					disabled={isLoadingMore}
-				>
+				<button class="btn btn-ghost" onclick={loadMore} disabled={isLoadingMore}>
 					{#if isLoadingMore}
 						<span class="loading loading-spinner loading-sm"></span>
 					{:else}

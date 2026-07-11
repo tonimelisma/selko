@@ -23,9 +23,11 @@ final class HistoryViewModel {
     private var offset = 0
     private let pageSize = 20
     private let eventService: EventServiceProtocol
+    private let backendAPI: BackendAPIProtocol
 
-    init(eventService: EventServiceProtocol? = nil) {
+    init(eventService: EventServiceProtocol? = nil, backendAPI: BackendAPIProtocol? = nil) {
         self.eventService = eventService ?? DependencyContainer.shared.eventService
+        self.backendAPI = backendAPI ?? DependencyContainer.shared.backendAPI
     }
 
     func load() async {
@@ -66,7 +68,7 @@ final class HistoryViewModel {
 
     func undoEvent(_ event: CalendarEvent) async {
         do {
-            _ = try await eventService.updateEventStatus(id: event.id, status: .pendingReview)
+            _ = try await backendAPI.undoHistoryEvent(eventId: event.id)
             removeEvent(event.id)
         } catch {
             errorMessage = error.localizedDescription

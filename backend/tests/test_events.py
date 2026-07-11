@@ -182,7 +182,8 @@ class TestFindMatchingEvent:
             result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
             mock_compare.assert_called_once()
-            assert result == "event-123"
+            assert result is not None
+            assert result.match_id == "event-123"
 
     def test_handles_llm_comparison_failure(self):
         """Test graceful handling of LLM comparison failure."""
@@ -466,7 +467,9 @@ class TestFindMatchingEventGCal:
             assert len(candidates) == 1
             assert candidates[0]["id"] == "gcal:gcal-abc"
             assert candidates[0]["_source"] == "google_calendar"
-            assert result == "gcal:gcal-abc"
+            assert result is not None
+            assert result.match_id == "gcal:gcal-abc"
+            assert result.is_gcal is True
 
     def test_skips_selko_managed_gcal_events(self):
         """Test that GCal events already managed by Selko are excluded."""
@@ -524,7 +527,8 @@ class TestFindMatchingEventGCal:
             result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
 
         # Should still match local event despite GCal failure
-        assert result == "event-123"
+        assert result is not None
+        assert result.match_id == "event-123"
 
 
 class TestCreateEventFromGCalMatch:

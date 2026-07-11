@@ -26,6 +26,7 @@ class EventRepository(
 ) {
     private fun statusToString(status: EventStatus): String = when (status) {
         EventStatus.PENDING_REVIEW -> "pending_review"
+        EventStatus.PENDING_CHANGE -> "pending_change"
         EventStatus.APPROVED -> "approved"
         EventStatus.SYNCING -> "syncing"
         EventStatus.SYNCED -> "synced"
@@ -39,7 +40,7 @@ class EventRepository(
             val events = supabaseClient.from("events")
                 .select {
                     filter {
-                        eq("status", "pending_review")
+                        isIn("status", listOf("pending_review", "pending_change"))
                     }
                     order("start_datetime", Order.ASCENDING)
                 }
@@ -165,7 +166,7 @@ class EventRepository(
         return try {
             val events = supabaseClient.from("events")
                 .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")) {
-                    filter { eq("status", "pending_review") }
+                    filter { isIn("status", listOf("pending_review", "pending_change")) }
                     order("start_datetime", Order.ASCENDING)
                 }
                 .decodeList<CalendarEvent>()

@@ -87,7 +87,7 @@ describe('events service', () => {
 			];
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: eventsWithSources,
 					error: null
@@ -102,7 +102,7 @@ describe('events service', () => {
 			expect(mockQuery.select).toHaveBeenCalledWith(
 				'*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))'
 			);
-			expect(mockQuery.eq).toHaveBeenCalledWith('status', 'pending_review');
+			expect(mockQuery.in).toHaveBeenCalledWith('status', ['pending_review', 'pending_change']);
 			expect(mockQuery.order).toHaveBeenCalledWith('start_datetime', { ascending: true });
 			expect(result.data).toEqual(eventsWithSources);
 			expect(result.error).toBeNull();
@@ -111,7 +111,7 @@ describe('events service', () => {
 		it('handles errors gracefully', async () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: null,
 					error: mockErrors.permissionDenied
@@ -129,7 +129,7 @@ describe('events service', () => {
 		it('returns empty array when data is null', async () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: null,
 					error: null

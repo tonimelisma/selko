@@ -280,6 +280,81 @@ export async function syncEventToCalendar(eventId) {
 	}
 }
 
+/**
+ * Apply a pending_change proposal (Changes lane approve).
+ * @param {string} eventId
+ * @returns {Promise<{data: {event_id: string, status: string} | null, error: ApiError | null}>}
+ */
+export async function applyEventChange(eventId) {
+	try {
+		const response = await apiRequest(`/events/${eventId}/apply-change`, {
+			method: 'POST'
+		});
+		if (!response.ok) {
+			return { data: null, error: await parseApiError(response) };
+		}
+		return { data: await response.json(), error: null };
+	} catch (error) {
+		return {
+			data: null,
+			error: {
+				message: error instanceof Error ? error.message : 'Apply change failed',
+				status: 0
+			}
+		};
+	}
+}
+
+/**
+ * Reject a pending_change proposal (Changes lane reject).
+ * @param {string} eventId
+ * @returns {Promise<{data: {event_id: string, status: string} | null, error: ApiError | null}>}
+ */
+export async function rejectEventChange(eventId) {
+	try {
+		const response = await apiRequest(`/events/${eventId}/reject-change`, {
+			method: 'POST'
+		});
+		if (!response.ok) {
+			return { data: null, error: await parseApiError(response) };
+		}
+		return { data: await response.json(), error: null };
+	} catch (error) {
+		return {
+			data: null,
+			error: {
+				message: error instanceof Error ? error.message : 'Reject change failed',
+				status: 0
+			}
+		};
+	}
+}
+
+/**
+ * Undo a History action back to New or Changes review lane.
+ * @param {string} eventId
+ * @returns {Promise<{data: {event_id: string, status: string} | null, error: ApiError | null}>}
+ */
+export async function undoHistoryEvent(eventId) {
+	try {
+		const response = await apiRequest(`/events/${eventId}/undo`, {
+			method: 'POST'
+		});
+		if (!response.ok) {
+			return { data: null, error: await parseApiError(response) };
+		}
+		return { data: await response.json(), error: null };
+	} catch (error) {
+		return {
+			data: null,
+			error: {
+				message: error instanceof Error ? error.message : 'Undo failed',
+				status: 0
+			}
+		};
+	}
+}
+
 // ============================================================================
 // OAuth Operations
 // ============================================================================

@@ -111,7 +111,7 @@ export async function updateEventStatus(eventId, status) {
 }
 
 /**
- * Fetch pending events with source email info for Review Queue grouping
+ * Fetch pending New + Changes events with source email info for Review Queue
  * @returns {Promise<{data: CalendarEvent[], error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function fetchPendingEventsWithSources() {
@@ -119,7 +119,7 @@ export async function fetchPendingEventsWithSources() {
 		const { data: events, error: eventsError } = await supabase
 			.from('events')
 			.select('*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))')
-			.eq('status', 'pending_review')
+			.in('status', ['pending_review', 'pending_change'])
 			.order('start_datetime', { ascending: true });
 		if (eventsError) throw eventsError;
 		return { data: events ?? [], error: null };

@@ -226,6 +226,63 @@ class BackendApiClient(
         }
     }
 
+    @Serializable
+    data class EventChangeResponse(
+        val event_id: String,
+        val status: String
+    )
+
+    suspend fun applyEventChange(eventId: String): Result<EventChangeResponse> {
+        return try {
+            val authHeader = getAuthHeader()
+                ?: return Result.failure(Exception("Not authenticated"))
+            val response = httpClient.post("$baseUrl/events/$eventId/apply-change") {
+                header(HttpHeaders.Authorization, authHeader)
+            }
+            if (response.status.isSuccess()) {
+                Result.success(response.body())
+            } else {
+                Result.failure(Exception("Apply change failed (${response.status.value})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rejectEventChange(eventId: String): Result<EventChangeResponse> {
+        return try {
+            val authHeader = getAuthHeader()
+                ?: return Result.failure(Exception("Not authenticated"))
+            val response = httpClient.post("$baseUrl/events/$eventId/reject-change") {
+                header(HttpHeaders.Authorization, authHeader)
+            }
+            if (response.status.isSuccess()) {
+                Result.success(response.body())
+            } else {
+                Result.failure(Exception("Reject change failed (${response.status.value})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun undoHistoryEvent(eventId: String): Result<EventChangeResponse> {
+        return try {
+            val authHeader = getAuthHeader()
+                ?: return Result.failure(Exception("Not authenticated"))
+            val response = httpClient.post("$baseUrl/events/$eventId/undo") {
+                header(HttpHeaders.Authorization, authHeader)
+            }
+            if (response.status.isSuccess()) {
+                Result.success(response.body())
+            } else {
+                Result.failure(Exception("Undo failed (${response.status.value})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ============================================================================
     // OAuth Operations
     // ============================================================================

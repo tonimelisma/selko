@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.R
+import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.data.repository.EventRepository
@@ -35,7 +36,8 @@ data class HistoryUiState(
 class HistoryViewModel(
     application: Application,
     private val eventRepository: EventRepository,
-    private val integrationRepository: IntegrationRepository
+    private val integrationRepository: IntegrationRepository,
+    private val backendApiClient: BackendApiClient
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HistoryUiState())
@@ -120,24 +122,22 @@ class HistoryViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
 
-            when (eventRepository.updateEventStatus(eventId, EventStatus.PENDING_REVIEW)) {
-                is EventResult.Success -> {
-                    _uiState.update { state ->
-                        val updatedEvents = state.allEvents.filter { it.id != eventId }
-                        state.copy(
-                            allEvents = updatedEvents,
-                            dateGroups = groupByDate(updatedEvents),
-                            processingEventIds = state.processingEventIds - eventId
-                        )
-                    }
+            val ok = backendApiClient.undoHistoryEvent(eventId).isSuccess
+            if (ok) {
+                _uiState.update { state ->
+                    val updatedEvents = state.allEvents.filter { it.id != eventId }
+                    state.copy(
+                        allEvents = updatedEvents,
+                        dateGroups = groupByDate(updatedEvents),
+                        processingEventIds = state.processingEventIds - eventId
+                    )
                 }
-                is EventResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            processingEventIds = it.processingEventIds - eventId,
-                            errorMessage = getString(R.string.history_error_undo)
-                        )
-                    }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        processingEventIds = it.processingEventIds - eventId,
+                        errorMessage = getString(R.string.history_error_undo)
+                    )
                 }
             }
         }

@@ -68,7 +68,7 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
     func fetchPendingEvents() async throws -> [CalendarEvent] {
         let events: [CalendarEvent] = try await supabase.from("events")
             .select()
-            .eq("status", value: "pending_review")
+            .in("status", values: ["pending_review", "pending_change"])
             .order("start_datetime")
             .execute()
             .value
@@ -79,7 +79,7 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
     func fetchPendingEventsWithSources() async throws -> [CalendarEvent] {
         let events: [CalendarEvent] = try await supabase.from("events")
             .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")
-            .eq("status", value: "pending_review")
+            .in("status", values: ["pending_review", "pending_change"])
             .order("start_datetime")
             .execute()
             .value
