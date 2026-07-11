@@ -318,6 +318,36 @@ class TestEmailProcessWorker:
         args = mock_proc.call_args[0]
         assert args[2] == "e1"  # email_id is 3rd positional arg
 
+    @pytest.mark.asyncio
+    async def test_pool_email_processing_uses_wait_for(self, mock_config):
+        """Python 3.10 has no asyncio.timeout; pool must use wait_for."""
+        pool = WorkerPool(num_workers=1)
+        pool.config = mock_config
+        mock_config.email_processing_timeout = 30
+        mock_client = MagicMock()
+        email = {"id": "e1", "user_id": "u1", "subject": "Meetup"}
+
+        with (
+            patch(
+                "selko.workers.email_process.process_email",
+                new_callable=AsyncMock,
+            ) as mock_proc,
+            patch("selko.workers.pool.complete_email_processing") as mock_complete,
+            patch("selko.workers.pool.circuit_breaker") as mock_cb,
+            patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
+        ):
+            async def _run(coro, timeout=None):
+                return await coro
+
+            mock_wait_for.side_effect = _run
+            await pool._process_email(mock_client, "worker-1", email)
+
+        mock_wait_for.assert_called_once()
+        assert mock_wait_for.call_args.kwargs["timeout"] == 30
+        mock_proc.assert_called_once()
+        mock_complete.assert_called_once_with(mock_client, "e1")
+        mock_cb.record_success.assert_called_with("llm")
+
 
 # ===========================================================================
 # Calendar sync worker
