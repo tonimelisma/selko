@@ -116,10 +116,21 @@ describe('App Layout', () => {
 		render(AppLayout);
 
 		await waitFor(() => {
-			// Both Navbar and BottomNav render these links
-			expect(screen.getAllByText('Review').length).toBeGreaterThanOrEqual(1);
-			expect(screen.getAllByText('History').length).toBeGreaterThanOrEqual(1);
-			expect(screen.getAllByText('Settings').length).toBeGreaterThanOrEqual(1);
+			expect(screen.getByText('Review')).toBeInTheDocument();
+			expect(screen.getByText('History')).toBeInTheDocument();
+			expect(screen.getByText('Settings')).toBeInTheDocument();
 		});
+	});
+
+	it('renders logout in the sticky top navbar', async () => {
+		mockLoading.set(false);
+		mockUser.set({ id: '123', email: 'test@example.com' });
+
+		render(AppLayout);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
+		});
+		expect(document.querySelector('nav.sticky')).toBeTruthy();
 	});
 });

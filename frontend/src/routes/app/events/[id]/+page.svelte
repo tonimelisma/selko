@@ -405,7 +405,7 @@
 
 	<!-- Mobile fixed bottom action bar -->
 	{#if event.status === 'pending_review'}
-		<div class="fixed bottom-20 left-0 right-0 bg-base-100 border-t border-base-300 p-4 lg:hidden">
+		<div class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 p-4 lg:hidden">
 			<div class="flex justify-end gap-3 max-w-7xl mx-auto">
 				<button class="btn btn-outline btn-error flex-1" onclick={handleReject}>{$_('events.reject')}</button>
 				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title}>

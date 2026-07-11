@@ -136,6 +136,7 @@
 		"connectGoogle": "Connect Google Account",
 		"connectAccounts": "Connect your accounts",
 		"connect": "Connect",
+		"connecting": "Connecting…",
 		"reconnect": "Reconnect",
 		"gmail": "Gmail",
 		"gmailDescription": "Read emails to find calendar events",
