@@ -12,6 +12,7 @@ import XCTest
 
 final class ScreenshotCaptureTests: XCTestCase {
     var app: XCUIApplication!
+    private let pollInterval: TimeInterval = 0.2
 
     /// Resolve the project-root docs/screenshots directory.
     /// The test source lives at <project>/ios/SelkoUITests/ScreenshotCaptureTests.swift,
@@ -57,6 +58,89 @@ final class ScreenshotCaptureTests: XCTestCase {
         }
     }
 
+    @MainActor
+    private func waitForAny(
+        _ elements: [XCUIElement],
+        timeout: TimeInterval,
+        description: String
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if elements.contains(where: \.exists) {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(pollInterval))
+        } while Date() < deadline
+
+        let found = elements.contains(where: \.exists)
+        if !found {
+            XCTFail("\(description) did not appear within \(timeout) seconds")
+        }
+        return found
+    }
+
+    @MainActor
+    private func revealElement(_ element: XCUIElement, maxSwipes: Int = 3) -> Bool {
+        if element.exists {
+            return true
+        }
+
+        for _ in 0..<maxSwipes {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 1) {
+                return true
+            }
+        }
+
+        return element.exists
+    }
+
+    @MainActor
+    private func waitForReviewScreen(timeout: TimeInterval = 15) -> Bool {
+        let eventButton = app.buttons.matching(
+            NSPredicate(format: "identifier CONTAINS %@", "eventCard")
+        ).firstMatch
+
+        return waitForAny(
+            [
+                app.navigationBars["Review"],
+                app.otherElements["integrationSetupView"],
+                app.otherElements["emptyStateView"],
+                app.tables["eventList"],
+                eventButton,
+                app.tabBars.buttons["Review"]
+            ],
+            timeout: timeout,
+            description: "Review screen"
+        )
+    }
+
+    @MainActor
+    private func waitForHistoryScreen(timeout: TimeInterval = 10) -> Bool {
+        waitForAny(
+            [
+                app.navigationBars["History"],
+                app.otherElements["historyEmptyState"],
+                app.tables["historyList"]
+            ],
+            timeout: timeout,
+            description: "History screen"
+        )
+    }
+
+    @MainActor
+    private func waitForSettingsScreen(timeout: TimeInterval = 10) -> Bool {
+        waitForAny(
+            [
+                app.navigationBars["Settings"],
+                app.staticTexts["Connected Accounts"],
+                app.buttons["signOutButton"]
+            ],
+            timeout: timeout,
+            description: "Settings screen"
+        )
+    }
+
     /// If the app is already logged in, sign out first.
     /// The "Log out" button is in the Account section at the bottom of the Settings Form,
     /// so we may need to scroll down to find it.
@@ -65,16 +149,14 @@ final class ScreenshotCaptureTests: XCTestCase {
         let settingsTab = app.tabBars.buttons["Settings"]
         if settingsTab.waitForExistence(timeout: 3) {
             settingsTab.tap()
-            sleep(1)
+            _ = waitForSettingsScreen(timeout: 5)
             let signOutButton = app.buttons["signOutButton"]
-            if !signOutButton.waitForExistence(timeout: 3) {
-                // Button may be below the fold — scroll down
-                app.swipeUp()
-                sleep(1)
-            }
-            if signOutButton.waitForExistence(timeout: 3) {
+            if revealElement(signOutButton) {
                 signOutButton.tap()
-                sleep(2)
+                XCTAssertTrue(
+                    app.textFields["emailField"].waitForExistence(timeout: 10),
+                    "Login screen did not appear after sign out"
+                )
             }
         }
     }
@@ -130,9 +212,7 @@ final class ScreenshotCaptureTests: XCTestCase {
         // Wait for the main tab view to appear (review queue loads)
         let reviewTab = app.tabBars.buttons["Review"]
         XCTAssertTrue(reviewTab.waitForExistence(timeout: 15), "Main tab view did not appear after login")
-
-        // Give data time to load
-        sleep(3)
+        XCTAssertTrue(waitForReviewScreen(), "Review screen did not settle after login")
 
         // 4. Review queue
         saveScreenshot(named: "ios-review-queue")
@@ -145,11 +225,10 @@ final class ScreenshotCaptureTests: XCTestCase {
         ).firstMatch
         if eventButton.waitForExistence(timeout: 5) {
             eventButton.tap()
-            sleep(2)
 
             // Verify we navigated to event detail
             let detailTitle = app.staticTexts["eventDetailTitle"]
-            if detailTitle.waitForExistence(timeout: 3) {
+            if detailTitle.waitForExistence(timeout: 5) {
                 saveScreenshot(named: "ios-event-detail")
 
                 // Go back to review queue
@@ -159,7 +238,7 @@ final class ScreenshotCaptureTests: XCTestCase {
                 } else {
                     app.swipeRight()
                 }
-                sleep(1)
+                XCTAssertTrue(waitForReviewScreen(timeout: 10), "Review screen did not reappear after leaving event detail")
             } else {
                 // Navigation didn't work — save current state
                 saveScreenshot(named: "ios-event-detail")
@@ -172,13 +251,13 @@ final class ScreenshotCaptureTests: XCTestCase {
         // 6. History tab
         let historyTab = app.tabBars.buttons["History"]
         historyTab.tap()
-        sleep(2)
+        XCTAssertTrue(waitForHistoryScreen(), "History screen did not appear")
         saveScreenshot(named: "ios-history")
 
         // 7. Settings tab
         let settingsTab = app.tabBars.buttons["Settings"]
         settingsTab.tap()
-        sleep(1)
+        XCTAssertTrue(waitForSettingsScreen(), "Settings screen did not appear")
         saveScreenshot(named: "ios-settings")
     }
 }
