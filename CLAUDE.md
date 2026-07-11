@@ -231,6 +231,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 | **Screenshot capture** | `docs/screenshot-guide.md` | When capturing product screenshots across web, iOS, and Android |
 | **LLM eval system** | `backend/tests/eval/README.md` | When working with LLM evaluation or benchmarking |
 | **Evals process** | `docs/evals-process.md` | When running evals, interpreting results, or iterating on prompts |
+| **Implementation specs** | `docs/specs/` | When planning or implementing a new feature (detailed build plans; see `docs/specs/README.md`) |
 
 ---
 
