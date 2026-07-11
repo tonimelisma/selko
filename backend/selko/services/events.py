@@ -1,6 +1,7 @@
 """Events service for event extraction, deduplication, and management."""
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID
@@ -11,6 +12,13 @@ from supabase import Client
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.config import Config
 from selko.services import calendars, event_processing, ics_parser
+from selko.services.event_diff import (
+    EventChangeSet,
+    apply_asserted_fields,
+    baseline_from_gcal_event,
+    compute_change_set,
+    proposed_fields_from_change_set,
+)
 from selko.services.llm_gateway import LLMGateway
 from selko.services.retry_utils import calculate_retry_delay
 
@@ -21,6 +29,25 @@ class EventsError(Exception):
     """Raised when event operations fail."""
 
     pass
+
+
+@dataclass
+class EventMatch:
+    """A dedup match against a local Selko event or Google Calendar event."""
+
+    match_id: str
+    baseline: dict[str, Any]
+    gcal_raw: Optional[dict[str, Any]] = None
+
+    @property
+    def is_gcal(self) -> bool:
+        return self.match_id.startswith("gcal:")
+
+    @property
+    def gcal_id(self) -> Optional[str]:
+        if self.is_gcal:
+            return self.match_id[5:]
+        return None
 
 
 def mark_email_status(
@@ -135,28 +162,22 @@ def save_extracted_events(
     extraction: CalendarEventExtraction,
     initial_status: str = "pending_review",
 ) -> tuple[int, int]:
-    """Deduplicate and persist extracted events.
+    """Deduplicate and persist extracted events into New or Changes lanes.
 
-    For each event in the extraction, normalizes the data, checks for
-    duplicates (local + GCal), and creates or updates accordingly.
-
-    Args:
-        supabase_client: Authenticated Supabase client.
-        gateway: LLMGateway instance for LLM operations.
-        user_id: UUID of user.
-        email_id: UUID of source email.
-        extraction: LLM extraction result containing events.
-        initial_status: Status for newly created events (default: pending_review).
+    Routing:
+    - No match → New lane (``pending_review``), or auto-approved when requested.
+    - Match + noop changeset → silent skip.
+    - Match + real change → Changes lane (``pending_change``), or apply immediately
+      when ``initial_status == "approved"`` (sender auto_approve).
 
     Returns:
-        Tuple of (num_new, num_updated) event counts.
+        Tuple of (num_new, num_updated) event counts. Skips are not counted.
     """
     num_new = 0
     num_updated = 0
     user_timezone = get_user_timezone(supabase_client, user_id)
+    auto_apply = initial_status == "approved"
 
-    # Filter out past events (>24h ago) — the LLM extracts all events with
-    # dates, and we filter here rather than asking the LLM to judge what's "past".
     try:
         user_tz = ZoneInfo(user_timezone)
     except (KeyError, ValueError):
@@ -167,7 +188,6 @@ def save_extracted_events(
     for event in extraction.events:
         event_data = normalize_event_data(event, user_timezone=user_timezone)
 
-        # Skip past events
         start_str = event_data.get("start_datetime")
         if start_str:
             try:
@@ -178,30 +198,107 @@ def save_extracted_events(
                     logger.info(f"Skipping past event: {event_data.get('title')} ({start_str})")
                     continue
             except (ValueError, TypeError):
-                pass  # Can't parse, keep it
+                pass
 
-        matched_event_id = find_matching_event(
+        match = find_matching_event(
             supabase_client, gateway, user_id, event_data
         )
 
-        if matched_event_id:
-            if matched_event_id.startswith("gcal:"):
-                gcal_id = matched_event_id[5:]
-                create_event_from_gcal_match(
-                    supabase_client, user_id, event_data, email_id, gcal_id,
-                    initial_status=initial_status,
-                )
-                num_new += 1
-            else:
-                update_event(
-                    supabase_client, gateway, matched_event_id,
-                    event_data, email_id, "update"
-                )
-                num_updated += 1
-        else:
-            create_event(supabase_client, user_id, event_data, email_id,
-                         initial_status=initial_status)
+        if match is None:
+            create_event(
+                supabase_client, user_id, event_data, email_id,
+                initial_status=initial_status,
+            )
             num_new += 1
+            continue
+
+        # LLM proposes what to update; code gate drops no-ops
+        try:
+            change_set = event_processing.propose_event_update(
+                gateway,
+                match.baseline,
+                event_data,
+            )
+        except Exception as e:
+            logger.warning(
+                "propose_event_update failed for match %s, falling back to deterministic diff: %s",
+                match.match_id,
+                e,
+            )
+            change_set = compute_change_set(match.baseline, event_data)
+
+        if change_set.kind == "noop":
+            logger.info(
+                "Skipping noop rediscovery for match %s (%s)",
+                match.match_id,
+                event_data.get("title"),
+            )
+            continue
+
+        source_type = (
+            "cancellation" if change_set.kind == "cancellation" else "update"
+        )
+        # Persist only the fields the gated changeset says to change, plus identity
+        proposed_fields = proposed_fields_from_change_set(match.baseline, change_set)
+        proposal_data = {
+            **{k: v for k, v in event_data.items() if k in ("source_quote", "importance")},
+            **proposed_fields,
+        }
+        if "title" not in proposal_data:
+            proposal_data["title"] = event_data.get("title") or match.baseline.get("title")
+        if "start_datetime" not in proposal_data:
+            proposal_data["start_datetime"] = (
+                event_data.get("start_datetime") or match.baseline.get("start_datetime")
+            )
+
+        if auto_apply:
+            if match.is_gcal:
+                event_id = create_pending_change_from_gcal(
+                    supabase_client,
+                    user_id,
+                    proposal_data,
+                    email_id,
+                    match.gcal_id or "",
+                    match.baseline,
+                    change_set,
+                    source_type=source_type,
+                )
+                apply_pending_change(supabase_client, event_id)
+            else:
+                propose_local_change(
+                    supabase_client,
+                    match.match_id,
+                    proposal_data,
+                    email_id,
+                    change_set,
+                    source_type=source_type,
+                )
+                apply_pending_change(supabase_client, match.match_id)
+            num_updated += 1
+            continue
+
+        if match.is_gcal:
+            create_pending_change_from_gcal(
+                supabase_client,
+                user_id,
+                proposal_data,
+                email_id,
+                match.gcal_id or "",
+                match.baseline,
+                change_set,
+                source_type=source_type,
+            )
+            num_updated += 1
+        else:
+            propose_local_change(
+                supabase_client,
+                match.match_id,
+                proposal_data,
+                email_id,
+                change_set,
+                source_type=source_type,
+            )
+            num_updated += 1
 
     return num_new, num_updated
 
@@ -304,27 +401,16 @@ def find_matching_event(
     gateway: LLMGateway,
     user_id: str,
     event_data: dict[str, Any],
-) -> Optional[str]:
+) -> Optional[EventMatch]:
     """Find if event matches any existing events (date-based + LLM).
 
     Checks both local Selko events and the user's Google Calendar.
-    Returns event ID for local matches, or "gcal:<google_event_id>" for
-    calendar-only matches.
-
-    Args:
-        supabase_client: Authenticated Supabase client.
-        gateway: LLMGateway instance for LLM operations.
-        user_id: UUID of user.
-        event_data: Extracted event data.
-
-    Returns:
-        Event ID if match found (or "gcal:<id>" for GCal matches), None otherwise.
+    Returns an EventMatch with baseline fields for change detection.
     """
     start_dt = event_data.get("start_datetime")
     if not start_dt:
         return None
 
-    # Parse date
     try:
         if isinstance(start_dt, str):
             start_date = datetime.fromisoformat(start_dt.replace('Z', '+00:00')).date()
@@ -337,7 +423,6 @@ def find_matching_event(
     time_min = f"{start_date}T00:00:00Z"
     time_max = f"{start_date}T23:59:59Z"
 
-    # Query local Selko events on same date
     result = supabase_client.table("events").select("*").eq(
         "user_id", user_id
     ).gte(
@@ -346,51 +431,96 @@ def find_matching_event(
         "start_datetime", time_max
     ).execute()
 
-    candidates = list(result.data) if result.data else []
+    candidates: list[dict[str, Any]] = list(result.data) if result.data else []
+    candidate_by_id: dict[str, dict[str, Any]] = {
+        c["id"]: c for c in candidates if c.get("id")
+    }
 
-    # Also fetch GCal events for the same date range (non-fatal)
-    gcal_candidates = []
     try:
         gcal_events = calendars.fetch_calendar_events_for_date_range(
             supabase_client, user_id, time_min, time_max
         )
-        # Filter out Selko-managed events (already tracked locally)
         for gcal_event in gcal_events:
             ext_props = gcal_event.get("extendedProperties", {})
             private_props = ext_props.get("private", {})
             if private_props.get("selko_event_id"):
-                continue  # Already managed by Selko
-            # Convert to candidate format for LLM comparison
-            gcal_start = gcal_event.get("start", {})
-            gcal_end = gcal_event.get("end", {})
-            candidates.append({
-                "id": f"gcal:{gcal_event.get('id')}",
-                "title": gcal_event.get("summary", ""),
-                "start_datetime": gcal_start.get("dateTime") or gcal_start.get("date"),
-                "end_datetime": gcal_end.get("dateTime") or gcal_end.get("date"),
-                "location": gcal_event.get("location", ""),
-                "description": gcal_event.get("description", ""),
+                continue
+            gcal_id = gcal_event.get("id")
+            if not gcal_id:
+                continue
+            baseline = baseline_from_gcal_event(gcal_event)
+            match_id = f"gcal:{gcal_id}"
+            candidate = {
+                "id": match_id,
+                "title": baseline.get("title", ""),
+                "start_datetime": baseline.get("start_datetime"),
+                "end_datetime": baseline.get("end_datetime"),
+                "location": baseline.get("location", ""),
+                "description": baseline.get("description", ""),
                 "_source": "google_calendar",
-                "_gcal_id": gcal_event.get("id"),
-            })
-            gcal_candidates.append(gcal_event)
+                "_gcal_id": gcal_id,
+                "_baseline": baseline,
+                "_gcal_raw": gcal_event,
+            }
+            candidates.append(candidate)
+            candidate_by_id[match_id] = candidate
     except Exception as e:
         logger.warning(f"GCal read-back failed during dedup, continuing with local only: {e}")
 
     if not candidates:
         return None
 
-    # Use LLM to compare
     try:
         matched_id = event_processing.compare_events(
             gateway,
             event_data,
             candidates
         )
-        return matched_id
     except Exception as e:
         logger.warning(f"LLM comparison failed, no match: {e}")
         return None
+
+    if not matched_id:
+        return None
+
+    candidate = candidate_by_id.get(matched_id)
+    if not candidate:
+        # compare_events may return an id string that still matches a candidate
+        for c in candidates:
+            if c.get("id") == matched_id:
+                candidate = c
+                break
+    if not candidate:
+        logger.warning(f"Matched id {matched_id} not found in candidates")
+        return None
+
+    if matched_id.startswith("gcal:"):
+        baseline = candidate.get("_baseline") or {
+            "title": candidate.get("title"),
+            "start_datetime": candidate.get("start_datetime"),
+            "end_datetime": candidate.get("end_datetime"),
+            "location": candidate.get("location"),
+            "description": candidate.get("description"),
+            "all_day": False,
+            "status": "synced",
+        }
+        return EventMatch(
+            match_id=matched_id,
+            baseline=baseline,
+            gcal_raw=candidate.get("_gcal_raw"),
+        )
+
+    baseline = {
+        "title": candidate.get("title"),
+        "start_datetime": candidate.get("start_datetime"),
+        "end_datetime": candidate.get("end_datetime"),
+        "all_day": candidate.get("all_day", False),
+        "location": candidate.get("location"),
+        "description": candidate.get("description"),
+        "importance": candidate.get("importance"),
+        "status": candidate.get("status"),
+    }
+    return EventMatch(match_id=matched_id, baseline=baseline)
 
 
 def create_event(
@@ -460,25 +590,11 @@ def create_event_from_gcal_match(
     gcal_event_id: str,
     initial_status: str = "pending_review",
 ) -> str:
-    """Create a Selko event that adopts an existing Google Calendar event.
+    """Create a Selko event linked to an existing Google Calendar event.
 
-    When dedup finds a match on the user's GCal (not managed by Selko),
-    we create a Selko event linked to it. The event starts as pending_review
-    (or approved if sender has auto_approve rule) so the user must approve
-    before Selko modifies their calendar event.
-
-    Args:
-        supabase_client: Authenticated Supabase client.
-        user_id: UUID of user.
-        event_data: Extracted event data from email.
-        email_id: UUID of source email.
-        gcal_event_id: Google Calendar event ID being adopted.
-        initial_status: Status for the new event (default: pending_review).
-
-    Returns:
-        UUID of created Selko event.
+    Prefer ``create_pending_change_from_gcal`` for the Changes-lane pipeline.
+    This helper remains for tests and callers that need a direct adopt insert.
     """
-    # Create event record with the GCal ID pre-filled
     event_result = supabase_client.table("events").insert({
         "user_id": user_id,
         "title": event_data.get("title"),
@@ -494,7 +610,6 @@ def create_event_from_gcal_match(
 
     event_id = event_result.data[0]["id"]
 
-    # Create GCal source (how we discovered this event)
     supabase_client.table("event_sources").insert({
         "event_id": event_id,
         "source_origin": "google_calendar",
@@ -504,7 +619,6 @@ def create_event_from_gcal_match(
         "event_snapshot_before": None,
     }).execute()
 
-    # Create email source (the email that triggered discovery)
     supabase_client.table("event_sources").insert({
         "event_id": event_id,
         "email_id": email_id,
@@ -514,7 +628,6 @@ def create_event_from_gcal_match(
         "event_snapshot_before": None,
     }).execute()
 
-    # Generate source attribution
     attribution = generate_source_attribution(supabase_client, event_id)
     if attribution:
         supabase_client.table("events").update({
@@ -523,6 +636,345 @@ def create_event_from_gcal_match(
 
     logger.info(f"Created event {event_id} adopting GCal event {gcal_event_id}")
     return event_id
+
+
+def create_pending_change_from_gcal(
+    supabase_client: Client,
+    user_id: str,
+    event_data: dict[str, Any],
+    email_id: str,
+    gcal_event_id: str,
+    baseline: dict[str, Any],
+    change_set: EventChangeSet,
+    source_type: str = "update",
+) -> str:
+    """Create a Selko event for a GCal match that has real field changes.
+
+    Canonical fields are the calendar baseline. Proposed deltas live on
+    event_sources.change_set / extracted_data until apply_pending_change.
+    """
+    event_result = supabase_client.table("events").insert({
+        "user_id": user_id,
+        "title": baseline.get("title"),
+        "start_datetime": baseline.get("start_datetime"),
+        "end_datetime": baseline.get("end_datetime"),
+        "all_day": baseline.get("all_day", False),
+        "location": baseline.get("location"),
+        "description": baseline.get("description"),
+        "importance": baseline.get("importance", "action_required"),
+        "status": "pending_change",
+        "google_calendar_event_id": gcal_event_id,
+    }).execute()
+
+    event_id = event_result.data[0]["id"]
+
+    snapshot = {
+        "title": baseline.get("title"),
+        "start_datetime": baseline.get("start_datetime"),
+        "end_datetime": baseline.get("end_datetime"),
+        "all_day": baseline.get("all_day", False),
+        "location": baseline.get("location"),
+        "description": baseline.get("description"),
+        "importance": baseline.get("importance", "action_required"),
+        "status": baseline.get("status") or "synced",
+    }
+
+    supabase_client.table("event_sources").insert({
+        "event_id": event_id,
+        "source_origin": "google_calendar",
+        "google_calendar_source_event_id": gcal_event_id,
+        "source_type": source_type,
+        "extracted_data": {"google_calendar_event_id": gcal_event_id},
+        "event_snapshot_before": None,
+        "change_set": change_set.model_dump_jsonable(),
+    }).execute()
+
+    supabase_client.table("event_sources").insert({
+        "event_id": event_id,
+        "email_id": email_id,
+        "source_origin": "email",
+        "source_type": source_type,
+        "extracted_data": event_data,
+        "event_snapshot_before": snapshot,
+        "change_set": change_set.model_dump_jsonable(),
+    }).execute()
+
+    attribution = generate_source_attribution(supabase_client, event_id)
+    if attribution:
+        supabase_client.table("events").update({
+            "source_attribution": attribution
+        }).eq("id", event_id).execute()
+
+    logger.info(
+        "Created pending_change event %s for GCal %s (%s)",
+        event_id,
+        gcal_event_id,
+        change_set.kind,
+    )
+    return event_id
+
+
+def propose_local_change(
+    supabase_client: Client,
+    event_id: str,
+    event_data: dict[str, Any],
+    email_id: str,
+    change_set: EventChangeSet,
+    source_type: str = "update",
+) -> None:
+    """Attach a pending change proposal to an existing Selko event.
+
+    Leaves canonical event fields unchanged until apply_pending_change.
+    Replaces any prior non-undone update/cancellation proposal.
+    """
+    result = supabase_client.table("events").select("*").eq(
+        "id", event_id
+    ).single().execute()
+    existing = result.data
+
+    # Mark prior pending proposals undone (one active proposal at a time)
+    prior = supabase_client.table("event_sources").select("id").eq(
+        "event_id", event_id
+    ).in_("source_type", ["update", "cancellation"]).eq(
+        "is_undone", False
+    ).execute()
+    for row in prior.data or []:
+        supabase_client.table("event_sources").update({
+            "is_undone": True
+        }).eq("id", row["id"]).execute()
+
+    snapshot = {
+        "title": existing.get("title"),
+        "start_datetime": existing.get("start_datetime"),
+        "end_datetime": existing.get("end_datetime"),
+        "all_day": existing.get("all_day"),
+        "location": existing.get("location"),
+        "description": existing.get("description"),
+        "importance": existing.get("importance"),
+        "status": existing.get("status"),
+    }
+
+    supabase_client.table("event_sources").insert({
+        "event_id": event_id,
+        "email_id": email_id,
+        "source_origin": "email",
+        "source_type": source_type,
+        "extracted_data": event_data,
+        "event_snapshot_before": snapshot,
+        "change_set": change_set.model_dump_jsonable(),
+    }).execute()
+
+    supabase_client.table("events").update({
+        "status": "pending_change",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", event_id).execute()
+
+    attribution = generate_source_attribution(supabase_client, event_id)
+    if attribution:
+        supabase_client.table("events").update({
+            "source_attribution": attribution
+        }).eq("id", event_id).execute()
+
+    logger.info(
+        "Proposed %s change on event %s from email %s",
+        change_set.kind,
+        event_id,
+        email_id,
+    )
+
+
+def _latest_pending_change_source(
+    supabase_client: Client, event_id: str
+) -> Optional[dict[str, Any]]:
+    result = supabase_client.table("event_sources").select("*").eq(
+        "event_id", event_id
+    ).in_("source_type", ["update", "cancellation"]).eq(
+        "is_undone", False
+    ).order("created_at", desc=True).limit(1).execute()
+    if result.data:
+        return result.data[0]
+    return None
+
+
+def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, Any]:
+    """Apply the latest pending change proposal and mark event approved."""
+    event_result = supabase_client.table("events").select("*").eq(
+        "id", event_id
+    ).single().execute()
+    event = event_result.data
+
+    source = _latest_pending_change_source(supabase_client, event_id)
+    if not source:
+        raise EventsError(f"No pending change proposal for event {event_id}")
+
+    proposed = source.get("extracted_data") or {}
+    # Ignore non-event metadata keys from GCal-only source rows
+    proposed_fields = {
+        k: v for k, v in proposed.items()
+        if k in {
+            "title", "start_datetime", "end_datetime", "all_day",
+            "location", "description", "importance", "status", "recurrence_rule",
+        }
+    }
+    if not proposed_fields and source.get("source_origin") == "google_calendar":
+        # Prefer the email source sibling
+        email_sources = supabase_client.table("event_sources").select("*").eq(
+            "event_id", event_id
+        ).eq("source_origin", "email").eq("is_undone", False).order(
+            "created_at", desc=True
+        ).limit(1).execute()
+        if email_sources.data:
+            source = email_sources.data[0]
+            proposed = source.get("extracted_data") or {}
+            proposed_fields = {
+                k: v for k, v in proposed.items()
+                if k in {
+                    "title", "start_datetime", "end_datetime", "all_day",
+                    "location", "description", "importance", "status",
+                    "recurrence_rule",
+                }
+            }
+
+    merged = apply_asserted_fields(event, proposed_fields)
+    if source.get("source_type") == "cancellation":
+        merged["title"] = merged.get("title") or event.get("title")
+        if merged.get("title") and not str(merged["title"]).startswith("CANCELLED:"):
+            merged["title"] = f"CANCELLED: {merged['title']}"
+
+    update_fields = {
+        "title": merged.get("title"),
+        "start_datetime": merged.get("start_datetime"),
+        "end_datetime": merged.get("end_datetime"),
+        "all_day": merged.get("all_day", False),
+        "location": merged.get("location"),
+        "description": merged.get("description"),
+        "importance": merged.get("importance", event.get("importance", "action_required")),
+        "status": "approved",
+        "sync_attempts": 0,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    supabase_client.table("events").update(update_fields).eq("id", event_id).execute()
+    logger.info(f"Applied pending change on event {event_id}")
+    return update_fields
+
+
+def reject_pending_change(supabase_client: Client, event_id: str) -> str:
+    """Discard the pending change proposal.
+
+    Returns the resulting status (or \"deleted\" if the Selko row is removed).
+    """
+    event_result = supabase_client.table("events").select("*").eq(
+        "id", event_id
+    ).single().execute()
+    event = event_result.data
+
+    source = _latest_pending_change_source(supabase_client, event_id)
+    snapshot = (source or {}).get("event_snapshot_before") if source else None
+
+    # GCal-only adopt that never left pending_change: delete the row
+    created_as_change_only = (
+        event.get("status") == "pending_change"
+        and event.get("google_calendar_event_id")
+        and not event.get("synced_at")
+        and (snapshot or {}).get("status") == "synced"
+    )
+    # Heuristic: if snapshot status is synced and event never synced via Selko,
+    # and the only meaningful history is this proposal, delete.
+    sources = supabase_client.table("event_sources").select(
+        "id, source_type, source_origin"
+    ).eq("event_id", event_id).execute()
+    source_types = {s.get("source_type") for s in (sources.data or [])}
+    gcal_only_proposal = (
+        event.get("status") == "pending_change"
+        and event.get("google_calendar_event_id")
+        and "new_invitation" not in source_types
+        and not event.get("synced_at")
+    )
+
+    if gcal_only_proposal or created_as_change_only:
+        supabase_client.table("events").delete().eq("id", event_id).execute()
+        logger.info(f"Deleted GCal pending_change event {event_id} on reject")
+        return "deleted"
+
+    if source:
+        supabase_client.table("event_sources").update({
+            "is_undone": True
+        }).eq("id", source["id"]).execute()
+
+    restore_status = "synced" if event.get("google_calendar_event_id") else "approved"
+    if snapshot and snapshot.get("status") in {
+        "pending_review", "approved", "synced", "sync_failed", "rejected", "cancelled"
+    }:
+        restore_status = snapshot["status"]
+
+    restore_fields: dict[str, Any] = {
+        "status": restore_status,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if snapshot:
+        for key in (
+            "title", "start_datetime", "end_datetime", "all_day",
+            "location", "description", "importance",
+        ):
+            if key in snapshot:
+                restore_fields[key] = snapshot[key]
+
+    supabase_client.table("events").update(restore_fields).eq("id", event_id).execute()
+    logger.info(f"Rejected pending change on event {event_id} → {restore_status}")
+    return restore_status
+
+
+def undo_history_event(supabase_client: Client, event_id: str) -> str:
+    """Undo a History action: return New or Changes to the review queue.
+
+    - Applied change (update/cancellation source with snapshot) → restore
+      snapshot and set ``pending_change``.
+    - New event approval/rejection → set ``pending_review``.
+
+    Returns the new status.
+    """
+    event_result = supabase_client.table("events").select("*").eq(
+        "id", event_id
+    ).single().execute()
+    event = event_result.data
+
+    sources = supabase_client.table("event_sources").select("*").eq(
+        "event_id", event_id
+    ).eq("is_undone", False).order("created_at", desc=True).execute()
+
+    change_source = None
+    for src in sources.data or []:
+        if src.get("source_type") in ("update", "cancellation") and src.get(
+            "event_snapshot_before"
+        ):
+            change_source = src
+            break
+
+    if change_source:
+        snapshot = change_source["event_snapshot_before"]
+        restore_fields: dict[str, Any] = {
+            "status": "pending_change",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        for key in (
+            "title", "start_datetime", "end_datetime", "all_day",
+            "location", "description", "importance",
+        ):
+            if key in snapshot:
+                restore_fields[key] = snapshot[key]
+        supabase_client.table("events").update(restore_fields).eq(
+            "id", event_id
+        ).execute()
+        # Keep source active so Changes lane can still show the proposal
+        logger.info(f"Undid applied change on event {event_id} → pending_change")
+        return "pending_change"
+
+    supabase_client.table("events").update({
+        "status": "pending_review",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", event_id).execute()
+    logger.info(f"Undid history event {event_id} → pending_review")
+    return "pending_review"
 
 
 def update_event(
@@ -608,13 +1060,24 @@ def update_event(
 
 
 def get_events_new(supabase_client: Client, user_id: str) -> list[dict[str, Any]]:
-    """Get pending approval events grouped by sender."""
+    """Get New-lane events pending approval, grouped by sender."""
     result = supabase_client.table("events").select(
         "*, event_sources(*, emails(*))"
     ).eq("user_id", user_id).eq("status", "pending_review").order(
         "start_datetime"
     ).execute()
-    
+
+    return result.data
+
+
+def get_events_pending_change(supabase_client: Client, user_id: str) -> list[dict[str, Any]]:
+    """Get Changes-lane events awaiting approve/reject."""
+    result = supabase_client.table("events").select(
+        "*, event_sources(*, emails(*))"
+    ).eq("user_id", user_id).eq("status", "pending_change").order(
+        "start_datetime"
+    ).execute()
+
     return result.data
 
 
@@ -656,20 +1119,39 @@ def get_event_with_sources(
 
 
 def approve_event(supabase_client: Client, event_id: str) -> None:
-    """Approve event for calendar sync."""
+    """Approve event for calendar sync.
+
+    For ``pending_change``, applies the proposal first.
+    """
+    event_result = supabase_client.table("events").select("status").eq(
+        "id", event_id
+    ).single().execute()
+    status = event_result.data.get("status")
+    if status == "pending_change":
+        apply_pending_change(supabase_client, event_id)
+        return
+
     supabase_client.table("events").update({
         "status": "approved"
     }).eq("id", event_id).execute()
-    
+
     logger.info(f"Approved event {event_id}")
 
 
 def reject_event(supabase_client: Client, event_id: str) -> None:
-    """Reject event."""
+    """Reject event (or discard a pending change proposal)."""
+    event_result = supabase_client.table("events").select("status").eq(
+        "id", event_id
+    ).single().execute()
+    status = event_result.data.get("status")
+    if status == "pending_change":
+        reject_pending_change(supabase_client, event_id)
+        return
+
     supabase_client.table("events").update({
         "status": "rejected"
     }).eq("id", event_id).execute()
-    
+
     logger.info(f"Rejected event {event_id}")
 
 

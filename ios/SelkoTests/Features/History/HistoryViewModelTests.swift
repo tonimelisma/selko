@@ -168,6 +168,7 @@ struct HistoryViewModelTests {
     func undoEventChangesStatusAndRemoves() async throws {
         // Given
         let mockEventService = MockEventService()
+        let mockBackendAPI = MockBackendAPI()
         let eventId = UUID()
         let event = CalendarEvent(
             id: eventId,
@@ -187,9 +188,11 @@ struct HistoryViewModelTests {
             eventSources: nil
         )
         mockEventService.fetchActivityEventsResult = .success([event])
-        mockEventService.updateEventStatusResult = .success(.mock)
+        mockBackendAPI.undoHistoryEventResult = .success(
+            EventChangeResponse(eventId: eventId.uuidString, status: "pending_review")
+        )
 
-        let viewModel = HistoryViewModel(eventService: mockEventService)
+        let viewModel = HistoryViewModel(eventService: mockEventService, backendAPI: mockBackendAPI)
         await viewModel.load()
 
         let initialCount = viewModel.dateGroups.flatMap(\.events).count
@@ -199,9 +202,8 @@ struct HistoryViewModelTests {
         await viewModel.undoEvent(event)
 
         // Then
-        #expect(mockEventService.updateEventStatusCallCount == 1)
-        #expect(mockEventService.lastUpdateEventStatusId == eventId)
-        #expect(mockEventService.lastUpdateEventStatusStatus == .pendingReview)
+        #expect(mockBackendAPI.undoHistoryEventCallCount == 1)
+        #expect(mockBackendAPI.lastUndoHistoryEventId == eventId)
         let finalCount = viewModel.dateGroups.flatMap(\.events).count
         #expect(finalCount == 0)
         #expect(viewModel.errorMessage == nil)

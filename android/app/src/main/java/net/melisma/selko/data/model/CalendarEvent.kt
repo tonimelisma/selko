@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class EventStatus {
     @SerialName("pending_review") PENDING_REVIEW,
+    @SerialName("pending_change") PENDING_CHANGE,
     @SerialName("approved") APPROVED,
     @SerialName("syncing") SYNCING,
     @SerialName("synced") SYNCED,
@@ -35,7 +36,10 @@ data class CalendarEvent(
     @SerialName("event_sources") val eventSources: List<EventSource>? = null
 ) {
     val isPending: Boolean
-        get() = status == EventStatus.PENDING_REVIEW
+        get() = status == EventStatus.PENDING_REVIEW || status == EventStatus.PENDING_CHANGE
+
+    val isPendingChange: Boolean
+        get() = status == EventStatus.PENDING_CHANGE
 
     val isSynced: Boolean
         get() = status == EventStatus.SYNCED

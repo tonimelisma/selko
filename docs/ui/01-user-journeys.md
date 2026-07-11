@@ -8,9 +8,9 @@ This document defines the user journeys for Selko's web application. For screen-
 
 | Screen | Route | Description |
 |--------|-------|-------------|
-| Review Queue | `/app` | Home screen. Event review list. Replaced by integration setup when not connected. |
+| Review Queue | `/app` | Home screen. Two lanes: **New** (add to calendar) and **Changes** (field diffs for existing events). Replaced by integration setup when not connected. |
 | Event Detail | `/app/events/[id]` | Edit/review a single event. Click-through from queue, not a nav tab. |
-| Activity History | `/app/history` | Timeline of all actions (user + automatic). Undo from here. |
+| Activity History | `/app/history` | Timeline of approvals and applied changes (with field diffs). Undo returns items to New or Changes. |
 | Settings | `/app/settings` | Integration management, account, calendar config, timezone. |
 
 ---
@@ -92,7 +92,8 @@ Login → Review Queue shows pending events
 - All approve/reject actions are immediate. No confirmation modals. No toasts.
 - Events animate out of the queue (slide out if smooth animation is achievable, otherwise just disappear).
 - Everything goes to Activity History where the user can undo.
-- UPDATE events (time changes, cancellations from follow-up emails) are applied automatically — they never appear in the Review Queue. They appear in Activity History where the user can undo them.
+- UPDATE events (time changes, cancellations from follow-up emails) appear in the **Changes** lane with a field-level diff. Approve applies the change and syncs; Reject discards it. No-op rediscoveries (e.g. RSVP replies that restate an existing event) are skipped silently.
+- Activity History distinguishes **New** vs **Changes**, shows what changed for updates, and Undo returns the item to the matching Review lane.
 
 ---
 

@@ -101,26 +101,66 @@ fun ReviewQueueScreen(
                             )
                         }
 
-                        uiState.senderGroups.forEach { group ->
+                        if (uiState.newSenderGroups.isNotEmpty()) {
                             item {
-                                SenderGroupHeader(
-                                    group = group,
-                                    onApproveAll = { viewModel.approveGroup(group.senderEmail) },
-                                    onRejectAll = { viewModel.rejectGroup(group.senderEmail) },
-                                    onIgnoreSender = { viewModel.ignoreSender(group.senderEmail) },
-                                    onAutoApproveSender = { viewModel.autoApproveSender(group.senderEmail) }
+                                Text(
+                                    text = "New",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
                             }
-
-                            items(group.events, key = { it.id }) { event ->
-                                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                                    SwipeableEventItem(
-                                        event = event,
-                                        isProcessing = event.id in uiState.processingEventIds,
-                                        onApprove = { viewModel.approveEvent(event.id) },
-                                        onReject = { viewModel.rejectEvent(event.id) },
-                                        onEdit = { onNavigateToEventDetail(event.id) }
+                            uiState.newSenderGroups.forEach { group ->
+                                item {
+                                    SenderGroupHeader(
+                                        group = group,
+                                        onApproveAll = { viewModel.approveGroup(group.senderEmail) },
+                                        onRejectAll = { viewModel.rejectGroup(group.senderEmail) },
+                                        onIgnoreSender = { viewModel.ignoreSender(group.senderEmail) },
+                                        onAutoApproveSender = { viewModel.autoApproveSender(group.senderEmail) }
                                     )
+                                }
+                                items(group.events, key = { it.id }) { event ->
+                                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                        SwipeableEventItem(
+                                            event = event,
+                                            isProcessing = event.id in uiState.processingEventIds,
+                                            onApprove = { viewModel.approveEvent(event.id) },
+                                            onReject = { viewModel.rejectEvent(event.id) },
+                                            onEdit = { onNavigateToEventDetail(event.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (uiState.changeSenderGroups.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Changes",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            uiState.changeSenderGroups.forEach { group ->
+                                item {
+                                    SenderGroupHeader(
+                                        group = group,
+                                        onApproveAll = { viewModel.approveGroup(group.senderEmail) },
+                                        onRejectAll = { viewModel.rejectGroup(group.senderEmail) },
+                                        onIgnoreSender = { viewModel.ignoreSender(group.senderEmail) },
+                                        onAutoApproveSender = { viewModel.autoApproveSender(group.senderEmail) }
+                                    )
+                                }
+                                items(group.events, key = { "c-${it.id}" }) { event ->
+                                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                        SwipeableEventItem(
+                                            event = event,
+                                            isProcessing = event.id in uiState.processingEventIds,
+                                            onApprove = { viewModel.approveEvent(event.id) },
+                                            onReject = { viewModel.rejectEvent(event.id) },
+                                            onEdit = { onNavigateToEventDetail(event.id) }
+                                        )
+                                    }
                                 }
                             }
                         }

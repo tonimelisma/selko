@@ -13,8 +13,19 @@ from supabase import Client
 
 from selko.api.deps import CurrentUser, get_authenticated_client, get_current_user, get_quota_service
 from selko.api.schemas.common import ErrorCode, error_detail
-from selko.api.schemas.events import CalendarSyncResponse, EventUnsyncResponse
+from selko.api.schemas.events import (
+    CalendarSyncResponse,
+    EventChangeResponse,
+    EventUndoResponse,
+    EventUnsyncResponse,
+)
 from selko.services.calendars import CalendarsError, delete_calendar_event, sync_event_to_calendar
+from selko.services.events import (
+    EventsError,
+    apply_pending_change,
+    reject_pending_change,
+    undo_history_event,
+)
 from selko.services.quotas import QuotaService
 
 logger = logging.getLogger(__name__)
@@ -209,3 +220,90 @@ async def unsync_event(
             status_code=500,
             detail=error_detail(ErrorCode.SYNC_FAILED, "Event unsync failed"),
         )
+
+
+def _get_owned_event(client: Client, user_id: str, event_id: UUID) -> dict:
+    event_result = client.table("events").select("user_id, status").eq(
+        "id", str(event_id)
+    ).maybe_single().execute()
+    if event_result is None or event_result.data is None:
+        raise HTTPException(
+            status_code=404,
+            detail=error_detail(ErrorCode.EVENT_NOT_FOUND, "Event not found"),
+        )
+    if event_result.data["user_id"] != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
+        )
+    return event_result.data
+
+
+@router.post("/{event_id}/apply-change", response_model=EventChangeResponse)
+async def apply_change(
+    event_id: UUID,
+    client: Annotated[Client, Depends(get_authenticated_client)],
+    user: CurrentUser = Depends(get_current_user),
+) -> EventChangeResponse:
+    """Apply a pending_change proposal and mark the event approved."""
+    event = _get_owned_event(client, user.id, event_id)
+    if event["status"] != "pending_change":
+        raise HTTPException(
+            status_code=400,
+            detail=error_detail(
+                ErrorCode.INVALID_REQUEST,
+                f"Event must be pending_change (current status: {event['status']})",
+            ),
+        )
+    try:
+        apply_pending_change(client, str(event_id))
+        return EventChangeResponse(event_id=str(event_id), status="approved")
+    except EventsError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=error_detail(ErrorCode.INVALID_REQUEST, str(e)),
+        ) from e
+
+
+@router.post("/{event_id}/reject-change", response_model=EventChangeResponse)
+async def reject_change(
+    event_id: UUID,
+    client: Annotated[Client, Depends(get_authenticated_client)],
+    user: CurrentUser = Depends(get_current_user),
+) -> EventChangeResponse:
+    """Discard a pending_change proposal."""
+    event = _get_owned_event(client, user.id, event_id)
+    if event["status"] != "pending_change":
+        raise HTTPException(
+            status_code=400,
+            detail=error_detail(
+                ErrorCode.INVALID_REQUEST,
+                f"Event must be pending_change (current status: {event['status']})",
+            ),
+        )
+    try:
+        status = reject_pending_change(client, str(event_id))
+        return EventChangeResponse(event_id=str(event_id), status=status)
+    except EventsError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=error_detail(ErrorCode.INVALID_REQUEST, str(e)),
+        ) from e
+
+
+@router.post("/{event_id}/undo", response_model=EventUndoResponse)
+async def undo_event(
+    event_id: UUID,
+    client: Annotated[Client, Depends(get_authenticated_client)],
+    user: CurrentUser = Depends(get_current_user),
+) -> EventUndoResponse:
+    """Undo a History action back to New or Changes review lane."""
+    _get_owned_event(client, user.id, event_id)
+    try:
+        status = undo_history_event(client, str(event_id))
+        return EventUndoResponse(event_id=str(event_id), status=status)  # type: ignore[arg-type]
+    except EventsError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=error_detail(ErrorCode.INVALID_REQUEST, str(e)),
+        ) from e

@@ -259,22 +259,58 @@ def get_credentials(
 ) -> Optional[Credentials]:
     """Get OAuth credentials for a specific user and provider.
 
-    This is a simplified version that doesn't require Config since it's called
-    from API context where we already have an authenticated client.
+    Loads tokens for ``user_id`` (required for service-role workers) and
+    refreshes them when expired.
 
     Args:
-        client: Authenticated Supabase client.
-        user_id: User ID (not used, client auth handles this).
+        client: Authenticated or service-role Supabase client.
+        user_id: User ID that owns the integration.
         provider: Integration provider name.
 
     Returns:
         Google Credentials object, or None if no integration found.
     """
-    # Load config to get client_id/secret
+    from google.auth.exceptions import RefreshError
+    from google.auth.transport.requests import Request
+
     from selko.config import load_config
     config = load_config()
 
-    return get_oauth_credentials(client, config, provider)
+    creds = get_oauth_credentials(client, config, provider, user_id=user_id)
+    if not creds:
+        return None
+
+    if creds.expired and creds.refresh_token:
+        try:
+            logger.info("%s token expired, refreshing for user %s...", provider, user_id)
+            creds.refresh(Request())
+            for attempt in range(3):
+                try:
+                    update_oauth_credentials(
+                        client, provider, creds, user_id=user_id
+                    )
+                    logger.info("%s token refreshed and saved", provider)
+                    break
+                except Exception as save_err:
+                    logger.error(
+                        "Failed to save refreshed %s token (attempt %d): %s",
+                        provider,
+                        attempt + 1,
+                        save_err,
+                    )
+                    if attempt == 2:
+                        logger.error(
+                            "CRITICAL: Refreshed %s token could not be saved after 3 attempts",
+                            provider,
+                        )
+        except RefreshError as e:
+            logger.warning("%s token refresh failed: %s", provider, e)
+            update_integration_status(
+                client, provider, "expired", user_id=user_id
+            )
+            return None
+
+    return creds
 
 
 # --- OAuth state management (DB-backed) ---

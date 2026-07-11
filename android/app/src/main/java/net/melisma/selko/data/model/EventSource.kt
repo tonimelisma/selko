@@ -32,6 +32,21 @@ enum class SourceOrigin {
 }
 
 @Serializable
+data class FieldChange(
+    val field: String,
+    val before: String? = null,
+    val after: String? = null,
+    val reason: String? = null
+)
+
+@Serializable
+data class EventChangeSet(
+    val kind: String? = null,
+    val changes: List<FieldChange> = emptyList(),
+    val reasoning: String? = null
+)
+
+@Serializable
 data class EventSource(
     val id: String,
     @SerialName("event_id") val eventId: String,
@@ -40,6 +55,7 @@ data class EventSource(
     @SerialName("source_type") val sourceType: SourceType = SourceType.UNKNOWN,
     @SerialName("extracted_data") val extractedData: ExtractedData? = null,
     @SerialName("event_snapshot_before") val eventSnapshotBefore: JsonObject? = null,
+    @SerialName("change_set") val changeSet: EventChangeSet? = null,
     @SerialName("is_undone") val isUndone: Boolean = false,
     @SerialName("created_at") val createdAt: Instant? = null,
     // Joined email data

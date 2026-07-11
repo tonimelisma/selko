@@ -18,6 +18,8 @@ struct SenderGroup: Identifiable {
 final class ReviewQueueViewModel {
     var isLoading = false
     var senderGroups: [SenderGroup] = []
+    var newSenderGroups: [SenderGroup] = []
+    var changeSenderGroups: [SenderGroup] = []
     var errorMessage: String?
     var isConnected = false
     var gmailConnected = false
@@ -26,15 +28,18 @@ final class ReviewQueueViewModel {
     private let eventService: EventServiceProtocol
     private let integrationService: IntegrationServiceProtocol
     private let senderRuleService: SenderRuleServiceProtocol
+    private let backendAPI: BackendAPIProtocol
 
     init(
         eventService: EventServiceProtocol? = nil,
         integrationService: IntegrationServiceProtocol? = nil,
-        senderRuleService: SenderRuleServiceProtocol? = nil
+        senderRuleService: SenderRuleServiceProtocol? = nil,
+        backendAPI: BackendAPIProtocol? = nil
     ) {
         self.eventService = eventService ?? DependencyContainer.shared.eventService
         self.integrationService = integrationService ?? DependencyContainer.shared.integrationService
         self.senderRuleService = senderRuleService ?? DependencyContainer.shared.senderRuleService
+        self.backendAPI = backendAPI ?? DependencyContainer.shared.backendAPI
     }
 
     func load() async {
@@ -51,6 +56,8 @@ final class ReviewQueueViewModel {
             if isConnected {
                 let events = try await eventService.fetchPendingEventsWithSources()
                 senderGroups = groupEventsBySender(events)
+                newSenderGroups = groupEventsBySender(events.filter { !$0.isPendingChange })
+                changeSenderGroups = groupEventsBySender(events.filter { $0.isPendingChange })
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -61,7 +68,12 @@ final class ReviewQueueViewModel {
 
     func approveEvent(_ event: CalendarEvent) async {
         do {
-            _ = try await eventService.approveEvent(id: event.id)
+            if event.isPendingChange {
+                _ = try await backendAPI.applyEventChange(eventId: event.id)
+                _ = try? await backendAPI.syncEventToCalendar(eventId: event.id)
+            } else {
+                _ = try await eventService.approveEvent(id: event.id)
+            }
             removeEventFromGroups(event.id)
         } catch {
             errorMessage = error.localizedDescription
@@ -70,7 +82,11 @@ final class ReviewQueueViewModel {
 
     func rejectEvent(_ event: CalendarEvent) async {
         do {
-            _ = try await eventService.rejectEvent(id: event.id)
+            if event.isPendingChange {
+                _ = try await backendAPI.rejectEventChange(eventId: event.id)
+            } else {
+                _ = try await eventService.rejectEvent(id: event.id)
+            }
             removeEventFromGroups(event.id)
         } catch {
             errorMessage = error.localizedDescription
@@ -80,27 +96,34 @@ final class ReviewQueueViewModel {
     func approveAllInGroup(_ group: SenderGroup) async {
         for event in group.events {
             do {
-                _ = try await eventService.approveEvent(id: event.id)
+                if event.isPendingChange {
+                    _ = try await backendAPI.applyEventChange(eventId: event.id)
+                    _ = try? await backendAPI.syncEventToCalendar(eventId: event.id)
+                } else {
+                    _ = try await eventService.approveEvent(id: event.id)
+                }
             } catch {
                 errorMessage = error.localizedDescription
                 return
             }
         }
-        // Remove the entire group
-        senderGroups.removeAll { $0.id == group.id }
+        removeGroup(group.id)
     }
 
     func rejectAllInGroup(_ group: SenderGroup) async {
         for event in group.events {
             do {
-                _ = try await eventService.rejectEvent(id: event.id)
+                if event.isPendingChange {
+                    _ = try await backendAPI.rejectEventChange(eventId: event.id)
+                } else {
+                    _ = try await eventService.rejectEvent(id: event.id)
+                }
             } catch {
                 errorMessage = error.localizedDescription
                 return
             }
         }
-        // Remove the entire group
-        senderGroups.removeAll { $0.id == group.id }
+        removeGroup(group.id)
     }
 
     func ignoreSender(_ group: SenderGroup) async {
@@ -110,11 +133,14 @@ final class ReviewQueueViewModel {
                 senderDomain: nil,
                 action: .ignore
             )
-            // Reject all events from this sender
             for event in group.events {
-                _ = try await eventService.rejectEvent(id: event.id)
+                if event.isPendingChange {
+                    _ = try await backendAPI.rejectEventChange(eventId: event.id)
+                } else {
+                    _ = try await eventService.rejectEvent(id: event.id)
+                }
             }
-            senderGroups.removeAll { $0.id == group.id }
+            removeGroup(group.id)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -127,11 +153,15 @@ final class ReviewQueueViewModel {
                 senderDomain: nil,
                 action: .autoApprove
             )
-            // Approve all events from this sender
             for event in group.events {
-                _ = try await eventService.approveEvent(id: event.id)
+                if event.isPendingChange {
+                    _ = try await backendAPI.applyEventChange(eventId: event.id)
+                    _ = try? await backendAPI.syncEventToCalendar(eventId: event.id)
+                } else {
+                    _ = try await eventService.approveEvent(id: event.id)
+                }
             }
-            senderGroups.removeAll { $0.id == group.id }
+            removeGroup(group.id)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -164,8 +194,24 @@ final class ReviewQueueViewModel {
         }
     }
 
+    private func removeGroup(_ groupId: String) {
+        senderGroups.removeAll { $0.id == groupId }
+        newSenderGroups.removeAll { $0.id == groupId }
+        changeSenderGroups.removeAll { $0.id == groupId }
+    }
+
     private func removeEventFromGroups(_ eventId: UUID) {
         senderGroups = senderGroups.compactMap { group in
+            let filtered = group.events.filter { $0.id != eventId }
+            if filtered.isEmpty { return nil }
+            return SenderGroup(id: group.id, senderName: group.senderName, senderEmail: group.senderEmail, events: filtered)
+        }
+        newSenderGroups = newSenderGroups.compactMap { group in
+            let filtered = group.events.filter { $0.id != eventId }
+            if filtered.isEmpty { return nil }
+            return SenderGroup(id: group.id, senderName: group.senderName, senderEmail: group.senderEmail, events: filtered)
+        }
+        changeSenderGroups = changeSenderGroups.compactMap { group in
             let filtered = group.events.filter { $0.id != eventId }
             if filtered.isEmpty { return nil }
             return SenderGroup(id: group.id, senderName: group.senderName, senderEmail: group.senderEmail, events: filtered)

@@ -37,6 +37,57 @@ struct ExtractedData: Codable, Sendable, Equatable {
     }
 }
 
+struct FieldChange: Codable, Sendable, Equatable {
+    let field: String
+    let before: String?
+    let after: String?
+    let reason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case field, before, after, reason
+    }
+
+    init(field: String, before: String?, after: String?, reason: String?) {
+        self.field = field
+        self.before = before
+        self.after = after
+        self.reason = reason
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        field = try container.decode(String.self, forKey: .field)
+        reason = try container.decodeIfPresent(String.self, forKey: .reason)
+        before = Self.decodeFlexibleString(from: container, forKey: .before)
+        after = Self.decodeFlexibleString(from: container, forKey: .after)
+    }
+
+    private static func decodeFlexibleString(
+        from container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) -> String? {
+        if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+            return value
+        }
+        if let value = try? container.decodeIfPresent(Bool.self, forKey: key) {
+            return value ? "true" : "false"
+        }
+        if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+            return String(value)
+        }
+        if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+            return String(value)
+        }
+        return nil
+    }
+}
+
+struct EventChangeSet: Codable, Sendable, Equatable {
+    let kind: String?
+    let changes: [FieldChange]?
+    let reasoning: String?
+}
+
 struct EventSource: Identifiable, Codable, Sendable, Equatable {
     let id: UUID
     let eventId: UUID
@@ -44,6 +95,7 @@ struct EventSource: Identifiable, Codable, Sendable, Equatable {
     let sourceOrigin: SourceOrigin
     let sourceType: SourceType
     let extractedData: ExtractedData?
+    let changeSet: EventChangeSet?
     let isUndone: Bool
     let createdAt: Date?
     let emails: Email?
@@ -55,6 +107,7 @@ struct EventSource: Identifiable, Codable, Sendable, Equatable {
         case sourceOrigin = "source_origin"
         case sourceType = "source_type"
         case extractedData = "extracted_data"
+        case changeSet = "change_set"
         case isUndone = "is_undone"
         case createdAt = "created_at"
         case emails
@@ -77,6 +130,7 @@ extension EventSource {
                 description: nil,
                 sourceQuote: "Let's meet at..."
             ),
+            changeSet: nil,
             isUndone: false,
             createdAt: Date(),
             emails: .mock
@@ -98,6 +152,7 @@ extension EventSource {
                 description: nil,
                 sourceQuote: "Event ticket detected in photo"
             ),
+            changeSet: nil,
             isUndone: false,
             createdAt: Date(),
             emails: nil

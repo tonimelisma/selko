@@ -232,7 +232,7 @@ def do_seed(config):
             "all_day": True,
             "location": "TechCorp HQ, Building 5, Conference Room A",
             "description": "Full-day offsite to plan Q2 roadmap. Lunch will be provided.",
-            "status": "pending_review",
+            "status": "pending_change",
             "importance": "action_required",
             "updated_at": (now - timedelta(minutes=60)).isoformat(),
             "source_attribution": "From email: Q2 Planning Offsite Details",
@@ -335,15 +335,32 @@ def do_seed(config):
         {
             "event_id": event_ids["Q2 Planning Offsite"],
             "email_id": email_ids["msg_screenshot_4"],
-            "source_type": "new_invitation",
+            "source_type": "update",
             "extracted_data": {
                 "source_quote": (
-                    "Hi team, Here are the details for our upcoming Q2 Planning "
-                    "Offsite. We'll be meeting at Building 5 to discuss roadmap "
-                    "priorities for the next quarter."
+                    "Hi team, Location update: we'll meet in Building 3 instead of Building 5."
                 ),
                 "title": "Q2 Planning Offsite",
+                "location": "TechCorp HQ, Building 3, Conference Room B",
                 "start_datetime": make_dt(7, 9),
+            },
+            "event_snapshot_before": {
+                "title": "Q2 Planning Offsite",
+                "location": "TechCorp HQ, Building 5, Conference Room A",
+                "start_datetime": make_dt(7, 9),
+                "status": "synced",
+            },
+            "change_set": {
+                "kind": "material_update",
+                "changes": [
+                    {
+                        "field": "location",
+                        "before": "TechCorp HQ, Building 5, Conference Room A",
+                        "after": "TechCorp HQ, Building 3, Conference Room B",
+                        "reason": "Room moved to Building 3",
+                    }
+                ],
+                "reasoning": "Email updates the offsite location",
             },
         },
         {
