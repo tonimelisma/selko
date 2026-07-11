@@ -133,6 +133,15 @@ def get_oauth_credentials(
             logger.warning(f"{provider} integration is {row['status']}")
             return None
 
+        # google-auth compares expiry to naive UTC; store as naive UTC.
+        expiry = None
+        if row.get("token_expiry"):
+            expiry = datetime.fromisoformat(
+                row["token_expiry"].replace("Z", "+00:00")
+            )
+            if expiry.tzinfo is not None:
+                expiry = expiry.astimezone(timezone.utc).replace(tzinfo=None)
+
         # Reconstruct credentials with client_id/secret for refresh
         creds = Credentials(
             token=row["access_token"],
@@ -141,6 +150,7 @@ def get_oauth_credentials(
             client_id=config.google_client_id,
             client_secret=config.google_client_secret,
             scopes=row.get("scopes", []),
+            expiry=expiry,
         )
 
         return creds
@@ -158,6 +168,7 @@ def update_integration_status(
     client: Client,
     provider: str,
     status: str,
+    user_id: Optional[str] = None,
 ) -> None:
     """Update the status of an integration.
 
@@ -165,8 +176,10 @@ def update_integration_status(
         client: Authenticated Supabase client.
         provider: Integration provider name.
         status: New status ('active', 'expired', 'revoked', 'error').
+        user_id: Optional user ID (required if using service role client).
     """
-    user_id = get_current_user_id(client)
+    if user_id is None:
+        user_id = get_current_user_id(client)
 
     try:
         client.table("integrations").update(
@@ -181,6 +194,7 @@ def update_oauth_credentials(
     client: Client,
     provider: str,
     credentials: Credentials,
+    user_id: Optional[str] = None,
 ) -> None:
     """Update OAuth tokens after refresh.
 
@@ -188,12 +202,18 @@ def update_oauth_credentials(
         client: Authenticated Supabase client.
         provider: Integration provider name.
         credentials: Updated Google credentials.
+        user_id: Optional user ID (required if using service role client).
     """
-    user_id = get_current_user_id(client)
+    if user_id is None:
+        user_id = get_current_user_id(client)
 
     token_expiry = None
     if credentials.expiry:
-        token_expiry = credentials.expiry.isoformat()
+        # Persist as UTC ISO; strip tz for consistency with google-auth naive expiry
+        expiry = credentials.expiry
+        if expiry.tzinfo is not None:
+            expiry = expiry.astimezone(timezone.utc).replace(tzinfo=None)
+        token_expiry = expiry.replace(tzinfo=timezone.utc).isoformat()
 
     try:
         client.table("integrations").update(
