@@ -25,6 +25,26 @@ from selko.services.llm_provider import ContentPart, ImageContent
 logger = logging.getLogger(__name__)
 
 
+def looks_like_json_schema(parsed: Any) -> bool:
+    """Return True if parsed JSON looks like a schema echo, not extraction data.
+
+    Some models (especially without native json_schema support) echo the
+    request schema (`$defs`, `properties`, …) instead of returning events.
+    """
+    if not isinstance(parsed, dict):
+        return False
+    if "$defs" in parsed or "$schema" in parsed:
+        return True
+    # Schema-shaped object without the actual response fields
+    if (
+        "properties" in parsed
+        and "events_found" not in parsed
+        and "events" not in parsed
+    ):
+        return True
+    return False
+
+
 
 def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
     """Build the system prompt for calendar event extraction.
@@ -223,6 +243,10 @@ def extract_calendar_events(
 
         # Parse response JSON
         parsed = json.loads(response.text, strict=False)
+        if looks_like_json_schema(parsed):
+            raise LLMGatewayError(
+                "LLM returned JSON schema instead of extraction data"
+            )
         llm_result = EventExtractionResponse.model_validate(parsed)
 
         logger.info(
@@ -233,7 +257,7 @@ def extract_calendar_events(
         # Wrap with email metadata to create full extraction result
         result = CalendarEventExtraction(
             email_message_id=email_metadata.get("gmail_id", ""),
-            email_date=email_metadata.get("date_sent", datetime.now().isoformat()),
+            email_date=email_metadata.get("date_sent") or None,
             sender_name=email_metadata.get("from_name"),
             sender_email=email_metadata.get("from_email", ""),
             events_found=llm_result.events_found,

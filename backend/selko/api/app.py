@@ -1,5 +1,6 @@
 """FastAPI application factory."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -146,10 +147,20 @@ async def lifespan(app: FastAPI):
 
         scheduler.start()
 
-        # Run once immediately on startup. next_run_time=now is unreliable here:
-        # APScheduler can mark that first fire as a misfire during boot and skip it.
-        await schedule_email_fetches()
-        await schedule_photo_fetches()
+        # Kick off first fetches without blocking HTTP bind. Awaiting them
+        # here delayed "Application startup complete" and left Render without
+        # an open port while Gmail/Photos scheduling ran.
+        async def _run_initial_fetches() -> None:
+            try:
+                await schedule_email_fetches()
+                await schedule_photo_fetches()
+            except Exception:
+                logger.exception("Initial fetch scheduling failed")
+
+        asyncio.create_task(
+            _run_initial_fetches(),
+            name="initial-fetch-scheduling",
+        )
 
         logger.info("Background workers started successfully")
     else:

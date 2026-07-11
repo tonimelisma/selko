@@ -1,5 +1,7 @@
 """Tests for email parsing."""
 
+from datetime import datetime, timezone
+
 import pytest
 
 from selko.services.emails import parse_gmail_message
@@ -133,6 +135,48 @@ class TestParseGmailMessage:
 
         assert result["date_sent"] is not None
         assert "2026-01-20" in result["date_sent"]
+
+    def test_parses_date_with_parenthetical_timezone(self):
+        """Regression: Date headers with (UTC)/(PDT) comments used to store NULL."""
+        msg = self._make_message()
+        msg["payload"]["headers"].append(
+            {"name": "Date", "value": "Mon, 20 Jan 2026 10:30:00 +0000 (UTC)"}
+        )
+        result = parse_gmail_message(msg)
+
+        assert result["date_sent"] is not None
+        assert "2026-01-20" in result["date_sent"]
+
+    def test_parses_date_with_double_space_day(self):
+        """Regression: single-digit day padded with space broke strptime."""
+        msg = self._make_message()
+        msg["payload"]["headers"].append(
+            {"name": "Date", "value": "Mon,  5 Jan 2026 09:15:00 -0800"}
+        )
+        result = parse_gmail_message(msg)
+
+        assert result["date_sent"] is not None
+        assert "2026-01-05" in result["date_sent"]
+
+    def test_falls_back_to_gmail_internal_date(self):
+        """When Date header is missing, use Gmail internalDate (epoch ms)."""
+        msg = self._make_message()
+        # 2026-01-20T10:30:00Z
+        msg["internalDate"] = str(int(datetime(2026, 1, 20, 10, 30, tzinfo=timezone.utc).timestamp() * 1000))
+        result = parse_gmail_message(msg)
+
+        assert result["date_sent"] is not None
+        assert "2026-01-20" in result["date_sent"]
+
+    def test_unparseable_date_without_internal_date_stays_none(self):
+        """Don't invent a timestamp when neither Date nor internalDate works."""
+        msg = self._make_message()
+        msg["payload"]["headers"].append(
+            {"name": "Date", "value": "not-a-real-date"}
+        )
+        result = parse_gmail_message(msg)
+
+        assert result["date_sent"] is None
 
     def _make_message(
         self,

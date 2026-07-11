@@ -54,7 +54,7 @@ def parse_ics_attachments(
 
     return CalendarEventExtraction(
         email_message_id=email_metadata.get("gmail_id", ""),
-        email_date=email_metadata.get("date_sent", datetime.now().isoformat()),
+        email_date=email_metadata.get("date_sent") or None,
         sender_name=email_metadata.get("from_name"),
         sender_email=email_metadata.get("from_email", ""),
         events_found=True,

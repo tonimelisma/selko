@@ -10,6 +10,7 @@ This worker:
 Note: The worker pool handles status updates (processed/failed).
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -22,6 +23,7 @@ from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
+from selko.services.event_processing import looks_like_json_schema
 from selko.services.events import save_extracted_events
 from selko.services.google_photos import (
     PhotosError,
@@ -97,28 +99,18 @@ async def process_photo(
 ) -> dict[str, Any]:
     """Process a photo for calendar event extraction.
 
-    This is called by the worker pool after claiming a photo.
-    Status updates are handled by the worker pool.
-
-    Steps:
-    1. Download photo bytes from Google Photos API
-    2. Upload to Supabase Storage
-    3. Build LLM prompt for photo analysis
-    4. Call LLM via LLMGateway with photo as image content
-    5. Save extracted events
-
-    Args:
-        client: Supabase client (with service role).
-        config: Application configuration.
-        photo: Full photo record (from claim_pending_photo).
-
-    Returns:
-        Dict with processing results (num_events, num_new, num_updated).
-
-    Raises:
-        PhotosError: If photo download or processing fails.
-        LLMGatewayError: If LLM extraction fails.
+    Runs blocking Google/LLM/DB work in a thread so the API event loop
+    stays responsive.
     """
+    return await asyncio.to_thread(_process_photo_sync, client, config, photo)
+
+
+def _process_photo_sync(
+    client: Client,
+    config: Config,
+    photo: dict[str, Any],
+) -> dict[str, Any]:
+    """Synchronous photo processing body (run via asyncio.to_thread)."""
     photo_id = photo["id"]
     user_id = photo["user_id"]
     filename = photo.get("filename", "(unknown)")
@@ -197,6 +189,10 @@ async def process_photo(
         )
 
         parsed = json.loads(response.text)
+        if looks_like_json_schema(parsed):
+            raise LLMGatewayError(
+                "LLM returned JSON schema instead of extraction data"
+            )
         llm_result = EventExtractionResponse.model_validate(parsed)
 
         logger.info(
@@ -223,7 +219,7 @@ async def process_photo(
     # Build extraction object for save_extracted_events
     extraction = CalendarEventExtraction(
         email_message_id="",  # Not from email
-        email_date=photo.get("date_taken", datetime.now(timezone.utc).isoformat()),
+        email_date=photo.get("date_taken") or None,
         sender_name=None,
         sender_email="",
         events_found=llm_result.events_found,
