@@ -7,7 +7,7 @@ import base64
 import logging
 import math
 from datetime import datetime, timedelta, timezone
-from email.utils import getaddresses, parseaddr
+from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from typing import Any, Optional
 
 from supabase import Client, PostgrestAPIError
@@ -27,6 +27,28 @@ from selko.services.retry_utils import calculate_retry_delay
 from selko.services.email_images import extract_data_uri_images, extract_linked_images
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_email_date(date_header: Optional[str], internal_date_ms: Any) -> Optional[str]:
+    """Parse email sent time from RFC 5322 Date header or Gmail internalDate.
+
+    Returns ISO-8601 string for DB storage, or None if neither source works.
+    """
+    if date_header:
+        try:
+            return parsedate_to_datetime(date_header).isoformat()
+        except (TypeError, ValueError, IndexError) as e:
+            logger.warning(f"Failed to parse Date header '{date_header}': {e}")
+
+    # Gmail always provides internalDate (epoch ms) even when Date is missing
+    if internal_date_ms is not None and str(internal_date_ms).strip() != "":
+        try:
+            ms = int(internal_date_ms)
+            return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()
+        except (TypeError, ValueError, OSError) as e:
+            logger.warning(f"Failed to parse internalDate '{internal_date_ms}': {e}")
+
+    return None
 
 
 class EmailError(Exception):
@@ -111,20 +133,8 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
     to_addresses = getaddresses([to_header])
     to_emails = [addr[1] for addr in to_addresses if addr[1]]
 
-    # Parse date
-    date_sent = None
-    date_header = headers.get("date")
-    if date_header:
-        for fmt in [
-            "%a, %d %b %Y %H:%M:%S %z",
-            "%d %b %Y %H:%M:%S %z",
-            "%a, %d %b %Y %H:%M:%S %Z",
-        ]:
-            try:
-                date_sent = datetime.strptime(date_header, fmt).isoformat()
-                break
-            except ValueError:
-                continue
+    # Parse date — prefer RFC 5322 Date header; fall back to Gmail internalDate
+    date_sent = _parse_email_date(headers.get("date"), email.get("internalDate"))
 
     # Check for attachments
     has_attachments = any(

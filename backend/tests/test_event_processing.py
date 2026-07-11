@@ -14,6 +14,7 @@ from selko.services.event_processing import (
     compare_events,
     extract_calendar_events,
     generate_source_attribution,
+    looks_like_json_schema,
     merge_event_data,
 )
 from selko.services.llm_gateway import LLMGatewayError
@@ -257,6 +258,56 @@ class TestExtractCalendarEvents:
         assert mock_provider.generate.call_count == 1
         assert "Invalid API key" in str(exc_info.value)
 
+    def test_null_date_sent_allowed(self, mock_config):
+        """Null date_sent must not crash — pass through as None, don't invent a date."""
+        mock_provider = MagicMock(spec=LLMProvider)
+        mock_provider.provider_name = "gemini"
+        mock_provider.model = "gemini-3-flash-preview"
+        response_json = EventExtractionResponse(
+            events_found=False, events=[]
+        ).model_dump_json()
+        mock_provider.generate.return_value = LLMResponse(
+            text=response_json, prompt_tokens=10, completion_tokens=5
+        )
+        gateway = LLMGateway(mock_provider)
+
+        result = extract_calendar_events(
+            gateway=gateway,
+            email_text="Test email",
+            email_metadata={
+                "gmail_id": "test-123",
+                "subject": "Test",
+                "from_email": "test@example.com",
+                "date_sent": None,
+            },
+        )
+
+        assert result.events_found is False
+        assert result.email_date is None
+
+    def test_schema_echo_raises_clear_error(self, mock_config):
+        """Regression: LLM echoing JSON schema must not hit pydantic missing fields."""
+        mock_provider = MagicMock(spec=LLMProvider)
+        mock_provider.provider_name = "gemini"
+        mock_provider.model = "gemini-3-flash-preview"
+        schema_echo = EventExtractionResponse.model_json_schema()
+        mock_provider.generate.return_value = LLMResponse(
+            text=json.dumps(schema_echo), prompt_tokens=10, completion_tokens=5
+        )
+        gateway = LLMGateway(mock_provider)
+
+        with pytest.raises(LLMGatewayError, match="JSON schema instead of extraction"):
+            extract_calendar_events(
+                gateway=gateway,
+                email_text="Test email",
+                email_metadata={
+                    "gmail_id": "test-123",
+                    "subject": "Test",
+                    "from_email": "test@example.com",
+                    "date_sent": "2026-01-20T10:00:00Z",
+                },
+            )
+
     def test_attachment_handling(self, mock_config):
         """Test that attachments are properly added to request."""
         mock_provider = MagicMock(spec=LLMProvider)
@@ -347,6 +398,21 @@ class TestExtractCalendarEvents:
         call_args = mock_provider.generate.call_args
         contents = call_args.kwargs["contents"]
         assert len(contents) == 2  # Only prompt + email body
+
+
+class TestLooksLikeJsonSchema:
+    """Detect LLM schema-echo responses."""
+
+    def test_detects_defs(self):
+        assert looks_like_json_schema({"$defs": {"CalendarEvent": {}}, "type": "object"})
+
+    def test_detects_properties_without_events(self):
+        assert looks_like_json_schema(
+            {"type": "object", "properties": {"events_found": {"type": "boolean"}}}
+        )
+
+    def test_accepts_real_extraction(self):
+        assert not looks_like_json_schema({"events_found": False, "events": []})
 
 
 class TestCompareEvents:

@@ -8,6 +8,7 @@ This worker:
 Note: The worker pool handles status updates (processed/failed).
 """
 
+import asyncio
 import logging
 from typing import Any
 
@@ -52,14 +53,15 @@ async def process_email(
     provider = create_provider(config)
     gateway = LLMGateway(provider, logging_service=logging_service, quota_service=None)
 
-    # Process email for events (this handles everything)
+    # Run sync LLM/DB work off the event loop so HTTP stays responsive
     try:
-        result = process_email_for_events(
+        result = await asyncio.to_thread(
+            process_email_for_events,
             client,
             gateway,
             email_id,
             user_id,
-            config=config,
+            config,
         )
 
         num_events = result.get("num_events", 0)
