@@ -315,8 +315,10 @@ class WorkerPool:
         logger.info(f"{worker_id}: Processing email {email_id}: {subject}")
 
         try:
-            async with asyncio.timeout(self.config.email_processing_timeout):
-                await process_email(client, self.config, email)
+            await asyncio.wait_for(
+                process_email(client, self.config, email),
+                timeout=self.config.email_processing_timeout,
+            )
             complete_email_processing(client, email_id)
             logger.info(f"{worker_id}: Completed email {email_id}")
             circuit_breaker.record_success("llm")
@@ -359,8 +361,10 @@ class WorkerPool:
         logger.info(f"{worker_id}: Processing photo {photo_id}: {filename}")
 
         try:
-            async with asyncio.timeout(self.config.photo_processing_timeout):
-                await process_photo(client, self.config, photo)
+            await asyncio.wait_for(
+                process_photo(client, self.config, photo),
+                timeout=self.config.photo_processing_timeout,
+            )
             complete_photo_processing(client, photo_id)
             logger.info(f"{worker_id}: Completed photo {photo_id}")
             circuit_breaker.record_success("llm")
@@ -404,8 +408,10 @@ class WorkerPool:
         logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
 
         try:
-            async with asyncio.timeout(self.config.event_sync_timeout):
-                google_event_id = await sync_event(client, self.config, event)
+            google_event_id = await asyncio.wait_for(
+                sync_event(client, self.config, event),
+                timeout=self.config.event_sync_timeout,
+            )
             complete_event_sync(client, event_id, google_event_id)
             logger.info(f"{worker_id}: Completed event sync {event_id}")
             circuit_breaker.record_success("google_calendar")
