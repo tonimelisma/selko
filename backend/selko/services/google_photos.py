@@ -64,7 +64,9 @@ def get_credentials(
             # Retry save up to 3 times for atomicity
             for attempt in range(3):
                 try:
-                    update_oauth_credentials(client, "google_photos", creds)
+                    update_oauth_credentials(
+                        client, "google_photos", creds, user_id=user_id
+                    )
                     logger.info("Google Photos token refreshed and saved")
                     break
                 except Exception as save_err:
@@ -81,7 +83,9 @@ def get_credentials(
 
         except RefreshError as e:
             logger.warning(f"Google Photos token refresh failed: {e}")
-            update_integration_status(client, "google_photos", "expired")
+            update_integration_status(
+                client, "google_photos", "expired", user_id=user_id
+            )
             return None
 
     return creds
