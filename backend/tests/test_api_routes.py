@@ -275,7 +275,7 @@ class TestOAuthCallback:
     """Tests for the Google OAuth callback endpoint."""
 
     def test_callback_invalid_state(self, test_client):
-        """Invalid state returns 400."""
+        """Invalid state redirects to frontend with oauth=error."""
         from selko.services.integrations import OAuthStateError
 
         with patch(
@@ -285,11 +285,13 @@ class TestOAuthCallback:
             resp = test_client.get(
                 "/integrations/google/callback",
                 params={"code": "auth-code", "state": "bad-state"},
+                follow_redirects=False,
             )
-        assert resp.status_code == 400
+        assert resp.status_code == 302
+        assert "oauth=error" in resp.headers["location"]
 
     def test_callback_expired_state(self, test_client):
-        """Expired state returns 400."""
+        """Expired state redirects to frontend with oauth=error."""
         from selko.services.integrations import OAuthStateError
 
         with patch(
@@ -299,11 +301,13 @@ class TestOAuthCallback:
             resp = test_client.get(
                 "/integrations/google/callback",
                 params={"code": "auth-code", "state": "expired-state"},
+                follow_redirects=False,
             )
-        assert resp.status_code == 400
+        assert resp.status_code == 302
+        assert "oauth=error" in resp.headers["location"]
 
     def test_callback_success(self, test_client, mock_config):
-        """Successful callback returns 200 with provider info."""
+        """Successful callback redirects to frontend with oauth=success."""
         mock_creds = MagicMock()
         with (
             patch(
@@ -321,12 +325,12 @@ class TestOAuthCallback:
             resp = test_client.get(
                 "/integrations/google/callback",
                 params={"code": "valid-code", "state": "valid-state"},
+                follow_redirects=False,
             )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["status"] == "success"
-        assert data["provider"] == "gmail"
-        assert data["provider_email"] == "user@gmail.com"
+        assert resp.status_code == 302
+        location = resp.headers["location"]
+        assert "oauth=success" in location
+        assert "provider=gmail" in location
 
     def test_callback_no_auth_required(self, test_client):
         """Callback endpoint is public — no JWT needed. Verify it doesn't 401."""
@@ -340,8 +344,10 @@ class TestOAuthCallback:
             resp = test_client.get(
                 "/integrations/google/callback",
                 params={"code": "any-code", "state": "any-state"},
+                follow_redirects=False,
             )
         assert resp.status_code != 401
+        assert resp.status_code == 302
 
 
 # ===========================================================================
@@ -375,3 +381,34 @@ class TestRedirectURIValidation:
             follow_redirects=False,
         )
         assert resp.status_code == 400
+
+    def test_json_accept_returns_auth_url(self, test_client):
+        """Accept: application/json returns auth_url instead of redirecting."""
+        with patch(
+            "selko.api.routes.integrations.initiate_oauth_flow",
+            return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
+        ):
+            resp = test_client.get(
+                "/integrations/gmail/auth",
+                headers={"Accept": "application/json"},
+                follow_redirects=False,
+            )
+        assert resp.status_code == 200
+        assert resp.json()["auth_url"] == "https://accounts.google.com/o/oauth2"
+
+    def test_production_redirect_host_allowed(self, test_client):
+        """Render production API host is an allowed OAuth callback."""
+        with patch(
+            "selko.api.routes.integrations.initiate_oauth_flow",
+            return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
+        ):
+            resp = test_client.get(
+                "/integrations/gmail/auth",
+                params={
+                    "redirect_uri": (
+                        "https://selko-production.onrender.com/integrations/google/callback"
+                    )
+                },
+                follow_redirects=False,
+            )
+        assert resp.status_code == 302
