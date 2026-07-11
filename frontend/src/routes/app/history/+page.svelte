@@ -86,6 +86,7 @@
 	function isChangeEvent(event) {
 		const sources = event.event_sources || [];
 		return sources.some(
+			/** @param {any} s */
 			(s) =>
 				!s.is_undone &&
 				(s.source_type === 'update' || s.source_type === 'cancellation') &&
