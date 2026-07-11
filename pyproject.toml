@@ -3,7 +3,7 @@ name = "selko-workspace"
 version = "0.1.0"
 description = "Selko - AI-powered personal organization assistant"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     "selko",
     "selko-cli",

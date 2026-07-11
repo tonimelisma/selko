@@ -55,7 +55,7 @@ See [PRD_ARCH.md](PRD_ARCH.md) for complete architecture details.
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.14+
 - [uv](https://github.com/astral-sh/uv) package manager
 - [Supabase CLI](https://supabase.com/docs/guides/cli)
 - Docker Desktop (for local Supabase)

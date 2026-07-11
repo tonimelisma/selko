@@ -2,7 +2,7 @@
 name = "selko-cli"
 version = "0.1.0"
 description = "Selko CLI tools for POC and development"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     "selko",
     "typer>=0.26.8",

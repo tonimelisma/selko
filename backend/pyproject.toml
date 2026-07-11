@@ -3,7 +3,7 @@ name = "selko"
 version = "0.1.0"
 description = "Selko backend - shared business logic and services"
 readme = "../README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     "google-api-python-client>=2.198.0",
     "google-auth-httplib2>=0.4.0",
