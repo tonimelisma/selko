@@ -333,6 +333,7 @@ def _save_oauth_state(
     user_id: str,
     provider: str,
     redirect_uri: str,
+    code_verifier: Optional[str] = None,
 ) -> None:
     """Save OAuth state to database.
 
@@ -341,6 +342,7 @@ def _save_oauth_state(
         user_id: User ID initiating the flow.
         provider: OAuth provider name.
         redirect_uri: Callback URI for the flow.
+        code_verifier: PKCE code_verifier to reuse on token exchange.
     """
     client = _get_service_client_for_oauth()
     now = datetime.now(timezone.utc)
@@ -352,6 +354,7 @@ def _save_oauth_state(
             "user_id": user_id,
             "provider": provider,
             "redirect_uri": redirect_uri,
+            "code_verifier": code_verifier,
             "created_at": now.isoformat(),
             "expires_at": expires_at.isoformat(),
         }).execute()
@@ -366,7 +369,7 @@ def _validate_and_consume_oauth_state(state: str) -> dict:
         state: State parameter from callback.
 
     Returns:
-        Dict with user_id, provider, redirect_uri.
+        Dict with user_id, provider, redirect_uri, code_verifier.
 
     Raises:
         OAuthStateError: If state is invalid or expired.
@@ -401,6 +404,7 @@ def _validate_and_consume_oauth_state(state: str) -> dict:
             "user_id": row["user_id"],
             "provider": row["provider"],
             "redirect_uri": row["redirect_uri"],
+            "code_verifier": row.get("code_verifier"),
         }
 
     except OAuthStateError:
@@ -485,23 +489,32 @@ def initiate_oauth_flow(
             client_config,
             scopes=scopes,
             redirect_uri=redirect_uri,
+            autogenerate_code_verifier=True,
         )
 
         # Generate cryptographically random state
         state = secrets.token_urlsafe(32)
 
-        # Persist state to database
-        _save_oauth_state(state, user_id, provider, redirect_uri)
-
-        # Clean up expired states (non-blocking)
-        _clean_expired_oauth_states()
-
-        # Generate authorization URL
+        # Generate authorization URL (also creates flow.code_verifier for PKCE)
         auth_url, _ = flow.authorization_url(
             state=state,
             access_type="offline",  # Request refresh token
             prompt="consent",  # Force consent screen to ensure refresh token
         )
+
+        code_verifier = flow.code_verifier
+        if not code_verifier:
+            raise IntegrationError(
+                "Failed to generate PKCE code_verifier for OAuth flow"
+            )
+
+        # Persist state + PKCE verifier so callback can complete token exchange
+        _save_oauth_state(
+            state, user_id, provider, redirect_uri, code_verifier=code_verifier
+        )
+
+        # Clean up expired states (non-blocking)
+        _clean_expired_oauth_states()
 
         logger.info(f"Generated OAuth URL for {provider} (user {user_id})")
         return {"auth_url": auth_url, "state": state}
@@ -537,6 +550,7 @@ def complete_oauth_flow(
     user_id = state_data["user_id"]
     provider = state_data["provider"]
     redirect_uri = state_data["redirect_uri"]
+    code_verifier = state_data.get("code_verifier")
 
     # Determine scopes based on provider
     if provider == "gmail":
@@ -548,8 +562,13 @@ def complete_oauth_flow(
     else:
         raise IntegrationError(f"Unsupported provider: {provider}")
 
+    if not code_verifier:
+        raise IntegrationError(
+            "OAuth state missing PKCE code_verifier; please restart the connection"
+        )
+
     try:
-        # Create flow with same redirect_uri
+        # Create flow with same redirect_uri and persisted PKCE verifier
         client_config = {
             "web": {
                 "client_id": config.google_client_id,
@@ -563,6 +582,8 @@ def complete_oauth_flow(
             client_config,
             scopes=scopes,
             redirect_uri=redirect_uri,
+            code_verifier=code_verifier,
+            autogenerate_code_verifier=False,
         )
 
         # Exchange authorization code for tokens
@@ -572,6 +593,8 @@ def complete_oauth_flow(
         logger.info(f"OAuth flow completed for {provider} (user {user_id})")
         return credentials, user_id, provider
 
+    except IntegrationError:
+        raise
     except Exception as e:
         raise IntegrationError(f"Token exchange failed: {e}") from e
 

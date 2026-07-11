@@ -212,6 +212,7 @@ Persistent OAuth state tokens for CSRF protection during OAuth flows.
 | `user_id` | uuid | User initiating the OAuth flow |
 | `provider` | text | OAuth provider (`gmail`, `google_calendar`) |
 | `redirect_uri` | text | Where to redirect after OAuth |
+| `code_verifier` | text, nullable | PKCE code_verifier (required for token exchange) |
 | `created_at` | timestamptz | Auto-set |
 | `expires_at` | timestamptz | State token expiration (10 minutes) |
 

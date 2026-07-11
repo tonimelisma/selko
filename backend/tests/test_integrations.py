@@ -171,6 +171,7 @@ class TestOAuthStateDB:
             user_id="user-123",
             provider="gmail",
             redirect_uri="http://localhost:8000/integrations/google/callback",
+            code_verifier="pkce-verifier-abc",
         )
 
         # Verify insert was called
@@ -182,6 +183,7 @@ class TestOAuthStateDB:
         assert data["user_id"] == "user-123"
         assert data["provider"] == "gmail"
         assert data["redirect_uri"] == "http://localhost:8000/integrations/google/callback"
+        assert data["code_verifier"] == "pkce-verifier-abc"
 
     @patch("selko.services.integrations._get_service_client_for_oauth")
     def test_validate_and_consume_valid_state(self, mock_get_client):
@@ -197,6 +199,7 @@ class TestOAuthStateDB:
                 "user_id": "user-123",
                 "provider": "gmail",
                 "redirect_uri": "http://localhost:8000/integrations/google/callback",
+                "code_verifier": "pkce-verifier-xyz",
                 "expires_at": future_expiry,
             }
         )
@@ -206,6 +209,7 @@ class TestOAuthStateDB:
         assert result["user_id"] == "user-123"
         assert result["provider"] == "gmail"
         assert result["redirect_uri"] == "http://localhost:8000/integrations/google/callback"
+        assert result["code_verifier"] == "pkce-verifier-xyz"
 
         # Verify state was deleted (consumed)
         mock_client.table().delete().eq.assert_called_with("state", "valid-state")
@@ -279,6 +283,7 @@ class TestInitiateOAuthFlow:
         # Set up Flow mock
         mock_flow = MagicMock()
         mock_flow.authorization_url.return_value = ("https://accounts.google.com/oauth?...", "state")
+        mock_flow.code_verifier = "generated-pkce-verifier"
         mock_flow_class.from_client_config.return_value = mock_flow
 
         result = initiate_oauth_flow(
@@ -291,12 +296,37 @@ class TestInitiateOAuthFlow:
         assert "auth_url" in result
         assert "state" in result
 
-        # Verify state was saved to DB
+        # Verify state was saved to DB with PKCE verifier
         mock_save_state.assert_called_once()
         call_args = mock_save_state.call_args
-        # _save_oauth_state(state, user_id, provider, redirect_uri) — positional
+        # _save_oauth_state(state, user_id, provider, redirect_uri, code_verifier=...)
         assert call_args[0][1] == "user-123"
         assert call_args[0][2] == "gmail"
+        assert call_args.kwargs.get("code_verifier") == "generated-pkce-verifier"
+        mock_flow_class.from_client_config.assert_called_once()
+        assert mock_flow_class.from_client_config.call_args.kwargs.get(
+            "autogenerate_code_verifier"
+        ) is True
+
+    @patch("selko.services.integrations._clean_expired_oauth_states")
+    @patch("selko.services.integrations._save_oauth_state")
+    @patch("selko.services.integrations.Flow")
+    def test_initiate_requires_code_verifier(self, mock_flow_class, mock_save_state, mock_cleanup, mock_config):
+        """Initiate must fail closed if PKCE verifier was not generated."""
+        mock_flow = MagicMock()
+        mock_flow.authorization_url.return_value = ("https://accounts.google.com/oauth?...", "state")
+        mock_flow.code_verifier = None
+        mock_flow_class.from_client_config.return_value = mock_flow
+
+        with pytest.raises(IntegrationError, match="code_verifier"):
+            initiate_oauth_flow(
+                config=mock_config,
+                provider="gmail",
+                user_id="user-123",
+                redirect_uri="http://localhost:8000/integrations/google/callback",
+            )
+
+        mock_save_state.assert_not_called()
 
     @patch("selko.services.integrations._clean_expired_oauth_states")
     @patch("selko.services.integrations._save_oauth_state")
@@ -305,6 +335,7 @@ class TestInitiateOAuthFlow:
         """Test that initiation triggers expired state cleanup."""
         mock_flow = MagicMock()
         mock_flow.authorization_url.return_value = ("https://accounts.google.com/oauth?...", "state")
+        mock_flow.code_verifier = "generated-pkce-verifier"
         mock_flow_class.from_client_config.return_value = mock_flow
 
         initiate_oauth_flow(
@@ -338,6 +369,7 @@ class TestCompleteOAuthFlow:
             "user_id": "user-123",
             "provider": "gmail",
             "redirect_uri": "http://localhost:8000/integrations/google/callback",
+            "code_verifier": "persisted-pkce-verifier",
         }
 
         mock_flow = MagicMock()
@@ -355,6 +387,28 @@ class TestCompleteOAuthFlow:
         assert provider == "gmail"
         assert credentials == mock_creds
         mock_validate.assert_called_once_with("test-state")
+        mock_flow_class.from_client_config.assert_called_once()
+        flow_kwargs = mock_flow_class.from_client_config.call_args.kwargs
+        assert flow_kwargs.get("code_verifier") == "persisted-pkce-verifier"
+        assert flow_kwargs.get("autogenerate_code_verifier") is False
+        mock_flow.fetch_token.assert_called_once_with(code="auth-code-123")
+
+    @patch("selko.services.integrations._validate_and_consume_oauth_state")
+    def test_complete_requires_persisted_code_verifier(self, mock_validate, mock_config):
+        """Regression: missing PKCE verifier must fail before token exchange."""
+        mock_validate.return_value = {
+            "user_id": "user-123",
+            "provider": "gmail",
+            "redirect_uri": "http://localhost:8000/integrations/google/callback",
+            "code_verifier": None,
+        }
+
+        with pytest.raises(IntegrationError, match="code_verifier"):
+            complete_oauth_flow(
+                config=mock_config,
+                code="auth-code-123",
+                state="test-state",
+            )
 
     @patch("selko.services.integrations._validate_and_consume_oauth_state")
     def test_complete_raises_on_invalid_state(self, mock_validate, mock_config):
