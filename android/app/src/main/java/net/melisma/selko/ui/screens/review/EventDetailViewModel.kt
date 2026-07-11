@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -21,6 +20,7 @@ import net.melisma.selko.data.model.EventSource
 import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
+import kotlin.time.Instant
 
 data class EventDetailUiState(
     val isLoading: Boolean = true,

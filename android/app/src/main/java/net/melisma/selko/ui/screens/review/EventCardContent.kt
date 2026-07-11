@@ -31,6 +31,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,12 +40,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.ui.theme.SelkoTheme
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,21 +57,25 @@ fun SwipeableEventItem(
     onEdit: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    onApprove()
-                    true
-                }
-                SwipeToDismissBoxValue.EndToStart -> {
-                    onReject()
-                    true
-                }
-                SwipeToDismissBoxValue.Settled -> false
-            }
+    val dismissState = rememberSwipeToDismissBoxState()
+
+    LaunchedEffect(dismissState.settledValue, isProcessing) {
+        if (isProcessing) {
+            return@LaunchedEffect
         }
-    )
+
+        when (dismissState.settledValue) {
+            SwipeToDismissBoxValue.StartToEnd -> {
+                onApprove()
+                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+            }
+            SwipeToDismissBoxValue.EndToStart -> {
+                onReject()
+                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+            }
+            SwipeToDismissBoxValue.Settled -> Unit
+        }
+    }
 
     SwipeToDismissBox(
         state = dismissState,
@@ -278,10 +283,10 @@ fun formatDateTimeRange(start: Instant, end: Instant?, allDay: Boolean): String 
     val startLocal = start.toLocalDateTime(tz)
 
     return if (allDay) {
-        "${startLocal.dayOfMonth} ${startLocal.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${startLocal.year}"
+        "${startLocal.day} ${startLocal.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${startLocal.year}"
     } else {
         val startStr = buildString {
-            append("${startLocal.dayOfMonth} ${startLocal.month.name.lowercase().replaceFirstChar { it.uppercase() }}")
+            append("${startLocal.day} ${startLocal.month.name.lowercase().replaceFirstChar { it.uppercase() }}")
             append(" ${startLocal.hour.toString().padStart(2, '0')}:${startLocal.minute.toString().padStart(2, '0')}")
         }
 
@@ -290,7 +295,7 @@ fun formatDateTimeRange(start: Instant, end: Instant?, allDay: Boolean): String 
             val endStr = if (endLocal.date == startLocal.date) {
                 "${endLocal.hour.toString().padStart(2, '0')}:${endLocal.minute.toString().padStart(2, '0')}"
             } else {
-                "${endLocal.dayOfMonth} ${endLocal.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${endLocal.hour.toString().padStart(2, '0')}:${endLocal.minute.toString().padStart(2, '0')}"
+                "${endLocal.day} ${endLocal.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${endLocal.hour.toString().padStart(2, '0')}:${endLocal.minute.toString().padStart(2, '0')}"
             }
             "$startStr - $endStr"
         } else {

@@ -60,7 +60,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.R
@@ -68,6 +67,7 @@ import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -253,7 +253,7 @@ private fun EventDetailContent(
     fun formatDate(instant: Instant?): String {
         if (instant == null) return selectDateText
         val local = instant.toLocalDateTime(tz)
-        return "${local.dayOfMonth} ${local.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${local.year}"
+        return "${local.day} ${local.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${local.year}"
     }
 
     fun formatTime(instant: Instant?): String {
