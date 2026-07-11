@@ -675,13 +675,6 @@ def complete_oauth_flow(
         logger.info("OAuth flow completed for Outlook (user %s)", user_id)
         return token_result, user_id, provider
 
-    if provider == "outlook":
-        from selko.services.outlook import exchange_code
-
-        token_result = exchange_code(config, code, redirect_uri)
-        logger.info("OAuth flow completed for Outlook (user %s)", user_id)
-        return token_result, user_id, provider
-
     # Determine scopes based on provider
     if provider == "gmail":
         scopes = GMAIL_SCOPES
