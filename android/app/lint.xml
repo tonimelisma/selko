@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Instrumentation tests construct view models inside setContent to inject fakes. -->
+    <issue id="ViewModelConstructorInComposable">
+        <ignore path="src/androidTest" />
+    </issue>
+</lint>
