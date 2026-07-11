@@ -4,13 +4,43 @@ Tests exponential backoff, circuit breaker, dead-letter pattern,
 and timeout handling.
 """
 
-import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from selko.services.circuit_breaker import CircuitBreaker, CircuitState
+
+FROZEN_NOW = datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc)
+
+
+class FrozenRetryDateTime(datetime):
+    """Controllable datetime shim for retry delay tests."""
+
+    frozen_now = FROZEN_NOW
+
+    @classmethod
+    def now(cls, tz=None):
+        now = cls.frozen_now
+        return now if tz is None else now.astimezone(tz)
+
+
+class FakeClock:
+    """Simple monotonic clock for circuit-breaker tests."""
+
+    def __init__(self, start: float = 0.0):
+        self.value = start
+
+    def __call__(self) -> float:
+        return self.value
+
+    def advance(self, seconds: float) -> None:
+        self.value += seconds
+
+
+def freeze_retry_clock(now: datetime = FROZEN_NOW):
+    FrozenRetryDateTime.frozen_now = now
+    return patch("selko.services.retry_utils.datetime", FrozenRetryDateTime)
 
 
 # ===========================================================================
@@ -38,31 +68,28 @@ class TestExponentialBackoff:
         from selko.services.emails import fail_email_processing
 
         client = self._make_mock_client(attempts=1, max_attempts=3)
-        fail_email_processing(client, "email-1", "test error")
+        with freeze_retry_clock():
+            fail_email_processing(client, "email-1", "test error")
 
         # Check the update call includes next_retry_at
         update_call = client.table.return_value.update.call_args[0][0]
         assert update_call["processing_status"] == "pending"
         assert "next_retry_at" in update_call
-        # Verify it's approximately 60s from now
         retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-        now = datetime.now(timezone.utc)
-        delta = (retry_at - now).total_seconds()
-        assert 55 <= delta <= 65  # Allow 5s tolerance
+        assert retry_at == FROZEN_NOW + timedelta(seconds=60)
 
     def test_second_retry_delay_120s(self):
         """Second retry (attempt 2) should have 120s delay."""
         from selko.services.emails import fail_email_processing
 
         client = self._make_mock_client(attempts=2, max_attempts=3)
-        fail_email_processing(client, "email-1", "test error")
+        with freeze_retry_clock():
+            fail_email_processing(client, "email-1", "test error")
 
         update_call = client.table.return_value.update.call_args[0][0]
         assert update_call["processing_status"] == "pending"
         retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-        now = datetime.now(timezone.utc)
-        delta = (retry_at - now).total_seconds()
-        assert 115 <= delta <= 125
+        assert retry_at == FROZEN_NOW + timedelta(seconds=120)
 
     def test_delay_capped_at_3600s(self):
         """Delay should be capped at 3600s (1 hour) for high attempt counts."""
@@ -70,31 +97,27 @@ class TestExponentialBackoff:
 
         # Attempt 7 would be 60 * 2^6 = 3840, but should be capped at 3600
         client = self._make_mock_client(attempts=7, max_attempts=10)
-        fail_email_processing(client, "email-1", "test error")
+        with freeze_retry_clock():
+            fail_email_processing(client, "email-1", "test error")
 
         update_call = client.table.return_value.update.call_args[0][0]
         retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-        now = datetime.now(timezone.utc)
-        delta = (retry_at - now).total_seconds()
-        assert 3595 <= delta <= 3605
+        assert retry_at == FROZEN_NOW + timedelta(seconds=3600)
 
     def test_backoff_doubles_each_attempt(self):
-        """Verify delay roughly doubles with each attempt."""
+        """Verify delay doubles exactly with each attempt until the cap."""
         from selko.services.emails import fail_email_processing
 
         delays = []
         for attempt in [1, 2, 3, 4]:
             client = self._make_mock_client(attempts=attempt, max_attempts=5)
-            fail_email_processing(client, f"email-{attempt}", "test error")
+            with freeze_retry_clock():
+                fail_email_processing(client, f"email-{attempt}", "test error")
             update_call = client.table.return_value.update.call_args[0][0]
             retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-            now = datetime.now(timezone.utc)
-            delays.append((retry_at - now).total_seconds())
+            delays.append(int((retry_at - FROZEN_NOW).total_seconds()))
 
-        # Each delay should be approximately double the previous
-        for i in range(1, len(delays)):
-            ratio = delays[i] / delays[i - 1]
-            assert 1.8 <= ratio <= 2.2, f"Delay ratio {ratio} not ~2x at attempt {i + 1}"
+        assert delays == [60, 120, 240, 480]
 
 
 class TestExponentialBackoffEvents:
@@ -117,24 +140,24 @@ class TestExponentialBackoffEvents:
         from selko.services.events import fail_event_sync
 
         client = self._make_mock_client(sync_attempts=1, max_sync_attempts=3)
-        fail_event_sync(client, "event-1", "Calendar API error")
+        with freeze_retry_clock():
+            fail_event_sync(client, "event-1", "Calendar API error")
 
         update_call = client.table.return_value.update.call_args[0][0]
         assert update_call["status"] == "approved"
-        assert "next_retry_at" in update_call
+        assert update_call["next_retry_at"] == (FROZEN_NOW + timedelta(seconds=60)).isoformat()
 
     def test_event_delay_capped(self):
         """Event delay should also be capped at 3600s."""
         from selko.services.events import fail_event_sync
 
         client = self._make_mock_client(sync_attempts=7, max_sync_attempts=10)
-        fail_event_sync(client, "event-1", "error")
+        with freeze_retry_clock():
+            fail_event_sync(client, "event-1", "error")
 
         update_call = client.table.return_value.update.call_args[0][0]
         retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-        now = datetime.now(timezone.utc)
-        delta = (retry_at - now).total_seconds()
-        assert 3595 <= delta <= 3605
+        assert retry_at == FROZEN_NOW + timedelta(seconds=3600)
 
 
 # ===========================================================================
@@ -272,10 +295,12 @@ class TestCircuitBreakerStateTransitions:
 
     def test_transitions_to_half_open_after_cooldown(self):
         """After cooldown, OPEN circuit should transition to HALF_OPEN."""
+        clock = FakeClock()
         cb = CircuitBreaker(
             failure_threshold=0.5,
             min_calls=3,
             cooldown_seconds=0.1,  # Very short for testing
+            clock=clock,
         )
         # Open the circuit
         for _ in range(3):
@@ -284,8 +309,7 @@ class TestCircuitBreakerStateTransitions:
         assert cb.get_state("test") == CircuitState.OPEN
         assert cb.is_available("test") is False
 
-        # Wait for cooldown
-        time.sleep(0.15)
+        clock.advance(0.15)
 
         # Should now be half-open
         assert cb.is_available("test") is True
@@ -293,17 +317,18 @@ class TestCircuitBreakerStateTransitions:
 
     def test_half_open_closes_on_success(self):
         """HALF_OPEN circuit should CLOSE on success."""
+        clock = FakeClock()
         cb = CircuitBreaker(
             failure_threshold=0.5,
             min_calls=3,
             cooldown_seconds=0.1,
+            clock=clock,
         )
         # Open the circuit
         for _ in range(3):
             cb.record_failure("test")
 
-        # Wait for cooldown
-        time.sleep(0.15)
+        clock.advance(0.15)
         cb.is_available("test")  # Trigger transition to HALF_OPEN
 
         # Record success
@@ -312,17 +337,18 @@ class TestCircuitBreakerStateTransitions:
 
     def test_half_open_reopens_on_failure(self):
         """HALF_OPEN circuit should re-OPEN on failure."""
+        clock = FakeClock()
         cb = CircuitBreaker(
             failure_threshold=0.5,
             min_calls=3,
             cooldown_seconds=0.1,
+            clock=clock,
         )
         # Open the circuit
         for _ in range(3):
             cb.record_failure("test")
 
-        # Wait for cooldown
-        time.sleep(0.15)
+        clock.advance(0.15)
         cb.is_available("test")  # Trigger transition to HALF_OPEN
 
         # Record failure - should check threshold and re-open
@@ -390,10 +416,12 @@ class TestCircuitBreakerWindowCleanup:
 
     def test_old_entries_cleaned(self):
         """Entries older than window_seconds should be cleaned up."""
+        clock = FakeClock()
         cb = CircuitBreaker(
             failure_threshold=0.5,
             min_calls=3,
             window_seconds=0.1,  # Very short window
+            clock=clock,
         )
 
         # Record failures (should open circuit)
@@ -401,8 +429,7 @@ class TestCircuitBreakerWindowCleanup:
             cb.record_failure("test")
         assert cb.get_state("test") == CircuitState.OPEN
 
-        # Wait for window to expire
-        time.sleep(0.15)
+        clock.advance(0.15)
 
         # After cleanup, old failures should be gone
         # The circuit is still OPEN but is_available checks cooldown
