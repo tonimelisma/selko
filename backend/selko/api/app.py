@@ -2,6 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
@@ -124,7 +125,7 @@ async def lifespan(app: FastAPI):
         # Start APScheduler for cron-like periodic tasks
         logger.info("Starting APScheduler for periodic tasks")
 
-        # Email fetch scheduler - creates email_fetch tasks every 15 minutes
+        # Email fetch scheduler - run immediately on start, then every 15 minutes
         scheduler.add_job(
             schedule_email_fetches,
             "interval",
@@ -132,9 +133,10 @@ async def lifespan(app: FastAPI):
             id="email_fetch_scheduler",
             name="Email Fetch Scheduler",
             max_instances=1,
+            next_run_time=datetime.now(timezone.utc),
         )
 
-        # Photo fetch scheduler - creates photo_fetch tasks every 30 minutes
+        # Photo fetch scheduler - run immediately on start, then every 30 minutes
         scheduler.add_job(
             schedule_photo_fetches,
             "interval",
@@ -142,6 +144,7 @@ async def lifespan(app: FastAPI):
             id="photo_fetch_scheduler",
             name="Photo Fetch Scheduler",
             max_instances=1,
+            next_run_time=datetime.now(timezone.utc),
         )
 
         scheduler.start()
