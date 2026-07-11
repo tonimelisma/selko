@@ -5,6 +5,7 @@ Uses RLS - all operations are scoped to the authenticated user.
 """
 
 import logging
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -30,6 +31,32 @@ CALENDAR_SCOPES = [
 
 # Google Photos scopes
 PHOTOS_SCOPES = ["https://www.googleapis.com/auth/photoslibrary.readonly"]
+
+
+def _parse_token_expiry(value: str) -> datetime:
+    """Parse DB token_expiry into naive UTC for google-auth.
+
+    Python 3.10's fromisoformat rejects fractional seconds that aren't
+    exactly 3 or 6 digits (e.g. '...38.35908+00:00' from Google refresh).
+    """
+    s = value.replace("Z", "+00:00")
+    match = re.match(
+        r"^(.*T\d{2}:\d{2}:\d{2})(\.\d+)?([+-]\d{2}:\d{2}|[+-]\d{4})?$",
+        s,
+    )
+    if match:
+        base, frac, tz = match.groups()
+        if frac:
+            digits = frac[1:]
+            frac = "." + (digits + "000000")[:6]
+        else:
+            frac = ""
+        s = f"{base}{frac}{tz or ''}"
+
+    expiry = datetime.fromisoformat(s)
+    if expiry.tzinfo is not None:
+        expiry = expiry.astimezone(timezone.utc).replace(tzinfo=None)
+    return expiry
 
 
 class IntegrationError(Exception):
@@ -136,11 +163,7 @@ def get_oauth_credentials(
         # google-auth compares expiry to naive UTC; store as naive UTC.
         expiry = None
         if row.get("token_expiry"):
-            expiry = datetime.fromisoformat(
-                row["token_expiry"].replace("Z", "+00:00")
-            )
-            if expiry.tzinfo is not None:
-                expiry = expiry.astimezone(timezone.utc).replace(tzinfo=None)
+            expiry = _parse_token_expiry(row["token_expiry"])
 
         # Reconstruct credentials with client_id/secret for refresh
         creds = Credentials(
