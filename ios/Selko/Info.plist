@@ -13,5 +13,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>SELKO_API_URL</key>
+	<string>$(SELKO_API_URL)</string>
+	<key>SUPABASE_ANON_KEY</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SUPABASE_URL</key>
+	<string>$(SUPABASE_URL)</string>
 </dict>
 </plist>
