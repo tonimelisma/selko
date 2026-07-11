@@ -57,39 +57,52 @@ BLOCKED: Cannot edit source code in the main repository.
 
 ## Definition of Done
 
-- [ ] Working in a git worktree on a feature branch
-- [ ] Tests pass for changed modules
-- [ ] **Bug fixes MUST include a regression test**
-- [ ] Update screenshots for changed platforms only (see "Screenshot Updates" section below). Review the captured screenshots to verify UI looks correct.
-- [ ] Commit, push, `gh pr create`
-- [ ] Run `./scripts/poll-and-merge.sh <pr_number>` — this polls PR CI, merges, AND verifies the post-merge push workflow on main (including staging deploy + integration tests). This is the **one and only** way to track CI.
-- [ ] If the script reports post-merge failure, diagnose and fix immediately (see CI Ownership below)
-- [ ] Cleanup worktree (see cleanup rules below)
+**The DoD scales to what you changed. Run only what your change actually touches — nothing more.** A backend-only change never runs web, iOS, or Android tests or screenshots.
 
-**Config/docs edits on main** (no worktree needed): commit and `git push origin main`.
+### 1. Scope your change
+
+| You changed | Required before merge |
+|-------------|-----------------------|
+| `backend/**`, `cli/**` | Backend unit tests (`uv run pytest backend/tests/ -m "not integration"`) |
+| `supabase/**` (schema/migrations) | Backend unit tests (also deploys to staging on merge) |
+| `frontend/src/**` | Frontend unit tests + `npm run check` + **web** screenshots |
+| `ios/**` | iOS tests + **iOS** screenshots |
+| `android/**` | Android tests + **Android** screenshots |
+| `docs/`, `*.md`, `.env*`, `scripts/`, `.claude/`, config only | Nothing to test — commit & push |
+
+- **Only the platform you edited counts.** Editing `backend/` requires no web/iOS/Android tests or screenshots. Editing one frontend requires nothing from the others.
+- **Bug fixes MUST include a regression test** in the module you fixed.
+- **Screenshots** only for the platform whose UI you changed (see "Screenshot Updates"). Skip for backend/docs/config.
+
+### 2. Ship it
+
+- [ ] Source code → feature branch in a worktree. Config/docs → edit `main` directly (`git push origin main`).
+- [ ] The scoped tests above pass locally — **local tests are the gate, not CI**
+- [ ] Commit (conventional format), push, `gh pr create`
+- [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges and does full cleanup: deletes remote + local branch, fast-forwards `main`, removes the worktree, prunes. **Does not wait on CI.**
+- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **the last sentence of your final report MUST be: "Should I deploy this to production?"** Never deploy to prod without an explicit yes. (Prod deploy = `gh workflow run test.yml`; see `docs/ci-cd.md`.)
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
-### MANDATORY: CI Ownership
+### CI Ownership — safety net, not a gate
 
-**You are responsible for all CI passing — PR checks AND the post-merge push workflow (staging deploy + integration tests).** The `poll-and-merge.sh` script handles both automatically. If the post-merge workflow fails:
+Local, change-scoped tests are the gate. **Never block a merge waiting for CI** — Actions minutes are limited and CI may not run at all. CI (unit tests, staging deploy, integration tests) runs on the merge commit as a safety net; if it fails, fix forward:
 
-1. **Diagnose the failure** — read `gh run view <id> --log-failed`
-2. **If Google OAuth tokens expired** (`RefreshError: invalid_grant`): ask the user to run `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail` to refresh tokens, then re-run CI to verify
-3. **If it's a code issue**: fix it immediately with a follow-up PR
-4. **Never leave CI broken** — a red main branch blocks all other work
+1. **Diagnose** — `gh run view <id> --log-failed`
+2. **Google OAuth expired** (`RefreshError: invalid_grant`): ask the user to run `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`, then re-trigger.
+3. **Code issue** — follow-up PR.
 
-**NEVER use `gh pr checks`, `gh run list`, `gh run watch`, or manual polling loops.** Always use `./scripts/poll-and-merge.sh`.
+To verify CI before a prod deploy, `./scripts/poll-and-merge.sh <pr_number>` still polls PR + post-merge CI, but it is optional and not part of the normal DoD.
 
-### MANDATORY: Worktree Cleanup Rules
+### Worktree Cleanup Rules
+
+`merge-and-cleanup.sh` cleans up for you. For any manual removal the safety rule stands:
 
 **NEVER force-remove a worktree (`--force`) without first inspecting uncommitted work.**
-
-Before removing any worktree:
-1. `cd` to the worktree and run `git status`
-2. If there are uncommitted/untracked files, **review them manually** — they may contain important work, test results, or artifacts
-3. Only use `git worktree remove` (without `--force`). If it refuses, that's a safety mechanism — inspect and resolve first
-4. **`git worktree remove --force` destroys uncommitted work with no recovery** — treat it like `rm -rf`
+1. `cd` to the worktree, run `git status`
+2. Uncommitted/untracked files? **Review them manually** — they may hold real work or artifacts
+3. Use `git worktree remove` (no `--force`). If it refuses, that's the safety mechanism — inspect first
+4. `git worktree remove --force` destroys uncommitted work with no recovery — treat it like `rm -rf`
 
 ---
 

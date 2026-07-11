@@ -2,7 +2,9 @@
 # Poll CI checks for one or more PRs, merge when green, and verify
 # the post-merge push workflow on main also passes.
 #
-# This is the ONE AND ONLY way to track CI. All docs point here.
+# OPTIONAL — the normal DoD does NOT gate on CI. Use ./scripts/merge-and-cleanup.sh
+# to merge and clean up without waiting on CI. Reach for THIS script only when you
+# want to confirm CI is green first (e.g. before a production deploy).
 #
 # Usage:
 #   ./scripts/poll-and-merge.sh 71
