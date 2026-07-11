@@ -23,7 +23,10 @@ BLOCKED: 'gh pr checks --watch' is interactive and cannot be used.
 
 The --watch flag creates streaming output that Claude Code cannot parse.
 
-Use the polling script instead:
+Merges do not gate on CI. To merge and clean up, use:
+    ./scripts/merge-and-cleanup.sh <pr_number>
+
+To verify CI (optional, e.g. before a prod deploy), use:
     ./scripts/poll-and-merge.sh <pr_number> [pr_number ...]
 ================================================================================
 

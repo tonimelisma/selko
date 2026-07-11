@@ -8,8 +8,8 @@ This guide covers running multiple AI coding agents simultaneously on the same r
 |-----------|--------|-----|
 | Isolation | Git Worktrees | Disk-efficient, shared .git |
 | Branching | Feature branches | Required by worktrees, enables PRs |
-| Merging | Manual after CI | Wait for CI to pass, then squash merge |
-| Alerts | Email notifications | Know immediately if CI fails |
+| Merging | Squash merge, no CI gate | Local scoped tests are the gate; CI is a post-merge safety net |
+| Alerts | Email notifications | Know if the post-merge CI safety net fails |
 
 ## Naming Conventions
 
@@ -91,9 +91,9 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 # Verify with: pwd
 # If you're in ~/Development/selko/, STOP - change directory first
 
-# Edit files, run tests
-uv run pytest backend/tests/ -v
-cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json
+# Edit files, then run ONLY the tests for what you changed (see CLAUDE.md scope table)
+uv run pytest backend/tests/ -v                                   # if you touched backend/
+cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json  # if you touched frontend/
 
 # Commit with conventional commit format
 git add specific-files.py
@@ -111,11 +111,8 @@ gh pr create \
   --title "feat: add new capability" \
   --body "Description of changes"
 
-# Wait for CI to pass, then merge
-./scripts/poll-and-merge.sh <pr_number>
-
-# Or poll multiple PRs sequentially:
-./scripts/poll-and-merge.sh 71 72
+# Merge (no CI gate) and fully clean up — branch, worktree, main
+./scripts/merge-and-cleanup.sh <pr_number>
 ```
 
 ### When Another Agent's PR Merges
@@ -137,37 +134,38 @@ git push --force-with-lease
 
 ## Definition of Done (DOD)
 
-After your task is complete:
+The DoD scales to what you changed — run only the scoped tests for the code you touched (see the scope table in `CLAUDE.md`). A backend-only change runs backend tests only: no web/iOS/Android tests or screenshots.
 
-- [ ] Tests pass for changed modules
-- [ ] Committed with conventional commit format
-- [ ] Pushed to feature branch
-- [ ] PR created with `gh pr create`
-- [ ] Run `./scripts/poll-and-merge.sh <pr_number>` (polls PR CI, merges, verifies post-merge workflow)
+- [ ] Scoped tests pass locally — **this is the gate, not CI**
+- [ ] Bug fixes include a regression test
+- [ ] Screenshots only for the platform whose UI changed (skip for backend/docs/config)
+- [ ] Committed (conventional format), pushed, PR created (`gh pr create`)
+- [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — merges (no CI gate) and cleans up branch + worktree + main
+- [ ] If the change ships to a server (`backend`/`supabase`/`frontend`), end your final report asking whether to deploy to production
 
-## After PR: Wait for CI, Merge, and Cleanup
+## After PR: Merge and Cleanup
 
 ### MANDATORY: AI agents MUST follow all steps
 
-```bash
-# 1. Wait for CI checks to pass and merge
-./scripts/poll-and-merge.sh <pr_number>
+`merge-and-cleanup.sh` does the whole thing in one command — squash-merge (no CI gate), delete the remote + local branch, fast-forward main, remove the worktree, prune. Run it as your **final step**; the worktree no longer exists afterward, so report back to the user next.
 
-# 2. Return to main repo
+```bash
+./scripts/merge-and-cleanup.sh <pr_number>
+```
+
+If you ever clean up by hand — e.g. the script refused because the worktree had uncommitted work — do it manually and **NEVER with `--force`**:
+
+```bash
 cd ~/Development/selko
 
-# 3. Remove worktree and branch
-# ⚠️  NEVER use --force! If remove refuses, inspect uncommitted work first.
-#    Go back to the worktree, run `git status`, review any uncommitted files.
-#    --force DESTROYS uncommitted work with NO recovery.
+# ⚠️  NEVER --force! If remove refuses, go back to the worktree, run `git status`,
+#    review any uncommitted files. --force DESTROYS uncommitted work with NO recovery.
 git worktree remove ../selko-<type>-<task>
 git branch -D <type>/<task-name>
-
-# 4. Sync main
 git fetch origin && git merge --ff-only origin/main
 ```
 
-> **CRITICAL FOR AI AGENTS:** You MUST complete ALL steps including cleanup. Failure to clean up leaves stale worktrees that block other agents.
+> **CRITICAL FOR AI AGENTS:** You MUST complete cleanup. Failure to clean up leaves stale worktrees that block other agents.
 >
 > **NEVER force-remove a worktree.** If `git worktree remove` refuses due to uncommitted/untracked files, go back to the worktree, run `git status`, and manually inspect what's there before deciding whether to discard it. `--force` is equivalent to `rm -rf` on uncommitted work.
 >
@@ -208,14 +206,13 @@ The Claude Code hook **blocks source code** but **allows config/docs**:
 git worktree add ../selko-feat-other -b feat/other-task main
 ```
 
-### CI Fails, PR Won't Merge
+### Post-merge CI safety net failed
+Merges don't gate on CI, so a failure shows up *after* the merge on main. Fix forward:
 ```bash
-# poll-and-merge.sh will report the failure and exit code.
 # View failed workflow logs:
 gh run view --log-failed
-# Fix the issue, push, and re-run:
-git push
-./scripts/poll-and-merge.sh <pr_number>
+# Fix the issue on a new branch and open a follow-up PR (do NOT leave main broken):
+./scripts/merge-and-cleanup.sh <follow_up_pr_number>
 ```
 
 ### Merge Conflicts on Rebase
@@ -241,6 +238,7 @@ git merge origin/main
 | Delete branch | `git branch -D <type>/<task>` |
 | Prune refs | `git worktree prune` |
 | Create PR | `gh pr create` |
-| Wait for CI + merge + verify | `./scripts/poll-and-merge.sh <pr_number>` |
+| Merge + clean up (no CI gate) | `./scripts/merge-and-cleanup.sh <pr_number>` |
+| Verify CI before prod (optional) | `./scripts/poll-and-merge.sh <pr_number>` |
 | Rebase | `git fetch origin main && git rebase origin/main` |
 | Force push | `git push --force-with-lease` |

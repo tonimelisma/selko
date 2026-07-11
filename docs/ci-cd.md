@@ -140,6 +140,8 @@ supabase db push
 
 ### Trigger Production Deployment via GitHub
 
+**Production deploys require explicit human approval.** Staging updates automatically on every merge to main; production never does. An AI agent must **ask the user** before triggering a prod deploy — the last sentence of its DoD report is "Should I deploy this to production?" — and only run the following on an explicit yes.
+
 ```bash
 # Option 1: Manual workflow dispatch
 gh workflow run test.yml
@@ -151,29 +153,35 @@ git push origin v1.0.0
 
 ## Merge Workflow
 
-### Why Not Auto-Merge?
+### CI is a safety net, not a gate
 
-Auto-merge requires branch protection rules, which require GitHub Pro for private repositories. This project uses `scripts/poll-and-merge.sh` instead.
+Local, change-scoped tests are the gate (see the DoD scope table in `CLAUDE.md`). Merges do **not** wait on GitHub Actions — Actions minutes are limited and CI may not run at all. CI runs on the merge commit as a safety net; if it fails, fix forward with a follow-up PR.
 
-### Using poll-and-merge.sh
-
-**This is the one and only way to track CI.** Do not use manual `gh pr checks`, `gh run list`, `gh run watch`, or inline polling loops.
+### Default: merge-and-cleanup.sh
 
 ```bash
 # Step 1: Create the PR
 gh pr create --title "..." --body "..."
 
-# Step 2: Poll CI, merge, and verify post-merge workflow — all in one command
-./scripts/poll-and-merge.sh <pr_number>
+# Step 2: Merge (no CI gate) and fully clean up
+./scripts/merge-and-cleanup.sh <pr_number>
 ```
 
-The script handles the full lifecycle:
-1. **Polls PR checks** — retries every 10s, handles transient API errors with backoff
-2. **Merges** — squash merge with branch deletion
-3. **Tracks post-merge push workflow** — finds the workflow run triggered by the merge commit on main, watches it until completion (including staging deploy + integration tests)
-4. **Reports results** — exit 0 = all green, exit 1 = failure, exit 2 = timeout
+The script:
+1. **Squash-merges** the PR and deletes the remote branch
+2. **Fast-forwards** local main to `origin/main`
+3. **Removes the worktree** (never `--force`) and deletes the local branch
+4. **Prunes** stale worktree refs
 
-Required PR checks: `unit-tests`, `android-unit-tests`, `frontend-unit-tests`
+It never blocks on CI. Run it as your final step — the worktree is gone afterward.
+
+### Optional: poll-and-merge.sh (verify CI before prod)
+
+When you *do* want to confirm CI is green — e.g. before a production deploy — `scripts/poll-and-merge.sh <pr_number>` polls PR checks, merges, and watches the post-merge workflow (staging deploy + integration tests). It is optional and not part of the normal DoD.
+
+> **Note:** Auto-merge via branch protection requires GitHub Pro for private repos, so these scripts drive the merge instead.
+
+Required PR checks (when CI runs): `unit-tests`, `android-unit-tests`, `frontend-unit-tests`
 
 ### Troubleshooting
 
