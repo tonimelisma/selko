@@ -1,0 +1,230 @@
+{
+  "fixture_name": "conference_session_update_12",
+  "fixture_hash": "a8eea36af795f4b29f8567847365d497be3ad91434d24cafd2e5511605794703",
+  "code_hash": "8ba78dafce23",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:57.239178+00:00",
+  "duration_ms": 2953,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:54.284316+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:54.284328+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:54.303966+00:00",
+      "duration_ms": 2934
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:57.238792+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Conference session: early-bird announcement has basic info, later update adds speaker and room details",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "conference"
+  ],
+  "expected": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description_contains": [
+      "AI trends",
+      "Dr. Jane Chen",
+      "TechCorp",
+      "Q&A",
+      "coffee"
+    ]
+  },
+  "actual": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description": "Opening keynote session about AI trends and predictions. Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "AI trends",
+        "Dr. Jane Chen",
+        "TechCorp",
+        "Q&A",
+        "coffee"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 487,
+    "completion_tokens": 184,
+    "total_tokens": 671
+  },
+  "cost": 0.00048975,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1328
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "end_datetime",
+        "all_day",
+        "location",
+        "description",
+        "importance"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"title\":\"DevCon 2026: Keynote - Future of AI\",\"start_datetime\":\"2026-09-12T09:00:00\",\"end_datetime\":\"2026-09-12T10:30:00\",\"all_day\":false,\"location\":\"Convention Center - Main Hall A\",\"description\":\"Opening keynote session about AI trends and predictions. Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.\",\"importance\":\"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

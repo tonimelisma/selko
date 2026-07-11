@@ -1,0 +1,206 @@
+{
+  "fixture_name": "allday_gets_time_02",
+  "fixture_hash": "02216bb3f203000a12ea4f91fe284365ce99e83912cd98c9c8d502d80188c96a",
+  "code_hash": "8ba78dafce23",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:23:11.305523+00:00",
+  "duration_ms": 6783,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:23:04.520341+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:23:04.520347+00:00",
+      "duration_ms": 35
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:23:04.556092+00:00",
+      "duration_ms": 6748
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:23:11.304839+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "All-day event gets specific time - should prefer specific time over vague all-day",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "all-day-to-timed",
+    "specificity"
+  ],
+  "expected": {
+    "title": "Annual Company Picnic",
+    "start_datetime": "2026-07-20T11:00:00",
+    "end_datetime": "2026-07-20T15:00:00",
+    "all_day": false,
+    "location": "City Park - Pavilion 3",
+    "description_contains": [
+      "summer picnic",
+      "employees and families",
+      "BBQ lunch",
+      "noon"
+    ]
+  },
+  "actual": {
+    "title": "Annual Company Picnic",
+    "start_datetime": "2026-07-20T11:00:00",
+    "end_datetime": "2026-07-20T15:00:00",
+    "all_day": false,
+    "location": "City Park - Pavilion 3",
+    "description": "Annual summer picnic for all employees and families. Annual summer picnic starts at 11am. Bring your family! BBQ lunch served at noon.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "summer picnic",
+        "employees and families",
+        "BBQ lunch",
+        "noon"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 402,
+    "completion_tokens": 108,
+    "total_tokens": 510
+  },
+  "cost": 0.0001251,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1246
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\"title\":\"Annual Company Picnic\",\"start_datetime\":\"2026-07-20T11:00:00\",\"end_datetime\":\"2026-07-20T15:00:00\",\"all_day\":false,\"location\":\"City Park - Pavilion 3\",\"description\":\"Annual summer picnic for all employees and families. Annual summer picnic starts at 11am. Bring your family! BBQ lunch served at noon.\",\"importance\":\"action_required\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

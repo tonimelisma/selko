@@ -1,0 +1,214 @@
+{
+  "fixture_name": "no_events/pdf_financial_statement_05",
+  "fixture_hash": "2c0546b61f56acd57d1232a4085041545e480e64ddc50dd7e840e0cbfbfc401d",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:20:23.391107+00:00",
+  "duration_ms": 16875,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:20:06.513743+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:20:06.514056+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:20:06.529046+00:00",
+      "duration_ms": 16861
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:20:23.390449+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "no_events",
+  "description": "HOA financial statement PDF with dates and amounts - negative test (no events)",
+  "difficulty": "medium",
+  "tags": [
+    "no_events",
+    "pdf",
+    "financial",
+    "negative-test",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Your Walnut Heights Statement",
+    "from": "billing@walnutheightshoa.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "image"
+    ],
+    "total_attachment_bytes": 16790
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Payment Deadline - $732.88 Due",
+        "start_datetime": "2026-01-31T00:00:00",
+        "end_datetime": "2026-01-31T23:59:59",
+        "all_day": true,
+        "location": null,
+        "description": "Amount due of $732.88 is due on 01/31/26. Balance forward as of 12/31/25. Includes tuition (PMI - School yr. tuition) and childcare charges (INV #78526). Payment required to avoid late fees.",
+        "confidence": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "tokens": {
+    "prompt_tokens": 3723,
+    "completion_tokens": 2246,
+    "total_tokens": 5969
+  },
+  "cost": 0.0018251200000000004,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4456
+      },
+      {
+        "type": "text",
+        "length": 218
+      },
+      {
+        "type": "image",
+        "mime_type": "application/pdf",
+        "size_bytes": 16790
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Payment Deadline - $732.88 Due\",\n      \"start_datetime\": \"2026-01-31T00:00:00\",\n      \"end_datetime\": \"2026-01-31T23:59:59\",\n      \"all_day\": true,\n      \"location\": null,\n      \"description\": \"Amount due of $732.88 is due on 01/31/26. Balance forward as of 12/31/25. Includes tuition (PMI - School yr. tuition) and childcare charges (INV #78526). Payment required to avoid late fees.\",\n      \"confidence\": 0.9,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

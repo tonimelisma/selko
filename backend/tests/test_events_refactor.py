@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from zoneinfo import ZoneInfo
 
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.services.events import (
@@ -20,6 +21,10 @@ from selko.services.events import (
     save_extracted_events,
     should_skip_email,
 )
+
+TEST_TIMEZONE = "America/New_York"
+TEST_ZONE = ZoneInfo(TEST_TIMEZONE)
+FIXED_NOW = datetime(2026, 4, 9, 12, 0, tzinfo=TEST_ZONE)
 
 
 # --- Helpers for building mock objects ---
@@ -48,7 +53,7 @@ def _make_extraction(events=None, events_found=True):
     """Build a CalendarEventExtraction."""
     return CalendarEventExtraction(
         email_message_id="msg-123",
-        email_date=datetime(2026, 3, 15, 10, 0),
+        email_date=datetime(2026, 4, 9, 10, 0),
         sender_email="sender@example.com",
         events_found=events_found,
         events=events or [],
@@ -157,7 +162,7 @@ class TestSaveExtractedEvents:
         with patch("selko.services.events.find_matching_event", return_value=None), \
              patch("selko.services.events.create_event", return_value="new-id") as mock_create:
             num_new, num_updated = save_extracted_events(
-                mock_client, mock_gateway, "user-1", "email-1", extraction
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
             )
 
         assert num_new == 1
@@ -183,7 +188,7 @@ class TestSaveExtractedEvents:
              ), \
              patch("selko.services.events.create_pending_change_from_gcal") as mock_gcal:
             num_new, num_updated = save_extracted_events(
-                mock_client, mock_gateway, "user-1", "email-1", extraction
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
             )
 
         assert num_new == 0
@@ -267,7 +272,7 @@ class TestSaveExtractedEvents:
              ), \
              patch("selko.services.events.propose_local_change") as mock_propose:
             num_new, num_updated = save_extracted_events(
-                mock_client, mock_gateway, "user-1", "email-1", extraction
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
             )
 
         assert num_new == 0
@@ -305,7 +310,7 @@ class TestSaveExtractedEvents:
              ), \
              patch("selko.services.events.propose_local_change"):
             num_new, num_updated = save_extracted_events(
-                mock_client, mock_gateway, "user-1", "email-1", extraction
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
             )
 
         assert num_new == 2
@@ -317,7 +322,7 @@ class TestSaveExtractedEvents:
         extraction = _make_extraction(events=[], events_found=False)
 
         num_new, num_updated = save_extracted_events(
-            mock_client, mock_gateway, "user-1", "email-1", extraction
+            mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
         )
 
         assert num_new == 0
@@ -363,11 +368,75 @@ class TestSaveExtractedEvents:
              ), \
              patch("selko.services.events.propose_local_change"):
             num_new, num_updated = save_extracted_events(
-                mock_client, mock_gateway, "user-1", "email-1", extraction
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
             )
 
         assert num_new == 2
         assert num_updated == 2
+
+    def test_skips_events_older_than_24_hours(self):
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        old_event = _make_calendar_event(
+            title="Old Event",
+            start_datetime=(FIXED_NOW - timedelta(hours=24, minutes=1)).replace(tzinfo=None),
+            end_datetime=(FIXED_NOW - timedelta(hours=23, minutes=1)).replace(tzinfo=None),
+        )
+        extraction = _make_extraction(events=[old_event])
+
+        with patch("selko.services.events.find_matching_event") as mock_match, \
+             patch("selko.services.events.create_event") as mock_create:
+            num_new, num_updated = save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
+            )
+
+        assert num_new == 0
+        assert num_updated == 0
+        mock_match.assert_not_called()
+        mock_create.assert_not_called()
+
+    def test_keeps_events_exactly_at_24_hour_cutoff(self):
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        boundary_event = _make_calendar_event(
+            title="Boundary Event",
+            start_datetime=(FIXED_NOW - timedelta(hours=24)).replace(tzinfo=None),
+            end_datetime=(FIXED_NOW - timedelta(hours=23)).replace(tzinfo=None),
+        )
+        extraction = _make_extraction(events=[boundary_event])
+
+        with patch("selko.services.events.find_matching_event", return_value=None), \
+             patch("selko.services.events.create_event", return_value="new-id") as mock_create:
+            num_new, num_updated = save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
+            )
+
+        assert num_new == 1
+        assert num_updated == 0
+        mock_create.assert_called_once()
+
+    def test_keeps_timezone_aware_events_inside_cutoff_window(self):
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        aware_start = (FIXED_NOW - timedelta(hours=23)).astimezone(timezone.utc)
+        aware_end = aware_start + timedelta(hours=1)
+        extraction = _make_extraction(events=[
+            _make_calendar_event(
+                title="Aware Event",
+                start_datetime=aware_start,
+                end_datetime=aware_end,
+            )
+        ])
+
+        with patch("selko.services.events.find_matching_event", return_value=None), \
+             patch("selko.services.events.create_event", return_value="new-id") as mock_create:
+            num_new, num_updated = save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
+            )
+
+        assert num_new == 1
+        assert num_updated == 0
+        mock_create.assert_called_once()
 
 class TestProcessEmailPipeline:
     """Tests for the slimmed-down process_email_for_events orchestrator."""

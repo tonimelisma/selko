@@ -1,0 +1,171 @@
+{
+  "fixture_name": "travel_itinerary_update_15",
+  "fixture_hash": "1d608c1b601d7a02b5101fcb272dc0d7c383f306ed40122fd49fec5cd13b0d6a",
+  "code_hash": "8ba78dafce23",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:21:10.267276+00:00",
+  "duration_ms": 11462,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:20:58.802412+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:20:58.802415+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:20:58.816967+00:00",
+      "duration_ms": 11448
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:21:10.265863+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Travel: booking confirmation has basic flight info, itinerary update adds gate and terminal details",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "travel",
+    "logistics"
+  ],
+  "expected": {
+    "title": "Flight to Seattle - UA 1847",
+    "start_datetime": "2026-06-08T07:30:00",
+    "end_datetime": "2026-06-08T10:15:00",
+    "all_day": false,
+    "location": "SFO Terminal 3, Gate 75 \u2192 SEA",
+    "description_contains": [
+      "United Airlines",
+      "seat 12A",
+      "boarding starts",
+      "TSA PreCheck",
+      "mobile boarding pass"
+    ]
+  },
+  "actual": {
+    "title": "Flight to Seattle - UA 1847",
+    "start_datetime": "2026-06-08T07:30:00",
+    "end_datetime": "2026-06-08T10:15:00",
+    "all_day": false,
+    "location": "SFO Terminal 3, Gate 75 \u2192 SEA",
+    "description": "United Airlines flight 1847. Confirmation #ABC123. Seat 12A.\nBoarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "United Airlines",
+        "seat 12A",
+        "boarding starts",
+        "TSA PreCheck",
+        "mobile boarding pass"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 593,
+    "completion_tokens": 1695,
+    "total_tokens": 2288
+  },
+  "cost": 0.00120004,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1330
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"title\": \"Flight to Seattle - UA 1847\", \"start_datetime\": \"2026-06-08T07:30:00\", \"end_datetime\": \"2026-06-08T10:15:00\", \"all_day\": false, \"location\": \"SFO Terminal 3, Gate 75 \u2192 SEA\", \"description\": \"United Airlines flight 1847. Confirmation #ABC123. Seat 12A.\\nBoarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.\", \"importance\": \"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

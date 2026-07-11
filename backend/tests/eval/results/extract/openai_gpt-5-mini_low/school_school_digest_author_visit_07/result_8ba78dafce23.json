@@ -1,0 +1,456 @@
+{
+  "fixture_name": "school/school_digest_author_visit_07",
+  "fixture_hash": "a0d43983314dce4f4fe12fe52123995371e9a04d101df783c1ed57d6e15c2800",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:14.451642+00:00",
+  "duration_ms": 19363,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:55.086863+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:55.087250+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:55.102644+00:00",
+      "duration_ms": 19348
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:14.450906+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "school",
+  "description": "Real-world school digest with Valentine's Day party photos (past) and newsletter with future author visit",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "digest",
+    "newsletter",
+    "author-visit",
+    "real-world",
+    "images"
+  ],
+  "input_summary": {
+    "subject": "Feb 12, 2026 Digest: 2 new messages from Walnut Heights School today",
+    "from": "donotreply+b8892cdd-b853-59af-bbf0-af20434c9aeb@parentsquare.com",
+    "has_attachments": true,
+    "attachment_count": 6,
+    "attachment_types": [
+      "image",
+      "image",
+      "image",
+      "image",
+      "image",
+      "image"
+    ],
+    "total_attachment_bytes": 666684
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12T00:00:00",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
+        "all_day": true,
+        "confidence_min": 0.6,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00",
+        "end_datetime": null,
+        "location": "Walnut Heights MPR",
+        "description": "TK and K music showcase. Livestream available.",
+        "all_day": false,
+        "confidence_min": 0.5,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Walnut Heights - No School (Presidents Day week)",
+        "start_datetime": "2026-02-12T00:00:00",
+        "end_datetime": "2026-02-16T00:00:00",
+        "all_day": true,
+        "location": null,
+        "description": "No school February 12th\u201316th. Listed as \"No School - Presidents Day\" in the classroom newsletter (Winter/February newsletter).",
+        "confidence": 0.9,
+        "importance": "action_required"
+      },
+      {
+        "title": "Double Author Visit - Walnut Heights",
+        "start_datetime": "2026-03-12T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Two authors will visit the school on March 12th. If students would like books signed on the day of the visit, order through Rakestraw Bookstore and ship to the school (shipping address provided in the newsletter: 4064 Walnut Blvd, Walnut Creek, CA 94596). No specific time listed in the newsletter; books will be delivered and signed the day of the visit.",
+        "confidence": 0.7,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase (TK & K)",
+        "start_datetime": "2026-03-24T09:30:00-07:00",
+        "end_datetime": "2026-03-24T10:00:00-07:00",
+        "all_day": false,
+        "location": "Walnut Heights MPR \u2014 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Spring Music Showcase for TK and Kindergarten students on Tuesday, March 24, 2026 at 9:30 AM in the Walnut Heights MPR. There will be a livestream for those who cannot attend; the livestream link will be sent out a few days before the event. Contact: Mrs. Gold (jcousins@walnutcreeksd.org).",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.6909090909090909,
+          "match": false
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.0,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.7,
+          "required_min": 0.6,
+          "match": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "title": {
+          "similarity": 0.8235294117647058,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.45569620253164556,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.5,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 2
+  },
+  "tokens": {
+    "prompt_tokens": 4500,
+    "completion_tokens": 1232,
+    "total_tokens": 5732
+  },
+  "cost": 0.003589,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4551
+      },
+      {
+        "type": "text",
+        "length": 1226
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 16357
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 463699
+      },
+      {
+        "type": "image",
+        "mime_type": "image/jpeg",
+        "size_bytes": 173836
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 6301
+      },
+      {
+        "type": "image",
+        "mime_type": "image/png",
+        "size_bytes": 6448
+      },
+      {
+        "type": "image",
+        "mime_type": "image/gif",
+        "size_bytes": 43
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"events_found\":true,\"events\":[{\"title\":\"Walnut Heights - No School (Presidents Day week)\",\"start_datetime\":\"2026-02-12\",\"end_datetime\":\"2026-02-16\",\"all_day\":true,\"location\":null,\"description\":\"No school February 12th\u201316th. Listed as \\\"No School - Presidents Day\\\" in the classroom newsletter (Winter/February newsletter).\",\"confidence\":0.9,\"importance\":\"action_required\"},{\"title\":\"Double Author Visit - Walnut Heights\",\"start_datetime\":\"2026-03-12\",\"end_datetime\":null,\"all_day\":true,\"location\":null,\"description\":\"Two authors will visit the school on March 12th. If students would like books signed on the day of the visit, order through Rakestraw Bookstore and ship to the school (shipping address provided in the newsletter: 4064 Walnut Blvd, Walnut Creek, CA 94596). No specific time listed in the newsletter; books will be delivered and signed the day of the visit.\",\"confidence\":0.7,\"importance\":\"action_required\"},{\"title\":\"Spring Music Showcase (TK & K)\",\"start_datetime\":\"2026-03-24T09:30:00-07:00\",\"end_datetime\":\"2026-03-24T10:00:00-07:00\",\"all_day\":false,\"location\":\"Walnut Heights MPR \u2014 4064 Walnut Blvd, Walnut Creek, CA 94596\",\"description\":\"Spring Music Showcase for TK and Kindergarten students on Tuesday, March 24, 2026 at 9:30 AM in the Walnut Heights MPR. There will be a livestream for those who cannot attend; the livestream link will be sent out a few days before the event. Contact: Mrs. Gold (jcousins@walnutcreeksd.org).\",\"confidence\":0.95,\"importance\":\"action_required\"}]}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

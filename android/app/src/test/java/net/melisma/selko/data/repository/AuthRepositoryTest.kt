@@ -2,7 +2,6 @@ package net.melisma.selko.data.repository
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -18,7 +17,6 @@ class AuthRepositoryTest {
     fun `AuthResult Success contains email`() {
         val result = AuthResult.Success("test@example.com")
 
-        assertTrue(result is AuthResult.Success)
         assertEquals("test@example.com", result.email)
     }
 
@@ -26,7 +24,6 @@ class AuthRepositoryTest {
     fun `AuthResult Success can have null email`() {
         val result = AuthResult.Success(null)
 
-        assertTrue(result is AuthResult.Success)
         assertNull(result.email)
     }
 
@@ -34,7 +31,6 @@ class AuthRepositoryTest {
     fun `AuthResult Error contains message`() {
         val result = AuthResult.Error("Invalid credentials")
 
-        assertTrue(result is AuthResult.Error)
         assertEquals("Invalid credentials", result.message)
     }
 
@@ -42,7 +38,6 @@ class AuthRepositoryTest {
     fun `AuthResult Error can have empty message`() {
         val result = AuthResult.Error("")
 
-        assertTrue(result is AuthResult.Error)
         assertEquals("", result.message)
     }
 

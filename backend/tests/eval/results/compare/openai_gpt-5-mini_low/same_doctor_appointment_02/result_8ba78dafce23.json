@@ -1,0 +1,110 @@
+{
+  "fixture_name": "same_doctor_appointment_02",
+  "fixture_hash": "c89bf260f3791245af39eee4706e16d67b7857b0adfdef20d6662545990ba040",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:49.150778+00:00",
+  "duration_ms": 2072,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:47.078110+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:47.078127+00:00",
+      "duration_ms": 20
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:47.098305+00:00",
+      "duration_ms": 2052
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:49.150386+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same doctor appointment with different description details - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 358,
+    "completion_tokens": 63,
+    "total_tokens": 421
+  },
+  "cost": 0.0002155,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Same date and identical start/end times; title/description clearly refer to the same appointment with Dr. Smith and both list Riverside Medical Center (one with more detail). Matches event-001.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

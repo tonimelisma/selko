@@ -16,12 +16,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -211,7 +211,7 @@ private fun HistoryEventItem(
                             shape = MaterialTheme.shapes.medium
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Undo,
+                                imageVector = Icons.AutoMirrored.Filled.Undo,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -247,7 +247,7 @@ private fun HistoryEventItem(
                             shape = MaterialTheme.shapes.medium
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Undo,
+                                imageVector = Icons.AutoMirrored.Filled.Undo,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )

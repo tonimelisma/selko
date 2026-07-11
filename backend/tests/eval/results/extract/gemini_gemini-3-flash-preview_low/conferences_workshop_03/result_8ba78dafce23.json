@@ -1,0 +1,333 @@
+{
+  "fixture_name": "conferences/workshop_03",
+  "fixture_hash": "d57f192314d0c881c9590688e2dbd9edd4bf21859d2f50a96c5a9d963f603db6",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:43.833914+00:00",
+  "duration_ms": 2036,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:41.796101+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:41.796108+00:00",
+      "duration_ms": 59
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:41.855628+00:00",
+      "duration_ms": 1977
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:43.833515+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "conferences",
+  "description": "In-person professional workshop",
+  "difficulty": "easy",
+  "tags": [
+    "workshop",
+    "training",
+    "professional",
+    "in-person"
+  ],
+  "input_summary": {
+    "subject": "Workshop Confirmation: Leadership Essentials",
+    "from": "training@leadershipinstitute.org",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00",
+        "end_datetime": "2026-03-07T16:00:00",
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Full-day leadership workshop",
+        "all_day": false,
+        "confidence_min": 0.9,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00+00:00",
+        "end_datetime": "2026-03-07T16:00:00+00:00",
+        "all_day": false,
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Full-day Leadership Essentials workshop for Jennifer Park (Order #: LI-2026-3456). Schedule includes: Welcome & Introductions (9:00 AM), Leadership Foundations (9:30 AM), Communication Strategies (11:15 AM), Lunch provided (12:30 PM), Team Building (1:30 PM), and Action Planning (3:15 PM). Bring a laptop (optional) and business cards. Free garage parking available.",
+        "confidence": 1.0,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 1.0,
+          "required_min": 0.9,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 1420,
+    "completion_tokens": 218,
+    "total_tokens": 1638
+  },
+  "cost": 0.00034379999999999995,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4477
+      },
+      {
+        "type": "text",
+        "length": 1264
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "description": "The event start date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "end_datetime": {
+                "description": "The event end date and time (ISO 8601)",
+                "format": "date-time",
+                "type": "string",
+                "nullable": true
+              },
+              "all_day": {
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "description": "The event location or venue",
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "confidence"
+            ],
+            "type": "object",
+            "property_ordering": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "type": "object"
+    },
+    "raw_response_text": "{\"events_found\":true,\"events\":[{\"title\":\"Leadership Essentials Workshop\",\"start_datetime\":\"2026-03-07T09:00:00Z\",\"end_datetime\":\"2026-03-07T16:00:00Z\",\"all_day\":false,\"location\":\"Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601\",\"description\":\"Full-day Leadership Essentials workshop for Jennifer Park (Order #: LI-2026-3456). Schedule includes: Welcome & Introductions (9:00 AM), Leadership Foundations (9:30 AM), Communication Strategies (11:15 AM), Lunch provided (12:30 PM), Team Building (1:30 PM), and Action Planning (3:15 PM). Bring a laptop (optional) and business cards. Free garage parking available.\",\"confidence\":1.0,\"importance\":\"action_required\"}]}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

@@ -1,0 +1,349 @@
+{
+  "fixture_name": "meetings/client_call_04",
+  "fixture_hash": "2173ff183bcc32c330c446375a3767fb7129560aec969088b51a21fc0738ff5a",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:35.557425+00:00",
+  "duration_ms": 6972,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:28.584101+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:28.584105+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:28.599288+00:00",
+      "duration_ms": 6957
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:35.557063+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Client project kickoff call",
+  "difficulty": "easy",
+  "tags": [
+    "client",
+    "call",
+    "kickoff",
+    "project"
+  ],
+  "input_summary": {
+    "subject": "Re: Project Kickoff Call - GlobalTech Partnership",
+    "from": "james.wong@globaltech.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Kickoff - GlobalTech Partnership",
+        "start_datetime": "2026-02-10T11:00:00",
+        "end_datetime": "2026-02-10T12:30:00",
+        "location": "Microsoft Teams",
+        "description": "Project kickoff call with GlobalTech",
+        "all_day": false,
+        "confidence_min": 0.85,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Project Kickoff: GlobalTech Partnership",
+        "start_datetime": "2026-02-10T11:00:00-08:00",
+        "end_datetime": "2026-02-10T12:30:00-08:00",
+        "all_day": false,
+        "location": "Microsoft Teams - https://teams.microsoft.com/l/meetup-join/xyz123",
+        "description": "Project Kickoff: GlobalTech Partnership\nDate: Monday, February 10, 2026\nTime: 11:00 AM - 12:30 PM PST\nLocation: Microsoft Teams meeting (link: https://teams.microsoft.com/l/meetup-join/xyz123)\nMeeting ID: 456 789 0123\nPasscode: kickoff\nDial-in: +1 (800) 555-0199\nConference ID: 789 456#\nAttendees: GlobalTech: James Wong, Sarah Kim, Michael Chen; Your Team: TBD\nAgenda:\n 1. Introductions (10 min)\n 2. Project scope review (30 min)\n 3. Timeline and milestones (20 min)\n 4. Q&A and next steps (30 min)\nNotes/Actions: Please send over your attendee list by Friday.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.9620253164556962,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "location": {
+          "similarity": 0.37037037037037035,
+          "match": false
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.85,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1532,
+    "completion_tokens": 482,
+    "total_tokens": 2014
+  },
+  "cost": 0.001347,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4465
+      },
+      {
+        "type": "text",
+        "length": 728
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event start date and time (ISO 8601)"
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event end date and time (ISO 8601)"
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "confidence": {
+                "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "confidence",
+              "importance"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"events_found\":true,\"events\":[{\"title\":\"Project Kickoff: GlobalTech Partnership\",\"start_datetime\":\"2026-02-10T11:00:00-08:00\",\"end_datetime\":\"2026-02-10T12:30:00-08:00\",\"all_day\":false,\"location\":\"Microsoft Teams - https://teams.microsoft.com/l/meetup-join/xyz123\",\"description\":\"Project Kickoff: GlobalTech Partnership\\nDate: Monday, February 10, 2026\\nTime: 11:00 AM - 12:30 PM PST\\nLocation: Microsoft Teams meeting (link: https://teams.microsoft.com/l/meetup-join/xyz123)\\nMeeting ID: 456 789 0123\\nPasscode: kickoff\\nDial-in: +1 (800) 555-0199\\nConference ID: 789 456#\\nAttendees: GlobalTech: James Wong, Sarah Kim, Michael Chen; Your Team: TBD\\nAgenda:\\n 1. Introductions (10 min)\\n 2. Project scope review (30 min)\\n 3. Timeline and milestones (20 min)\\n 4. Q&A and next steps (30 min)\\nNotes/Actions: Please send over your attendee list by Friday.\",\"confidence\":0.95,\"importance\":\"action_required\"}]}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

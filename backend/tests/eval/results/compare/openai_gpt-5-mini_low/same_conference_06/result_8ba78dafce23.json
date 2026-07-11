@@ -1,0 +1,110 @@
+{
+  "fixture_name": "same_conference_06",
+  "fixture_hash": "0b7e35940e63d57575ed216cb5fcb9d8d321b5dbbae8046a9452eeb648602ec1",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5-mini",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:19:48.881936+00:00",
+  "duration_ms": 2006,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:19:46.874432+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:19:46.874442+00:00",
+      "duration_ms": 20
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:19:46.894831+00:00",
+      "duration_ms": 1986
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:19:48.881600+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 429,
+    "completion_tokens": 86,
+    "total_tokens": 515
+  },
+  "cost": 0.00027925,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1227
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Matches event-001: identical start/end times (Sept 15\u201317, 09:00\u201317:00), same venue (Moscone Center/SF) and same conference subject (TechSummit/TechSummit Conference) \u2014 wording differs slightly but refers to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

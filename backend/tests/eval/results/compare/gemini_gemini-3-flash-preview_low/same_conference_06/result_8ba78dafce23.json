@@ -1,0 +1,103 @@
+{
+  "fixture_name": "same_conference_06",
+  "fixture_hash": "0b7e35940e63d57575ed216cb5fcb9d8d321b5dbbae8046a9452eeb648602ec1",
+  "code_hash": "8ba78dafce23",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3-flash-preview",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:22:43.884545+00:00",
+  "duration_ms": 12264,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:22:31.619763+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:22:31.619773+00:00",
+      "duration_ms": 30
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:22:31.649934+00:00",
+      "duration_ms": 12234
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:22:43.884028+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 454,
+    "completion_tokens": 65,
+    "total_tokens": 519
+  },
+  "cost": 0.00010709999999999999,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1227
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event and event-001 share the same start/end times, location (Moscone Center), and name ('TechSummit'), indicating they are the same multi-day conference.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}

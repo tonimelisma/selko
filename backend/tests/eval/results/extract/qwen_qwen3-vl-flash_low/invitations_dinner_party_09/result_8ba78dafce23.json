@@ -1,0 +1,253 @@
+{
+  "fixture_name": "invitations/dinner_party_09",
+  "fixture_hash": "073ecd22c110761c7aa0eeeeb1d9cdbddfeb4da43662c2a913286380b9b479ad",
+  "code_hash": "8ba78dafce23",
+  "operation": "extract",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-02-21T08:18:33.085999+00:00",
+  "duration_ms": 15407,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-02-21T08:18:17.677661+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-02-21T08:18:17.677667+00:00",
+      "duration_ms": 16
+    },
+    "api_call": {
+      "started_at": "2026-02-21T08:18:17.694192+00:00",
+      "duration_ms": 15391
+    },
+    "scoring": {
+      "started_at": "2026-02-21T08:18:33.085601+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "invitations",
+  "description": "Casual dinner party at friend's home",
+  "difficulty": "easy",
+  "tags": [
+    "dinner",
+    "casual",
+    "evening",
+    "friends"
+  ],
+  "input_summary": {
+    "subject": "Dinner at our place next Saturday?",
+    "from": "tom.baker@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Dinner at Tom & Maria's",
+        "start_datetime": "2026-02-07T18:30:00",
+        "end_datetime": null,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Dinner party at Tom and Maria's",
+        "all_day": false,
+        "confidence_min": 0.75,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Dinner at Tom and Maria's",
+        "start_datetime": "2026-02-28T18:30:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Dinner invitation for Saturday, February 28th at 6:30pm at 321 Elm Street, Portland, OR. Maria will be making lasagna. Please bring a bottle of wine if you'd like. RSVP required.",
+        "confidence": 0.95,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "title": {
+          "similarity": 0.9166666666666666,
+          "match": true
+        },
+        "start_datetime": {
+          "difference_minutes": 30240.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "location": {
+          "similarity": 1.0,
+          "match": true
+        },
+        "confidence": {
+          "actual": 0.95,
+          "required_min": 0.75,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 1686,
+    "completion_tokens": 2223,
+    "total_tokens": 3909
+  },
+  "cost": 0.00164652,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4443
+      },
+      {
+        "type": "text",
+        "length": 309
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event start date and time (ISO 8601)",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event end date and time (ISO 8601)",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "confidence": {
+              "description": "Confidence score from 0.0 to 1.0 indicating extraction certainty",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Confidence",
+              "type": "number"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "confidence"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"events_found\": true,\n  \"events\": [\n    {\n      \"title\": \"Dinner at Tom and Maria's\",\n      \"start_datetime\": \"2026-02-28T18:30:00\",\n      \"end_datetime\": null,\n      \"location\": \"321 Elm Street, Portland, OR 97201\",\n      \"description\": \"Dinner invitation for Saturday, February 28th at 6:30pm at 321 Elm Street, Portland, OR. Maria will be making lasagna. Please bring a bottle of wine if you'd like. RSVP required.\",\n      \"all_day\": false,\n      \"confidence\": 0.95,\n      \"importance\": \"action_required\"\n    }\n  ]\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null
+  }
+}
