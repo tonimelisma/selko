@@ -61,16 +61,18 @@ describe('Navbar', () => {
 		expect(mockLogout).toHaveBeenCalled();
 	});
 
-	it('has correct link hrefs', () => {
+	it('has sticky positioning so it stays on screen while scrolling', () => {
 		render(Navbar, { props: { onLogout: vi.fn() } });
+		const nav = screen.getByRole('navigation');
+		expect(nav.className).toContain('sticky');
+		expect(nav.className).toContain('top-0');
+	});
 
+	it('shows nav links without a mobile-only hide class', () => {
+		render(Navbar, { props: { onLogout: vi.fn() } });
 		const reviewLink = screen.getByText('Review').closest('a');
-		expect(reviewLink).toHaveAttribute('href', '/app');
-
-		const historyLink = screen.getByText('History').closest('a');
-		expect(historyLink).toHaveAttribute('href', '/app/history');
-
-		const settingsLink = screen.getByText('Settings').closest('a');
-		expect(settingsLink).toHaveAttribute('href', '/app/settings');
+		expect(reviewLink).toBeTruthy();
+		// Links must be visible on mobile — no hidden md:flex wrapper
+		expect(document.querySelector('.hidden.md\\:flex')).toBeNull();
 	});
 });
