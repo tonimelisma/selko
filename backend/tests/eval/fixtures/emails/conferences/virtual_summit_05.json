@@ -10,7 +10,7 @@
     "multiple-sessions"
   ],
   "input": {
-    "gmail_id": "eval-conf-005",
+    "provider_message_id": "eval-conf-005",
     "thread_id": "thread-conf-005",
     "subject": "Your Product Management Virtual Summit Access",
     "from_email": "events@pmsummit.com",

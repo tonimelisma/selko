@@ -10,7 +10,7 @@
     "registration"
   ],
   "input": {
-    "gmail_id": "eval-conf-001",
+    "provider_message_id": "eval-conf-001",
     "thread_id": "thread-conf-001",
     "subject": "Registration Confirmed: TechSummit 2026",
     "from_email": "registration@techsummit.com",

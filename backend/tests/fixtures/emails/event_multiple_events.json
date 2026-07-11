@@ -2,7 +2,7 @@
   "name": "multiple_events",
   "description": "Email containing multiple calendar events",
   "input": {
-    "gmail_id": "fixture-006",
+    "provider_message_id": "fixture-006",
     "subject": "Conference Schedule - TechSummit 2026",
     "from_email": "info@techsummit.com",
     "from_name": "TechSummit Organizers",

@@ -17,13 +17,13 @@ class TestEmailParsing:
         """Parse Gmail API message into database format."""
         parsed = parse_gmail_message(sample_gmail_api_message)
 
-        assert parsed["gmail_id"] == sample_gmail_api_message["id"]
+        assert parsed["provider_message_id"] == sample_gmail_api_message["id"]
         assert parsed["thread_id"] == sample_gmail_api_message["threadId"]
         assert parsed["subject"] == "Test Subject from Gmail"
         assert parsed["from_email"] == "john@example.com"
         assert parsed["from_name"] == "John Doe"
         assert "jane@example.com" in parsed["to_emails"]
-        assert parsed["gmail_label_ids"] == ["INBOX", "UNREAD", "IMPORTANT"]
+        assert parsed["provider_labels"] == ["INBOX", "UNREAD", "IMPORTANT"]
 
     def test_parse_message_no_from_name(self):
         """Parse message with email-only From header."""
@@ -115,7 +115,7 @@ class TestEmailStorage:
         self, authenticated_client, test_user_id, sample_email_data, cleanup_emails
     ):
         """Can save email to database."""
-        cleanup_emails.append(sample_email_data["gmail_id"])
+        cleanup_emails.append(sample_email_data["provider_message_id"])
 
         saved = save_emails(authenticated_client, [sample_email_data])
 
@@ -125,7 +125,7 @@ class TestEmailStorage:
         result = (
             authenticated_client.table("emails")
             .select("*")
-            .eq("gmail_id", sample_email_data["gmail_id"])
+            .eq("provider_message_id", sample_email_data["provider_message_id"])
             .single()
             .execute()
         )
@@ -138,7 +138,7 @@ class TestEmailStorage:
         self, authenticated_client, test_user_id, sample_email_data, cleanup_emails
     ):
         """Saving same email twice updates instead of duplicating."""
-        cleanup_emails.append(sample_email_data["gmail_id"])
+        cleanup_emails.append(sample_email_data["provider_message_id"])
 
         # First save
         save_emails(authenticated_client, [sample_email_data])
@@ -151,7 +151,7 @@ class TestEmailStorage:
         result = (
             authenticated_client.table("emails")
             .select("*")
-            .eq("gmail_id", sample_email_data["gmail_id"])
+            .eq("provider_message_id", sample_email_data["provider_message_id"])
             .execute()
         )
 
@@ -159,16 +159,16 @@ class TestEmailStorage:
         assert result.data[0]["subject"] == "Updated Subject"
 
     def test_gmail_labels_trigger(self, authenticated_client, test_user_id, cleanup_emails):
-        """Database trigger parses gmail_label_ids into boolean flags."""
+        """Database trigger parses provider_labels into boolean flags."""
         from uuid import uuid4
 
-        gmail_id = f"test_trigger_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"test_trigger_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         email_data = {
-            "gmail_id": gmail_id,
+            "provider_message_id": provider_message_id,
             "thread_id": "thread_trigger",
-            "gmail_label_ids": ["SPAM", "UNREAD"],
+            "provider_labels": ["SPAM", "UNREAD"],
             "subject": "Test spam email",
             "from_email": "spammer@example.com",
             "date_sent": "2026-01-22T10:00:00+00:00",
@@ -180,7 +180,7 @@ class TestEmailStorage:
         result = (
             authenticated_client.table("emails")
             .select("is_spam, is_unread, is_primary, is_trash")
-            .eq("gmail_id", gmail_id)
+            .eq("provider_message_id", provider_message_id)
             .single()
             .execute()
         )
@@ -196,13 +196,13 @@ class TestEmailStorage:
         """Trigger correctly sets CATEGORY_PROMOTIONS flag."""
         from uuid import uuid4
 
-        gmail_id = f"test_promo_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"test_promo_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         email_data = {
-            "gmail_id": gmail_id,
+            "provider_message_id": provider_message_id,
             "thread_id": "thread_promo",
-            "gmail_label_ids": ["CATEGORY_PROMOTIONS", "INBOX"],
+            "provider_labels": ["CATEGORY_PROMOTIONS", "INBOX"],
             "subject": "Sale now!",
             "from_email": "deals@store.com",
             "date_sent": "2026-01-22T10:00:00+00:00",
@@ -213,7 +213,7 @@ class TestEmailStorage:
         result = (
             authenticated_client.table("emails")
             .select("is_promotions, is_primary")
-            .eq("gmail_id", gmail_id)
+            .eq("provider_message_id", provider_message_id)
             .single()
             .execute()
         )
@@ -227,13 +227,13 @@ class TestEmailStorage:
         """Trigger correctly sets CATEGORY_PERSONAL (primary) flag."""
         from uuid import uuid4
 
-        gmail_id = f"test_primary_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"test_primary_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         email_data = {
-            "gmail_id": gmail_id,
+            "provider_message_id": provider_message_id,
             "thread_id": "thread_primary",
-            "gmail_label_ids": ["CATEGORY_PERSONAL", "INBOX", "IMPORTANT"],
+            "provider_labels": ["CATEGORY_PERSONAL", "INBOX", "IMPORTANT"],
             "subject": "Important message",
             "from_email": "friend@example.com",
             "date_sent": "2026-01-22T10:00:00+00:00",
@@ -244,7 +244,7 @@ class TestEmailStorage:
         result = (
             authenticated_client.table("emails")
             .select("is_primary, is_important")
-            .eq("gmail_id", gmail_id)
+            .eq("provider_message_id", provider_message_id)
             .single()
             .execute()
         )
@@ -260,15 +260,15 @@ class TestEmailStorage:
 
         emails = []
         for i in range(3):
-            gmail_id = f"test_multi_{uuid4().hex[:8]}"
-            cleanup_emails.append(gmail_id)
+            provider_message_id = f"test_multi_{uuid4().hex[:8]}"
+            cleanup_emails.append(provider_message_id)
             emails.append(
                 {
-                    "gmail_id": gmail_id,
+                    "provider_message_id": provider_message_id,
                     "thread_id": f"thread_{i}",
                     "subject": f"Email {i}",
                     "from_email": f"sender{i}@example.com",
-                    "gmail_label_ids": ["INBOX"],
+                    "provider_labels": ["INBOX"],
                     "date_sent": "2026-01-22T10:00:00+00:00",
                 }
             )
@@ -281,19 +281,19 @@ class TestEmailStorage:
         """RLS ensures user only sees their own emails."""
         from uuid import uuid4
 
-        gmail_id = f"test_rls_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"test_rls_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         # Save email as current user
         save_emails(
             authenticated_client,
             [
                 {
-                    "gmail_id": gmail_id,
+                    "provider_message_id": provider_message_id,
                     "thread_id": "thread_rls",
                     "subject": "RLS Test",
                     "from_email": "test@example.com",
-                    "gmail_label_ids": ["INBOX"],
+                    "provider_labels": ["INBOX"],
                     "date_sent": "2026-01-22T10:00:00+00:00",
                 }
             ],
@@ -303,7 +303,7 @@ class TestEmailStorage:
         result = (
             authenticated_client.table("emails")
             .select("*")
-            .eq("gmail_id", gmail_id)
+            .eq("provider_message_id", provider_message_id)
             .execute()
         )
 
@@ -320,7 +320,7 @@ class TestEmailStorageStaging:
         self, authenticated_client, test_user_id, sample_email_data, cleanup_emails
     ):
         """Can save email to staging database."""
-        cleanup_emails.append(sample_email_data["gmail_id"])
+        cleanup_emails.append(sample_email_data["provider_message_id"])
 
         saved = save_emails(authenticated_client, [sample_email_data])
 
@@ -332,16 +332,16 @@ class TestEmailStorageStaging:
         """Database triggers work in staging."""
         from uuid import uuid4
 
-        gmail_id = f"test_staging_{uuid4().hex[:8]}"
-        cleanup_emails.append(gmail_id)
+        provider_message_id = f"test_staging_{uuid4().hex[:8]}"
+        cleanup_emails.append(provider_message_id)
 
         save_emails(
             authenticated_client,
             [
                 {
-                    "gmail_id": gmail_id,
+                    "provider_message_id": provider_message_id,
                     "thread_id": "thread_staging",
-                    "gmail_label_ids": ["STARRED", "INBOX"],
+                    "provider_labels": ["STARRED", "INBOX"],
                     "subject": "Starred email",
                     "from_email": "vip@example.com",
                     "date_sent": "2026-01-22T10:00:00+00:00",
@@ -352,7 +352,7 @@ class TestEmailStorageStaging:
         result = (
             authenticated_client.table("emails")
             .select("is_starred")
-            .eq("gmail_id", gmail_id)
+            .eq("provider_message_id", provider_message_id)
             .single()
             .execute()
         )

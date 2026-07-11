@@ -5,7 +5,7 @@
   "difficulty": "easy",
   "tags": ["order", "receipt", "retail", "negative-test", "real-world", "images"],
   "input": {
-    "gmail_id": "eval-noev-012",
+    "provider_message_id": "eval-noev-012",
     "thread_id": "thread-noev-012",
     "subject": "Beep beep! Your Drive Up order ending in 4284 was picked up.",
     "from_email": "orders@oe.target.com",

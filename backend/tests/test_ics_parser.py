@@ -104,7 +104,7 @@ END:VCALENDAR"""
 MALFORMED_ICS = b"This is not valid iCalendar data"
 
 EMAIL_METADATA = {
-    "gmail_id": "msg-ics-test",
+    "provider_message_id": "msg-ics-test",
     "subject": "Meeting Invite",
     "from_name": "Organizer",
     "from_email": "organizer@example.com",

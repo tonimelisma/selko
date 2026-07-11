@@ -15,7 +15,7 @@ class IntegrationResponse(BaseModel):
     provider_email: str | None = None
     scopes: list[str] | None = None
     token_expiry: datetime | None = None
-    last_history_id: str | None = None
+    sync_cursor: str | None = None
     last_sync_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

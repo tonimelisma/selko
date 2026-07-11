@@ -10,7 +10,7 @@
     "business"
   ],
   "input": {
-    "gmail_id": "eval-recur-004",
+    "provider_message_id": "eval-recur-004",
     "thread_id": "thread-recur-004",
     "subject": "Q2 2026 Business Review - Calendar Hold",
     "from_email": "ops@company.com",

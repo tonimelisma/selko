@@ -7,6 +7,7 @@ import Foundation
 
 enum IntegrationProvider: String, Codable, Sendable {
     case gmail
+    case outlook
     case googlePhotos = "google_photos"
     case googleCalendar = "google_calendar"
 }

@@ -10,7 +10,7 @@
     "tech"
   ],
   "input": {
-    "gmail_id": "eval-conf-002",
+    "provider_message_id": "eval-conf-002",
     "thread_id": "thread-conf-002",
     "subject": "You're Registered: AI in Practice Webinar",
     "from_email": "webinars@learningplatform.com",

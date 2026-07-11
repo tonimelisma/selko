@@ -10,7 +10,7 @@
     "checkout"
   ],
   "input": {
-    "gmail_id": "eval-travel-002",
+    "provider_message_id": "eval-travel-002",
     "thread_id": "thread-travel-002",
     "subject": "Reservation Confirmed - Marriott Times Square",
     "from_email": "confirm@marriott.com",

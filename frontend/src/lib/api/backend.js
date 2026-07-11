@@ -424,6 +424,30 @@ export async function initiateGmailAuth(redirectUri) {
 	await startOAuthRedirect(getGmailAuthUrl(redirectUri));
 }
 
+/**
+ * Get the Outlook OAuth authorization URL.
+ * @param {string} [redirectUri] - Optional custom redirect URI
+ * @returns {string} The authorization URL
+ */
+export function getOutlookAuthUrl(redirectUri) {
+	const baseUrl = getApiBaseUrl();
+	const params = new URLSearchParams();
+	if (redirectUri) {
+		params.set('redirect_uri', redirectUri);
+	}
+	const queryString = params.toString();
+	return `${baseUrl}/integrations/outlook/auth${queryString ? `?${queryString}` : ''}`;
+}
+
+/**
+ * Initiate Outlook OAuth flow.
+ * @param {string} [redirectUri] - Optional custom redirect URI
+ * @returns {Promise<void>}
+ */
+export async function initiateOutlookAuth(redirectUri) {
+	await startOAuthRedirect(getOutlookAuthUrl(redirectUri));
+}
+
 // ============================================================================
 // Calendar OAuth Operations
 // ============================================================================

@@ -10,7 +10,8 @@ class EmailResponse(BaseModel):
 
     id: str
     user_id: str
-    gmail_id: str
+    provider_message_id: str
+    email_provider: str
     thread_id: str | None = None
     subject: str | None = None
     from_email: str | None = None
@@ -18,7 +19,7 @@ class EmailResponse(BaseModel):
     to_emails: list[str] | None = None
     date_sent: datetime | None = None
     snippet: str | None = None
-    gmail_label_ids: list[str] | None = None
+    provider_labels: list[str] | None = None
     has_attachments: bool = False
 
     # Auto-computed flags from trigger
@@ -42,7 +43,7 @@ class EmailSyncRequest(BaseModel):
 class EmailSyncResponse(BaseModel):
     """Response model for email sync operation."""
 
-    fetched: int = Field(description="Number of emails fetched from Gmail")
+    fetched: int = Field(description="Number of emails fetched from the connected provider")
     saved: int = Field(description="Number of emails saved to database")
     attachments_downloaded: int = Field(description="Number of attachments downloaded")
 

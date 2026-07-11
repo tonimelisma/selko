@@ -10,7 +10,7 @@
     "hiring"
   ],
   "input": {
-    "gmail_id": "eval-mtg-005",
+    "provider_message_id": "eval-mtg-005",
     "thread_id": "thread-mtg-005",
     "subject": "Interview Confirmation - Senior Software Engineer Position",
     "from_email": "recruiting@innovatetech.com",

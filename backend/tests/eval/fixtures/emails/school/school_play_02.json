@@ -11,7 +11,7 @@
     "multiple-shows"
   ],
   "input": {
-    "gmail_id": "eval-school-002",
+    "provider_message_id": "eval-school-002",
     "thread_id": "thread-school-002",
     "subject": "Invitation: Spring Musical - 'The Wizard of Oz'",
     "from_email": "drama@woodsidehigh.edu",

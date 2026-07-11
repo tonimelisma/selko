@@ -5,7 +5,7 @@
   "difficulty": "medium",
   "tags": ["legal", "terms", "policy", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-008",
+    "provider_message_id": "eval-noev-008",
     "thread_id": "thread-noev-008",
     "subject": "Important: Updates to our Terms of Service (Effective March 1)",
     "from_email": "legal@platform.com",

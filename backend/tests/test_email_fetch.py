@@ -16,16 +16,16 @@ class TestScheduleEmailFetches:
 
         # User has active Gmail integration
         integrations_result = MagicMock()
-        integrations_result.data = [{"user_id": "user-1"}]
+        integrations_result.data = [{"user_id": "user-1", "provider": "gmail"}]
 
         # User already has a pending task
         existing_tasks_result = MagicMock()
-        existing_tasks_result.data = [{"user_id": "user-1"}]
+        existing_tasks_result.data = [{"user_id": "user-1", "payload": {"provider": "gmail"}}]
 
         def table_side_effect(name):
             mock_table = MagicMock()
             if name == "integrations":
-                mock_table.select.return_value.eq.return_value.eq.return_value.execute.return_value = integrations_result
+                mock_table.select.return_value.in_.return_value.eq.return_value.execute.return_value = integrations_result
             elif name == "scheduled_tasks":
                 mock_table.select.return_value.eq.return_value.in_.return_value.execute.return_value = existing_tasks_result
             return mock_table
@@ -45,7 +45,7 @@ class TestScheduleEmailFetches:
         mock_client = MagicMock()
 
         integrations_result = MagicMock()
-        integrations_result.data = [{"user_id": "user-1"}]
+        integrations_result.data = [{"user_id": "user-1", "provider": "gmail"}]
 
         # No existing tasks
         existing_tasks_result = MagicMock()
@@ -54,7 +54,7 @@ class TestScheduleEmailFetches:
         def table_side_effect(name):
             mock_table = MagicMock()
             if name == "integrations":
-                mock_table.select.return_value.eq.return_value.eq.return_value.execute.return_value = integrations_result
+                mock_table.select.return_value.in_.return_value.eq.return_value.execute.return_value = integrations_result
             elif name == "scheduled_tasks":
                 mock_table.select.return_value.eq.return_value.in_.return_value.execute.return_value = existing_tasks_result
             return mock_table
@@ -70,7 +70,7 @@ class TestScheduleEmailFetches:
                 mock_client,
                 user_id="user-1",
                 task_type="email_fetch",
-                payload={"user_id": "user-1", "max_emails": 50},
+                payload={"user_id": "user-1", "provider": "gmail", "max_emails": 50},
             )
 
     @pytest.mark.asyncio
@@ -80,19 +80,19 @@ class TestScheduleEmailFetches:
 
         integrations_result = MagicMock()
         integrations_result.data = [
-            {"user_id": "user-1"},
-            {"user_id": "user-2"},
-            {"user_id": "user-3"},
+            {"user_id": "user-1", "provider": "gmail"},
+            {"user_id": "user-2", "provider": "gmail"},
+            {"user_id": "user-3", "provider": "gmail"},
         ]
 
         # user-2 already has a pending task
         existing_tasks_result = MagicMock()
-        existing_tasks_result.data = [{"user_id": "user-2"}]
+        existing_tasks_result.data = [{"user_id": "user-2", "payload": {"provider": "gmail"}}]
 
         def table_side_effect(name):
             mock_table = MagicMock()
             if name == "integrations":
-                mock_table.select.return_value.eq.return_value.eq.return_value.execute.return_value = integrations_result
+                mock_table.select.return_value.in_.return_value.eq.return_value.execute.return_value = integrations_result
             elif name == "scheduled_tasks":
                 mock_table.select.return_value.eq.return_value.in_.return_value.execute.return_value = existing_tasks_result
             return mock_table
@@ -116,7 +116,7 @@ class TestScheduleEmailFetches:
         integrations_result = MagicMock()
         integrations_result.data = []
 
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = integrations_result
+        mock_client.table.return_value.select.return_value.in_.return_value.eq.return_value.execute.return_value = integrations_result
 
         with patch("selko.config.load_config"), \
              patch("selko.services.auth.get_service_client", return_value=mock_client), \

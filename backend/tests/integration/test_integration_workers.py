@@ -97,12 +97,12 @@ class TestEmailStatusBasedClaiming:
         # Create a pending email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"claim-test-{uuid4().hex[:8]}",
+            "provider_message_id": f"claim-test-{uuid4().hex[:8]}",
             "subject": "Test Email for Claiming",
             "from_email": "test@example.com",
             "date_sent": "2026-05-15T12:00:00Z",
             "snippet": "Test content",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
             "processing_status": "pending",
         }
 
@@ -125,11 +125,11 @@ class TestEmailStatusBasedClaiming:
         # Create and claim an email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"complete-test-{uuid4().hex[:8]}",
+            "provider_message_id": f"complete-test-{uuid4().hex[:8]}",
             "subject": "Test Email",
             "from_email": "test@example.com",
             "processing_status": "pending",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         result = authenticated_client.table("emails").insert(email_data).execute()
@@ -156,11 +156,11 @@ class TestEmailStatusBasedClaiming:
         # Create email with max_attempts=3
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"fail-test-{uuid4().hex[:8]}",
+            "provider_message_id": f"fail-test-{uuid4().hex[:8]}",
             "subject": "Test Email",
             "from_email": "test@example.com",
             "processing_status": "pending",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
             "max_attempts": 3,
         }
 
@@ -192,11 +192,11 @@ class TestEmailStatusBasedClaiming:
         # Create a single email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"concurrent-test-{uuid4().hex[:8]}",
+            "provider_message_id": f"concurrent-test-{uuid4().hex[:8]}",
             "subject": "Test Email",
             "from_email": "test@example.com",
             "processing_status": "pending",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         authenticated_client.table("emails").insert(email_data).execute()
@@ -214,14 +214,14 @@ class TestEmailStatusBasedClaiming:
     ):
         """Test that expired email locks can be recovered."""
         # Create and claim an email with short lock
-        gmail_id = f"expiry-test-{uuid4().hex[:8]}"
+        provider_message_id = f"expiry-test-{uuid4().hex[:8]}"
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": gmail_id,
+            "provider_message_id": provider_message_id,
             "subject": "Test Email",
             "from_email": "test@example.com",
             "processing_status": "pending",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         authenticated_client.table("emails").insert(email_data).execute()
@@ -232,7 +232,7 @@ class TestEmailStatusBasedClaiming:
         past_time = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
         service_client.table("emails").update({
             "locked_until": past_time
-        }).eq("gmail_id", gmail_id).execute()
+        }).eq("provider_message_id", provider_message_id).execute()
 
         # Unlock expired locks
         count = unlock_expired_email_locks(service_client)
@@ -499,13 +499,13 @@ class TestEmailProcessWorker:
         # Create a test email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"worker-test-{uuid4().hex[:8]}",
+            "provider_message_id": f"worker-test-{uuid4().hex[:8]}",
             "subject": "Birthday Party Invitation",
             "from_email": "friend@example.com",
             "from_name": "Best Friend",
             "date_sent": "2026-05-15T12:00:00Z",
             "snippet": "You're invited to Jake's birthday party on May 20th at 2pm!",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
             "processing_status": "pending",
         }
 
@@ -536,11 +536,11 @@ class TestWorkerConcurrency:
         for i in range(3):
             email_data = {
                 "user_id": test_user_id,
-                "gmail_id": f"multi-test-{uuid4().hex[:8]}",
+                "provider_message_id": f"multi-test-{uuid4().hex[:8]}",
                 "subject": f"Test Email {i}",
                 "from_email": "test@example.com",
                 "processing_status": "pending",
-                "gmail_label_ids": ["INBOX"],
+                "provider_labels": ["INBOX"],
             }
             result = authenticated_client.table("emails").insert(email_data).execute()
             email_ids.append(result.data[0]["id"])

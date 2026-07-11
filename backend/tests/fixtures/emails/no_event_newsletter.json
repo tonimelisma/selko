@@ -2,7 +2,7 @@
   "name": "newsletter_no_event",
   "description": "Marketing newsletter with no calendar events",
   "input": {
-    "gmail_id": "fixture-004",
+    "provider_message_id": "fixture-004",
     "subject": "Weekly Tech News - January 2026",
     "from_email": "newsletter@technews.com",
     "from_name": "Tech News Weekly",

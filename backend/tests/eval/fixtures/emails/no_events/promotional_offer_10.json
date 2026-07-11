@@ -5,7 +5,7 @@
   "difficulty": "hard",
   "tags": ["promo", "offer", "deadline", "tricky", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-010",
+    "provider_message_id": "eval-noev-010",
     "thread_id": "thread-noev-010",
     "subject": "Your Exclusive Offer Expires Tomorrow at Midnight!",
     "from_email": "offers@subscription.com",

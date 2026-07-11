@@ -5,7 +5,7 @@
   "difficulty": "easy",
   "tags": ["newsletter", "tech", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-001",
+    "provider_message_id": "eval-noev-001",
     "thread_id": "thread-noev-001",
     "subject": "TechDigest Weekly - Top Stories This Week",
     "from_email": "newsletter@techdigest.com",

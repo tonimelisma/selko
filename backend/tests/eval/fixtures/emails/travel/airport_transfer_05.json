@@ -10,7 +10,7 @@
     "pickup"
   ],
   "input": {
-    "gmail_id": "eval-travel-005",
+    "provider_message_id": "eval-travel-005",
     "thread_id": "thread-travel-005",
     "subject": "Your SuperShuttle Reservation",
     "from_email": "confirm@supershuttle.com",

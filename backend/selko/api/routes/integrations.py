@@ -18,12 +18,17 @@ from selko.api.deps import CurrentUser, get_config, get_current_user
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.config import Config
 from selko.services.gmail import build_service, get_user_profile
+from selko.services.outlook import (
+    OutlookError,
+    get_user_profile as get_outlook_user_profile,
+)
 from selko.services.integrations import (
     IntegrationError,
     OAuthStateError,
     complete_oauth_flow,
     initiate_oauth_flow,
     save_oauth_credentials,
+    save_provider_tokens,
 )
 
 # Base allowlist for Google OAuth callback hosts (Google redirects here, not the SPA)
@@ -37,6 +42,7 @@ _STATIC_REDIRECT_HOSTS = {
 
 ALLOWED_REDIRECT_PATHS = {
     "/integrations/google/callback",  # Unified for all Google providers
+    "/integrations/microsoft/callback",
 }
 
 logger = logging.getLogger(__name__)
@@ -63,8 +69,10 @@ def _allowed_redirect_hosts() -> set[str]:
     return hosts
 
 
-def _default_oauth_callback_uri(config: Config) -> str:
-    """Default Google OAuth callback URI for this environment."""
+def _default_oauth_callback_uri(config: Config, provider: str = "gmail") -> str:
+    """Default OAuth callback URI for the selected provider."""
+    if provider == "outlook":
+        return f"{config.api_public_url}/integrations/microsoft/callback"
     return f"{config.api_public_url}/integrations/google/callback"
 
 
@@ -142,7 +150,7 @@ def _oauth_initiate_response(
     accept: str | None,
 ) -> RedirectResponse | JSONResponse:
     """Shared OAuth initiation for Gmail / Calendar / Photos."""
-    resolved_uri = redirect_uri or _default_oauth_callback_uri(config)
+    resolved_uri = redirect_uri or _default_oauth_callback_uri(config, provider)
 
     if not _validate_redirect_uri(resolved_uri):
         logger.warning(f"Invalid redirect_uri attempted: {resolved_uri}")
@@ -158,7 +166,7 @@ def _oauth_initiate_response(
             user_id=user_id,
             redirect_uri=resolved_uri,
         )
-    except IntegrationError as e:
+    except (IntegrationError, OutlookError) as e:
         logger.error(f"Failed to initiate OAuth: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -206,6 +214,25 @@ async def gmail_oauth_initiate(
     return _oauth_initiate_response(
         config=config,
         provider="gmail",
+        user_id=user.id,
+        redirect_uri=redirect_uri,
+        accept=accept,
+    )
+
+
+@router.get("/outlook/auth")
+async def outlook_oauth_initiate(
+    user: CurrentUser = Depends(get_current_user),
+    config: Config = Depends(get_config),
+    redirect_uri: Annotated[
+        str | None, Query(description="OAuth callback URI")
+    ] = None,
+    accept: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Initiate Microsoft Graph OAuth for Outlook email access."""
+    return _oauth_initiate_response(
+        config=config,
+        provider="outlook",
         user_id=user.id,
         redirect_uri=redirect_uri,
         accept=accept,
@@ -291,6 +318,66 @@ async def google_oauth_callback(
         )
     except IntegrationError as e:
         logger.error(f"OAuth callback failed: {e}")
+        return _frontend_oauth_redirect(
+            config,
+            status_value="error",
+            message="OAuth callback failed",
+        )
+
+
+@router.get("/microsoft/callback")
+async def microsoft_oauth_callback(
+    request: Request,
+    code: Annotated[str, Query(description="Authorization code from Microsoft")],
+    state: Annotated[str, Query(description="State parameter for CSRF validation")],
+    config: Config = Depends(get_config),
+) -> RedirectResponse:
+    """Exchange a Microsoft authorization code and store Outlook tokens."""
+    _check_callback_rate_limit(request)
+
+    try:
+        token_result, user_id, provider = complete_oauth_flow(
+            config=config,
+            code=code,
+            state=state,
+        )
+        if provider != "outlook" or not isinstance(token_result, dict):
+            raise IntegrationError("Invalid Microsoft OAuth state")
+
+        from selko.services.auth import get_service_client
+        client = get_service_client(config)
+        access_token = token_result.get("access_token")
+        if not access_token:
+            raise IntegrationError("Microsoft OAuth response did not include an access token")
+
+        provider_email = None
+        try:
+            profile = get_outlook_user_profile(access_token)
+            provider_email = profile.get("mail") or profile.get("userPrincipalName")
+        except Exception as exc:
+            logger.warning("Could not get Outlook profile: %s", exc)
+
+        save_provider_tokens(
+            client,
+            user_id,
+            provider,
+            token_result,
+            provider_email,
+        )
+        logger.info("Outlook OAuth completed successfully for user %s", user_id)
+        return _frontend_oauth_redirect(
+            config, status_value="success", provider=provider
+        )
+
+    except OAuthStateError as exc:
+        logger.warning("Microsoft OAuth state validation failed: %s", exc)
+        return _frontend_oauth_redirect(
+            config,
+            status_value="error",
+            message="OAuth state invalid or expired. Please try again.",
+        )
+    except (IntegrationError, OutlookError) as exc:
+        logger.error("Microsoft OAuth callback failed: %s", exc)
         return _frontend_oauth_redirect(
             config,
             status_value="error",

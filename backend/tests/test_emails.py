@@ -68,13 +68,14 @@ class TestParseGmailMessage:
         assert result["from_email"] == ""
         assert result["from_name"] is None
 
-    def test_extracts_gmail_id(self):
-        """Ensure Gmail ID is extracted."""
+    def test_extracts_provider_identity(self):
+        """Ensure the provider and provider message ID are extracted."""
         msg = self._make_message()
         msg["id"] = "unique-gmail-id-123"
         result = parse_gmail_message(msg)
 
-        assert result["gmail_id"] == "unique-gmail-id-123"
+        assert result["email_provider"] == "gmail"
+        assert result["provider_message_id"] == "unique-gmail-id-123"
 
     def test_extracts_thread_id(self):
         """Ensure thread ID is extracted."""
@@ -99,13 +100,13 @@ class TestParseGmailMessage:
 
         assert result["snippet"] == "Email preview text..."
 
-    def test_extracts_label_ids(self):
-        """Ensure label IDs are extracted."""
+    def test_extracts_provider_labels(self):
+        """Ensure provider labels are extracted."""
         msg = self._make_message()
         msg["labelIds"] = ["INBOX", "IMPORTANT", "STARRED"]
         result = parse_gmail_message(msg)
 
-        assert result["gmail_label_ids"] == ["INBOX", "IMPORTANT", "STARRED"]
+        assert result["provider_labels"] == ["INBOX", "IMPORTANT", "STARRED"]
 
     def test_detects_attachments(self):
         """Detect when email has attachments."""

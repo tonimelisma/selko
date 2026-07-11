@@ -10,7 +10,7 @@
     "manager"
   ],
   "input": {
-    "gmail_id": "eval-recur-003",
+    "provider_message_id": "eval-recur-003",
     "thread_id": "thread-recur-003",
     "subject": "Updated: 1:1 Moving to Bi-Weekly",
     "from_email": "mark.chen@company.com",

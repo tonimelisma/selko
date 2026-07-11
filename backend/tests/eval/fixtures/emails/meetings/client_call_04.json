@@ -10,7 +10,7 @@
     "project"
   ],
   "input": {
-    "gmail_id": "eval-mtg-004",
+    "provider_message_id": "eval-mtg-004",
     "thread_id": "thread-mtg-004",
     "subject": "Re: Project Kickoff Call - GlobalTech Partnership",
     "from_email": "james.wong@globaltech.com",

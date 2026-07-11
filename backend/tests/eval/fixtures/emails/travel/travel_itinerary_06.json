@@ -10,7 +10,7 @@
     "multi-day"
   ],
   "input": {
-    "gmail_id": "eval-travel-006",
+    "provider_message_id": "eval-travel-006",
     "thread_id": "thread-travel-006",
     "subject": "Your Complete Travel Itinerary - Tokyo Trip",
     "from_email": "bookings@travelagency.com",
