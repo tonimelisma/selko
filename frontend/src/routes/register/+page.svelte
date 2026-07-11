@@ -29,7 +29,10 @@
 
 		const { error: authError } = await supabase.auth.signUp({
 			email,
-			password
+			password,
+			options: {
+				emailRedirectTo: `${window.location.origin}/login`
+			}
 		});
 
 		isLoading = false;
