@@ -235,5 +235,5 @@ Review Queue (/app) ──────── Event Detail (/app/events/[id])
 
 - **Review Queue** is the home screen. All navigation starts here.
 - **Event Detail** is only reachable from the Review Queue (via "Edit" on an event card).
-- **Activity History** is reachable from the bottom tabs / navbar.
-- **Settings** is reachable from the bottom tabs / navbar. Contains integration management.
+- **Activity History** is reachable from the sticky top navbar.
+- **Settings** is reachable from the sticky top navbar. Contains integration management.

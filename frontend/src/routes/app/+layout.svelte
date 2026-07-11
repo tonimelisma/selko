@@ -5,7 +5,6 @@
 	import { user, loading } from '$lib/stores.js';
 	import { supabase } from '$lib/supabase.js';
 	import Navbar from '$lib/components/Navbar.svelte';
-	import BottomNav from '$lib/components/BottomNav.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
 	let { children } = $props();
@@ -44,11 +43,10 @@
 {:else if currentUser}
 	<div class="min-h-screen flex flex-col overflow-x-hidden">
 		<Navbar onLogout={handleLogout} />
-		<main id="main-content" class="flex-1 pb-20 md:pb-0">
+		<main id="main-content" class="flex-1">
 			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 				{@render children?.()}
 			</div>
 		</main>
-		<BottomNav />
 	</div>
 {/if}

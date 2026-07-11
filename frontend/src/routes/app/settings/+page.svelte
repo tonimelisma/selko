@@ -131,15 +131,15 @@
 	}
 
 	/** @param {string} provider */
-	function handleAuthorize(provider) {
+	async function handleAuthorize(provider) {
 		if (provider === 'gmail') {
-			initiateGmailAuth();
+			await initiateGmailAuth();
 		} else if (provider === 'outlook') {
-			initiateOutlookAuth();
+			await initiateOutlookAuth();
 		} else if (provider === 'google_calendar') {
-			initiateCalendarAuth();
+			await initiateCalendarAuth();
 		} else if (provider === 'google_photos') {
-			initiatePhotosAuth();
+			await initiatePhotosAuth();
 		}
 	}
 

@@ -118,4 +118,41 @@ describe('IntegrationStatus', () => {
 
 		expect(screen.getByText('Reconnect')).toBeInTheDocument();
 	});
+
+	it('shows connecting spinner while OAuth starts', async () => {
+		const user = userEvent.setup();
+		let resolveConnect;
+		const mockConnect = vi.fn(
+			() =>
+				new Promise((resolve) => {
+					resolveConnect = resolve;
+				})
+		);
+
+		render(IntegrationStatus, {
+			props: { integrations: [], setupMode: true, onconnect: mockConnect }
+		});
+
+		await user.click(screen.getByRole('button', { name: /connect google account/i }));
+
+		expect(await screen.findByText('Connecting…')).toBeInTheDocument();
+		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
+		expect(screen.getByRole('button', { name: /connecting/i })).toBeDisabled();
+
+		resolveConnect();
+	});
+
+	it('surfaces OAuth start errors', async () => {
+		const user = userEvent.setup();
+		const mockConnect = vi.fn().mockRejectedValue(new Error('Not authenticated'));
+
+		render(IntegrationStatus, {
+			props: { integrations: [], setupMode: true, onconnect: mockConnect }
+		});
+
+		await user.click(screen.getByRole('button', { name: /connect google account/i }));
+
+		expect(await screen.findByText('Not authenticated')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /connect google account/i })).not.toBeDisabled();
+	});
 });

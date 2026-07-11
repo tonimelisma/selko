@@ -2,7 +2,7 @@
 
 Conventions and reusable components for the Selko web app. All frontend work should follow these patterns for consistency.
 
-**Tech stack:** SvelteKit 2 + Svelte 5, TailwindCSS 3.4, DaisyUI 4.4.
+**Tech stack:** SvelteKit 2 + Svelte 5, TailwindCSS 3.4, DaisyUI 5.
 
 ---
 
@@ -32,71 +32,36 @@ Every `/app/*` page wraps content in:
 
 ## Navigation
 
-### Desktop (lg:+)
+### Sticky top app bar (all breakpoints)
 
-Top navbar using DaisyUI `navbar` component:
+One sticky top navbar for mobile and desktop — brand, primary links, and Log out. No bottom tab bar (DaisyUI 5 removed `btm-nav`; a top bar also avoids fighting Safari’s bottom chrome).
 
 ```html
-<div class="navbar bg-base-200">
-  <div class="navbar-start">
-    <a href="/app" class="btn btn-ghost text-xl">Selko</a>
+<nav class="navbar sticky top-0 z-50 bg-base-200 min-h-12" aria-label="Main navigation">
+  <div class="flex-none">
+    <a href="/app" class="btn btn-ghost btn-sm text-lg font-bold">Selko</a>
   </div>
-  <div class="navbar-center hidden lg:flex">
-    <ul class="menu menu-horizontal px-1">
+  <div class="flex-1"></div>
+  <div class="flex-none flex items-center gap-0.5 sm:gap-2">
+    <ul class="menu menu-horizontal menu-sm p-0">
       <li><a href="/app">Review</a></li>
       <li><a href="/app/history">History</a></li>
       <li><a href="/app/settings">Settings</a></li>
     </ul>
+    <button class="btn btn-ghost btn-sm">Log out</button>
   </div>
-  <div class="navbar-end">
-    <div class="dropdown dropdown-end">
-      <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar placeholder">
-        <div class="bg-neutral text-neutral-content w-8 rounded-full">
-          <span class="text-sm">TM</span>
-        </div>
-      </div>
-      <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-40">
-        <li><button on:click={logout}>Log out</button></li>
-      </ul>
-    </div>
-  </div>
-</div>
-```
-
-Three nav links: Review, History, Settings. Avatar with initials on the right, dropdown with "Log out" only.
-
-### Mobile & Tablet (below lg:)
-
-**Top navbar** (slim): Shows "Selko" text only. No navigation links.
-
-**Bottom tab bar** using DaisyUI `btm-nav`:
-
-```html
-<div class="btm-nav btm-nav-sm lg:hidden">
-  <a href="/app" class:active={$page.url.pathname === '/app'}>
-    <svg><!-- list/queue icon --></svg>
-    <span class="btm-nav-label">Review</span>
-  </a>
-  <a href="/app/history" class:active={$page.url.pathname === '/app/history'}>
-    <svg><!-- clock icon --></svg>
-    <span class="btm-nav-label">History</span>
-  </a>
-  <a href="/app/settings" class:active={$page.url.pathname === '/app/settings'}>
-    <svg><!-- gear icon --></svg>
-    <span class="btm-nav-label">Settings</span>
-  </a>
-</div>
+</nav>
 ```
 
 ### Design Decisions
 
-- **3 tabs** (Review, History, Settings). Event Detail is a drill-down from Review, not its own tab.
-- **No hamburger menu.** All screens accessible from bottom tabs (mobile) or top navbar (desktop).
-- Active tab highlighted via DaisyUI's `active` class.
-- **No pending count badge** on tabs.
-- **Page title**: desktop navbar shows "Selko" always. Mobile top bar shows "Selko" always. Bottom tabs indicate current location. This follows Jakob's Law — desktop web apps show the logo in the navbar (Gmail, Slack, Linear), mobile apps use bottom tabs for wayfinding.
-- **Logout**: avatar dropdown in desktop navbar. Settings screen on mobile (accessible from bottom tab).
-- **Event Detail**: navbar and bottom tabs stay visible (per iOS HIG and Material Design — tab bars persist on drill-down screens). Back arrow appears in the page content area.
+- **3 destinations** (Review, History, Settings). Event Detail is a drill-down from Review, not its own nav item.
+- **No hamburger / bottom dock.** All screens reachable from the sticky top bar.
+- Active link highlighted via DaisyUI's `active` class.
+- **No pending count badge** on nav items.
+- **Page title**: navbar always shows "Selko"; current section is the active link.
+- **Logout**: ghost button in the top bar on all breakpoints (also available via Settings account section).
+- **Event Detail**: sticky top bar stays visible; mobile save actions use a fixed bar at `bottom-0`.
 
 ---
 
@@ -108,25 +73,20 @@ The shared layout wraps all `/app/*` routes. Implemented in `/app/+layout.svelte
 
 ```html
 <!-- /app/+layout.svelte -->
-<div class="min-h-screen flex flex-col">
-  <!-- Top navbar (always visible) -->
+<div class="min-h-screen flex flex-col overflow-x-hidden">
   <Navbar />
-
-  <!-- Main content area -->
-  <main class="flex-1 pb-20 lg:pb-0">
-    <slot />
+  <main id="main-content" class="flex-1">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <slot />
+    </div>
   </main>
-
-  <!-- Bottom tab bar (mobile/tablet only) -->
-  <BottomNav class="lg:hidden" />
 </div>
 ```
 
 Key points:
-- `pb-20` on mobile to prevent content from being hidden behind the bottom nav
-- `lg:pb-0` on desktop where there's no bottom nav
-- `flex-1` on main ensures the content area fills available height
-- On Event Detail mobile, the fixed bottom action bar sits between the content and the bottom tabs
+- No bottom-nav padding (`pb-20` removed)
+- `flex-1` on main fills available height
+- On Event Detail mobile, the fixed action bar sits at the bottom of the viewport
 
 ---
 
@@ -269,7 +229,7 @@ Components to build and share across screens. Each is a Svelte component file in
 
 ### `AppShell`
 
-Wraps all `/app/*` routes. Provides navbar (top) + bottom tab bar (mobile).
+Wraps all `/app/*` routes. Provides sticky top navbar (brand + nav + logout).
 
 **Used by:** `/app/+layout.svelte`
 

@@ -177,7 +177,7 @@ for (const event of groupEvents) {
 
 Side-by-side review screen for a single event. The core human-in-the-loop interface (FR-C.1). Shows source email on one side and editable extracted event fields on the other. Reached by tapping "Edit" on an event in the Review Queue.
 
-Navigation (navbar + bottom tabs) stays visible per iOS HIG and Material Design guidelines — this is a drill-down within the Review tab, not a modal.
+Navigation (sticky top navbar) stays visible — this is a drill-down within Review, not a modal.
 
 ### Primary Actions
 - Approve event
@@ -296,7 +296,7 @@ Form-first. Source email behind a "View Source" collapse at top, closed by defau
 
 Key mobile decisions:
 - Action buttons in a **fixed bottom bar** (`fixed bottom-0 left-0 right-0`) — always reachable
-- Content has `pb-20` to account for the bottom bar + bottom tabs
+- Content has `pb-24` to account for the fixed bottom action bar
 - Source email collapsed by default — form fields are the priority
 - Bottom tabs (Review, History, Settings) remain visible below the action bar per HIG
 
