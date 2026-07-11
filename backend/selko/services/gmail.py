@@ -298,25 +298,35 @@ def extract_inline_images(email: dict) -> list[dict]:
     return inline_images
 
 
+# Default Gmail search: inbox + archive + Primary/Updates, skip noisy tabs
+# and outbound/drafts. Spam/trash are also excluded by API default.
+DEFAULT_MESSAGE_QUERY = (
+    "-in:spam -in:trash -in:drafts -in:sent "
+    "-category:promotions -category:social -category:forums"
+)
+
+
 def fetch_messages(
     service,
     max_results: int = 10,
     label_ids: list[str] = None,
+    query: str = DEFAULT_MESSAGE_QUERY,
     max_retries: int = 3,
 ) -> list[dict]:
     """Fetch email messages from Gmail with rate limit handling.
 
-    By default, fetches recent mail across the mailbox (not INBOX-only).
+    By default, fetches recent mail across the mailbox (not INBOX-only) while
+    excluding spam, trash, drafts, sent, promotions, social, and forums.
     Many users archive aggressively, so INBOX-only pulls return nothing even
     when recent actionable mail exists under category/archive labels.
-    Spam and trash remain excluded unless includeSpamTrash is enabled.
 
     Args:
         service: Gmail API service.
         max_results: Maximum number of messages to fetch.
         label_ids: Optional list of label IDs to filter by. None means no
-            label filter (all mail except spam/trash). Pass ["INBOX"] to
-            restrict to the inbox.
+            label filter. Pass ["INBOX"] to restrict to the inbox.
+        query: Gmail search query. Defaults to DEFAULT_MESSAGE_QUERY.
+            Pass an empty string to disable the search filter.
         max_retries: Maximum retries for rate-limited requests.
 
     Returns:
@@ -331,6 +341,8 @@ def fetch_messages(
     }
     if label_ids is not None:
         list_kwargs["labelIds"] = label_ids
+    if query:
+        list_kwargs["q"] = query
 
     try:
         results = (
