@@ -67,6 +67,18 @@
 	});
 
 	onMount(async () => {
+		const params = new URLSearchParams(window.location.search);
+		const oauth = params.get('oauth');
+		if (oauth === 'success') {
+			notification = $_('integrations.connected');
+			setTimeout(() => {
+				notification = '';
+			}, 4000);
+			window.history.replaceState({}, '', '/app');
+		} else if (oauth === 'error') {
+			error = params.get('message') || $_('integrations.connectFailed');
+			window.history.replaceState({}, '', '/app');
+		}
 		await loadIntegrations();
 	});
 

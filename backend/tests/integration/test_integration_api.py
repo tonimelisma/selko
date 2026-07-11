@@ -195,22 +195,22 @@ class TestOAuthCallback:
     def test_callback_no_auth_required(self, test_client):
         """Callback does not require JWT (security fix verification)."""
         response = test_client.get(
-            "/integrations/google/callback?code=test&state=invalid"
+            "/integrations/google/callback?code=test&state=invalid",
+            follow_redirects=False,
         )
-        # Should return 400 (invalid state), NOT 401 (missing auth)
+        # Should redirect to frontend with error, NOT 401 (missing auth)
         assert response.status_code != 401
-        assert response.status_code == 400
+        assert response.status_code == 302
+        assert "oauth=error" in response.headers["location"]
 
     def test_callback_invalid_state(self, test_client):
         """Callback rejects invalid state."""
         response = test_client.get(
-            "/integrations/google/callback?code=test&state=invalid123"
+            "/integrations/google/callback?code=test&state=invalid123",
+            follow_redirects=False,
         )
-        assert response.status_code == 400
-        # Error message is sanitized to not leak internal details
-        detail = response.json()["detail"]
-        msg = detail["detail"] if isinstance(detail, dict) else detail
-        assert "invalid" in msg.lower() or "expired" in msg.lower()
+        assert response.status_code == 302
+        assert "oauth=error" in response.headers["location"]
 
     def test_callback_expired_state(self, test_client):
         """Callback rejects expired state (>10 min)."""
@@ -223,12 +223,11 @@ class TestOAuthCallback:
             side_effect=OAuthStateError("State parameter expired"),
         ):
             response = test_client.get(
-                "/integrations/google/callback?code=test&state=expired-state"
+                "/integrations/google/callback?code=test&state=expired-state",
+                follow_redirects=False,
             )
-            assert response.status_code == 400
-            detail = response.json()["detail"]
-            msg = detail["detail"] if isinstance(detail, dict) else detail
-            assert "expired" in msg.lower()
+            assert response.status_code == 302
+            assert "oauth=error" in response.headers["location"]
 
     def test_callback_success_mocked(self, test_client, config, temp_user):
         """Callback successfully saves credentials (mocked token exchange)."""
@@ -258,11 +257,14 @@ class TestOAuthCallback:
         ):
             try:
                 response = test_client.get(
-                    f"/integrations/google/callback?code=test_code&state={state}"
+                    f"/integrations/google/callback?code=test_code&state={state}",
+                    follow_redirects=False,
                 )
 
-                assert response.status_code == 200
-                assert response.json()["status"] == "success"
+                assert response.status_code == 302
+                location = response.headers["location"]
+                assert "oauth=success" in location
+                assert "provider=gmail" in location
 
                 # Verify credentials saved with correct user_id
                 from selko.services.auth import get_service_client

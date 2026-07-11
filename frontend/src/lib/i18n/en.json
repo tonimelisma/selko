@@ -125,7 +125,9 @@
 		"googleCalendarDescription": "Sync approved events to your calendar",
 		"googlePhotos": "Google Photos",
 		"googlePhotosDescription": "Scan photos for event details",
-		"disconnect": "Disconnect"
+		"disconnect": "Disconnect",
+		"connected": "Account connected successfully",
+		"connectFailed": "Failed to connect Google account. Please try again."
 	},
 	"senderRules": {
 		"noRules": "No automation rules yet. Create rules from the review queue or add one below.",

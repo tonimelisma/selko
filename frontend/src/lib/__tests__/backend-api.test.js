@@ -249,6 +249,46 @@ describe('Backend API Client', () => {
 		});
 	});
 
+	describe('initiateGmailAuth', () => {
+		it('fetches auth_url with bearer token then navigates', async () => {
+			const hrefSetter = vi.fn();
+			vi.stubGlobal('window', {
+				location: {
+					set href(value) {
+						hrefSetter(value);
+					},
+					get href() {
+						return '';
+					}
+				}
+			});
+
+			mockFetch.mockResolvedValue({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						auth_url: 'https://accounts.google.com/o/oauth2/auth?client_id=x'
+					})
+			});
+
+			const { initiateGmailAuth } = await import('../api/backend.js');
+			await initiateGmailAuth();
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				'http://localhost:8000/integrations/gmail/auth',
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						Authorization: 'Bearer test-token',
+						Accept: 'application/json'
+					})
+				})
+			);
+			expect(hrefSetter).toHaveBeenCalledWith(
+				'https://accounts.google.com/o/oauth2/auth?client_id=x'
+			);
+		});
+	});
+
 	describe('checkHealth', () => {
 		it('returns healthy status', async () => {
 			mockFetch.mockResolvedValue({

@@ -301,19 +301,52 @@ export function getGmailAuthUrl(redirectUri) {
 }
 
 /**
- * Initiate Gmail OAuth flow
- * Opens OAuth consent screen in current window
- * @param {string} [redirectUri] - Optional custom redirect URI
+ * Fetch Google auth_url from the API with the user's Bearer token, then navigate.
+ * Browser navigation alone cannot send Authorization headers.
+ * @param {string} endpointUrl
+ * @returns {Promise<void>}
  */
-export function initiateGmailAuth(redirectUri) {
-	const url = getGmailAuthUrl(redirectUri);
+async function startOAuthRedirect(endpointUrl) {
+	const token = await getAccessToken();
+	if (!token) {
+		throw new Error('Not authenticated');
+	}
+
+	const response = await fetch(endpointUrl, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: 'application/json'
+		}
+	});
+
+	if (!response.ok) {
+		const err = await parseApiError(response);
+		throw new Error(err.message || 'Failed to start OAuth');
+	}
+
+	const data = await response.json();
+	if (!data?.auth_url) {
+		throw new Error('OAuth response missing auth_url');
+	}
+
 	try {
-		new URL(url);
-		window.location.href = url;
+		new URL(data.auth_url);
 	} catch {
-		console.error('Invalid OAuth redirect URL:', url);
+		console.error('Invalid OAuth redirect URL:', data.auth_url);
 		throw new Error('Failed to generate OAuth URL');
 	}
+
+	window.location.href = data.auth_url;
+}
+
+/**
+ * Initiate Gmail OAuth flow
+ * Fetches Google consent URL with auth, then opens it in the current window
+ * @param {string} [redirectUri] - Optional custom redirect URI
+ * @returns {Promise<void>}
+ */
+export async function initiateGmailAuth(redirectUri) {
+	await startOAuthRedirect(getGmailAuthUrl(redirectUri));
 }
 
 // ============================================================================
@@ -338,18 +371,12 @@ export function getCalendarAuthUrl(redirectUri) {
 
 /**
  * Initiate Google Calendar OAuth flow
- * Opens OAuth consent screen in current window
+ * Fetches Google consent URL with auth, then opens it in the current window
  * @param {string} [redirectUri] - Optional custom redirect URI
+ * @returns {Promise<void>}
  */
-export function initiateCalendarAuth(redirectUri) {
-	const url = getCalendarAuthUrl(redirectUri);
-	try {
-		new URL(url);
-		window.location.href = url;
-	} catch {
-		console.error('Invalid OAuth redirect URL:', url);
-		throw new Error('Failed to generate OAuth URL');
-	}
+export async function initiateCalendarAuth(redirectUri) {
+	await startOAuthRedirect(getCalendarAuthUrl(redirectUri));
 }
 
 // ============================================================================
@@ -373,18 +400,12 @@ export function getPhotosAuthUrl(redirectUri) {
 
 /**
  * Initiate Google Photos OAuth flow
- * Opens OAuth consent screen in current window
+ * Fetches Google consent URL with auth, then opens it in the current window
  * @param {string} [redirectUri] - Optional custom redirect URI
+ * @returns {Promise<void>}
  */
-export function initiatePhotosAuth(redirectUri) {
-	const url = getPhotosAuthUrl(redirectUri);
-	try {
-		new URL(url);
-		window.location.href = url;
-	} catch {
-		console.error('Invalid OAuth redirect URL:', url);
-		throw new Error('Failed to generate OAuth URL');
-	}
+export async function initiatePhotosAuth(redirectUri) {
+	await startOAuthRedirect(getPhotosAuthUrl(redirectUri));
 }
 
 // ============================================================================

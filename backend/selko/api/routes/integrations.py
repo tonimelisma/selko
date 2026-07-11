@@ -5,13 +5,14 @@ For direct integration queries, use Supabase client from frontend.
 """
 
 import logging
+import os
 import time
 from collections import defaultdict
-from typing import Annotated
-from urllib.parse import urlparse
+from typing import Annotated, Any
+from urllib.parse import urlencode, urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from selko.api.deps import CurrentUser, get_config, get_current_user
 from selko.api.schemas.common import ErrorCode, error_detail
@@ -25,12 +26,13 @@ from selko.services.integrations import (
     save_oauth_credentials,
 )
 
-# Allowed redirect URIs for OAuth flows
-# Add production URLs as needed
-ALLOWED_REDIRECT_HOSTS = {
+# Base allowlist for Google OAuth callback hosts (Google redirects here, not the SPA)
+_STATIC_REDIRECT_HOSTS = {
     "localhost",
     "127.0.0.1",
-    "api.selko.app",  # Production API
+    "api.selko.app",
+    "selko-production.onrender.com",
+    "selko.onrender.com",
 }
 
 ALLOWED_REDIRECT_PATHS = {
@@ -48,6 +50,22 @@ router = APIRouter(prefix="/integrations", tags=["integrations"])
 _callback_request_log: dict[str, list[float]] = defaultdict(list)
 _CALLBACK_RATE_LIMIT = 10  # max requests
 _CALLBACK_RATE_WINDOW = 60  # per 60 seconds
+
+
+def _allowed_redirect_hosts() -> set[str]:
+    """Build redirect-host allowlist from static hosts + API_PUBLIC_URL."""
+    hosts = set(_STATIC_REDIRECT_HOSTS)
+    api_url = os.getenv("API_PUBLIC_URL", "").rstrip("/")
+    if api_url:
+        hostname = urlparse(api_url).hostname
+        if hostname:
+            hosts.add(hostname)
+    return hosts
+
+
+def _default_oauth_callback_uri(config: Config) -> str:
+    """Default Google OAuth callback URI for this environment."""
+    return f"{config.api_public_url}/integrations/google/callback"
 
 
 def _check_callback_rate_limit(request: Request) -> None:
@@ -98,7 +116,7 @@ def _validate_redirect_uri(redirect_uri: str) -> bool:
             return False
         # Check host is in allowlist
         host = parsed.hostname
-        if host not in ALLOWED_REDIRECT_HOSTS:
+        if host not in _allowed_redirect_hosts():
             return False
         # Check path is a valid callback path
         if parsed.path not in ALLOWED_REDIRECT_PATHS:
@@ -108,30 +126,26 @@ def _validate_redirect_uri(redirect_uri: str) -> bool:
         return False
 
 
-@router.get("/gmail/auth")
-async def gmail_oauth_initiate(
-    user: CurrentUser = Depends(get_current_user),
-    config: Config = Depends(get_config),
-    redirect_uri: Annotated[str, Query(description="OAuth callback URI")] = "http://localhost:8000/integrations/google/callback",
-) -> RedirectResponse:
-    """Initiate Gmail OAuth flow.
+def _wants_json(accept: str | None) -> bool:
+    """Return True when the client prefers a JSON auth_url response."""
+    if not accept:
+        return False
+    return "application/json" in accept.lower()
 
-    Redirects user to Google consent screen to authorize Gmail access.
-    After authorization, Google will redirect to the callback endpoint.
 
-    Args:
-        redirect_uri: URI to redirect to after authorization (defaults to local callback).
+def _oauth_initiate_response(
+    *,
+    config: Config,
+    provider: str,
+    user_id: str,
+    redirect_uri: str | None,
+    accept: str | None,
+) -> RedirectResponse | JSONResponse:
+    """Shared OAuth initiation for Gmail / Calendar / Photos."""
+    resolved_uri = redirect_uri or _default_oauth_callback_uri(config)
 
-    Returns:
-        Redirect to Google OAuth consent screen.
-
-    Raises:
-        400: Invalid redirect URI.
-        500: OAuth initiation failed.
-    """
-    # Validate redirect_uri to prevent open redirect attacks
-    if not _validate_redirect_uri(redirect_uri):
-        logger.warning(f"Invalid redirect_uri attempted: {redirect_uri}")
+    if not _validate_redirect_uri(resolved_uri):
+        logger.warning(f"Invalid redirect_uri attempted: {resolved_uri}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_detail(ErrorCode.INVALID_REQUEST, "Invalid redirect URI"),
@@ -140,20 +154,62 @@ async def gmail_oauth_initiate(
     try:
         result = initiate_oauth_flow(
             config=config,
-            provider="gmail",
-            user_id=user.id,
-            redirect_uri=redirect_uri,
+            provider=provider,
+            user_id=user_id,
+            redirect_uri=resolved_uri,
         )
-
-        # Redirect user to Google OAuth consent screen
-        return RedirectResponse(url=result["auth_url"], status_code=status.HTTP_302_FOUND)
-
     except IntegrationError as e:
         logger.error(f"Failed to initiate OAuth: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail(ErrorCode.OAUTH_FAILED, "Failed to initiate OAuth flow"),
-        )
+        ) from e
+
+    auth_url = result["auth_url"]
+    if _wants_json(accept):
+        return JSONResponse({"auth_url": auth_url})
+    return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
+
+
+def _frontend_oauth_redirect(
+    config: Config,
+    *,
+    status_value: str,
+    provider: str | None = None,
+    message: str | None = None,
+) -> RedirectResponse:
+    """Redirect the browser back to the SPA after OAuth completes."""
+    params: dict[str, str] = {"oauth": status_value}
+    if provider:
+        params["provider"] = provider
+    if message:
+        params["message"] = message
+    url = f"{config.frontend_url}/app?{urlencode(params)}"
+    return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+
+@router.get("/gmail/auth")
+async def gmail_oauth_initiate(
+    user: CurrentUser = Depends(get_current_user),
+    config: Config = Depends(get_config),
+    redirect_uri: Annotated[
+        str | None, Query(description="OAuth callback URI")
+    ] = None,
+    accept: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Initiate Gmail OAuth flow.
+
+    With ``Accept: application/json``, returns ``{"auth_url": "..."}`` so
+    authenticated SPA clients can fetch with a Bearer token then navigate.
+    Otherwise redirects (302) to Google — useful for curl -L with auth header.
+    """
+    return _oauth_initiate_response(
+        config=config,
+        provider="gmail",
+        user_id=user.id,
+        redirect_uri=redirect_uri,
+        accept=accept,
+    )
 
 
 @router.get("/google/callback")
@@ -162,30 +218,17 @@ async def google_oauth_callback(
     code: Annotated[str, Query(description="Authorization code from Google")],
     state: Annotated[str, Query(description="State parameter for CSRF validation")],
     config: Config = Depends(get_config),
-) -> dict:
+) -> RedirectResponse:
     """Handle Google OAuth callback (public endpoint).
 
     Unified callback for all Google integrations (Gmail, Calendar, etc.).
     The provider is determined from the state parameter.
 
     Exchanges authorization code for access and refresh tokens.
-    Stores tokens in the integrations table.
+    Stores tokens in the integrations table, then redirects to the frontend.
 
     This endpoint is PUBLIC - no JWT authentication required.
     Security is provided by state parameter validation + IP rate limiting.
-
-    Args:
-        request: FastAPI request (for rate limiting).
-        code: Authorization code from Google.
-        state: State parameter for CSRF validation.
-
-    Returns:
-        Success message with integration status.
-
-    Raises:
-        400: Invalid or expired state.
-        429: Rate limit exceeded.
-        500: Token exchange or save failed.
     """
     # Rate limit this endpoint to prevent abuse
     _check_callback_rate_limit(request)
@@ -235,31 +278,23 @@ async def google_oauth_callback(
 
         logger.info(f"{provider} OAuth completed successfully for user {user_id}")
 
-        # Build provider-specific success message
-        provider_display = {
-            "gmail": "Gmail",
-            "google_calendar": "Google Calendar",
-            "google_photos": "Google Photos",
-        }.get(provider, provider)
-
-        return {
-            "status": "success",
-            "provider": provider,
-            "provider_email": provider_email,
-            "message": f"{provider_display} integration connected successfully",
-        }
+        return _frontend_oauth_redirect(
+            config, status_value="success", provider=provider
+        )
 
     except OAuthStateError as e:
         logger.warning(f"OAuth state validation failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_detail(ErrorCode.INVALID_REQUEST, "OAuth state invalid or expired. Please try again."),
+        return _frontend_oauth_redirect(
+            config,
+            status_value="error",
+            message="OAuth state invalid or expired. Please try again.",
         )
     except IntegrationError as e:
         logger.error(f"OAuth callback failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=error_detail(ErrorCode.OAUTH_FAILED, "OAuth callback failed"),
+        return _frontend_oauth_redirect(
+            config,
+            status_value="error",
+            message="OAuth callback failed",
         )
 
 
@@ -267,45 +302,20 @@ async def google_oauth_callback(
 async def calendar_oauth_initiate(
     user: CurrentUser = Depends(get_current_user),
     config: Config = Depends(get_config),
-    redirect_uri: Annotated[str, Query(description="OAuth callback URI")] = "http://localhost:8000/integrations/google/callback",
-) -> RedirectResponse:
+    redirect_uri: Annotated[
+        str | None, Query(description="OAuth callback URI")
+    ] = None,
+    accept: Annotated[str | None, Header()] = None,
+) -> Any:
     """Initiate Google Calendar OAuth flow.
 
-    Redirects user to Google consent screen to authorize Calendar access.
-    After authorization, Google will redirect to the unified callback endpoint.
-
-    Args:
-        redirect_uri: URI to redirect to after authorization (defaults to local callback).
-
-    Returns:
-        Redirect to Google OAuth consent screen.
-
-    Raises:
-        400: Invalid redirect URI.
-        500: OAuth initiation failed.
+    With ``Accept: application/json``, returns ``{"auth_url": "..."}``.
+    Otherwise redirects (302) to Google.
     """
-    # Validate redirect_uri to prevent open redirect attacks
-    if not _validate_redirect_uri(redirect_uri):
-        logger.warning(f"Invalid redirect_uri attempted: {redirect_uri}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_detail(ErrorCode.INVALID_REQUEST, "Invalid redirect URI"),
-        )
-
-    try:
-        result = initiate_oauth_flow(
-            config=config,
-            provider="google_calendar",
-            user_id=user.id,
-            redirect_uri=redirect_uri,
-        )
-
-        # Redirect user to Google OAuth consent screen
-        return RedirectResponse(url=result["auth_url"], status_code=status.HTTP_302_FOUND)
-
-    except IntegrationError as e:
-        logger.error(f"Failed to initiate OAuth: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=error_detail(ErrorCode.OAUTH_FAILED, "Failed to initiate OAuth flow"),
-        )
+    return _oauth_initiate_response(
+        config=config,
+        provider="google_calendar",
+        user_id=user.id,
+        redirect_uri=redirect_uri,
+        accept=accept,
+    )

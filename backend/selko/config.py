@@ -87,6 +87,10 @@ class Config:
         "http://127.0.0.1:5173",
     ])
 
+    # Public URLs for OAuth redirects (no trailing slash)
+    api_public_url: str = "http://localhost:8000"
+    frontend_url: str = "http://localhost:3000"
+
 
 def get_environment(override: Optional[str] = None) -> str:
     """Get the current environment name.
@@ -206,6 +210,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         event_sync_timeout=int(os.getenv("EVENT_SYNC_TIMEOUT", "60")),
         enable_background_processing=os.getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true",
         allowed_origins=_parse_allowed_origins(),
+        api_public_url=os.getenv("API_PUBLIC_URL", "http://localhost:8000").rstrip("/"),
+        frontend_url=os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/"),
         max_pdf_pages_for_llm=int(os.getenv("MAX_PDF_PAGES_FOR_LLM", "10")),
         max_image_size_for_llm=int(os.getenv("MAX_IMAGE_SIZE_FOR_LLM", str(10 * 1024 * 1024))),
         max_other_size_for_llm=int(os.getenv("MAX_OTHER_SIZE_FOR_LLM", str(20 * 1024 * 1024))),
