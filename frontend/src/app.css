@@ -1,8 +1,67 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@plugin "daisyui" {
+	themes: selko-light --default, selko-dark --prefersdark;
+}
+
+@plugin "daisyui/theme" {
+	name: 'selko-light';
+	default: true;
+	color-scheme: light;
+	--color-primary: #5b63d3;
+	--color-primary-content: #ffffff;
+	--color-secondary: #6e7489;
+	--color-secondary-content: #ffffff;
+	--color-accent: #5b63d3;
+	--color-accent-content: #ffffff;
+	--color-neutral: #6e7489;
+	--color-neutral-content: #ffffff;
+	--color-base-100: #ffffff;
+	--color-base-200: #f1f2f6;
+	--color-base-300: #e2e4eb;
+	--color-base-content: #1a1c23;
+	--color-info: #5b63d3;
+	--color-info-content: #ffffff;
+	--color-success: #2d8659;
+	--color-success-content: #ffffff;
+	--color-warning: #b8860b;
+	--color-warning-content: #ffffff;
+	--color-error: #c4384b;
+	--color-error-content: #ffffff;
+	--radius-selector: 2px;
+	--radius-field: 2px;
+	--radius-box: 2px;
+}
+
+@plugin "daisyui/theme" {
+	name: 'selko-dark';
+	prefersdark: true;
+	color-scheme: dark;
+	--color-primary: #8b91d6;
+	--color-primary-content: #ffffff;
+	--color-secondary: #9ba0b3;
+	--color-secondary-content: #1a1c23;
+	--color-accent: #8b91d6;
+	--color-accent-content: #ffffff;
+	--color-neutral: #9ba0b3;
+	--color-neutral-content: #1a1c23;
+	--color-base-100: #1a1c23;
+	--color-base-200: #24272f;
+	--color-base-300: #353845;
+	--color-base-content: #e2e4eb;
+	--color-info: #8b91d6;
+	--color-info-content: #ffffff;
+	--color-success: #3da873;
+	--color-success-content: #ffffff;
+	--color-warning: #d4a017;
+	--color-warning-content: #1a1c23;
+	--color-error: #e05566;
+	--color-error-content: #ffffff;
+	--radius-selector: 2px;
+	--radius-field: 2px;
+	--radius-box: 2px;
+}
 
 html {
 	font-family: 'Inter', system-ui, -apple-system, sans-serif;
