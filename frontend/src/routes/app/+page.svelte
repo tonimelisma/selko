@@ -7,11 +7,18 @@
 		updateEventStatus
 	} from '$lib/services/events.js';
 	import { createSenderRule } from '$lib/services/sender-rules.js';
-	import { syncEventToCalendar } from '$lib/api/backend.js';
-	import { initiateGmailAuth, initiateCalendarAuth, initiatePhotosAuth } from '$lib/api/backend.js';
+	import {
+		applyEventChange,
+		rejectEventChange,
+		syncEventToCalendar,
+		initiateGmailAuth,
+		initiateCalendarAuth,
+		initiatePhotosAuth
+	} from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import SenderHeader from '$lib/components/SenderHeader.svelte';
 	import EventCard from '$lib/components/EventCard.svelte';
+	import ChangeCard from '$lib/components/ChangeCard.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -34,10 +41,13 @@
 		gmailIntegration?.status === 'active' && gcalIntegration?.status === 'active'
 	);
 
-	// Group events by sender (flat — no email sub-grouping)
-	let groupedEvents = $derived(() => {
+	let newEvents = $derived(events.filter((e) => e.status === 'pending_review'));
+	let changeEvents = $derived(events.filter((e) => e.status === 'pending_change'));
+
+	/** @param {any[]} list */
+	function groupBySender(list) {
 		const senderMap = new Map();
-		for (const event of events) {
+		for (const event of list) {
 			const sources = event.event_sources || [];
 			const firstSource = sources[0];
 
@@ -64,7 +74,10 @@
 			senderMap.get(senderKey).events.push(event);
 		}
 		return senderMap;
-	});
+	}
+
+	let groupedNew = $derived(groupBySender(newEvents));
+	let groupedChanges = $derived(groupBySender(changeEvents));
 
 	onMount(async () => {
 		const params = new URLSearchParams(window.location.search);
@@ -92,7 +105,6 @@
 		}
 		isLoadingIntegrations = false;
 
-		// If fully connected, load events
 		if (
 			integrationsList.find((i) => i.provider === 'gmail')?.status === 'active' &&
 			integrationsList.find((i) => i.provider === 'google_calendar')?.status === 'active'
@@ -114,7 +126,7 @@
 	}
 
 	/** @param {any} event */
-	async function handleApprove(event) {
+	async function handleApproveNew(event) {
 		if (processingEvents.has(event.id)) return;
 		processingEvents = new Set([...processingEvents, event.id]);
 		try {
@@ -128,7 +140,6 @@
 				await syncEventToCalendar(event.id);
 			} catch (syncError) {
 				console.error('Calendar sync failed after approval:', syncError);
-				// Don't block the approval — event is already approved
 			}
 		} finally {
 			const next = new Set(processingEvents);
@@ -138,7 +149,7 @@
 	}
 
 	/** @param {any} event */
-	async function handleReject(event) {
+	async function handleRejectNew(event) {
 		if (processingEvents.has(event.id)) return;
 		processingEvents = new Set([...processingEvents, event.id]);
 		try {
@@ -155,17 +166,58 @@
 		}
 	}
 
-	/** @param {any[]} eventsList */
-	async function handleApproveAll(eventsList) {
-		for (const event of eventsList) {
-			await handleApprove(event);
+	/** @param {any} event */
+	async function handleApproveChange(event) {
+		if (processingEvents.has(event.id)) return;
+		processingEvents = new Set([...processingEvents, event.id]);
+		try {
+			const { error: applyError } = await applyEventChange(event.id);
+			if (applyError) {
+				error = applyError.message;
+				return;
+			}
+			events = events.filter((e) => e.id !== event.id);
+			try {
+				await syncEventToCalendar(event.id);
+			} catch (syncError) {
+				console.error('Calendar sync failed after change apply:', syncError);
+			}
+		} finally {
+			const next = new Set(processingEvents);
+			next.delete(event.id);
+			processingEvents = next;
+		}
+	}
+
+	/** @param {any} event */
+	async function handleRejectChange(event) {
+		if (processingEvents.has(event.id)) return;
+		processingEvents = new Set([...processingEvents, event.id]);
+		try {
+			const { error: rejectError } = await rejectEventChange(event.id);
+			if (rejectError) {
+				error = rejectError.message;
+				return;
+			}
+			events = events.filter((e) => e.id !== event.id);
+		} finally {
+			const next = new Set(processingEvents);
+			next.delete(event.id);
+			processingEvents = next;
 		}
 	}
 
 	/** @param {any[]} eventsList */
-	async function handleRejectAll(eventsList) {
+	async function handleApproveAllNew(eventsList) {
 		for (const event of eventsList) {
-			await handleReject(event);
+			await handleApproveNew(event);
+		}
+	}
+
+	/** @param {any[]} eventsList */
+	async function handleRejectAllNew(eventsList) {
+		for (const event of eventsList) {
+			await handleRejectNew(event);
 		}
 	}
 
@@ -183,10 +235,16 @@
 			return;
 		}
 		for (const event of eventsList) {
-			await handleReject(event);
+			if (event.status === 'pending_change') {
+				await handleRejectChange(event);
+			} else {
+				await handleRejectNew(event);
+			}
 		}
 		notification = $_('home.senderIgnored', { values: { senderEmail } });
-		setTimeout(() => { notification = ''; }, 3000);
+		setTimeout(() => {
+			notification = '';
+		}, 3000);
 	}
 
 	/**
@@ -203,10 +261,16 @@
 			return;
 		}
 		for (const event of eventsList) {
-			await handleApprove(event);
+			if (event.status === 'pending_change') {
+				await handleApproveChange(event);
+			} else {
+				await handleApproveNew(event);
+			}
 		}
 		notification = $_('home.senderAutoApproved', { values: { senderEmail } });
-		setTimeout(() => { notification = ''; }, 3000);
+		setTimeout(() => {
+			notification = '';
+		}, 3000);
 	}
 
 	function handleConnect() {
@@ -259,28 +323,73 @@
 {:else if events.length === 0}
 	<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
 {:else}
-	<div class="space-y-6">
-		{#each [...groupedEvents().entries()] as [senderKey, senderGroup]}
-			<div>
-				<SenderHeader
-					sender={senderGroup.senderName}
-					senderEmail={senderKey}
-					eventCount={senderGroup.events.length}
-					isPhotoSource={senderKey === 'google_photos'}
-					onapproveAll={() => handleApproveAll(senderGroup.events)}
-					onrejectAll={() => handleRejectAll(senderGroup.events)}
-					onignoreSender={() => handleIgnoreSender(senderKey, senderGroup.events)}
-					onautoApproveSender={() => handleAutoApproveSender(senderKey, senderGroup.events)}
-				/>
-				{#each senderGroup.events as event (event.id)}
-					<EventCard
-						{event}
-						isProcessing={processingEvents.has(event.id)}
-						onapprove={handleApprove}
-						onreject={handleReject}
-					/>
-				{/each}
-			</div>
-		{/each}
+	<div class="space-y-10">
+		{#if newEvents.length > 0}
+			<section>
+				<h2 class="text-lg font-semibold mb-1">{$_('home.newSection')}</h2>
+				<p class="text-sm text-base-content/60 mb-4">{$_('home.newSectionDescription')}</p>
+				<div class="space-y-6">
+					{#each [...groupedNew.entries()] as [senderKey, senderGroup]}
+						<div>
+							<SenderHeader
+								sender={senderGroup.senderName}
+								senderEmail={senderKey}
+								eventCount={senderGroup.events.length}
+								isPhotoSource={senderKey === 'google_photos'}
+								onapproveAll={() => handleApproveAllNew(senderGroup.events)}
+								onrejectAll={() => handleRejectAllNew(senderGroup.events)}
+								onignoreSender={() => handleIgnoreSender(senderKey, senderGroup.events)}
+								onautoApproveSender={() =>
+									handleAutoApproveSender(senderKey, senderGroup.events)}
+							/>
+							{#each senderGroup.events as event (event.id)}
+								<EventCard
+									{event}
+									isProcessing={processingEvents.has(event.id)}
+									onapprove={handleApproveNew}
+									onreject={handleRejectNew}
+								/>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if changeEvents.length > 0}
+			<section>
+				<h2 class="text-lg font-semibold mb-1">{$_('home.changesSection')}</h2>
+				<p class="text-sm text-base-content/60 mb-4">{$_('home.changesSectionDescription')}</p>
+				<div class="space-y-6">
+					{#each [...groupedChanges.entries()] as [senderKey, senderGroup]}
+						<div>
+							<SenderHeader
+								sender={senderGroup.senderName}
+								senderEmail={senderKey}
+								eventCount={senderGroup.events.length}
+								isPhotoSource={senderKey === 'google_photos'}
+								onapproveAll={() => {
+									for (const event of senderGroup.events) handleApproveChange(event);
+								}}
+								onrejectAll={() => {
+									for (const event of senderGroup.events) handleRejectChange(event);
+								}}
+								onignoreSender={() => handleIgnoreSender(senderKey, senderGroup.events)}
+								onautoApproveSender={() =>
+									handleAutoApproveSender(senderKey, senderGroup.events)}
+							/>
+							{#each senderGroup.events as event (event.id)}
+								<ChangeCard
+									{event}
+									isProcessing={processingEvents.has(event.id)}
+									onapprove={handleApproveChange}
+									onreject={handleRejectChange}
+								/>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
 	</div>
 {/if}

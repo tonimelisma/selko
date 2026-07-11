@@ -116,7 +116,7 @@ Calendar events with status-based worker claiming for sync.
 | `location` | text | Event location |
 | `description` | text | Event description |
 | `source_attribution` | text | Natural English attribution |
-| `status` | text | `pending_review`, `approved`, `syncing`, `synced`, `sync_failed`, `cancelled`, `rejected` |
+| `status` | text | `pending_review`, `pending_change`, `approved`, `syncing`, `synced`, `sync_failed`, `cancelled`, `rejected` |
 | `google_calendar_event_id` | text | Google Calendar event ID after sync |
 | `synced_at` | timestamptz | When synced to calendar |
 | `locked_until` | timestamptz | Worker lock expiration |
@@ -171,6 +171,8 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 | `source_origin` | text | `email`, `google_calendar`, or `google_photos` |
 | `google_calendar_source_event_id` | text, nullable | Google Calendar event ID (required for calendar sources) |
 | `extracted_data` | jsonb | Raw extraction data from source |
+| `event_snapshot_before` | jsonb, nullable | Event fields before an update (undo) |
+| `change_set` | jsonb, nullable | Structured field diffs for Changes lane / History |
 | `created_at` | timestamptz | Auto-set |
 
 **Constraints:**

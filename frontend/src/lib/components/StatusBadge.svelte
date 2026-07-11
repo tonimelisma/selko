@@ -5,6 +5,7 @@
 
 	let eventStatusMap = $derived(/** @type {Record<string, {class: string, label: string}>} */ ({
 		pending_review: { class: 'badge-warning', label: $_('status.pending') },
+		pending_change: { class: 'badge-warning', label: $_('status.pendingChange') },
 		approved: { class: 'badge-info', label: $_('status.approved') },
 		syncing: { class: 'badge-info', label: $_('status.syncing') },
 		synced: { class: 'badge-success', label: $_('status.synced') },

@@ -32,6 +32,8 @@ data class ReviewQueueUiState(
     val isCalendarConnected: Boolean = false,
     val events: List<CalendarEvent> = emptyList(),
     val senderGroups: List<SenderGroup> = emptyList(),
+    val newSenderGroups: List<SenderGroup> = emptyList(),
+    val changeSenderGroups: List<SenderGroup> = emptyList(),
     val errorMessage: String? = null,
     val isRefreshing: Boolean = false,
     val processingEventIds: Set<String> = emptySet()
@@ -108,12 +110,16 @@ class ReviewQueueViewModel(
         when (val result = eventRepository.fetchPendingEventsWithSources()) {
             is EventResult.Success -> {
                 val events = result.data
+                val newEvents = events.filter { !it.isPendingChange }
+                val changeEvents = events.filter { it.isPendingChange }
                 val groups = groupBySender(events)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         events = events,
-                        senderGroups = groups
+                        senderGroups = groups,
+                        newSenderGroups = groupBySender(newEvents),
+                        changeSenderGroups = groupBySender(changeEvents)
                     )
                 }
             }
@@ -145,26 +151,38 @@ class ReviewQueueViewModel(
     fun approveEvent(eventId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
-            when (eventRepository.approveEvent(eventId)) {
-                is EventResult.Success -> {
-                    _uiState.update { state ->
-                        val updatedEvents = state.events.filter { it.id != eventId }
-                        state.copy(
-                            events = updatedEvents,
-                            senderGroups = groupBySender(updatedEvents),
-                            processingEventIds = state.processingEventIds - eventId
-                        )
-                    }
-                }
-                is EventResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            processingEventIds = it.processingEventIds - eventId,
-                            errorMessage = getString(R.string.review_error_approve)
-                        )
-                    }
+            val event = _uiState.value.events.find { it.id == eventId }
+            val ok = if (event?.isPendingChange == true) {
+                backendApiClient.applyEventChange(eventId).isSuccess
+            } else {
+                eventRepository.approveEvent(eventId) is EventResult.Success
+            }
+            if (ok) {
+                backendApiClient.syncEventToCalendar(eventId)
+                removeEventFromState(eventId)
+            } else {
+                _uiState.update {
+                    it.copy(
+                        processingEventIds = it.processingEventIds - eventId,
+                        errorMessage = getString(R.string.review_error_approve)
+                    )
                 }
             }
+        }
+    }
+
+    private fun removeEventFromState(eventId: String) {
+        _uiState.update { state ->
+            val updatedEvents = state.events.filter { it.id != eventId }
+            val newEvents = updatedEvents.filter { !it.isPendingChange }
+            val changeEvents = updatedEvents.filter { it.isPendingChange }
+            state.copy(
+                events = updatedEvents,
+                senderGroups = groupBySender(updatedEvents),
+                newSenderGroups = groupBySender(newEvents),
+                changeSenderGroups = groupBySender(changeEvents),
+                processingEventIds = state.processingEventIds - eventId
+            )
         }
     }
 
@@ -179,18 +197,28 @@ class ReviewQueueViewModel(
 
             var allSucceeded = true
             for (event in eventsToApprove) {
-                when (eventRepository.approveEvent(event.id)) {
-                    is EventResult.Success -> { /* continue */ }
-                    is EventResult.Error -> { allSucceeded = false }
+                val ok = if (event.isPendingChange) {
+                    backendApiClient.applyEventChange(event.id).isSuccess
+                } else {
+                    eventRepository.approveEvent(event.id) is EventResult.Success
+                }
+                if (ok) {
+                    backendApiClient.syncEventToCalendar(event.id)
+                } else {
+                    allSucceeded = false
                 }
             }
 
             if (allSucceeded) {
                 _uiState.update { state ->
                     val updatedEvents = state.events.filter { it.id !in eventIds }
+                    val newEvents = updatedEvents.filter { !it.isPendingChange }
+                    val changeEvents = updatedEvents.filter { it.isPendingChange }
                     state.copy(
                         events = updatedEvents,
                         senderGroups = groupBySender(updatedEvents),
+                        newSenderGroups = groupBySender(newEvents),
+                        changeSenderGroups = groupBySender(changeEvents),
                         processingEventIds = state.processingEventIds - eventIds
                     )
                 }
@@ -213,18 +241,26 @@ class ReviewQueueViewModel(
 
             var allSucceeded = true
             for (event in eventsToReject) {
-                when (eventRepository.rejectEvent(event.id)) {
-                    is EventResult.Success -> { /* continue */ }
-                    is EventResult.Error -> { allSucceeded = false }
+                val ok = if (event.isPendingChange) {
+                    backendApiClient.rejectEventChange(event.id).isSuccess
+                } else {
+                    eventRepository.rejectEvent(event.id) is EventResult.Success
+                }
+                if (!ok) {
+                    allSucceeded = false
                 }
             }
 
             if (allSucceeded) {
                 _uiState.update { state ->
                     val updatedEvents = state.events.filter { it.id !in eventIds }
+                    val newEvents = updatedEvents.filter { !it.isPendingChange }
+                    val changeEvents = updatedEvents.filter { it.isPendingChange }
                     state.copy(
                         events = updatedEvents,
                         senderGroups = groupBySender(updatedEvents),
+                        newSenderGroups = groupBySender(newEvents),
+                        changeSenderGroups = groupBySender(changeEvents),
                         processingEventIds = state.processingEventIds - eventIds
                     )
                 }
@@ -238,24 +274,20 @@ class ReviewQueueViewModel(
     fun rejectEvent(eventId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
-            when (eventRepository.rejectEvent(eventId)) {
-                is EventResult.Success -> {
-                    _uiState.update { state ->
-                        val updatedEvents = state.events.filter { it.id != eventId }
-                        state.copy(
-                            events = updatedEvents,
-                            senderGroups = groupBySender(updatedEvents),
-                            processingEventIds = state.processingEventIds - eventId
-                        )
-                    }
-                }
-                is EventResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            processingEventIds = it.processingEventIds - eventId,
-                            errorMessage = getString(R.string.review_error_reject)
-                        )
-                    }
+            val event = _uiState.value.events.find { it.id == eventId }
+            val ok = if (event?.isPendingChange == true) {
+                backendApiClient.rejectEventChange(eventId).isSuccess
+            } else {
+                eventRepository.rejectEvent(eventId) is EventResult.Success
+            }
+            if (ok) {
+                removeEventFromState(eventId)
+            } else {
+                _uiState.update {
+                    it.copy(
+                        processingEventIds = it.processingEventIds - eventId,
+                        errorMessage = getString(R.string.review_error_reject)
+                    )
                 }
             }
         }

@@ -17,6 +17,7 @@ from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
+from selko.services.event_diff import EventChangeSet, FieldChange, gate_change_set
 from selko.services.llm_gateway import LLMGateway, LLMGatewayError
 from selko.services.llm_logging import LLMOperationType
 from selko.services.llm_provider import ContentPart, ImageContent
@@ -432,6 +433,147 @@ Return the matching Event ID (or null if no match) and brief reasoning.
         raise
     except Exception as e:
         raise LLMGatewayError(f"Event comparison failed: {e}") from e
+
+
+def propose_event_update(
+    gateway: LLMGateway,
+    baseline: dict[str, Any],
+    extracted_event: dict[str, Any],
+    *,
+    email_subject: Optional[str] = None,
+    email_snippet: Optional[str] = None,
+) -> EventChangeSet:
+    """Ask LLM what fields to update on a matched existing event.
+
+    Returns a structured changeset (kind + field changes). Callers should run
+    ``gate_change_set`` to drop no-op / equivalent diffs.
+
+    Calendar response notifications (Accepted/Declined/Tentative) that merely
+    restate the existing event should return kind=noop with empty changes.
+    """
+    prompt = f"""You are proposing updates to an existing calendar event based on a new email.
+
+**Existing event (baseline — already on the user's calendar or in Selko):**
+- Title: {baseline.get('title')}
+- Start: {baseline.get('start_datetime')}
+- End: {baseline.get('end_datetime')}
+- All day: {baseline.get('all_day', False)}
+- Location: {baseline.get('location', 'Not specified')}
+- Description: {baseline.get('description', '')}
+- Status: {baseline.get('status', 'unknown')}
+
+**Newly extracted event fields from the email:**
+- Title: {extracted_event.get('title')}
+- Start: {extracted_event.get('start_datetime')}
+- End: {extracted_event.get('end_datetime')}
+- All day: {extracted_event.get('all_day', False)}
+- Location: {extracted_event.get('location', 'Not specified')}
+- Description: {extracted_event.get('description', '')}
+"""
+    if email_subject:
+        prompt += f"\n**Email subject:** {email_subject}\n"
+    if email_snippet:
+        prompt += f"\n**Email context (snippet):** {email_snippet[:1500]}\n"
+
+    prompt += """
+**Task:** Decide whether this email requires updating the existing event.
+
+Rules:
+1. If the email is only an RSVP / calendar response (Accepted:, Declined:, Tentative:,
+   METHOD:REPLY) that restates the same meeting with no real time/place/title change →
+   kind=noop, changes=[].
+2. If the email cancels the event → kind=cancellation, include a status change to "cancelled".
+3. If time, place, title, or all_day actually change → kind=material_update with those fields.
+4. If only description / extra details are new → kind=enrichment.
+5. List ONLY fields that should change. Each change must include before (from baseline),
+   after (new value), and a short reason.
+6. Do NOT invent changes. Equivalent datetimes in different timezone formats are NOT changes.
+7. Do NOT clear fields the email omitted.
+
+Return JSON with kind, changes[], and reasoning.
+"""
+
+    propose_schema = {
+        "type": "object",
+        "properties": {
+            "kind": {
+                "type": "string",
+                "enum": ["noop", "enrichment", "material_update", "cancellation"],
+            },
+            "changes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "field": {
+                            "type": "string",
+                            "enum": [
+                                "start_datetime",
+                                "end_datetime",
+                                "all_day",
+                                "location",
+                                "title",
+                                "description",
+                                "status",
+                                "importance",
+                            ],
+                        },
+                        "before": {},
+                        "after": {},
+                        "reason": {"type": "string"},
+                    },
+                    "required": ["field", "after"],
+                },
+            },
+            "reasoning": {"type": "string"},
+        },
+        "required": ["kind", "changes", "reasoning"],
+    }
+
+    try:
+        response = gateway.call(
+            operation=LLMOperationType.PROPOSE_EVENT_UPDATE,
+            contents=[prompt],
+            json_schema=propose_schema,
+        )
+        parsed = json.loads(response.text, strict=False)
+        changes: list[FieldChange] = []
+        for item in parsed.get("changes") or []:
+            field = item.get("field")
+            if not field:
+                continue
+            try:
+                changes.append(
+                    FieldChange(
+                        field=field,
+                        before=item.get("before", baseline.get(field)),
+                        after=item.get("after"),
+                        reason=item.get("reason"),
+                    )
+                )
+            except Exception:
+                logger.warning("Skipping invalid proposed change: %s", item)
+                continue
+
+        raw = EventChangeSet(
+            kind=parsed.get("kind") or "noop",
+            changes=changes,
+            reasoning=parsed.get("reasoning"),
+        )
+        gated = gate_change_set(raw, baseline)
+        logger.info(
+            "Propose update: llm_kind=%s gated_kind=%s changes=%d (%s)",
+            raw.kind,
+            gated.kind,
+            len(gated.changes),
+            gated.reasoning or "",
+        )
+        return gated
+
+    except LLMGatewayError:
+        raise
+    except Exception as e:
+        raise LLMGatewayError(f"Event update proposal failed: {e}") from e
 
 
 def merge_event_data(

@@ -89,6 +89,16 @@ struct HealthResponse: Codable {
     let status: String
 }
 
+struct EventChangeResponse: Codable {
+    let eventId: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case eventId = "event_id"
+        case status
+    }
+}
+
 private struct APIErrorResponse: Codable {
     let detail: String?
     let message: String?
@@ -102,6 +112,9 @@ protocol BackendAPIProtocol: Sendable {
     func batchProcessEmails(maxEmails: Int) async throws -> EmailProcessResponse
     func listCalendars() async throws -> [CalendarInfo]
     func syncEventToCalendar(eventId: UUID) async throws -> CalendarSyncResponse
+    func applyEventChange(eventId: UUID) async throws -> EventChangeResponse
+    func rejectEventChange(eventId: UUID) async throws -> EventChangeResponse
+    func undoHistoryEvent(eventId: UUID) async throws -> EventChangeResponse
     func getGmailAuthUrl(redirectUri: String?) -> String
     func getCalendarAuthUrl(redirectUri: String?) -> String
     func getPhotosAuthUrl(redirectUri: String?) -> String
@@ -204,6 +217,21 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
     func syncEventToCalendar(eventId: UUID) async throws -> CalendarSyncResponse {
         let data = try await makeRequest(path: "/events/\(eventId)/sync", method: "POST")
         return try decoder.decode(CalendarSyncResponse.self, from: data)
+    }
+
+    func applyEventChange(eventId: UUID) async throws -> EventChangeResponse {
+        let data = try await makeRequest(path: "/events/\(eventId)/apply-change", method: "POST")
+        return try decoder.decode(EventChangeResponse.self, from: data)
+    }
+
+    func rejectEventChange(eventId: UUID) async throws -> EventChangeResponse {
+        let data = try await makeRequest(path: "/events/\(eventId)/reject-change", method: "POST")
+        return try decoder.decode(EventChangeResponse.self, from: data)
+    }
+
+    func undoHistoryEvent(eventId: UUID) async throws -> EventChangeResponse {
+        let data = try await makeRequest(path: "/events/\(eventId)/undo", method: "POST")
+        return try decoder.decode(EventChangeResponse.self, from: data)
     }
 
     // MARK: - OAuth

@@ -25,6 +25,7 @@ class LLMOperationType(str, Enum):
     EXTRACT_EVENTS = "extract_events"
     COMPARE_EVENTS = "compare_events"
     MERGE_EVENTS = "merge_events"
+    PROPOSE_EVENT_UPDATE = "propose_event_update"
 
 
 class LLMErrorType(str, Enum):

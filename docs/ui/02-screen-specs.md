@@ -19,9 +19,14 @@ Each spec follows a consistent template:
 
 ### Purpose
 
-Home screen of the app. Lists all events pending user review, grouped by sender. When integrations are not connected or authorized, this screen is entirely replaced by an integration setup view.
+Home screen of the app. Two review lanes grouped by sender:
 
-**UPDATE events** (time changes, cancellations from follow-up emails) are applied automatically and never appear here. They appear in Activity History where the user can undo them.
+1. **New** — events to add to the calendar (`pending_review`)
+2. **Changes** — proposed updates to events already on the calendar (`pending_change`), showing field-level before → after diffs from `event_sources.change_set`
+
+When integrations are not connected or authorized, this screen is entirely replaced by an integration setup view.
+
+After a calendar match, the LLM proposes a structured changeset; code gates equivalent/no-op diffs. Pure rediscoveries (RSVP replies with no real change) never appear here.
 
 ### Primary Actions
 - Accept event (individual or all in sender group)
@@ -368,7 +373,7 @@ await updateEventStatus(eventId, 'rejected')
 
 ### Purpose
 
-Timeline of all actions — both user actions (approve, reject, edit) and automatic actions (auto-applied updates from follow-up emails). Every entry has an Undo button. Provides transparency and error recovery (FR-C.2).
+Timeline of all actions — user approvals of **New** events and applied **Changes** (with field-level diffs from `change_set`). Every entry has an Undo button that returns the item to the matching Review lane (`pending_review` or `pending_change`).
 
 History is retained forever. Undo is available forever.
 

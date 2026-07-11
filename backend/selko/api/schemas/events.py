@@ -106,3 +106,25 @@ class EventUnsyncResponse(BaseModel):
 
     event_id: str
     status: Literal["pending_review"]
+
+
+class EventChangeResponse(BaseModel):
+    """Result of applying or rejecting a pending change."""
+
+    event_id: str
+    status: str
+
+
+class EventUndoResponse(BaseModel):
+    """Result of undoing a History action back to a review lane."""
+
+    event_id: str
+    status: Literal["pending_review", "pending_change"]
+
+
+class EventActionResponse(BaseModel):
+    """Result of approve/reject/undo for review or history."""
+
+    event_id: str
+    status: str
+    deleted: bool = False

@@ -367,3 +367,25 @@ class TestCompleteOAuthFlow:
                 code="auth-code-123",
                 state="bad-state",
             )
+
+
+class TestGetCredentialsPassesUserId:
+    """integrations.get_credentials must pass user_id for service-role workers."""
+
+    @patch("selko.services.integrations.get_oauth_credentials")
+    @patch("selko.config.load_config")
+    def test_passes_user_id(self, mock_load_config, mock_get_oauth):
+        from selko.services.integrations import get_credentials
+
+        mock_load_config.return_value = MagicMock()
+        mock_creds = MagicMock()
+        mock_creds.expired = False
+        mock_get_oauth.return_value = mock_creds
+
+        client = MagicMock()
+        result = get_credentials(client, "user-abc", "google_calendar")
+
+        assert result is mock_creds
+        mock_get_oauth.assert_called_once_with(
+            client, mock_load_config.return_value, "google_calendar", user_id="user-abc"
+        )

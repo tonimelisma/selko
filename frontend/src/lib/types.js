@@ -58,7 +58,7 @@
  */
 
 /**
- * @typedef {'pending_review' | 'approved' | 'syncing' | 'synced' | 'sync_failed' | 'cancelled' | 'rejected'} EventStatus
+ * @typedef {'pending_review' | 'pending_change' | 'approved' | 'syncing' | 'synced' | 'sync_failed' | 'cancelled' | 'rejected'} EventStatus
  */
 
 /**

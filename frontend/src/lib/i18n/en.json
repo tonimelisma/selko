@@ -45,7 +45,11 @@
 		"allCaughtUp": "All caught up!",
 		"allCaughtUpDescription": "No events pending review. Check back later for new events from your emails.",
 		"senderIgnored": "Sender ignored: {senderEmail}",
-		"senderAutoApproved": "Sender auto-approved: {senderEmail}"
+		"senderAutoApproved": "Sender auto-approved: {senderEmail}",
+		"newSection": "New",
+		"changesSection": "Changes",
+		"newSectionDescription": "Events to add to your calendar",
+		"changesSectionDescription": "Updates to events already on your calendar"
 	},
 	"events": {
 		"editEvent": "Edit Event",
@@ -63,8 +67,19 @@
 		"reject": "Reject",
 		"acceptEvent": "Accept event",
 		"rejectEvent": "Reject event",
+		"acceptChange": "Accept change",
+		"rejectChange": "Reject change",
 		"fyi": "FYI",
-		"eventCount": "{count, plural, one {# event} other {# events}}"
+		"eventCount": "{count, plural, one {# event} other {# events}}",
+		"changedFromTo": "{field}: {before} → {after}",
+		"fieldTitle": "Title",
+		"fieldStart": "Start",
+		"fieldEnd": "End",
+		"fieldLocation": "Location",
+		"fieldDescription": "Description",
+		"fieldStatus": "Status",
+		"fieldAllDay": "All day",
+		"none": "(none)"
 	},
 	"eventSource": {
 		"sourceEmail": "Source Email",
@@ -96,7 +111,10 @@
 		"statusCancelled": "Cancelled",
 		"from": "From: {name}",
 		"fromPhoto": "From: Google Photos",
-		"unknownSender": "Unknown"
+		"unknownSender": "Unknown",
+		"actionNewEvent": "New event",
+		"actionChangeApplied": "Change applied",
+		"changeSummary": "Changed: {summary}"
 	},
 	"settings": {
 		"title": "Settings",
@@ -149,6 +167,7 @@
 	},
 	"status": {
 		"pending": "Pending",
+		"pendingChange": "Pending change",
 		"approved": "Approved",
 		"syncing": "Syncing",
 		"synced": "Synced",
