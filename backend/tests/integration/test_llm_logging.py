@@ -123,12 +123,12 @@ class TestLLMLoggingService:
     def test_log_call_with_email_id(self, logging_service, test_user_id, admin_client):
         """Test logging a call with linked email ID."""
         import uuid
-        # Create a test email first (use unique gmail_id to avoid conflicts)
+        # Create a test email first (use unique provider_message_id to avoid conflicts)
         email_result = (
             admin_client.table("emails")
             .insert({
                 "user_id": test_user_id,
-                "gmail_id": f"test-email-for-logging-{uuid.uuid4()}",
+                "provider_message_id": f"test-email-for-logging-{uuid.uuid4()}",
                 "subject": "Test Email",
                 "snippet": "Test snippet",
                 "from_email": "test@example.com",

@@ -10,7 +10,7 @@
     "outdoor"
   ],
   "input": {
-    "gmail_id": "eval-inv-010",
+    "provider_message_id": "eval-inv-010",
     "thread_id": "thread-inv-010",
     "subject": "Join Us! Rachel & David's Engagement Celebration",
     "from_email": "susan.miller@gmail.com",

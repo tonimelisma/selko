@@ -10,7 +10,7 @@
     "in-person"
   ],
   "input": {
-    "gmail_id": "eval-conf-003",
+    "provider_message_id": "eval-conf-003",
     "thread_id": "thread-conf-003",
     "subject": "Workshop Confirmation: Leadership Essentials",
     "from_email": "training@leadershipinstitute.org",

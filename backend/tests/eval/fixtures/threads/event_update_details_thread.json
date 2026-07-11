@@ -25,7 +25,7 @@
   ],
   "thread_emails": [
     {
-      "gmail_id": "thread-update-001",
+      "provider_message_id": "thread-update-001",
       "thread_id": "thread-update",
       "subject": "Save the Date: Mike's Retirement Party - April 10th",
       "from_email": "hr@company.com",
@@ -34,7 +34,7 @@
       "body_text": "Save the Date!\n\nPlease join us to celebrate Mike Thompson's retirement after 30 years.\n\nDate: Friday, April 10, 2026\nTime: 5:00 PM - 8:00 PM\nLocation: TBD (details to follow)\n\nMore information coming soon!\n\nHR Department"
     },
     {
-      "gmail_id": "thread-update-002",
+      "provider_message_id": "thread-update-002",
       "thread_id": "thread-update",
       "subject": "Update: Mike's Retirement Party - Location Confirmed",
       "from_email": "hr@company.com",
@@ -43,7 +43,7 @@
       "body_text": "Update on Mike's Retirement Party!\n\nWe've secured a venue:\n\nDate: Friday, April 10, 2026\nTime: 5:00 PM - 8:00 PM\nLocation: The Grand Ballroom\n          Hilton Garden Inn\n          1000 Hotel Circle, San Jose, CA 95128\n\nDinner will be served. Please RSVP by April 3rd.\n\nHR Department"
     },
     {
-      "gmail_id": "thread-update-003",
+      "provider_message_id": "thread-update-003",
       "thread_id": "thread-update",
       "subject": "Final Reminder: Mike's Retirement Party Tomorrow!",
       "from_email": "hr@company.com",

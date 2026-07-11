@@ -5,7 +5,7 @@
   "difficulty": "medium",
   "tags": ["shipping", "delivery", "tracking", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-003",
+    "provider_message_id": "eval-noev-003",
     "thread_id": "thread-noev-003",
     "subject": "Your package has shipped! Tracking #1Z999AA10123456784",
     "from_email": "shipping@store.com",

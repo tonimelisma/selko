@@ -28,7 +28,7 @@ def parse_ics_attachments(
     Args:
         attachments: List of attachment dicts with keys: data (bytes),
             mime_type (str), filename (str).
-        email_metadata: Dict with keys: gmail_id, subject, from_name,
+        email_metadata: Dict with keys: provider_message_id, subject, from_name,
             from_email, date_sent.
 
     Returns:
@@ -53,7 +53,7 @@ def parse_ics_attachments(
         return None
 
     return CalendarEventExtraction(
-        email_message_id=email_metadata.get("gmail_id", ""),
+        email_message_id=email_metadata.get("provider_message_id", ""),
         email_date=email_metadata.get("date_sent") or None,
         sender_name=email_metadata.get("from_name"),
         sender_email=email_metadata.get("from_email", ""),

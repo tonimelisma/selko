@@ -10,7 +10,7 @@
     "animal"
   ],
   "input": {
-    "gmail_id": "eval-appt-007",
+    "provider_message_id": "eval-appt-007",
     "thread_id": "thread-appt-007",
     "subject": "Appointment Reminder for Max",
     "from_email": "appointments@happypaws.com",

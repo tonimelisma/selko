@@ -10,7 +10,7 @@
     "calendar"
   ],
   "input": {
-    "gmail_id": "eval-attach-002",
+    "provider_message_id": "eval-attach-002",
     "thread_id": "thread-attach-002",
     "subject": "Meeting Invitation: Product Launch Planning",
     "from_email": "john.smith@example.com",

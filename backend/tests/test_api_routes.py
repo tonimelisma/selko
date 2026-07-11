@@ -173,6 +173,12 @@ class TestAuthValidation:
         resp = client.get("/integrations/gmail/auth")
         assert resp.status_code == 401
 
+    def test_integrations_outlook_auth_requires_auth(self, unauthed_app):
+        """Outlook OAuth initiation requires auth just like Gmail."""
+        client = TestClient(unauthed_app, raise_server_exceptions=False)
+        resp = client.get("/integrations/outlook/auth")
+        assert resp.status_code == 401
+
 
 # ===========================================================================
 # CORS headers
@@ -303,6 +309,22 @@ class TestOAuthCallback:
                 params={"code": "auth-code", "state": "expired-state"},
                 follow_redirects=False,
             )
+        assert resp.status_code == 302
+        assert "oauth=error" in resp.headers["location"]
+
+    def test_microsoft_callback_invalid_state_redirects(self, test_client):
+        from selko.services.integrations import OAuthStateError
+
+        with patch(
+            "selko.api.routes.integrations.complete_oauth_flow",
+            side_effect=OAuthStateError("Invalid or expired state parameter"),
+        ):
+            resp = test_client.get(
+                "/integrations/microsoft/callback",
+                params={"code": "auth-code", "state": "bad-state"},
+                follow_redirects=False,
+            )
+
         assert resp.status_code == 302
         assert "oauth=error" in resp.headers["location"]
 

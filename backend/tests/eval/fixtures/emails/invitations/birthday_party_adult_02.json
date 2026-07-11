@@ -10,7 +10,7 @@
     "evening"
   ],
   "input": {
-    "gmail_id": "eval-inv-002",
+    "provider_message_id": "eval-inv-002",
     "thread_id": "thread-inv-002",
     "subject": "\ud83c\udf89 Surprise! You're Invited to Mark's 40th Birthday Bash!",
     "from_email": "jennifer.wilson@outlook.com",

@@ -98,6 +98,7 @@ fun SettingsScreen(
                     uiState = uiState,
                     onDisconnect = { viewModel.disconnectIntegration(it) },
                     gmailAuthUrl = viewModel.getGmailAuthUrl(),
+                    outlookAuthUrl = viewModel.getOutlookAuthUrl(),
                     calendarAuthUrl = viewModel.getCalendarAuthUrl(),
                     photosAuthUrl = viewModel.getPhotosAuthUrl()
                 )
@@ -177,11 +178,13 @@ private fun ConnectedAccountsSection(
     uiState: SettingsUiState,
     onDisconnect: (IntegrationProvider) -> Unit,
     gmailAuthUrl: String,
+    outlookAuthUrl: String,
     calendarAuthUrl: String,
     photosAuthUrl: String
 ) {
     val context = LocalContext.current
     val gmailIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GMAIL }
+    val outlookIntegration = uiState.integrations.find { it.provider == IntegrationProvider.OUTLOOK }
     val calendarIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GOOGLE_CALENDAR }
     val photosIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GOOGLE_PHOTOS }
 
@@ -206,6 +209,26 @@ private fun ConnectedAccountsSection(
                     }
                 },
                 onDisconnect = { onDisconnect(IntegrationProvider.GMAIL) }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Outlook
+            IntegrationRow(
+                icon = Icons.Filled.Email,
+                label = stringResource(R.string.settings_outlook),
+                email = outlookIntegration?.providerEmail,
+                isConnected = outlookIntegration?.status == IntegrationStatus.ACTIVE,
+                isDisconnecting = uiState.isDisconnecting,
+                onConnect = {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(outlookAuthUrl))
+                        context.startActivity(intent)
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        // No browser available
+                    }
+                },
+                onDisconnect = { onDisconnect(IntegrationProvider.OUTLOOK) }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

@@ -10,7 +10,7 @@
     "game"
   ],
   "input": {
-    "gmail_id": "eval-school-003",
+    "provider_message_id": "eval-school-003",
     "thread_id": "thread-school-003",
     "subject": "Soccer Game This Saturday - Wildcats vs. Eagles",
     "from_email": "coach.davis@aysosoccer.org",

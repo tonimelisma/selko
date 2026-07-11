@@ -10,7 +10,7 @@
     "txt"
   ],
   "input": {
-    "gmail_id": "eval-attach-001",
+    "provider_message_id": "eval-attach-001",
     "thread_id": "thread-attach-001",
     "subject": "Quarterly Planning Meeting - March 10th (Agenda Attached)",
     "from_email": "planning@company.com",

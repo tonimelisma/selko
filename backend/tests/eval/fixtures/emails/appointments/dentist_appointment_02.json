@@ -9,7 +9,7 @@
     "reminder"
   ],
   "input": {
-    "gmail_id": "eval-appt-002",
+    "provider_message_id": "eval-appt-002",
     "thread_id": "thread-appt-002",
     "subject": "Reminder: Dental Appointment Tomorrow",
     "from_email": "reminder@brightsmile.com",

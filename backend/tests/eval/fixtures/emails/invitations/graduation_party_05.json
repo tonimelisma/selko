@@ -9,7 +9,7 @@
     "afternoon"
   ],
   "input": {
-    "gmail_id": "eval-inv-005",
+    "provider_message_id": "eval-inv-005",
     "thread_id": "thread-inv-005",
     "subject": "Graduation Party for Tyler!",
     "from_email": "dave.thompson@gmail.com",

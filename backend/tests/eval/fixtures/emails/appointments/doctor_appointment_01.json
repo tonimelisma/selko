@@ -9,7 +9,7 @@
     "confirmation"
   ],
   "input": {
-    "gmail_id": "eval-appt-001",
+    "provider_message_id": "eval-appt-001",
     "thread_id": "thread-appt-001",
     "subject": "Appointment Confirmation - Dr. Jennifer Smith",
     "from_email": "appointments@valleymedical.com",

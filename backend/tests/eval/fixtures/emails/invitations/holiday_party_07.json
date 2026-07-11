@@ -10,7 +10,7 @@
     "formal"
   ],
   "input": {
-    "gmail_id": "eval-inv-007",
+    "provider_message_id": "eval-inv-007",
     "thread_id": "thread-inv-007",
     "subject": "You're Invited: TechCorp Annual Holiday Celebration",
     "from_email": "hr@techcorp.com",

@@ -10,7 +10,7 @@
     "all-day"
   ],
   "input": {
-    "gmail_id": "eval-inv-003",
+    "provider_message_id": "eval-inv-003",
     "thread_id": "thread-inv-003",
     "subject": "Save the Date: Sarah & Michael's Wedding",
     "from_email": "sarah.johnson@gmail.com",

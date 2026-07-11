@@ -5,7 +5,7 @@
   "difficulty": "easy",
   "tags": ["receipt", "order", "shopping", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-002",
+    "provider_message_id": "eval-noev-002",
     "thread_id": "thread-noev-002",
     "subject": "Your Amazon.com order #112-3456789-0123456",
     "from_email": "auto-confirm@amazon.com",

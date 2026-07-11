@@ -6,7 +6,7 @@ import { parseSupabaseError } from '$lib/errors.js';
  * @property {string} id - UUID
  * @property {string} user_id - UUID
  * @property {string} email_id - UUID
- * @property {string} [gmail_attachment_id]
+ * @property {string} [provider_attachment_id]
  * @property {string} filename
  * @property {string} mime_type
  * @property {number} size_bytes

@@ -166,19 +166,20 @@ def upload_to_storage(
 def save_attachment_metadata(
     client: Client,
     email_id: str,
-    gmail_attachment_id: str,
+    provider_attachment_id: str,
     filename: str,
     mime_type: str,
     size_bytes: int,
     storage_path: str,
     content_hash: str,
+    user_id: str | None = None,
 ) -> dict:
     """Save attachment metadata to database.
 
     Args:
         client: Authenticated Supabase client.
         email_id: UUID of parent email record.
-        gmail_attachment_id: Gmail's attachment ID.
+        provider_attachment_id: Provider's attachment ID.
         filename: Original filename.
         mime_type: MIME type.
         size_bytes: File size in bytes.
@@ -191,12 +192,13 @@ def save_attachment_metadata(
     Raises:
         AttachmentError: If database insert fails.
     """
-    user_id = get_current_user_id(client)
+    if user_id is None:
+        user_id = get_current_user_id(client)
 
     record = {
         "user_id": user_id,
         "email_id": email_id,
-        "gmail_attachment_id": gmail_attachment_id,
+        "provider_attachment_id": provider_attachment_id,
         "filename": filename,
         "mime_type": mime_type,
         "size_bytes": size_bytes,
@@ -213,6 +215,58 @@ def save_attachment_metadata(
 
     except PostgrestAPIError as e:
         raise AttachmentError(f"Failed to save attachment metadata: {e.message}") from e
+
+
+def store_attachment_bytes(
+    client: Client,
+    email_id: str,
+    *,
+    data: bytes,
+    filename: str,
+    mime_type: str,
+    config: Config,
+    provider_attachment_id: str = "",
+    user_id: str | None = None,
+) -> Optional[dict]:
+    """Store already-downloaded attachment bytes with hash deduplication."""
+    if not data:
+        return None
+
+    if len(data) > config.max_attachment_size:
+        logger.warning(
+            "Skipping oversized attachment: %s (%.1f MB > %.0f MB limit)",
+            filename,
+            len(data) / 1024 / 1024,
+            config.max_attachment_size / 1024 / 1024,
+        )
+        return None
+
+    content_hash = calculate_content_hash(data)
+    existing = check_duplicate_attachment(client, content_hash)
+    if existing:
+        logger.info("Skipping duplicate attachment: %s (hash match)", filename)
+        return existing
+
+    owner_id = user_id or get_current_user_id(client)
+    storage_path = upload_to_storage(
+        client=client,
+        user_id=owner_id,
+        filename=filename,
+        data=data,
+        mime_type=mime_type,
+        bucket=config.storage_bucket_attachments,
+    )
+    return save_attachment_metadata(
+        client=client,
+        email_id=email_id,
+        provider_attachment_id=provider_attachment_id,
+        filename=filename,
+        mime_type=mime_type,
+        size_bytes=len(data),
+        storage_path=storage_path,
+        content_hash=content_hash,
+        user_id=owner_id,
+    )
 
 
 def process_attachment(
@@ -268,37 +322,14 @@ def process_attachment(
     # Download from Gmail
     data = download_gmail_attachment(gmail_service, message_id, attachment_id)
 
-    # Calculate hash
-    content_hash = calculate_content_hash(data)
-    logger.debug(f"Content hash: {content_hash[:16]}...")
-
-    # Check for duplicates
-    existing = check_duplicate_attachment(client, content_hash)
-    if existing:
-        logger.info(f"Skipping duplicate attachment: {filename} (hash match)")
-        return existing
-
-    # Upload to storage
-    user_id = get_current_user_id(client)
-    storage_path = upload_to_storage(
-        client=client,
-        user_id=user_id,
-        filename=filename,
-        data=data,
-        mime_type=mime_type,
-        bucket=config.storage_bucket_attachments,
-    )
-
-    # Save metadata
-    record = save_attachment_metadata(
+    record = store_attachment_bytes(
         client=client,
         email_id=email_id,
-        gmail_attachment_id=attachment_id,
+        data=data,
         filename=filename,
         mime_type=mime_type,
-        size_bytes=len(data),  # Use actual size from downloaded data
-        storage_path=storage_path,
-        content_hash=content_hash,
+        config=config,
+        provider_attachment_id=attachment_id,
     )
 
     logger.info(f"Saved new attachment: {filename}")
@@ -340,35 +371,14 @@ def store_image_content(
         )
         return None
 
-    content_hash = calculate_content_hash(image_data)
-
-    # Check for duplicates
-    existing = check_duplicate_attachment(client, content_hash)
-    if existing:
-        logger.debug(f"Skipping duplicate image: {filename} (hash match)")
-        return existing
-
-    # Upload to storage
-    user_id = get_current_user_id(client)
-    storage_path = upload_to_storage(
-        client=client,
-        user_id=user_id,
-        filename=filename,
-        data=image_data,
-        mime_type=mime_type,
-        bucket=config.storage_bucket_attachments,
-    )
-
-    # Save metadata (no gmail_attachment_id for non-Gmail images)
-    record = save_attachment_metadata(
+    record = store_attachment_bytes(
         client=client,
         email_id=email_id,
-        gmail_attachment_id="",
+        data=image_data,
         filename=filename,
         mime_type=mime_type,
-        size_bytes=len(image_data),
-        storage_path=storage_path,
-        content_hash=content_hash,
+        config=config,
+        provider_attachment_id="",
     )
 
     logger.info(f"Stored image: {filename} ({len(image_data)} bytes)")

@@ -5,7 +5,7 @@
   "difficulty": "easy",
   "tags": ["survey", "feedback", "customer-service", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-009",
+    "provider_message_id": "eval-noev-009",
     "thread_id": "thread-noev-009",
     "subject": "How was your recent experience? Quick survey inside",
     "from_email": "feedback@company.com",

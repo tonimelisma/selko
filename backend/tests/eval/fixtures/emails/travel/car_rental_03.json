@@ -10,7 +10,7 @@
     "dropoff"
   ],
   "input": {
-    "gmail_id": "eval-travel-003",
+    "provider_message_id": "eval-travel-003",
     "thread_id": "thread-travel-003",
     "subject": "Your Hertz Reservation is Confirmed",
     "from_email": "reservations@hertz.com",

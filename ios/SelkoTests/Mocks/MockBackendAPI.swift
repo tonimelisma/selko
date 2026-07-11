@@ -61,6 +61,10 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
         return "https://example.com/auth"
     }
 
+    func getOutlookAuthUrl(redirectUri: String?) -> String {
+        return "https://example.com/outlook-auth"
+    }
+
     func getCalendarAuthUrl(redirectUri: String?) -> String {
         return "https://example.com/calendar-auth"
     }

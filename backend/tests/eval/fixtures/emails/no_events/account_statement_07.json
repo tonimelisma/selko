@@ -5,7 +5,7 @@
   "difficulty": "medium",
   "tags": ["bank", "statement", "financial", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-007",
+    "provider_message_id": "eval-noev-007",
     "thread_id": "thread-noev-007",
     "subject": "Your January 2026 Statement is Ready",
     "from_email": "statements@firstbank.com",

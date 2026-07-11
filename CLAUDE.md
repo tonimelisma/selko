@@ -206,6 +206,9 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 
 **Supabase Instances:** Local (`localhost:54321`), Staging (`lxmysergoeaegxlyfzwk`), Production (`khahcozfbnpykspvatrg`)
 
+Microsoft Outlook OAuth uses `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET`
+from a Microsoft Entra app registration.
+
 ---
 
 ## Reference Index

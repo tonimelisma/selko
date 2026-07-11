@@ -10,7 +10,7 @@
     "calendar-invite"
   ],
   "input": {
-    "gmail_id": "eval-mtg-001",
+    "provider_message_id": "eval-mtg-001",
     "thread_id": "thread-mtg-001",
     "subject": "1:1 with Alex - Weekly Sync",
     "from_email": "alex.rivera@company.com",

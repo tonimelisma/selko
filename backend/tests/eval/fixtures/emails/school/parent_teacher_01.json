@@ -10,7 +10,7 @@
     "education"
   ],
   "input": {
-    "gmail_id": "eval-school-001",
+    "provider_message_id": "eval-school-001",
     "thread_id": "thread-school-001",
     "subject": "Parent-Teacher Conference Scheduled - Emma Johnson",
     "from_email": "mrsthompson@lincolnelementary.edu",

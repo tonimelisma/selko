@@ -19,7 +19,7 @@
   ],
   "thread_emails": [
     {
-      "gmail_id": "thread-cancel-001",
+      "provider_message_id": "thread-cancel-001",
       "thread_id": "thread-cancel",
       "subject": "You're Invited: Company Picnic - March 14th",
       "from_email": "events@company.com",
@@ -28,7 +28,7 @@
       "body_text": "Dear Employees,\n\nYou're invited to our annual company picnic!\n\nDate: Saturday, March 14, 2026\nTime: 11:00 AM - 4:00 PM\nLocation: Sunny Park, Pavilion A\n          123 Park Drive, Sunnyvale\n\nBring your families! Food and games provided.\n\nRSVP by March 7th.\n\nCompany Events Team"
     },
     {
-      "gmail_id": "thread-cancel-002",
+      "provider_message_id": "thread-cancel-002",
       "thread_id": "thread-cancel",
       "subject": "CANCELLED: Company Picnic - March 14th",
       "from_email": "events@company.com",

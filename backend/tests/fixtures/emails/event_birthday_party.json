@@ -2,7 +2,7 @@
   "name": "birthday_party_invitation",
   "description": "Email with birthday party details in body",
   "input": {
-    "gmail_id": "fixture-001",
+    "provider_message_id": "fixture-001",
     "subject": "You're invited to Jake's 7th Birthday!",
     "from_email": "sarah@example.com",
     "from_name": "Sarah Johnson",

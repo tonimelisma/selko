@@ -144,7 +144,7 @@ class TestExtractCalendarEvents:
 
         # Extract email metadata
         email_metadata = {
-            "gmail_id": input_data["gmail_id"],
+            "provider_message_id": input_data["provider_message_id"],
             "subject": input_data["subject"],
             "from_name": input_data.get("from_name"),
             "from_email": input_data["from_email"],
@@ -186,7 +186,7 @@ class TestExtractCalendarEvents:
         gateway = LLMGateway(mock_provider)
 
         email_metadata = {
-            "gmail_id": "test-123",
+            "provider_message_id": "test-123",
             "subject": "Test",
             "from_email": "test@example.com",
             "date_sent": "2026-01-20T10:00:00Z",
@@ -214,7 +214,7 @@ class TestExtractCalendarEvents:
         gateway = LLMGateway(mock_provider)
 
         email_metadata = {
-            "gmail_id": "test-123",
+            "provider_message_id": "test-123",
             "subject": "Test",
             "from_email": "test@example.com",
             "date_sent": "2026-01-20T10:00:00Z",
@@ -241,7 +241,7 @@ class TestExtractCalendarEvents:
         gateway = LLMGateway(mock_provider)
 
         email_metadata = {
-            "gmail_id": "test-123",
+            "provider_message_id": "test-123",
             "subject": "Test",
             "from_email": "test@example.com",
             "date_sent": "2026-01-20T10:00:00Z",
@@ -275,7 +275,7 @@ class TestExtractCalendarEvents:
             gateway=gateway,
             email_text="Test email",
             email_metadata={
-                "gmail_id": "test-123",
+                "provider_message_id": "test-123",
                 "subject": "Test",
                 "from_email": "test@example.com",
                 "date_sent": None,
@@ -301,7 +301,7 @@ class TestExtractCalendarEvents:
                 gateway=gateway,
                 email_text="Test email",
                 email_metadata={
-                    "gmail_id": "test-123",
+                    "provider_message_id": "test-123",
                     "subject": "Test",
                     "from_email": "test@example.com",
                     "date_sent": "2026-01-20T10:00:00Z",
@@ -324,7 +324,7 @@ class TestExtractCalendarEvents:
         gateway = LLMGateway(mock_provider)
 
         email_metadata = {
-            "gmail_id": "test-123",
+            "provider_message_id": "test-123",
             "subject": "Test with attachment",
             "from_email": "test@example.com",
             "date_sent": "2026-01-20T10:00:00Z",
@@ -369,7 +369,7 @@ class TestExtractCalendarEvents:
         gateway = LLMGateway(mock_provider)
 
         email_metadata = {
-            "gmail_id": "test-123",
+            "provider_message_id": "test-123",
             "subject": "Test with large attachment",
             "from_email": "test@example.com",
             "date_sent": "2026-01-20T10:00:00Z",

@@ -297,6 +297,14 @@ class BackendApiClient(
     }
 
     /**
+     * Get the Microsoft Graph / Outlook OAuth authorization URL.
+     */
+    fun getOutlookAuthUrl(redirectUri: String? = null): String {
+        val params = redirectUri?.let { "?redirect_uri=$it" } ?: ""
+        return "$baseUrl/integrations/outlook/auth$params"
+    }
+
+    /**
      * Get the Google Calendar OAuth authorization URL.
      * User should be redirected to this URL in a web browser.
      */

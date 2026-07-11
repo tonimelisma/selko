@@ -38,6 +38,8 @@ class Config:
     supabase_jwt_secret: Optional[str] = None
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
+    microsoft_client_id: Optional[str] = None
+    microsoft_client_secret: Optional[str] = None
 
     # LLM provider configuration
     llm_provider: str = "anthropic"  # gemini|moonshot|zai|qwen|deepseek|minimax|openai|anthropic
@@ -190,6 +192,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
         google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
         google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        microsoft_client_id=os.getenv("MICROSOFT_CLIENT_ID"),
+        microsoft_client_secret=os.getenv("MICROSOFT_CLIENT_SECRET"),
         llm_provider=os.getenv("LLM_PROVIDER", "anthropic"),
         llm_model=os.getenv("LLM_MODEL") or None,
         gemini_api_key=os.getenv("GEMINI_API_KEY"),

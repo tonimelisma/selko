@@ -10,7 +10,7 @@
     "mandatory"
   ],
   "input": {
-    "gmail_id": "eval-conf-004",
+    "provider_message_id": "eval-conf-004",
     "thread_id": "thread-conf-004",
     "subject": "[Required] Annual Compliance Training - Your Session",
     "from_email": "learning@company.com",

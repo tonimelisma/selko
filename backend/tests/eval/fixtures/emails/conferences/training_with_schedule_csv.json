@@ -11,7 +11,7 @@
     "multiple-events"
   ],
   "input": {
-    "gmail_id": "eval-attach-003",
+    "provider_message_id": "eval-attach-003",
     "thread_id": "thread-attach-003",
     "subject": "Python Training Registration Confirmed - Schedule Attached",
     "from_email": "training@learntech.com",

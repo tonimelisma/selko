@@ -10,7 +10,7 @@
     "team"
   ],
   "input": {
-    "gmail_id": "eval-recur-001",
+    "provider_message_id": "eval-recur-001",
     "thread_id": "thread-recur-001",
     "subject": "New Recurring Meeting: Weekly Team Sync",
     "from_email": "calendar@company.com",

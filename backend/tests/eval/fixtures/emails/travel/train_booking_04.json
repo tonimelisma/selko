@@ -9,7 +9,7 @@
     "booking"
   ],
   "input": {
-    "gmail_id": "eval-travel-004",
+    "provider_message_id": "eval-travel-004",
     "thread_id": "thread-travel-004",
     "subject": "Amtrak Reservation Confirmation",
     "from_email": "reservations@amtrak.com",

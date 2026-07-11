@@ -117,7 +117,7 @@ class TestEndToEndDevelopment:
             assert "E2E Test Email 2" in subjects
 
             # Verify trigger processed labels
-            unread_email = next(e for e in result.data if e["gmail_id"] == "msg_e2e_1")
+            unread_email = next(e for e in result.data if e["provider_message_id"] == "msg_e2e_1")
             assert unread_email["is_unread"] is True
 
             client.auth.sign_out()
@@ -151,11 +151,11 @@ class TestEndToEndDevelopment:
             client,
             [
                 {
-                    "gmail_id": f"cascade_{uuid4().hex[:8]}",
+                    "provider_message_id": f"cascade_{uuid4().hex[:8]}",
                     "thread_id": "thread_cascade",
                     "subject": "Cascade test",
                     "from_email": "test@example.com",
-                    "gmail_label_ids": ["INBOX"],
+                    "provider_labels": ["INBOX"],
                     "date_sent": "2026-01-22T10:00:00+00:00",
                 }
             ],
@@ -224,11 +224,11 @@ class TestEndToEndStaging:
             # Verify stored in DB
             result = (
                 authenticated_client.table("emails")
-                .select("gmail_id")
+                .select("provider_message_id")
                 .eq("user_id", user_id)
                 .execute()
             )
-            stored_ids = {e["gmail_id"] for e in result.data}
+            stored_ids = {e["provider_message_id"] for e in result.data}
             fetched_ids = {m["id"] for m in messages}
             assert fetched_ids.issubset(stored_ids)
 

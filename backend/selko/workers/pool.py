@@ -192,7 +192,10 @@ class WorkerPool:
 
         # 1. Try scheduled tasks first (email_fetch, photo_fetch)
         task_types = []
-        if circuit_breaker.is_available("gmail"):
+        if (
+            circuit_breaker.is_available("email:gmail")
+            or circuit_breaker.is_available("email:outlook")
+        ):
             task_types.append("email_fetch")
         if circuit_breaker.is_available("google_photos"):
             task_types.append("photo_fetch")
@@ -264,15 +267,12 @@ class WorkerPool:
         task_type = task["task_type"]
         payload = task["payload"]
 
-        # Map task types to their circuit breaker service
-        task_service_map = {
-            "email_fetch": "gmail",
-            "photo_fetch": "google_photos",
-        }
-
         logger.info(f"{worker_id}: Processing scheduled task {task_id}: {task_type}")
 
-        service_name = task_service_map.get(task_type, task_type)
+        if task_type == "email_fetch":
+            service_name = f"email:{payload.get('provider', 'gmail')}"
+        else:
+            service_name = "google_photos" if task_type == "photo_fetch" else task_type
 
         try:
             if task_type == "email_fetch":

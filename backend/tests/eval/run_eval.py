@@ -1288,7 +1288,7 @@ def run_thread_eval(
             )
             email_result = {
                 "email_index": i + 1,
-                "gmail_id": email_data.get("gmail_id", f"email-{i+1}"),
+                "provider_message_id": email_data.get("provider_message_id", f"email-{i+1}"),
                 "subject": email_data.get("subject", ""),
                 "events_found": extraction.events_found,
                 "events": [
@@ -1307,7 +1307,7 @@ def run_thread_eval(
         except Exception as e:
             email_results.append({
                 "email_index": i + 1,
-                "gmail_id": email_data.get("gmail_id", f"email-{i+1}"),
+                "provider_message_id": email_data.get("provider_message_id", f"email-{i+1}"),
                 "error": str(e),
             })
 

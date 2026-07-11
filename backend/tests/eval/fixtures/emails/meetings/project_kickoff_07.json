@@ -10,7 +10,7 @@
     "planning"
   ],
   "input": {
-    "gmail_id": "eval-mtg-007",
+    "provider_message_id": "eval-mtg-007",
     "thread_id": "thread-mtg-007",
     "subject": "Project Phoenix Kickoff - Please Join!",
     "from_email": "daniel.kim@company.com",

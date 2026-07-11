@@ -6,7 +6,13 @@
 	import { supabase } from '$lib/supabase.js';
 	import { fetchIntegrations, disconnectIntegration } from '$lib/services/integrations.js';
 	import { getCalendarSettings, updateCalendarSettings } from '$lib/services/calendar-settings.js';
-	import { listCalendars, initiateGmailAuth, initiateCalendarAuth, initiatePhotosAuth } from '$lib/api/backend.js';
+	import {
+		listCalendars,
+		initiateGmailAuth,
+		initiateOutlookAuth,
+		initiateCalendarAuth,
+		initiatePhotosAuth
+	} from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -100,6 +106,7 @@
 		/** @type {Record<string, string>} */
 		const providerNames = {
 			gmail: $_('integrations.gmail'),
+			outlook: $_('integrations.outlook'),
 			google_calendar: $_('integrations.googleCalendar'),
 			google_photos: $_('integrations.googlePhotos')
 		};
@@ -127,6 +134,8 @@
 	function handleAuthorize(provider) {
 		if (provider === 'gmail') {
 			initiateGmailAuth();
+		} else if (provider === 'outlook') {
+			initiateOutlookAuth();
 		} else if (provider === 'google_calendar') {
 			initiateCalendarAuth();
 		} else if (provider === 'google_photos') {

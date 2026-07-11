@@ -9,7 +9,8 @@ struct Email: Identifiable, Codable, Sendable, Equatable {
     let id: UUID
     let userId: UUID?
     let integrationId: UUID?
-    let gmailId: String?
+    let emailProvider: String?
+    let providerMessageId: String?
     let threadId: String?
     let subject: String?
     let fromEmail: String?
@@ -17,7 +18,7 @@ struct Email: Identifiable, Codable, Sendable, Equatable {
     let toEmails: [String]?
     let dateSent: Date?
     let snippet: String?
-    let gmailLabelIds: [String]?
+    let providerLabels: [String]?
     let isSpam: Bool?
     let isTrash: Bool?
     let isPromotions: Bool?
@@ -35,7 +36,8 @@ struct Email: Identifiable, Codable, Sendable, Equatable {
         case id
         case userId = "user_id"
         case integrationId = "integration_id"
-        case gmailId = "gmail_id"
+        case emailProvider = "email_provider"
+        case providerMessageId = "provider_message_id"
         case threadId = "thread_id"
         case subject
         case fromEmail = "from_email"
@@ -43,7 +45,7 @@ struct Email: Identifiable, Codable, Sendable, Equatable {
         case toEmails = "to_emails"
         case dateSent = "date_sent"
         case snippet
-        case gmailLabelIds = "gmail_label_ids"
+        case providerLabels = "provider_labels"
         case isSpam = "is_spam"
         case isTrash = "is_trash"
         case isPromotions = "is_promotions"
@@ -69,7 +71,8 @@ extension Email {
             id: UUID(),
             userId: UUID(),
             integrationId: nil,
-            gmailId: "mock-gmail-id",
+            emailProvider: "gmail",
+            providerMessageId: "mock-provider-message-id",
             threadId: "mock-thread-id",
             subject: "Test Email",
             fromEmail: "sender@example.com",
@@ -77,7 +80,7 @@ extension Email {
             toEmails: ["recipient@example.com"],
             dateSent: Date(),
             snippet: "This is a test email...",
-            gmailLabelIds: ["INBOX"],
+            providerLabels: ["INBOX"],
             isSpam: false,
             isTrash: false,
             isPromotions: false,

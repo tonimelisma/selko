@@ -115,6 +115,8 @@ def load_config_with_prefix(env_name: str, prefix: str) -> Config:
             test_user_password=os.getenv("TEST_USER_PASSWORD"),
             google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
             google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+            microsoft_client_id=os.getenv("MICROSOFT_CLIENT_ID"),
+            microsoft_client_secret=os.getenv("MICROSOFT_CLIENT_SECRET"),
         )
 
     # Local dev mode: use .env files
@@ -212,7 +214,7 @@ def seed_tokens(
         "token_expiry": source_integration.get("token_expiry"),
         "scopes": source_integration.get("scopes", []),
         "provider_email": source_integration.get("provider_email"),
-        "last_history_id": source_integration.get("last_history_id"),
+        "sync_cursor": source_integration.get("sync_cursor"),
         "updated_at": datetime.utcnow().isoformat(),
     }
 
@@ -278,7 +280,7 @@ Note:
     parser.add_argument(
         "--provider",
         required=True,
-        choices=["gmail", "google_calendar", "google_photos"],
+        choices=["gmail", "outlook", "google_calendar", "google_photos"],
         help="Integration provider to copy",
     )
 

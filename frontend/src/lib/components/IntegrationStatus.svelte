@@ -11,17 +11,21 @@
 	} = $props();
 
 	let gmailIntegration = $derived(integrations.find((i) => i.provider === 'gmail'));
+	let outlookIntegration = $derived(integrations.find((i) => i.provider === 'outlook'));
 	let gcalIntegration = $derived(integrations.find((i) => i.provider === 'google_calendar'));
 	let photosIntegration = $derived(integrations.find((i) => i.provider === 'google_photos'));
 
 	let gmailConnected = $derived(gmailIntegration?.status === 'active');
+	let outlookConnected = $derived(outlookIntegration?.status === 'active');
 	let gcalConnected = $derived(gcalIntegration?.status === 'active');
 	let photosConnected = $derived(photosIntegration?.status === 'active');
-	let fullyConnected = $derived(gmailConnected && gcalConnected);
-	let partiallyConnected = $derived(gmailConnected || gcalConnected || photosConnected);
+	let emailConnected = $derived(gmailConnected || outlookConnected);
+	let fullyConnected = $derived(emailConnected && gcalConnected);
+	let partiallyConnected = $derived(emailConnected || gcalConnected || photosConnected);
 
 	let services = $derived([
 		{ key: 'gmail', label: $_('integrations.gmail'), description: $_('integrations.gmailDescription') },
+		{ key: 'outlook', label: $_('integrations.outlook'), description: $_('integrations.outlookDescription') },
 		{
 			key: 'google_calendar',
 			label: $_('integrations.googleCalendar'),

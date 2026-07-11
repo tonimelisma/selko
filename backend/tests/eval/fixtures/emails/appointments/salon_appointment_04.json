@@ -9,7 +9,7 @@
     "personal-care"
   ],
   "input": {
-    "gmail_id": "eval-appt-004",
+    "provider_message_id": "eval-appt-004",
     "thread_id": "thread-appt-004",
     "subject": "Your Appointment at Style Studio",
     "from_email": "bookings@stylestudio.com",

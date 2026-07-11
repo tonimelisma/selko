@@ -116,6 +116,7 @@ protocol BackendAPIProtocol: Sendable {
     func rejectEventChange(eventId: UUID) async throws -> EventChangeResponse
     func undoHistoryEvent(eventId: UUID) async throws -> EventChangeResponse
     func getGmailAuthUrl(redirectUri: String?) -> String
+    func getOutlookAuthUrl(redirectUri: String?) -> String
     func getCalendarAuthUrl(redirectUri: String?) -> String
     func getPhotosAuthUrl(redirectUri: String?) -> String
     func checkHealth() async throws -> HealthResponse
@@ -238,6 +239,17 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
 
     func getGmailAuthUrl(redirectUri: String? = nil) -> String {
         var urlString = "\(baseURL)/integrations/gmail/auth"
+        if let redirectUri = redirectUri {
+            guard let encodedRedirect = redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                return urlString
+            }
+            urlString += "?redirect_uri=\(encodedRedirect)"
+        }
+        return urlString
+    }
+
+    func getOutlookAuthUrl(redirectUri: String? = nil) -> String {
+        var urlString = "\(baseURL)/integrations/outlook/auth"
         if let redirectUri = redirectUri {
             guard let encodedRedirect = redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
                 return urlString

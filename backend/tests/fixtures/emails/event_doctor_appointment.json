@@ -2,7 +2,7 @@
   "name": "doctor_appointment_confirmation",
   "description": "Medical appointment confirmation email",
   "input": {
-    "gmail_id": "fixture-002",
+    "provider_message_id": "fixture-002",
     "subject": "Appointment Confirmation - Dr. Smith",
     "from_email": "appointments@healthclinic.com",
     "from_name": "Springfield Health Clinic",

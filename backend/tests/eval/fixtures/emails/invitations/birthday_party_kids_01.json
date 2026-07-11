@@ -10,7 +10,7 @@
     "venue"
   ],
   "input": {
-    "gmail_id": "eval-inv-001",
+    "provider_message_id": "eval-inv-001",
     "thread_id": "thread-inv-001",
     "subject": "You're Invited! Emma's 6th Birthday Party!",
     "from_email": "lisa.chen@gmail.com",

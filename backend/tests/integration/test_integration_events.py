@@ -23,13 +23,13 @@ class TestEventProcessingMocked:
         # Create a test email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-mocked-event-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-mocked-event-{uuid4().hex[:8]}",
             "subject": "Birthday Party Invitation",
             "from_email": "friend@example.com",
             "from_name": "Best Friend",
             "date_sent": "2026-02-15T12:00:00Z",
             "snippet": "You're invited to Sarah's birthday party on Feb 20th at 2pm!",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
         
         result = authenticated_client.table("emails").insert(email_data).execute()
@@ -63,13 +63,13 @@ class TestEventProcessingMocked:
         """Test processing email that has no events (mocked LLM)."""
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-no-event-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-no-event-{uuid4().hex[:8]}",
             "subject": "Newsletter",
             "from_email": "newsletter@example.com",
             "from_name": "Newsletter",
             "date_sent": "2026-02-15T12:00:00Z",
             "snippet": "Read our latest articles...",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
         
         result = authenticated_client.table("emails").insert(email_data).execute()
@@ -108,13 +108,13 @@ class TestEventProcessingMocked:
         # Create email from ignored sender
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-ignored-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-ignored-{uuid4().hex[:8]}",
             "subject": "Event Invitation",
             "from_email": "spam@example.com",
             "from_name": "Spammer",
             "date_sent": "2026-02-15T12:00:00Z",
             "snippet": "You're invited!",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
         
         result = authenticated_client.table("emails").insert(email_data).execute()
@@ -158,13 +158,13 @@ class TestEventProcessing:
         # Create a test email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-event-email-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-event-email-{uuid4().hex[:8]}",
             "subject": "Birthday Party Invitation",
             "from_email": "friend@example.com",
             "from_name": "Best Friend",
             "date_sent": "2026-02-15T12:00:00Z",
             "snippet": "You're invited to Sarah's birthday party on Feb 20th at 2pm!",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
         
         result = authenticated_client.table("emails").insert(email_data).execute()
@@ -328,13 +328,13 @@ class TestEventSources:
         # Create test email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-source-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-source-{uuid4().hex[:8]}",
             "subject": "Test Event",
             "from_email": "test@example.com",
             "from_name": "Test Sender",
             "date_sent": "2026-02-01T10:00:00Z",
             "snippet": "Test content",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
         
         email_result = authenticated_client.table("emails").insert(email_data).execute()
@@ -369,13 +369,13 @@ class TestEventSources:
         # Create test email and event
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-attr-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-attr-{uuid4().hex[:8]}",
             "subject": "Event Invitation",
             "from_email": "sender@test.com",
             "from_name": "Event Organizer",
             "date_sent": "2026-01-25T13:30:00Z",
             "snippet": "Event details",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
         
         email_result = authenticated_client.table("emails").insert(email_data).execute()
@@ -416,13 +416,13 @@ class TestEventUndoRedo:
         # Create test email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-undo-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-undo-{uuid4().hex[:8]}",
             "subject": "Meeting Update",
             "from_email": "organizer@example.com",
             "from_name": "Meeting Organizer",
             "date_sent": "2026-02-01T10:00:00Z",
             "snippet": "Meeting time changed to 3pm",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         email_result = authenticated_client.table("emails").insert(email_data).execute()
@@ -447,13 +447,13 @@ class TestEventUndoRedo:
         # Create second email with update
         email_data_2 = {
             "user_id": test_user_id,
-            "gmail_id": f"test-undo-update-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-undo-update-{uuid4().hex[:8]}",
             "subject": "Meeting Update",
             "from_email": "organizer@example.com",
             "from_name": "Meeting Organizer",
             "date_sent": "2026-02-02T10:00:00Z",
             "snippet": "Meeting time changed",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         email_result_2 = authenticated_client.table("emails").insert(email_data_2).execute()
@@ -521,13 +521,13 @@ class TestEventUndoRedo:
         # Create test email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-redo-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-redo-{uuid4().hex[:8]}",
             "subject": "Event Invite",
             "from_email": "host@example.com",
             "from_name": "Event Host",
             "date_sent": "2026-02-05T10:00:00Z",
             "snippet": "You're invited",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         email_result = authenticated_client.table("emails").insert(email_data).execute()
@@ -550,13 +550,13 @@ class TestEventUndoRedo:
         # Create second email
         email_data_2 = {
             "user_id": test_user_id,
-            "gmail_id": f"test-redo-update-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-redo-update-{uuid4().hex[:8]}",
             "subject": "Party Update",
             "from_email": "host@example.com",
             "from_name": "Event Host",
             "date_sent": "2026-02-06T10:00:00Z",
             "snippet": "Location changed",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         email_result_2 = authenticated_client.table("emails").insert(email_data_2).execute()
@@ -609,13 +609,13 @@ class TestEventUndoRedo:
         # Create test email
         email_data = {
             "user_id": test_user_id,
-            "gmail_id": f"test-no-snap-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-no-snap-{uuid4().hex[:8]}",
             "subject": "New Event",
             "from_email": "sender@example.com",
             "from_name": "Sender",
             "date_sent": "2026-02-10T10:00:00Z",
             "snippet": "Event info",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         email_result = authenticated_client.table("emails").insert(email_data).execute()
@@ -652,13 +652,13 @@ class TestEventUndoRedo:
         # Create first email
         email_data_1 = {
             "user_id": test_user_id,
-            "gmail_id": f"test-attr-1-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-attr-1-{uuid4().hex[:8]}",
             "subject": "Event Invite",
             "from_email": "first@example.com",
             "from_name": "First Sender",
             "date_sent": "2026-02-15T10:00:00Z",
             "snippet": "Event details",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         email_result_1 = authenticated_client.table("emails").insert(email_data_1).execute()
@@ -680,13 +680,13 @@ class TestEventUndoRedo:
         # Create second email
         email_data_2 = {
             "user_id": test_user_id,
-            "gmail_id": f"test-attr-2-{uuid4().hex[:8]}",
+            "provider_message_id": f"test-attr-2-{uuid4().hex[:8]}",
             "subject": "Event Update",
             "from_email": "second@example.com",
             "from_name": "Second Sender",
             "date_sent": "2026-02-16T10:00:00Z",
             "snippet": "Update details",
-            "gmail_label_ids": ["INBOX"],
+            "provider_labels": ["INBOX"],
         }
 
         email_result_2 = authenticated_client.table("emails").insert(email_data_2).execute()

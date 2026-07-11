@@ -10,7 +10,7 @@
     "town-hall"
   ],
   "input": {
-    "gmail_id": "eval-mtg-006",
+    "provider_message_id": "eval-mtg-006",
     "thread_id": "thread-mtg-006",
     "subject": "[All Company] February All-Hands Meeting",
     "from_email": "ceo@startupco.com",

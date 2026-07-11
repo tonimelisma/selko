@@ -50,7 +50,7 @@ def extract_from_fixture(gateway, fixture_path: Path, output_json: bool = False)
 
     input_data = fixture["input"]
     email_metadata = {
-        "gmail_id": input_data["gmail_id"],
+        "provider_message_id": input_data["provider_message_id"],
         "subject": input_data["subject"],
         "from_name": input_data.get("from_name"),
         "from_email": input_data["from_email"],

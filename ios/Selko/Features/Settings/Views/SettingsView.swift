@@ -54,6 +54,7 @@ struct SettingsView: View {
     private var connectedAccountsSection: some View {
         Section("Connected Accounts") {
             integrationRow(provider: .gmail)
+            integrationRow(provider: .outlook)
             integrationRow(provider: .googleCalendar)
             integrationRow(provider: .googlePhotos)
         }
@@ -187,6 +188,8 @@ struct SettingsView: View {
         switch provider {
         case .gmail:
             urlString = backendAPI.getGmailAuthUrl(redirectUri: nil)
+        case .outlook:
+            urlString = backendAPI.getOutlookAuthUrl(redirectUri: nil)
         case .googleCalendar:
             urlString = backendAPI.getCalendarAuthUrl(redirectUri: nil)
         case .googlePhotos:

@@ -8,7 +8,7 @@
  */
 
 /**
- * @typedef {'gmail' | 'google_photos' | 'google_calendar'} IntegrationProvider
+ * @typedef {'gmail' | 'outlook' | 'google_photos' | 'google_calendar'} IntegrationProvider
  */
 
 /**
@@ -33,7 +33,8 @@
  * @property {string} id - UUID
  * @property {string} user_id - UUID
  * @property {string} [integration_id] - UUID
- * @property {string} gmail_id
+ * @property {string} email_provider
+ * @property {string} provider_message_id
  * @property {string} [thread_id]
  * @property {string} [subject]
  * @property {string} [from_email]
@@ -41,7 +42,7 @@
  * @property {string[]} [to_emails]
  * @property {string} [date_sent]
  * @property {string} [snippet]
- * @property {string[]} gmail_label_ids
+ * @property {string[]} provider_labels
  * @property {boolean} is_spam
  * @property {boolean} is_trash
  * @property {boolean} is_promotions
@@ -101,7 +102,7 @@
  * @property {string} id - UUID
  * @property {string} user_id - UUID
  * @property {string} email_id - UUID
- * @property {string} [gmail_attachment_id]
+ * @property {string} [provider_attachment_id]
  * @property {string} filename
  * @property {string} mime_type
  * @property {number} size_bytes

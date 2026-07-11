@@ -5,7 +5,7 @@
   "difficulty": "medium",
   "tags": ["marketing", "sale", "promo", "negative-test"],
   "input": {
-    "gmail_id": "eval-noev-004",
+    "provider_message_id": "eval-noev-004",
     "thread_id": "thread-noev-004",
     "subject": "🎉 Presidents Day Sale - Up to 50% Off!",
     "from_email": "deals@bigstore.com",

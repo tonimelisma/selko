@@ -217,7 +217,10 @@ class TestScheduleEmailFetches:
 
         # Active integrations
         integrations_result = MagicMock()
-        integrations_result.data = [{"user_id": "u1"}, {"user_id": "u2"}]
+        integrations_result.data = [
+            {"user_id": "u1", "provider": "gmail"},
+            {"user_id": "u2", "provider": "gmail"},
+        ]
 
         # No existing tasks
         existing_result = MagicMock()
@@ -225,7 +228,7 @@ class TestScheduleEmailFetches:
 
         # Chain: client.table("integrations").select().eq().eq().execute()
         mock_integrations = MagicMock()
-        mock_integrations.select.return_value.eq.return_value.eq.return_value.execute.return_value = integrations_result
+        mock_integrations.select.return_value.in_.return_value.eq.return_value.execute.return_value = integrations_result
 
         # Chain: client.table("scheduled_tasks").select().eq().in_().execute()
         mock_tasks = MagicMock()
@@ -255,14 +258,17 @@ class TestScheduleEmailFetches:
         mock_client = MagicMock()
 
         integrations_result = MagicMock()
-        integrations_result.data = [{"user_id": "u1"}, {"user_id": "u2"}]
+        integrations_result.data = [
+            {"user_id": "u1", "provider": "gmail"},
+            {"user_id": "u2", "provider": "gmail"},
+        ]
 
         # u1 already has a pending task
         existing_result = MagicMock()
-        existing_result.data = [{"user_id": "u1"}]
+        existing_result.data = [{"user_id": "u1", "payload": {"provider": "gmail"}}]
 
         mock_integrations = MagicMock()
-        mock_integrations.select.return_value.eq.return_value.eq.return_value.execute.return_value = integrations_result
+        mock_integrations.select.return_value.in_.return_value.eq.return_value.execute.return_value = integrations_result
 
         mock_tasks = MagicMock()
         mock_tasks.select.return_value.eq.return_value.in_.return_value.execute.return_value = existing_result

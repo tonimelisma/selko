@@ -197,7 +197,7 @@ class TestExtractCalendarEventsTzAwareness:
         mock_gateway.for_email = MagicMock(return_value=mock_gateway)
 
         email_metadata = {
-            "gmail_id": "test-123",
+            "provider_message_id": "test-123",
             "subject": "Test",
             "from_name": "Tester",
             "from_email": "test@example.com",
@@ -223,7 +223,7 @@ class TestExtractCalendarEventsTzAwareness:
         mock_gateway.call.return_value.text = '{"events_found": false, "events": []}'
 
         email_metadata = {
-            "gmail_id": "test-456",
+            "provider_message_id": "test-456",
             "subject": "Test",
             "from_name": "Tester",
             "from_email": "test@example.com",

@@ -139,7 +139,7 @@ def do_seed(config):
             "from_name": "Lincoln Elementary School",
             "from_email": "office@lincoln-elementary.edu",
             "subject": "Parent-Teacher Conference Reminder",
-            "gmail_id": "msg_screenshot_1",
+            "provider_message_id": "msg_screenshot_1",
             "thread_id": "thread_1",
             "to_emails": ["sarah.johnson@gmail.com"],
             "date_sent": (now - timedelta(days=2)).isoformat(),
@@ -151,7 +151,7 @@ def do_seed(config):
             "from_name": "Lincoln Elementary School",
             "from_email": "office@lincoln-elementary.edu",
             "subject": "Spring Concert Information",
-            "gmail_id": "msg_screenshot_2",
+            "provider_message_id": "msg_screenshot_2",
             "thread_id": "thread_2",
             "to_emails": ["sarah.johnson@gmail.com"],
             "date_sent": (now - timedelta(days=3)).isoformat(),
@@ -163,7 +163,7 @@ def do_seed(config):
             "from_name": "Downtown Dental",
             "from_email": "appointments@downtowndental.com",
             "subject": "Appointment Confirmation: Dr. Martinez",
-            "gmail_id": "msg_screenshot_3",
+            "provider_message_id": "msg_screenshot_3",
             "thread_id": "thread_3",
             "to_emails": ["sarah.johnson@gmail.com"],
             "date_sent": (now - timedelta(days=1)).isoformat(),
@@ -175,7 +175,7 @@ def do_seed(config):
             "from_name": "Alex Chen",
             "from_email": "alex.chen@techcorp.com",
             "subject": "Q2 Planning Offsite Details",
-            "gmail_id": "msg_screenshot_4",
+            "provider_message_id": "msg_screenshot_4",
             "thread_id": "thread_4",
             "to_emails": ["sarah.johnson@gmail.com"],
             "date_sent": (now - timedelta(days=4)).isoformat(),
@@ -185,7 +185,7 @@ def do_seed(config):
     ]
 
     result = admin.table("emails").insert(emails_data).execute()
-    email_ids = {row["gmail_id"]: row["id"] for row in result.data}
+    email_ids = {row["provider_message_id"]: row["id"] for row in result.data}
     print(f"  Inserted {len(result.data)} emails")
 
     # Step 5: Insert events

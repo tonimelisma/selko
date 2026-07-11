@@ -10,7 +10,7 @@
     "time-window"
   ],
   "input": {
-    "gmail_id": "eval-appt-008",
+    "provider_message_id": "eval-appt-008",
     "thread_id": "thread-appt-008",
     "subject": "Your Plumbing Service Appointment is Confirmed",
     "from_email": "dispatch@aceplumbing.com",

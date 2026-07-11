@@ -19,7 +19,7 @@
   ],
   "thread_emails": [
     {
-      "gmail_id": "thread-remind-001",
+      "provider_message_id": "thread-remind-001",
       "thread_id": "thread-reminder",
       "subject": "Appointment Confirmed - Dr. Williams, March 5th",
       "from_email": "appointments@healthclinic.com",
@@ -28,7 +28,7 @@
       "body_text": "Your appointment has been confirmed.\n\nProvider: Dr. Lisa Williams\nDate: Thursday, March 5, 2026\nTime: 3:30 PM\n\nHealth Clinic\n500 Medical Way, Suite 100\nPalo Alto, CA 94301\n\nPlease arrive 15 minutes early.\n\nTo reschedule, call (650) 555-1234."
     },
     {
-      "gmail_id": "thread-remind-002",
+      "provider_message_id": "thread-remind-002",
       "thread_id": "thread-reminder",
       "subject": "Reminder: Your Appointment Tomorrow with Dr. Williams",
       "from_email": "appointments@healthclinic.com",
