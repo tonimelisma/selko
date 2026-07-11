@@ -109,7 +109,9 @@ def get_credentials(
             # Retry save up to 3 times for atomicity
             for attempt in range(3):
                 try:
-                    update_oauth_credentials(client, "gmail", creds)
+                    update_oauth_credentials(
+                        client, "gmail", creds, user_id=user_id
+                    )
                     logger.info("Token refreshed and saved")
                     break
                 except Exception as save_err:
@@ -125,7 +127,9 @@ def get_credentials(
 
         except RefreshError as e:
             logger.warning(f"Token refresh failed: {e}")
-            update_integration_status(client, "gmail", "expired")
+            update_integration_status(
+                client, "gmail", "expired", user_id=user_id
+            )
             return None
 
     return creds
@@ -302,10 +306,17 @@ def fetch_messages(
 ) -> list[dict]:
     """Fetch email messages from Gmail with rate limit handling.
 
+    By default, fetches recent mail across the mailbox (not INBOX-only).
+    Many users archive aggressively, so INBOX-only pulls return nothing even
+    when recent actionable mail exists under category/archive labels.
+    Spam and trash remain excluded unless includeSpamTrash is enabled.
+
     Args:
         service: Gmail API service.
         max_results: Maximum number of messages to fetch.
-        label_ids: Optional list of label IDs to filter by.
+        label_ids: Optional list of label IDs to filter by. None means no
+            label filter (all mail except spam/trash). Pass ["INBOX"] to
+            restrict to the inbox.
         max_retries: Maximum retries for rate-limited requests.
 
     Returns:
@@ -314,14 +325,18 @@ def fetch_messages(
     Raises:
         GmailError: If credentials are invalid or API calls fail.
     """
-    if label_ids is None:
-        label_ids = ["INBOX"]
+    list_kwargs: dict = {
+        "userId": "me",
+        "maxResults": max_results,
+    }
+    if label_ids is not None:
+        list_kwargs["labelIds"] = label_ids
 
     try:
         results = (
             service.users()
             .messages()
-            .list(userId="me", labelIds=label_ids, maxResults=max_results)
+            .list(**list_kwargs)
             .execute()
         )
     except RefreshError as e:
