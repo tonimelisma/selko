@@ -13,7 +13,12 @@
 	let totalCount = $state(0);
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
-	let error = $state('');
+	/** Load/fetch errors that replace the list */
+	let loadError = $state('');
+	/** Per-action errors shown as a banner above the list */
+	let actionError = $state('');
+	/** @type {Set<string>} */
+	let processingEvents = $state(new Set());
 	let offset = $state(0);
 	const limit = 20;
 
@@ -58,10 +63,11 @@
 
 	async function loadEvents() {
 		isLoading = true;
-		error = '';
+		loadError = '';
+		actionError = '';
 		const result = await fetchActivityEvents({ limit, offset: 0 });
 		if (result.error) {
-			error = result.error.message;
+			loadError = result.error.message;
 		} else {
 			events = result.data;
 			totalCount = result.count || 0;
@@ -72,9 +78,10 @@
 
 	async function loadMore() {
 		isLoadingMore = true;
+		actionError = '';
 		const result = await fetchActivityEvents({ limit, offset });
 		if (result.error) {
-			error = result.error.message;
+			actionError = result.error.message;
 		} else {
 			events = [...events, ...result.data];
 			offset += result.data.length;
@@ -202,25 +209,50 @@
 		return '';
 	}
 
+	/** @param {string} eventId */
+	function startProcessing(eventId) {
+		processingEvents = new Set([...processingEvents, eventId]);
+		actionError = '';
+	}
+
+	/** @param {string} eventId */
+	function stopProcessing(eventId) {
+		const next = new Set(processingEvents);
+		next.delete(eventId);
+		processingEvents = next;
+	}
+
 	/** @param {any} event */
 	async function handleUndo(event) {
-		const { error: undoError } = await undoHistoryEvent(event.id);
-		if (undoError) {
-			error = undoError.message;
-			return;
+		if (processingEvents.has(event.id)) return;
+		startProcessing(event.id);
+		try {
+			const { error: undoError } = await undoHistoryEvent(event.id);
+			if (undoError) {
+				actionError = undoError.message;
+				return;
+			}
+			events = events.filter((e) => e.id !== event.id);
+			totalCount--;
+		} finally {
+			stopProcessing(event.id);
 		}
-		events = events.filter((e) => e.id !== event.id);
-		totalCount--;
 	}
 
 	/** @param {any} event */
 	async function handleRetry(event) {
-		const result = await syncEventToCalendar(event.id);
-		if (result.error) {
-			error = result.error.message;
-			return;
+		if (processingEvents.has(event.id)) return;
+		startProcessing(event.id);
+		try {
+			const result = await syncEventToCalendar(event.id);
+			if (result.error) {
+				actionError = result.error.message;
+				return;
+			}
+			events = events.map((e) => (e.id === event.id ? { ...e, status: 'synced' } : e));
+		} finally {
+			stopProcessing(event.id);
 		}
-		events = events.map((e) => (e.id === event.id ? { ...e, status: 'synced' } : e));
 	}
 </script>
 
@@ -233,20 +265,24 @@
 		<div class="h-16 bg-base-200 rounded animate-pulse"></div>
 		<div class="h-16 bg-base-200 rounded animate-pulse"></div>
 	</div>
-{:else if error}
-	<ErrorAlert message={error} onretry={loadEvents} />
+{:else if loadError}
+	<ErrorAlert message={loadError} onretry={loadEvents} />
 {:else if events.length === 0}
 	<EmptyState
 		heading={$_('history.noActivity')}
 		description={$_('history.noActivityDescription')}
 	/>
 {:else}
+	{#if actionError}
+		<ErrorAlert message={actionError} />
+	{/if}
 	<div class="space-y-6">
 		{#each [...groupedByDate().entries()] as [dateLabel, dateEvents]}
 			<div>
 				<h2 class="text-sm font-semibold text-base-content/60 mb-3">{dateLabel}</h2>
 				<div>
 					{#each dateEvents as event (event.id)}
+						{@const isProcessing = processingEvents.has(event.id)}
 						<div class="flex items-start justify-between p-3 border-b border-base-200">
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2 flex-wrap">
@@ -272,15 +308,20 @@
 								{/if}
 							</div>
 							<div class="flex items-center gap-1 flex-shrink-0 ml-2">
-								{#if event.status === 'sync_failed'}
+								{#if isProcessing}
+									<span
+										class="loading loading-spinner loading-sm"
+										aria-label={$_('common.loading')}
+										aria-live="polite"
+									></span>
+								{:else if event.status === 'sync_failed'}
 									<button
 										class="btn btn-outline btn-warning btn-xs"
 										onclick={() => handleRetry(event)}
 									>
 										{$_('history.retrySync')}
 									</button>
-								{/if}
-								{#if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
+								{:else if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
 									<button class="btn btn-outline btn-xs" onclick={() => handleUndo(event)}>
 										{$_('history.undo')}
 									</button>

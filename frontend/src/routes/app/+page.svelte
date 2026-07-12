@@ -30,7 +30,10 @@
 	let events = $state([]);
 	let isLoadingIntegrations = $state(true);
 	let isLoadingEvents = $state(false);
-	let error = $state('');
+	/** Load/fetch errors that replace the review list */
+	let loadError = $state('');
+	/** Per-action errors shown as a banner above the list */
+	let actionError = $state('');
 	let notification = $state('');
 	let processingEvents = $state(new Set());
 
@@ -92,7 +95,7 @@
 			}, 4000);
 			window.history.replaceState({}, '', '/app');
 		} else if (oauth === 'error') {
-			error = params.get('message') || $_('integrations.connectFailed');
+			actionError = params.get('message') || $_('integrations.connectFailed');
 			window.history.replaceState({}, '', '/app');
 		}
 		await loadIntegrations();
@@ -102,7 +105,7 @@
 		isLoadingIntegrations = true;
 		const result = await fetchIntegrations();
 		if (result.error) {
-			error = result.error.message;
+			loadError = result.error.message;
 		} else {
 			integrationsList = result.data;
 		}
@@ -119,10 +122,11 @@
 
 	async function loadEvents() {
 		isLoadingEvents = true;
-		error = '';
+		loadError = '';
+		actionError = '';
 		const result = await fetchPendingEventsWithSources();
 		if (result.error) {
-			error = result.error.message;
+			loadError = result.error.message;
 		} else {
 			events = result.data;
 		}
@@ -133,10 +137,11 @@
 	async function handleApproveNew(event) {
 		if (processingEvents.has(event.id)) return;
 		processingEvents = new Set([...processingEvents, event.id]);
+		actionError = '';
 		try {
 			const { error: updateError } = await updateEventStatus(event.id, 'approved');
 			if (updateError) {
-				error = updateError.message;
+				actionError = updateError.message;
 				return;
 			}
 			events = events.filter((e) => e.id !== event.id);
@@ -156,10 +161,11 @@
 	async function handleRejectNew(event) {
 		if (processingEvents.has(event.id)) return;
 		processingEvents = new Set([...processingEvents, event.id]);
+		actionError = '';
 		try {
 			const { error: updateError } = await updateEventStatus(event.id, 'rejected');
 			if (updateError) {
-				error = updateError.message;
+				actionError = updateError.message;
 				return;
 			}
 			events = events.filter((e) => e.id !== event.id);
@@ -174,10 +180,11 @@
 	async function handleApproveChange(event) {
 		if (processingEvents.has(event.id)) return;
 		processingEvents = new Set([...processingEvents, event.id]);
+		actionError = '';
 		try {
 			const { error: applyError } = await applyEventChange(event.id);
 			if (applyError) {
-				error = applyError.message;
+				actionError = applyError.message;
 				return;
 			}
 			events = events.filter((e) => e.id !== event.id);
@@ -197,10 +204,11 @@
 	async function handleRejectChange(event) {
 		if (processingEvents.has(event.id)) return;
 		processingEvents = new Set([...processingEvents, event.id]);
+		actionError = '';
 		try {
 			const { error: rejectError } = await rejectEventChange(event.id);
 			if (rejectError) {
-				error = rejectError.message;
+				actionError = rejectError.message;
 				return;
 			}
 			events = events.filter((e) => e.id !== event.id);
@@ -235,7 +243,7 @@
 			action: 'ignore'
 		});
 		if (ruleError) {
-			error = ruleError.message;
+			actionError = ruleError.message;
 			return;
 		}
 		for (const event of eventsList) {
@@ -261,7 +269,7 @@
 			action: 'auto_approve'
 		});
 		if (ruleError) {
-			error = ruleError.message;
+			actionError = ruleError.message;
 			return;
 		}
 		for (const event of eventsList) {
@@ -324,11 +332,14 @@
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 	</div>
-{:else if error}
-	<ErrorAlert message={error} onretry={loadEvents} />
+{:else if loadError}
+	<ErrorAlert message={loadError} onretry={loadEvents} />
 {:else if events.length === 0}
 	<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
 {:else}
+	{#if actionError}
+		<ErrorAlert message={actionError} />
+	{/if}
 	<div class="space-y-10">
 		{#if newEvents.length > 0}
 			<section>

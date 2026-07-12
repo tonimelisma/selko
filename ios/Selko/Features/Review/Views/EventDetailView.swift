@@ -53,12 +53,18 @@ struct EventDetailView: View {
                             await viewModel.reject()
                         }
                     } label: {
-                        Text("Reject")
-                            .frame(maxWidth: .infinity)
+                        if viewModel.isActing {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Reject")
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                     .buttonStyle(.bordered)
                     .tint(.red)
                     .controlSize(.large)
+                    .disabled(viewModel.isActing)
                     .accessibilityIdentifier("rejectButton")
 
                     Button {
@@ -66,12 +72,18 @@ struct EventDetailView: View {
                             await viewModel.approve()
                         }
                     } label: {
-                        Text("Approve")
-                            .frame(maxWidth: .infinity)
+                        if viewModel.isActing {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Approve")
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.selkoSuccess)
                     .controlSize(.large)
+                    .disabled(viewModel.isActing)
                     .accessibilityIdentifier("approveButton")
                 }
                 .padding()

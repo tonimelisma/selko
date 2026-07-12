@@ -80,6 +80,24 @@ describe('Backend API Client', () => {
 			});
 		});
 
+		it('unwraps nested FastAPI error detail objects', async () => {
+			mockFetch.mockResolvedValue({
+				ok: false,
+				status: 400,
+				json: () =>
+					Promise.resolve({
+						detail: { error: 'INVALID_REQUEST', detail: 'Event cannot be undone' }
+					})
+			});
+
+			const { undoHistoryEvent } = await import('../api/backend.js');
+			const result = await undoHistoryEvent('evt-1');
+
+			expect(result.data).toBeNull();
+			expect(result.error.message).toBe('Event cannot be undone');
+			expect(result.error.status).toBe(400);
+		});
+
 		it('returns error when not authenticated', async () => {
 			mockSupabase.auth.getSession.mockResolvedValue({
 				data: { session: null }

@@ -110,13 +110,10 @@ describe('EventCard', () => {
 		expect(photoIcon).toBeInTheDocument();
 	});
 
-	it('shows email icon for email source', () => {
-		const emailEvent = {
-			...mockEvent,
-			event_sources: [{ source_origin: 'email', email_id: 'email-1' }]
-		};
-		render(EventCard, { props: { event: emailEvent } });
-		const emailIcon = document.querySelector('svg[aria-label="From email"]');
-		expect(emailIcon).toBeInTheDocument();
+	it('shows spinner instead of action buttons while processing', () => {
+		render(EventCard, { props: { event: mockEvent, isProcessing: true } });
+		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
+		expect(screen.queryByRole('button', { name: /accept event/i })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /reject event/i })).not.toBeInTheDocument();
 	});
 });

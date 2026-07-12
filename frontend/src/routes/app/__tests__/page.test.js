@@ -431,7 +431,7 @@ describe('Review Queue (App Page)', () => {
 		expect(screen.queryByText('Auto-approve sender')).not.toBeInTheDocument();
 	});
 
-	it('disables approve/reject buttons while event is processing', async () => {
+	it('shows spinner while event is processing', async () => {
 		const user = userEvent.setup();
 
 		// Make updateEventStatus hang so the event stays "processing"
@@ -477,19 +477,14 @@ describe('Review Queue (App Page)', () => {
 		});
 
 		const approveBtn = screen.getByRole('button', { name: /accept event/i });
-		const rejectBtn = screen.getByRole('button', { name: /reject event/i });
+		expect(approveBtn).toBeInTheDocument();
 
-		// Buttons should be enabled initially
-		expect(approveBtn).not.toBeDisabled();
-		expect(rejectBtn).not.toBeDisabled();
-
-		// Click approve — starts processing
 		await user.click(approveBtn);
 
-		// Buttons should be disabled while processing
 		await waitFor(() => {
-			expect(approveBtn).toBeDisabled();
-			expect(rejectBtn).toBeDisabled();
+			expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
+			expect(screen.queryByRole('button', { name: /accept event/i })).not.toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: /reject event/i })).not.toBeInTheDocument();
 		});
 
 		// Resolve the pending update to clean up

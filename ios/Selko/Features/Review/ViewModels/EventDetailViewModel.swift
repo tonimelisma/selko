@@ -11,6 +11,7 @@ final class EventDetailViewModel {
     var event: CalendarEvent?
     var isLoading = false
     var isSaving = false
+    var isActing = false
     var errorMessage: String?
     var didComplete = false
 
@@ -50,6 +51,11 @@ final class EventDetailViewModel {
     }
 
     func approve() async {
+        guard !isActing else { return }
+        isActing = true
+        errorMessage = nil
+        defer { isActing = false }
+
         do {
             _ = try await saveChanges()
             _ = try await eventService.approveEvent(id: eventId)
@@ -60,6 +66,11 @@ final class EventDetailViewModel {
     }
 
     func reject() async {
+        guard !isActing else { return }
+        isActing = true
+        errorMessage = nil
+        defer { isActing = false }
+
         do {
             _ = try await eventService.rejectEvent(id: eventId)
             didComplete = true

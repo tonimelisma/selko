@@ -122,8 +122,8 @@ class HistoryViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
 
-            val ok = backendApiClient.undoHistoryEvent(eventId).isSuccess
-            if (ok) {
+            val result = backendApiClient.undoHistoryEvent(eventId)
+            if (result.isSuccess) {
                 _uiState.update { state ->
                     val updatedEvents = state.allEvents.filter { it.id != eventId }
                     state.copy(
@@ -136,7 +136,8 @@ class HistoryViewModel(
                 _uiState.update {
                     it.copy(
                         processingEventIds = it.processingEventIds - eventId,
-                        errorMessage = getString(R.string.history_error_undo)
+                        errorMessage = result.exceptionOrNull()?.message
+                            ?: getString(R.string.history_error_undo)
                     )
                 }
             }
@@ -147,7 +148,7 @@ class HistoryViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
 
-            when (eventRepository.updateEventStatus(eventId, EventStatus.APPROVED)) {
+            when (val result = eventRepository.updateEventStatus(eventId, EventStatus.APPROVED)) {
                 is EventResult.Success -> {
                     // Refresh to get updated state
                     _uiState.update { it.copy(processingEventIds = it.processingEventIds - eventId) }
@@ -157,7 +158,9 @@ class HistoryViewModel(
                     _uiState.update {
                         it.copy(
                             processingEventIds = it.processingEventIds - eventId,
-                            errorMessage = getString(R.string.history_error_retry_sync)
+                            errorMessage = result.message.ifBlank {
+                                getString(R.string.history_error_retry_sync)
+                            }
                         )
                     }
                 }
