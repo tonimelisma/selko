@@ -1,32 +1,52 @@
 /**
- * Recover from Safari/WebKit module load failures after the app has started.
+ * One-shot recovery from Safari/WebKit module load failures.
  *
- * Initial entry-module failures are handled in app.html (before this file loads).
- * Vite emits `vite:preloadError` for later dynamic-import failures; without
- * handling, SvelteKit surfaces a blank "500 | Internal Error" page.
+ * Infinite-loop bug (fixed): clearing the sessionStorage guard as soon as
+ * hooks.client.js loaded meant every reload reset the guard, so a sticky
+ * vite:preloadError (stale cached chunks after deploy) reloaded forever.
+ *
+ * Allow at most one automatic reload while the guard is set. After the app
+ * stays up for CLEAR_AFTER_MS, clear the guard so a later deploy can recover.
  */
 const RELOAD_KEY = 'selko-js-mime-reload';
+const CLEAR_AFTER_MS = 30_000;
 let reloading = false;
 
-function reloadOnce() {
-	if (reloading) return;
-	reloading = true;
+function alreadyRecovered() {
 	try {
-		if (sessionStorage.getItem(RELOAD_KEY)) return;
+		return Boolean(sessionStorage.getItem(RELOAD_KEY));
+	} catch {
+		return false;
+	}
+}
+
+function markRecovered() {
+	try {
 		sessionStorage.setItem(RELOAD_KEY, '1');
 	} catch {
 		/* ignore */
 	}
-	window.location.reload();
 }
 
-if (typeof window !== 'undefined') {
-	// Successful boot — allow a future one-shot recovery if chunks go stale.
+function clearRecovered() {
 	try {
 		sessionStorage.removeItem(RELOAD_KEY);
 	} catch {
 		/* ignore */
 	}
+}
+
+function reloadOnce() {
+	if (reloading || alreadyRecovered()) return;
+	reloading = true;
+	markRecovered();
+	window.location.reload();
+}
+
+if (typeof window !== 'undefined') {
+	// After a recovery reload (or a healthy first boot), clear the guard once
+	// the app has stayed up — so a future deploy can still one-shot recover.
+	window.setTimeout(clearRecovered, CLEAR_AFTER_MS);
 
 	window.addEventListener('vite:preloadError', (event) => {
 		event.preventDefault();
