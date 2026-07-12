@@ -13,7 +13,7 @@
     "to_emails": ["recipient@example.com"],
     "date_sent": "2026-06-14T08:16:12Z",
     "snippet": "Your automatic payment for the attached invoice is scheduled to be processed on 06/24/26.",
-    "body_text": "Just a reminder that your automatic payment for the attached invoice is scheduled to be processed on 06/24/26.\n\nDue date: 06/24/26\nAccount: ending 4321\nAmount: $59.99\n\nNo action is needed. Your saved payment method will be charged automatically.",
+    "body_text": "Just a reminder that your automatic payment for the attached invoice is scheduled to be processed on 06/24/26.\n\nDue date: 06/24/26\nAccount: ending 4321\nAmount: $59.99",
     "attachments": []
   },
   "expected": {
