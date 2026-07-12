@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 
 const buildDirectory = resolve('build');
@@ -27,3 +27,15 @@ if (javascriptFiles.length !== 1) {
 }
 
 console.log(`Verified single production JavaScript bundle: ${relative(buildDirectory, javascriptFiles[0])}`);
+
+const html = await readFile(resolve(buildDirectory, 'index.html'), 'utf8');
+
+if (html.includes('rel="modulepreload"')) {
+	throw new Error('Production HTML must not use modulepreload because Safari can cancel those requests');
+}
+
+if (!html.includes('rel="preload"') || !html.includes('as="script"')) {
+	throw new Error('Production HTML must preload the single bundle as a classic script resource');
+}
+
+console.log('Verified Safari-compatible JavaScript preload strategy');
