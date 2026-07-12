@@ -115,6 +115,12 @@ class EventChangeResponse(BaseModel):
     status: str
 
 
+class EventUndoRequest(BaseModel):
+    """Optional body for History Undo (force overwrite of diverged GCal edits)."""
+
+    force: bool = False
+
+
 class EventUndoResponse(BaseModel):
     """Result of undoing a History action back to a review lane."""
 

@@ -28,6 +28,8 @@ data class HistoryUiState(
     val dateGroups: List<DateGroup> = emptyList(),
     val allEvents: List<CalendarEvent> = emptyList(),
     val errorMessage: String? = null,
+    val canForceUndo: Boolean = false,
+    val forceUndoEventId: String? = null,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = true,
     val processingEventIds: Set<String> = emptySet()
@@ -118,30 +120,49 @@ class HistoryViewModel(
         }
     }
 
-    fun undoEvent(eventId: String) {
+    fun undoEvent(eventId: String, force: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
+            _uiState.update {
+                it.copy(
+                    processingEventIds = it.processingEventIds + eventId,
+                    errorMessage = if (force) it.errorMessage else null,
+                    canForceUndo = if (force) it.canForceUndo else false,
+                    forceUndoEventId = if (force) it.forceUndoEventId else null
+                )
+            }
 
-            val result = backendApiClient.undoHistoryEvent(eventId)
+            val result = backendApiClient.undoHistoryEvent(eventId, force = force)
             if (result.isSuccess) {
                 _uiState.update { state ->
                     val updatedEvents = state.allEvents.filter { it.id != eventId }
                     state.copy(
                         allEvents = updatedEvents,
                         dateGroups = groupByDate(updatedEvents),
-                        processingEventIds = state.processingEventIds - eventId
+                        processingEventIds = state.processingEventIds - eventId,
+                        errorMessage = null,
+                        canForceUndo = false,
+                        forceUndoEventId = null
                     )
                 }
             } else {
+                val exception = result.exceptionOrNull()
+                val diverged = exception is BackendApiClient.CalendarDivergedException
                 _uiState.update {
                     it.copy(
                         processingEventIds = it.processingEventIds - eventId,
-                        errorMessage = result.exceptionOrNull()?.message
-                            ?: getString(R.string.history_error_undo)
+                        errorMessage = exception?.message
+                            ?: getString(R.string.history_error_undo),
+                        canForceUndo = diverged,
+                        forceUndoEventId = if (diverged) eventId else null
                     )
                 }
             }
         }
+    }
+
+    fun forceUndoPendingEvent() {
+        val eventId = _uiState.value.forceUndoEventId ?: return
+        undoEvent(eventId, force = true)
     }
 
     fun retrySync(eventId: String) {
@@ -169,6 +190,12 @@ class HistoryViewModel(
     }
 
     fun clearError() {
-        _uiState.update { it.copy(errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                errorMessage = null,
+                canForceUndo = false,
+                forceUndoEventId = null
+            )
+        }
     }
 }

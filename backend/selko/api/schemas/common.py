@@ -37,6 +37,7 @@ class ErrorCode:
 
     # Sync
     SYNC_FAILED = "SYNC_FAILED"
+    CALENDAR_DIVERGED = "CALENDAR_DIVERGED"
 
     # Gmail
     GMAIL_API_ERROR = "GMAIL_API_ERROR"

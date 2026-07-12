@@ -967,14 +967,32 @@ def reject_pending_change(supabase_client: Client, event_id: str) -> str:
     return restore_status
 
 
-def undo_history_event(supabase_client: Client, event_id: str) -> str:
+def undo_history_event(
+    supabase_client: Client,
+    event_id: str,
+    user_id: str | None = None,
+    *,
+    force: bool = False,
+) -> str:
     """Undo a History action: return New or Changes to the review queue.
 
     - Applied change (update/cancellation source with snapshot) → restore
-      snapshot and set ``pending_change``.
-    - New event approval/rejection → set ``pending_review``.
+      snapshot, PATCH Google Calendar back to that state when synced, set
+      ``pending_change``.
+    - New event approval/rejection → DELETE Google Calendar event when
+      synced, clear sync fields, set ``pending_review``.
 
-    Returns the new status.
+    If the live Google Calendar event diverged from Selko's last write and
+    ``force`` is False, raises ``calendars.CalendarDivergedError``.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        event_id: Event UUID.
+        user_id: Owner user id (required when the event is calendar-synced).
+        force: When True, overwrite diverged GCal edits with the pre-Selko state.
+
+    Returns:
+        The new status (``pending_review`` or ``pending_change``).
     """
     event_result = supabase_client.table("events").select("*").eq(
         "id", event_id
@@ -993,6 +1011,21 @@ def undo_history_event(supabase_client: Client, event_id: str) -> str:
             change_source = src
             break
 
+    google_event_id = event.get("google_calendar_event_id")
+    if google_event_id:
+        if not user_id:
+            raise EventsError(
+                "user_id is required to undo a calendar-synced event"
+            )
+        # Drift check (skipped when force=True; 404 is not divergence)
+        calendars.assert_calendar_not_diverged(
+            supabase_client,
+            user_id,
+            event_id,
+            google_event_id,
+            force=force,
+        )
+
     if change_source:
         snapshot = change_source["event_snapshot_before"]
         restore_fields: dict[str, Any] = {
@@ -1005,12 +1038,33 @@ def undo_history_event(supabase_client: Client, event_id: str) -> str:
         ):
             if key in snapshot:
                 restore_fields[key] = snapshot[key]
+
+        if google_event_id and user_id:
+            live = calendars.get_calendar_event(
+                supabase_client, user_id, google_event_id
+            )
+            if live is None:
+                restore_fields["google_calendar_event_id"] = None
+                restore_fields["synced_at"] = None
+            else:
+                calendars.restore_calendar_event_from_selko_fields(
+                    supabase_client,
+                    user_id,
+                    event_id,
+                    {k: v for k, v in restore_fields.items() if k != "status"},
+                )
+
         supabase_client.table("events").update(restore_fields).eq(
             "id", event_id
         ).execute()
-        # Keep source active so Changes lane can still show the proposal
         logger.info(f"Undid applied change on event {event_id} → pending_change")
         return "pending_change"
+
+    # New approval / rejection undo
+    if google_event_id and user_id:
+        calendars.delete_calendar_event_only(
+            supabase_client, user_id, event_id
+        )
 
     supabase_client.table("events").update({
         "status": "pending_review",

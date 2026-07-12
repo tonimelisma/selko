@@ -32,8 +32,13 @@ struct HistoryView: View {
             await viewModel.load()
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-            Button("OK") {
-                viewModel.errorMessage = nil
+            if viewModel.canForceUndo {
+                Button("Force Undo") {
+                    Task { await viewModel.forceUndoPendingEvent() }
+                }
+            }
+            Button("OK", role: .cancel) {
+                viewModel.clearError()
             }
         } message: {
             if let error = viewModel.errorMessage {

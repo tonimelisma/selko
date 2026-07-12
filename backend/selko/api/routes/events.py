@@ -16,10 +16,16 @@ from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.events import (
     CalendarSyncResponse,
     EventChangeResponse,
+    EventUndoRequest,
     EventUndoResponse,
     EventUnsyncResponse,
 )
-from selko.services.calendars import CalendarsError, delete_calendar_event, sync_event_to_calendar
+from selko.services.calendars import (
+    CalendarDivergedError,
+    CalendarsError,
+    delete_calendar_event,
+    sync_event_to_calendar,
+)
 from selko.services.events import (
     EventsError,
     apply_pending_change,
@@ -296,13 +302,27 @@ async def undo_event(
     event_id: UUID,
     client: Annotated[Client, Depends(get_authenticated_client)],
     user: CurrentUser = Depends(get_current_user),
+    body: EventUndoRequest = EventUndoRequest(),
 ) -> EventUndoResponse:
-    """Undo a History action back to New or Changes review lane."""
+    """Undo a History action back to New or Changes review lane.
+
+    When the event is synced, also reverts Google Calendar to the pre-Selko
+    state (delete for new approvals, restore snapshot for applied changes).
+    If the user edited GCal after Selko's last write, returns 409 unless
+    ``force`` is true.
+    """
     _get_owned_event(client, user.id, event_id)
     try:
-        status = undo_history_event(client, str(event_id))
+        status = undo_history_event(
+            client, str(event_id), str(user.id), force=body.force
+        )
         return EventUndoResponse(event_id=str(event_id), status=status)  # type: ignore[arg-type]
-    except EventsError as e:
+    except CalendarDivergedError as e:
+        raise HTTPException(
+            status_code=409,
+            detail=error_detail(ErrorCode.CALENDAR_DIVERGED, str(e)),
+        ) from e
+    except (EventsError, CalendarsError) as e:
         raise HTTPException(
             status_code=400,
             detail=error_detail(ErrorCode.INVALID_REQUEST, str(e)),

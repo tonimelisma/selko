@@ -85,7 +85,7 @@ Login → Review Queue shows pending events
 4. **Group Approve**: User clicks "Approve All" on a sender header or email header. All events in that group are approved at once. The group animates out.
 5. **Edit Before Approve**: User clicks "Edit" → Event Detail screen. Edits are auto-saved. User approves or rejects. Returns to queue.
 6. **Reject**: User clicks "Reject". Event animates out. No confirmation modal.
-7. **Activity History** (`/app/history`): User checks recent actions. Sees "Birthday Party approved and synced." Clicks "Undo" → event removed from Google Calendar and returned to Review Queue (reverted to AI-extracted original, not user-edited version).
+7. **Activity History** (`/app/history`): User checks recent actions. Sees "Birthday Party approved and synced." Clicks "Undo" → event removed from Google Calendar and returned to Review Queue (reverted to AI-extracted original, not user-edited version). If the user had edited the event in Google Calendar after Selko synced it, Undo blocks until they confirm **Force Undo**.
 
 ### Key Behaviors
 

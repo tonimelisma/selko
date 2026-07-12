@@ -629,13 +629,14 @@ class TestDeleteCalendarEvent:
                 calendarId="primary", eventId="google-event-abc"
             )
 
-            # Verify event record was updated
+            # Verify event record was updated (sync fields cleared, then status)
             update_calls = mock_table.update.call_args_list
-            assert len(update_calls) > 0
-            update_data = update_calls[0][0][0]
-            assert update_data["google_calendar_event_id"] is None
-            assert update_data["synced_at"] is None
-            assert update_data["status"] == "pending_review"
+            assert len(update_calls) >= 2
+            clear_data = update_calls[0][0][0]
+            assert clear_data["google_calendar_event_id"] is None
+            assert clear_data["synced_at"] is None
+            status_data = update_calls[1][0][0]
+            assert status_data["status"] == "pending_review"
 
     def test_delete_already_deleted_from_google(self):
         """Test that 404 from Google Calendar is handled gracefully."""
@@ -689,11 +690,11 @@ class TestDeleteCalendarEvent:
             # Should NOT raise - 404 is handled gracefully
             delete_calendar_event(mock_client, "user-456", "event-123")
 
-            # Verify event record was still updated
+            # Verify event record was still updated (clear sync fields, then status)
             update_calls = mock_table.update.call_args_list
-            assert len(update_calls) > 0
-            update_data = update_calls[0][0][0]
-            assert update_data["status"] == "pending_review"
+            assert len(update_calls) >= 2
+            assert update_calls[0][0][0]["google_calendar_event_id"] is None
+            assert update_calls[1][0][0]["status"] == "pending_review"
 
     def test_delete_no_credentials(self):
         """Test that error is raised when no credentials found."""

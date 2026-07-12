@@ -434,3 +434,52 @@ class TestRedirectURIValidation:
                 follow_redirects=False,
             )
         assert resp.status_code == 302
+
+
+# ===========================================================================
+# History Undo
+# ===========================================================================
+
+
+class TestEventUndo:
+    """Tests for POST /events/{id}/undo."""
+
+    def test_undo_calendar_diverged_returns_409(self, test_client, mock_client):
+        """Diverged GCal edit returns 409 CALENDAR_DIVERGED."""
+        from selko.services.calendars import CalendarDivergedError
+
+        mock_owned = MagicMock()
+        mock_owned.data = {"id": "00000000-0000-0000-0000-000000000001", "user_id": "test-user-id"}
+        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_owned
+
+        with patch(
+            "selko.api.routes.events.undo_history_event",
+            side_effect=CalendarDivergedError("edited in Google Calendar", ["title"]),
+        ):
+            resp = test_client.post(
+                "/events/00000000-0000-0000-0000-000000000001/undo",
+                json={"force": False},
+            )
+
+        assert resp.status_code == 409
+        detail = resp.json()["detail"]
+        assert detail["error"] == "CALENDAR_DIVERGED"
+        assert "Google Calendar" in detail["detail"]
+
+    def test_undo_force_succeeds(self, test_client, mock_client):
+        mock_owned = MagicMock()
+        mock_owned.data = {"id": "00000000-0000-0000-0000-000000000001", "user_id": "test-user-id"}
+        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_owned
+
+        with patch(
+            "selko.api.routes.events.undo_history_event",
+            return_value="pending_review",
+        ) as mock_undo:
+            resp = test_client.post(
+                "/events/00000000-0000-0000-0000-000000000001/undo",
+                json={"force": True},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "pending_review"
+        assert mock_undo.call_args.kwargs.get("force") is True
