@@ -13,7 +13,7 @@
     "to_emails": ["recipient@example.com"],
     "date_sent": "2026-05-30T05:17:18Z",
     "snippet": "You invited the notetaker to your meeting. View meeting recap and recording.",
-    "body_text": "Your meeting recap is ready\n\nNew Recording.m4a\nMay 29 at 10:10 PM PST\n\nView meeting recap\nShare this recap\n\nIn this meeting\n315+ words transcribed\n\nThis is a record of a meeting that already happened. There is no upcoming meeting invitation or follow-up deadline in this message.",
+    "body_text": "Your meeting recap is ready\n\nNew Recording.m4a\nMay 29 at 10:10 PM PST\n\nView meeting recap\nShare this recap\n\nIn this meeting\n315+ words transcribed",
     "attachments": []
   },
   "expected": {
