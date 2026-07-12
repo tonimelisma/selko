@@ -11,51 +11,6 @@
 						document.documentElement.setAttribute('data-theme', 'selko-dark');
 					}
 				} catch (e) {}
-
-				// Before SvelteKit bootstrap. Only preventDefault when we reload —
-				// otherwise Safari shows a blank white page with a swallowed error.
-				var KEY = 'selko-vite-preload-reload-ts';
-				var THROTTLE_MS = 10000;
-				window.addEventListener('unhandledrejection', function (event) {
-					var reason = event && event.reason;
-					var msg = String((reason && reason.message) || reason || '');
-					if (msg.indexOf('MIME type') === -1) return;
-					var now = Date.now();
-					try {
-						var last = Number(sessionStorage.getItem(KEY) || 0);
-						if (now - last < THROTTLE_MS) return;
-						sessionStorage.setItem(KEY, String(now));
-					} catch (e) {}
-					try {
-						event.preventDefault();
-					} catch (e) {}
-					window.location.reload();
-				});
-
-				// If client JS never paints (blank SPA), offer a manual escape hatch.
-				window.setTimeout(function () {
-					try {
-						var root = document.body;
-						if (!root || root.querySelector('a, button, input, [role="main"], #main-content')) return;
-						if (document.getElementById('selko-boot-fail')) return;
-						var box = document.createElement('div');
-						box.id = 'selko-boot-fail';
-						box.setAttribute(
-							'style',
-							'font-family:system-ui,sans-serif;max-width:28rem;margin:20vh auto;padding:1.5rem;text-align:center;color:#111'
-						);
-						box.innerHTML =
-							'<p style="margin:0 0 1rem">Selko failed to load in this browser.</p>' +
-							'<button type="button" style="font:inherit;padding:0.6rem 1rem;cursor:pointer">Reload</button>';
-						box.querySelector('button').onclick = function () {
-							try {
-								sessionStorage.removeItem(KEY);
-							} catch (e) {}
-							window.location.reload();
-						};
-						document.body.appendChild(box);
-					} catch (e) {}
-				}, 4000);
 			})();
 		</script>
 		%sveltekit.head%

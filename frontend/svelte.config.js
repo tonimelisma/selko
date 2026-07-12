@@ -5,12 +5,7 @@ const config = {
 	kit: {
 		adapter: adapter({
 			fallback: 'index.html'
-		}),
-		output: {
-			// One JS + one CSS file — avoids Safari failing on multi-chunk dynamic imports.
-			bundleStrategy: 'single',
-			preloadStrategy: 'preload-js'
-		}
+		})
 	}
 };
 

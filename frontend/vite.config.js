@@ -5,8 +5,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	build: {
-		// With kit.output.bundleStrategy: 'single', keep Vite from injecting
-		// modulepreload for a dependency graph that no longer exists.
+		// Match hooks.server.js: do not inject <link rel="modulepreload"> for JS.
 		modulePreload: false
 	}
 });
