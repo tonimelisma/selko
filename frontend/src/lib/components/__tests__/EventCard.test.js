@@ -110,10 +110,10 @@ describe('EventCard', () => {
 		expect(photoIcon).toBeInTheDocument();
 	});
 
-	it('shows spinner instead of action buttons while processing', () => {
+	it('shows spinner inside action buttons while processing', () => {
 		render(EventCard, { props: { event: mockEvent, isProcessing: true } });
 		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
-		expect(screen.queryByRole('button', { name: /accept event/i })).not.toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: /reject event/i })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /accept event/i })).toBeDisabled();
+		expect(screen.getByRole('button', { name: /reject event/i })).toBeDisabled();
 	});
 });

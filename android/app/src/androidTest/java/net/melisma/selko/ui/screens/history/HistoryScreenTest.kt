@@ -1,10 +1,13 @@
 package net.melisma.selko.ui.screens.history
 
+import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
 import io.mockk.mockk
+import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
@@ -17,8 +20,10 @@ class HistoryScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val application = ApplicationProvider.getApplicationContext<Application>()
     private val eventRepository = mockk<EventRepository>(relaxed = true)
     private val integrationRepository = mockk<IntegrationRepository>(relaxed = true)
+    private val backendApiClient = mockk<BackendApiClient>(relaxed = true)
 
     @Test
     fun historyScreen_showsEmptyState_whenNoEvents() {
@@ -27,7 +32,12 @@ class HistoryScreenTest {
         composeTestRule.setContent {
             SelkoTheme {
                 HistoryScreen(
-                    viewModel = HistoryViewModel(eventRepository, integrationRepository)
+                    viewModel = HistoryViewModel(
+                        application,
+                        eventRepository,
+                        integrationRepository,
+                        backendApiClient
+                    )
                 )
             }
         }
@@ -43,12 +53,17 @@ class HistoryScreenTest {
         composeTestRule.setContent {
             SelkoTheme {
                 HistoryScreen(
-                    viewModel = HistoryViewModel(eventRepository, integrationRepository)
+                    viewModel = HistoryViewModel(
+                        application,
+                        eventRepository,
+                        integrationRepository,
+                        backendApiClient
+                    )
                 )
             }
         }
 
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Events you approve or reject will appear here", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Your approved and rejected events will appear here").assertIsDisplayed()
     }
 }

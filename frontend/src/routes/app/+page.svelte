@@ -23,6 +23,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+	import { resolveEventSender } from '$lib/event-sender.js';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
@@ -30,9 +31,8 @@
 	let events = $state([]);
 	let isLoadingIntegrations = $state(true);
 	let isLoadingEvents = $state(false);
-	/** Load/fetch errors that replace the review list */
-	let loadError = $state('');
-	/** Per-action errors shown as a banner above the list */
+	let error = $state('');
+	/** Action-level error that does not hide the review list */
 	let actionError = $state('');
 	let notification = $state('');
 	let processingEvents = $state(new Set());
@@ -54,20 +54,11 @@
 	function groupBySender(list) {
 		const senderMap = new Map();
 		for (const event of list) {
-			const sources = event.event_sources || [];
-			const firstSource = sources[0];
-
-			let senderKey;
-			let senderName;
-
-			if (firstSource?.source_origin === 'google_photos') {
-				senderKey = 'google_photos';
-				senderName = $_('integrations.googlePhotos');
-			} else {
-				const email = firstSource?.emails;
-				senderKey = email?.from_email || $_('common.unknownSender');
-				senderName = email?.from_name || senderKey;
-			}
+			const { senderKey, senderName } = resolveEventSender(event, {
+				unknownSender: $_('common.unknownSender'),
+				googlePhotos: $_('integrations.googlePhotos'),
+				googleCalendar: $_('integrations.googleCalendar')
+			});
 
 			if (!senderMap.has(senderKey)) {
 				senderMap.set(senderKey, {
@@ -95,7 +86,7 @@
 			}, 4000);
 			window.history.replaceState({}, '', '/app');
 		} else if (oauth === 'error') {
-			actionError = params.get('message') || $_('integrations.connectFailed');
+			error = params.get('message') || $_('integrations.connectFailed');
 			window.history.replaceState({}, '', '/app');
 		}
 		await loadIntegrations();
@@ -105,7 +96,7 @@
 		isLoadingIntegrations = true;
 		const result = await fetchIntegrations();
 		if (result.error) {
-			loadError = result.error.message;
+			error = result.error.message;
 		} else {
 			integrationsList = result.data;
 		}
@@ -122,11 +113,10 @@
 
 	async function loadEvents() {
 		isLoadingEvents = true;
-		loadError = '';
-		actionError = '';
+		error = '';
 		const result = await fetchPendingEventsWithSources();
 		if (result.error) {
-			loadError = result.error.message;
+			error = result.error.message;
 		} else {
 			events = result.data;
 		}
@@ -136,19 +126,23 @@
 	/** @param {any} event */
 	async function handleApproveNew(event) {
 		if (processingEvents.has(event.id)) return;
-		processingEvents = new Set([...processingEvents, event.id]);
 		actionError = '';
+		processingEvents = new Set([...processingEvents, event.id]);
+		const previous = events;
+		// Optimistic remove so the card does not linger while the request is in flight
+		events = events.filter((e) => e.id !== event.id);
 		try {
 			const { error: updateError } = await updateEventStatus(event.id, 'approved');
 			if (updateError) {
+				events = previous;
 				actionError = updateError.message;
 				return;
 			}
-			events = events.filter((e) => e.id !== event.id);
 			try {
 				await syncEventToCalendar(event.id);
 			} catch (syncError) {
 				console.error('Calendar sync failed after approval:', syncError);
+				actionError = $_('home.syncFailedAfterApprove');
 			}
 		} finally {
 			const next = new Set(processingEvents);
@@ -160,15 +154,17 @@
 	/** @param {any} event */
 	async function handleRejectNew(event) {
 		if (processingEvents.has(event.id)) return;
-		processingEvents = new Set([...processingEvents, event.id]);
 		actionError = '';
+		processingEvents = new Set([...processingEvents, event.id]);
+		const previous = events;
+		events = events.filter((e) => e.id !== event.id);
 		try {
 			const { error: updateError } = await updateEventStatus(event.id, 'rejected');
 			if (updateError) {
+				events = previous;
 				actionError = updateError.message;
 				return;
 			}
-			events = events.filter((e) => e.id !== event.id);
 		} finally {
 			const next = new Set(processingEvents);
 			next.delete(event.id);
@@ -179,19 +175,22 @@
 	/** @param {any} event */
 	async function handleApproveChange(event) {
 		if (processingEvents.has(event.id)) return;
-		processingEvents = new Set([...processingEvents, event.id]);
 		actionError = '';
+		processingEvents = new Set([...processingEvents, event.id]);
+		const previous = events;
+		events = events.filter((e) => e.id !== event.id);
 		try {
 			const { error: applyError } = await applyEventChange(event.id);
 			if (applyError) {
+				events = previous;
 				actionError = applyError.message;
 				return;
 			}
-			events = events.filter((e) => e.id !== event.id);
 			try {
 				await syncEventToCalendar(event.id);
 			} catch (syncError) {
 				console.error('Calendar sync failed after change apply:', syncError);
+				actionError = $_('home.syncFailedAfterApprove');
 			}
 		} finally {
 			const next = new Set(processingEvents);
@@ -203,15 +202,17 @@
 	/** @param {any} event */
 	async function handleRejectChange(event) {
 		if (processingEvents.has(event.id)) return;
-		processingEvents = new Set([...processingEvents, event.id]);
 		actionError = '';
+		processingEvents = new Set([...processingEvents, event.id]);
+		const previous = events;
+		events = events.filter((e) => e.id !== event.id);
 		try {
 			const { error: rejectError } = await rejectEventChange(event.id);
 			if (rejectError) {
+				events = previous;
 				actionError = rejectError.message;
 				return;
 			}
-			events = events.filter((e) => e.id !== event.id);
 		} finally {
 			const next = new Set(processingEvents);
 			next.delete(event.id);
@@ -243,7 +244,7 @@
 			action: 'ignore'
 		});
 		if (ruleError) {
-			actionError = ruleError.message;
+			error = ruleError.message;
 			return;
 		}
 		for (const event of eventsList) {
@@ -269,7 +270,7 @@
 			action: 'auto_approve'
 		});
 		if (ruleError) {
-			actionError = ruleError.message;
+			error = ruleError.message;
 			return;
 		}
 		for (const event of eventsList) {
@@ -332,13 +333,16 @@
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 	</div>
-{:else if loadError}
-	<ErrorAlert message={loadError} onretry={loadEvents} />
+{:else if error}
+	<ErrorAlert message={error} onretry={loadEvents} />
 {:else if events.length === 0}
 	<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
 {:else}
 	{#if actionError}
-		<ErrorAlert message={actionError} />
+		<div class="alert alert-error mb-4" role="alert">
+			<span>{actionError}</span>
+			<button class="btn btn-sm btn-ghost" onclick={() => (actionError = '')}>{$_('common.dismiss')}</button>
+		</div>
 	{/if}
 	<div class="space-y-10">
 		{#if newEvents.length > 0}
