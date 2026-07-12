@@ -5,12 +5,29 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
-			(function() {
+			(function () {
 				try {
 					if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
 						document.documentElement.setAttribute('data-theme', 'selko-dark');
 					}
 				} catch (e) {}
+
+				// Runs before SvelteKit's bootstrap import(). hooks.client.js is too late
+				// if the initial entry modules fail to load.
+				var KEY = 'selko-js-mime-reload';
+				window.addEventListener('unhandledrejection', function (event) {
+					var reason = event && event.reason;
+					var msg = String((reason && reason.message) || reason || '');
+					if (msg.indexOf('MIME type') === -1) return;
+					try {
+						event.preventDefault();
+					} catch (e) {}
+					try {
+						if (sessionStorage.getItem(KEY)) return;
+						sessionStorage.setItem(KEY, '1');
+					} catch (e) {}
+					window.location.reload();
+				});
 			})();
 		</script>
 		%sveltekit.head%
