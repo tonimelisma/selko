@@ -67,17 +67,25 @@
 		<!-- Action buttons row -->
 		<div class="flex items-center gap-2 mt-2">
 			<!-- Accept: icon-only filled green button -->
-			<button class="btn btn-sm btn-success" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')}>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+			<button class="btn btn-sm btn-success" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')} aria-busy={isProcessing}>
+				{#if isProcessing}
+					<span class="loading loading-spinner loading-xs"></span>
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+				{/if}
 			</button>
 			<!-- Edit: filled primary button with icon + text -->
-			<a href="/app/events/{event.id}" class="btn btn-sm btn-primary" aria-label={$_('common.edit')}>
+			<a href="/app/events/{event.id}" class="btn btn-sm btn-primary" aria-label={$_('common.edit')} class:btn-disabled={isProcessing}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
 				{$_('common.edit')}
 			</a>
 			<!-- Reject: icon-only filled red button -->
-			<button class="btn btn-sm btn-error" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')}>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+			<button class="btn btn-sm btn-error" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')} aria-busy={isProcessing}>
+				{#if isProcessing}
+					<span class="loading loading-spinner loading-xs"></span>
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+				{/if}
 			</button>
 		</div>
 	</div>

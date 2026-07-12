@@ -13,6 +13,7 @@ import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
+import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
@@ -136,9 +137,7 @@ class ReviewQueueViewModel(
 
     private fun groupBySender(events: List<CalendarEvent>): List<SenderGroup> {
         return events.groupBy { event ->
-            val source = event.eventSources?.firstOrNull()
-            val email = source?.emails
-            Pair(email?.fromName ?: email?.fromEmail ?: getString(R.string.review_unknown_sender), email?.fromEmail ?: "unknown")
+            resolveSender(event)
         }.map { (senderInfo, groupEvents) ->
             SenderGroup(
                 senderName = senderInfo.first,
@@ -148,10 +147,40 @@ class ReviewQueueViewModel(
         }
     }
 
+    /** Prefer email authorship over calendar/photo provenance rows. */
+    private fun resolveSender(event: CalendarEvent): Pair<String, String> {
+        val sources = event.eventSources?.filter { !it.isUndone }.orEmpty()
+
+        val emailSource = sources.firstOrNull { source ->
+            source.sourceOrigin == SourceOrigin.EMAIL &&
+                (source.emails?.fromEmail != null || source.emails?.fromName != null)
+        }
+        emailSource?.emails?.let { email ->
+            val address = email.fromEmail ?: "unknown"
+            val name = email.fromName ?: address
+            return Pair(name, address)
+        }
+
+        if (sources.any { it.sourceOrigin == SourceOrigin.GOOGLE_PHOTOS }) {
+            return Pair(getString(R.string.settings_google_photos), "google_photos")
+        }
+
+        if (sources.any { it.sourceOrigin == SourceOrigin.GOOGLE_CALENDAR }) {
+            return Pair(getString(R.string.settings_google_calendar), "google_calendar")
+        }
+
+        return Pair(
+            getString(R.string.review_unknown_sender),
+            "unknown"
+        )
+    }
+
     fun approveEvent(eventId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
             val event = _uiState.value.events.find { it.id == eventId }
+            // Optimistic remove — restore on failure
+            removeEventFromState(eventId)
             val ok = if (event?.isPendingChange == true) {
                 backendApiClient.applyEventChange(eventId).isSuccess
             } else {
@@ -159,13 +188,29 @@ class ReviewQueueViewModel(
             }
             if (ok) {
                 backendApiClient.syncEventToCalendar(eventId)
-                removeEventFromState(eventId)
             } else {
-                _uiState.update {
-                    it.copy(
-                        processingEventIds = it.processingEventIds - eventId,
-                        errorMessage = getString(R.string.review_error_approve)
-                    )
+                // Restore event into state on failure
+                if (event != null) {
+                    _uiState.update { state ->
+                        val updatedEvents = state.events + event
+                        val newEvents = updatedEvents.filter { !it.isPendingChange }
+                        val changeEvents = updatedEvents.filter { it.isPendingChange }
+                        state.copy(
+                            events = updatedEvents,
+                            senderGroups = groupBySender(updatedEvents),
+                            newSenderGroups = groupBySender(newEvents),
+                            changeSenderGroups = groupBySender(changeEvents),
+                            processingEventIds = state.processingEventIds - eventId,
+                            errorMessage = getString(R.string.review_error_approve)
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            processingEventIds = it.processingEventIds - eventId,
+                            errorMessage = getString(R.string.review_error_approve)
+                        )
+                    }
                 }
             }
         }

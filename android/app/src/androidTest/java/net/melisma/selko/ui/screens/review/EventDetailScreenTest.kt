@@ -1,12 +1,12 @@
 package net.melisma.selko.ui.screens.review
 
+import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
 import io.mockk.mockk
-import net.melisma.selko.data.model.CalendarEvent
-import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.ui.theme.SelkoTheme
@@ -18,6 +18,7 @@ class EventDetailScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val application = ApplicationProvider.getApplicationContext<Application>()
     private val eventRepository = mockk<EventRepository>(relaxed = true)
 
     @Test
@@ -29,7 +30,7 @@ class EventDetailScreenTest {
                 EventDetailScreen(
                     eventId = "test-event-id",
                     onNavigateBack = {},
-                    viewModel = EventDetailViewModel(eventRepository, "test-event-id")
+                    viewModel = EventDetailViewModel(application, eventRepository, "test-event-id")
                 )
             }
         }
@@ -47,7 +48,7 @@ class EventDetailScreenTest {
                 EventDetailScreen(
                     eventId = "test-event-id",
                     onNavigateBack = {},
-                    viewModel = EventDetailViewModel(eventRepository, "test-event-id")
+                    viewModel = EventDetailViewModel(application, eventRepository, "test-event-id")
                 )
             }
         }
@@ -65,7 +66,7 @@ class EventDetailScreenTest {
                 EventDetailScreen(
                     eventId = "nonexistent-id",
                     onNavigateBack = {},
-                    viewModel = EventDetailViewModel(eventRepository, "nonexistent-id")
+                    viewModel = EventDetailViewModel(application, eventRepository, "nonexistent-id")
                 )
             }
         }

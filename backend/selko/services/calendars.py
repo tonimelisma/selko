@@ -28,6 +28,7 @@ def fetch_calendar_events_for_date_range(
     user_id: str,
     time_min: str,
     time_max: str,
+    user_timezone: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Fetch user's Google Calendar events for a date range.
 
@@ -39,6 +40,7 @@ def fetch_calendar_events_for_date_range(
         user_id: UUID of user.
         time_min: ISO datetime string for range start.
         time_max: ISO datetime string for range end.
+        user_timezone: IANA timezone for GCal response projection.
 
     Returns:
         List of Google Calendar event dicts. Empty list on any error.
@@ -51,6 +53,7 @@ def fetch_calendar_events_for_date_range(
 
         settings = get_calendar_settings(supabase_client, user_id)
         calendar_id = settings.get("target_calendar_id") or "primary"
+        tz = user_timezone or settings.get("timezone") or "America/New_York"
 
         service = build("calendar", "v3", credentials=creds)
 
@@ -60,6 +63,7 @@ def fetch_calendar_events_for_date_range(
             timeMax=time_max,
             singleEvents=True,
             maxResults=50,
+            timeZone=tz,
         ).execute()
 
         return result.get("items", [])
@@ -225,6 +229,8 @@ def _build_calendar_event_body(
     # Use user timezone from settings instead of hardcoded UTC
     user_tz = settings.get("timezone", "America/New_York")
 
+    from selko.services.civil_time import gcal_timed_fields
+
     # Handle dates
     if event.get("all_day"):
         # All-day event
@@ -238,30 +244,23 @@ def _build_calendar_event_body(
             calendar_event["start"]["date"] = date_str
             calendar_event["end"]["date"] = date_str
     else:
-        # Timed event
+        # Timed event: naive local dateTime + IANA timeZone (never offset+tz)
         start_dt = event.get("start_datetime")
         end_dt = event.get("end_datetime")
 
         if start_dt:
-            if isinstance(start_dt, str):
-                calendar_event["start"]["dateTime"] = start_dt
-            else:
-                calendar_event["start"]["dateTime"] = start_dt.isoformat()
-            calendar_event["start"]["timeZone"] = user_tz
+            fields = gcal_timed_fields(start_dt, user_tz)
+            if fields:
+                calendar_event["start"] = fields
 
         if end_dt:
-            if isinstance(end_dt, str):
-                calendar_event["end"]["dateTime"] = end_dt
-            else:
-                calendar_event["end"]["dateTime"] = end_dt.isoformat()
-            calendar_event["end"]["timeZone"] = user_tz
+            fields = gcal_timed_fields(end_dt, user_tz)
+            if fields:
+                calendar_event["end"] = fields
         elif start_dt:
-            # Default to same as start (1 hour duration handled by Calendar API)
-            if isinstance(start_dt, str):
-                calendar_event["end"]["dateTime"] = start_dt
-            else:
-                calendar_event["end"]["dateTime"] = start_dt.isoformat()
-            calendar_event["end"]["timeZone"] = user_tz
+            fields = gcal_timed_fields(start_dt, user_tz)
+            if fields:
+                calendar_event["end"] = fields
 
     # Add recurrence rule if present
     recurrence_rule = event.get("recurrence_rule")
@@ -530,6 +529,8 @@ def update_calendar_event(
         end_dt = event.get("end_datetime")
         user_tz = settings.get("timezone", "America/New_York")
 
+        from selko.services.civil_time import gcal_timed_fields
+
         if event.get("all_day"):
             if start_dt:
                 if isinstance(start_dt, str):
@@ -540,27 +541,13 @@ def update_calendar_event(
                 existing_event["end"] = {"date": date_str}
         else:
             if start_dt:
-                if isinstance(start_dt, str):
-                    existing_event["start"] = {
-                        "dateTime": start_dt,
-                        "timeZone": user_tz
-                    }
-                else:
-                    existing_event["start"] = {
-                        "dateTime": start_dt.isoformat(),
-                        "timeZone": user_tz
-                    }
+                fields = gcal_timed_fields(start_dt, user_tz)
+                if fields:
+                    existing_event["start"] = fields
             if end_dt:
-                if isinstance(end_dt, str):
-                    existing_event["end"] = {
-                        "dateTime": end_dt,
-                        "timeZone": user_tz
-                    }
-                else:
-                    existing_event["end"] = {
-                        "dateTime": end_dt.isoformat(),
-                        "timeZone": user_tz
-                    }
+                fields = gcal_timed_fields(end_dt, user_tz)
+                if fields:
+                    existing_event["end"] = fields
 
         # Update event
         service.events().update(

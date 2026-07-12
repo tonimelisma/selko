@@ -1,6 +1,6 @@
 """Unit tests for timezone infrastructure changes."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -86,17 +86,19 @@ class TestNormalizeEventData:
         assert result["start_datetime"] is not None
         assert "-04:00" in result["start_datetime"] or "-05:00" in result["start_datetime"]
 
-    def test_aware_datetime_passes_through_unchanged(self):
-        """Already timezone-aware datetimes should not be modified."""
+    def test_aware_datetime_treated_as_civil_wall_time(self):
+        """LLM offsets are untrusted — clock face is localized to user TZ."""
         from selko.services.events import normalize_event_data
 
-        aware_dt = datetime(2026, 3, 15, 14, 0, 0, tzinfo=ZoneInfo("America/Chicago"))
+        # Model stamped 10:00 as +00:00; user is Pacific → store as 10:00-07:00
+        aware_dt = datetime(2026, 9, 13, 10, 0, 0, tzinfo=timezone.utc)
         event = self._make_event(start_dt=aware_dt)
 
-        result = normalize_event_data(event, user_timezone="America/New_York")
+        result = normalize_event_data(event, user_timezone="America/Los_Angeles")
 
-        # Should preserve the original timezone (Chicago), not convert to New York
-        assert "America/Chicago" in result["start_datetime"] or "-05:00" in result["start_datetime"] or "-06:00" in result["start_datetime"]
+        assert result["start_datetime"] is not None
+        assert result["start_datetime"].startswith("2026-09-13T10:00:00")
+        assert "-07:00" in result["start_datetime"]
 
     def test_none_datetime_returns_none(self):
         """None datetimes should remain None."""

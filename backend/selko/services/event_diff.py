@@ -83,7 +83,7 @@ def _parse_datetime_utc(value: Any) -> Optional[datetime]:
     return dt.astimezone(timezone.utc)
 
 
-def _normalize_datetime(value: Any) -> Optional[str]:
+def _normalize_datetime(value: Any, user_timezone: Optional[str] = None) -> Optional[str]:
     dt = _parse_datetime_utc(value)
     if dt is None:
         return None
@@ -116,9 +116,11 @@ def _normalize_bool(value: Any) -> Optional[bool]:
     return bool(value)
 
 
-def normalized_value(field: str, value: Any) -> Any:
+def normalized_value(
+    field: str, value: Any, user_timezone: Optional[str] = None
+) -> Any:
     if field in ("start_datetime", "end_datetime"):
-        return _normalize_datetime(value)
+        return _normalize_datetime(value, user_timezone)
     if field == "location":
         return _normalize_location(value)
     if field == "all_day":
@@ -128,8 +130,19 @@ def normalized_value(field: str, value: Any) -> Any:
     return value
 
 
-def values_equal(field: str, before: Any, after: Any) -> bool:
-    return normalized_value(field, before) == normalized_value(field, after)
+def values_equal(
+    field: str,
+    before: Any,
+    after: Any,
+    user_timezone: Optional[str] = None,
+) -> bool:
+    if field in ("start_datetime", "end_datetime"):
+        from selko.services.civil_time import datetimes_equal
+
+        return datetimes_equal(before, after, user_timezone)
+    return normalized_value(field, before, user_timezone) == normalized_value(
+        field, after, user_timezone
+    )
 
 
 def derive_kind(changes: list[FieldChange]) -> Literal[
@@ -152,6 +165,7 @@ def derive_kind(changes: list[FieldChange]) -> Literal[
 def gate_change_set(
     proposed: EventChangeSet,
     baseline: Optional[dict[str, Any]] = None,
+    user_timezone: Optional[str] = None,
 ) -> EventChangeSet:
     """Drop hallucinated / no-op field changes; re-derive kind from survivors.
 
@@ -167,7 +181,7 @@ def gate_change_set(
         after = change.after
         if baseline is not None and before is None and field in baseline:
             before = baseline.get(field)
-        if values_equal(field, before, after):
+        if values_equal(field, before, after, user_timezone):
             continue
         gated.append(
             FieldChange(
@@ -196,6 +210,7 @@ def compute_change_set(
     proposed: dict[str, Any],
     *,
     source_type: str = "update",
+    user_timezone: Optional[str] = None,
 ) -> EventChangeSet:
     """Deterministic fallback diff (tests / when LLM propose is unavailable).
 
@@ -206,12 +221,14 @@ def compute_change_set(
     if source_type == "cancellation" or proposed.get("status") == "cancelled":
         before_status = baseline.get("status")
         after_status = "cancelled"
-        if not values_equal("status", before_status, after_status):
+        if not values_equal("status", before_status, after_status, user_timezone):
             changes.append(
                 FieldChange(field="status", before=before_status, after=after_status)
             )
         return gate_change_set(
-            EventChangeSet(kind="cancellation", changes=changes), baseline
+            EventChangeSet(kind="cancellation", changes=changes),
+            baseline,
+            user_timezone=user_timezone,
         )
 
     for field in sorted(COMPARABLE_FIELDS):
@@ -219,7 +236,7 @@ def compute_change_set(
             continue
         before = baseline.get(field)
         after = proposed.get(field)
-        if values_equal(field, before, after):
+        if values_equal(field, before, after, user_timezone):
             continue
         changes.append(
             FieldChange(
@@ -230,17 +247,30 @@ def compute_change_set(
         )
 
     return gate_change_set(
-        EventChangeSet(kind=derive_kind(changes), changes=changes), baseline
+        EventChangeSet(kind=derive_kind(changes), changes=changes),
+        baseline,
+        user_timezone=user_timezone,
     )
 
 
-def baseline_from_gcal_event(gcal_event: dict[str, Any]) -> dict[str, Any]:
+def baseline_from_gcal_event(
+    gcal_event: dict[str, Any],
+    user_timezone: Optional[str] = None,
+) -> dict[str, Any]:
     """Map a Google Calendar API event dict to Selko-like baseline fields."""
+    from selko.services.civil_time import to_storage_iso
+
     start = gcal_event.get("start") or {}
     end = gcal_event.get("end") or {}
-    start_dt = start.get("dateTime") or start.get("date")
-    end_dt = end.get("dateTime") or end.get("date")
     all_day = "date" in start and "dateTime" not in start
+    start_raw = start.get("dateTime") or start.get("date")
+    end_raw = end.get("dateTime") or end.get("date")
+    if all_day:
+        start_dt = start_raw
+        end_dt = end_raw
+    else:
+        start_dt = to_storage_iso(start_raw, user_timezone, treat_as_civil=False)
+        end_dt = to_storage_iso(end_raw, user_timezone, treat_as_civil=False)
     return {
         "title": gcal_event.get("summary") or "",
         "start_datetime": start_dt,

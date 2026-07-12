@@ -67,6 +67,8 @@ final class ReviewQueueViewModel {
     }
 
     func approveEvent(_ event: CalendarEvent) async {
+        // Optimistic remove — restore on failure
+        removeEventFromGroups(event.id)
         do {
             if event.isPendingChange {
                 _ = try await backendAPI.applyEventChange(eventId: event.id)
@@ -74,22 +76,23 @@ final class ReviewQueueViewModel {
             } else {
                 _ = try await eventService.approveEvent(id: event.id)
             }
-            removeEventFromGroups(event.id)
         } catch {
             errorMessage = error.localizedDescription
+            await load()
         }
     }
 
     func rejectEvent(_ event: CalendarEvent) async {
+        removeEventFromGroups(event.id)
         do {
             if event.isPendingChange {
                 _ = try await backendAPI.rejectEventChange(eventId: event.id)
             } else {
                 _ = try await eventService.rejectEvent(id: event.id)
             }
-            removeEventFromGroups(event.id)
         } catch {
             errorMessage = error.localizedDescription
+            await load()
         }
     }
 
@@ -173,14 +176,14 @@ final class ReviewQueueViewModel {
         var grouped: [String: (name: String, email: String, events: [CalendarEvent])] = [:]
 
         for event in events {
-            let email = event.eventSources?.first?.emails?.fromEmail ?? "unknown"
-            let name = event.eventSources?.first?.emails?.fromName ?? email
+            let resolved = Self.resolveSender(for: event)
+            let key = resolved.email
 
-            if var existing = grouped[email] {
+            if var existing = grouped[key] {
                 existing.events.append(event)
-                grouped[email] = existing
+                grouped[key] = existing
             } else {
-                grouped[email] = (name: name, email: email, events: [event])
+                grouped[key] = (name: resolved.name, email: resolved.email, events: [event])
             }
         }
 
@@ -192,6 +195,30 @@ final class ReviewQueueViewModel {
                 events: value.events
             )
         }
+    }
+
+    /// Prefer email authorship over calendar/photo provenance rows.
+    static func resolveSender(for event: CalendarEvent) -> (name: String, email: String) {
+        let sources = (event.eventSources ?? []).filter { !$0.isUndone }
+
+        if let emailSource = sources.first(where: {
+            $0.sourceOrigin == .email
+                && ($0.emails?.fromEmail != nil || $0.emails?.fromName != nil)
+        }), let email = emailSource.emails {
+            let address = email.fromEmail ?? "unknown"
+            let name = email.fromName ?? address
+            return (name: name, email: address)
+        }
+
+        if sources.contains(where: { $0.sourceOrigin == .googlePhotos }) {
+            return (name: String(localized: "Google Photos"), email: "google_photos")
+        }
+
+        if sources.contains(where: { $0.sourceOrigin == .googleCalendar }) {
+            return (name: String(localized: "Google Calendar"), email: "google_calendar")
+        }
+
+        return (name: String(localized: "Unknown Sender"), email: "unknown")
     }
 
     private func removeGroup(_ groupId: String) {
