@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+/* Self-hosted — avoids third-party font CSS that Safari content blockers intercept. */
+@import '@fontsource-variable/inter/wght.css';
 @import "tailwindcss";
 
 @plugin "daisyui" {
@@ -64,5 +65,5 @@
 }
 
 html {
-	font-family: 'Inter', system-ui, -apple-system, sans-serif;
+	font-family: 'Inter Variable', Inter, system-ui, -apple-system, sans-serif;
 }
