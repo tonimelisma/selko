@@ -5,9 +5,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	build: {
-		// Do not inject runtime <link rel="modulepreload"> for dynamic imports.
-		// Safari can cancel those fetches and then fail the real import() with
-		// TypeError: '' is not a valid JavaScript MIME type.
+		// With kit.output.bundleStrategy: 'single', keep Vite from injecting
+		// modulepreload for a dependency graph that no longer exists.
 		modulePreload: false
 	}
 });

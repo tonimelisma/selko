@@ -1,62 +1,43 @@
 /**
- * One-shot recovery from Safari/WebKit module load failures.
+ * Recover from Vite dynamic-import failures (stale chunks after deploy).
  *
- * Infinite-loop bug (fixed): clearing the sessionStorage guard as soon as
- * hooks.client.js loaded meant every reload reset the guard, so a sticky
- * vite:preloadError (stale cached chunks after deploy) reloaded forever.
+ * Critical: only call preventDefault() when we actually reload. Otherwise
+ * Safari ends on a blank white SPA shell with the error swallowed.
  *
- * Allow at most one automatic reload while the guard is set. After the app
- * stays up for CLEAR_AFTER_MS, clear the guard so a later deploy can recover.
+ * Throttle: at most one reload per 10s (n8n/Vite community pattern).
  */
-const RELOAD_KEY = 'selko-js-mime-reload';
-const CLEAR_AFTER_MS = 30_000;
-let reloading = false;
+const RELOAD_TS_KEY = 'selko-vite-preload-reload-ts';
+const RELOAD_THROTTLE_MS = 10_000;
 
-function alreadyRecovered() {
+/** @param {Event} event */
+function reloadOnce(event) {
+	const now = Date.now();
 	try {
-		return Boolean(sessionStorage.getItem(RELOAD_KEY));
+		const last = Number(sessionStorage.getItem(RELOAD_TS_KEY) || 0);
+		if (now - last < RELOAD_THROTTLE_MS) {
+			// Recently reloaded already — do NOT preventDefault; let the error show.
+			return false;
+		}
+		sessionStorage.setItem(RELOAD_TS_KEY, String(now));
 	} catch {
-		return false;
+		// sessionStorage unavailable — still attempt a single reload this load.
 	}
-}
 
-function markRecovered() {
-	try {
-		sessionStorage.setItem(RELOAD_KEY, '1');
-	} catch {
-		/* ignore */
-	}
-}
-
-function clearRecovered() {
-	try {
-		sessionStorage.removeItem(RELOAD_KEY);
-	} catch {
-		/* ignore */
-	}
-}
-
-function reloadOnce() {
-	if (reloading || alreadyRecovered()) return;
-	reloading = true;
-	markRecovered();
+	event.preventDefault();
 	window.location.reload();
+	return true;
 }
 
 if (typeof window !== 'undefined') {
-	// After a recovery reload (or a healthy first boot), clear the guard once
-	// the app has stayed up — so a future deploy can still one-shot recover.
-	window.setTimeout(clearRecovered, CLEAR_AFTER_MS);
-
 	window.addEventListener('vite:preloadError', (event) => {
-		event.preventDefault();
-		reloadOnce();
+		reloadOnce(event);
 	});
 
 	window.addEventListener('unhandledrejection', (event) => {
 		const msg = String(event.reason?.message || event.reason || '');
-		if (!msg.includes('MIME type')) return;
-		event.preventDefault();
-		reloadOnce();
+		if (!msg.includes('MIME type') && !msg.includes('Failed to fetch dynamically imported module')) {
+			return;
+		}
+		reloadOnce(event);
 	});
 }
