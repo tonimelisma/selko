@@ -5,7 +5,12 @@ const config = {
 	kit: {
 		adapter: adapter({
 			fallback: 'index.html'
-		})
+		}),
+		output: {
+			// Official Safari/iOS-friendly strategy if any JS preloads slip through.
+			// Primary fix is hooks.server.js (no JS preloads); this is belt-and-suspenders.
+			preloadStrategy: 'preload-js'
+		}
 	}
 };
 
