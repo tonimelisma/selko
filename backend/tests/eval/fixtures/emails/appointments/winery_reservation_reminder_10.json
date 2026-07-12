@@ -1,0 +1,35 @@
+{
+  "name": "winery_reservation_reminder_10",
+  "category": "appointments",
+  "description": "Reminder for an existing winery tour reservation",
+  "difficulty": "medium",
+  "tags": ["production-regression", "reservation", "reminder", "winery"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-008",
+    "thread_id": "thread-prod-failure-007",
+    "subject": "Reminder: upcoming reservation for Example Winery on Thursday, June 18, 2026, 2:30 PM",
+    "from_email": "noreply@reservations.example",
+    "from_name": "Example Winery",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-06-18T10:47:22Z",
+    "snippet": "Your Cave and Vineyard Tour reservation is coming up.",
+    "body_text": "Example Winery\n\nReservation reminder\n\nYour Winter Cave & Vineyard Tour reservation is coming up.\n\nThursday, June 18, 2026 at 2:30 PM\nExample Winery\n200 Vineyard Road, Sonoma, CA\n3 guests\n\nWe look forward to welcoming you.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Winter Cave & Vineyard Tour",
+        "start_datetime": "2026-06-18T14:30:00",
+        "end_datetime": null,
+        "location": "Example Winery, 200 Vineyard Road, Sonoma, CA",
+        "description": "Reminder for winery tour reservation for 3 guests",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Production regression: reminder intermittently produced a schema echo rather than structured event data"
+}

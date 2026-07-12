@@ -1,0 +1,25 @@
+{
+  "name": "meeting_digest_past_topics_12",
+  "category": "no_events",
+  "description": "Daily meeting digest describing completed meetings and topics",
+  "difficulty": "hard",
+  "tags": ["production-regression", "meeting-digest", "past-events", "negative-test"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-002",
+    "thread_id": "thread-prod-failure-002",
+    "subject": "Catch up on yesterday in 2 minutes",
+    "from_email": "digest@meeting-notes.example",
+    "from_name": "Daily Digest",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-05-30T15:33:24Z",
+    "snippet": "Daily digest: multiple meetings, action items, and popular topics from yesterday.",
+    "body_text": "Daily Digest\n\nCatch up on yesterday in 2 minutes.\n\nMultiple meetings\n\nAction Items\nNo action items assigned to you in these meetings.\n\nPopular Topics\n- Roadway safety and traffic enforcement\n- Project status\n- Community outreach\n\nOpen any completed meeting to read its transcript. This digest contains no invitation, upcoming date, or deadline.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Production regression: completed-meeting summaries are not future calendar events"
+}

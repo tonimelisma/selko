@@ -1,0 +1,25 @@
+{
+  "name": "automatic_invoice_payment_16",
+  "category": "no_events",
+  "description": "Automatic invoice payment reminder with due and processing date",
+  "difficulty": "hard",
+  "tags": ["production-regression", "outlook", "autopay", "invoice", "negative-test"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-006",
+    "thread_id": "thread-prod-failure-006",
+    "subject": "Payment Scheduled",
+    "from_email": "billing@internet-provider.example",
+    "from_name": "Internet Provider Billing",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-06-14T08:16:12Z",
+    "snippet": "Your automatic payment for the attached invoice is scheduled to be processed on 06/24/26.",
+    "body_text": "Just a reminder that your automatic payment for the attached invoice is scheduled to be processed on 06/24/26.\n\nDue date: 06/24/26\nAccount: ending 4321\nAmount: $59.99\n\nNo action is needed. Your saved payment method will be charged automatically.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Production regression: Outlook trace returned an empty model response for this no-event pattern"
+}

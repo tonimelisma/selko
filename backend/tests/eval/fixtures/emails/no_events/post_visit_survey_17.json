@@ -1,0 +1,25 @@
+{
+  "name": "post_visit_survey_17",
+  "category": "no_events",
+  "description": "Post-visit survey that repeats the completed reservation date",
+  "difficulty": "hard",
+  "tags": ["production-regression", "survey", "past-event", "reservation", "negative-test"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-009",
+    "thread_id": "thread-prod-failure-007",
+    "subject": "Thank you for visiting Example Winery",
+    "from_email": "noreply@reservations.example",
+    "from_name": "Example Winery",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-06-19T17:16:26Z",
+    "snippet": "Thank you for visiting. Cave and Vineyard Tour, Jun 18, 2026 at 2:30 PM. How was your experience?",
+    "body_text": "Example Winery\n\nThank you for visiting!\n\nWinter Cave & Vineyard Tour\nJun 18, 2026 at 2:30 PM · 3 guests\n\nHow was your experience?\nRate your visit from 1 to 5 stars and tell us what we could improve.\n\nWe hope to see you again.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Production regression: the date describes a completed visit and must not create another event"
+}
