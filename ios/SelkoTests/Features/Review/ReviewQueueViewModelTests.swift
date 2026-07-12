@@ -146,4 +146,44 @@ struct ReviewQueueViewModelTests {
         #expect(viewModel.errorMessage != nil)
         #expect(mockEventService.approveEventCallCount == 0)
     }
+
+    // MARK: - Sender resolution
+
+    @Test
+    func resolveSenderPrefersEmailOverGoogleCalendar() {
+        let calendarSource = EventSource(
+            id: UUID(),
+            eventId: UUID(),
+            emailId: nil,
+            sourceOrigin: .googleCalendar,
+            sourceType: .update,
+            extractedData: nil,
+            changeSet: nil,
+            isUndone: false,
+            createdAt: Date(),
+            emails: nil
+        )
+        let emailSource = EventSource.mock
+        let event = CalendarEvent(
+            id: UUID(),
+            userId: UUID(),
+            title: "Bike Family Fest",
+            startDatetime: Date(),
+            endDatetime: Date(),
+            allDay: false,
+            location: nil,
+            description: nil,
+            sourceAttribution: nil,
+            status: .pendingChange,
+            googleCalendarEventId: "gcal-1",
+            syncedAt: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            eventSources: [calendarSource, emailSource]
+        )
+
+        let resolved = ReviewQueueViewModel.resolveSender(for: event)
+        #expect(resolved.email == "sender@example.com")
+        #expect(resolved.name == Email.mock.fromName || resolved.name == "sender@example.com")
+    }
 }

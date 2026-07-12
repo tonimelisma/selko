@@ -1,5 +1,7 @@
 package net.melisma.selko.ui.screens.auth
 
+import android.app.Application
+import androidx.test.core.app.ApplicationProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -25,6 +27,7 @@ class AuthScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val application = ApplicationProvider.getApplicationContext<Application>()
     private lateinit var authRepository: AuthRepository
 
     @Before
@@ -40,7 +43,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -54,7 +57,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -68,7 +71,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -83,7 +86,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -97,7 +100,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -111,7 +114,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -128,7 +131,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -145,7 +148,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -161,7 +164,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -177,7 +180,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -195,7 +198,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -217,7 +220,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = { authSuccessCalled = true },
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -236,7 +239,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -255,7 +258,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -274,7 +277,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -293,7 +296,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -309,7 +312,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -323,7 +326,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }
@@ -344,7 +347,7 @@ class AuthScreenTest {
             SelkoTheme {
                 AuthScreen(
                     onAuthSuccess = {},
-                    viewModel = AuthViewModel(authRepository)
+                    viewModel = AuthViewModel(application, authRepository)
                 )
             }
         }

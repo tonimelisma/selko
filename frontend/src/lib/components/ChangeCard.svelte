@@ -1,5 +1,6 @@
 <script>
 	import { _ } from 'svelte-i18n';
+	import { formatChangeValue } from '$lib/format-change-value.js';
 
 	let { event, isProcessing = false, onapprove, onreject } = $props();
 
@@ -38,21 +39,7 @@
 
 	/** @param {any} value */
 	function formatValue(value) {
-		if (value === null || value === undefined || value === '') return $_('events.none');
-		if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-		if (typeof value === 'string' && value.includes('T')) {
-			try {
-				return new Date(value).toLocaleString(undefined, {
-					month: 'short',
-					day: 'numeric',
-					hour: 'numeric',
-					minute: '2-digit'
-				});
-			} catch {
-				return String(value);
-			}
-		}
-		return String(value);
+		return formatChangeValue(value, $_('events.none'));
 	}
 
 	let changeSet = $derived(getChangeSet(event));
@@ -86,12 +73,17 @@
 				disabled={isProcessing}
 				onclick={() => onapprove?.(event)}
 				aria-label={$_('events.acceptChange')}
+				aria-busy={isProcessing}
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-					><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg
-				>
+				{#if isProcessing}
+					<span class="loading loading-spinner loading-xs"></span>
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+						><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg
+					>
+				{/if}
 			</button>
-			<a href="/app/events/{event.id}" class="btn btn-sm btn-primary" aria-label={$_('common.edit')}>
+			<a href="/app/events/{event.id}" class="btn btn-sm btn-primary" class:btn-disabled={isProcessing} aria-label={$_('common.edit')}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
 					><path
 						stroke-linecap="round"
@@ -107,10 +99,15 @@
 				disabled={isProcessing}
 				onclick={() => onreject?.(event)}
 				aria-label={$_('events.rejectChange')}
+				aria-busy={isProcessing}
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-					><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg
-				>
+				{#if isProcessing}
+					<span class="loading loading-spinner loading-xs"></span>
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+						><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg
+					>
+				{/if}
 			</button>
 		</div>
 	</div>

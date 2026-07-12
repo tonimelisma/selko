@@ -431,10 +431,10 @@ describe('Review Queue (App Page)', () => {
 		expect(screen.queryByText('Auto-approve sender')).not.toBeInTheDocument();
 	});
 
-	it('disables approve/reject buttons while event is processing', async () => {
+	it('optimistically removes event from queue while approve is in flight', async () => {
 		const user = userEvent.setup();
 
-		// Make updateEventStatus hang so the event stays "processing"
+		// Make updateEventStatus hang so we can assert optimistic UI
 		let resolveUpdate;
 		mockUpdateEventStatus.mockImplementation(
 			() => new Promise((resolve) => { resolveUpdate = resolve; })
@@ -477,22 +477,14 @@ describe('Review Queue (App Page)', () => {
 		});
 
 		const approveBtn = screen.getByRole('button', { name: /accept event/i });
-		const rejectBtn = screen.getByRole('button', { name: /reject event/i });
-
-		// Buttons should be enabled initially
 		expect(approveBtn).not.toBeDisabled();
-		expect(rejectBtn).not.toBeDisabled();
 
-		// Click approve — starts processing
 		await user.click(approveBtn);
 
-		// Buttons should be disabled while processing
 		await waitFor(() => {
-			expect(approveBtn).toBeDisabled();
-			expect(rejectBtn).toBeDisabled();
+			expect(screen.queryByText('Processing Test')).not.toBeInTheDocument();
 		});
 
-		// Resolve the pending update to clean up
 		resolveUpdate({ data: null, error: null });
 	});
 

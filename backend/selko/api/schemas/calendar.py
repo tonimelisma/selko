@@ -12,10 +12,18 @@ class CalendarEvent(BaseModel):
 
     title: str = Field(description="The event title or name")
     start_datetime: Optional[datetime] = Field(
-        None, description="The event start date and time (ISO 8601)"
+        None,
+        description=(
+            "Local wall-clock start in the user's timezone as naive ISO 8601 "
+            "(e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets."
+        ),
     )
     end_datetime: Optional[datetime] = Field(
-        None, description="The event end date and time (ISO 8601)"
+        None,
+        description=(
+            "Local wall-clock end in the user's timezone as naive ISO 8601 "
+            "(e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets."
+        ),
     )
 
     @field_validator("start_datetime", "end_datetime", mode="before")

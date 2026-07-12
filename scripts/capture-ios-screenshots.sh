@@ -34,22 +34,29 @@ xcrun simctl spawn "$SIMULATOR_NAME" defaults write -g AutoFillPasswords -bool f
 echo "==> Uninstalling app to ensure clean state..."
 xcrun simctl uninstall "$SIMULATOR_NAME" net.melisma.Selko 2>/dev/null || true
 
-# Clean previous result bundle
+# Clean previous result bundle (unused — screenshots are written by the test itself)
 rm -rf "$RESULT_BUNDLE"
 
 # --- Build and test (always full build since we uninstalled above) ---
+# Omit -resultBundlePath: post-success diagnostic collection often hangs ~600s and
+# then fails saving the bundle even when tests passed.
 
 echo "==> Building and running screenshot tests..."
+export SCREENSHOT_DIR="$PROJECT_ROOT/docs/screenshots"
+set +e
 xcodebuild test \
     -project "$PROJECT_ROOT/ios/iOS.xcodeproj" \
     -scheme iOS \
     -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
     -only-testing:iOSUITests/ScreenshotCaptureTests \
-    -resultBundlePath "$RESULT_BUNDLE" \
-    | tail -20
+    2>&1 | tee /tmp/ios-screenshot-capture.log | tail -40
+XCODE_STATUS=${PIPESTATUS[0]}
+set -e
 
-# Clean up result bundle (screenshots are already saved to docs/screenshots/ by the test)
-rm -rf "$RESULT_BUNDLE"
+if ! grep -q "TEST SUCCEEDED" /tmp/ios-screenshot-capture.log; then
+    echo "ERROR: iOS screenshot tests did not succeed (xcodebuild exit $XCODE_STATUS)"
+    exit "${XCODE_STATUS:-1}"
+fi
 
 # Resize to ≤1920px height (iPhone 17 Pro captures at 2622px)
 echo "==> Resizing iOS screenshots..."

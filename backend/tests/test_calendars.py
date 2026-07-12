@@ -48,9 +48,9 @@ class TestBuildCalendarEventBody:
         assert body["location"] == "Conference Room A"
         assert "Quarterly review" in body["description"]
         assert "From email by John" in body["description"]
-        assert body["start"]["dateTime"] == "2026-03-15T14:00:00Z"
+        assert body["start"]["dateTime"] == "2026-03-15T14:00:00"
         assert body["start"]["timeZone"] == "UTC"
-        assert body["end"]["dateTime"] == "2026-03-15T15:00:00Z"
+        assert body["end"]["dateTime"] == "2026-03-15T15:00:00"
         assert body["extendedProperties"]["private"]["selko_event_id"] == "event-123"
 
     def test_all_day_event(self):
@@ -107,11 +107,12 @@ class TestBuildCalendarEventBody:
             "description": None,
             "source_attribution": None,
         }
-        settings = {"default_invitees": None}
+        settings = {"default_invitees": None, "timezone": "UTC"}
 
         body = _build_calendar_event_body(event, settings)
 
-        assert body["end"]["dateTime"] == "2026-03-15T14:00:00Z"
+        assert body["end"]["dateTime"] == "2026-03-15T14:00:00"
+        assert body["end"]["timeZone"] == "UTC"
 
     def test_handles_datetime_objects(self):
         """Test handling of actual datetime objects instead of strings."""
@@ -125,12 +126,12 @@ class TestBuildCalendarEventBody:
             "description": None,
             "source_attribution": None,
         }
-        settings = {"default_invitees": None}
+        settings = {"default_invitees": None, "timezone": "UTC"}
 
         body = _build_calendar_event_body(event, settings)
 
-        assert "2026-03-15" in body["start"]["dateTime"]
-        assert "14:00:00" in body["start"]["dateTime"]
+        assert body["start"]["dateTime"] == "2026-03-15T14:00:00"
+        assert body["start"]["timeZone"] == "UTC"
 
     def test_empty_description_with_attribution(self):
         """Test that attribution works when description is empty."""
@@ -884,6 +885,7 @@ class TestFetchCalendarEventsForDateRange:
                 timeMax="2026-03-15T23:59:59Z",
                 singleEvents=True,
                 maxResults=50,
+                timeZone="America/New_York",
             )
 
     def test_returns_empty_no_credentials(self):

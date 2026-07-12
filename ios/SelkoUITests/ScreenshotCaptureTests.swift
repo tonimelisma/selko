@@ -15,9 +15,12 @@ final class ScreenshotCaptureTests: XCTestCase {
     private let pollInterval: TimeInterval = 0.2
 
     /// Resolve the project-root docs/screenshots directory.
-    /// The test source lives at <project>/ios/SelkoUITests/ScreenshotCaptureTests.swift,
-    /// so we go up three levels to reach the project root.
+    /// Prefer SCREENSHOT_DIR from the launch environment (set by capture-ios-screenshots.sh)
+    /// so worktrees always write to the correct tree.
     private var screenshotDir: String {
+        if let envDir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"], !envDir.isEmpty {
+            return envDir
+        }
         let thisFile = URL(fileURLWithPath: #filePath)
         let projectRoot = thisFile
             .deletingLastPathComponent()  // SelkoUITests/
@@ -27,8 +30,8 @@ final class ScreenshotCaptureTests: XCTestCase {
     }
 
     override func setUpWithError() throws {
-        // Keep going after a failure so we capture as many screenshots as possible
-        continueAfterFailure = true
+        // Fail fast — wrong-screen screenshots are worse than a failed capture run
+        continueAfterFailure = false
         app = XCUIApplication()
     }
 
@@ -97,6 +100,7 @@ final class ScreenshotCaptureTests: XCTestCase {
 
     @MainActor
     private func waitForReviewScreen(timeout: TimeInterval = 15) -> Bool {
+        // Do NOT treat the Review tab button as success — it exists on every tab.
         let eventButton = app.buttons.matching(
             NSPredicate(format: "identifier CONTAINS %@", "eventCard")
         ).firstMatch
@@ -107,8 +111,8 @@ final class ScreenshotCaptureTests: XCTestCase {
                 app.otherElements["integrationSetupView"],
                 app.otherElements["emptyStateView"],
                 app.tables["eventList"],
-                eventButton,
-                app.tabBars.buttons["Review"]
+                app.otherElements["eventList"],
+                eventButton
             ],
             timeout: timeout,
             description: "Review screen"
@@ -212,41 +216,56 @@ final class ScreenshotCaptureTests: XCTestCase {
         // Wait for the main tab view to appear (review queue loads)
         let reviewTab = app.tabBars.buttons["Review"]
         XCTAssertTrue(reviewTab.waitForExistence(timeout: 15), "Main tab view did not appear after login")
+        reviewTab.tap()
         XCTAssertTrue(waitForReviewScreen(), "Review screen did not settle after login")
+        // Loading can leave the nav title visible before content is ready — wait for content.
+        let loading = app.otherElements["reviewQueueLoading"]
+        if loading.exists {
+            _ = loading.waitForExistence(timeout: 0) // already exists
+            let deadline = Date().addingTimeInterval(15)
+            while loading.exists && Date() < deadline {
+                RunLoop.current.run(until: Date().addingTimeInterval(pollInterval))
+            }
+        }
+        XCTAssertTrue(
+            app.navigationBars["Review"].waitForExistence(timeout: 5),
+            "Expected Review navigation bar before capturing review queue"
+        )
+        XCTAssertFalse(
+            app.navigationBars["Settings"].exists,
+            "Must not capture Settings as the review queue"
+        )
 
         // 4. Review queue
         saveScreenshot(named: "ios-review-queue")
 
-        // 5. Event detail — tap an event row to trigger the NavigationLink.
-        // NavigationLink rows are exposed as Buttons (not cells) in the accessibility hierarchy.
-        // Match by identifier containing "eventCard".
-        let eventButton = app.buttons.matching(
+        // 5. Event detail — tap the upper area of the card (title), avoiding action buttons.
+        let eventCard = app.buttons.matching(
             NSPredicate(format: "identifier CONTAINS %@", "eventCard")
         ).firstMatch
-        if eventButton.waitForExistence(timeout: 5) {
-            eventButton.tap()
+        XCTAssertTrue(eventCard.waitForExistence(timeout: 10), "Expected at least one event card for detail screenshot")
+        eventCard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
 
-            // Verify we navigated to event detail
-            let detailTitle = app.staticTexts["eventDetailTitle"]
-            if detailTitle.waitForExistence(timeout: 5) {
-                saveScreenshot(named: "ios-event-detail")
+        // Title is a TextField (accessibility id eventDetailTitle), not a StaticText
+        let detailAppeared = waitForAny(
+            [
+                app.navigationBars["Event Detail"],
+                app.textFields["eventDetailTitle"]
+            ],
+            timeout: 10,
+            description: "Event detail"
+        )
+        XCTAssertTrue(detailAppeared, "Event detail did not appear")
+        saveScreenshot(named: "ios-event-detail")
 
-                // Go back to review queue
-                let backButton = app.navigationBars.buttons.firstMatch
-                if backButton.waitForExistence(timeout: 3) {
-                    backButton.tap()
-                } else {
-                    app.swipeRight()
-                }
-                XCTAssertTrue(waitForReviewScreen(timeout: 10), "Review screen did not reappear after leaving event detail")
-            } else {
-                // Navigation didn't work — save current state
-                saveScreenshot(named: "ios-event-detail")
-            }
+        // Go back to review queue
+        let backButton = app.navigationBars.buttons.firstMatch
+        if backButton.waitForExistence(timeout: 3) {
+            backButton.tap()
         } else {
-            // No events — capture current state as placeholder
-            saveScreenshot(named: "ios-event-detail")
+            app.swipeRight()
         }
+        XCTAssertTrue(waitForReviewScreen(timeout: 10), "Review screen did not reappear after leaving event detail")
 
         // 6. History tab
         let historyTab = app.tabBars.buttons["History"]

@@ -116,41 +116,42 @@ def get_user_timezone(supabase_client: Client, user_id: str) -> str:
 def normalize_event_data(
     event: CalendarEvent,
     user_timezone: str = "America/New_York",
+    *,
+    treat_as_civil: bool = True,
 ) -> dict[str, Any]:
-    """Convert a CalendarEvent dataclass to a DB-ready dict.
+    """Convert a CalendarEvent to a DB-ready dict.
 
-    Attaches the user's timezone to naive datetimes so they are stored
-    with correct timezone info. Already-aware datetimes pass through unchanged.
+    LLM extractions (``treat_as_civil=True``, default): datetimes are local
+    wall-clock times. Any offset the model invents (e.g. ``+00:00``) is
+    stripped and the clock face is attached to ``user_timezone``.
+
+    Trusted sources such as ICS (``treat_as_civil=False``): already-aware
+    datetimes keep their absolute instant; naive ones use ``user_timezone``.
 
     Args:
-        event: Extracted CalendarEvent from LLM.
-        user_timezone: IANA timezone string for naive datetime localization.
+        event: Extracted CalendarEvent.
+        user_timezone: IANA timezone for civil localization.
+        treat_as_civil: Whether to interpret datetimes as wall-clock local.
 
     Returns:
         Dict with isoformat datetimes suitable for DB insertion.
     """
-    try:
-        tz = ZoneInfo(user_timezone)
-    except (KeyError, ValueError):
-        tz = ZoneInfo("America/New_York")
-
-    def _localize(dt: Optional[datetime]) -> Optional[str]:
-        if dt is None:
-            return None
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=tz)
-        return dt.isoformat()
+    from selko.services.civil_time import to_storage_iso
 
     return {
         "title": event.title,
-        "start_datetime": _localize(event.start_datetime),
-        "end_datetime": _localize(event.end_datetime),
-        "all_day": getattr(event, 'all_day', False),
+        "start_datetime": to_storage_iso(
+            event.start_datetime, user_timezone, treat_as_civil=treat_as_civil
+        ),
+        "end_datetime": to_storage_iso(
+            event.end_datetime, user_timezone, treat_as_civil=treat_as_civil
+        ),
+        "all_day": getattr(event, "all_day", False),
         "location": event.location,
         "description": event.description,
-        "source_quote": getattr(event, 'source_quote', ''),
-        "importance": getattr(event, 'importance', 'action_required'),
-        "recurrence_rule": getattr(event, 'recurrence_rule', None),
+        "source_quote": getattr(event, "source_quote", ""),
+        "importance": getattr(event, "importance", "action_required"),
+        "recurrence_rule": getattr(event, "recurrence_rule", None),
     }
 
 
@@ -162,6 +163,8 @@ def save_extracted_events(
     extraction: CalendarEventExtraction,
     initial_status: str = "pending_review",
     current_time: Optional[datetime] = None,
+    *,
+    treat_as_civil: bool = True,
 ) -> tuple[int, int]:
     """Deduplicate and persist extracted events into New or Changes lanes.
 
@@ -178,6 +181,7 @@ def save_extracted_events(
         extraction: LLM extraction result containing events.
         initial_status: Status for newly created events (default: pending_review).
         current_time: Optional current time override for deterministic testing.
+        treat_as_civil: Interpret datetimes as local wall times (LLM). False for ICS.
 
     Returns:
         Tuple of (num_new, num_updated) event counts. Skips are not counted.
@@ -200,7 +204,9 @@ def save_extracted_events(
     cutoff = now - timedelta(hours=24)
 
     for event in extraction.events:
-        event_data = normalize_event_data(event, user_timezone=user_timezone)
+        event_data = normalize_event_data(
+            event, user_timezone=user_timezone, treat_as_civil=treat_as_civil
+        )
 
         start_str = event_data.get("start_datetime")
         if start_str:
@@ -215,7 +221,8 @@ def save_extracted_events(
                 pass
 
         match = find_matching_event(
-            supabase_client, gateway, user_id, event_data
+            supabase_client, gateway, user_id, event_data,
+            user_timezone=user_timezone,
         )
 
         if match is None:
@@ -232,6 +239,7 @@ def save_extracted_events(
                 gateway,
                 match.baseline,
                 event_data,
+                user_timezone=user_timezone,
             )
         except Exception as e:
             logger.warning(
@@ -239,7 +247,9 @@ def save_extracted_events(
                 match.match_id,
                 e,
             )
-            change_set = compute_change_set(match.baseline, event_data)
+            change_set = compute_change_set(
+                match.baseline, event_data, user_timezone=user_timezone
+            )
 
         if change_set.kind == "noop":
             logger.info(
@@ -254,6 +264,16 @@ def save_extracted_events(
         )
         # Persist only the fields the gated changeset says to change, plus identity
         proposed_fields = proposed_fields_from_change_set(match.baseline, change_set)
+        # Propose may emit naive civil after-values — localize them like LLM extract
+        from selko.services.civil_time import to_storage_iso
+
+        for dt_field in ("start_datetime", "end_datetime"):
+            if dt_field in proposed_fields and proposed_fields[dt_field] is not None:
+                proposed_fields[dt_field] = to_storage_iso(
+                    proposed_fields[dt_field],
+                    user_timezone,
+                    treat_as_civil=True,
+                )
         proposal_data = {
             **{k: v for k, v in event_data.items() if k in ("source_quote", "importance")},
             **proposed_fields,
@@ -373,7 +393,8 @@ def process_email_for_events(
 
         # Try .ics direct parsing first (skips LLM)
         ics_extraction = ics_parser.parse_ics_attachments(attachments, email_metadata)
-        if ics_extraction and ics_extraction.events:
+        from_ics = bool(ics_extraction and ics_extraction.events)
+        if from_ics:
             extraction = ics_extraction
             logger.info(f"Parsed {len(extraction.events)} events from .ics (skipped LLM)")
         else:
@@ -389,6 +410,7 @@ def process_email_for_events(
         num_new, num_updated = save_extracted_events(
             supabase_client, gateway, user_id, email_id, extraction,
             initial_status=initial_status,
+            treat_as_civil=not from_ics,
         )
 
         mark_email_status(supabase_client, email_id, "processed")
@@ -415,12 +437,16 @@ def find_matching_event(
     gateway: LLMGateway,
     user_id: str,
     event_data: dict[str, Any],
+    user_timezone: Optional[str] = None,
 ) -> Optional[EventMatch]:
     """Find if event matches any existing events (date-based + LLM).
 
     Checks both local Selko events and the user's Google Calendar.
     Returns an EventMatch with baseline fields for change detection.
     """
+    if user_timezone is None:
+        user_timezone = get_user_timezone(supabase_client, user_id)
+
     start_dt = event_data.get("start_datetime")
     if not start_dt:
         return None
@@ -452,7 +478,8 @@ def find_matching_event(
 
     try:
         gcal_events = calendars.fetch_calendar_events_for_date_range(
-            supabase_client, user_id, time_min, time_max
+            supabase_client, user_id, time_min, time_max,
+            user_timezone=user_timezone,
         )
         for gcal_event in gcal_events:
             ext_props = gcal_event.get("extendedProperties", {})
@@ -462,7 +489,9 @@ def find_matching_event(
             gcal_id = gcal_event.get("id")
             if not gcal_id:
                 continue
-            baseline = baseline_from_gcal_event(gcal_event)
+            baseline = baseline_from_gcal_event(
+                gcal_event, user_timezone=user_timezone
+            )
             match_id = f"gcal:{gcal_id}"
             candidate = {
                 "id": match_id,

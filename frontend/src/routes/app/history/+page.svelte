@@ -7,6 +7,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+	import { resolveEventSender } from '$lib/event-sender.js';
+	import { formatChangeValue } from '$lib/format-change-value.js';
 
 	/** @type {any[]} */
 	let events = $state([]);
@@ -126,20 +128,7 @@
 
 	/** @param {any} value */
 	function formatValue(value) {
-		if (value === null || value === undefined || value === '') return $_('events.none');
-		if (typeof value === 'string' && value.includes('T')) {
-			try {
-				return new Date(value).toLocaleString(undefined, {
-					month: 'short',
-					day: 'numeric',
-					hour: 'numeric',
-					minute: '2-digit'
-				});
-			} catch {
-				return String(value);
-			}
-		}
-		return String(value);
+		return formatChangeValue(value, $_('events.none'));
 	}
 
 	/** @param {any} event */
@@ -187,17 +176,19 @@
 
 	/** @param {any} event */
 	function getSourceInfo(event) {
-		const sources = event.event_sources || [];
-		const firstSource = sources[0];
-
-		if (firstSource?.source_origin === 'google_photos') {
+		const { senderKey, senderName, isPhotoSource } = resolveEventSender(event, {
+			unknownSender: $_('history.unknownSender'),
+			googlePhotos: $_('integrations.googlePhotos'),
+			googleCalendar: $_('integrations.googleCalendar')
+		});
+		if (isPhotoSource) {
 			return $_('history.fromPhoto');
 		}
-
-		const email = firstSource?.emails;
-		if (email) {
-			const name = email.from_name || email.from_email || $_('history.unknownSender');
-			return $_('history.from', { values: { name } });
+		if (senderKey === 'google_calendar') {
+			return $_('history.from', { values: { name: senderName } });
+		}
+		if (senderKey && senderKey !== $_('history.unknownSender') && senderName) {
+			return $_('history.from', { values: { name: senderName } });
 		}
 		return '';
 	}
