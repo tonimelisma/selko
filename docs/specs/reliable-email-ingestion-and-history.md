@@ -11,18 +11,28 @@ small user-facing email processing history alongside the existing action history
 ## Product decisions
 
 - Include Archive and custom folders for both providers.
-- Exclude provider Spam/Junk, Trash/Deleted Items, Sent, Drafts, Outbox, and Gmail's
-  Promotions, Social, and Forums categories.
-- On Outlook, use a one-time LLM classification when discovering a folder whose name
-  strongly suggests marketing (for example, `Promotions`). Present those suggested
-  exclusions in Settings for the user to review. A folder named `Newsletters` is not
-  excluded by default. Folder inclusion is a persisted setting, not re-decided for
-  each message.
-- Never exclude a custom folder solely because of a fuzzy heuristic. The LLM must
-  return a structured recommendation and short user-facing reason; uncertain folders
-  remain included.
-- Do not show excluded emails in History.
-- Show excluded folders in Settings, where users can include or exclude folders.
+- Permanently exclude provider system folders/categories that cannot contain eligible
+  incoming mail: Spam/Junk, Trash/Deleted Items, Sent, Drafts, and Outbox. Gmail's
+  provider-defined Promotions, Social, and Forums categories are also permanently
+  excluded. These exclusions are enforced by the backend, do not appear in Settings,
+  and cannot be enabled by a user.
+- For both Gmail user-created labels and Outlook user-created folders, run a one-time,
+  open-ended LLM classification when each folder is discovered. The prompt must decide
+  whether the folder is clearly intended for marketing, promotions, advertising,
+  commercial offers, or similar unwanted bulk mail. Clearly marketing-oriented folders
+  are excluded; every other folder, including ambiguous folders, is included by default.
+- Do not encode a fixed list of marketing folder names. The classifier must reason from
+  the folder's name and full parent path so it can recognize arbitrary user terminology
+  and languages. For example, a user-created `Promotions` folder should be excluded,
+  while `Newsletters` should remain included unless its full path makes a marketing-only
+  purpose clear.
+- Persist the LLM decision and a short user-facing reason. Do not reclassify unchanged
+  folders on every scan.
+- Eligible included and LLM-excluded user folders appear in Settings, where the user can
+  override the LLM decision. Permanently excluded provider system folders never appear.
+- Excluded emails are never ingested: do not create an `emails` row, download/store
+  attachments, or send their content to event extraction. They therefore never appear
+  in History.
 - Initial synchronization covers the previous 14 days. Subsequent synchronization
   drains every change since the stored cursor, regardless of count.
 - The production Render API will run on an always-on Starter instance.
@@ -48,9 +58,14 @@ Replace newest-50 polling with Gmail History API synchronization.
    added or changed message.
 4. If a history cursor expires, run a paginated recovery scan with an overlap, then
    establish a new cursor.
-5. Apply provider exclusions before storing or processing a message. Gmail custom
-   labels and archived messages remain eligible.
-6. Keep the existing unique provider-message constraint so overlapping scans and
+5. Discover user-created Gmail labels and classify each new or renamed label once using
+   the shared open-ended marketing-folder LLM classifier described below. Persist the
+   decision and expose eligible labels in Settings.
+6. Apply provider and user-label exclusions before storing a message. If a message has
+   any permanently excluded category or any user-excluded label, do not create an email
+   row or store its attachments. Archived messages and messages under included custom
+   labels remain eligible.
+7. Keep the existing unique provider-message constraint so overlapping scans and
    retries cannot create duplicate email rows or duplicate extraction work.
 
 Required tests cover more than 50 missed messages, page draining, crash before cursor
@@ -65,14 +80,15 @@ Inbox cursor with one cursor per integration and folder.
 1. Discover the complete folder hierarchy, including Archive and nested custom
    folders.
 2. Exclude well-known Junk Email, Deleted Items, Sent Items, Drafts, and Outbox.
-3. For each remaining newly discovered custom folder, ask the configured LLM for a
-   structured `include`, `exclude`, or `uncertain` marketing-folder recommendation
-   based on the folder name and path only. Treat `uncertain` as included.
+3. For each remaining newly discovered or renamed custom folder, use the same open-ended
+   LLM classifier as Gmail. It returns structured `include`, `exclude`, or `uncertain`
+   based on the folder name and full parent path only. Treat `uncertain` as included.
 4. Persist the folder decision and its short explanation. Never send message content
    for folder classification and never classify the folder again unless the user asks
    or its name/path changes.
-5. Show every folder and its included/excluded state in Settings. User choices override
-   provider defaults and LLM recommendations.
+5. Show only eligible included and LLM-excluded user folders in Settings. User choices
+   override LLM recommendations. Never show or permit overrides for Junk, Deleted Items,
+   Sent Items, Drafts, or Outbox.
 6. First-sync each included folder for the previous 14 days, following every page.
 7. Persist and drain a delta cursor independently for every included folder.
 8. Request immutable message IDs where Graph supports them. Upsert by provider message
@@ -86,7 +102,34 @@ Other Inbox mail, page draining, per-folder cursor expiry, moves between folders
 Archive moves, user overrides, and LLM folder recommendations including `Promotions`
 and `Newsletters`.
 
-## 3. Scheduling
+## 3. Shared user-folder classification
+
+Gmail and Outlook use the same one-time classification contract for user-created labels
+and folders. The classifier receives only:
+
+- Provider.
+- Folder or label name.
+- Full parent path, when available.
+
+The prompt must be explicit that the exclusion threshold is narrow: exclude only when
+the folder is clearly dedicated to marketing, promotions, advertising, commercial
+offers, sales, coupons, or equivalent unwanted bulk mail. Include personal, work,
+school, community, transactional, financial, travel, receipts, alerts, general-purpose,
+and ambiguous folders. `Newsletters` is included by default because newsletters may
+contain relevant community or school events. Output is structured as decision
+(`include`, `exclude`, or `uncertain`) plus a short user-facing reason; `uncertain` maps
+to included.
+
+Classify on discovery and again only if the name or parent path changes. A user override
+is durable and is not replaced by later LLM classification. No message subjects, bodies,
+senders, or attachments are provided to this classifier.
+
+Required tests use varied, nested, multilingual, misleading, and ambiguous names rather
+than testing only a fixed vocabulary. They must prove that arbitrary marketing folders
+can be excluded, `Newsletters` remains included, non-marketing folders default to
+included, and user overrides win.
+
+## 4. Scheduling
 
 Keep the current 15-minute scheduler and scheduled-task mechanism. The production API
 must run on an always-on Render instance so the scheduler is not stopped by free-tier
@@ -102,21 +145,22 @@ The only required scheduling properties are:
 Do not add alerting, health dashboards, scan-run analytics, or a new scheduling system
 as part of this work.
 
-## 4. User-facing Settings
+## 5. User-facing Settings
 
-Add a simple folder section for each connected email provider:
+Add a simple folder section for each connected email provider. It contains only
+user-configurable folders and labels; permanently excluded provider system folders are
+omitted entirely.
 
 - Folder name and nesting context.
 - Included or excluded state.
-- Provider-controlled exclusions identified as such.
 - For suggested marketing-folder exclusions, the existing short recommendation reason.
-- A control to include or exclude eligible custom folders.
+- A control to include or exclude each eligible user-created folder or label.
 
 Changing a folder from excluded to included starts a 14-day sync for that folder.
 Changing it to excluded stops future ingestion; it does not add excluded mail to
 History.
 
-## 5. User-facing History
+## 6. User-facing History
 
 Keep the existing action history and add a simple email-processing list. Each row shows
 only:
@@ -141,7 +185,7 @@ the button; on completion, replace the row's structured outcome with the latest 
 Add regression tests for repeated clicks, concurrent claims, an email that still
 produces no event, and an email matching an already-created event.
 
-## 6. Processing state integrity
+## 7. Processing state integrity
 
 Successful completion must always clear stale error state. Update both processing
 status paths so transitions to `processing`, `processed`, or another non-failure state
@@ -154,7 +198,7 @@ final row is processed with no processing error. Include a production data corre
 that clears `processing_error` for rows already marked processed; this currently
 affects 14 emails.
 
-## 7. Production failure eval fixtures
+## 8. Production failure eval fixtures
 
 Inspect every current production email with `processing_status = failed` or a
 dead-letter state.
@@ -174,7 +218,7 @@ For each distinct extraction failure:
 6. Validate all added fixtures with the eval dry run and run the relevant backend unit
    tests.
 
-## 8. Production reconciliation
+## 9. Production reconciliation
 
 After deployment:
 
@@ -190,10 +234,11 @@ After deployment:
 
 - Gmail and every included Outlook folder resume from durable cursors and drain every
   page after an arbitrarily long pause.
-- Archive and custom folders are included unless excluded by provider policy, an
-  accepted marketing-folder recommendation, or the user.
-- Excluded folders are visible and controllable in Settings; excluded emails do not
-  appear in History.
+- Archive and custom folders are included unless excluded by the shared open-ended
+  marketing-folder classifier or the user.
+- Eligible included and LLM-excluded user folders are visible and controllable in
+  Settings. Permanently excluded system folders are absent and cannot be enabled.
+- Excluded emails have no email row, stored attachment, extraction call, or History row.
 - First sync covers 14 days.
 - Folder moves do not become false Trash records or duplicate extraction work.
 - History presents only the narrow structured user-facing email outcomes above.
