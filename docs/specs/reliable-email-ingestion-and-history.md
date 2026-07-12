@@ -225,6 +225,16 @@ For each distinct extraction failure:
 6. Validate all added fixtures with the eval dry run and run the relevant backend unit
    tests.
 
+Fixture inputs must remain source-faithful. An input subject, snippet, body, or
+attachment must contain only language that could realistically appear in the original
+user email. Never add evaluator-authored statements that reveal the expected result,
+such as "this is not an event," "the meeting already happened," "there is no upcoming
+invitation," or "no deadline is present." Expected interpretation belongs only in the
+fixture's `expected`, `description`, and `notes` fields. Audit the complete extraction
+fixture corpus for this answer-key leakage whenever production-derived fixtures are
+added, not only the newly added files. Preserve genuine sender language such as an
+actual billing notice saying "no action is required" when it was present in the source.
+
 ## 9. Production reconciliation
 
 After deployment:
