@@ -23,6 +23,20 @@ class CalendarsError(Exception):
     pass
 
 
+class CalendarDivergedError(CalendarsError):
+    """Raised when the live Google Calendar event differs from Selko's last write.
+
+    Attributes:
+        changed_fields: Human-readable field names that diverged.
+    """
+
+    def __init__(
+        self, message: str, changed_fields: list[str] | None = None
+    ) -> None:
+        super().__init__(message)
+        self.changed_fields = changed_fields or []
+
+
 def fetch_calendar_events_for_date_range(
     supabase_client: Client,
     user_id: str,
@@ -642,25 +656,173 @@ def cancel_calendar_event(
         raise CalendarsError(f"Failed to cancel event: {e}") from e
 
 
-def delete_calendar_event(
+def _strip_selko_footer(description: str | None) -> str:
+    """Remove Selko management footer for apples-to-apples description compare."""
+    text = (description or "").strip()
+    footer = SELKO_FOOTER.strip()
+    if footer and footer in text:
+        text = text.replace(footer, "").strip()
+    # Also strip a leading/trailing --- separator left behind
+    if text.endswith("---"):
+        text = text[: -len("---")].strip()
+    return " ".join(text.split())
+
+
+def _normalize_gcal_bound(bound: Any) -> tuple[str, str] | None:
+    """Normalize a GCal start/end dict to a comparable (kind, value) tuple."""
+    if not isinstance(bound, dict):
+        return None
+    if bound.get("date"):
+        return ("date", str(bound["date"]))
+    date_time = bound.get("dateTime")
+    if not date_time:
+        return None
+    # Compare on the wall-clock string before any offset when both sides
+    # use dateTime+timeZone; fall back to the raw string.
+    value = str(date_time)
+    # Normalize trailing Z vs +00:00 for equality
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    return ("dateTime", value)
+
+
+def calendar_event_diverged(
+    live_gcal: dict[str, Any],
+    snapshot_synced: dict[str, Any],
+) -> tuple[bool, list[str]]:
+    """Compare material fields between live GCal and last Selko write.
+
+    Returns:
+        (diverged, changed_fields) where changed_fields are human labels.
+    """
+    changed: list[str] = []
+
+    live_summary = (live_gcal.get("summary") or "").strip()
+    snap_summary = (snapshot_synced.get("summary") or "").strip()
+    if live_summary != snap_summary:
+        changed.append("title")
+
+    live_location = (live_gcal.get("location") or "").strip()
+    snap_location = (snapshot_synced.get("location") or "").strip()
+    if live_location != snap_location:
+        changed.append("location")
+
+    if _normalize_gcal_bound(live_gcal.get("start")) != _normalize_gcal_bound(
+        snapshot_synced.get("start")
+    ):
+        changed.append("start")
+
+    if _normalize_gcal_bound(live_gcal.get("end")) != _normalize_gcal_bound(
+        snapshot_synced.get("end")
+    ):
+        changed.append("end")
+
+    live_desc = _strip_selko_footer(live_gcal.get("description"))
+    snap_desc = _strip_selko_footer(snapshot_synced.get("description"))
+    if live_desc != snap_desc:
+        changed.append("description")
+
+    return (bool(changed), changed)
+
+
+def get_latest_sync_snapshot(
+    supabase_client: Client, event_id: str
+) -> dict[str, Any] | None:
+    """Return the latest created/updated calendar_sync_log snapshot for an event."""
+    result = (
+        supabase_client.table("calendar_sync_log")
+        .select("snapshot_synced, action, synced_at")
+        .eq("event_id", event_id)
+        .in_("action", ["created", "updated"])
+        .order("synced_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = result.data or []
+    if not rows:
+        return None
+    snap = rows[0].get("snapshot_synced")
+    return snap if isinstance(snap, dict) else None
+
+
+def _calendar_service_for_user(
+    supabase_client: Client, user_id: str
+) -> tuple[Any, str]:
+    """Build Calendar API client and resolve target calendar id."""
+    creds = get_credentials(supabase_client, user_id, "google_calendar")
+    if not creds:
+        raise CalendarsError("No Google Calendar credentials found")
+    settings = get_calendar_settings(supabase_client, user_id)
+    calendar_id = settings.get("target_calendar_id") or "primary"
+    service = build("calendar", "v3", credentials=creds)
+    return service, calendar_id
+
+
+def get_calendar_event(
+    supabase_client: Client, user_id: str, google_event_id: str
+) -> dict[str, Any] | None:
+    """Fetch a live Google Calendar event. Returns None if missing (404)."""
+    try:
+        service, calendar_id = _calendar_service_for_user(supabase_client, user_id)
+        return service.events().get(
+            calendarId=calendar_id, eventId=google_event_id
+        ).execute()
+    except HttpError as e:
+        if e.resp.status == 404:
+            return None
+        raise CalendarsError(f"Failed to fetch calendar event: {e}") from e
+    except CalendarsError:
+        raise
+    except Exception as e:
+        raise CalendarsError(f"Failed to fetch calendar event: {e}") from e
+
+
+def assert_calendar_not_diverged(
+    supabase_client: Client,
+    user_id: str,
+    event_id: str,
+    google_event_id: str,
+    *,
+    force: bool = False,
+) -> None:
+    """Block Undo when live GCal differs from last Selko write (unless force).
+
+    Missing sync log with a live event is treated as diverged (require force).
+    Live 404 is not diverged — caller treats it as already gone.
+    """
+    if force:
+        return
+
+    live = get_calendar_event(supabase_client, user_id, google_event_id)
+    if live is None:
+        return
+
+    snapshot = get_latest_sync_snapshot(supabase_client, event_id)
+    if snapshot is None:
+        raise CalendarDivergedError(
+            "This calendar event may have changed since Selko synced it. "
+            "Use Force Undo to revert anyway.",
+            changed_fields=["unknown"],
+        )
+
+    diverged, fields = calendar_event_diverged(live, snapshot)
+    if diverged:
+        field_list = ", ".join(fields)
+        raise CalendarDivergedError(
+            f"This event was edited in Google Calendar after Selko synced it "
+            f"({field_list}). Use Force Undo to revert to the pre-Selko state.",
+            changed_fields=fields,
+        )
+
+
+def delete_calendar_event_only(
     supabase_client: Client, user_id: str, event_id: str
 ) -> None:
-    """Delete event from Google Calendar.
+    """Delete the remote GCal event and clear local sync fields (no status change).
 
-    Removes the event from Google Calendar and reverts the local event
-    to pending_review status. If the event was already deleted from
-    Google Calendar (404), the local cleanup still proceeds.
-
-    Args:
-        supabase_client: Authenticated Supabase client.
-        user_id: UUID of user.
-        event_id: UUID of event to unsync.
-
-    Raises:
-        CalendarsError: If deletion fails.
+    404 on Google Calendar is treated as success. Caller owns event status.
     """
     try:
-        # Fetch event
         event_result = supabase_client.table("events").select("*").eq(
             "id", event_id
         ).single().execute()
@@ -670,18 +832,8 @@ def delete_calendar_event(
         if not google_event_id:
             raise CalendarsError("Event is not synced to Google Calendar")
 
-        # Get credentials and settings
-        creds = get_credentials(supabase_client, user_id, "google_calendar")
-        if not creds:
-            raise CalendarsError("No Google Calendar credentials found")
+        service, calendar_id = _calendar_service_for_user(supabase_client, user_id)
 
-        settings = get_calendar_settings(supabase_client, user_id)
-        calendar_id = settings.get("target_calendar_id") or "primary"
-
-        # Build Calendar API client
-        service = build("calendar", "v3", credentials=creds)
-
-        # Delete from Google Calendar
         try:
             service.events().delete(
                 calendarId=calendar_id, eventId=google_event_id
@@ -694,14 +846,11 @@ def delete_calendar_event(
             else:
                 raise
 
-        # Update event record: clear sync fields, revert to pending_review
         supabase_client.table("events").update({
             "google_calendar_event_id": None,
             "synced_at": None,
-            "status": "pending_review",
         }).eq("id", event_id).execute()
 
-        # Log the sync operation
         _log_sync(
             supabase_client,
             user_id,
@@ -711,9 +860,80 @@ def delete_calendar_event(
             {"deleted_google_event_id": google_event_id},
         )
 
-        logger.info(f"Deleted calendar event for {event_id}, reverted to pending_review")
+        logger.info(f"Deleted calendar event for {event_id} (sync fields cleared)")
 
     except CalendarsError:
         raise
     except Exception as e:
         raise CalendarsError(f"Failed to delete calendar event: {e}") from e
+
+
+def restore_calendar_event_from_selko_fields(
+    supabase_client: Client,
+    user_id: str,
+    event_id: str,
+    selko_fields: dict[str, Any],
+) -> None:
+    """PATCH the live GCal event to match restored Selko fields (keep google id)."""
+    try:
+        event_result = supabase_client.table("events").select("*").eq(
+            "id", event_id
+        ).single().execute()
+        event = event_result.data
+
+        google_event_id = event.get("google_calendar_event_id")
+        if not google_event_id:
+            raise CalendarsError("Event is not synced to Google Calendar")
+
+        # Merge restored fields onto the current event row for body build
+        merged = {**event, **selko_fields, "id": event_id}
+        settings = get_calendar_settings(supabase_client, user_id)
+        calendar_event = _build_calendar_event_body(merged, settings)
+
+        service, calendar_id = _calendar_service_for_user(supabase_client, user_id)
+        google_event_id, action = _update_or_recreate_calendar_event(
+            service, calendar_id, google_event_id, calendar_event
+        )
+
+        # If recreate issued a new id, persist it
+        if google_event_id != event.get("google_calendar_event_id"):
+            supabase_client.table("events").update({
+                "google_calendar_event_id": google_event_id,
+                "synced_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("id", event_id).execute()
+        else:
+            supabase_client.table("events").update({
+                "synced_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("id", event_id).execute()
+
+        _log_sync(
+            supabase_client,
+            user_id,
+            event_id,
+            google_event_id,
+            action,
+            calendar_event,
+        )
+        logger.info(
+            f"Restored calendar event for {event_id} from Selko snapshot ({action})"
+        )
+
+    except CalendarsError:
+        raise
+    except Exception as e:
+        raise CalendarsError(f"Failed to restore calendar event: {e}") from e
+
+
+def delete_calendar_event(
+    supabase_client: Client, user_id: str, event_id: str
+) -> None:
+    """Delete event from Google Calendar and revert local status to pending_review.
+
+    Used by ``/unsync``. History Undo should call ``delete_calendar_event_only``
+    instead so it can set the correct review-lane status.
+    """
+    delete_calendar_event_only(supabase_client, user_id, event_id)
+    supabase_client.table("events").update({
+        "status": "pending_review",
+    }).eq("id", event_id).execute()
+    logger.info(f"Unsynced event {event_id}, reverted to pending_review")

@@ -145,7 +145,7 @@ describe('History Page', () => {
 
 		await user.click(screen.getByText('Undo'));
 
-		expect(mockUndoHistoryEvent).toHaveBeenCalledWith('evt-1');
+		expect(mockUndoHistoryEvent).toHaveBeenCalledWith('evt-1', {});
 	});
 
 	it('shows Load More button when more events available', async () => {
@@ -258,6 +258,58 @@ describe('History Page', () => {
 
 		await waitFor(() => {
 			expect(screen.queryByText('Meeting')).not.toBeInTheDocument();
+		});
+	});
+
+	it('shows Force Undo when calendar diverged', async () => {
+		const user = userEvent.setup();
+		const now = new Date();
+		mockFetchActivityEvents.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Bike Fest',
+					status: 'synced',
+					updated_at: now.toISOString(),
+					event_sources: []
+				}
+			],
+			count: 1,
+			error: null
+		});
+		mockUndoHistoryEvent.mockResolvedValueOnce({
+			data: null,
+			error: {
+				message: 'This event was edited in Google Calendar after Selko synced it (title).',
+				status: 409,
+				code: 'CALENDAR_DIVERGED'
+			}
+		});
+
+		render(HistoryPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Undo')).toBeInTheDocument();
+		});
+
+		await user.click(screen.getByText('Undo'));
+
+		await waitFor(() => {
+			expect(screen.getByText(/edited in Google Calendar/i)).toBeInTheDocument();
+			expect(screen.getByText('Force Undo')).toBeInTheDocument();
+			expect(screen.getByText('Bike Fest')).toBeInTheDocument();
+		});
+
+		mockUndoHistoryEvent.mockResolvedValueOnce({
+			data: { event_id: 'evt-1', status: 'pending_review' },
+			error: null
+		});
+
+		await user.click(screen.getByText('Force Undo'));
+
+		await waitFor(() => {
+			expect(mockUndoHistoryEvent).toHaveBeenLastCalledWith('evt-1', { force: true });
+			expect(screen.queryByText('Bike Fest')).not.toBeInTheDocument();
 		});
 	});
 });

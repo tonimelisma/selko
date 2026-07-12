@@ -248,6 +248,54 @@ struct HistoryViewModelTests {
     }
 
     @Test
+    func undoEventCalendarDivergedOffersForceUndo() async throws {
+        let mockEventService = MockEventService()
+        let mockBackendAPI = MockBackendAPI()
+        let eventId = UUID()
+        let event = CalendarEvent(
+            id: eventId,
+            userId: UUID(),
+            title: "Diverged Event",
+            startDatetime: Date(),
+            endDatetime: Date().addingTimeInterval(3600),
+            allDay: false,
+            location: nil,
+            description: nil,
+            sourceAttribution: nil,
+            status: .synced,
+            googleCalendarEventId: "gcal-1",
+            syncedAt: Date(),
+            createdAt: Date(),
+            updatedAt: Date(),
+            eventSources: nil
+        )
+        mockEventService.fetchActivityEventsResult = .success([event])
+        mockBackendAPI.undoHistoryEventResult = .failure(
+            BackendAPIError.calendarDiverged("Edited in Google Calendar after Selko synced it (title).")
+        )
+
+        let viewModel = HistoryViewModel(eventService: mockEventService, backendAPI: mockBackendAPI)
+        await viewModel.load()
+        await viewModel.undoEvent(event)
+
+        #expect(mockBackendAPI.lastUndoHistoryForce == false)
+        #expect(viewModel.canForceUndo == true)
+        #expect(viewModel.dateGroups.flatMap(\.events).count == 1)
+        #expect(viewModel.errorMessage?.contains("Google Calendar") == true)
+
+        mockBackendAPI.undoHistoryEventResult = .success(
+            EventChangeResponse(eventId: eventId.uuidString, status: "pending_review")
+        )
+        await viewModel.forceUndoPendingEvent()
+
+        #expect(mockBackendAPI.lastUndoHistoryForce == true)
+        #expect(mockBackendAPI.undoHistoryEventCallCount == 2)
+        #expect(viewModel.canForceUndo == false)
+        #expect(viewModel.dateGroups.flatMap(\.events).count == 0)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test
     func retryEventChangesStatusAndReloads() async throws {
         // Given
         let mockEventService = MockEventService()

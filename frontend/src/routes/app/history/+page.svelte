@@ -19,6 +19,8 @@
 	let loadError = $state('');
 	/** Per-action errors shown as a banner above the list */
 	let actionError = $state('');
+	/** @type {any | null} Event that can be force-undone after CALENDAR_DIVERGED */
+	let forceUndoEvent = $state(null);
 	/** @type {Set<string>} */
 	let processingEvents = $state(new Set());
 	let offset = $state(0);
@@ -204,6 +206,7 @@
 	function startProcessing(eventId) {
 		processingEvents = new Set([...processingEvents, eventId]);
 		actionError = '';
+		forceUndoEvent = null;
 	}
 
 	/** @param {string} eventId */
@@ -213,21 +216,33 @@
 		processingEvents = next;
 	}
 
-	/** @param {any} event */
-	async function handleUndo(event) {
+	/**
+	 * @param {any} event
+	 * @param {{ force?: boolean }} [options]
+	 */
+	async function handleUndo(event, options = {}) {
 		if (processingEvents.has(event.id)) return;
 		startProcessing(event.id);
 		try {
-			const { error: undoError } = await undoHistoryEvent(event.id);
+			const { error: undoError } = await undoHistoryEvent(event.id, options);
 			if (undoError) {
 				actionError = undoError.message;
+				if (undoError.code === 'CALENDAR_DIVERGED' || undoError.status === 409) {
+					forceUndoEvent = event;
+				}
 				return;
 			}
 			events = events.filter((e) => e.id !== event.id);
 			totalCount--;
+			forceUndoEvent = null;
 		} finally {
 			stopProcessing(event.id);
 		}
+	}
+
+	async function handleForceUndo() {
+		if (!forceUndoEvent) return;
+		await handleUndo(forceUndoEvent, { force: true });
 	}
 
 	/** @param {any} event */
@@ -265,7 +280,15 @@
 	/>
 {:else}
 	{#if actionError}
-		<ErrorAlert message={actionError} />
+		{#if forceUndoEvent}
+			<ErrorAlert
+				message={actionError}
+				onaction={handleForceUndo}
+				actionLabel={$_('history.forceUndo')}
+			/>
+		{:else}
+			<ErrorAlert message={actionError} />
+		{/if}
 	{/if}
 	<div class="space-y-6">
 		{#each [...groupedByDate().entries()] as [dateLabel, dateEvents]}

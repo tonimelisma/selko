@@ -12,6 +12,7 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
     var listCalendarsCallCount = 0
     var undoHistoryEventCallCount = 0
     var lastUndoHistoryEventId: UUID?
+    var lastUndoHistoryForce: Bool = false
     var undoHistoryEventResult: Result<EventChangeResponse, Error> = .success(
         EventChangeResponse(eventId: UUID().uuidString, status: "pending_review")
     )
@@ -48,9 +49,10 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
         return EventChangeResponse(eventId: eventId.uuidString, status: "synced")
     }
 
-    func undoHistoryEvent(eventId: UUID) async throws -> EventChangeResponse {
+    func undoHistoryEvent(eventId: UUID, force: Bool) async throws -> EventChangeResponse {
         undoHistoryEventCallCount += 1
         lastUndoHistoryEventId = eventId
+        lastUndoHistoryForce = force
         switch undoHistoryEventResult {
         case .success(let response): return response
         case .failure(let error): throw error
