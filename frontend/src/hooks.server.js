@@ -1,6 +1,6 @@
 /**
- * Do not preload JS (Safari cancels modulepreload → empty MIME → blank app).
- * Do not preload every Inter unicode-range font (unused-preload noise; CSS loads them).
+ * Skip JS modulepreload. Safari can cancel those fetches and then fail the
+ * matching import() with an empty MIME type.
  *
  * @type {import('@sveltejs/kit').Handle}
  */
