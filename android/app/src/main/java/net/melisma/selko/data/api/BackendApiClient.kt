@@ -266,17 +266,64 @@ class BackendApiClient(
         }
     }
 
-    suspend fun undoHistoryEvent(eventId: String): Result<EventChangeResponse> {
+    @Serializable
+    data class UndoHistoryRequest(
+        val force: Boolean = false
+    )
+
+    @Serializable
+    data class ApiErrorDetail(
+        val error: String? = null,
+        val detail: String? = null
+    )
+
+    @Serializable
+    data class ApiErrorBody(
+        val detail: ApiErrorDetail? = null,
+        val message: String? = null,
+        val error: String? = null
+    )
+
+    class CalendarDivergedException(message: String) : Exception(message)
+
+    suspend fun undoHistoryEvent(
+        eventId: String,
+        force: Boolean = false
+    ): Result<EventChangeResponse> {
         return try {
             val authHeader = getAuthHeader()
                 ?: return Result.failure(Exception("Not authenticated"))
             val response = httpClient.post("$baseUrl/events/$eventId/undo") {
                 header(HttpHeaders.Authorization, authHeader)
+                setBody(UndoHistoryRequest(force = force))
+                expectSuccess = false
             }
             if (response.status.isSuccess()) {
                 Result.success(response.body())
             } else {
-                Result.failure(Exception("Undo failed (${response.status.value})"))
+                val bodyText = try {
+                    response.body<String>()
+                } catch (_: Exception) {
+                    null
+                }
+                val parsed = bodyText?.let {
+                    try {
+                        json.decodeFromString<ApiErrorBody>(it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                val message = parsed?.detail?.detail
+                    ?: parsed?.message
+                    ?: "Undo failed (${response.status.value})"
+                if (response.status.value == 409 ||
+                    parsed?.detail?.error == "CALENDAR_DIVERGED" ||
+                    parsed?.error == "CALENDAR_DIVERGED"
+                ) {
+                    Result.failure(CalendarDivergedException(message))
+                } else {
+                    Result.failure(Exception(message))
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)

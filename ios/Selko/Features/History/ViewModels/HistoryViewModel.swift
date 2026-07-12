@@ -18,9 +18,11 @@ final class HistoryViewModel {
     var isLoading = false
     var dateGroups: [DateGroup] = []
     var errorMessage: String?
+    var canForceUndo = false
     var hasMore = true
     var processingEventIds: Set<UUID> = []
 
+    private var pendingForceUndoEvent: CalendarEvent?
     private var offset = 0
     private let pageSize = 20
     private let eventService: EventServiceProtocol
@@ -34,6 +36,8 @@ final class HistoryViewModel {
     func load() async {
         isLoading = true
         errorMessage = nil
+        canForceUndo = false
+        pendingForceUndoEvent = nil
         offset = 0
         hasMore = true
 
@@ -67,18 +71,43 @@ final class HistoryViewModel {
         }
     }
 
-    func undoEvent(_ event: CalendarEvent) async {
+    func undoEvent(_ event: CalendarEvent, force: Bool = false) async {
         guard !processingEventIds.contains(event.id) else { return }
         processingEventIds.insert(event.id)
         errorMessage = nil
+        if !force {
+            canForceUndo = false
+            pendingForceUndoEvent = nil
+        }
         defer { processingEventIds.remove(event.id) }
 
         do {
-            _ = try await backendAPI.undoHistoryEvent(eventId: event.id)
+            _ = try await backendAPI.undoHistoryEvent(eventId: event.id, force: force)
             removeEvent(event.id)
+            canForceUndo = false
+            pendingForceUndoEvent = nil
+        } catch let error as BackendAPIError {
+            if case .calendarDiverged(let message) = error {
+                errorMessage = message
+                canForceUndo = true
+                pendingForceUndoEvent = event
+            } else {
+                errorMessage = error.localizedDescription
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func forceUndoPendingEvent() async {
+        guard let event = pendingForceUndoEvent else { return }
+        await undoEvent(event, force: true)
+    }
+
+    func clearError() {
+        errorMessage = nil
+        canForceUndo = false
+        pendingForceUndoEvent = nil
     }
 
     func retrySync(_ event: CalendarEvent) async {

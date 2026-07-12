@@ -71,6 +71,7 @@ async function apiRequest(endpoint, options = {}) {
  * @property {string} message
  * @property {number} status
  * @property {string} [detail]
+ * @property {string} [code]
  */
 
 /**
@@ -101,6 +102,20 @@ function extractErrorMessage(detail) {
 }
 
 /**
+ * Extract machine-readable error code from FastAPI-style payloads.
+ * @param {any} data
+ * @returns {string | null}
+ */
+function extractErrorCode(data) {
+	if (!data || typeof data !== 'object') return null;
+	if (typeof data.error === 'string' && data.error.trim()) return data.error;
+	if (data.detail && typeof data.detail === 'object' && typeof data.detail.error === 'string') {
+		return data.detail.error;
+	}
+	return null;
+}
+
+/**
  * Parse API error response
  * @param {Response} response
  * @returns {Promise<ApiError>}
@@ -116,7 +131,8 @@ async function parseApiError(response) {
 		return {
 			message,
 			status: response.status,
-			detail: typeof data.detail === 'string' ? data.detail : message
+			detail: typeof data.detail === 'string' ? data.detail : message,
+			code: extractErrorCode(data) || undefined
 		};
 	} catch {
 		return {
@@ -378,13 +394,17 @@ export async function rejectEventChange(eventId) {
 
 /**
  * Undo a History action back to New or Changes review lane.
+ * Reverts Google Calendar to the pre-Selko state when synced.
  * @param {string} eventId
+ * @param {{ force?: boolean }} [options]
  * @returns {Promise<{data: {event_id: string, status: string} | null, error: ApiError | null}>}
  */
-export async function undoHistoryEvent(eventId) {
+export async function undoHistoryEvent(eventId, options = {}) {
+	const { force = false } = options;
 	try {
 		const response = await apiRequest(`/events/${eventId}/undo`, {
-			method: 'POST'
+			method: 'POST',
+			body: JSON.stringify({ force })
 		});
 		if (!response.ok) {
 			return { data: null, error: await parseApiError(response) };

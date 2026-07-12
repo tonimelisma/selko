@@ -477,9 +477,10 @@ Note: A dedicated activity log table may be needed for richer history (especiall
 
 ### Key Interactions
 
-- **Undo (approved/synced event)**: immediately reverts status to `pending_review`, deletes from Google Calendar, returns event to Review Queue with original AI-extracted values. No confirmation modal.
+- **Undo (approved/synced event)**: immediately reverts status to `pending_review`, deletes from Google Calendar (pre-Selko state = no event), returns event to Review Queue with original AI-extracted values. No confirmation modal on the happy path.
 - **Undo (rejected event)**: returns event to `pending_review`, appears in Review Queue again with original AI-extracted values.
-- **Undo (auto-update)**: reverts event to pre-update state. Logged in history as "update rejected".
+- **Undo (applied change)**: restores Selko fields from `event_snapshot_before`, PATCHes Google Calendar back to that state (keeps the calendar event), sets `pending_change`.
+- **Undo when GCal was edited after Selko synced**: blocked with `CALENDAR_DIVERGED` (409). UI offers **Force Undo**, which applies the same pre-Selko calendar revert and overwrites the user's GCal edits.
 - **Retry (sync failure)**: re-triggers `syncEventToCalendar()`.
 - **Load More**: fetches next page, appends to list.
 

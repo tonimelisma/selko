@@ -13,6 +13,7 @@ enum BackendAPIError: Error, LocalizedError {
     case notAuthenticated
     case invalidResponse
     case serverError(String)
+    case calendarDiverged(String)
     case networkError(Error)
 
     var errorDescription: String? {
@@ -22,6 +23,8 @@ enum BackendAPIError: Error, LocalizedError {
         case .invalidResponse:
             return "Invalid server response"
         case .serverError(let message):
+            return message
+        case .calendarDiverged(let message):
             return message
         case .networkError(let error):
             return error.localizedDescription
@@ -114,7 +117,7 @@ protocol BackendAPIProtocol: Sendable {
     func syncEventToCalendar(eventId: UUID) async throws -> CalendarSyncResponse
     func applyEventChange(eventId: UUID) async throws -> EventChangeResponse
     func rejectEventChange(eventId: UUID) async throws -> EventChangeResponse
-    func undoHistoryEvent(eventId: UUID) async throws -> EventChangeResponse
+    func undoHistoryEvent(eventId: UUID, force: Bool) async throws -> EventChangeResponse
     func getGmailAuthUrl(redirectUri: String?) -> String
     func getOutlookAuthUrl(redirectUri: String?) -> String
     func getCalendarAuthUrl(redirectUri: String?) -> String
@@ -168,13 +171,32 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
         }
 
         if httpResponse.statusCode >= 400 {
-            if let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data) {
-                throw BackendAPIError.serverError(errorResponse.detail ?? errorResponse.message ?? "Request failed")
+            let message = Self.extractErrorMessage(from: data)
+                ?? "Request failed with status \(httpResponse.statusCode)"
+            if httpResponse.statusCode == 409 {
+                throw BackendAPIError.calendarDiverged(message)
             }
-            throw BackendAPIError.serverError("Request failed with status \(httpResponse.statusCode)")
+            throw BackendAPIError.serverError(message)
         }
 
         return data
+    }
+
+    private static func extractErrorMessage(from data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        if let detail = json["detail"] as? [String: Any],
+           let nested = detail["detail"] as? String, !nested.isEmpty {
+            return nested
+        }
+        if let detail = json["detail"] as? String, !detail.isEmpty {
+            return detail
+        }
+        if let message = json["message"] as? String, !message.isEmpty {
+            return message
+        }
+        return nil
     }
 
     // MARK: - Email Operations
@@ -230,8 +252,13 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
         return try decoder.decode(EventChangeResponse.self, from: data)
     }
 
-    func undoHistoryEvent(eventId: UUID) async throws -> EventChangeResponse {
-        let data = try await makeRequest(path: "/events/\(eventId)/undo", method: "POST")
+    private struct UndoHistoryRequest: Encodable {
+        let force: Bool
+    }
+
+    func undoHistoryEvent(eventId: UUID, force: Bool = false) async throws -> EventChangeResponse {
+        let body = try encoder.encode(UndoHistoryRequest(force: force))
+        let data = try await makeRequest(path: "/events/\(eventId)/undo", method: "POST", body: body)
         return try decoder.decode(EventChangeResponse.self, from: data)
     }
 

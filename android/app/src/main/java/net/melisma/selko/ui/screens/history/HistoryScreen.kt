@@ -145,11 +145,20 @@ fun HistoryScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
                 action = {
-                    TextButton(
-                        onClick = { viewModel.clearError() },
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(stringResource(R.string.history_dismiss))
+                    if (uiState.canForceUndo) {
+                        TextButton(
+                            onClick = { viewModel.forceUndoPendingEvent() },
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Text(stringResource(R.string.history_force_undo))
+                        }
+                    } else {
+                        TextButton(
+                            onClick = { viewModel.clearError() },
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Text(stringResource(R.string.history_dismiss))
+                        }
                     }
                 }
             ) {

@@ -105,6 +105,7 @@
 		"yesterday": "Yesterday",
 		"loadMore": "Load More",
 		"undo": "Undo",
+		"forceUndo": "Force Undo",
 		"retrySync": "Retry",
 		"statusApproved": "Approved",
 		"statusSynced": "Synced to calendar",

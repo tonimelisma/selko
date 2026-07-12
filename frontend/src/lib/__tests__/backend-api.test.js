@@ -98,6 +98,34 @@ describe('Backend API Client', () => {
 			expect(result.error.status).toBe(400);
 		});
 
+		it('sends force flag and returns CALENDAR_DIVERGED code', async () => {
+			mockFetch.mockResolvedValue({
+				ok: false,
+				status: 409,
+				json: () =>
+					Promise.resolve({
+						detail: {
+							error: 'CALENDAR_DIVERGED',
+							detail: 'This event was edited in Google Calendar after Selko synced it (title).'
+						}
+					})
+			});
+
+			const { undoHistoryEvent } = await import('../api/backend.js');
+			const result = await undoHistoryEvent('evt-1', { force: true });
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				'http://localhost:8000/events/evt-1/undo',
+				expect.objectContaining({
+					method: 'POST',
+					body: JSON.stringify({ force: true })
+				})
+			);
+			expect(result.data).toBeNull();
+			expect(result.error.code).toBe('CALENDAR_DIVERGED');
+			expect(result.error.status).toBe(409);
+		});
+
 		it('returns error when not authenticated', async () => {
 			mockSupabase.auth.getSession.mockResolvedValue({
 				data: { session: null }
