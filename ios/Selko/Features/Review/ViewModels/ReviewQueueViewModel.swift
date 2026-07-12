@@ -24,6 +24,7 @@ final class ReviewQueueViewModel {
     var isConnected = false
     var gmailConnected = false
     var calendarConnected = false
+    var processingEventIds: Set<UUID> = []
 
     private let eventService: EventServiceProtocol
     private let integrationService: IntegrationServiceProtocol
@@ -67,8 +68,11 @@ final class ReviewQueueViewModel {
     }
 
     func approveEvent(_ event: CalendarEvent) async {
-        // Optimistic remove — restore on failure
-        removeEventFromGroups(event.id)
+        guard !processingEventIds.contains(event.id) else { return }
+        processingEventIds.insert(event.id)
+        errorMessage = nil
+        defer { processingEventIds.remove(event.id) }
+
         do {
             if event.isPendingChange {
                 _ = try await backendAPI.applyEventChange(eventId: event.id)
@@ -76,27 +80,36 @@ final class ReviewQueueViewModel {
             } else {
                 _ = try await eventService.approveEvent(id: event.id)
             }
+            removeEventFromGroups(event.id)
         } catch {
             errorMessage = error.localizedDescription
-            await load()
         }
     }
 
     func rejectEvent(_ event: CalendarEvent) async {
-        removeEventFromGroups(event.id)
+        guard !processingEventIds.contains(event.id) else { return }
+        processingEventIds.insert(event.id)
+        errorMessage = nil
+        defer { processingEventIds.remove(event.id) }
+
         do {
             if event.isPendingChange {
                 _ = try await backendAPI.rejectEventChange(eventId: event.id)
             } else {
                 _ = try await eventService.rejectEvent(id: event.id)
             }
+            removeEventFromGroups(event.id)
         } catch {
             errorMessage = error.localizedDescription
-            await load()
         }
     }
 
     func approveAllInGroup(_ group: SenderGroup) async {
+        let eventIds = Set(group.events.map(\.id))
+        processingEventIds.formUnion(eventIds)
+        errorMessage = nil
+        defer { processingEventIds.subtract(eventIds) }
+
         for event in group.events {
             do {
                 if event.isPendingChange {
@@ -114,6 +127,11 @@ final class ReviewQueueViewModel {
     }
 
     func rejectAllInGroup(_ group: SenderGroup) async {
+        let eventIds = Set(group.events.map(\.id))
+        processingEventIds.formUnion(eventIds)
+        errorMessage = nil
+        defer { processingEventIds.subtract(eventIds) }
+
         for event in group.events {
             do {
                 if event.isPendingChange {
@@ -130,6 +148,11 @@ final class ReviewQueueViewModel {
     }
 
     func ignoreSender(_ group: SenderGroup) async {
+        let eventIds = Set(group.events.map(\.id))
+        processingEventIds.formUnion(eventIds)
+        errorMessage = nil
+        defer { processingEventIds.subtract(eventIds) }
+
         do {
             _ = try await senderRuleService.createRule(
                 senderEmail: group.senderEmail,
@@ -150,6 +173,11 @@ final class ReviewQueueViewModel {
     }
 
     func autoApproveSender(_ group: SenderGroup) async {
+        let eventIds = Set(group.events.map(\.id))
+        processingEventIds.formUnion(eventIds)
+        errorMessage = nil
+        defer { processingEventIds.subtract(eventIds) }
+
         do {
             _ = try await senderRuleService.createRule(
                 senderEmail: group.senderEmail,

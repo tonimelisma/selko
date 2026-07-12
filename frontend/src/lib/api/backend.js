@@ -27,6 +27,9 @@ async function getAccessToken() {
 	return session?.access_token ?? null;
 }
 
+/** Default timeout for backend API requests (ms). */
+const API_REQUEST_TIMEOUT_MS = 30_000;
+
 /**
  * Make an authenticated request to the backend API
  * @param {string} endpoint - API endpoint (without base URL)
@@ -40,16 +43,27 @@ async function apiRequest(endpoint, options = {}) {
 	}
 
 	const url = `${getApiBaseUrl()}${endpoint}`;
-	const response = await fetch(url, {
-		...options,
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`,
-			...options.headers
-		}
-	});
+	const timeoutSignal = AbortSignal.timeout(API_REQUEST_TIMEOUT_MS);
 
-	return response;
+	try {
+		return await fetch(url, {
+			...options,
+			signal: timeoutSignal,
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`,
+				...options.headers
+			}
+		});
+	} catch (error) {
+		if (error instanceof DOMException && error.name === 'TimeoutError') {
+			throw new Error('Request timed out. Please try again.');
+		}
+		if (error instanceof Error && error.name === 'AbortError') {
+			throw new Error('Request timed out. Please try again.');
+		}
+		throw error;
+	}
 }
 
 /**
@@ -60,6 +74,33 @@ async function apiRequest(endpoint, options = {}) {
  */
 
 /**
+ * Extract a human-readable message from FastAPI-style error payloads.
+ * Supports plain strings and nested `{ error, detail }` objects.
+ * @param {unknown} detail
+ * @returns {string | null}
+ */
+function extractErrorMessage(detail) {
+	if (typeof detail === 'string' && detail.trim()) {
+		return detail;
+	}
+	if (detail && typeof detail === 'object') {
+		const nested = /** @type {{ detail?: unknown, message?: unknown, error?: unknown }} */ (
+			detail
+		);
+		if (typeof nested.detail === 'string' && nested.detail.trim()) {
+			return nested.detail;
+		}
+		if (typeof nested.message === 'string' && nested.message.trim()) {
+			return nested.message;
+		}
+		if (typeof nested.error === 'string' && nested.error.trim()) {
+			return nested.error;
+		}
+	}
+	return null;
+}
+
+/**
  * Parse API error response
  * @param {Response} response
  * @returns {Promise<ApiError>}
@@ -67,10 +108,15 @@ async function apiRequest(endpoint, options = {}) {
 async function parseApiError(response) {
 	try {
 		const data = await response.json();
+		const message =
+			extractErrorMessage(data.detail) ||
+			extractErrorMessage(data.message) ||
+			extractErrorMessage(data) ||
+			'API request failed';
 		return {
-			message: data.detail || data.message || 'API request failed',
+			message,
 			status: response.status,
-			detail: data.detail
+			detail: typeof data.detail === 'string' ? data.detail : message
 		};
 	} catch {
 		return {

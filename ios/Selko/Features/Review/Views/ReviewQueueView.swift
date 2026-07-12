@@ -95,11 +95,13 @@ struct ReviewQueueView: View {
             NavigationLink(value: event.id) {
                 EventCardView(
                     event: event,
+                    isProcessing: viewModel.processingEventIds.contains(event.id),
                     onApprove: { Task { await viewModel.approveEvent(event) } },
                     onEdit: { /* Navigation handled by NavigationLink */ },
                     onReject: { Task { await viewModel.rejectEvent(event) } }
                 )
             }
+            .disabled(viewModel.processingEventIds.contains(event.id))
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {
                     Task { await viewModel.approveEvent(event) }
