@@ -185,4 +185,79 @@ describe('History Page', () => {
 			expect(screen.getByText('Retry')).toBeInTheDocument();
 		});
 	});
+
+	it('shows spinner immediately on undo and keeps list on failure', async () => {
+		const user = userEvent.setup();
+		const now = new Date();
+		let resolveUndo;
+		mockFetchActivityEvents.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Meeting',
+					status: 'synced',
+					updated_at: now.toISOString(),
+					event_sources: []
+				}
+			],
+			count: 1,
+			error: null
+		});
+		mockUndoHistoryEvent.mockReturnValue(
+			new Promise((resolve) => {
+				resolveUndo = resolve;
+			})
+		);
+
+		render(HistoryPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Undo')).toBeInTheDocument();
+		});
+
+		await user.click(screen.getByText('Undo'));
+
+		await waitFor(() => {
+			expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
+			expect(screen.getByText('Meeting')).toBeInTheDocument();
+		});
+
+		resolveUndo({ data: null, error: { message: 'Undo failed: server restarting', status: 502 } });
+
+		await waitFor(() => {
+			expect(screen.getByText('Undo failed: server restarting')).toBeInTheDocument();
+			expect(screen.getByText('Meeting')).toBeInTheDocument();
+			expect(screen.getByText('Undo')).toBeInTheDocument();
+		});
+	});
+
+	it('removes event from list after successful undo', async () => {
+		const user = userEvent.setup();
+		const now = new Date();
+		mockFetchActivityEvents.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Meeting',
+					status: 'approved',
+					updated_at: now.toISOString(),
+					event_sources: []
+				}
+			],
+			count: 1,
+			error: null
+		});
+
+		render(HistoryPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Undo')).toBeInTheDocument();
+		});
+
+		await user.click(screen.getByText('Undo'));
+
+		await waitFor(() => {
+			expect(screen.queryByText('Meeting')).not.toBeInTheDocument();
+		});
+	});
 });

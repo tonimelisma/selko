@@ -19,6 +19,7 @@ final class HistoryViewModel {
     var dateGroups: [DateGroup] = []
     var errorMessage: String?
     var hasMore = true
+    var processingEventIds: Set<UUID> = []
 
     private var offset = 0
     private let pageSize = 20
@@ -67,6 +68,11 @@ final class HistoryViewModel {
     }
 
     func undoEvent(_ event: CalendarEvent) async {
+        guard !processingEventIds.contains(event.id) else { return }
+        processingEventIds.insert(event.id)
+        errorMessage = nil
+        defer { processingEventIds.remove(event.id) }
+
         do {
             _ = try await backendAPI.undoHistoryEvent(eventId: event.id)
             removeEvent(event.id)
@@ -76,9 +82,13 @@ final class HistoryViewModel {
     }
 
     func retrySync(_ event: CalendarEvent) async {
+        guard !processingEventIds.contains(event.id) else { return }
+        processingEventIds.insert(event.id)
+        errorMessage = nil
+        defer { processingEventIds.remove(event.id) }
+
         do {
             _ = try await eventService.updateEventStatus(id: event.id, status: .approved)
-            // Update the event in the list to reflect the new status
             await load()
         } catch {
             errorMessage = error.localizedDescription

@@ -7,12 +7,10 @@ import SwiftUI
 
 struct EventCardView: View {
     let event: CalendarEvent
+    var isProcessing: Bool = false
     var onApprove: (() -> Void)? = nil
     var onEdit: (() -> Void)? = nil
     var onReject: (() -> Void)? = nil
-
-    @State private var slideOffset: CGFloat = 0
-    @State private var slideOpacity: Double = 1.0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -55,53 +53,45 @@ struct EventCardView: View {
             if onApprove != nil || onEdit != nil || onReject != nil {
                 HStack {
                     Spacer()
-                    if let onApprove {
-                        Button {
-                            withAnimation(.easeIn(duration: 0.3)) {
-                                slideOffset = 500
-                                slideOpacity = 0
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if isProcessing {
+                        ProgressView()
+                            .controlSize(.small)
+                            .accessibilityIdentifier("eventCardProcessing")
+                    } else {
+                        if let onApprove {
+                            Button {
                                 onApprove()
+                            } label: {
+                                Image(systemName: "checkmark")
                             }
-                        } label: {
-                            Image(systemName: "checkmark")
+                            .buttonStyle(.borderedProminent)
+                            .tint(.selkoSuccess)
+                            .foregroundStyle(.white)
+                            .controlSize(.small)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.selkoSuccess)
-                        .foregroundStyle(.white)
-                        .controlSize(.small)
-                    }
-                    if let onEdit {
-                        Button { onEdit() } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                    if let onReject {
-                        Button(role: .destructive) {
-                            withAnimation(.easeIn(duration: 0.3)) {
-                                slideOffset = -500
-                                slideOpacity = 0
+                        if let onEdit {
+                            Button { onEdit() } label: {
+                                Label("Edit", systemImage: "pencil")
                             }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                        if let onReject {
+                            Button(role: .destructive) {
                                 onReject()
+                            } label: {
+                                Image(systemName: "xmark")
                             }
-                        } label: {
-                            Image(systemName: "xmark")
+                            .buttonStyle(.borderedProminent)
+                            .tint(.selkoError)
+                            .foregroundStyle(.white)
+                            .controlSize(.small)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.selkoError)
-                        .foregroundStyle(.white)
-                        .controlSize(.small)
                     }
                 }
                 .padding(.top, 4)
             }
         }
-        .offset(x: slideOffset)
-        .opacity(slideOpacity)
         .padding(.vertical, 4)
         .accessibilityHint("Double tap to view details")
         .accessibilityIdentifier("eventCard")

@@ -207,6 +207,44 @@ struct HistoryViewModelTests {
         let finalCount = viewModel.dateGroups.flatMap(\.events).count
         #expect(finalCount == 0)
         #expect(viewModel.errorMessage == nil)
+        #expect(viewModel.processingEventIds.isEmpty)
+    }
+
+    @Test
+    func undoEventFailureSetsErrorAndKeepsEvent() async throws {
+        let mockEventService = MockEventService()
+        let mockBackendAPI = MockBackendAPI()
+        let eventId = UUID()
+        let event = CalendarEvent(
+            id: eventId,
+            userId: UUID(),
+            title: "Event to Undo",
+            startDatetime: Date(),
+            endDatetime: Date().addingTimeInterval(3600),
+            allDay: false,
+            location: nil,
+            description: nil,
+            sourceAttribution: nil,
+            status: .synced,
+            googleCalendarEventId: nil,
+            syncedAt: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            eventSources: nil
+        )
+        mockEventService.fetchActivityEventsResult = .success([event])
+        mockBackendAPI.undoHistoryEventResult = .failure(
+            NSError(domain: "test", code: 502, userInfo: [NSLocalizedDescriptionKey: "Request timed out"])
+        )
+
+        let viewModel = HistoryViewModel(eventService: mockEventService, backendAPI: mockBackendAPI)
+        await viewModel.load()
+
+        await viewModel.undoEvent(event)
+
+        #expect(viewModel.errorMessage == "Request timed out")
+        #expect(viewModel.dateGroups.flatMap(\.events).count == 1)
+        #expect(viewModel.processingEventIds.isEmpty)
     }
 
     @Test

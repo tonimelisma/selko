@@ -47,7 +47,10 @@ struct HistoryView: View {
             ForEach(viewModel.dateGroups) { group in
                 Section(group.label) {
                     ForEach(group.events) { event in
-                        HistoryRowView(event: event) {
+                        HistoryRowView(
+                            event: event,
+                            isProcessing: viewModel.processingEventIds.contains(event.id)
+                        ) {
                             Task { await viewModel.undoEvent(event) }
                         } onRetry: {
                             Task { await viewModel.retrySync(event) }
@@ -79,6 +82,7 @@ struct HistoryView: View {
 
 struct HistoryRowView: View {
     let event: CalendarEvent
+    var isProcessing: Bool = false
     let onUndo: () -> Void
     let onRetry: () -> Void
 
@@ -102,8 +106,11 @@ struct HistoryRowView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Trailing action button
-            if event.status == .syncFailed {
+            if isProcessing {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityIdentifier("historyProcessing")
+            } else if event.status == .syncFailed {
                 Button {
                     onRetry()
                 } label: {
@@ -148,7 +155,7 @@ struct HistoryRowView: View {
                 .accessibilityLabel("Rejected")
         case .cancelled:
             Image(systemName: "minus.circle.fill")
-                .foregroundStyle(Color.secondary)
+                .foregroundStyle(.secondary)
                 .accessibilityLabel("Cancelled")
         default:
             Image(systemName: "circle")

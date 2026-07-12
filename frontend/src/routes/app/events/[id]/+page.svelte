@@ -27,6 +27,7 @@
 	let sourceOrigin = $state('email');
 	let isLoading = $state(true);
 	let isSaving = $state(false);
+	let isActing = $state(false);
 	let error = $state('');
 	let sourceExpanded = $state(false);
 
@@ -139,27 +140,39 @@
 	}
 
 	async function handleApprove() {
-		if (!event || !title) return;
-		await handleSave();
-		if (error) return;
+		if (!event || !title || isActing) return;
+		isActing = true;
+		error = '';
+		try {
+			await handleSave();
+			if (error) return;
 
-		const { error: statusError } = await updateEventStatus(event.id, 'approved');
-		if (statusError) {
-			error = statusError.message;
-			return;
+			const { error: statusError } = await updateEventStatus(event.id, 'approved');
+			if (statusError) {
+				error = statusError.message;
+				return;
+			}
+			syncEventToCalendar(event.id);
+			goto('/app');
+		} finally {
+			isActing = false;
 		}
-		syncEventToCalendar(event.id);
-		goto('/app');
 	}
 
 	async function handleReject() {
-		if (!event) return;
-		const { error: statusError } = await updateEventStatus(event.id, 'rejected');
-		if (statusError) {
-			error = statusError.message;
-			return;
+		if (!event || isActing) return;
+		isActing = true;
+		error = '';
+		try {
+			const { error: statusError } = await updateEventStatus(event.id, 'rejected');
+			if (statusError) {
+				error = statusError.message;
+				return;
+			}
+			goto('/app');
+		} finally {
+			isActing = false;
 		}
-		goto('/app');
 	}
 </script>
 
@@ -394,9 +407,19 @@
 			<!-- Desktop action buttons -->
 			{#if event.status === 'pending_review'}
 				<div class="hidden lg:flex justify-end gap-3 mt-6">
-					<button class="btn btn-outline btn-error" onclick={handleReject}>{$_('events.reject')}</button>
-					<button class="btn btn-success" onclick={handleApprove} disabled={!title}>
-						{$_('events.accept')}
+					<button class="btn btn-outline btn-error" onclick={handleReject} disabled={isActing}>
+						{#if isActing}
+							<span class="loading loading-spinner loading-sm"></span>
+						{:else}
+							{$_('events.reject')}
+						{/if}
+					</button>
+					<button class="btn btn-success" onclick={handleApprove} disabled={!title || isActing}>
+						{#if isActing}
+							<span class="loading loading-spinner loading-sm"></span>
+						{:else}
+							{$_('events.accept')}
+						{/if}
 					</button>
 				</div>
 			{/if}
@@ -407,9 +430,19 @@
 	{#if event.status === 'pending_review'}
 		<div class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 p-4 lg:hidden">
 			<div class="flex justify-end gap-3 max-w-7xl mx-auto">
-				<button class="btn btn-outline btn-error flex-1" onclick={handleReject}>{$_('events.reject')}</button>
-				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title}>
-					{$_('events.accept')}
+				<button class="btn btn-outline btn-error flex-1" onclick={handleReject} disabled={isActing}>
+					{#if isActing}
+						<span class="loading loading-spinner loading-sm"></span>
+					{:else}
+						{$_('events.reject')}
+					{/if}
+				</button>
+				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title || isActing}>
+					{#if isActing}
+						<span class="loading loading-spinner loading-sm"></span>
+					{:else}
+						{$_('events.accept')}
+					{/if}
 				</button>
 			</div>
 		</div>
