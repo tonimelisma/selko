@@ -1,0 +1,25 @@
+{
+  "name": "autopay_scheduled_15",
+  "category": "no_events",
+  "description": "Automatic utility payment notice containing a processing date",
+  "difficulty": "hard",
+  "tags": ["production-regression", "autopay", "billing", "transactional", "negative-test"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-005",
+    "thread_id": "thread-prod-failure-005",
+    "subject": "Utility Autopay Scheduled",
+    "from_email": "donotreply@utility.example",
+    "from_name": "Utility Billing",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-06-11T16:12:39Z",
+    "snippet": "As part of your requested automatic payments, a payment has been scheduled.",
+    "body_text": "Dear Customer,\n\nAs part of your requested automatic payments, a payment for account ending 0007 has been scheduled as follows:\n\nDate of Payment: 06/17/2026\nPayment Amount: $84.21\nPayment Method: Bank account ending 1234\n\nNo action is required. The payment will be processed automatically.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Production regression: an automatic payment processing date is transactional, not a personal calendar event"
+}

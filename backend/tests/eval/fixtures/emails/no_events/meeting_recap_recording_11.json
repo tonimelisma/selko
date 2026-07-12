@@ -1,0 +1,25 @@
+{
+  "name": "meeting_recap_recording_11",
+  "category": "no_events",
+  "description": "Post-meeting recording recap with the meeting timestamp",
+  "difficulty": "hard",
+  "tags": ["production-regression", "meeting-recap", "past-event", "negative-test"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-001",
+    "thread_id": "thread-prod-failure-001",
+    "subject": "Your meeting recap - New Recording.m4a",
+    "from_email": "recaps@meeting-notes.example",
+    "from_name": "Meeting Notes",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-05-30T05:17:18Z",
+    "snippet": "You invited the notetaker to your meeting. View meeting recap and recording.",
+    "body_text": "Your meeting recap is ready\n\nNew Recording.m4a\nMay 29 at 10:10 PM PST\n\nView meeting recap\nShare this recap\n\nIn this meeting\n315+ words transcribed\n\nThis is a record of a meeting that already happened. There is no upcoming meeting invitation or follow-up deadline in this message.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Production regression: a recap timestamp must not become a new calendar event"
+}
