@@ -7,8 +7,8 @@ const config = {
 			fallback: 'index.html'
 		}),
 		output: {
-			// Official Safari/iOS-friendly strategy if any JS preloads slip through.
-			// Primary fix is hooks.server.js (no JS preloads); this is belt-and-suspenders.
+			// One JS + one CSS file — avoids Safari failing on multi-chunk dynamic imports.
+			bundleStrategy: 'single',
 			preloadStrategy: 'preload-js'
 		}
 	}
