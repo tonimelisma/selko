@@ -1,0 +1,25 @@
+{
+  "name": "account_inactivity_notice_14",
+  "category": "no_events",
+  "description": "Non-English account inactivity notice with no explicit deadline",
+  "difficulty": "medium",
+  "tags": ["production-regression", "finnish", "account-notice", "negative-test"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-004",
+    "thread_id": "thread-prod-failure-004",
+    "subject": "Tiedote: tunnuksesi on ollut käyttämättömänä pitkään",
+    "from_email": "noreply@telecom.example",
+    "from_name": "Telecom Provider",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-06-08T10:32:30Z",
+    "snippet": "Huomasimme, että tunnuksesi on ollut käyttämättömänä jo pitkään.",
+    "body_text": "Hei!\n\nHuomasimme, että tunnuksesi on ollut käyttämättömänä jo pitkään. Varmista tunnuksesi säilyminen käytössä kirjautumalla asiakasportaaliin. Tunnusta tarvitaan palveluiden hallintaan.\n\nViestissä ei ole määräpäivää tai ajanvarausta.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Production regression: an action request without an explicit date is not a calendar event"
+}

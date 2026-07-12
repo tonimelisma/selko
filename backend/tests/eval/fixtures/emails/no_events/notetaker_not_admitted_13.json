@@ -1,0 +1,25 @@
+{
+  "name": "notetaker_not_admitted_13",
+  "category": "no_events",
+  "description": "Notification that a meeting notetaker failed to join a named meeting",
+  "difficulty": "hard",
+  "tags": ["production-regression", "meeting", "failure-notification", "negative-test"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-003",
+    "thread_id": "thread-prod-failure-003",
+    "subject": "Your notetaker bot wasn't admitted to your meeting",
+    "from_email": "alerts@meeting-notes.example",
+    "from_name": "Meeting Notes",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-05-30T20:10:19Z",
+    "snippet": "Your notetaker tried to join Open House but wasn't admitted.",
+    "body_text": "Hi,\n\nYour notetaker bot tried to join “Open House: 1000 Example Avenue” but wasn't admitted.\n\nYou can still capture future meetings with the desktop app, which records directly from your device.\n\nThis message does not provide a date or time for the referenced meeting.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Production regression: a named meeting without an explicit date must not be invented"
+}
