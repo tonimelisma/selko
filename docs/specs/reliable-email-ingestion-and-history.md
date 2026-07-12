@@ -1,6 +1,6 @@
 # Reliable Email Ingestion and History
 
-**Status:** Planned
+**Status:** Implemented in the application; production migration/deployment and reconciliation remain an operational step requiring the production deploy approval in `CLAUDE.md`.
 
 ## Goal
 

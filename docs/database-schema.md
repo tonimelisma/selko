@@ -16,6 +16,34 @@ User profiles linked to Supabase Auth.
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated via trigger |
 
+### `email_folders`
+
+Discovered Gmail labels and Outlook folders. User-created folders store the shared
+marketing-folder recommendation, durable user override, and (for Outlook) their
+folder-specific delta cursor. Provider system folders are stored for filtering but
+are never returned by the Settings API.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Folder preference ID |
+| `user_id` | uuid, FK | References `users.id` |
+| `integration_id` | uuid, FK | References the connected email integration |
+| `provider` | text | `gmail` or `outlook` |
+| `provider_folder_id` | text | Provider label/folder ID |
+| `parent_folder_id` | text | Provider parent ID when available |
+| `name` | text | Folder/label name |
+| `full_path` | text | Full nesting context used for classification |
+| `folder_kind` | text | `label` or `folder` |
+| `is_system` | boolean | Provider-managed folder omitted from Settings |
+| `classification_decision` | text | `include`, `exclude`, or `uncertain` |
+| `classification_reason` | text | Short persisted recommendation reason |
+| `user_override` | boolean | Whether the user decision is durable |
+| `is_included` | boolean | Effective source-set decision |
+| `sync_cursor` | text | Outlook folder-specific Graph delta cursor |
+
+**RLS Policies:** Users can view and update their own non-system folder preferences;
+the service role manages discovery and cursor writes.
+
 **RLS Policies:**
 - Users can view/update/insert own profile
 - Auto-created via trigger on `auth.users` insert
@@ -67,6 +95,10 @@ Synced Gmail and Outlook messages with status-based worker claiming.
 | `content_hash` | text | SHA-256 for deduplication |
 | `processing_status` | text | `pending`, `processing`, `processed`, `failed`, `skipped` |
 | `processing_error` | text | Last processing error message |
+| `processing_outcome` | text | `no_event`, `event_created`, `event_updated`, `event_created_and_updated`, or `event_cancelled` |
+| `processing_explanation` | text | Optional explanation already returned by normal processing |
+| `processing_result` | jsonb | Structured processing counts for History |
+| `provider_folder_ids` | text[] | Current provider folder/label membership |
 | `processed_at` | timestamptz | When processing completed |
 | `locked_until` | timestamptz | Worker lock expiration |
 | `locked_by` | text | Worker ID that claimed this email |

@@ -11,10 +11,19 @@ from collections import defaultdict
 from typing import Annotated, Any
 from urllib.parse import urlencode, urlparse
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from selko.api.deps import CurrentUser, get_config, get_current_user
+from selko.api.deps import (
+    CurrentUser,
+    get_authenticated_client,
+    get_config,
+    get_current_user,
+)
+from selko.api.schemas.integrations import (
+    EmailFolderPreferenceRequest,
+    EmailFolderPreferenceResponse,
+)
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.config import Config
 from selko.services.gmail import build_service, get_user_profile
@@ -30,6 +39,8 @@ from selko.services.integrations import (
     save_oauth_credentials,
     save_provider_tokens,
 )
+from selko.services.email_folders import set_folder_preference
+from supabase import Client
 
 # Base allowlist for Google OAuth callback hosts (Google redirects here, not the SPA)
 _STATIC_REDIRECT_HOSTS = {
@@ -48,6 +59,90 @@ ALLOWED_REDIRECT_PATHS = {
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
+
+
+@router.get("/{provider}/folders", response_model=list[EmailFolderPreferenceResponse])
+async def list_email_folders(
+    provider: Annotated[str, Path(pattern="^(gmail|outlook)$")],
+    client: Client = Depends(get_authenticated_client),
+    user: CurrentUser = Depends(get_current_user),
+) -> list[EmailFolderPreferenceResponse]:
+    """List user-configurable discovered labels/folders for Settings."""
+
+    result = (
+        client.table("email_folders")
+        .select(
+            "id,provider,name,full_path,classification_decision,classification_reason,"
+            "user_override,is_included,is_system"
+        )
+        .eq("user_id", user.id)
+        .eq("provider", provider)
+        .eq("is_system", False)
+        .order("full_path")
+        .execute()
+    )
+    return [EmailFolderPreferenceResponse(**row) for row in (result.data or [])]
+
+
+@router.patch("/{provider}/folders/{folder_id}", response_model=EmailFolderPreferenceResponse)
+async def update_email_folder(
+    request: EmailFolderPreferenceRequest,
+    provider: Annotated[str, Path(pattern="^(gmail|outlook)$")],
+    folder_id: Annotated[str, Path(description="Discovered folder UUID")],
+    client: Client = Depends(get_authenticated_client),
+    user: CurrentUser = Depends(get_current_user),
+) -> EmailFolderPreferenceResponse:
+    """Persist a folder override and queue a 14-day sync when enabling it."""
+
+    existing = (
+        client.table("email_folders")
+        .select("*")
+        .eq("id", folder_id)
+        .eq("user_id", user.id)
+        .eq("provider", provider)
+        .eq("is_system", False)
+        .maybe_single()
+        .execute()
+    )
+    if not existing or not existing.data:
+        raise HTTPException(status_code=404, detail="Email folder not found")
+
+    folder = set_folder_preference(
+        client,
+        user_id=user.id,
+        folder_id=folder_id,
+        is_included=request.is_included,
+    )
+    if not folder:
+        raise HTTPException(status_code=404, detail="Email folder not found")
+
+    if request.is_included:
+        try:
+            from selko.services.scheduled_tasks import enqueue_scheduled_task
+
+            existing_tasks = (
+                client.table("scheduled_tasks")
+                .select("id,payload")
+                .eq("user_id", user.id)
+                .eq("task_type", "email_fetch")
+                .in_("status", ["pending", "processing"])
+                .execute()
+            )
+            already_queued = any(
+                (row.get("payload") or {}).get("provider") == provider
+                for row in (existing_tasks.data or [])
+            )
+            if not already_queued:
+                enqueue_scheduled_task(
+                    client,
+                    user_id=user.id,
+                    task_type="email_fetch",
+                    payload={"user_id": user.id, "provider": provider},
+                )
+        except Exception as exc:
+            logger.warning("Folder preference saved but sync could not be queued: %s", exc)
+
+    return EmailFolderPreferenceResponse(**folder)
 
 
 # --- IP-based rate limiter for OAuth callback ---
