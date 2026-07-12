@@ -30,9 +30,10 @@ small user-facing email processing history alongside the existing action history
   folders on every scan.
 - Eligible included and LLM-excluded user folders appear in Settings, where the user can
   override the LLM decision. Permanently excluded provider system folders never appear.
-- Excluded emails are never ingested: do not create an `emails` row, download/store
-  attachments, or send their content to event extraction. They therefore never appear
-  in History.
+- Email ingestion is sourced only from included folders and labels. There is no
+  "rejected email" state: messages belonging to excluded folders or labels never enter
+  the ingestion pipeline, never create an `emails` row, never have content or
+  attachments downloaded/stored, and never reach event extraction or History.
 - Initial synchronization covers the previous 14 days. Subsequent synchronization
   drains every change since the stored cursor, regardless of count.
 - The production Render API will run on an always-on Starter instance.
@@ -50,21 +51,24 @@ small user-facing email processing history alongside the existing action history
 
 Replace newest-50 polling with Gmail History API synchronization.
 
-1. During first sync, list all eligible messages received in the last 14 days,
-   following every page, and save them by provider message ID.
+1. During first sync, build a Gmail search for the previous 14 days that excludes all
+   permanently excluded categories and all user-excluded labels. Follow every result
+   page and ingest only the messages returned by that eligible-mail search.
 2. Persist the mailbox `historyId` only after the complete synchronization round
    succeeds.
-3. On later runs, follow every history page since the stored cursor and fetch every
-   added or changed message.
+3. On later runs, follow every history page since the stored cursor. Because Gmail
+   History does not support the full search query, retrieve only the minimal message
+   metadata needed to inspect label IDs, discard IDs carrying any excluded label, and
+   fetch full content only for eligible messages.
 4. If a history cursor expires, run a paginated recovery scan with an overlap, then
    establish a new cursor.
 5. Discover user-created Gmail labels and classify each new or renamed label once using
    the shared open-ended marketing-folder LLM classifier described below. Persist the
    decision and expose eligible labels in Settings.
-6. Apply provider and user-label exclusions before storing a message. If a message has
-   any permanently excluded category or any user-excluded label, do not create an email
-   row or store its attachments. Archived messages and messages under included custom
-   labels remain eligible.
+6. Treat a message with any permanently excluded category or user-excluded label as
+   outside the ingestion source set, even if it also has an included label. Do not fetch
+   its full content, create an email row, or fetch/store its attachments. Archived
+   messages and messages under included custom labels remain eligible.
 7. Keep the existing unique provider-message constraint so overlapping scans and
    retries cannot create duplicate email rows or duplicate extraction work.
 
@@ -89,12 +93,15 @@ Inbox cursor with one cursor per integration and folder.
 5. Show only eligible included and LLM-excluded user folders in Settings. User choices
    override LLM recommendations. Never show or permit overrides for Junk, Deleted Items,
    Sent Items, Drafts, or Outbox.
-6. First-sync each included folder for the previous 14 days, following every page.
-7. Persist and drain a delta cursor independently for every included folder.
-8. Request immutable message IDs where Graph supports them. Upsert by provider message
+6. Create first-sync and delta requests only for included folders. Never request message
+   listings, message deltas, or subscriptions for excluded or permanently ineligible
+   folders.
+7. First-sync each included folder for the previous 14 days, following every page.
+8. Persist and drain a delta cursor independently for every included folder.
+9. Request immutable message IDs where Graph supports them. Upsert by provider message
    ID and reconcile moves so moving a message between included folders does not trigger
    duplicate extraction.
-9. Treat removal from a folder as a move/removal, not as proof that the message is in
+10. Treat removal from a folder as a move/removal, not as proof that the message is in
    Trash. Set `is_trash` only from actual Deleted Items membership.
 
 Required tests cover nested folders, folders populated directly by rules, Focused and
@@ -238,7 +245,10 @@ After deployment:
   marketing-folder classifier or the user.
 - Eligible included and LLM-excluded user folders are visible and controllable in
   Settings. Permanently excluded system folders are absent and cannot be enabled.
-- Excluded emails have no email row, stored attachment, extraction call, or History row.
+- Outlook never requests messages from excluded folders. Gmail excludes them in the
+  initial search and filters incremental IDs by label metadata before fetching content.
+  Such messages are outside ingestion entirely and have no email row, stored attachment,
+  extraction call, rejection record, or History row.
 - First sync covers 14 days.
 - Folder moves do not become false Trash records or duplicate extraction work.
 - History presents only the narrow structured user-facing email outcomes above.
