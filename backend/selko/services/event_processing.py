@@ -60,10 +60,12 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
     from_name = email_metadata.get("from_name", "")
     from_email = email_metadata.get("from_email", "unknown")
     date_sent = email_metadata.get("date_sent", "")
+    user_timezone = email_metadata.get("user_timezone", "America/New_York")
 
     prompt = f"""You are an expert at extracting calendar events from emails.
 
 **Current Date:** {current_date}
+**User timezone (local wall clock):** {user_timezone}
 
 **Email Metadata:**
 - Subject: {subject}
@@ -75,13 +77,19 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 2. Extract ALL calendar events mentioned — meetings, appointments, parties, closures, themed days, deadlines, etc.
 3. For each event, extract:
    - Title: clear, descriptive event name
-   - Start date/time (parse relative dates like "tomorrow", "next Friday")
-   - End date/time (if mentioned)
+   - Start date/time as a LOCAL wall-clock time in {user_timezone}
+   - End date/time as a LOCAL wall-clock time in {user_timezone} (if mentioned)
    - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.
    - Full description with all relevant details
    - Whether it's an all-day event (true/false)
    - Importance: "action_required" or "fyi" (see classification below)
    - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., "RRULE:FREQ=WEEKLY;BYDAY=MO"). Null for one-time events.
+
+**Time rules (critical):**
+- Emit start_datetime / end_datetime as naive local ISO strings like 2026-09-13T10:00:00
+- Do NOT include Z, +00:00, or any numeric timezone offset — the system applies {user_timezone}
+- When an email lists both an Event Time (or doors / show time) AND setup / vendor / cleanup windows, use the Event Time for start/end. Put setup and cleanup only in the description.
+- Example: "Event Time: 10:00 AM – 2:00 PM" with "Vendor Set-Up: 7:00 AM – 9:00 AM" → start 10:00, end 14:00 (not 7:00–15:00)
 
 **Importance Classification:**
 - **action_required**: Events that require the recipient to take action or change their schedule.
@@ -466,6 +474,7 @@ def propose_event_update(
     *,
     email_subject: Optional[str] = None,
     email_snippet: Optional[str] = None,
+    user_timezone: Optional[str] = None,
 ) -> EventChangeSet:
     """Ask LLM what fields to update on a matched existing event.
 
@@ -475,12 +484,25 @@ def propose_event_update(
     Calendar response notifications (Accepted/Declined/Tentative) that merely
     restate the existing event should return kind=noop with empty changes.
     """
+    from selko.services.civil_time import to_civil_iso
+
+    tz = user_timezone or "America/New_York"
+
+    def _civil(value: Any) -> Any:
+        if value is None or value == "":
+            return value
+        civil = to_civil_iso(value, tz)
+        return civil if civil is not None else value
+
     prompt = f"""You are proposing updates to an existing calendar event based on a new email.
+
+All times below are local wall-clock times in {tz} (no timezone offsets).
+Compare civil clock times only — do not convert timezones.
 
 **Existing event (baseline — already on the user's calendar or in Selko):**
 - Title: {baseline.get('title')}
-- Start: {baseline.get('start_datetime')}
-- End: {baseline.get('end_datetime')}
+- Start: {_civil(baseline.get('start_datetime'))}
+- End: {_civil(baseline.get('end_datetime'))}
 - All day: {baseline.get('all_day', False)}
 - Location: {baseline.get('location', 'Not specified')}
 - Description: {baseline.get('description', '')}
@@ -488,8 +510,8 @@ def propose_event_update(
 
 **Newly extracted event fields from the email:**
 - Title: {extracted_event.get('title')}
-- Start: {extracted_event.get('start_datetime')}
-- End: {extracted_event.get('end_datetime')}
+- Start: {_civil(extracted_event.get('start_datetime'))}
+- End: {_civil(extracted_event.get('end_datetime'))}
 - All day: {extracted_event.get('all_day', False)}
 - Location: {extracted_event.get('location', 'Not specified')}
 - Description: {extracted_event.get('description', '')}
@@ -499,7 +521,7 @@ def propose_event_update(
     if email_snippet:
         prompt += f"\n**Email context (snippet):** {email_snippet[:1500]}\n"
 
-    prompt += """
+    prompt += f"""
 **Task:** Decide whether this email requires updating the existing event.
 
 Rules:
@@ -511,8 +533,11 @@ Rules:
 4. If only description / extra details are new → kind=enrichment.
 5. List ONLY fields that should change. Each change must include before (from baseline),
    after (new value), and a short reason.
-6. Do NOT invent changes. Equivalent datetimes in different timezone formats are NOT changes.
+6. Do NOT invent changes. Same local wall-clock times are NOT changes (ignore offset spelling).
 7. Do NOT clear fields the email omitted.
+8. When start/end in the extracted fields disagree with an explicit "Event Time" in the
+   description, prefer the Event Time and treat matching Event Time as noop for times.
+9. Emit after values as naive local datetimes in {tz} (e.g. 2026-09-13T10:00:00) — never Z or +00:00.
 
 Return JSON with kind, changes[], and reasoning.
 """
@@ -584,7 +609,7 @@ Return JSON with kind, changes[], and reasoning.
             changes=changes,
             reasoning=parsed.get("reasoning"),
         )
-        gated = gate_change_set(raw, baseline)
+        gated = gate_change_set(raw, baseline, user_timezone=tz)
         logger.info(
             "Propose update: llm_kind=%s gated_kind=%s changes=%d (%s)",
             raw.kind,

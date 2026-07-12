@@ -142,6 +142,24 @@ class TestGateChangeSet:
         assert gated.kind == "material_update"
         assert len(gated.changes) == 1
 
+    def test_drops_llm_utc_stamp_matching_local_wall_time(self):
+        """Bike Family Fest regression: 10:00+00:00 civil == 10:00-07:00 baseline."""
+        baseline = {"start_datetime": "2026-09-13T10:00:00-07:00", "title": "Fest"}
+        raw = EventChangeSet(
+            kind="material_update",
+            changes=[
+                FieldChange(
+                    field="start_datetime",
+                    before="2026-09-13T10:00:00-07:00",
+                    after="2026-09-13T10:00:00+00:00",
+                    reason="UTC vs local",
+                )
+            ],
+        )
+        gated = gate_change_set(raw, baseline, user_timezone="America/Los_Angeles")
+        assert gated.kind == "noop"
+        assert gated.changes == []
+
 
 class TestBaselineHelpers:
     def test_baseline_from_gcal_event(self):

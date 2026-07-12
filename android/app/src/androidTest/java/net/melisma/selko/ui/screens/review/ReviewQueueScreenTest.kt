@@ -1,16 +1,15 @@
 package net.melisma.selko.ui.screens.review
 
+import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.flow.MutableStateFlow
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
-import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
@@ -25,16 +24,21 @@ class ReviewQueueScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val application = ApplicationProvider.getApplicationContext<Application>()
     private val eventRepository = mockk<EventRepository>(relaxed = true)
     private val integrationRepository = mockk<IntegrationRepository>(relaxed = true)
     private val backendApiClient = mockk<BackendApiClient>(relaxed = true)
     private val senderRuleRepository = mockk<SenderRuleRepository>(relaxed = true)
 
-    private fun setupMocks(
-        isGmailConnected: Boolean = true,
-        isCalendarConnected: Boolean = true,
-        events: List<CalendarEvent> = emptyList()
-    ) {
+    private fun viewModel() = ReviewQueueViewModel(
+        application,
+        eventRepository,
+        integrationRepository,
+        backendApiClient,
+        senderRuleRepository
+    )
+
+    private fun setupMocks(events: List<CalendarEvent> = emptyList()) {
         coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(emptyList())
         coEvery { eventRepository.fetchPendingEventsWithSources() } returns EventResult.Success(events)
         every { backendApiClient.getGmailAuthUrl() } returns "https://example.com/auth"
@@ -48,12 +52,11 @@ class ReviewQueueScreenTest {
             SelkoTheme {
                 ReviewQueueScreen(
                     onNavigateToEventDetail = {},
-                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient, senderRuleRepository)
+                    viewModel = viewModel()
                 )
             }
         }
 
-        // The screen should render without crashing
         composeTestRule.waitForIdle()
     }
 
@@ -65,19 +68,17 @@ class ReviewQueueScreenTest {
             SelkoTheme {
                 ReviewQueueScreen(
                     onNavigateToEventDetail = {},
-                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient, senderRuleRepository)
+                    viewModel = viewModel()
                 )
             }
         }
 
         composeTestRule.waitForIdle()
-        // Should show either "All caught up!" or integration setup
         val allCaughtUp = composeTestRule.onNodeWithText("All caught up!", substring = true)
         val welcome = composeTestRule.onNodeWithText("Welcome to Selko", substring = true)
-        // At least one should exist (depending on integration state)
         try {
             allCaughtUp.assertIsDisplayed()
-        } catch (e: AssertionError) {
+        } catch (_: AssertionError) {
             welcome.assertIsDisplayed()
         }
     }
@@ -92,13 +93,12 @@ class ReviewQueueScreenTest {
             SelkoTheme {
                 ReviewQueueScreen(
                     onNavigateToEventDetail = {},
-                    viewModel = ReviewQueueViewModel(eventRepository, integrationRepository, backendApiClient, senderRuleRepository)
+                    viewModel = viewModel()
                 )
             }
         }
 
         composeTestRule.waitForIdle()
-        // Should show integration setup since no integrations are active
         composeTestRule.onNodeWithText("Welcome to Selko", substring = true).assertIsDisplayed()
     }
 }
