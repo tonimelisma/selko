@@ -514,6 +514,7 @@ def parse_outlook_message(
         "provider_labels": synthesize_labels(msg),
         "has_attachments": bool(msg.get("hasAttachments")),
         "body_html": None,
+        "is_calendar_invite": "eventmessage" in str(msg.get("@odata.type", "")).lower(),
     }
     if body.get("contentType") == "text" and body.get("content"):
         result["body_text"] = body["content"]

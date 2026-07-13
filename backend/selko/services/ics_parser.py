@@ -14,6 +14,27 @@ from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 
 logger = logging.getLogger(__name__)
 
+INVITE_METHODS = {"REQUEST", "REPLY", "CANCEL", "COUNTER", "DECLINECOUNTER"}
+
+
+def detect_invite_method(attachments: list[dict[str, Any]]) -> Optional[str]:
+    """Return the uppercased METHOD of the first parseable .ics, or None.
+
+    A real calendar-invite email (Google/Outlook meeting request, update,
+    RSVP, or cancellation) carries one of INVITE_METHODS. Plain "add to
+    calendar" .ics files use METHOD:PUBLISH or omit METHOD entirely and are
+    not invites.
+    """
+    for att in _filter_ics_attachments(attachments):
+        try:
+            cal = icalendar.Calendar.from_ical(att["data"])
+        except Exception:
+            continue
+        method = cal.get("METHOD")
+        if method:
+            return str(method).strip().upper()
+    return None
+
 
 def parse_ics_attachments(
     attachments: list[dict[str, Any]],

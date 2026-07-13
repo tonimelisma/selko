@@ -62,6 +62,7 @@ class TestParseOutlookMessage:
             "has_attachments": True,
             "body_html": None,
             "body_text": "Plain text body",
+            "is_calendar_invite": False,
         }
 
     def test_omits_empty_recipients_and_html_body(self):
@@ -76,6 +77,33 @@ class TestParseOutlookMessage:
         assert result["to_emails"] is None
         assert result["body_html"] is None
         assert "body_text" not in result
+
+    def test_flags_event_message_request_as_calendar_invite(self):
+        result = parse_outlook_message(
+            {
+                "id": "message-3",
+                "@odata.type": "#microsoft.graph.eventMessageRequest",
+            }
+        )
+        assert result["is_calendar_invite"] is True
+
+    def test_flags_event_message_response_as_calendar_invite(self):
+        result = parse_outlook_message(
+            {
+                "id": "message-4",
+                "@odata.type": "#microsoft.graph.eventMessageResponse",
+            }
+        )
+        assert result["is_calendar_invite"] is True
+
+    def test_plain_message_is_not_a_calendar_invite(self):
+        result = parse_outlook_message(
+            {
+                "id": "message-5",
+                "@odata.type": "#microsoft.graph.message",
+            }
+        )
+        assert result["is_calendar_invite"] is False
 
 
 class TestOutlookLabels:

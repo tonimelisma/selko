@@ -128,6 +128,7 @@
 		"emailEventCreatedAndUpdated": "Events created and updated",
 		"emailEventCancelled": "Event cancelled",
 		"emailEventMatched": "Existing event matched",
+		"emailCalendarInvite": "Calendar invitation (handled by your calendar)",
 		"emailReprocessTimeout": "Reprocessing is taking longer than expected. You can try again shortly.",
 		"reprocess": "Reprocess"
 	},
