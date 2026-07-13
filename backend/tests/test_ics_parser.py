@@ -161,6 +161,18 @@ class TestParseIcsAttachments:
         assert event.start_datetime == datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc)
         # All-day DTEND is also a date
         assert event.end_datetime == datetime(2026, 4, 2, 0, 0, tzinfo=timezone.utc)
+        # Regression: all_day flag must be set, not silently dropped
+        assert event.all_day is True
+
+    def test_timed_event_has_all_day_false(self):
+        attachments = [
+            {"data": NO_DTEND_ICS, "mime_type": "text/calendar", "filename": "quick.ics"},
+        ]
+
+        result = parse_ics_attachments(attachments, EMAIL_METADATA)
+
+        assert result is not None
+        assert result.events[0].all_day is False
 
     def test_missing_dtend_defaults_to_one_hour(self):
         attachments = [

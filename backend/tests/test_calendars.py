@@ -54,11 +54,12 @@ class TestBuildCalendarEventBody:
         assert body["extendedProperties"]["private"]["selko_event_id"] == "event-123"
 
     def test_all_day_event(self):
-        """Test building body for all-day event."""
+        """Single-day all-day event: local midnight start, exclusive next-day end."""
         event = {
             "id": "event-456",
             "title": "Conference",
-            "start_datetime": "2026-03-15T00:00:00Z",
+            # Local midnight March 15 in America/New_York (EDT, UTC-4)
+            "start_datetime": "2026-03-15T04:00:00Z",
             "all_day": True,
             "location": None,
             "description": None,
@@ -69,8 +70,27 @@ class TestBuildCalendarEventBody:
         body = _build_calendar_event_body(event, settings)
 
         assert body["start"]["date"] == "2026-03-15"
-        assert body["end"]["date"] == "2026-03-15"
+        assert body["end"]["date"] == "2026-03-16"
         assert "dateTime" not in body["start"]
+
+    def test_multi_day_all_day_event_does_not_collapse(self):
+        """Regression: a multi-day all-day event must not collapse to one day."""
+        event = {
+            "id": "event-789",
+            "title": "Kids Club Closed",
+            "start_datetime": "2026-08-12T07:00:00Z",
+            "end_datetime": "2026-08-15T06:59:59Z",
+            "all_day": True,
+            "location": None,
+            "description": None,
+            "source_attribution": None,
+        }
+        settings = {"default_invitees": None, "timezone": "America/Los_Angeles"}
+
+        body = _build_calendar_event_body(event, settings)
+
+        assert body["start"]["date"] == "2026-08-12"
+        assert body["end"]["date"] == "2026-08-15"
 
     def test_with_default_invitees(self):
         """Test adding default invitees to event."""

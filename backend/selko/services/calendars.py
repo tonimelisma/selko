@@ -243,20 +243,18 @@ def _build_calendar_event_body(
     # Use user timezone from settings instead of hardcoded UTC
     user_tz = settings.get("timezone", "America/New_York")
 
-    from selko.services.civil_time import gcal_timed_fields
+    from selko.services.civil_time import gcal_all_day_fields, gcal_timed_fields
 
     # Handle dates
     if event.get("all_day"):
-        # All-day event
+        # All-day event: local start date + exclusive local end date
         start_dt = event.get("start_datetime")
         if start_dt:
-            # Handle both datetime strings and datetime objects
-            if isinstance(start_dt, str):
-                date_str = start_dt.split("T")[0]
-            else:
-                date_str = start_dt.strftime("%Y-%m-%d")
-            calendar_event["start"]["date"] = date_str
-            calendar_event["end"]["date"] = date_str
+            start_fields, end_fields = gcal_all_day_fields(
+                start_dt, event.get("end_datetime"), user_tz
+            )
+            calendar_event["start"] = start_fields
+            calendar_event["end"] = end_fields
     else:
         # Timed event: naive local dateTime + IANA timeZone (never offset+tz)
         start_dt = event.get("start_datetime")
@@ -543,16 +541,13 @@ def update_calendar_event(
         end_dt = event.get("end_datetime")
         user_tz = settings.get("timezone", "America/New_York")
 
-        from selko.services.civil_time import gcal_timed_fields
+        from selko.services.civil_time import gcal_all_day_fields, gcal_timed_fields
 
         if event.get("all_day"):
             if start_dt:
-                if isinstance(start_dt, str):
-                    date_str = start_dt.split("T")[0]
-                else:
-                    date_str = start_dt.strftime("%Y-%m-%d")
-                existing_event["start"] = {"date": date_str}
-                existing_event["end"] = {"date": date_str}
+                start_fields, end_fields = gcal_all_day_fields(start_dt, end_dt, user_tz)
+                existing_event["start"] = start_fields
+                existing_event["end"] = end_fields
         else:
             if start_dt:
                 fields = gcal_timed_fields(start_dt, user_tz)
