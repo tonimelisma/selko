@@ -239,12 +239,13 @@
 	 * @param {any[]} eventsList
 	 */
 	async function handleIgnoreSender(senderEmail, eventsList) {
+		actionError = '';
 		const { error: ruleError } = await createSenderRule({
 			sender_email: senderEmail,
 			action: 'ignore'
 		});
 		if (ruleError) {
-			error = ruleError.message;
+			actionError = ruleError.message;
 			return;
 		}
 		for (const event of eventsList) {
@@ -265,12 +266,13 @@
 	 * @param {any[]} eventsList
 	 */
 	async function handleAutoApproveSender(senderEmail, eventsList) {
+		actionError = '';
 		const { error: ruleError } = await createSenderRule({
 			sender_email: senderEmail,
 			action: 'auto_approve'
 		});
 		if (ruleError) {
-			error = ruleError.message;
+			actionError = ruleError.message;
 			return;
 		}
 		for (const event of eventsList) {

@@ -231,6 +231,9 @@ describe('Sender Rules Service', () => {
 
 	describe('createSenderRule', () => {
 		it('creates a rule with domain', async () => {
+			mockSupabase.auth.getUser.mockResolvedValue({
+				data: { user: { id: 'user-1' } }
+			});
 			const mockRule = { id: '1', sender_domain: 'example.com', action: 'auto_approve' };
 			const query = createQueryMock(mockRule);
 			mockSupabase.from.mockReturnValue(query);
@@ -241,11 +244,16 @@ describe('Sender Rules Service', () => {
 				action: 'auto_approve'
 			});
 
-			expect(query.insert).toHaveBeenCalled();
+			expect(query.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ user_id: 'user-1', sender_domain: 'example.com' })
+			);
 			expect(result.data).toEqual(mockRule);
 		});
 
 		it('creates a rule with email', async () => {
+			mockSupabase.auth.getUser.mockResolvedValue({
+				data: { user: { id: 'user-1' } }
+			});
 			const mockRule = { id: '1', sender_email: 'noreply@test.com', action: 'ignore' };
 			const query = createQueryMock(mockRule);
 			mockSupabase.from.mockReturnValue(query);
@@ -256,7 +264,9 @@ describe('Sender Rules Service', () => {
 				action: 'ignore'
 			});
 
-			expect(query.insert).toHaveBeenCalled();
+			expect(query.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ user_id: 'user-1', sender_email: 'noreply@test.com' })
+			);
 			expect(result.data).toEqual(mockRule);
 		});
 
@@ -267,6 +277,19 @@ describe('Sender Rules Service', () => {
 			expect(result.data).toBeNull();
 			expect(result.error).not.toBeNull();
 			expect(result.error.message).toContain('sender_domain or sender_email');
+		});
+
+		it('fails when not authenticated', async () => {
+			mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } });
+
+			const { createSenderRule } = await import('../services/sender-rules.js');
+			const result = await createSenderRule({
+				sender_email: 'noreply@test.com',
+				action: 'ignore'
+			});
+
+			expect(result.data).toBeNull();
+			expect(result.error).not.toBeNull();
 		});
 	});
 
