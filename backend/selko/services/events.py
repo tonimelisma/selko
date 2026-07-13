@@ -19,6 +19,7 @@ from selko.services.event_diff import (
     compute_change_set,
     proposed_fields_from_change_set,
 )
+from selko.services.civil_time import ensure_aware, resolve_zone
 from selko.services.llm_gateway import LLMGateway
 from selko.services.retry_utils import calculate_retry_delay
 
@@ -223,6 +224,12 @@ def save_extracted_events(
         event_data = normalize_event_data(
             event, user_timezone=user_timezone, treat_as_civil=treat_as_civil
         )
+
+        if not event_data.get("start_datetime"):
+            logger.info(
+                "Skipping event with no start_datetime: %s", event_data.get("title")
+            )
+            continue
 
         start_str = event_data.get("start_datetime")
         if start_str:
@@ -498,23 +505,20 @@ def find_matching_event(
     if not start_dt:
         return None
 
-    try:
-        if isinstance(start_dt, str):
-            start_date = datetime.fromisoformat(start_dt.replace('Z', '+00:00')).date()
-        else:
-            start_date = start_dt.date()
-    except (ValueError, AttributeError) as e:
-        logger.debug(f"Date parse failed: {e}")
+    start_aware = ensure_aware(start_dt, user_timezone)
+    if start_aware is None:
         return None
-
-    time_min = f"{start_date}T00:00:00Z"
-    time_max = f"{start_date}T23:59:59Z"
+    local_day = start_aware.astimezone(resolve_zone(user_timezone)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    time_min = local_day.astimezone(timezone.utc).isoformat()
+    time_max = (local_day + timedelta(days=1)).astimezone(timezone.utc).isoformat()
 
     result = supabase_client.table("events").select("*").eq(
         "user_id", user_id
     ).gte(
         "start_datetime", time_min
-    ).lte(
+    ).lt(
         "start_datetime", time_max
     ).execute()
 
@@ -585,6 +589,28 @@ def find_matching_event(
         return None
 
     if matched_id.startswith("gcal:"):
+        gcal_id = candidate.get("_gcal_id") or matched_id[5:]
+        existing = supabase_client.table("events").select("*").eq(
+            "user_id", user_id
+        ).eq("google_calendar_event_id", gcal_id).not_.in_(
+            "status", ["rejected", "cancelled"]
+        ).order("created_at").limit(1).execute()
+        if existing.data:
+            row = existing.data[0]
+            return EventMatch(
+                match_id=row["id"],
+                baseline={
+                    "title": row.get("title"),
+                    "start_datetime": row.get("start_datetime"),
+                    "end_datetime": row.get("end_datetime"),
+                    "all_day": row.get("all_day", False),
+                    "location": row.get("location"),
+                    "description": row.get("description"),
+                    "importance": row.get("importance"),
+                    "status": row.get("status"),
+                },
+            )
+
         baseline = candidate.get("_baseline") or {
             "title": candidate.get("title"),
             "start_datetime": candidate.get("start_datetime"),
