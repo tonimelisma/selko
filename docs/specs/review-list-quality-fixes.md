@@ -1,6 +1,6 @@
 # Review List Quality Fixes
 
-**Status:** Planned
+**Status:** Implemented
 **Date:** 2026-07-13
 **Scope:** backend (`backend/selko/services`, `backend/selko/workers`), Supabase migrations, web frontend, one production cleanup script.
 
@@ -855,22 +855,37 @@ the merge gate.
 | 2 | `feat/retroactive-sender-ignore` | WS1 migration + web | **Implemented — PR #188** |
 | 3 | `fix/all-day-dates-and-duration` | WS5 (a–d) | **Implemented — PR #189** |
 | 4 | `feat/calendar-invite-suppression` | WS6 backstop layer | **Implemented — PR #190** |
-| 5 | `feat/invite-filter-at-ingestion` | WS6 remaining: Gmail parse-time detection, store pre-skipped, backstop `skipped` alignment | Remaining |
-| 6 | `feat/update-proposal-discipline` | WS4 (a–d) | Remaining — prompt/schema work; test with evals |
-| 7 | `chore/cleanup-review-incident` | WS2 script | Remaining — run AFTER everything above is deployed so reprocessing can't recreate the mess; dry-run first, share output, then `--apply` |
+| 5 | `feat/invite-filter-at-ingestion` | WS6 remaining: Gmail parse-time detection, store pre-skipped, backstop `skipped` alignment | **Implemented — PR #192** |
+| 6 | `feat/update-proposal-discipline` | WS4 (a–d) | **Implemented — PR #194** |
+| 7 | `chore/cleanup-review-incident` | WS2 script | **Implemented — PR #196** (script only; **not yet run against staging/production** — needs explicit approval before `--apply`) |
 
-After WS2 runs in production, verify the affected user's review list: the ~11
-incident-sourced items, the duplicate deadline event, and the second
-duplicate-appointment change card must be gone.
+Post-merge automated review comments landed on PRs #188–#194 after they were
+squash-merged; every real finding (a dedupe-trigger requeue bug, a GCal
+all-day date shift, a multi-attachment invite-detection gap, the calendar-
+invite backstop's `skipped` status being overwritten by the worker pool, and
+two gaps in the update-proposal discipline gates) was fixed and merged in
+follow-up PR #197, with a reply on each original PR. See CLAUDE.md's
+"Check for unaddressed PR review comments" step.
 
-Deployment note: rows 1–6 all touch `backend`/`supabase`/`frontend`, so each
-PR's final report must end with the standard production-deploy question per
-`CLAUDE.md`.
+Before running WS2 against production, verify the affected user's review
+list first: the ~11 incident-sourced items, the duplicate deadline event,
+and the second duplicate-appointment change card should be gone once
+`--apply` runs.
 
-## Documentation follow-ups (with the last PR)
+Deployment note: rows 1–6 (and PR #197) all touch `backend`/`supabase`/
+`frontend`, so each shipped a final production-deploy question per
+`CLAUDE.md`; the actual production deploy still requires the user's
+explicit approval, as does running WS2's script against staging/production
+data.
 
-- Fold "how invites are handled" into `docs/gmail-integration.md` (and the
-  Outlook section) once WS6 ships.
-- Update `docs/database-schema.md`: `emails.is_calendar_invite`, the
-  `calendar_invite` outcome, the new RPC.
-- Mark this spec **Implemented**.
+## Documentation follow-ups
+
+- [x] Folded "how invites are handled" into `docs/gmail-integration.md` as a
+  Selko-specific appendix (the rest of that doc is generic Gmail API
+  research, not Selko implementation docs, and has no separate Outlook
+  file).
+- [x] Updated `docs/database-schema.md`: `emails.is_calendar_invite`, the
+  `calendar_invite` outcome, the `ignore_sender_and_reject_pending` RPC,
+  `claim_unprocessed_email`'s oldest-`date_sent`-first ordering, and the
+  `sender_rules` trigger's equivalent-rule guard.
+- [x] Marked this spec **Implemented**.

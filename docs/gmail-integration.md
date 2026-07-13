@@ -363,6 +363,25 @@ Distributed systems often face transient network failures or rate limits (429 To
 The construction of a backend that connects to Gmail accounts, ingests emails in real-time, classifies content, and manages attachments requires a sophisticated orchestration of the **Gmail API v1**, **OAuth 2.0**, and **Google Cloud Pub/Sub**.  
 By adopting the **Push-Sync architecture**, the system minimizes latency and quota usage compared to polling. The **History API** satisfies the requirements for granular state tracking (read status, folder routing), while the inspection of **System Labels** satisfies the classification requirements. Finally, a recursive traversal of the **MIME payload structure** combined with the specific attachment retrieval endpoint ensures reliable access to binary assets. This architecture provides a scalable, secure, and compliant foundation for advanced email processing applications.
 
+---
+
+## Appendix: Selko-Specific — Calendar Invitation Handling
+
+*(The sections above are general Gmail API research; this appendix documents Selko's actual, current behavior for both Gmail and Outlook.)*
+
+Calendar invitation emails (Google/Outlook meeting requests, updates, RSVPs, cancellations) are never surfaced as Selko suggestions — the user's email client and its calendar already own them. Plain "add to calendar" `.ics` files (RFC 5545 `METHOD:PUBLISH` or no `METHOD`) are not invites and still extract normally.
+
+**Detection is structural, not subject-line based, and happens at ingestion (fetch time) with a process-time backstop:**
+
+* **Outlook:** Graph returns meeting mails as `eventMessage` subtypes. `parse_outlook_message` (`backend/selko/services/outlook.py`) sets `is_calendar_invite` from `@odata.type` containing `eventmessage`.
+* **Gmail:** invites carry a `text/calendar` MIME part whose RFC 5545 `METHOD` (`REQUEST`/`REPLY`/`CANCEL`/`COUNTER`/`DECLINECOUNTER`) distinguishes real invite machinery from a shareable calendar file (`PUBLISH`/no `METHOD`). `parse_gmail_message` (`backend/selko/services/emails.py`) resolves the METHOD from the part's `Content-Type` header (`method=REQUEST` parameter) or, failing that, from the inline base64url body (`METHOD:` line). An attachment-only body (no inline data) is left undetermined at ingest time — the process-time backstop below covers it.
+
+**Flagged emails are stored pre-skipped**, via a shared `mark_parsed_as_calendar_invite()` helper (`emails.py`) called from both parse paths: `processing_status='skipped'`, `processing_outcome='calendar_invite'`, with an explanation. Because `save_emails` upserts the parsed dict as-is and `claim_unprocessed_email` only claims `'pending'` rows, these emails are never queued for LLM processing.
+
+**A process-time backstop** in `process_email_for_events` (`events.py`) — using `ics_parser.detect_invite_method()` on the stored `.ics` attachment plus the `is_calendar_invite` column — catches the cases ingest-time detection can't: the `reprocess_email` RPC resetting an invite back to `pending`, a Gmail `.ics` whose METHOD was only readable from the stored attachment, and emails ingested before this feature shipped. It marks the email `skipped` (matching the ingest-time marking) with the same `calendar_invite` outcome, and the LLM gateway is never invoked.
+
+**In History**, invites appear as skipped-with-reason (`history.emailCalendarInvite`) — never as a silent gap — so the row is both the audit trail and the recovery path if detection ever misfires.
+
 #### **Works cited**
 
 1. List Gmail messages \- Google for Developers, accessed January 21, 2026, [https://developers.google.com/workspace/gmail/api/guides/list-messages](https://developers.google.com/workspace/gmail/api/guides/list-messages)  

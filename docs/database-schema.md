@@ -95,12 +95,13 @@ Synced Gmail and Outlook messages with status-based worker claiming.
 | `is_spam` | boolean | Auto-computed from labels |
 | `is_trash` | boolean | Auto-computed from labels |
 | `is_promotions` | boolean | Auto-computed from labels |
+| `is_calendar_invite` | boolean | Meeting request/update/RSVP/cancellation (Outlook `eventMessage` or Gmail `.ics` `METHOD`); never surfaced as a Selko suggestion |
 | `body_text` | text | Full plain-text body (used for LLM processing) |
 | `body_html` | text | Full HTML body (used for linked image extraction) |
 | `content_hash` | text | SHA-256 for deduplication |
 | `processing_status` | text | `pending`, `processing`, `processed`, `failed`, `skipped` |
 | `processing_error` | text | Last processing error message |
-| `processing_outcome` | text | `no_event`, `event_matched`, `event_created`, `event_updated`, `event_created_and_updated`, or `event_cancelled` |
+| `processing_outcome` | text | `no_event`, `event_matched`, `event_created`, `event_updated`, `event_created_and_updated`, `event_cancelled`, or `calendar_invite` |
 | `processing_explanation` | text | Optional explanation already returned by normal processing |
 | `processing_result` | jsonb | Structured processing counts for History |
 | `provider_folder_ids` | text[] | Current provider folder/label membership |
@@ -231,15 +232,15 @@ Per-user rules for handling emails from specific senders or domains.
 | `user_id` | uuid, FK | References `users.id` |
 | `sender_email` | text, nullable | Exact sender email to match |
 | `sender_domain` | text, nullable | Domain to match (e.g., `example.com`) |
-| `action` | text | `ignore` (skip processing) |
+| `action` | text | `ignore` (skip processing) or `auto_approve` (auto-approve new events) |
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
 
-**Constraints:** At least one of `sender_email` or `sender_domain` must be set. Unique per `(user_id, sender_email)` and `(user_id, sender_domain)`.
+**Constraints:** At least one of `sender_email` or `sender_domain` must be set. Unique per `(user_id, sender_email)` and `(user_id, sender_domain)` (partial unique indexes, since either column may be null).
 
 **RLS Policies:** Users manage own sender rules only.
 
-**Triggers:** `sender_rule_before_delete` — when an ignore rule is deleted (un-ignored), a BEFORE DELETE trigger resets matching `skipped` emails from the last 30 days back to `pending` for reprocessing.
+**Triggers:** `sender_rule_before_delete` — when an ignore rule is deleted, a BEFORE DELETE trigger resets matching `skipped` emails from the last 30 days back to `pending` for reprocessing, **unless another `ignore` rule for the same sender still exists** (e.g. a duplicate-row cleanup) — the sender is still effectively ignored in that case.
 
 ### `oauth_states`
 
@@ -359,7 +360,7 @@ Synced Google Photos with status-based worker claiming for LLM processing.
 
 | Function | Description |
 |----------|-------------|
-| `claim_unprocessed_email(worker_id, lock_duration)` | Atomically claim next pending email |
+| `claim_unprocessed_email(worker_id, lock_duration)` | Atomically claim next pending email, oldest `date_sent` first (`NULLS LAST`, then `created_at`) — bulk scans ingest newest-first, so claiming oldest-sent-first avoids an older email "updating" an event already created from a newer one |
 | `claim_pending_photo(worker_id, lock_duration)` | Atomically claim next pending photo |
 | `claim_approved_event(worker_id, lock_duration)` | Atomically claim next approved event |
 | `claim_next_scheduled_task(task_types, worker_id, lock_duration)` | Atomically claim next scheduled task |
@@ -378,6 +379,12 @@ Synced Google Photos with status-based worker claiming for LLM processing.
 | Function | Description |
 |----------|-------------|
 | `get_llm_usage_summary(p_user_id, p_start_date, p_end_date)` | Returns aggregated LLM usage stats for a user over a date range: total/successful/failed calls, token counts, latency stats, estimated cost, and per-operation breakdowns. Defaults to current day. Granted to `authenticated` role. |
+
+### Review List
+
+| Function | Description |
+|----------|-------------|
+| `ignore_sender_and_reject_pending(p_sender_email, p_sender_domain)` | Retroactive, atomic sender ignore: upserts the `ignore` rule, rejects `pending_review` events with a non-undone email source from that sender (New lane), and discards `pending_change` proposals whose active update/cancellation source is from that sender — restoring the event's pre-proposal snapshot (mirrors `selko.services.events.reject_pending_change`). Returns `{rejected_new, discarded_changes}`. `SECURITY INVOKER`, granted to `authenticated`. |
 
 ## Supabase Storage
 
