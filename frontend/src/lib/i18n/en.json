@@ -126,6 +126,8 @@
 		"emailEventUpdated": "Event updated",
 		"emailEventCreatedAndUpdated": "Events created and updated",
 		"emailEventCancelled": "Event cancelled",
+		"emailEventMatched": "Existing event matched",
+		"emailReprocessTimeout": "Reprocessing is taking longer than expected. You can try again shortly.",
 		"reprocess": "Reprocess"
 	},
 	"settings": {

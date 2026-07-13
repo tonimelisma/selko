@@ -79,6 +79,14 @@ const mockFetchSenderRules = vi.fn();
 const mockCreateSenderRule = vi.fn();
 const mockDeleteSenderRule = vi.fn();
 
+const mockFetchEmailFolders = vi.fn();
+const mockUpdateEmailFolder = vi.fn();
+
+vi.mock('$lib/services/email-folders.js', () => ({
+	fetchEmailFolders: (...args) => mockFetchEmailFolders(...args),
+	updateEmailFolder: (...args) => mockUpdateEmailFolder(...args)
+}));
+
 vi.mock('$lib/services/sender-rules.js', () => ({
 	fetchSenderRules: (...args) => mockFetchSenderRules(...args),
 	createSenderRule: (...args) => mockCreateSenderRule(...args),
@@ -96,6 +104,8 @@ describe('Settings Page', () => {
 		mockUpdateCalendarSettings.mockResolvedValue({ data: null, error: null });
 		mockDisconnectIntegration.mockResolvedValue({ data: true, error: null });
 		mockFetchSenderRules.mockResolvedValue({ data: [], error: null });
+		mockFetchEmailFolders.mockResolvedValue({ data: [], error: null });
+		mockUpdateEmailFolder.mockResolvedValue({ data: null, error: null });
 	});
 
 	it('shows loading spinner initially', () => {
@@ -269,5 +279,53 @@ describe('Settings Page', () => {
 			const connectButtons = screen.getAllByText('Connect');
 			expect(connectButtons.length).toBeGreaterThanOrEqual(1);
 		});
+	});
+
+	it('shows Gmail and Outlook user folders with recommendation reasons', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: 'gmail-1', provider: 'gmail', status: 'active', provider_email: 'test@gmail.com' },
+				{ id: 'outlook-1', provider: 'outlook', status: 'active', provider_email: 'test@outlook.com' }
+			],
+			error: null
+		});
+		mockFetchEmailFolders.mockImplementation(async (provider) => ({
+			data: provider === 'gmail'
+				? [{ id: 'folder-gmail', full_path: 'Newsletters', is_included: false, classification_decision: 'exclude', classification_reason: 'Marketing mail', user_override: false }]
+				: [{ id: 'folder-outlook', full_path: 'Projects', is_included: true, classification_decision: 'include', classification_reason: null, user_override: true }],
+			error: null
+		}));
+
+		render(SettingsPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Newsletters')).toBeInTheDocument();
+			expect(screen.getByText('Projects')).toBeInTheDocument();
+			expect(screen.getByText('Recommendation: Marketing mail')).toBeInTheDocument();
+		});
+		expect(screen.queryByText('Inbox')).not.toBeInTheDocument();
+	});
+
+	it('updates a folder override through the folder service', async () => {
+		const user = userEvent.setup();
+		mockFetchIntegrations.mockResolvedValue({
+			data: [{ id: 'gmail-1', provider: 'gmail', status: 'active', provider_email: 'test@gmail.com' }],
+			error: null
+		});
+		mockFetchEmailFolders.mockResolvedValue({
+			data: [{ id: 'folder-gmail', full_path: 'Newsletters', is_included: false, classification_decision: 'exclude', classification_reason: 'Marketing mail', user_override: false }],
+			error: null
+		});
+		mockUpdateEmailFolder.mockResolvedValue({
+			data: { id: 'folder-gmail', is_included: true, user_override: true },
+			error: null
+		});
+
+		render(SettingsPage);
+		await waitFor(() => expect(screen.getByText('Newsletters')).toBeInTheDocument());
+		await user.click(screen.getByRole('button', { name: 'Excluded' }));
+
+		await waitFor(() => expect(mockUpdateEmailFolder).toHaveBeenCalledWith('gmail', 'folder-gmail', true));
+		expect(screen.getByRole('button', { name: 'Included' })).toBeInTheDocument();
 	});
 });

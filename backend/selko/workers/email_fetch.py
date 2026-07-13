@@ -38,6 +38,8 @@ from selko.services.gmail import (
     list_message_ids,
 )
 from selko.services.outlook import (
+    OUTLOOK_HIDDEN_SYSTEM_ALIASES,
+    OUTLOOK_PERMANENT_ALIASES,
     RESYNC_REQUIRED,
     OutlookError,
     fetch_mail_folders,
@@ -47,6 +49,7 @@ from selko.services.outlook import (
     list_attachments,
     normalize_mail_folders,
     parse_outlook_message,
+    resolve_well_known_folder_ids,
 )
 
 # Backwards-compatible patch point used by existing worker tests and callers.
@@ -133,6 +136,8 @@ def _gmail_folder_descriptors(labels: list[dict[str, Any]]) -> list[dict[str, An
             "full_path": name,
             "kind": "label",
             "is_system": is_system,
+            "is_scannable": not (is_system and label_id in PERMANENT_GMAIL_LABEL_IDS),
+            "is_permanently_excluded": label_id in PERMANENT_GMAIL_LABEL_IDS,
             "system_kind": "excluded" if label_id in PERMANENT_GMAIL_LABEL_IDS else "system",
         })
     return descriptors
@@ -220,8 +225,12 @@ def _process_gmail_reliable(
             message_ids, new_cursor = fetch_history_message_ids(service, cursor)
         except GmailHistoryExpiredError:
             recovery = True
+            # Capture the replacement cursor before the overlap search starts.
+            # Messages arriving after this point are then covered by the next
+            # History run instead of racing past the recovery boundary.
+            replacement_profile = get_user_profile(service)
+            new_cursor = replacement_profile.get("historyId")
             message_ids = []
-            new_cursor = ""
     else:
         profile = get_user_profile(service)
         new_cursor = profile.get("historyId")
@@ -275,6 +284,7 @@ def _process_gmail_reliable(
                     message,
                     saved[0],
                     parsed,
+                    raise_on_error=True,
                 )
 
     # The cursor is committed only after every page, metadata check, full message,
@@ -355,6 +365,8 @@ def _store_outlook_attachments(
     email_id: str,
     message_id: str,
     token: str,
+    *,
+    raise_on_error: bool = False,
 ) -> None:
     for attachment in list_attachments(token, message_id):
         attachment_type = attachment.get("@odata.type")
@@ -393,6 +405,8 @@ def _store_outlook_attachments(
                 user_id=user_id,
             )
         except AttachmentError as exc:
+            if raise_on_error:
+                raise
             logger.warning(
                 "Failed to store Outlook attachment for message %s: %s",
                 message_id,
@@ -509,6 +523,22 @@ def _outlook_folder_rows(client: Client, integration_id: str) -> list[dict[str, 
     return result.data or []
 
 
+def _reconcile_outlook_forbidden_folders(
+    client: Client,
+    integration_id: str,
+    forbidden_ids: list[str],
+) -> None:
+    """Remove stale system rows left by discovery before immutable-ID fixes."""
+
+    client.rpc(
+        "reconcile_outlook_email_folders",
+        {
+            "p_integration_id": integration_id,
+            "p_forbidden_folder_ids": forbidden_ids,
+        },
+    ).execute()
+
+
 def _process_outlook_reliable(
     client: Client,
     config: Config,
@@ -524,7 +554,19 @@ def _process_outlook_reliable(
         return
 
     integration_id = integration["id"]
-    discovered = normalize_mail_folders(fetch_mail_folders(token))
+    resolved_well_known_ids = resolve_well_known_folder_ids(token)
+    discovered = normalize_mail_folders(
+        fetch_mail_folders(
+            token,
+            resolved_well_known_ids=resolved_well_known_ids,
+        )
+    )
+    forbidden_ids = [
+        folder_id
+        for alias, folder_id in resolved_well_known_ids.items()
+        if alias in OUTLOOK_PERMANENT_ALIASES | OUTLOOK_HIDDEN_SYSTEM_ALIASES
+    ]
+    _reconcile_outlook_forbidden_folders(client, integration_id, forbidden_ids)
     upsert_discovered_folders(
         client,
         user_id=user_id,
@@ -537,7 +579,13 @@ def _process_outlook_reliable(
     since = datetime.now(timezone.utc) - timedelta(days=14)
 
     for folder in folder_rows:
-        if folder.get("is_system") or not folder.get("is_included"):
+        if (
+            not folder.get("is_included")
+            or not folder.get(
+                "is_scannable",
+                not folder.get("is_permanently_excluded", False),
+            )
+        ):
             # No Graph listing, delta, subscription, or message fetch is issued
             # for permanently excluded or user-excluded folders.
             continue
@@ -591,6 +639,7 @@ def _process_outlook_reliable(
                     saved[0]["id"],
                     message_id,
                     token,
+                    raise_on_error=True,
                 )
 
         if new_cursor:

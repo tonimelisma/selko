@@ -29,6 +29,10 @@
  */
 
 /**
+ * @typedef {'no_event' | 'event_matched' | 'event_created' | 'event_updated' | 'event_created_and_updated' | 'event_cancelled'} EmailProcessingOutcome
+ */
+
+/**
  * @typedef {Object} Email
  * @property {string} id - UUID
  * @property {string} user_id - UUID
@@ -55,7 +59,7 @@
  * @property {boolean} is_unread
  * @property {boolean} has_attachments
  * @property {string} [processing_status]
- * @property {string} [processing_outcome]
+ * @property {EmailProcessingOutcome} [processing_outcome]
  * @property {string} [processing_explanation]
  * @property {string} [processing_error]
  * @property {string} created_at

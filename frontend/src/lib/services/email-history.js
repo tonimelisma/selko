@@ -34,3 +34,22 @@ export async function fetchEmailHistory(options = {}) {
 export async function queueEmailReprocess(emailId) {
 	return reprocessEmail(emailId);
 }
+
+/**
+ * Fetch only the processing fields needed while a user-initiated reprocess is
+ * running. Keeping this query narrow avoids refreshing the whole History page.
+ * @param {string} emailId
+ */
+export async function fetchEmailProcessingState(emailId) {
+	try {
+		const { data, error } = await supabase
+			.from('emails')
+			.select('id,processing_status,processing_error,processing_outcome,processing_explanation,processed_at')
+			.eq('id', emailId)
+			.maybeSingle();
+		if (error) throw error;
+		return { data, error: null };
+	} catch (error) {
+		return { data: null, error: parseSupabaseError(error) };
+	}
+}
