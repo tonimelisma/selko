@@ -98,12 +98,14 @@ def format_tracemalloc_diff(
 ) -> str:
     """Format the top allocation sites (growth since previous snapshot)."""
     if previous is not None:
-        stats = snapshot.compare_to(previous, "lineno")
+        # compare_to() sorts by absolute size_diff, so large frees can fill
+        # the top N and crowd out real growth sites. Filter to growth first,
+        # then take the top N of those.
+        stats = [s for s in snapshot.compare_to(previous, "lineno") if s.size_diff > 0]
         lines = [
             f"  {stat.traceback}: +{stat.size_diff / 1024:.0f} KiB "
             f"(total {stat.size / 1024:.0f} KiB, count +{stat.count_diff})"
             for stat in stats[:top_n]
-            if stat.size_diff > 0
         ]
         header = "tracemalloc growth since last interval:"
     else:
