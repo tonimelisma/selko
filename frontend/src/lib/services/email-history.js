@@ -18,6 +18,7 @@ export async function fetchEmailHistory(options = {}) {
 			)
 			.in('processing_status', ['processed', 'failed'])
 			.order('date_sent', { ascending: false })
+			.order('id', { ascending: false })
 			.range(offset, offset + limit - 1);
 		if (error) throw error;
 		return { data: data ?? [], count, error: null };
