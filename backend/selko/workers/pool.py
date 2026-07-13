@@ -76,6 +76,7 @@ class WorkerPool:
         self.tasks: list[asyncio.Task] = []
         self.running = False
         self.config: Optional[Config] = None
+        self._client: Optional[Any] = None
 
     async def start(self) -> None:
         """Start the worker pool by spawning worker tasks.
@@ -90,6 +91,7 @@ class WorkerPool:
         logger.info(f"Starting worker pool with {self.num_workers} workers")
         self.running = True
         self.config = load_config()
+        self._client = None
 
         # Spawn worker tasks
         for i in range(self.num_workers):
@@ -170,6 +172,18 @@ class WorkerPool:
 
         logger.info(f"{worker_id}: Stopped")
 
+    def _get_client(self) -> Any:
+        """Return the shared service client, creating it on first use.
+
+        Workers must reuse one client: creating a fresh supabase client per
+        poll iteration leaks its unclosed httpx pools and SSL contexts
+        (~2 MB/min at 3 workers polling every second), which OOM-killed the
+        512 MB production instance every ~3 hours.
+        """
+        if self._client is None:
+            self._client = get_service_client(self.config)
+        return self._client
+
     async def _process_any_work(self, worker_id: str) -> bool:
         """Try to find and process work from any source.
 
@@ -188,7 +202,7 @@ class WorkerPool:
         if not self.config:
             raise RuntimeError("Worker pool config not initialized")
 
-        client = get_service_client(self.config)
+        client = self._get_client()
 
         # 1. Try scheduled tasks first (email_fetch, photo_fetch)
         task_types = []
