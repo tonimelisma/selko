@@ -361,3 +361,19 @@ class TestDetectInviteMethod:
 
     def test_no_ics_attachments_returns_none(self):
         assert detect_invite_method([]) is None
+
+    def test_invite_method_on_later_attachment_is_not_masked_by_earlier_publish(self):
+        """Regression: a PUBLISH/no-METHOD attachment before a genuine invite
+        attachment must not short-circuit the scan."""
+        attachments = [
+            {"data": PUBLISH_METHOD_ICS, "mime_type": "text/calendar", "filename": "a.ics"},
+            {"data": REQUEST_METHOD_ICS, "mime_type": "text/calendar", "filename": "b.ics"},
+        ]
+        assert detect_invite_method(attachments) == "REQUEST"
+
+    def test_returns_first_method_when_no_invite_method_present(self):
+        attachments = [
+            {"data": PUBLISH_METHOD_ICS, "mime_type": "text/calendar", "filename": "a.ics"},
+            {"data": BASIC_ICS, "mime_type": "text/calendar", "filename": "b.ics"},
+        ]
+        assert detect_invite_method(attachments) == "PUBLISH"

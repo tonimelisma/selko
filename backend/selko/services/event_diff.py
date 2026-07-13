@@ -221,6 +221,36 @@ def gate_change_set(
     )
 
 
+def gate_stale_email_material_changes(
+    change_set: EventChangeSet,
+    email_date_sent: Optional[str],
+    baseline_info_date: Optional[str],
+) -> EventChangeSet:
+    """Deterministic backstop for propose_event_update rule 10.
+
+    Rule 10 tells the model that an email older than the event's current
+    information must not change title/start/end/all_day/location — but
+    that's prompt text only, and one noncompliant response would otherwise
+    persist a stale material-field overwrite. Drop those fields in code
+    whenever the email is provably older than the baseline's own info date.
+    """
+    if not email_date_sent or not baseline_info_date:
+        return change_set
+    email_dt = _parse_datetime_utc(email_date_sent)
+    baseline_dt = _parse_datetime_utc(baseline_info_date)
+    if email_dt is None or baseline_dt is None or email_dt >= baseline_dt:
+        return change_set
+
+    survivors = [c for c in change_set.changes if c.field not in MATERIAL_FIELDS]
+    if len(survivors) == len(change_set.changes):
+        return change_set
+
+    kind = derive_kind(survivors)
+    if change_set.kind == "cancellation" and any(c.field == "status" for c in survivors):
+        kind = "cancellation"
+    return EventChangeSet(kind=kind, changes=survivors, reasoning=change_set.reasoning)
+
+
 def compute_change_set(
     baseline: dict[str, Any],
     proposed: dict[str, Any],
@@ -282,8 +312,18 @@ def baseline_from_gcal_event(
     start_raw = start.get("dateTime") or start.get("date")
     end_raw = end.get("dateTime") or end.get("date")
     if all_day:
-        start_dt = start_raw
-        end_dt = end_raw
+        # GCal's all-day start/end are bare dates (e.g. "2026-08-12") with no
+        # timezone meaning of their own. Store them the same way Selko
+        # stores its own all-day events — local midnight as an absolute
+        # instant — so a later DB round-trip and gcal_all_day_fields() see a
+        # consistent convention instead of re-interpreting a literal
+        # UTC-midnight timestamp through the user's timezone and shifting
+        # the date for users west of UTC.
+        start_dt = to_storage_iso(start_raw, user_timezone, treat_as_civil=True)
+        end_dt = (
+            to_storage_iso(end_raw, user_timezone, treat_as_civil=True)
+            if end_raw else None
+        )
     else:
         start_dt = to_storage_iso(start_raw, user_timezone, treat_as_civil=False)
         end_dt = to_storage_iso(end_raw, user_timezone, treat_as_civil=False)
@@ -301,7 +341,15 @@ def baseline_from_gcal_event(
 def resolve_description_append(
     change_set: EventChangeSet, baseline: dict[str, Any]
 ) -> EventChangeSet:
-    """Materialize mode=append description changes into full after-values."""
+    """Materialize mode=append description changes into full after-values.
+
+    When the addition is empty or already present in the baseline, the
+    description ends up identical to the baseline — drop that FieldChange
+    (instead of persisting a no-op description "change") and re-derive kind
+    from the survivors, matching rule 12's "adds nothing new -> kind=noop".
+    """
+    survivors: list[FieldChange] = []
+    dropped_any = False
     for change in change_set.changes:
         if change.field == "description" and change.mode == "append":
             base = (baseline.get("description") or "").strip()
@@ -310,8 +358,21 @@ def resolve_description_append(
                 change.after = f"{base}\n\n{addition}" if base else addition
             else:
                 change.after = base or change.after
+                if normalized_value("description", change.after) == normalized_value(
+                    "description", base
+                ):
+                    dropped_any = True
+                    continue
             change.mode = None
-    return change_set
+        survivors.append(change)
+
+    if not dropped_any:
+        return change_set
+
+    kind = derive_kind(survivors)
+    if change_set.kind == "cancellation" and any(c.field == "status" for c in survivors):
+        kind = "cancellation"
+    return EventChangeSet(kind=kind, changes=survivors, reasoning=change_set.reasoning)
 
 
 def apply_asserted_fields(

@@ -17,6 +17,7 @@ from selko.services.event_diff import (
     apply_asserted_fields,
     baseline_from_gcal_event,
     compute_change_set,
+    gate_stale_email_material_changes,
     proposed_fields_from_change_set,
     resolve_description_append,
 )
@@ -325,6 +326,9 @@ def save_extracted_events(
                 match.baseline, event_data, user_timezone=user_timezone
             )
 
+        change_set = gate_stale_email_material_changes(
+            change_set, email_date_sent, baseline_info_date
+        )
         change_set = resolve_description_append(change_set, match.baseline)
 
         if change_set.kind == "noop":
@@ -480,7 +484,7 @@ def process_email_for_events(
         # are already handled by the user's email client and calendar. Skip entirely.
         invite_method = ics_parser.detect_invite_method(attachments)
         if email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVITE_METHODS:
-            result = {"num_events": 0, "num_new": 0, "num_updated": 0}
+            result = {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
             mark_email_status(
                 supabase_client, email_id, "skipped",
                 outcome="calendar_invite",
