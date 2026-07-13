@@ -50,7 +50,16 @@ export async function createSenderRule(rule) {
 			throw new Error('Either sender_domain or sender_email must be provided');
 		}
 
-		const { data, error } = await supabase.from('sender_rules').insert(rule).select().single();
+		const {
+			data: { user }
+		} = await supabase.auth.getUser();
+		if (!user) throw new Error('Not authenticated');
+
+		const { data, error } = await supabase
+			.from('sender_rules')
+			.insert({ ...rule, user_id: user.id })
+			.select()
+			.single();
 
 		if (error) throw error;
 
