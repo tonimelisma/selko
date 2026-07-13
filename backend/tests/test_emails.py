@@ -339,3 +339,81 @@ class TestSaveEmailsIngestShortCircuit:
 
         upsert_payload = mock_client.table.return_value.upsert.call_args[0][0]
         assert "processing_status" not in upsert_payload
+
+
+class TestStoreGmailMessageAttachmentsOwner:
+    """Regression test: attachment owner comes from the email record.
+
+    The reliable-sync worker runs with a service-role client (no auth
+    session), so store_gmail_message_attachments must pass the email's
+    user_id down to every attachment helper instead of letting them fall
+    back to get_current_user_id, which raised "No user signed in" and
+    broke Gmail attachment ingestion in production.
+    """
+
+    def test_passes_email_owner_to_attachment_helpers(self):
+        from unittest.mock import MagicMock, patch
+
+        from selko.services.emails import store_gmail_message_attachments
+
+        attachment_part = {
+            "attachment_id": "a1",
+            "filename": "f.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 10,
+        }
+        inline_part = {
+            "attachment_id": "a2",
+            "filename": "inline_0.png",
+            "mime_type": "image/png",
+            "size_bytes": 5,
+        }
+        linked_image = MagicMock(data=b"img", mime_type="image/png")
+        data_uri_image = MagicMock(data=b"img2", mime_type="image/gif")
+
+        with (
+            patch(
+                "selko.services.emails.extract_attachments",
+                return_value=[attachment_part],
+            ),
+            patch(
+                "selko.services.emails.extract_inline_images",
+                return_value=[inline_part],
+            ),
+            patch(
+                "selko.services.emails.extract_linked_images",
+                return_value=[linked_image],
+            ),
+            patch(
+                "selko.services.emails.extract_data_uri_images",
+                return_value=[data_uri_image],
+            ),
+            patch(
+                "selko.services.emails.process_attachment",
+                return_value={"id": "att"},
+            ) as mock_process,
+            patch(
+                "selko.services.emails.store_image_content",
+                return_value={"id": "img"},
+            ) as mock_store_image,
+        ):
+            stored = store_gmail_message_attachments(
+                client=MagicMock(),
+                config=MagicMock(),
+                service=MagicMock(),
+                message={"id": "msg-1"},
+                email_record={
+                    "id": "email-1",
+                    "user_id": "user-42",
+                    "has_attachments": True,
+                },
+                parsed_email={"body_html": "<img src='x'>"},
+            )
+
+        assert stored == 4
+        assert mock_process.call_count == 2
+        for call in mock_process.call_args_list:
+            assert call.kwargs["user_id"] == "user-42"
+        assert mock_store_image.call_count == 2
+        for call in mock_store_image.call_args_list:
+            assert call.kwargs["user_id"] == "user-42"

@@ -12,8 +12,10 @@ from selko.services.attachments import (
     AttachmentError,
     calculate_content_hash,
     download_gmail_attachment,
+    process_attachment,
     store_image_content,
 )
+from selko.services.auth import AuthenticationError
 from selko.services.gmail import extract_attachments, extract_inline_images
 
 
@@ -483,6 +485,85 @@ class TestStoreImageContent:
         )
 
         assert result is None
+
+
+class TestAttachmentOwnerThreading:
+    """Regression tests for the worker 'No user signed in' failure.
+
+    Background workers use a service-role client with no auth session, so
+    falling back to get_current_user_id raised AuthenticationError and every
+    Gmail fetch with attachments failed in production. When user_id is passed
+    explicitly, the session lookup must never happen.
+    """
+
+    def _config(self):
+        config = MagicMock()
+        config.max_attachment_size = 10 * 1024 * 1024
+        config.storage_bucket_attachments = "attachments"
+        return config
+
+    @patch("selko.services.attachments.save_attachment_metadata")
+    @patch("selko.services.attachments.upload_to_storage")
+    @patch("selko.services.attachments.get_current_user_id")
+    @patch("selko.services.attachments.check_duplicate_attachment")
+    def test_store_image_content_with_user_id_skips_session_lookup(
+        self, mock_check_dup, mock_get_user, mock_upload, mock_save
+    ):
+        """store_image_content(user_id=...) works on a session-less client."""
+        mock_check_dup.return_value = None
+        mock_get_user.side_effect = AuthenticationError("No user signed in")
+        mock_upload.return_value = "user-123/abc_linked_0.jpg"
+        mock_save.return_value = {"id": "att-new", "filename": "linked_0.jpg"}
+
+        result = store_image_content(
+            client=MagicMock(),
+            email_id="email-123",
+            image_data=b"x" * 1000,
+            mime_type="image/jpeg",
+            filename="linked_0.jpg",
+            config=self._config(),
+            user_id="user-123",
+        )
+
+        assert result is not None
+        mock_get_user.assert_not_called()
+        assert mock_upload.call_args.kwargs["user_id"] == "user-123"
+        assert mock_save.call_args.kwargs["user_id"] == "user-123"
+
+    @patch("selko.services.attachments.download_gmail_attachment")
+    @patch("selko.services.attachments.save_attachment_metadata")
+    @patch("selko.services.attachments.upload_to_storage")
+    @patch("selko.services.attachments.get_current_user_id")
+    @patch("selko.services.attachments.check_duplicate_attachment")
+    def test_process_attachment_with_user_id_skips_session_lookup(
+        self, mock_check_dup, mock_get_user, mock_upload, mock_save, mock_download
+    ):
+        """process_attachment(user_id=...) works on a session-less client."""
+        mock_check_dup.return_value = None
+        mock_get_user.side_effect = AuthenticationError("No user signed in")
+        mock_download.return_value = b"pdf-bytes"
+        mock_upload.return_value = "user-123/abc_report.pdf"
+        mock_save.return_value = {"id": "att-new", "filename": "report.pdf"}
+
+        result = process_attachment(
+            client=MagicMock(),
+            gmail_service=MagicMock(),
+            email_id="email-123",
+            message_id="msg-1",
+            attachment_part={
+                "attachment_id": "gmail-att-1",
+                "filename": "report.pdf",
+                "mime_type": "application/pdf",
+                "size_bytes": 9,
+            },
+            config=self._config(),
+            user_id="user-123",
+        )
+
+        assert result is not None
+        mock_get_user.assert_not_called()
+        assert mock_upload.call_args.kwargs["user_id"] == "user-123"
+        assert mock_save.call_args.kwargs["user_id"] == "user-123"
 
 
 class TestAttachmentError:
