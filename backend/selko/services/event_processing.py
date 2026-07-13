@@ -476,6 +476,8 @@ def propose_event_update(
     email_subject: Optional[str] = None,
     email_snippet: Optional[str] = None,
     user_timezone: Optional[str] = None,
+    email_date_sent: Optional[str] = None,
+    baseline_info_date: Optional[str] = None,
 ) -> EventChangeSet:
     """Ask LLM what fields to update on a matched existing event.
 
@@ -517,6 +519,10 @@ Compare civil clock times only — do not convert timezones.
 - Location: {extracted_event.get('location', 'Not specified')}
 - Description: {extracted_event.get('description', '')}
 """
+    if email_date_sent:
+        prompt += f"\n**This email was sent:** {email_date_sent}\n"
+    if baseline_info_date:
+        prompt += f"**The event's current information is from an email sent:** {baseline_info_date}\n"
     if email_subject:
         prompt += f"\n**Email subject:** {email_subject}\n"
     if email_snippet:
@@ -539,6 +545,17 @@ Rules:
 8. When start/end in the extracted fields disagree with an explicit "Event Time" in the
    description, prefer the Event Time and treat matching Event Time as noop for times.
 9. Emit after values as naive local datetimes in {tz} (e.g. 2026-09-13T10:00:00) — never Z or +00:00.
+10. If this email is OLDER than the event's current information, it must NOT
+    change title, start/end, all_day, or location. At most kind=enrichment
+    with a description addition. When it adds nothing new → kind=noop.
+11. Do NOT propose a title change when both titles describe the same
+    real-world event. Rewording, reordering, or adding a role/subtitle
+    qualifier (e.g. "- Advocacy Table", "(Recruiter)") is NOT a title change.
+    Only propose title when the organizer renamed or materially changed the
+    event itself.
+12. Description changes must use mode="append" with ONLY the new information
+    as a short paragraph — never restate the existing description. Use
+    mode="replace" only for organizer-issued corrections or cancellations.
 
 Return JSON with kind, changes[], and reasoning.
 """
@@ -571,6 +588,7 @@ Return JSON with kind, changes[], and reasoning.
                         "before": {},
                         "after": {},
                         "reason": {"type": "string"},
+                        "mode": {"type": "string", "enum": ["append", "replace"]},
                     },
                     "required": ["field", "after"],
                 },
@@ -599,6 +617,7 @@ Return JSON with kind, changes[], and reasoning.
                         before=item.get("before", baseline.get(field)),
                         after=item.get("after"),
                         reason=item.get("reason"),
+                        mode=item.get("mode"),
                     )
                 )
             except Exception:

@@ -18,6 +18,7 @@ from selko.services.event_diff import (
     baseline_from_gcal_event,
     compute_change_set,
     proposed_fields_from_change_set,
+    resolve_description_append,
 )
 from selko.services.civil_time import ensure_aware, resolve_zone
 from selko.services.llm_gateway import LLMGateway
@@ -188,6 +189,32 @@ def ensure_min_duration(start_iso: str, end_iso: Optional[str]) -> str:
     return (start_dt + timedelta(hours=1)).isoformat()
 
 
+def _fetch_baseline_info_date(
+    supabase_client: Client, event_id: str
+) -> Optional[str]:
+    """Newest ``emails.date_sent`` across a local event's non-undone sources.
+
+    Used as the "current information" recency baseline for propose_event_update.
+    """
+    try:
+        result = (
+            supabase_client.table("event_sources")
+            .select("emails(date_sent)")
+            .eq("event_id", event_id)
+            .eq("is_undone", False)
+            .execute()
+        )
+    except Exception as e:
+        logger.debug("Could not fetch baseline info date for %s: %s", event_id, e)
+        return None
+    dates = [
+        (row.get("emails") or {}).get("date_sent")
+        for row in (result.data or [])
+    ]
+    dates = [d for d in dates if d]
+    return max(dates) if dates else None
+
+
 def save_extracted_events(
     supabase_client: Client,
     gateway: LLMGateway,
@@ -198,6 +225,7 @@ def save_extracted_events(
     current_time: Optional[datetime] = None,
     *,
     treat_as_civil: bool = True,
+    email_date_sent: Optional[str] = None,
 ) -> tuple[int, int]:
     """Deduplicate and persist extracted events into New or Changes lanes.
 
@@ -215,6 +243,7 @@ def save_extracted_events(
         initial_status: Status for newly created events (default: pending_review).
         current_time: Optional current time override for deterministic testing.
         treat_as_civil: Interpret datetimes as local wall times (LLM). False for ICS.
+        email_date_sent: When this email was sent, for update-proposal recency rules.
 
     Returns:
         Tuple of (num_new, num_updated) event counts. Skips are not counted.
@@ -273,12 +302,18 @@ def save_extracted_events(
             continue
 
         # LLM proposes what to update; code gate drops no-ops
+        baseline_info_date = (
+            None if match.is_gcal
+            else _fetch_baseline_info_date(supabase_client, match.match_id)
+        )
         try:
             change_set = event_processing.propose_event_update(
                 gateway,
                 match.baseline,
                 event_data,
                 user_timezone=user_timezone,
+                email_date_sent=email_date_sent,
+                baseline_info_date=baseline_info_date,
             )
         except Exception as e:
             logger.warning(
@@ -289,6 +324,8 @@ def save_extracted_events(
             change_set = compute_change_set(
                 match.baseline, event_data, user_timezone=user_timezone
             )
+
+        change_set = resolve_description_append(change_set, match.baseline)
 
         if change_set.kind == "noop":
             logger.info(
@@ -479,6 +516,7 @@ def process_email_for_events(
             supabase_client, gateway, user_id, email_id, extraction,
             initial_status=initial_status,
             treat_as_civil=not from_ics,
+            email_date_sent=email_metadata.get("date_sent"),
         )
 
         if num_new and num_updated:

@@ -61,3 +61,42 @@ def test_propose_event_update_keeps_real_change():
     assert result.kind == "material_update"
     assert len(result.changes) == 1
     assert result.changes[0].field == "location"
+
+
+def test_prompt_includes_both_date_lines_when_provided():
+    gateway = MagicMock()
+    gateway.call.return_value = MagicMock(
+        text=json.dumps({"kind": "noop", "changes": [], "reasoning": ""})
+    )
+    baseline = {"title": "Sync"}
+    extracted = {"title": "Sync"}
+
+    propose_event_update(
+        gateway,
+        baseline,
+        extracted,
+        email_date_sent="2026-07-09T10:00:00Z",
+        baseline_info_date="2026-07-12T08:00:00Z",
+    )
+
+    prompt = gateway.call.call_args.kwargs["contents"][0]
+    assert "**This email was sent:** 2026-07-09T10:00:00Z" in prompt
+    assert (
+        "**The event's current information is from an email sent:** 2026-07-12T08:00:00Z"
+        in prompt
+    )
+
+
+def test_prompt_omits_date_lines_when_not_provided():
+    gateway = MagicMock()
+    gateway.call.return_value = MagicMock(
+        text=json.dumps({"kind": "noop", "changes": [], "reasoning": ""})
+    )
+    baseline = {"title": "Sync"}
+    extracted = {"title": "Sync"}
+
+    propose_event_update(gateway, baseline, extracted)
+
+    prompt = gateway.call.call_args.kwargs["contents"][0]
+    assert "This email was sent" not in prompt
+    assert "current information is from an email sent" not in prompt
