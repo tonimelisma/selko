@@ -6,7 +6,7 @@
 # safety net, but it does NOT block the merge. If CI fails, fix forward.
 #
 # What it does:
-#   1. Squash-merges the PR and deletes the remote branch
+#   1. Squash-merges the PR (the repo auto-deletes the remote branch on merge)
 #   2. Fast-forwards local main to origin/main
 #   3. Removes the feature worktree (never --force) and deletes the local branch
 #   4. Prunes stale worktree refs
@@ -37,15 +37,24 @@ MAIN_REPO=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
 PR_BRANCH=$(gh pr view "$PR" --json headRefName -q '.headRefName')
 echo "Merging PR #${PR} (branch: ${PR_BRANCH})..."
 
-# 1. Squash-merge and delete the remote branch. Do NOT wait for CI.
-gh pr merge "$PR" --squash --delete-branch
+# 1. Squash-merge. Do NOT wait for CI. Do NOT pass --delete-branch: gh would
+#    also try to delete the LOCAL branch as part of this command, which fails
+#    (silently, without aborting) because it's checked out in the feature
+#    worktree below — that partial failure is what left the worktree/branch
+#    cleanup in an inconsistent state. The remote branch doesn't need it
+#    either: this repo has "Automatically delete head branches" enabled, so
+#    GitHub deletes the remote branch itself once the merge lands.
+gh pr merge "$PR" --squash
 
 # 2. Fast-forward local main.
 git -C "$MAIN_REPO" fetch origin
 git -C "$MAIN_REPO" merge --ff-only origin/main
 
 # 3. Remove the feature worktree (if one exists for this branch), then the branch.
-WORKTREE=$(git worktree list --porcelain | awk -v b="refs/heads/${PR_BRANCH}" '
+#    Resolved relative to $MAIN_REPO (not the invoking shell's cwd) so this
+#    works the same whether this script is run from the main repo or,
+#    mistakenly, from inside a feature worktree.
+WORKTREE=$(git -C "$MAIN_REPO" worktree list --porcelain | awk -v b="refs/heads/${PR_BRANCH}" '
     /^worktree /{p=$2}
     $0 == "branch " b {print p; exit}')
 
