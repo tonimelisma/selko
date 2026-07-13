@@ -443,7 +443,10 @@ def process_email_for_events(
         elif num_updated:
             outcome = "event_updated"
         else:
-            outcome = "no_event"
+            # Extraction found an event, but it matched an existing event and
+            # produced no material change. This is distinct from no_event,
+            # where extraction found nothing at all.
+            outcome = "event_matched"
         result = {
             "num_events": len(extraction.events),
             "num_new": num_new,

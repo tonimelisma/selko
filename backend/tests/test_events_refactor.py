@@ -518,6 +518,23 @@ class TestProcessEmailPipeline:
         status_calls = [call[0][2] for call in mock_mark.call_args_list]
         assert status_calls == ["processing", "processed"]
 
+    def test_matched_event_has_distinct_processing_outcome(self):
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+        extraction = _make_extraction(events=[_make_calendar_event()], events_found=True)
+
+        with patch("selko.services.events.mark_email_status") as mock_mark, \
+             patch("selko.services.events.event_processing.fetch_email_with_attachments",
+                   return_value=({"from_email": "sender@example.com"}, "text", [])), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
+             patch("selko.services.events.event_processing.extract_calendar_events",
+                   return_value=extraction), \
+             patch("selko.services.events.save_extracted_events", return_value=(0, 0)):
+            process_email_for_events(mock_client, mock_gateway, "email-1", "user-1")
+
+        assert mock_mark.call_args_list[-1].kwargs["outcome"] == "event_matched"
+
     def test_exception_marks_failed(self):
         mock_client = MagicMock()
         mock_gateway = MagicMock()

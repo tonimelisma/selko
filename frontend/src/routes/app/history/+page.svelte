@@ -1,8 +1,12 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import { fetchActivityEvents } from '$lib/services/events.js';
-	import { fetchEmailHistory, queueEmailReprocess } from '$lib/services/email-history.js';
+	import {
+		fetchEmailHistory,
+		fetchEmailProcessingState,
+		queueEmailReprocess
+	} from '$lib/services/email-history.js';
 	import { syncEventToCalendar, undoHistoryEvent } from '$lib/api/backend.js';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -24,6 +28,10 @@
 	/** Per-action errors shown as a banner above the list */
 	let actionError = $state('');
 	let emailLoadError = $state('');
+	let emailLoadingMore = $state(false);
+	let emailOffset = $state(0);
+	/** @type {Set<string>} */
+	let emailTimedOut = $state(new Set());
 	/** @type {any | null} Event that can be force-undone after CALENDAR_DIVERGED */
 	let forceUndoEvent = $state(null);
 	/** @type {Set<string>} */
@@ -32,8 +40,15 @@
 	let processingEmails = $state(new Set());
 	let offset = $state(0);
 	const limit = 20;
+	const emailPollIntervalMs = 750;
+	const emailPollMaxAttempts = 40;
+	/** @type {Map<string, ReturnType<typeof setTimeout>>} */
+	const emailPollingTimers = new Map();
+	/** @type {Set<string>} */
+	const emailPolling = new Set();
 
 	let hasMore = $derived(events.length < totalCount);
+	let emailHasMore = $derived(emailHistory.length < emailHistoryCount);
 
 	let groupedByDate = $derived(() => {
 		const groups = new Map();
@@ -72,6 +87,12 @@
 		await Promise.all([loadEvents(), loadEmailHistory()]);
 	});
 
+	onDestroy(() => {
+		for (const timer of emailPollingTimers.values()) clearTimeout(timer);
+		emailPollingTimers.clear();
+		emailPolling.clear();
+	});
+
 	async function loadEvents() {
 		isLoading = true;
 		loadError = '';
@@ -108,7 +129,25 @@
 		} else {
 			emailHistory = result.data;
 			emailHistoryCount = result.count || 0;
+			emailOffset = result.data.length;
 		}
+	}
+
+	async function loadMoreEmailHistory() {
+		if (emailLoadingMore || !emailHasMore) return;
+		emailLoadingMore = true;
+		emailLoadError = '';
+		const result = await fetchEmailHistory({ limit: 20, offset: emailOffset });
+		if (result.error) {
+			emailLoadError = result.error.message;
+		} else {
+			const knownIds = new Set(emailHistory.map((email) => email.id));
+			const additions = result.data.filter((email) => !knownIds.has(email.id));
+			emailHistory = [...emailHistory, ...additions];
+			emailOffset += result.data.length;
+			if (typeof result.count === 'number') emailHistoryCount = result.count;
+		}
+		emailLoadingMore = false;
 	}
 
 	/** @param {any} email */
@@ -125,7 +164,8 @@
 			event_created: $_('history.emailEventCreated'),
 			event_updated: $_('history.emailEventUpdated'),
 			event_created_and_updated: $_('history.emailEventCreatedAndUpdated'),
-			event_cancelled: $_('history.emailEventCancelled')
+			event_cancelled: $_('history.emailEventCancelled'),
+			event_matched: $_('history.emailEventMatched')
 		};
 		return outcomes[email.processing_outcome] || $_('history.emailProcessed');
 	}
@@ -145,6 +185,7 @@
 	/** @param {string} emailId */
 	function startEmailProcessing(emailId) {
 		processingEmails = new Set([...processingEmails, emailId]);
+		emailTimedOut = new Set([...emailTimedOut].filter((id) => id !== emailId));
 		actionError = '';
 	}
 
@@ -155,25 +196,87 @@
 		processingEmails = next;
 	}
 
+	/** @param {string} emailId */
+	function stopEmailPolling(emailId) {
+		const timer = emailPollingTimers.get(emailId);
+		if (timer) clearTimeout(timer);
+		emailPollingTimers.delete(emailId);
+		emailPolling.delete(emailId);
+	}
+
+	/** @param {string} emailId @param {any} state */
+	function applyEmailProcessingState(emailId, state) {
+		emailHistory = emailHistory.map((item) =>
+			item.id === emailId ? { ...item, ...state } : item
+		);
+	}
+
+	/** @param {string} emailId */
+	function pollEmailUntilTerminal(emailId) {
+		stopEmailPolling(emailId);
+		emailPolling.add(emailId);
+		let attempts = 0;
+
+		const poll = async () => {
+			if (!emailPolling.has(emailId)) return;
+			const result = await fetchEmailProcessingState(emailId);
+			if (!emailPolling.has(emailId)) return;
+			if (result.error) {
+				actionError = result.error.message;
+				emailTimedOut = new Set([...emailTimedOut, emailId]);
+				stopEmailPolling(emailId);
+				stopEmailProcessing(emailId);
+				return;
+			}
+			const state = result.data;
+			if (state) applyEmailProcessingState(emailId, state);
+			if (state && ['processed', 'failed'].includes(state.processing_status)) {
+				stopEmailPolling(emailId);
+				stopEmailProcessing(emailId);
+				return;
+			}
+			attempts += 1;
+			if (attempts >= emailPollMaxAttempts) {
+				actionError = $_('history.emailReprocessTimeout');
+				emailTimedOut = new Set([...emailTimedOut, emailId]);
+				stopEmailPolling(emailId);
+				stopEmailProcessing(emailId);
+				return;
+			}
+			emailPollingTimers.set(emailId, setTimeout(poll, emailPollIntervalMs));
+		};
+
+		void poll();
+	}
+
 	/** @param {any} email */
 	async function handleReprocessEmail(email) {
-		if (processingEmails.has(email.id)) return;
+		if (processingEmails.has(email.id) || emailPolling.has(email.id)) return;
 		startEmailProcessing(email.id);
 		try {
 			const result = await queueEmailReprocess(email.id);
 			if (result.error) {
 				actionError = result.error.message;
+				stopEmailProcessing(email.id);
 				return;
 			}
 			const queued = result.data;
-			if (!queued) return;
+			if (!queued) {
+				stopEmailProcessing(email.id);
+				return;
+			}
 			emailHistory = emailHistory.map((item) =>
 				item.id === email.id
 					? { ...item, processing_status: queued.processing_status, processing_outcome: null }
 					: item
 			);
-		} finally {
+			pollEmailUntilTerminal(email.id);
+		} catch (error) {
+			actionError = error instanceof Error ? error.message : String(error);
 			stopEmailProcessing(email.id);
+		} finally {
+			// The processing set is intentionally retained while polling. It is
+			// cleared only on a terminal state, API error, or bounded timeout.
 		}
 	}
 
@@ -458,7 +561,7 @@
 		{:else}
 			<div class="space-y-2">
 				{#each emailHistory as email (email.id)}
-					{@const emailBusy = processingEmails.has(email.id) || ['pending', 'processing'].includes(email.processing_status)}
+					{@const emailBusy = processingEmails.has(email.id) || (['pending', 'processing'].includes(email.processing_status) && !emailTimedOut.has(email.id))}
 					<div class="flex items-start justify-between gap-3 p-3 border border-base-200 rounded-lg">
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-2 flex-wrap">
@@ -489,6 +592,17 @@
 					</div>
 				{/each}
 			</div>
+			{#if emailHasMore}
+				<div class="text-center py-4">
+					<button class="btn btn-ghost" onclick={loadMoreEmailHistory} disabled={emailLoadingMore}>
+						{#if emailLoadingMore}
+							<span class="loading loading-spinner loading-sm"></span>
+						{:else}
+							{$_('history.loadMore')}
+						{/if}
+					</button>
+				</div>
+			{/if}
 		{/if}
 	</section>
 {/if}

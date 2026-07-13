@@ -20,8 +20,9 @@ User profiles linked to Supabase Auth.
 
 Discovered Gmail labels and Outlook folders. User-created folders store the shared
 marketing-folder recommendation, durable user override, and (for Outlook) their
-folder-specific delta cursor. Provider system folders are stored for filtering but
-are never returned by the Settings API.
+folder-specific delta cursor. Eligible provider system folders may store worker
+state but are never returned by the Settings API; permanent and hidden system trees
+are excluded from discovery and scanning.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -35,14 +36,18 @@ are never returned by the Settings API.
 | `full_path` | text | Full nesting context used for classification |
 | `folder_kind` | text | `label` or `folder` |
 | `is_system` | boolean | Provider-managed folder omitted from Settings |
+| `is_scannable` | boolean | Whether the worker may issue provider listing/delta/message requests |
+| `is_permanently_excluded` | boolean | Provider or hidden system tree that cannot be configured or scanned |
 | `classification_decision` | text | `include`, `exclude`, or `uncertain` |
 | `classification_reason` | text | Short persisted recommendation reason |
 | `user_override` | boolean | Whether the user decision is durable |
 | `is_included` | boolean | Effective source-set decision |
 | `sync_cursor` | text | Outlook folder-specific Graph delta cursor |
 
-**RLS Policies:** Users can view and update their own non-system folder preferences;
-the service role manages discovery and cursor writes.
+**RLS Policies:** Users can view their own folders. Direct authenticated updates are
+revoked; `set_email_folder_preference(uuid, boolean)` is the only user preference
+mutation and can change only inclusion, override, cursor, and timestamp fields on an
+owned eligible user folder. The service role manages discovery and cursor writes.
 
 **RLS Policies:**
 - Users can view/update/insert own profile
@@ -95,7 +100,7 @@ Synced Gmail and Outlook messages with status-based worker claiming.
 | `content_hash` | text | SHA-256 for deduplication |
 | `processing_status` | text | `pending`, `processing`, `processed`, `failed`, `skipped` |
 | `processing_error` | text | Last processing error message |
-| `processing_outcome` | text | `no_event`, `event_created`, `event_updated`, `event_created_and_updated`, or `event_cancelled` |
+| `processing_outcome` | text | `no_event`, `event_matched`, `event_created`, `event_updated`, `event_created_and_updated`, or `event_cancelled` |
 | `processing_explanation` | text | Optional explanation already returned by normal processing |
 | `processing_result` | jsonb | Structured processing counts for History |
 | `provider_folder_ids` | text[] | Current provider folder/label membership |

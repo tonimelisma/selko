@@ -1,6 +1,6 @@
 # Reliable Email Ingestion Fix-Forward
 
-**Status:** Ready for implementation
+**Status:** Implemented in fix-forward PR
 
 ## Context
 

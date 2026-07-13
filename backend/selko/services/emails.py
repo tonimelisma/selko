@@ -229,6 +229,8 @@ def store_gmail_message_attachments(
     message: dict[str, Any],
     email_record: dict[str, Any],
     parsed_email: dict[str, Any] | None = None,
+    *,
+    raise_on_error: bool = False,
 ) -> int:
     """Download attachments/images for an already-eligible Gmail message.
 
@@ -253,6 +255,8 @@ def store_gmail_message_attachments(
             ):
                 images_stored += 1
         except AttachmentError as exc:
+            if raise_on_error:
+                raise
             logger.warning("Failed to process Gmail attachment for %s: %s", message_id, exc)
 
     for inline_part in extract_inline_images(message):
@@ -267,6 +271,8 @@ def store_gmail_message_attachments(
             ):
                 images_stored += 1
         except AttachmentError as exc:
+            if raise_on_error:
+                raise
             logger.warning("Failed to process Gmail inline image for %s: %s", message_id, exc)
 
     body_html = (parsed_email or {}).get("body_html")
@@ -288,6 +294,8 @@ def store_gmail_message_attachments(
                 ):
                     images_stored += 1
             except AttachmentError as exc:
+                if raise_on_error:
+                    raise
                 logger.warning("Failed to store linked Gmail image for %s: %s", message_id, exc)
 
         try:
@@ -307,6 +315,8 @@ def store_gmail_message_attachments(
                 ):
                     images_stored += 1
             except AttachmentError as exc:
+                if raise_on_error:
+                    raise
                 logger.warning("Failed to store data URI Gmail image for %s: %s", message_id, exc)
 
     if images_stored and not email_record.get("has_attachments"):

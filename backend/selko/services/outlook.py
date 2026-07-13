@@ -30,6 +30,50 @@ AUTHORITY = "https://login.microsoftonline.com/common"
 SCOPES = ["Mail.Read", "User.Read"]
 RESYNC_REQUIRED = "__outlook_resync_required__"
 
+# Graph v1.0 does not reliably include wellKnownName in mail-folder list
+# responses. Resolve these aliases directly and use their immutable IDs to
+# classify localized folder payloads and prevent traversal into forbidden trees.
+OUTLOOK_PERMANENT_ALIASES = {
+    "junkemail",
+    "deleteditems",
+    "sentitems",
+    "drafts",
+    "outbox",
+}
+OUTLOOK_HIDDEN_SYSTEM_ALIASES = {
+    "searchfolders",
+    "syncissues",
+    "conflicts",
+    "localfailures",
+    "serverfailures",
+    "recoverableitemsroot",
+    "recoverableitemsdeletions",
+    "recoverableitemspurges",
+    "recoverableitemsversions",
+}
+OUTLOOK_ELIGIBLE_SYSTEM_ALIASES = {
+    "inbox",
+    "archive",
+    "clutter",
+    "conversationhistory",
+}
+OUTLOOK_SYSTEM_ALIASES = (
+    OUTLOOK_PERMANENT_ALIASES
+    | OUTLOOK_HIDDEN_SYSTEM_ALIASES
+    | OUTLOOK_ELIGIBLE_SYSTEM_ALIASES
+)
+OUTLOOK_SYSTEM_KINDS = {
+    "junkemail": "junk",
+    "deleteditems": "trash",
+    "sentitems": "sent",
+    "drafts": "drafts",
+    "outbox": "outbox",
+    "inbox": "inbox",
+    "archive": "archive",
+    "clutter": "clutter",
+    "conversationhistory": "conversation_history",
+}
+
 
 class OutlookError(Exception):
     """Raised when Microsoft Graph or OAuth operations fail."""
@@ -203,9 +247,50 @@ def get_user_profile(access_token: str) -> dict[str, Any]:
     return _graph_get(access_token, f"{GRAPH}/me")
 
 
-def fetch_mail_folders(access_token: str) -> list[dict[str, Any]]:
+def resolve_well_known_folder_ids(access_token: str) -> dict[str, str]:
+    """Resolve Graph folder aliases to immutable IDs.
+
+    Missing aliases are normal for some tenants, so a 404 is ignored. Other
+    failures remain fatal because continuing without the exclusion set could
+    cause a forbidden tree to be scanned.
+    """
+
+    resolved: dict[str, str] = {}
+    for alias in sorted(OUTLOOK_SYSTEM_ALIASES):
+        try:
+            folder = _graph_get(
+                access_token,
+                f"{GRAPH}/me/mailFolders/{alias}",
+                prefer=_graph_prefer('IdType="ImmutableId"'),
+            )
+        except GraphHttpError as exc:
+            if exc.status_code == 404:
+                continue
+            raise
+        folder_id = folder.get("id")
+        if folder_id:
+            resolved[alias] = str(folder_id)
+    return resolved
+
+
+def fetch_mail_folders(
+    access_token: str,
+    *,
+    resolved_well_known_ids: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
     """Discover the complete Outlook mail-folder hierarchy."""
 
+    resolved = (
+        resolved_well_known_ids
+        if resolved_well_known_ids is not None
+        else resolve_well_known_folder_ids(access_token)
+    )
+    excluded_ids = {
+        folder_id
+        for alias, folder_id in resolved.items()
+        if alias in OUTLOOK_PERMANENT_ALIASES | OUTLOOK_HIDDEN_SYSTEM_ALIASES
+    }
+    alias_by_id = {folder_id: alias for alias, folder_id in resolved.items()}
     folders: list[dict[str, Any]] = []
     roots_url = f"{GRAPH}/me/mailFolders"
     roots_params = {"$top": "100", "includeHiddenFolders": "true"}
@@ -221,8 +306,16 @@ def fetch_mail_folders(access_token: str) -> list[dict[str, Any]]:
             )
             params = None
             for folder in page.get("value", []):
+                folder_id = str(folder.get("id") or "")
+                # Do not retain or recurse into permanent/hidden roots. Their
+                # children are not a source set and may contain recoverable
+                # system data that Graph exposes as ordinary folders.
+                if not folder_id or folder_id in excluded_ids:
+                    continue
+                folder = dict(folder)
+                if folder_id in alias_by_id:
+                    folder["wellKnownName"] = alias_by_id[folder_id]
                 folders.append(folder)
-                folder_id = folder.get("id")
                 if folder_id:
                     pending.append((
                         f"{GRAPH}/me/mailFolders/{folder_id}/childFolders",
@@ -257,23 +350,26 @@ def normalize_mail_folders(folders: list[dict[str, Any]]) -> list[dict[str, Any]
     normalized: list[dict[str, Any]] = []
     for folder in folders:
         folder_id = str(folder["id"])
-        system_kind = None
-        well_known = str(folder.get("wellKnownName") or "").lower()
-        if well_known:
-            system_kind = {
-                "junkemail": "junk",
-                "deleteditems": "trash",
-                "sentitems": "sent",
-                "drafts": "drafts",
-                "outbox": "outbox",
-            }.get(well_known)
+        well_known = str(
+            folder.get("wellKnownName")
+            or folder.get("well_known_name")
+            or ""
+        ).lower()
+        system_kind = OUTLOOK_SYSTEM_KINDS.get(well_known)
+        is_system = well_known in OUTLOOK_SYSTEM_ALIASES
+        is_permanently_excluded = (
+            well_known in OUTLOOK_PERMANENT_ALIASES
+            or well_known in OUTLOOK_HIDDEN_SYSTEM_ALIASES
+        )
         normalized.append({
             "id": folder_id,
             "parent_id": folder.get("parentFolderId"),
             "name": folder.get("displayName") or folder_id,
             "full_path": path_for(folder_id),
             "kind": "folder",
-            "is_system": bool(system_kind),
+            "is_system": is_system,
+            "is_scannable": not is_permanently_excluded,
+            "is_permanently_excluded": is_permanently_excluded,
             "system_kind": system_kind,
             "well_known_name": well_known,
         })

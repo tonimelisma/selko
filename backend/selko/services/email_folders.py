@@ -35,6 +35,17 @@ PERMANENT_OUTLOOK_WELL_KNOWN_NAMES = {
     "drafts": "drafts",
     "outbox": "outbox",
 }
+HIDDEN_OUTLOOK_WELL_KNOWN_NAMES = {
+    "searchfolders",
+    "syncissues",
+    "conflicts",
+    "localfailures",
+    "serverfailures",
+    "recoverableitemsroot",
+    "recoverableitemsdeletions",
+    "recoverableitemspurges",
+    "recoverableitemsversions",
+}
 
 
 def _now() -> str:
@@ -50,8 +61,18 @@ def gmail_label_is_permanently_excluded(label: dict[str, Any]) -> bool:
 def outlook_folder_is_permanently_excluded(folder: dict[str, Any]) -> bool:
     """Return whether an Outlook well-known system folder is outside the source set."""
 
-    well_known = str(folder.get("wellKnownName") or "").lower()
-    return well_known in PERMANENT_OUTLOOK_WELL_KNOWN_NAMES
+    well_known = str(
+        folder.get("wellKnownName")
+        or folder.get("well_known_name")
+        or ""
+    ).lower()
+    return (
+        well_known in PERMANENT_OUTLOOK_WELL_KNOWN_NAMES
+        or well_known in HIDDEN_OUTLOOK_WELL_KNOWN_NAMES
+        or bool(
+            folder.get("is_permanently_excluded")
+        )
+    )
 
 
 def _fallback_classification() -> FolderClassification:
@@ -95,6 +116,14 @@ def upsert_discovered_folders(
         name = str(folder.get("name") or provider_folder_id)
         full_path = str(folder.get("full_path") or name)
         is_system = bool(folder.get("is_system", False))
+        is_permanently_excluded = bool(
+            folder.get("is_permanently_excluded", False)
+            or (
+                provider == "outlook"
+                and outlook_folder_is_permanently_excluded(folder)
+            )
+        )
+        is_scannable = bool(folder.get("is_scannable", not is_permanently_excluded))
         system_kind = folder.get("system_kind")
         prior = existing.get(provider_folder_id)
         changed = bool(
@@ -102,13 +131,24 @@ def upsert_discovered_folders(
             and (prior.get("name") != name or prior.get("full_path") != full_path)
         )
 
-        if is_system:
+        if is_permanently_excluded:
             classification = FolderClassification(
                 decision="exclude",
                 reason="This provider system folder is permanently excluded.",
             )
             is_included = False
             user_override = False
+            is_scannable = False
+        elif is_system:
+            # Eligible provider-owned folders such as Inbox and Archive are
+            # scanned automatically but remain hidden from Settings.
+            classification = FolderClassification(
+                decision="include",
+                reason="This provider system folder is included automatically.",
+            )
+            is_included = bool(prior.get("is_included", True)) if prior else True
+            user_override = False
+            is_scannable = True
         elif prior and prior.get("user_override"):
             classification = FolderClassification(
                 decision=prior.get("classification_decision") or "uncertain",
@@ -148,6 +188,8 @@ def upsert_discovered_folders(
             "full_path": full_path,
             "folder_kind": folder.get("kind") or ("label" if provider == "gmail" else "folder"),
             "is_system": is_system,
+            "is_scannable": is_scannable,
+            "is_permanently_excluded": is_permanently_excluded,
             "system_kind": system_kind,
             "classification_decision": classification.decision,
             "classification_reason": classification.reason,
@@ -179,19 +221,18 @@ def set_folder_preference(
 ) -> dict[str, Any] | None:
     """Persist a durable user override and reset the cursor when enabling a folder."""
 
-    result = (
-        client.table("email_folders")
-        .update({
-            "is_included": bool(is_included),
-            "user_override": True,
-            "sync_cursor": None,
-            "updated_at": _now(),
-        })
-        .eq("id", folder_id)
-        .eq("user_id", user_id)
-        .eq("is_system", False)
-        .select("*")
-        .maybe_single()
-        .execute()
-    )
-    return result.data if result and result.data else None
+    # The authenticated client must use the SECURITY DEFINER RPC. The table
+    # UPDATE privilege is intentionally revoked so callers cannot mutate
+    # provider metadata or system-folder rows alongside the preference.
+    result = client.rpc(
+        "set_email_folder_preference",
+        {
+            "p_folder_id": folder_id,
+            "p_is_included": bool(is_included),
+        },
+    ).execute()
+    if not result or not result.data:
+        return None
+    if isinstance(result.data, list):
+        return result.data[0] if result.data else None
+    return result.data
