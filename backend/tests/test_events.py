@@ -146,7 +146,7 @@ class TestFindMatchingEvent:
         # Query returns no events on same date
         mock_result = MagicMock()
         mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
 
         event_data = {
             "title": "Birthday Party",
@@ -170,7 +170,7 @@ class TestFindMatchingEvent:
             "title": "Birthday Party",
             "start_datetime": "2026-03-15T14:00:00Z",
         }]
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
 
         event_data = {
             "title": "Jake's Birthday Party",
@@ -197,7 +197,7 @@ class TestFindMatchingEvent:
             "title": "Some Event",
             "start_datetime": "2026-03-15T14:00:00Z",
         }]
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
 
         event_data = {
             "title": "Some Event",
@@ -218,7 +218,7 @@ class TestFindMatchingEvent:
 
         mock_result = MagicMock()
         mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
 
         event_data = {
             "title": "Test Event",
@@ -240,7 +240,7 @@ class TestFindMatchingEvent:
 
         mock_result = MagicMock()
         mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
 
         event_data = {
             "title": "Test Event",
@@ -441,7 +441,9 @@ class TestFindMatchingEventGCal:
         # No local events
         mock_result = MagicMock()
         mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
+        # No existing Selko row already linked to this GCal event
+        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.not_.in_.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
 
         event_data = {
             "title": "Team Meeting",
@@ -479,7 +481,7 @@ class TestFindMatchingEventGCal:
         # No local events
         mock_result = MagicMock()
         mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
 
         event_data = {
             "title": "Team Meeting",
@@ -515,7 +517,7 @@ class TestFindMatchingEventGCal:
             "title": "Team Meeting",
             "start_datetime": "2026-03-15T14:00:00Z",
         }]
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
 
         event_data = {
             "title": "Team Meeting",
@@ -529,6 +531,94 @@ class TestFindMatchingEventGCal:
         # Should still match local event despite GCal failure
         assert result is not None
         assert result.match_id == "event-123"
+
+    def test_evening_event_queries_local_day_not_utc_day(self):
+        """Regression: an evening local event must not query the next UTC day.
+
+        2026-07-27T20:00:00-07:00 (8pm Pacific) is 2026-07-28T03:00:00Z — the
+        old code queried the UTC calendar day (07-27T00:00Z-07-27T23:59Z) and
+        never saw same-evening duplicates stored as 07-28T03:00:00Z.
+        """
+        mock_client = MagicMock()
+        mock_gemini = MagicMock()
+
+        mock_result = MagicMock()
+        mock_result.data = []
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
+
+        event_data = {
+            "title": "Application Deadline",
+            "start_datetime": "2026-07-27T20:00:00-07:00",
+        }
+
+        with patch(
+            "selko.services.events.calendars.fetch_calendar_events_for_date_range",
+            return_value=[],
+        ) as mock_gcal_fetch, patch(
+            "selko.services.events.get_user_timezone",
+            return_value="America/Los_Angeles",
+        ):
+            find_matching_event(
+                mock_client, mock_gemini, "user-123", event_data,
+                user_timezone="America/Los_Angeles",
+            )
+
+        eq_mock = mock_client.table.return_value.select.return_value.eq.return_value
+        eq_mock.gte.assert_called_once_with(
+            "start_datetime", "2026-07-27T07:00:00+00:00"
+        )
+        eq_mock.gte.return_value.lt.assert_called_once_with(
+            "start_datetime", "2026-07-28T07:00:00+00:00"
+        )
+        assert mock_gcal_fetch.call_args[0][2] == "2026-07-27T07:00:00+00:00"
+        assert mock_gcal_fetch.call_args[0][3] == "2026-07-28T07:00:00+00:00"
+
+    def test_reuses_existing_row_linked_to_matched_gcal_event(self):
+        """Regression: a second email matching the same GCal event must reuse
+        the Selko row already tracking it, not stack a second change card."""
+        mock_client = MagicMock()
+        mock_gemini = MagicMock()
+
+        mock_result = MagicMock()
+        mock_result.data = []
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
+
+        existing_row = {
+            "id": "existing-event-uuid",
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": "Room A",
+            "description": "Weekly sync",
+            "importance": "action_required",
+            "status": "synced",
+            "google_calendar_event_id": "gcal-abc",
+        }
+        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.not_.in_.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+            data=[existing_row]
+        )
+
+        event_data = {
+            "title": "Team Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+        }
+
+        gcal_events = [{
+            "id": "gcal-abc",
+            "summary": "Team Meeting",
+            "start": {"dateTime": "2026-03-15T14:00:00Z"},
+            "end": {"dateTime": "2026-03-15T15:00:00Z"},
+        }]
+
+        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=gcal_events), \
+             patch("selko.services.events.event_processing.compare_events", return_value="gcal:gcal-abc"):
+            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+
+        assert result is not None
+        assert result.match_id == "existing-event-uuid"
+        assert result.is_gcal is False
+        assert result.baseline["title"] == "Team Meeting"
 
 
 class TestCreateEventFromGCalMatch:
