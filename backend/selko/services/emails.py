@@ -308,10 +308,15 @@ def store_gmail_message_attachments(
     Callers must invoke this only after the message's provider labels have been
     checked. Keeping the download helper separate makes it impossible for a
     rejected message to reach attachment storage in the reliable sync path.
+
+    The attachment owner is taken from email_record["user_id"] — the worker
+    path runs with a service-role client that has no auth session to resolve
+    the user from.
     """
 
     message_id = message["id"]
     email_id = email_record["id"]
+    owner_id = email_record.get("user_id")
     images_stored = 0
 
     for attachment_part in extract_attachments(message):
@@ -323,6 +328,7 @@ def store_gmail_message_attachments(
                 message_id=message_id,
                 attachment_part=attachment_part,
                 config=config,
+                user_id=owner_id,
             ):
                 images_stored += 1
         except AttachmentError as exc:
@@ -339,6 +345,7 @@ def store_gmail_message_attachments(
                 message_id=message_id,
                 attachment_part=inline_part,
                 config=config,
+                user_id=owner_id,
             ):
                 images_stored += 1
         except AttachmentError as exc:
@@ -362,6 +369,7 @@ def store_gmail_message_attachments(
                     mime_type=image.mime_type,
                     filename=f"linked_{idx}.{image.mime_type.split('/')[-1]}",
                     config=config,
+                    user_id=owner_id,
                 ):
                     images_stored += 1
             except AttachmentError as exc:
@@ -383,6 +391,7 @@ def store_gmail_message_attachments(
                     mime_type=image.mime_type,
                     filename=f"data_uri_{idx}.{image.mime_type.split('/')[-1]}",
                     config=config,
+                    user_id=owner_id,
                 ):
                     images_stored += 1
             except AttachmentError as exc:

@@ -276,6 +276,7 @@ def process_attachment(
     message_id: str,
     attachment_part: dict[str, Any],
     config: Config,
+    user_id: str | None = None,
 ) -> Optional[dict]:
     """Process a single email attachment end-to-end.
 
@@ -297,6 +298,9 @@ def process_attachment(
             - mime_type: MIME type
             - size_bytes: Size in bytes
         config: Application config.
+        user_id: Owner of the attachment. Required with a service-role
+            client (background workers), which has no auth session to
+            resolve the user from.
 
     Returns:
         Attachment record (new or existing), or None if skipped.
@@ -330,6 +334,7 @@ def process_attachment(
         mime_type=mime_type,
         config=config,
         provider_attachment_id=attachment_id,
+        user_id=user_id,
     )
 
     logger.info(f"Saved new attachment: {filename}")
@@ -343,6 +348,7 @@ def store_image_content(
     mime_type: str,
     filename: str,
     config: Config,
+    user_id: str | None = None,
 ) -> Optional[dict]:
     """Store image data directly as an attachment (no Gmail API download needed).
 
@@ -356,6 +362,9 @@ def store_image_content(
         mime_type: Image MIME type.
         filename: Filename for the stored image.
         config: Application config.
+        user_id: Owner of the attachment. Required with a service-role
+            client (background workers), which has no auth session to
+            resolve the user from.
 
     Returns:
         Attachment record (new or existing), or None if skipped.
@@ -379,6 +388,7 @@ def store_image_content(
         mime_type=mime_type,
         config=config,
         provider_attachment_id="",
+        user_id=user_id,
     )
 
     logger.info(f"Stored image: {filename} ({len(image_data)} bytes)")
