@@ -1,6 +1,7 @@
 """Email Pydantic schemas for API responses."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -21,6 +22,20 @@ class EmailResponse(BaseModel):
     snippet: str | None = None
     provider_labels: list[str] | None = None
     has_attachments: bool = False
+
+    processing_status: str | None = None
+    processing_error: str | None = None
+    processing_outcome: Literal[
+        "no_event",
+        "event_matched",
+        "event_created",
+        "event_updated",
+        "event_created_and_updated",
+        "event_cancelled",
+    ] | None = None
+    processing_explanation: str | None = None
+    processing_result: dict | None = None
+    processed_at: datetime | None = None
 
     # Auto-computed flags from trigger
     is_spam: bool = False
