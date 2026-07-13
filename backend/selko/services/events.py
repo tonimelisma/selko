@@ -445,7 +445,7 @@ def process_email_for_events(
         if email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVITE_METHODS:
             result = {"num_events": 0, "num_new": 0, "num_updated": 0}
             mark_email_status(
-                supabase_client, email_id, "processed",
+                supabase_client, email_id, "skipped",
                 outcome="calendar_invite",
                 explanation="Calendar invitation — already handled by your email client and calendar.",
                 result=result,

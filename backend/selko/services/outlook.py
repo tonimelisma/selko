@@ -17,6 +17,7 @@ from supabase import Client
 
 from selko.config import Config
 from selko.services.auth import get_current_user_id
+from selko.services.emails import mark_parsed_as_calendar_invite
 from selko.services.integrations import (
     get_provider_integration,
     update_integration_status,
@@ -521,4 +522,6 @@ def parse_outlook_message(
     resolved_folder_id = folder_id or msg.get("parentFolderId")
     if resolved_folder_id:
         result["provider_folder_ids"] = [str(resolved_folder_id)]
+    if result["is_calendar_invite"]:
+        mark_parsed_as_calendar_invite(result)
     return result

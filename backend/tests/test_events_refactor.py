@@ -635,8 +635,13 @@ class TestProcessEmailPipeline:
 
         assert result["num_events"] == 0
         mock_extract.assert_not_called()
-        status_calls = [call.kwargs.get("outcome") for call in mock_mark.call_args_list]
-        assert "calendar_invite" in status_calls
+        outcomes = [call.kwargs.get("outcome") for call in mock_mark.call_args_list]
+        assert "calendar_invite" in outcomes
+        # Regression: the backstop marks the email skipped, matching the
+        # ingest-time marking, so it never shows up as a false "processed" row.
+        statuses = [call.args[2] for call in mock_mark.call_args_list]
+        assert "skipped" in statuses
+        assert "processed" not in statuses
 
     def test_ics_invite_method_short_circuits(self):
         """Regression: a Gmail METHOD:REQUEST .ics attachment must never reach LLM extraction."""
