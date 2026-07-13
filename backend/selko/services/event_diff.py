@@ -6,6 +6,7 @@ hallucinated diffs so routing (New / Changes / skip) stays reliable.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
@@ -48,6 +49,7 @@ class FieldChange(BaseModel):
     before: Any = None
     after: Any = None
     reason: Optional[str] = None
+    mode: Optional[Literal["append", "replace"]] = None
 
 
 class EventChangeSet(BaseModel):
@@ -162,6 +164,17 @@ def derive_kind(changes: list[FieldChange]) -> Literal[
     return "enrichment"
 
 
+def _title_tokens(value: Any) -> set[str]:
+    return {t for t in re.split(r"[^a-z0-9]+", str(value or "").casefold()) if t}
+
+
+def _titles_cosmetically_equal(before: Any, after: Any) -> bool:
+    a, b = _title_tokens(before), _title_tokens(after)
+    if not a or not b:
+        return False
+    return len(a & b) / len(a | b) >= 0.5
+
+
 def gate_change_set(
     proposed: EventChangeSet,
     baseline: Optional[dict[str, Any]] = None,
@@ -181,6 +194,8 @@ def gate_change_set(
         after = change.after
         if baseline is not None and before is None and field in baseline:
             before = baseline.get(field)
+        if field == "title" and _titles_cosmetically_equal(before, after):
+            continue
         if values_equal(field, before, after, user_timezone):
             continue
         gated.append(
@@ -189,6 +204,7 @@ def gate_change_set(
                 before=before,
                 after=after,
                 reason=change.reason,
+                mode=change.mode,
             )
         )
 
@@ -280,6 +296,22 @@ def baseline_from_gcal_event(
         "description": gcal_event.get("description") or None,
         "status": "synced",
     }
+
+
+def resolve_description_append(
+    change_set: EventChangeSet, baseline: dict[str, Any]
+) -> EventChangeSet:
+    """Materialize mode=append description changes into full after-values."""
+    for change in change_set.changes:
+        if change.field == "description" and change.mode == "append":
+            base = (baseline.get("description") or "").strip()
+            addition = (str(change.after or "")).strip()
+            if addition and addition not in base:
+                change.after = f"{base}\n\n{addition}" if base else addition
+            else:
+                change.after = base or change.after
+            change.mode = None
+    return change_set
 
 
 def apply_asserted_fields(

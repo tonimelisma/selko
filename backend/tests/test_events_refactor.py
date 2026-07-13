@@ -398,6 +398,68 @@ class TestSaveExtractedEvents:
         assert num_updated == 1
         mock_propose.assert_called_once()
 
+    def test_passes_recency_context_to_propose_event_update(self):
+        """Regression: the email's date_sent and the matched event's newest
+        source date must reach propose_event_update for the recency rules."""
+        from selko.services.event_diff import EventChangeSet
+        from selko.services.events import EventMatch
+
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        extraction = _make_extraction(events=[_make_calendar_event()])
+        match = EventMatch(
+            match_id="event-456",
+            baseline={"title": "Team Meeting", "start_datetime": "2026-03-15T14:00:00Z"},
+        )
+        noop_change_set = EventChangeSet(kind="noop", changes=[])
+
+        with patch("selko.services.events.find_matching_event", return_value=match), \
+             patch(
+                 "selko.services.events._fetch_baseline_info_date",
+                 return_value="2026-03-10T09:00:00Z",
+             ), \
+             patch(
+                 "selko.services.events.event_processing.propose_event_update",
+                 return_value=noop_change_set,
+             ) as mock_propose:
+            save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction,
+                current_time=FIXED_NOW, email_date_sent="2026-03-14T12:00:00Z",
+            )
+
+        mock_propose.assert_called_once()
+        assert mock_propose.call_args.kwargs["email_date_sent"] == "2026-03-14T12:00:00Z"
+        assert mock_propose.call_args.kwargs["baseline_info_date"] == "2026-03-10T09:00:00Z"
+
+    def test_gcal_match_passes_none_baseline_info_date(self):
+        """GCal-baseline matches have no local event_sources history to query."""
+        from selko.services.event_diff import EventChangeSet
+        from selko.services.events import EventMatch
+
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        extraction = _make_extraction(events=[_make_calendar_event()])
+        match = EventMatch(
+            match_id="gcal:abc-123",
+            baseline={"title": "Team Meeting", "start_datetime": "2026-03-15T14:00:00Z"},
+        )
+        noop_change_set = EventChangeSet(kind="noop", changes=[])
+
+        with patch("selko.services.events.find_matching_event", return_value=match), \
+             patch(
+                 "selko.services.events._fetch_baseline_info_date"
+             ) as mock_fetch_date, \
+             patch(
+                 "selko.services.events.event_processing.propose_event_update",
+                 return_value=noop_change_set,
+             ) as mock_propose:
+            save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
+            )
+
+        mock_fetch_date.assert_not_called()
+        assert mock_propose.call_args.kwargs["baseline_info_date"] is None
+
     def test_handles_multiple_events(self):
         from selko.services.event_diff import EventChangeSet, FieldChange
         from selko.services.events import EventMatch
@@ -1000,3 +1062,40 @@ class TestPastEventFiltering:
 
         assert num_new == 1
         mock_create.assert_called_once()
+
+
+class TestFetchBaselineInfoDate:
+    """Tests for the update-proposal recency helper (WS4)."""
+
+    def test_returns_newest_date_sent_across_sources(self):
+        from selko.services.events import _fetch_baseline_info_date
+
+        mock_client = MagicMock()
+        mock_result = MagicMock()
+        mock_result.data = [
+            {"emails": {"date_sent": "2026-03-10T09:00:00Z"}},
+            {"emails": {"date_sent": "2026-03-14T12:00:00Z"}},
+        ]
+        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = mock_result
+
+        result = _fetch_baseline_info_date(mock_client, "event-456")
+
+        assert result == "2026-03-14T12:00:00Z"
+
+    def test_returns_none_when_no_sources(self):
+        from selko.services.events import _fetch_baseline_info_date
+
+        mock_client = MagicMock()
+        mock_result = MagicMock()
+        mock_result.data = []
+        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = mock_result
+
+        assert _fetch_baseline_info_date(mock_client, "event-456") is None
+
+    def test_returns_none_on_query_error(self):
+        from selko.services.events import _fetch_baseline_info_date
+
+        mock_client = MagicMock()
+        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.side_effect = Exception("db error")
+
+        assert _fetch_baseline_info_date(mock_client, "event-456") is None
