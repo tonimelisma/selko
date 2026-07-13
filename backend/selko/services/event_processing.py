@@ -321,6 +321,7 @@ def fetch_email_with_attachments(
             "from_name": email.get("from_name", ""),
             "from_email": email.get("from_email", ""),
             "date_sent": email.get("date_sent", ""),
+            "is_calendar_invite": email.get("is_calendar_invite", False),
         }
 
         # Use full body text if available, otherwise fall back to snippet

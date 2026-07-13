@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from selko.services.ics_parser import parse_ics_attachments
+from selko.services.ics_parser import detect_invite_method, parse_ics_attachments
 
 
 # --- .ics content fixtures ---
@@ -102,6 +102,42 @@ END:VEVENT
 END:VCALENDAR"""
 
 MALFORMED_ICS = b"This is not valid iCalendar data"
+
+REQUEST_METHOD_ICS = b"""\
+BEGIN:VCALENDAR
+VERSION:2.0
+METHOD:REQUEST
+PRODID:-//Test//Test//EN
+BEGIN:VEVENT
+SUMMARY:Meeting Request
+DTSTART:20260315T140000Z
+DTEND:20260315T150000Z
+END:VEVENT
+END:VCALENDAR"""
+
+CANCEL_METHOD_ICS = b"""\
+BEGIN:VCALENDAR
+VERSION:2.0
+METHOD:CANCEL
+PRODID:-//Test//Test//EN
+BEGIN:VEVENT
+SUMMARY:Meeting Cancelled
+DTSTART:20260315T140000Z
+DTEND:20260315T150000Z
+END:VEVENT
+END:VCALENDAR"""
+
+PUBLISH_METHOD_ICS = b"""\
+BEGIN:VCALENDAR
+VERSION:2.0
+METHOD:PUBLISH
+PRODID:-//Test//Test//EN
+BEGIN:VEVENT
+SUMMARY:Public Event
+DTSTART:20260315T140000Z
+DTEND:20260315T150000Z
+END:VEVENT
+END:VCALENDAR"""
 
 EMAIL_METADATA = {
     "provider_message_id": "msg-ics-test",
@@ -288,3 +324,40 @@ class TestParseIcsAttachments:
         result = parse_ics_attachments(attachments, EMAIL_METADATA)
 
         assert result is None
+
+
+class TestDetectInviteMethod:
+    """Tests for detect_invite_method (WS6 calendar-invite suppression)."""
+
+    def test_request_method_detected(self):
+        attachments = [
+            {"data": REQUEST_METHOD_ICS, "mime_type": "text/calendar", "filename": "invite.ics"},
+        ]
+        assert detect_invite_method(attachments) == "REQUEST"
+
+    def test_cancel_method_detected(self):
+        attachments = [
+            {"data": CANCEL_METHOD_ICS, "mime_type": "text/calendar", "filename": "invite.ics"},
+        ]
+        assert detect_invite_method(attachments) == "CANCEL"
+
+    def test_publish_method_is_not_an_invite(self):
+        attachments = [
+            {"data": PUBLISH_METHOD_ICS, "mime_type": "text/calendar", "filename": "event.ics"},
+        ]
+        assert detect_invite_method(attachments) == "PUBLISH"
+
+    def test_no_method_returns_none(self):
+        attachments = [
+            {"data": BASIC_ICS, "mime_type": "text/calendar", "filename": "basic.ics"},
+        ]
+        assert detect_invite_method(attachments) is None
+
+    def test_malformed_ics_returns_none(self):
+        attachments = [
+            {"data": MALFORMED_ICS, "mime_type": "text/calendar", "filename": "bad.ics"},
+        ]
+        assert detect_invite_method(attachments) is None
+
+    def test_no_ics_attachments_returns_none(self):
+        assert detect_invite_method([]) is None
