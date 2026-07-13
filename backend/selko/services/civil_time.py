@@ -8,7 +8,7 @@ instants.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
@@ -178,3 +178,22 @@ def gcal_timed_fields(
         "dateTime": civil,
         "timeZone": resolve_timezone_name(user_timezone),
     }
+
+
+def gcal_all_day_fields(
+    start_value: Any, end_value: Any, user_timezone: Optional[str] = None
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Local start date + exclusive local end date for GCal all-day events."""
+    start_civil = to_civil_iso(start_value, user_timezone)
+    start_date = date.fromisoformat(start_civil[:10])
+    if end_value:
+        end_civil = to_civil_iso(end_value, user_timezone)
+        end_date = date.fromisoformat(end_civil[:10])
+        # stored ends are "last moment of final day" (e.g. 23:59:59); an end at
+        # exactly midnight already points at the exclusive next day
+        if end_civil[11:19] != "00:00:00":
+            end_date += timedelta(days=1)
+        end_date = max(end_date, start_date + timedelta(days=1))
+    else:
+        end_date = start_date + timedelta(days=1)
+    return {"date": start_date.isoformat()}, {"date": end_date.isoformat()}

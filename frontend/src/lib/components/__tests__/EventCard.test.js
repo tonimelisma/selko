@@ -39,10 +39,33 @@ describe('EventCard', () => {
 		).toBeInTheDocument();
 	});
 
-	it('shows "All Day" for all-day events', () => {
+	it('shows the date alongside "All Day" for all-day events', () => {
 		const allDayEvent = { ...mockEvent, all_day: true };
 		render(EventCard, { props: { event: allDayEvent } });
+		expect(screen.getByText(/Jan 20.*All Day/)).toBeInTheDocument();
+	});
+
+	it('shows just "All Day" when an all-day event has no start_datetime', () => {
+		const allDayEvent = {
+			...mockEvent,
+			all_day: true,
+			start_datetime: null,
+			end_datetime: null
+		};
+		render(EventCard, { props: { event: allDayEvent } });
 		expect(screen.getByText('All Day')).toBeInTheDocument();
+	});
+
+	it('shows a date range for a multi-day all-day event', () => {
+		// Worked example from the spec: a 3-day closure, Aug 12-14 local (America/Los_Angeles)
+		const multiDayEvent = {
+			...mockEvent,
+			all_day: true,
+			start_datetime: '2026-08-12T07:00:00Z',
+			end_datetime: '2026-08-15T06:59:59Z'
+		};
+		render(EventCard, { props: { event: multiDayEvent } });
+		expect(screen.getByText(/Aug 12.*–.*Aug 14.*All Day/)).toBeInTheDocument();
 	});
 
 	it('has accept and reject buttons', () => {

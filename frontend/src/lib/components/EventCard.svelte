@@ -1,5 +1,6 @@
 <script>
 	import { _ } from 'svelte-i18n';
+	import { formatEventDateTime } from '$lib/format-event-datetime.js';
 
 	let { event, isProcessing = false, onapprove, onreject } = $props();
 
@@ -8,34 +9,7 @@
 		return sources[0]?.source_origin || 'email';
 	});
 
-	let formattedDateTime = $derived(() => {
-		if (event.all_day) return $_('events.allDay');
-		if (!event.start_datetime) return '';
-		try {
-			const start = new Date(event.start_datetime);
-			const dateStr = start.toLocaleDateString(undefined, {
-				weekday: 'short',
-				month: 'short',
-				day: 'numeric'
-			});
-			const timeStr = start.toLocaleTimeString(undefined, {
-				hour: 'numeric',
-				minute: '2-digit'
-			});
-			let result = `${dateStr}, ${timeStr}`;
-			if (event.end_datetime) {
-				const end = new Date(event.end_datetime);
-				const endTimeStr = end.toLocaleTimeString(undefined, {
-					hour: 'numeric',
-					minute: '2-digit'
-				});
-				result += ` - ${endTimeStr}`;
-			}
-			return result;
-		} catch {
-			return event.start_datetime;
-		}
-	});
+	let formattedDateTime = $derived(() => formatEventDateTime(event, $_));
 </script>
 
 <div class="flex items-start justify-between p-4 border-b border-base-200">
