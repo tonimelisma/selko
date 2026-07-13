@@ -81,6 +81,10 @@ class Config:
     # Background processing (workers + scheduler)
     enable_background_processing: bool = False
 
+    # Memory instrumentation (leak diagnosis; see services/memory_monitor.py)
+    memory_log_interval_seconds: float = 60.0  # <= 0 disables periodic logging
+    memory_tracemalloc: bool = False  # log allocation-site growth (expensive)
+
     # CORS configuration
     allowed_origins: list[str] = field(default_factory=lambda: [
         "http://localhost:3000",
@@ -213,6 +217,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         photo_processing_timeout=int(os.getenv("PHOTO_PROCESSING_TIMEOUT", "120")),
         event_sync_timeout=int(os.getenv("EVENT_SYNC_TIMEOUT", "60")),
         enable_background_processing=os.getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true",
+        memory_log_interval_seconds=float(os.getenv("MEMORY_LOG_INTERVAL_SECONDS", "60")),
+        memory_tracemalloc=os.getenv("MEMORY_TRACEMALLOC", "").lower() == "true",
         allowed_origins=_parse_allowed_origins(),
         api_public_url=os.getenv("API_PUBLIC_URL", "http://localhost:8000").rstrip("/"),
         frontend_url=os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/"),
