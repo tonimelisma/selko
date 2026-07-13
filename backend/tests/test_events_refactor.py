@@ -169,6 +169,25 @@ class TestSaveExtractedEvents:
         assert num_updated == 0
         mock_create.assert_called_once()
 
+    def test_skips_event_with_null_start_datetime(self):
+        """Regression: events with no start_datetime must not be created or matched."""
+        extraction = _make_extraction(
+            events=[_make_calendar_event(start_datetime=None, end_datetime=None)]
+        )
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+
+        with patch("selko.services.events.find_matching_event") as mock_match, \
+             patch("selko.services.events.create_event") as mock_create:
+            num_new, num_updated = save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
+            )
+
+        assert num_new == 0
+        assert num_updated == 0
+        mock_create.assert_not_called()
+        mock_match.assert_not_called()
+
     def test_skips_noop_gcal_match(self):
         from selko.services.event_diff import EventChangeSet
         from selko.services.events import EventMatch
