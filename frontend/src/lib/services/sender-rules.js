@@ -70,6 +70,25 @@ export async function createSenderRule(rule) {
 }
 
 /**
+ * Ignore a sender retroactively: creates the ignore rule and, in the same
+ * atomic server-side call, rejects their pending events in the New lane AND
+ * discards their proposals in the Changes lane.
+ * @param {string} senderEmail - The sender's email address
+ * @returns {Promise<{data: {rejected_new: number, discarded_changes: number} | null, error: import('$lib/errors.js').SupabaseError | null}>}
+ */
+export async function ignoreSenderRetroactive(senderEmail) {
+	try {
+		const { data, error } = await supabase.rpc('ignore_sender_and_reject_pending', {
+			p_sender_email: senderEmail
+		});
+		if (error) throw error;
+		return { data, error: null };
+	} catch (error) {
+		return { data: null, error: parseSupabaseError(error) };
+	}
+}
+
+/**
  * Delete a sender rule
  * @param {string} ruleId - The rule UUID
  * @returns {Promise<{error: import('$lib/errors.js').SupabaseError | null}>}

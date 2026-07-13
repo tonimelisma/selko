@@ -18,9 +18,11 @@ vi.mock('$lib/services/events.js', () => ({
 }));
 
 const mockCreateSenderRule = vi.fn();
+const mockIgnoreSenderRetroactive = vi.fn();
 
 vi.mock('$lib/services/sender-rules.js', () => ({
-	createSenderRule: (...args) => mockCreateSenderRule(...args)
+	createSenderRule: (...args) => mockCreateSenderRule(...args),
+	ignoreSenderRetroactive: (...args) => mockIgnoreSenderRetroactive(...args)
 }));
 
 const mockSyncEventToCalendar = vi.fn();
@@ -46,6 +48,10 @@ describe('Review Queue (App Page)', () => {
 		mockSyncEventToCalendar.mockResolvedValue({ data: null, error: null });
 		mockUpdateEventStatus.mockResolvedValue({ data: null, error: null });
 		mockCreateSenderRule.mockResolvedValue({ data: { id: 'rule-1' }, error: null });
+		mockIgnoreSenderRetroactive.mockResolvedValue({
+			data: { rejected_new: 1, discarded_changes: 0 },
+			error: null
+		});
 	});
 
 	it('shows loading spinner while fetching integrations', () => {
@@ -337,12 +343,50 @@ describe('Review Queue (App Page)', () => {
 		await user.click(screen.getByText('Ignore sender'));
 
 		await waitFor(() => {
-			expect(mockCreateSenderRule).toHaveBeenCalledWith({
-				sender_email: 'spammer@example.com',
-				action: 'ignore'
-			});
-			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'rejected');
+			expect(mockIgnoreSenderRetroactive).toHaveBeenCalledWith('spammer@example.com');
+			// Ignoring is retroactive + atomic server-side; the client just refetches
+			// both lanes rather than looping over one lane's events itself.
+			expect(mockFetchPendingEventsWithSources).toHaveBeenCalledTimes(2);
+			expect(mockCreateSenderRule).not.toHaveBeenCalled();
+			expect(mockUpdateEventStatus).not.toHaveBeenCalled();
 		});
+	});
+
+	it('does not call the ignore rpc for pseudo (non-email) senders', async () => {
+		const user = userEvent.setup();
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Calendar Event',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [{ source_origin: 'google_calendar' }]
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Calendar Event')).toBeInTheDocument();
+		});
+
+		await user.click(screen.getByText('Ignore sender'));
+
+		await waitFor(() => {
+			expect(screen.getByText(/can't be ignored/i)).toBeInTheDocument();
+		});
+		expect(mockIgnoreSenderRetroactive).not.toHaveBeenCalled();
 	});
 
 	it('creates auto-approve sender rule and approves events', async () => {
