@@ -158,6 +158,45 @@ class TestProcessAnyWork:
 
 
 # ===========================================================================
+# Service client reuse (regression: per-poll client creation leaked memory
+# and OOM-killed the production instance)
+# ===========================================================================
+
+
+class TestServiceClientReuse:
+    """Tests that the pool reuses one service client across poll iterations."""
+
+    @pytest.mark.asyncio
+    async def test_client_created_once_across_iterations(self, pool, mock_config):
+        """Repeated polls must not create a new supabase client each time."""
+        pool.config = mock_config
+
+        with (
+            patch("selko.workers.pool.get_service_client") as mock_create,
+            patch("selko.workers.pool.claim_scheduled_task", return_value=None),
+            patch("selko.workers.pool.claim_pending_email", return_value=None),
+            patch("selko.workers.pool.claim_pending_photo", return_value=None),
+            patch("selko.workers.pool.claim_approved_event_for_sync", return_value=None),
+        ):
+            for _ in range(5):
+                await pool._process_any_work("w-0")
+
+        assert mock_create.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_start_resets_cached_client(self, pool, mock_config):
+        """start() drops any cached client so a restart uses fresh config."""
+        pool._client = MagicMock()
+
+        with patch("selko.workers.pool.load_config", return_value=mock_config):
+            pool._worker_loop = AsyncMock()
+            await pool.start()
+
+        assert pool._client is None
+        await pool.stop()
+
+
+# ===========================================================================
 # Email fetch worker
 # ===========================================================================
 
