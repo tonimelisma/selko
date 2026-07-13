@@ -5,6 +5,7 @@ Handles Gmail OAuth flow and API interactions.
 
 import logging
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from google.auth.exceptions import RefreshError
@@ -30,6 +31,18 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
 class GmailError(Exception):
     """Raised when Gmail operations fail."""
+
+    pass
+
+
+class GmailHistoryExpiredError(GmailError):
+    """Raised when Gmail no longer retains the requested history cursor."""
+
+    pass
+
+
+class GmailMessageNotFoundError(GmailError):
+    """Raised when a history entry refers to a message deleted before fetch."""
 
     pass
 
@@ -304,6 +317,155 @@ DEFAULT_MESSAGE_QUERY = (
     "-in:spam -in:trash -in:drafts -in:sent "
     "-category:promotions -category:social -category:forums"
 )
+
+
+def build_initial_sync_query(
+    excluded_label_names: list[str] | None = None,
+    *,
+    days: int = 14,
+) -> str:
+    """Build the bounded first-sync search used by reliable ingestion."""
+
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y/%m/%d")
+    terms = [f"after:{since}", DEFAULT_MESSAGE_QUERY]
+    for name in excluded_label_names or []:
+        # Gmail accepts label names in quotes; escape quotes in a user label.
+        safe_name = str(name).replace('"', '\\"')
+        terms.append(f'-label:"{safe_name}"')
+    return " ".join(terms)
+
+
+def list_labels(service) -> list[dict]:
+    """Return every Gmail label, following all API pages."""
+
+    labels: list[dict] = []
+    page_token: str | None = None
+    while True:
+        kwargs = {"userId": "me"}
+        if page_token:
+            kwargs["pageToken"] = page_token
+        try:
+            page = service.users().labels().list(**kwargs).execute()
+        except RefreshError as e:
+            raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+        except HttpError as e:
+            raise GmailError(f"Gmail API error listing labels: {e}") from e
+        labels.extend(page.get("labels", []))
+        page_token = page.get("nextPageToken")
+        if not page_token:
+            return labels
+
+
+def list_message_ids(
+    service,
+    *,
+    query: str,
+    page_size: int = 500,
+) -> list[dict]:
+    """List all message IDs for a search, draining every result page."""
+
+    message_ids: list[dict] = []
+    page_token: str | None = None
+    while True:
+        kwargs = {"userId": "me", "maxResults": page_size, "q": query}
+        if page_token:
+            kwargs["pageToken"] = page_token
+        try:
+            page = service.users().messages().list(**kwargs).execute()
+        except RefreshError as e:
+            raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+        except HttpError as e:
+            raise GmailError(f"Gmail API error listing messages: {e}") from e
+        message_ids.extend(page.get("messages", []))
+        page_token = page.get("nextPageToken")
+        if not page_token:
+            return message_ids
+
+
+def get_message_metadata(service, message_id: str) -> dict:
+    """Fetch only labels and identity before deciding whether content is eligible."""
+
+    try:
+        return (
+            service.users()
+            .messages()
+            .get(
+                userId="me",
+                id=message_id,
+                format="metadata",
+            )
+            .execute()
+        )
+    except RefreshError as e:
+        raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+    except HttpError as e:
+        if getattr(e.resp, "status", None) == 404:
+            raise GmailMessageNotFoundError(
+                f"Gmail message {message_id} no longer exists"
+            ) from e
+        raise GmailError(f"Gmail API error fetching message metadata: {e}") from e
+
+
+def get_full_message(service, message_id: str) -> dict:
+    """Fetch full message content only after label eligibility was established."""
+
+    try:
+        return service.users().messages().get(
+            userId="me", id=message_id, format="full"
+        ).execute()
+    except RefreshError as e:
+        raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+    except HttpError as e:
+        if getattr(e.resp, "status", None) == 404:
+            raise GmailMessageNotFoundError(
+                f"Gmail message {message_id} no longer exists"
+            ) from e
+        raise GmailError(f"Gmail API error fetching message: {e}") from e
+
+
+def fetch_history_message_ids(
+    service,
+    start_history_id: str,
+) -> tuple[list[str], str]:
+    """Drain Gmail History pages and return changed message IDs plus new cursor."""
+
+    message_ids: set[str] = set()
+    page_token: str | None = None
+    latest_history_id = start_history_id
+    while True:
+        kwargs = {
+            "userId": "me",
+            "startHistoryId": start_history_id,
+            "historyTypes": ["messageAdded", "labelAdded", "labelRemoved", "messageDeleted"],
+        }
+        if page_token:
+            kwargs["pageToken"] = page_token
+        try:
+            page = service.users().history().list(**kwargs).execute()
+        except RefreshError as e:
+            raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+        except HttpError as e:
+            if getattr(e.resp, "status", None) == 404:
+                raise GmailHistoryExpiredError(
+                    f"Gmail history cursor {start_history_id} expired"
+                ) from e
+            raise GmailError(f"Gmail API error reading history: {e}") from e
+
+        latest_history_id = page.get("historyId") or latest_history_id
+        for entry in page.get("history", []):
+            latest_history_id = entry.get("id") or latest_history_id
+            for key in ("messagesAdded", "labelsAdded", "labelsRemoved", "messagesDeleted"):
+                for item in entry.get(key, []):
+                    message = item.get("message", item)
+                    if message.get("id"):
+                        message_ids.add(message["id"])
+            for message in entry.get("messages", []):
+                if message.get("id"):
+                    message_ids.add(message["id"])
+
+        page_token = page.get("nextPageToken")
+        if not page_token:
+            return sorted(message_ids), page.get("historyId") or latest_history_id
 
 
 def fetch_messages(

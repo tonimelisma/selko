@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import { fetchActivityEvents } from '$lib/services/events.js';
+	import { fetchEmailHistory, queueEmailReprocess } from '$lib/services/email-history.js';
 	import { syncEventToCalendar, undoHistoryEvent } from '$lib/api/backend.js';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -13,16 +14,22 @@
 	/** @type {any[]} */
 	let events = $state([]);
 	let totalCount = $state(0);
+	/** @type {any[]} */
+	let emailHistory = $state([]);
+	let emailHistoryCount = $state(0);
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
 	/** Load/fetch errors that replace the list */
 	let loadError = $state('');
 	/** Per-action errors shown as a banner above the list */
 	let actionError = $state('');
+	let emailLoadError = $state('');
 	/** @type {any | null} Event that can be force-undone after CALENDAR_DIVERGED */
 	let forceUndoEvent = $state(null);
 	/** @type {Set<string>} */
 	let processingEvents = $state(new Set());
+	/** @type {Set<string>} */
+	let processingEmails = $state(new Set());
 	let offset = $state(0);
 	const limit = 20;
 
@@ -62,7 +69,7 @@
 	});
 
 	onMount(async () => {
-		await loadEvents();
+		await Promise.all([loadEvents(), loadEmailHistory()]);
 	});
 
 	async function loadEvents() {
@@ -91,6 +98,83 @@
 			offset += result.data.length;
 		}
 		isLoadingMore = false;
+	}
+
+	async function loadEmailHistory() {
+		emailLoadError = '';
+		const result = await fetchEmailHistory({ limit: 20, offset: 0 });
+		if (result.error) {
+			emailLoadError = result.error.message;
+		} else {
+			emailHistory = result.data;
+			emailHistoryCount = result.count || 0;
+		}
+	}
+
+	/** @param {any} email */
+	function emailSender(email) {
+		return email.from_name || email.from_email || $_('history.unknownSender');
+	}
+
+	/** @param {any} email */
+	function emailOutcome(email) {
+		if (email.processing_status === 'failed') return $_('history.emailFailed');
+		/** @type {Record<string, string>} */
+		const outcomes = {
+			no_event: $_('history.emailNoEvent'),
+			event_created: $_('history.emailEventCreated'),
+			event_updated: $_('history.emailEventUpdated'),
+			event_created_and_updated: $_('history.emailEventCreatedAndUpdated'),
+			event_cancelled: $_('history.emailEventCancelled')
+		};
+		return outcomes[email.processing_outcome] || $_('history.emailProcessed');
+	}
+
+	/** @param {any} email */
+	function emailTime(email) {
+		try {
+			return new Date(email.date_sent || email.processed_at).toLocaleString(undefined, {
+				dateStyle: 'medium',
+				timeStyle: 'short'
+			});
+		} catch {
+			return '';
+		}
+	}
+
+	/** @param {string} emailId */
+	function startEmailProcessing(emailId) {
+		processingEmails = new Set([...processingEmails, emailId]);
+		actionError = '';
+	}
+
+	/** @param {string} emailId */
+	function stopEmailProcessing(emailId) {
+		const next = new Set(processingEmails);
+		next.delete(emailId);
+		processingEmails = next;
+	}
+
+	/** @param {any} email */
+	async function handleReprocessEmail(email) {
+		if (processingEmails.has(email.id)) return;
+		startEmailProcessing(email.id);
+		try {
+			const result = await queueEmailReprocess(email.id);
+			if (result.error) {
+				actionError = result.error.message;
+				return;
+			}
+			const queued = result.data;
+			if (!queued) return;
+			emailHistory = emailHistory.map((item) =>
+				item.id === email.id
+					? { ...item, processing_status: queued.processing_status, processing_outcome: null }
+					: item
+			);
+		} finally {
+			stopEmailProcessing(email.id);
+		}
 	}
 
 	/** @param {any} event */
@@ -273,7 +357,7 @@
 	</div>
 {:else if loadError}
 	<ErrorAlert message={loadError} onretry={loadEvents} />
-{:else if events.length === 0}
+{:else if events.length === 0 && emailHistory.length === 0}
 	<EmptyState
 		heading={$_('history.noActivity')}
 		description={$_('history.noActivityDescription')}
@@ -359,4 +443,52 @@
 			</div>
 		{/if}
 	</div>
+{/if}
+
+{#if !isLoading && (emailHistory.length > 0 || emailLoadError)}
+	<section class="mt-10" aria-labelledby="email-history-heading">
+		<div class="flex items-center justify-between mb-3">
+			<h2 id="email-history-heading" class="text-lg font-semibold">{$_('history.emailHistory')}</h2>
+			{#if emailHistoryCount > emailHistory.length}
+				<span class="text-xs text-base-content/60">{emailHistory.length} / {emailHistoryCount}</span>
+			{/if}
+		</div>
+		{#if emailLoadError}
+			<ErrorAlert message={emailLoadError} />
+		{:else}
+			<div class="space-y-2">
+				{#each emailHistory as email (email.id)}
+					{@const emailBusy = processingEmails.has(email.id) || ['pending', 'processing'].includes(email.processing_status)}
+					<div class="flex items-start justify-between gap-3 p-3 border border-base-200 rounded-lg">
+						<div class="min-w-0 flex-1">
+							<div class="flex items-center gap-2 flex-wrap">
+								<span class="font-medium text-sm truncate">{email.subject || $_('eventSource.noSubject')}</span>
+								<span class="badge badge-sm badge-outline">{email.email_provider === 'outlook' ? $_('integrations.outlook') : $_('integrations.gmail')}</span>
+							</div>
+							<div class="flex items-center gap-2 mt-1 text-xs text-base-content/60 flex-wrap">
+								<span>{emailTime(email)}</span>
+								<span>{emailSender(email)}</span>
+								<span>·</span>
+								<span>{emailOutcome(email)}</span>
+							</div>
+							{#if email.processing_explanation}
+								<p class="text-xs text-base-content/70 mt-1">{email.processing_explanation}</p>
+							{/if}
+						</div>
+						<button
+							class="btn btn-outline btn-xs flex-shrink-0"
+							disabled={emailBusy}
+							onclick={() => handleReprocessEmail(email)}
+						>
+							{#if emailBusy}
+								<span class="loading loading-spinner loading-xs"></span>
+							{:else}
+								{$_('history.reprocess')}
+							{/if}
+						</button>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</section>
 {/if}

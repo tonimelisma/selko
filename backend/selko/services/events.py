@@ -55,6 +55,10 @@ def mark_email_status(
     email_id: str,
     status: str,
     error: Optional[str] = None,
+    *,
+    outcome: Optional[str] = None,
+    explanation: Optional[str] = None,
+    result: Optional[dict[str, Any]] = None,
 ) -> None:
     """Update email processing status.
 
@@ -67,8 +71,20 @@ def mark_email_status(
     update_data: dict[str, Any] = {"processing_status": status}
     if status == "processing":
         update_data["processed_at"] = datetime.now(timezone.utc).isoformat()
-    if error is not None:
+        update_data["processing_error"] = None
+        update_data["processing_outcome"] = None
+        update_data["processing_explanation"] = None
+        update_data["processing_result"] = None
+    elif status == "failed":
         update_data["processing_error"] = error
+    elif status == "processed":
+        update_data["processing_error"] = None
+    if outcome is not None:
+        update_data["processing_outcome"] = outcome
+    if explanation is not None:
+        update_data["processing_explanation"] = explanation
+    if result is not None:
+        update_data["processing_result"] = result
     supabase_client.table("emails").update(update_data).eq("id", email_id).execute()
 
 
@@ -404,8 +420,15 @@ def process_email_for_events(
 
         if not extraction.events_found or not extraction.events:
             logger.info("No events found in email")
-            mark_email_status(supabase_client, email_id, "processed")
-            return {"num_events": 0, "num_new": 0, "num_updated": 0}
+            result = {"num_events": 0, "num_new": 0, "num_updated": 0}
+            mark_email_status(
+                supabase_client,
+                email_id,
+                "processed",
+                outcome="no_event",
+                result=result,
+            )
+            return result
 
         num_new, num_updated = save_extracted_events(
             supabase_client, gateway, user_id, email_id, extraction,
@@ -413,14 +436,35 @@ def process_email_for_events(
             treat_as_civil=not from_ics,
         )
 
-        mark_email_status(supabase_client, email_id, "processed")
-        logger.info(f"Processed email {email_id}: {num_new} new, {num_updated} updated events")
-
+        if num_new and num_updated:
+            outcome = "event_created_and_updated"
+        elif num_new:
+            outcome = "event_created"
+        elif num_updated:
+            outcome = "event_updated"
+        else:
+            outcome = "no_event"
         result = {
             "num_events": len(extraction.events),
             "num_new": num_new,
             "num_updated": num_updated,
         }
+        try:
+            source_result = supabase_client.table("event_sources").select(
+                "source_type"
+            ).eq("email_id", email_id).eq("is_undone", False).execute()
+            if any(row.get("source_type") == "cancellation" for row in (source_result.data or [])):
+                outcome = "event_cancelled"
+        except Exception:
+            logger.debug("Could not determine cancellation outcome for %s", email_id)
+        mark_email_status(
+            supabase_client,
+            email_id,
+            "processed",
+            outcome=outcome,
+            result=result,
+        )
+        logger.info(f"Processed email {email_id}: {num_new} new, {num_updated} updated events")
 
         if rule_action == "auto_approve":
             result["auto_approved"] = True

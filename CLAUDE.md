@@ -194,6 +194,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 ## Architecture Principles
 
 - **Direct Supabase Access:** Frontends query Supabase directly. Python API only for operations requiring secrets (OAuth, Gmail sync, LLM processing).
+- **Reliable email ingestion:** Gmail uses paginated initial scans plus History cursors; Outlook uses discovered included folders with one delta cursor per folder. Folder recommendations and overrides live in `email_folders`, and email processing outcomes/reprocessing are exposed through the History workflow.
 - **End-to-End First:** Complete full journeys before expanding scope. First journey: Email → Calendar Event.
 - **LLM-Centric AI:** All intelligence uses multimodal LLMs (6 providers supported, Claude Sonnet 5 default).
 - **YAGNI:** Add complexity only when measured need exists.
@@ -237,6 +238,7 @@ from a Microsoft Entra app registration.
 | **CI/CD** | `docs/ci-cd.md` | When troubleshooting CI |
 | **Job queue** | `docs/job-queue.md` | When working with background jobs |
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
+| **Reliable email ingestion and History** | `docs/specs/reliable-email-ingestion-and-history.md` | When changing email cursors, folder inclusion, processing state, or email History |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |
 | **Architecture** | `PRD_ARCH.md` | For product requirements and architecture |
 | **UI user journeys** | `docs/ui/01-user-journeys.md` | When planning frontend work or understanding user flows |

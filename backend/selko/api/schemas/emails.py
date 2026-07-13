@@ -57,6 +57,14 @@ class EmailProcessResponse(BaseModel):
     event_ids: list[str] = Field(description="List of event UUIDs created/updated")
 
 
+class EmailReprocessResponse(BaseModel):
+    """Response returned when an historical email is queued again."""
+
+    email_id: str
+    processing_status: str
+    queued: bool = True
+
+
 class BatchProcessRequest(BaseModel):
     """Request model for batch processing emails."""
 
