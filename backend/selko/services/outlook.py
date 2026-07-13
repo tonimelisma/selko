@@ -50,12 +50,12 @@ OUTLOOK_HIDDEN_SYSTEM_ALIASES = {
     "recoverableitemsdeletions",
     "recoverableitemspurges",
     "recoverableitemsversions",
+    "conversationhistory",
 }
 OUTLOOK_ELIGIBLE_SYSTEM_ALIASES = {
     "inbox",
     "archive",
     "clutter",
-    "conversationhistory",
 }
 OUTLOOK_SYSTEM_ALIASES = (
     OUTLOOK_PERMANENT_ALIASES

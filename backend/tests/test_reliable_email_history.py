@@ -21,8 +21,16 @@ from selko.services.gmail import (
     fetch_history_message_ids,
 )
 from selko.services.emails import complete_email_processing
-from selko.services.outlook import fetch_mail_folders, normalize_mail_folders
-from selko.workers.email_fetch import _process_gmail_reliable
+from selko.services.outlook import (
+    GraphHttpError,
+    fetch_mail_folders,
+    normalize_mail_folders,
+)
+from selko.workers.email_fetch import (
+    _process_gmail_reliable,
+    _process_outlook_reliable,
+    _reconcile_missing_outlook_folders,
+)
 
 
 def test_initial_gmail_query_is_bounded_and_excludes_arbitrary_user_labels():
@@ -118,6 +126,32 @@ def test_outlook_folder_discovery_uses_immutable_ids_and_does_not_traverse_forbi
     assert next(folder for folder in folders if folder["id"] == "immutable-inbox")["wellKnownName"] == "inbox"
 
 
+def test_outlook_conversation_history_is_never_discovered_or_traversed():
+    aliases = {"conversationhistory": "conversation-history-id"}
+    child_requests = []
+
+    def graph_get(_token, url, **_kwargs):
+        if url.endswith("/mailFolders"):
+            return {
+                "value": [
+                    {
+                        "id": "conversation-history-id",
+                        "displayName": "Conversation History",
+                    },
+                    {"id": "custom", "displayName": "Newsletters"},
+                ]
+            }
+        if "/childFolders" in url:
+            child_requests.append(url)
+        return {"value": []}
+
+    with patch("selko.services.outlook._graph_get", side_effect=graph_get):
+        folders = fetch_mail_folders("token", resolved_well_known_ids=aliases)
+
+    assert [folder["id"] for folder in folders] == ["custom"]
+    assert all("conversation-history-id" not in request for request in child_requests)
+
+
 def test_upsert_does_not_classify_eligible_system_folders_and_preserves_scan_metadata():
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
@@ -146,6 +180,104 @@ def test_upsert_does_not_classify_eligible_system_folders_and_preserves_scan_met
     assert row["is_scannable"] is True
     assert row["is_included"] is True
     gateway.for_user.assert_not_called()
+
+
+def test_upsert_normalizes_stale_system_folder_exclusion():
+    client = MagicMock()
+    stale = {
+        "provider_folder_id": "inbox-id",
+        "name": "Inbox",
+        "full_path": "Inbox",
+        "is_included": False,
+        "user_override": True,
+    }
+    client.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[stale]
+    )
+    client.table.return_value.upsert.return_value.execute.return_value = MagicMock(data=[])
+
+    upsert_discovered_folders(
+        client,
+        user_id="user-1",
+        integration_id="integration-1",
+        provider="outlook",
+        folders=[{
+            "id": "inbox-id",
+            "name": "Inbox",
+            "full_path": "Inbox",
+            "kind": "folder",
+            "is_system": True,
+            "is_scannable": True,
+            "system_kind": "inbox",
+        }],
+    )
+
+    row = client.table.return_value.upsert.call_args.args[0][0]
+    assert row["is_included"] is True
+    assert row["user_override"] is False
+
+
+def test_reconcile_missing_outlook_folders_removes_only_stale_configuration():
+    client = MagicMock()
+    rows = [
+        {"id": "row-current", "provider_folder_id": "current"},
+        {"id": "row-deleted", "provider_folder_id": "deleted"},
+    ]
+
+    with patch("selko.workers.email_fetch._outlook_folder_rows", return_value=rows):
+        _reconcile_missing_outlook_folders(client, "integration-1", {"current"})
+
+    client.table.assert_called_once_with("email_folders")
+    client.table.return_value.delete.return_value.eq.assert_called_once_with(
+        "id", "row-deleted"
+    )
+    client.table.return_value.delete.return_value.eq.return_value.execute.assert_called_once()
+
+
+def test_outlook_deleted_folder_does_not_block_later_folder_sync():
+    client = MagicMock()
+    deleted = {
+        "id": "row-deleted",
+        "provider_folder_id": "deleted",
+        "full_path": "Deleted custom folder",
+        "is_included": True,
+        "is_scannable": True,
+    }
+    current = {
+        "id": "row-current",
+        "provider_folder_id": "current",
+        "full_path": "Current folder",
+        "is_included": True,
+        "is_scannable": True,
+    }
+
+    with (
+        patch("selko.workers.email_fetch.get_access_token", return_value="token"),
+        patch("selko.workers.email_fetch.resolve_well_known_folder_ids", return_value={}),
+        patch("selko.workers.email_fetch.fetch_mail_folders", return_value=[]),
+        patch("selko.workers.email_fetch.normalize_mail_folders", return_value=[]),
+        patch("selko.workers.email_fetch._reconcile_outlook_forbidden_folders"),
+        patch("selko.workers.email_fetch.upsert_discovered_folders"),
+        patch("selko.workers.email_fetch._reconcile_missing_outlook_folders"),
+        patch("selko.workers.email_fetch._folder_classifier_gateway", return_value=None),
+        patch("selko.workers.email_fetch._outlook_folder_rows", return_value=[deleted, current]),
+        patch(
+            "selko.workers.email_fetch.fetch_message_changes",
+            side_effect=[GraphHttpError(404, "folder missing"), ([], "cursor-current")],
+        ) as fetch_changes,
+        patch("selko.workers.email_fetch._remove_outlook_folder_row") as remove_folder,
+        patch("selko.workers.email_fetch._save_folder_cursor") as save_cursor,
+    ):
+        _process_outlook_reliable(
+            client,
+            MagicMock(),
+            {"user_id": "user-1"},
+            {"id": "integration-1"},
+        )
+
+    assert fetch_changes.call_count == 2
+    remove_folder.assert_called_once_with(client, deleted)
+    save_cursor.assert_called_once_with(client, current, "cursor-current")
 
 
 def test_folder_preference_uses_restricted_rpc_instead_of_table_update():

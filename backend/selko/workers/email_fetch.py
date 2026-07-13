@@ -38,6 +38,7 @@ from selko.services.gmail import (
     list_message_ids,
 )
 from selko.services.outlook import (
+    GraphHttpError,
     OUTLOOK_HIDDEN_SYSTEM_ALIASES,
     OUTLOOK_PERMANENT_ALIASES,
     RESYNC_REQUIRED,
@@ -539,6 +540,24 @@ def _reconcile_outlook_forbidden_folders(
     ).execute()
 
 
+def _remove_outlook_folder_row(client: Client, folder: dict[str, Any]) -> None:
+    """Remove folder configuration without touching historical emails."""
+
+    client.table("email_folders").delete().eq("id", folder["id"]).execute()
+
+
+def _reconcile_missing_outlook_folders(
+    client: Client,
+    integration_id: str,
+    discovered_folder_ids: set[str],
+) -> None:
+    """Remove configurations for custom folders no longer returned by Graph."""
+
+    for folder in _outlook_folder_rows(client, integration_id):
+        if folder.get("provider_folder_id") not in discovered_folder_ids:
+            _remove_outlook_folder_row(client, folder)
+
+
 def _process_outlook_reliable(
     client: Client,
     config: Config,
@@ -575,6 +594,11 @@ def _process_outlook_reliable(
         folders=discovered,
         gateway=_folder_classifier_gateway(client, config),
     )
+    _reconcile_missing_outlook_folders(
+        client,
+        integration_id,
+        {folder["id"] for folder in discovered},
+    )
     folder_rows = _outlook_folder_rows(client, integration_id)
     since = datetime.now(timezone.utc) - timedelta(days=14)
 
@@ -598,20 +622,27 @@ def _process_outlook_reliable(
                 since=since if not cursor else None,
                 immutable_ids=True,
             )
+            if new_cursor == RESYNC_REQUIRED:
+                changes, new_cursor = fetch_message_changes(
+                    token,
+                    None,
+                    folder_id=folder["provider_folder_id"],
+                    since=since,
+                    immutable_ids=True,
+                )
+                if new_cursor == RESYNC_REQUIRED:
+                    raise OutlookError(
+                        f"Outlook delta cursor expired during resync for folder {folder['full_path']}"
+                    )
+        except GraphHttpError as exc:
+            if exc.status_code == 404:
+                # The folder may have been deleted or moved after discovery.
+                # Remove only its configuration and let other folders sync.
+                _remove_outlook_folder_row(client, folder)
+                continue
+            raise
         except OutlookError:
             raise
-        if new_cursor == RESYNC_REQUIRED:
-            changes, new_cursor = fetch_message_changes(
-                token,
-                None,
-                folder_id=folder["provider_folder_id"],
-                since=since,
-                immutable_ids=True,
-            )
-            if new_cursor == RESYNC_REQUIRED:
-                raise OutlookError(
-                    f"Outlook delta cursor expired during resync for folder {folder['full_path']}"
-                )
 
         for change in changes:
             message_id = change["id"]

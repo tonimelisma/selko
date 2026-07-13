@@ -146,7 +146,11 @@ def upsert_discovered_folders(
                 decision="include",
                 reason="This provider system folder is included automatically.",
             )
-            is_included = bool(prior.get("is_included", True)) if prior else True
+            # Normalize rows created before system-folder recognition. Eligible
+            # system folders are mandatory sources and are hidden from Settings,
+            # so preserving an old user exclusion would make it impossible to
+            # correct there.
+            is_included = True
             user_override = False
             is_scannable = True
         elif prior and prior.get("user_override"):
