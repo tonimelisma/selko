@@ -3,6 +3,8 @@
 import asyncio
 import logging
 import tracemalloc
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -101,6 +103,29 @@ class TestTracemallocDiff:
             assert retained
         finally:
             tracemalloc.stop()
+
+    def test_growth_site_beyond_top_n_by_absolute_diff_is_not_masked(self):
+        """Regression: compare_to() sorts by absolute size_diff, so large
+        frees can fill the top N and crowd out real growth sites further
+        down the (unfiltered) list. Filtering must happen before slicing."""
+        # 10 large frees (negative diffs) exactly fill top_n=10 by absolute
+        # value; the one real growth site sits just past that cutoff.
+        frees = [
+            SimpleNamespace(
+                traceback=f"free_site_{i}", size_diff=-100_000, size=0, count_diff=-1
+            )
+            for i in range(10)
+        ]
+        growth = SimpleNamespace(
+            traceback="growing_site", size_diff=4096, size=8192, count_diff=2
+        )
+        snapshot = MagicMock()
+        snapshot.compare_to.return_value = frees + [growth]
+
+        output = format_tracemalloc_diff(snapshot, MagicMock(), top_n=10)
+
+        assert "growing_site" in output
+        assert "no growth" not in output
 
 
 class TestMonitorTask:
