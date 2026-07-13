@@ -376,6 +376,7 @@ class TestEmailProcessWorker:
             patch(
                 "selko.workers.email_process.process_email",
                 new_callable=AsyncMock,
+                return_value={"num_events": 1, "num_new": 1, "num_updated": 0},
             ) as mock_proc,
             patch("selko.workers.pool.complete_email_processing") as mock_complete,
             patch("selko.workers.pool.circuit_breaker") as mock_cb,
@@ -392,6 +393,36 @@ class TestEmailProcessWorker:
         mock_proc.assert_called_once()
         mock_complete.assert_called_once_with(mock_client, "e1")
         mock_cb.record_success.assert_called_with("llm")
+
+    @pytest.mark.asyncio
+    async def test_pool_does_not_overwrite_skipped_email(self, mock_config):
+        """Regression: a sender-ignored/calendar-invite email must stay
+        'skipped', not get flipped back to 'processed' by the pool."""
+        pool = WorkerPool(num_workers=1)
+        pool.config = mock_config
+        mock_config.email_processing_timeout = 30
+        mock_client = MagicMock()
+        email = {"id": "e1", "user_id": "u1", "subject": "Meetup"}
+
+        with (
+            patch(
+                "selko.workers.email_process.process_email",
+                new_callable=AsyncMock,
+                return_value={
+                    "num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True,
+                },
+            ),
+            patch("selko.workers.pool.complete_email_processing") as mock_complete,
+            patch("selko.workers.pool.circuit_breaker"),
+            patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
+        ):
+            async def _run(coro, timeout=None):
+                return await coro
+
+            mock_wait_for.side_effect = _run
+            await pool._process_email(mock_client, "worker-1", email)
+
+        mock_complete.assert_not_called()
 
 
 # ===========================================================================

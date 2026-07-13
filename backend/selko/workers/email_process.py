@@ -27,16 +27,25 @@ async def process_email(
     client: Client,
     config: Config,
     email: dict[str, Any],
-) -> None:
+) -> dict[str, Any]:
     """Process an email for calendar event extraction.
 
     This is called by the worker pool after claiming an email.
-    Status updates are handled by the worker pool.
+    Status updates are handled by the worker pool — EXCEPT when
+    process_email_for_events already left the email in a terminal skipped
+    state (sender-ignored, calendar invite). The returned ``skipped`` flag
+    signals that to the caller, which must not overwrite it back to
+    "processed".
 
     Args:
         client: Supabase client (with service role).
         config: Application configuration.
         email: Full email record (from claim_pending_email).
+
+    Returns:
+        The result dict from process_email_for_events (num_events, num_new,
+        num_updated, and skipped when the email was left in a terminal
+        skipped state rather than needing the pool to mark it processed).
 
     Raises:
         EventsError: If event extraction/processing fails.
@@ -70,7 +79,7 @@ async def process_email(
         skipped = result.get("skipped", False)
 
         if skipped:
-            logger.info(f"Email {email_id} skipped (sender ignored)")
+            logger.info(f"Email {email_id} skipped")
         elif num_events > 0:
             logger.info(
                 f"Extracted {num_events} events from email '{subject[:50]}': "
@@ -78,6 +87,8 @@ async def process_email(
             )
         else:
             logger.info(f"No events found in email '{subject[:50]}'")
+
+        return result
 
     except EventsError as e:
         logger.error(f"Failed to process email {email_id}: {e}")

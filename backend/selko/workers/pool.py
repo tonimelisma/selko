@@ -329,11 +329,15 @@ class WorkerPool:
         logger.info(f"{worker_id}: Processing email {email_id}: {subject}")
 
         try:
-            await asyncio.wait_for(
+            result = await asyncio.wait_for(
                 process_email(client, self.config, email),
                 timeout=self.config.email_processing_timeout,
             )
-            complete_email_processing(client, email_id)
+            # Sender-ignored and calendar-invite emails are already left in a
+            # terminal "skipped" state by process_email_for_events; don't
+            # overwrite that back to "processed".
+            if not (result or {}).get("skipped"):
+                complete_email_processing(client, email_id)
             logger.info(f"{worker_id}: Completed email {email_id}")
             circuit_breaker.record_success("llm")
 
