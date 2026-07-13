@@ -6,7 +6,7 @@
 		fetchPendingEventsWithSources,
 		updateEventStatus
 	} from '$lib/services/events.js';
-	import { createSenderRule } from '$lib/services/sender-rules.js';
+	import { createSenderRule, ignoreSenderRetroactive } from '$lib/services/sender-rules.js';
 	import {
 		applyEventChange,
 		rejectEventChange,
@@ -235,26 +235,22 @@
 	}
 
 	/**
+	 * Ignore a sender retroactively: rejects their pending New-lane events AND
+	 * discards their Changes-lane proposals in one atomic server-side call.
 	 * @param {string} senderEmail
-	 * @param {any[]} eventsList
 	 */
-	async function handleIgnoreSender(senderEmail, eventsList) {
+	async function handleIgnoreSender(senderEmail) {
 		actionError = '';
-		const { error: ruleError } = await createSenderRule({
-			sender_email: senderEmail,
-			action: 'ignore'
-		});
-		if (ruleError) {
-			actionError = ruleError.message;
+		if (!senderEmail.includes('@')) {
+			actionError = $_('home.senderIgnoreInvalidSender');
 			return;
 		}
-		for (const event of eventsList) {
-			if (event.status === 'pending_change') {
-				await handleRejectChange(event);
-			} else {
-				await handleRejectNew(event);
-			}
+		const { error: rpcError } = await ignoreSenderRetroactive(senderEmail);
+		if (rpcError) {
+			actionError = rpcError.message;
+			return;
 		}
+		await loadEvents();
 		notification = $_('home.senderIgnored', { values: { senderEmail } });
 		setTimeout(() => {
 			notification = '';
@@ -361,7 +357,7 @@
 								isPhotoSource={senderKey === 'google_photos'}
 								onapproveAll={() => handleApproveAllNew(senderGroup.events)}
 								onrejectAll={() => handleRejectAllNew(senderGroup.events)}
-								onignoreSender={() => handleIgnoreSender(senderKey, senderGroup.events)}
+								onignoreSender={() => handleIgnoreSender(senderKey)}
 								onautoApproveSender={() =>
 									handleAutoApproveSender(senderKey, senderGroup.events)}
 							/>
@@ -397,7 +393,7 @@
 								onrejectAll={() => {
 									for (const event of senderGroup.events) handleRejectChange(event);
 								}}
-								onignoreSender={() => handleIgnoreSender(senderKey, senderGroup.events)}
+								onignoreSender={() => handleIgnoreSender(senderKey)}
 								onautoApproveSender={() =>
 									handleAutoApproveSender(senderKey, senderGroup.events)}
 							/>
