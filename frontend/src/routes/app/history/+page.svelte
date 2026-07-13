@@ -166,7 +166,8 @@
 			event_updated: $_('history.emailEventUpdated'),
 			event_created_and_updated: $_('history.emailEventCreatedAndUpdated'),
 			event_cancelled: $_('history.emailEventCancelled'),
-			event_matched: $_('history.emailEventMatched')
+			event_matched: $_('history.emailEventMatched'),
+			calendar_invite: $_('history.emailCalendarInvite')
 		};
 		return outcomes[email.processing_outcome] || $_('history.emailProcessed');
 	}

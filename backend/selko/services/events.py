@@ -439,6 +439,19 @@ def process_email_for_events(
         else:
             initial_status = "pending_review"
 
+        # Calendar invitation emails (meeting requests, updates, RSVPs, cancellations)
+        # are already handled by the user's email client and calendar. Skip entirely.
+        invite_method = ics_parser.detect_invite_method(attachments)
+        if email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVITE_METHODS:
+            result = {"num_events": 0, "num_new": 0, "num_updated": 0}
+            mark_email_status(
+                supabase_client, email_id, "processed",
+                outcome="calendar_invite",
+                explanation="Calendar invitation — already handled by your email client and calendar.",
+                result=result,
+            )
+            return result
+
         # Try .ics direct parsing first (skips LLM)
         ics_extraction = ics_parser.parse_ics_attachments(attachments, email_metadata)
         from_ics = bool(ics_extraction and ics_extraction.events)

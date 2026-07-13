@@ -340,9 +340,10 @@ describe('History Page', () => {
 			data: [
 				{ id: 'email-1', subject: 'Matched', email_provider: 'gmail', processing_status: 'processed', processing_outcome: 'event_matched', date_sent: new Date().toISOString() },
 				{ id: 'email-2', subject: 'Failed', email_provider: 'outlook', processing_status: 'failed', processing_error: 'Provider failed', date_sent: new Date().toISOString() },
-				{ id: 'email-3', subject: 'No event', email_provider: 'gmail', processing_status: 'processed', processing_outcome: 'no_event', date_sent: new Date().toISOString() }
+				{ id: 'email-3', subject: 'No event', email_provider: 'gmail', processing_status: 'processed', processing_outcome: 'no_event', date_sent: new Date().toISOString() },
+				{ id: 'email-4', subject: 'Meeting invite', email_provider: 'outlook', processing_status: 'processed', processing_outcome: 'calendar_invite', date_sent: new Date().toISOString() }
 			],
-			count: 3,
+			count: 4,
 			error: null
 		});
 
@@ -353,6 +354,8 @@ describe('History Page', () => {
 			expect(screen.getByText('Existing event matched')).toBeInTheDocument();
 			expect(screen.getAllByText('Failed')).toHaveLength(2);
 			expect(screen.getByText('No event found')).toBeInTheDocument();
+			expect(screen.getByText('Meeting invite')).toBeInTheDocument();
+			expect(screen.getByText('Calendar invitation (handled by your calendar)')).toBeInTheDocument();
 		});
 	});
 

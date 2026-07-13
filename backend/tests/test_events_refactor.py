@@ -612,6 +612,91 @@ class TestProcessEmailPipeline:
         status_calls = [call[0][2] for call in mock_mark.call_args_list]
         assert status_calls == ["processing", "skipped"]
 
+    def test_calendar_invite_flag_short_circuits(self):
+        """Regression: an Outlook eventMessage must never reach LLM extraction."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        with patch("selko.services.events.mark_email_status") as mock_mark, \
+             patch(
+                 "selko.services.events.event_processing.fetch_email_with_attachments",
+                 return_value=(
+                     {"from_email": "organizer@example.com", "is_calendar_invite": True},
+                     "text",
+                     [],
+                 ),
+             ), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
+             patch("selko.services.events.event_processing.extract_calendar_events") as mock_extract:
+            result = process_email_for_events(
+                mock_client, mock_gateway, "email-1", "user-1"
+            )
+
+        assert result["num_events"] == 0
+        mock_extract.assert_not_called()
+        status_calls = [call.kwargs.get("outcome") for call in mock_mark.call_args_list]
+        assert "calendar_invite" in status_calls
+
+    def test_ics_invite_method_short_circuits(self):
+        """Regression: a Gmail METHOD:REQUEST .ics attachment must never reach LLM extraction."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        request_ics = (
+            b"BEGIN:VCALENDAR\nVERSION:2.0\nMETHOD:REQUEST\n"
+            b"BEGIN:VEVENT\nSUMMARY:Meeting\nDTSTART:20260315T140000Z\n"
+            b"END:VEVENT\nEND:VCALENDAR"
+        )
+        attachments = [{"data": request_ics, "mime_type": "text/calendar", "filename": "invite.ics"}]
+
+        with patch("selko.services.events.mark_email_status") as mock_mark, \
+             patch(
+                 "selko.services.events.event_processing.fetch_email_with_attachments",
+                 return_value=({"from_email": "organizer@example.com"}, "text", attachments),
+             ), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
+             patch("selko.services.events.event_processing.extract_calendar_events") as mock_extract:
+            result = process_email_for_events(
+                mock_client, mock_gateway, "email-1", "user-1"
+            )
+
+        assert result["num_events"] == 0
+        mock_extract.assert_not_called()
+        status_calls = [call.kwargs.get("outcome") for call in mock_mark.call_args_list]
+        assert "calendar_invite" in status_calls
+
+    def test_publish_ics_still_extracts_events(self):
+        """A plain 'add to calendar' .ics (METHOD:PUBLISH or no METHOD) is not an invite."""
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        publish_ics = (
+            b"BEGIN:VCALENDAR\nVERSION:2.0\nMETHOD:PUBLISH\n"
+            b"BEGIN:VEVENT\nSUMMARY:Community Fest\nDTSTART:20260315T140000Z\n"
+            b"END:VEVENT\nEND:VCALENDAR"
+        )
+        attachments = [{"data": publish_ics, "mime_type": "text/calendar", "filename": "event.ics"}]
+
+        with patch("selko.services.events.mark_email_status") as mock_mark, \
+             patch(
+                 "selko.services.events.event_processing.fetch_email_with_attachments",
+                 return_value=({"from_email": "organizer@example.com"}, "text", attachments),
+             ), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
+             patch("selko.services.events.event_processing.extract_calendar_events") as mock_extract, \
+             patch("selko.services.events.save_extracted_events", return_value=(1, 0)):
+            result = process_email_for_events(
+                mock_client, mock_gateway, "email-1", "user-1"
+            )
+
+        assert result["num_events"] == 1
+        mock_extract.assert_not_called()  # .ics parses directly, skipping the LLM
+        status_calls = [call.kwargs.get("outcome") for call in mock_mark.call_args_list]
+        assert "calendar_invite" not in status_calls
+
     def test_no_events_short_circuits(self):
         mock_client = MagicMock()
         mock_gateway = MagicMock()
