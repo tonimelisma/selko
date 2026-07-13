@@ -150,6 +150,55 @@ class TestNormalizeEventData:
         assert result["location"] is None
         assert result["description"] == ""
 
+    def test_zero_length_event_gets_one_hour_duration(self):
+        """Regression: end == start (e.g. an extracted deadline) must not sync
+        as a zero-length sliver."""
+        event = _make_calendar_event(
+            start_datetime=datetime(2026, 3, 15, 20, 0),
+            end_datetime=datetime(2026, 3, 15, 20, 0),
+        )
+        result = normalize_event_data(event)
+
+        assert result["start_datetime"] == "2026-03-15T20:00:00-04:00"
+        assert result["end_datetime"] == "2026-03-15T21:00:00-04:00"
+
+    def test_missing_end_gets_one_hour_duration(self):
+        event = _make_calendar_event(
+            start_datetime=datetime(2026, 3, 15, 20, 0), end_datetime=None
+        )
+        result = normalize_event_data(event)
+
+        assert result["end_datetime"] == "2026-03-15T21:00:00-04:00"
+
+    def test_end_before_start_gets_one_hour_duration(self):
+        event = _make_calendar_event(
+            start_datetime=datetime(2026, 3, 15, 20, 0),
+            end_datetime=datetime(2026, 3, 15, 19, 0),
+        )
+        result = normalize_event_data(event)
+
+        assert result["end_datetime"] == "2026-03-15T21:00:00-04:00"
+
+    def test_valid_duration_is_untouched(self):
+        event = _make_calendar_event(
+            start_datetime=datetime(2026, 3, 15, 20, 0),
+            end_datetime=datetime(2026, 3, 15, 21, 30),
+        )
+        result = normalize_event_data(event)
+
+        assert result["end_datetime"] == "2026-03-15T21:30:00-04:00"
+
+    def test_all_day_zero_length_is_untouched(self):
+        """all_day events must never get the timed-event duration guard."""
+        event = _make_calendar_event(
+            start_datetime=datetime(2026, 3, 15, 0, 0),
+            end_datetime=datetime(2026, 3, 15, 0, 0),
+            all_day=True,
+        )
+        result = normalize_event_data(event)
+
+        assert result["end_datetime"] == "2026-03-15T00:00:00-04:00"
+
 
 class TestSaveExtractedEvents:
     """Tests for save_extracted_events helper."""
@@ -213,6 +262,57 @@ class TestSaveExtractedEvents:
         assert num_new == 0
         assert num_updated == 0
         mock_gcal.assert_not_called()
+
+    def test_proposed_zero_length_change_gets_one_hour_duration(self):
+        """Regression: a proposal with matching start/end (e.g. a re-extracted
+        deadline) must not persist a zero-length change."""
+        from selko.services.event_diff import EventChangeSet, FieldChange
+        from selko.services.events import EventMatch
+
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        extraction = _make_extraction(events=[_make_calendar_event()])
+        match = EventMatch(
+            match_id="gcal:abc-123",
+            baseline={
+                "title": "Application Deadline",
+                "start_datetime": "2026-03-15T14:00:00Z",
+                "status": "synced",
+            },
+        )
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[
+                FieldChange(
+                    field="start_datetime",
+                    before="2026-03-15T14:00:00Z",
+                    after="2026-03-20T20:00:00",
+                ),
+                FieldChange(
+                    field="end_datetime",
+                    before="2026-03-15T14:00:00Z",
+                    after="2026-03-20T20:00:00",
+                ),
+            ],
+        )
+
+        with patch("selko.services.events.find_matching_event", return_value=match), \
+             patch(
+                 "selko.services.events.event_processing.propose_event_update",
+                 return_value=change_set,
+             ), \
+             patch(
+                 "selko.services.events.create_pending_change_from_gcal",
+                 return_value="new-id",
+             ) as mock_gcal:
+            save_extracted_events(
+                mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
+            )
+
+        proposal_data = mock_gcal.call_args[0][2]
+        start = datetime.fromisoformat(proposal_data["start_datetime"])
+        end = datetime.fromisoformat(proposal_data["end_datetime"])
+        assert end == start + timedelta(hours=1)
 
     def test_proposes_gcal_change_when_material(self):
         from selko.services.event_diff import EventChangeSet, FieldChange

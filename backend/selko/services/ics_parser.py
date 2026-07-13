@@ -156,6 +156,7 @@ def _vevent_to_calendar_event(
         title=summary,
         start_datetime=start_dt,
         end_datetime=end_dt,
+        all_day=is_all_day,
         location=location,
         description=description,
         recurrence_rule=recurrence_rule,

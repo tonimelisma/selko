@@ -155,21 +155,37 @@ def normalize_event_data(
     """
     from selko.services.civil_time import to_storage_iso
 
+    all_day = getattr(event, "all_day", False)
+    start_iso = to_storage_iso(
+        event.start_datetime, user_timezone, treat_as_civil=treat_as_civil
+    )
+    end_iso = to_storage_iso(
+        event.end_datetime, user_timezone, treat_as_civil=treat_as_civil
+    )
+    if not all_day and start_iso:
+        end_iso = ensure_min_duration(start_iso, end_iso)
+
     return {
         "title": event.title,
-        "start_datetime": to_storage_iso(
-            event.start_datetime, user_timezone, treat_as_civil=treat_as_civil
-        ),
-        "end_datetime": to_storage_iso(
-            event.end_datetime, user_timezone, treat_as_civil=treat_as_civil
-        ),
-        "all_day": getattr(event, "all_day", False),
+        "start_datetime": start_iso,
+        "end_datetime": end_iso,
+        "all_day": all_day,
         "location": event.location,
         "description": event.description,
         "source_quote": getattr(event, "source_quote", ""),
         "importance": getattr(event, "importance", "action_required"),
         "recurrence_rule": getattr(event, "recurrence_rule", None),
     }
+
+
+def ensure_min_duration(start_iso: str, end_iso: Optional[str]) -> str:
+    """Give zero-length or missing-end timed events a 1-hour default duration."""
+    start_dt = datetime.fromisoformat(start_iso)
+    if end_iso:
+        end_dt = datetime.fromisoformat(end_iso)
+        if end_dt > start_dt:
+            return end_iso
+    return (start_dt + timedelta(hours=1)).isoformat()
 
 
 def save_extracted_events(
@@ -297,6 +313,15 @@ def save_extracted_events(
                     user_timezone,
                     treat_as_civil=True,
                 )
+        if (
+            "start_datetime" in proposed_fields
+            and "end_datetime" in proposed_fields
+            and proposed_fields["start_datetime"]
+            and not proposed_fields.get("all_day", match.baseline.get("all_day", False))
+        ):
+            proposed_fields["end_datetime"] = ensure_min_duration(
+                proposed_fields["start_datetime"], proposed_fields["end_datetime"]
+            )
         proposal_data = {
             **{k: v for k, v in event_data.items() if k in ("source_quote", "importance")},
             **proposed_fields,
