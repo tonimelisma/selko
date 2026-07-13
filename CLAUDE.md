@@ -59,6 +59,18 @@ BLOCKED: Cannot edit source code in the main repository.
 
 **The DoD scales to what you changed. Run only what your change actually touches — nothing more.** A backend-only change never runs web, iOS, or Android tests or screenshots.
 
+### 0. Check for unaddressed PR review comments
+
+Review comments often land **after** a PR has already been squash-merged (async reviewers, bots, ultrareview). At the start of each work increment:
+
+1. `gh pr list --state merged --limit 10` — check the last 10 merged PRs.
+2. For each, check for review comments that haven't been addressed yet (`gh pr view <number> --comments` or `gh api repos/<owner>/<repo>/pulls/<number>/comments`). Skip comments already marked fixed/claimed by a prior increment.
+3. **Claim** any unclaimed, unaddressed comment by posting a reply that you'll fix it, so parallel agents don't duplicate the work.
+4. **Fix it** as part of the current increment (same worktree/branch as whatever else you're doing, or its own small PR if unrelated to the current task).
+5. **Close the loop** — post a follow-up comment on the original PR explaining how it was fixed (link the commit/PR that fixed it).
+
+This keeps stale review feedback from silently rotting once a PR is merged and out of sight.
+
 ### 1. Scope your change
 
 | You changed | Required before merge |
