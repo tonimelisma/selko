@@ -121,9 +121,10 @@
 		isLoadingMore = false;
 	}
 
-	async function loadEmailHistory() {
+	/** @param {number} [requestedLimit] */
+	async function loadEmailHistory(requestedLimit = 20) {
 		emailLoadError = '';
-		const result = await fetchEmailHistory({ limit: 20, offset: 0 });
+		const result = await fetchEmailHistory({ limit: requestedLimit, offset: 0 });
 		if (result.error) {
 			emailLoadError = result.error.message;
 		} else {
@@ -233,6 +234,10 @@
 			if (state && ['processed', 'failed'].includes(state.processing_status)) {
 				stopEmailPolling(emailId);
 				stopEmailProcessing(emailId);
+				// Reprocessing temporarily removes the row from the server-side
+				// processed/failed result set. Refresh the complete loaded window so
+				// offset pagination cannot skip the row that shifted across a page.
+				await loadEmailHistory(Math.max(emailOffset, 20));
 				return;
 			}
 			attempts += 1;

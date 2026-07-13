@@ -358,8 +358,12 @@ describe('History Page', () => {
 
 	it('polls a reprocessed email until it reaches processed', async () => {
 		const user = userEvent.setup();
-		mockFetchEmailHistory.mockResolvedValue({
+		mockFetchEmailHistory.mockResolvedValueOnce({
 			data: [{ id: 'email-1', subject: 'Retry me', email_provider: 'gmail', processing_status: 'failed', processing_outcome: null, date_sent: new Date().toISOString() }],
+			count: 1,
+			error: null
+		}).mockResolvedValueOnce({
+			data: [{ id: 'email-1', subject: 'Retry me', email_provider: 'gmail', processing_status: 'processed', processing_outcome: 'event_matched', date_sent: new Date().toISOString() }],
 			count: 1,
 			error: null
 		});
@@ -373,6 +377,7 @@ describe('History Page', () => {
 
 		await waitFor(() => expect(mockQueueEmailReprocess).toHaveBeenCalledWith('email-1'));
 		await waitFor(() => expect(screen.getByText('Existing event matched')).toBeInTheDocument(), { timeout: 3000 });
+		expect(mockFetchEmailHistory).toHaveBeenLastCalledWith({ limit: 20, offset: 0 });
 		expect(screen.getByRole('button', { name: 'Reprocess' })).not.toBeDisabled();
 	});
 
