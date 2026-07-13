@@ -18,22 +18,31 @@ INVITE_METHODS = {"REQUEST", "REPLY", "CANCEL", "COUNTER", "DECLINECOUNTER"}
 
 
 def detect_invite_method(attachments: list[dict[str, Any]]) -> Optional[str]:
-    """Return the uppercased METHOD of the first parseable .ics, or None.
+    """Return the uppercased METHOD across the .ics attachments, preferring
+    any genuine invite method (REQUEST/REPLY/CANCEL/...) over PUBLISH/none.
 
     A real calendar-invite email (Google/Outlook meeting request, update,
     RSVP, or cancellation) carries one of INVITE_METHODS. Plain "add to
     calendar" .ics files use METHOD:PUBLISH or omit METHOD entirely and are
-    not invites.
+    not invites. Scans every parseable attachment rather than stopping at
+    the first, so an invite method on a later attachment isn't masked by an
+    earlier PUBLISH/no-METHOD one.
     """
+    first_method: Optional[str] = None
     for att in _filter_ics_attachments(attachments):
         try:
             cal = icalendar.Calendar.from_ical(att["data"])
         except Exception:
             continue
         method = cal.get("METHOD")
-        if method:
-            return str(method).strip().upper()
-    return None
+        if not method:
+            continue
+        method = str(method).strip().upper()
+        if method in INVITE_METHODS:
+            return method
+        if first_method is None:
+            first_method = method
+    return first_method
 
 
 def parse_ics_attachments(

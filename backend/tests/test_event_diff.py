@@ -7,6 +7,7 @@ from selko.services.event_diff import (
     baseline_from_gcal_event,
     compute_change_set,
     gate_change_set,
+    gate_stale_email_material_changes,
     resolve_description_append,
 )
 
@@ -260,6 +261,8 @@ class TestResolveDescriptionAppend:
         assert result.changes[0].after == "Only new info."
 
     def test_dedupes_already_present_addition(self):
+        """Regression: an addition that resolves to the baseline (nothing new)
+        must be dropped entirely, not persisted as a no-op description change."""
         baseline = {"description": "Bring your own snacks. Original description."}
         change_set = EventChangeSet(
             kind="enrichment",
@@ -272,7 +275,24 @@ class TestResolveDescriptionAppend:
             ],
         )
         result = resolve_description_append(change_set, baseline)
-        assert result.changes[0].after == "Bring your own snacks. Original description."
+        assert result.changes == []
+        assert result.kind == "noop"
+
+    def test_keeps_other_changes_when_duplicate_description_dropped(self):
+        baseline = {"title": "A", "description": "Existing note."}
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[
+                FieldChange(field="title", before="A", after="B"),
+                FieldChange(
+                    field="description", after="Existing note.", mode="append"
+                ),
+            ],
+        )
+        result = resolve_description_append(change_set, baseline)
+        assert len(result.changes) == 1
+        assert result.changes[0].field == "title"
+        assert result.kind == "material_update"
 
     def test_replace_mode_is_untouched(self):
         baseline = {"description": "Old"}
@@ -296,6 +316,73 @@ class TestResolveDescriptionAppend:
         assert result.changes[0].after == "B"
 
 
+class TestGateStaleEmailMaterialChanges:
+    """Deterministic code-gate backstop for propose_event_update rule 10."""
+
+    def test_drops_material_fields_when_email_is_older(self):
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[
+                FieldChange(field="title", before="Original", after="Renamed"),
+                FieldChange(
+                    field="start_datetime",
+                    before="2026-08-01T14:00:00Z",
+                    after="2026-08-02T14:00:00Z",
+                ),
+                FieldChange(field="description", after="Extra note", mode="append"),
+            ],
+        )
+        result = gate_stale_email_material_changes(
+            change_set,
+            email_date_sent="2026-07-09T00:00:00Z",
+            baseline_info_date="2026-07-12T00:00:00Z",
+        )
+        assert {c.field for c in result.changes} == {"description"}
+        assert result.kind == "enrichment"
+
+    def test_keeps_changes_when_email_is_newer(self):
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[FieldChange(field="title", before="Original", after="Renamed")],
+        )
+        result = gate_stale_email_material_changes(
+            change_set,
+            email_date_sent="2026-07-12T00:00:00Z",
+            baseline_info_date="2026-07-09T00:00:00Z",
+        )
+        assert len(result.changes) == 1
+        assert result.kind == "material_update"
+
+    def test_noop_when_all_changes_dropped(self):
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[FieldChange(field="location", before="A", after="B")],
+        )
+        result = gate_stale_email_material_changes(
+            change_set,
+            email_date_sent="2026-07-09T00:00:00Z",
+            baseline_info_date="2026-07-12T00:00:00Z",
+        )
+        assert result.changes == []
+        assert result.kind == "noop"
+
+    def test_passthrough_when_dates_missing(self):
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[FieldChange(field="title", before="A", after="B")],
+        )
+        result = gate_stale_email_material_changes(change_set, None, None)
+        assert result is change_set
+
+    def test_passthrough_when_dates_unparseable(self):
+        change_set = EventChangeSet(
+            kind="material_update",
+            changes=[FieldChange(field="title", before="A", after="B")],
+        )
+        result = gate_stale_email_material_changes(change_set, "not-a-date", "also-not-a-date")
+        assert result is change_set
+
+
 class TestBaselineHelpers:
     def test_baseline_from_gcal_event(self):
         gcal = {
@@ -309,6 +396,42 @@ class TestBaselineHelpers:
         assert baseline["title"] == "Standup"
         assert baseline["all_day"] is False
         assert baseline["location"] == "Room 1"
+
+    def test_baseline_from_gcal_all_day_event_survives_db_round_trip(self):
+        """Regression: an imported GCal all-day event's start/end must be
+        stored as local-midnight-as-absolute-instant (Selko's own
+        convention), not a bare date string that becomes a literal
+        UTC-midnight timestamp after a DB round-trip and then shifts a day
+        earlier for users west of UTC when re-synced via gcal_all_day_fields.
+        """
+        from selko.services.civil_time import gcal_all_day_fields
+
+        gcal = {
+            "summary": "Kids Club Closed",
+            "start": {"date": "2026-08-12"},
+            "end": {"date": "2026-08-15"},
+        }
+        baseline = baseline_from_gcal_event(gcal, user_timezone="America/Los_Angeles")
+
+        assert baseline["all_day"] is True
+        assert baseline["start_datetime"] == "2026-08-12T00:00:00-07:00"
+        assert baseline["end_datetime"] == "2026-08-15T00:00:00-07:00"
+
+        # Simulate the round trip: this is exactly what a timestamptz column
+        # returns for that value.
+        stored_start = "2026-08-12T07:00:00+00:00"
+        stored_end = "2026-08-15T07:00:00+00:00"
+        start_fields, end_fields = gcal_all_day_fields(
+            stored_start, stored_end, "America/Los_Angeles"
+        )
+        assert start_fields == {"date": "2026-08-12"}
+        assert end_fields == {"date": "2026-08-15"}
+
+    def test_baseline_from_gcal_all_day_event_with_no_end(self):
+        gcal = {"summary": "Holiday", "start": {"date": "2026-04-01"}}
+        baseline = baseline_from_gcal_event(gcal, user_timezone="America/Los_Angeles")
+        assert baseline["start_datetime"] == "2026-04-01T00:00:00-07:00"
+        assert baseline["end_datetime"] is None
 
     def test_apply_asserted_fields(self):
         baseline = {
