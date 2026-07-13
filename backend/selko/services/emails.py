@@ -222,6 +222,100 @@ def save_emails(
     return saved_records
 
 
+def store_gmail_message_attachments(
+    client: Client,
+    config: Config,
+    service: Any,
+    message: dict[str, Any],
+    email_record: dict[str, Any],
+    parsed_email: dict[str, Any] | None = None,
+) -> int:
+    """Download attachments/images for an already-eligible Gmail message.
+
+    Callers must invoke this only after the message's provider labels have been
+    checked. Keeping the download helper separate makes it impossible for a
+    rejected message to reach attachment storage in the reliable sync path.
+    """
+
+    message_id = message["id"]
+    email_id = email_record["id"]
+    images_stored = 0
+
+    for attachment_part in extract_attachments(message):
+        try:
+            if process_attachment(
+                client=client,
+                gmail_service=service,
+                email_id=email_id,
+                message_id=message_id,
+                attachment_part=attachment_part,
+                config=config,
+            ):
+                images_stored += 1
+        except AttachmentError as exc:
+            logger.warning("Failed to process Gmail attachment for %s: %s", message_id, exc)
+
+    for inline_part in extract_inline_images(message):
+        try:
+            if process_attachment(
+                client=client,
+                gmail_service=service,
+                email_id=email_id,
+                message_id=message_id,
+                attachment_part=inline_part,
+                config=config,
+            ):
+                images_stored += 1
+        except AttachmentError as exc:
+            logger.warning("Failed to process Gmail inline image for %s: %s", message_id, exc)
+
+    body_html = (parsed_email or {}).get("body_html")
+    if body_html:
+        try:
+            linked_images = extract_linked_images(body_html)
+        except Exception as exc:
+            logger.warning("Failed to extract linked Gmail images for %s: %s", message_id, exc)
+            linked_images = []
+        for idx, image in enumerate(linked_images):
+            try:
+                if store_image_content(
+                    client=client,
+                    email_id=email_id,
+                    image_data=image.data,
+                    mime_type=image.mime_type,
+                    filename=f"linked_{idx}.{image.mime_type.split('/')[-1]}",
+                    config=config,
+                ):
+                    images_stored += 1
+            except AttachmentError as exc:
+                logger.warning("Failed to store linked Gmail image for %s: %s", message_id, exc)
+
+        try:
+            data_uri_images = extract_data_uri_images(body_html)
+        except Exception as exc:
+            logger.warning("Failed to extract data URI Gmail images for %s: %s", message_id, exc)
+            data_uri_images = []
+        for idx, image in enumerate(data_uri_images):
+            try:
+                if store_image_content(
+                    client=client,
+                    email_id=email_id,
+                    image_data=image.data,
+                    mime_type=image.mime_type,
+                    filename=f"data_uri_{idx}.{image.mime_type.split('/')[-1]}",
+                    config=config,
+                ):
+                    images_stored += 1
+            except AttachmentError as exc:
+                logger.warning("Failed to store data URI Gmail image for %s: %s", message_id, exc)
+
+    if images_stored and not email_record.get("has_attachments"):
+        client.table("emails").update({"has_attachments": True}).eq(
+            "id", email_id
+        ).execute()
+    return images_stored
+
+
 def fetch_emails_for_user(
     client: Client,
     config: Config,
@@ -253,6 +347,34 @@ def fetch_emails_for_user(
         raise
     except Exception as e:
         raise EmailError(f"Error getting credentials: {e}") from e
+
+    # Manual and scheduled syncs share the same cursor-based implementation.
+    # Keep this import local because the worker imports parsing/storage helpers
+    # from this module.
+    try:
+        integration_result = (
+            client.table("integrations")
+            .select("id")
+            .eq("provider", "gmail")
+            .maybe_single()
+            .execute()
+        )
+        if integration_result and integration_result.data and integration_result.data.get("id"):
+            from selko.workers.email_fetch import _process_gmail_fetch_sync
+
+            return _process_gmail_fetch_sync(
+                client,
+                config,
+                {
+                    "user_id": get_current_user_id(client),
+                    "provider": "gmail",
+                    "fetch_attachments": fetch_attachments,
+                },
+            )
+    except EmailError:
+        raise
+    except Exception as e:
+        raise EmailError(f"Error preparing reliable Gmail sync: {e}") from e
 
     # Build Gmail service and fetch emails
     try:
@@ -474,6 +596,7 @@ def complete_email_processing(client: Client, email_id: str) -> None:
     try:
         client.table("emails").update({
             "processing_status": "processed",
+            "processing_error": None,
             "processed_at": datetime.now(timezone.utc).isoformat(),
             "locked_by": None,
             "locked_until": None,

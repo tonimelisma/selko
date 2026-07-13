@@ -23,6 +23,7 @@ class LLMOperationType(str, Enum):
     """Types of LLM operations."""
 
     EXTRACT_EVENTS = "extract_events"
+    CLASSIFY_EMAIL_FOLDER = "classify_email_folder"
     COMPARE_EVENTS = "compare_events"
     MERGE_EVENTS = "merge_events"
     PROPOSE_EVENT_UPDATE = "propose_event_update"

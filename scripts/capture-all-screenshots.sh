@@ -17,7 +17,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 echo "==> Checking prerequisites..."
 
 # Check Supabase is running
-if ! curl -s -o /dev/null -w '' http://localhost:54321/rest/v1/ 2>/dev/null; then
+if ! curl -fsS -o /dev/null http://localhost:54321/rest/v1/ 2>/dev/null; then
     echo "ERROR: Local Supabase is not running. Start it with: supabase start" >&2
     exit 1
 fi

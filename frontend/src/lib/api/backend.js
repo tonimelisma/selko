@@ -263,6 +263,65 @@ export async function batchProcessEmails(options = {}) {
 	}
 }
 
+/**
+ * Queue one historical email for safe reprocessing.
+ * @param {string} emailId
+ * @returns {Promise<{data: {email_id: string, processing_status: string} | null, error: ApiError | null}>}
+ */
+export async function reprocessEmail(emailId) {
+	try {
+		const response = await apiRequest(`/emails/${emailId}/reprocess`, { method: 'POST' });
+		if (!response.ok) {
+			return { data: null, error: await parseApiError(response) };
+		}
+		return { data: await response.json(), error: null };
+	} catch (error) {
+		return {
+			data: null,
+			error: { message: error instanceof Error ? error.message : 'Reprocess failed', status: 0 }
+		};
+	}
+}
+
+/**
+ * Fetch discovered, user-configurable folders for an email provider.
+ * @param {'gmail' | 'outlook'} provider
+ */
+export async function fetchEmailFolders(provider) {
+	try {
+		const response = await apiRequest(`/integrations/${provider}/folders`, { method: 'GET' });
+		if (!response.ok) return { data: [], error: await parseApiError(response) };
+		return { data: await response.json(), error: null };
+	} catch (error) {
+		return {
+			data: [],
+			error: { message: error instanceof Error ? error.message : 'Failed to load folders', status: 0 }
+		};
+	}
+}
+
+/**
+ * Save an include/exclude override for a discovered folder.
+ * @param {'gmail' | 'outlook'} provider
+ * @param {string} folderId
+ * @param {boolean} isIncluded
+ */
+export async function updateEmailFolder(provider, folderId, isIncluded) {
+	try {
+		const response = await apiRequest(`/integrations/${provider}/folders/${folderId}`, {
+			method: 'PATCH',
+			body: JSON.stringify({ is_included: isIncluded })
+		});
+		if (!response.ok) return { data: null, error: await parseApiError(response) };
+		return { data: await response.json(), error: null };
+	} catch (error) {
+		return {
+			data: null,
+			error: { message: error instanceof Error ? error.message : 'Failed to update folder', status: 0 }
+		};
+	}
+}
+
 // ============================================================================
 // Calendar Operations
 // ============================================================================

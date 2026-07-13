@@ -194,21 +194,139 @@ def _graph_get(
         raise OutlookError("Microsoft Graph returned invalid JSON") from exc
 
 
+def _graph_prefer(*values: str) -> str:
+    return ", ".join(value for value in values if value)
+
+
 def get_user_profile(access_token: str) -> dict[str, Any]:
     """Fetch the signed-in Microsoft profile."""
     return _graph_get(access_token, f"{GRAPH}/me")
 
 
+def fetch_mail_folders(access_token: str) -> list[dict[str, Any]]:
+    """Discover the complete Outlook mail-folder hierarchy."""
+
+    folders: list[dict[str, Any]] = []
+    roots_url = f"{GRAPH}/me/mailFolders"
+    roots_params = {"$top": "100", "includeHiddenFolders": "true"}
+    pending: list[tuple[str, dict[str, Any] | None]] = [(roots_url, roots_params)]
+    while pending:
+        url, params = pending.pop(0)
+        while url:
+            page = _graph_get(
+                access_token,
+                url,
+                params=params,
+                prefer=_graph_prefer('IdType="ImmutableId"', "odata.maxpagesize=100"),
+            )
+            params = None
+            for folder in page.get("value", []):
+                folders.append(folder)
+                folder_id = folder.get("id")
+                if folder_id:
+                    pending.append((
+                        f"{GRAPH}/me/mailFolders/{folder_id}/childFolders",
+                        {"$top": "100", "includeHiddenFolders": "true"},
+                    ))
+            url = page.get("@odata.nextLink")
+    return folders
+
+
+def normalize_mail_folders(folders: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize Graph folders into the shared folder persistence shape."""
+
+    by_id = {str(folder.get("id")): folder for folder in folders if folder.get("id")}
+    paths: dict[str, str] = {}
+
+    def path_for(folder_id: str, trail: set[str] | None = None) -> str:
+        if folder_id in paths:
+            return paths[folder_id]
+        trail = trail or set()
+        if folder_id in trail:
+            return str(by_id[folder_id].get("displayName") or folder_id)
+        folder = by_id[folder_id]
+        name = str(folder.get("displayName") or folder_id)
+        parent_id = folder.get("parentFolderId")
+        if parent_id and str(parent_id) in by_id:
+            path = f"{path_for(str(parent_id), trail | {folder_id})}/{name}"
+        else:
+            path = name
+        paths[folder_id] = path
+        return path
+
+    normalized: list[dict[str, Any]] = []
+    for folder in folders:
+        folder_id = str(folder["id"])
+        system_kind = None
+        well_known = str(folder.get("wellKnownName") or "").lower()
+        if well_known:
+            system_kind = {
+                "junkemail": "junk",
+                "deleteditems": "trash",
+                "sentitems": "sent",
+                "drafts": "drafts",
+                "outbox": "outbox",
+            }.get(well_known)
+        normalized.append({
+            "id": folder_id,
+            "parent_id": folder.get("parentFolderId"),
+            "name": folder.get("displayName") or folder_id,
+            "full_path": path_for(folder_id),
+            "kind": "folder",
+            "is_system": bool(system_kind),
+            "system_kind": system_kind,
+            "well_known_name": well_known,
+        })
+    return normalized
+
+
+def fetch_folder_messages(
+    access_token: str,
+    folder_id: str,
+    *,
+    since: datetime,
+) -> list[dict[str, Any]]:
+    """Fetch every message page for an included folder during first sync."""
+
+    url = f"{GRAPH}/me/mailFolders/{folder_id}/messages"
+    params: dict[str, Any] | None = {
+        "$select": "id,conversationId,parentFolderId,subject,from,toRecipients,receivedDateTime,bodyPreview,body,hasAttachments,isRead,importance,flag",
+        "$filter": f"receivedDateTime ge {since.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}",
+        "$orderby": "receivedDateTime desc",
+        "$top": "50",
+    }
+    messages: list[dict[str, Any]] = []
+    while url:
+        page = _graph_get(
+            access_token,
+            url,
+            params=params,
+            prefer=_graph_prefer('IdType="ImmutableId"', "odata.maxpagesize=50", 'outlook.body-content-type="text"'),
+        )
+        params = None
+        messages.extend(page.get("value", []))
+        url = page.get("@odata.nextLink")
+    return messages
+
+
 def fetch_message_changes(
     access_token: str,
     delta_link: str | None,
+    folder_id: str = "inbox",
+    since: datetime | None = None,
+    immutable_ids: bool = False,
 ) -> tuple[list[dict[str, Any]], str]:
-    """Fetch Inbox changes and return message IDs plus the next delta cursor."""
-    url = delta_link or f"{GRAPH}/me/mailFolders/inbox/messages/delta"
+    """Fetch one folder's changes and return message IDs plus the next cursor."""
+    url = delta_link or f"{GRAPH}/me/mailFolders/{folder_id}/messages/delta"
     params = None if delta_link else {
-        "$select": "id,conversationId",
+        "$select": "id,conversationId,parentFolderId",
         "$top": "50",
     }
+    if params is not None and since is not None:
+        params["$filter"] = (
+            "receivedDateTime ge "
+            f"{since.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}"
+        )
     changes: list[dict[str, Any]] = []
 
     while url:
@@ -217,7 +335,10 @@ def fetch_message_changes(
                 access_token,
                 url,
                 params=params,
-                prefer="odata.maxpagesize=50",
+                prefer=_graph_prefer(
+                    'IdType="ImmutableId"' if immutable_ids else "",
+                    "odata.maxpagesize=50",
+                ),
             )
         except GraphHttpError as exc:
             if exc.status_code == 410:
@@ -246,7 +367,7 @@ def get_full_message(access_token: str, message_id: str) -> dict[str, Any]:
     return _graph_get(
         access_token,
         f"{GRAPH}/me/messages/{message_id}",
-        prefer='outlook.body-content-type="text"',
+        prefer=_graph_prefer('IdType="ImmutableId"', 'outlook.body-content-type="text"'),
     )
 
 
@@ -271,7 +392,10 @@ def synthesize_labels(msg: dict[str, Any]) -> list[str]:
     return labels
 
 
-def parse_outlook_message(msg: dict[str, Any]) -> dict[str, Any]:
+def parse_outlook_message(
+    msg: dict[str, Any],
+    folder_id: str | None = None,
+) -> dict[str, Any]:
     """Convert a Graph message into the provider-agnostic email DB shape."""
     sender = (msg.get("from") or {}).get("emailAddress") or {}
     recipients = []
@@ -297,4 +421,7 @@ def parse_outlook_message(msg: dict[str, Any]) -> dict[str, Any]:
     }
     if body.get("contentType") == "text" and body.get("content"):
         result["body_text"] = body["content"]
+    resolved_folder_id = folder_id or msg.get("parentFolderId")
+    if resolved_folder_id:
+        result["provider_folder_ids"] = [str(resolved_folder_id)]
     return result

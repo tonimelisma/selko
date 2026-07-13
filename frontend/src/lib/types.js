@@ -55,6 +55,9 @@
  * @property {boolean} is_unread
  * @property {boolean} has_attachments
  * @property {string} [processing_status]
+ * @property {string} [processing_outcome]
+ * @property {string} [processing_explanation]
+ * @property {string} [processing_error]
  * @property {string} created_at
  */
 

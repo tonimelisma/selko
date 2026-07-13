@@ -13,6 +13,7 @@
 		initiateCalendarAuth,
 		initiatePhotosAuth
 	} from '$lib/api/backend.js';
+	import { fetchEmailFolders, updateEmailFolder } from '$lib/services/email-folders.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -29,6 +30,9 @@
 	let isLoading = $state(true);
 	let isLoadingCalendars = $state(false);
 	let error = $state('');
+	/** @type {{gmail: any[], outlook: any[]}} */
+	let emailFolders = $state({ gmail: [], outlook: [] });
+	let updatingFolderId = $state('');
 
 	// Disconnect confirm modal
 	let showDisconnectModal = $state(false);
@@ -65,6 +69,7 @@
 		}
 
 		isLoading = false;
+		await loadEmailFolders();
 
 		// Load calendars if Google Calendar is connected
 		const gcal = integrationsList.find(
@@ -73,6 +78,43 @@
 		if (gcal) {
 			await loadCalendars();
 		}
+	}
+
+	async function loadEmailFolders() {
+		/** @type {Array<'gmail' | 'outlook'>} */
+		const providers = /** @type {Array<'gmail' | 'outlook'>} */ (['gmail', 'outlook'].filter((provider) =>
+			integrationsList.some((integration) => integration.provider === provider && integration.status === 'active')
+		));
+		const results = await Promise.all(providers.map((provider) => fetchEmailFolders(provider)));
+		/** @type {{gmail: any[], outlook: any[]}} */
+		const next = { gmail: [], outlook: [] };
+		for (let index = 0; index < providers.length; index += 1) {
+			const folderResult = results[index];
+			if (!folderResult.error && folderResult.data) {
+				next[providers[index]] = folderResult.data;
+			}
+		}
+		emailFolders = next;
+	}
+
+	/** @param {string} provider @param {any} folder */
+	async function handleFolderChange(provider, folder) {
+		if (provider !== 'gmail' && provider !== 'outlook') return;
+		if (updatingFolderId) return;
+		const nextIncluded = !folder.is_included;
+		updatingFolderId = folder.id;
+		const result = await updateEmailFolder(provider, folder.id, nextIncluded);
+		if (result.error) {
+			error = result.error.message;
+		} else {
+			emailFolders = {
+				...emailFolders,
+				[provider]: emailFolders[provider].map((item) =>
+					item.id === folder.id ? { ...item, ...result.data } : item
+				)
+			};
+		}
+		updatingFolderId = '';
 	}
 
 	async function loadCalendars() {
@@ -170,7 +212,48 @@
 			/>
 		</section>
 
-		<!-- Section 2: Calendar Defaults -->
+		<!-- Section 2: Email folders -->
+		<section>
+			<h2 class="text-lg font-semibold mb-2">{$_('settings.emailFolders')}</h2>
+			<p class="text-sm text-base-content/60 mb-4">{$_('settings.emailFoldersHint')}</p>
+			{#if emailFolders.gmail.length === 0 && emailFolders.outlook.length === 0}
+				<p class="text-sm text-base-content/60">{$_('settings.noEmailFolders')}</p>
+			{:else}
+				<div class="space-y-4 max-w-2xl">
+					{#each [{ provider: 'gmail', label: $_('integrations.gmail'), folders: emailFolders.gmail }, { provider: 'outlook', label: $_('integrations.outlook'), folders: emailFolders.outlook }] as group}
+						{#if group.folders.length > 0}
+							<div>
+								<h3 class="font-medium mb-2">{group.label}</h3>
+								<div class="space-y-2">
+									{#each group.folders as folder (folder.id)}
+										<div class="flex items-center justify-between gap-3 border border-base-200 rounded-lg p-3">
+											<div class="min-w-0">
+											<div class="font-medium text-sm truncate">{folder.full_path}</div>
+											{#if folder.classification_decision === 'exclude' && folder.classification_reason}
+												<div class="text-xs text-base-content/60 mt-1">
+													{$_('settings.folderRecommendation', { values: { reason: folder.classification_reason } })}
+												</div>
+											{/if}
+										</div>
+										<button
+											class:btn-primary={folder.is_included}
+											class="btn btn-sm flex-shrink-0"
+											disabled={updatingFolderId === folder.id}
+											onclick={() => handleFolderChange(group.provider, folder)}
+										>
+											{folder.is_included ? $_('settings.included') : $_('settings.excluded')}
+										</button>
+									</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					{/each}
+				</div>
+			{/if}
+		</section>
+
+		<!-- Section 3: Calendar Defaults -->
 		<section>
 			<h2 class="text-lg font-semibold mb-4">{$_('settings.calendarDefaults')}</h2>
 			{#if isLoadingCalendars}
@@ -205,13 +288,13 @@
 			{/if}
 		</section>
 
-		<!-- Section 3: Automation Rules -->
+		<!-- Section 4: Automation Rules -->
 		<section>
 			<h2 class="text-lg font-semibold mb-4">{$_('settings.automationRules')}</h2>
 			<SenderRulesPanel />
 		</section>
 
-		<!-- Section 4: Account -->
+		<!-- Section 5: Account -->
 		<section>
 			<h2 class="text-lg font-semibold mb-4">{$_('settings.account')}</h2>
 			<div class="space-y-4">

@@ -21,6 +21,7 @@ from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.emails import (
     BatchProcessRequest,
     EmailProcessResponse,
+    EmailReprocessResponse,
     EmailSyncRequest,
     EmailSyncResponse,
 )
@@ -38,6 +39,42 @@ from selko.services.quotas import QuotaExceededError, QuotaService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/emails", tags=["emails"])
+
+
+@router.post("/{email_id}/reprocess", response_model=EmailReprocessResponse)
+async def reprocess_email(
+    email_id: Annotated[str, Path(description="Email UUID")],
+    client: Client = Depends(get_authenticated_client),
+    user: CurrentUser = Depends(get_current_user),
+) -> EmailReprocessResponse:
+    """Atomically put one historical email back into the processing queue."""
+
+    try:
+        result = client.rpc("reprocess_email", {
+            "p_user_id": user.id,
+            "p_email_id": email_id,
+        }).execute()
+    except PostgrestAPIError as exc:
+        logger.error("Failed to reprocess email %s: %s", email_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(ErrorCode.DATABASE_ERROR, "Failed to reprocess email"),
+        ) from exc
+
+    if not result or not result.data:
+        # The same response covers repeated clicks and a concurrent worker claim:
+        # both leave the row pending/processing and therefore do not enqueue twice.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error_detail(
+                ErrorCode.INVALID_REQUEST,
+                "This email is already pending or being processed",
+            ),
+        )
+    return EmailReprocessResponse(
+        email_id=email_id,
+        processing_status=result.data[0].get("processing_status", "pending"),
+    )
 
 
 @router.post("/sync", response_model=EmailSyncResponse)

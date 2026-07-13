@@ -16,6 +16,8 @@ export {
 	updateEmailReadStatus
 } from './emails.js';
 
+export { fetchEmailHistory, queueEmailReprocess } from './email-history.js';
+
 // Event operations
 export {
 	fetchPendingEvents,
