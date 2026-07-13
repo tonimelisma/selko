@@ -667,7 +667,7 @@ both datetime fields end up in `proposed_fields`.
 
 ---
 
-## WS6 — Calendar-invite suppression
+## WS6 — Calendar-invite suppression (filter at ingestion)
 
 ### Problem
 
@@ -676,6 +676,22 @@ mails, Outlook meeting requests) become review suggestions. Per product
 decision 2 they must be skipped: the email client / its calendar already owns
 them.
 
+**Design: filter at ingestion.** Invites are detected in the fetch workers and
+stored pre-skipped, so they never enter the pending queue, are never claimed
+by the process worker, and never reach an LLM. A thin process-time guard
+remains only as a backstop (see step 5) — it is not the primary mechanism.
+
+> **Implementation status:** PR #190 shipped the backstop layer — the
+> migration (`20260713000002_calendar_invite_suppression.sql`), the Outlook
+> `@odata.type` flag in `parse_outlook_message`, `detect_invite_method` in
+> `ics_parser.py`, the process-time skip in `process_email_for_events`, and
+> the History outcome label. With #190, invites never reach an LLM, but they
+> still enter the pending queue and are claimed before being skipped, and
+> Gmail detection happens only at process time. **Remaining work:** steps 2
+> and 3 below (Gmail parse-time detection; store pre-skipped in both fetch
+> paths), plus aligning the shipped backstop to mark emails `skipped` rather
+> than `processed` (step 5).
+
 ### Detection signals (structural only — no subject-line heuristics)
 
 1. **Outlook:** Graph returns meeting mails as `eventMessage` subtypes. In
@@ -683,21 +699,62 @@ them.
    field: `result["is_calendar_invite"] = "eventmessage" in str(msg.get("@odata.type", "")).lower()`.
    (`get_full_message` / the reliable path fetch full payloads, so
    `@odata.type` is present for meeting messages.)
-2. **Gmail:** invites arrive as `invite.ics` / `text/calendar` attachments,
-   which Selko already stores. Their RFC 5545 `METHOD` distinguishes real
-   invite machinery from shareable calendar files.
+2. **Gmail:** invites carry a `text/calendar` MIME part whose RFC 5545
+   `METHOD` distinguishes real invite machinery (REQUEST/REPLY/CANCEL/…)
+   from shareable calendar files (PUBLISH / no METHOD). Both signals are
+   available at fetch time in the full message payload:
+   - the part's `Content-Type` header usually includes a `method=REQUEST`
+     parameter, and
+   - the part body is usually inline (`body.data`, base64url) and contains a
+     `METHOD:` line.
 
 ### Changes
 
-1. **Migration:** add `is_calendar_invite boolean NOT NULL DEFAULT false` to
-   `emails`; extend `emails_processing_outcome_check` (from
-   `20260712000003_…`) to include `'calendar_invite'` (drop + re-add the
-   constraint with the extra value).
-2. **`ics_parser.py`:** new function:
+1. **Migration** *(shipped in PR #190)*: add
+   `is_calendar_invite boolean NOT NULL DEFAULT false` to `emails`; extend
+   `emails_processing_outcome_check` to include `'calendar_invite'`.
+2. **Gmail ingest detection** *(remaining)* — in `parse_gmail_message`
+   (`backend/selko/services/emails.py`), walk the payload parts recursively
+   (reuse the traversal pattern of `_extract_body_from_payload`). For a part
+   with `mimeType == "text/calendar"`, resolve its METHOD:
+   - from the part's `Content-Type` header value (`method=X` parameter,
+     case-insensitive); else
+   - if the part has inline `body.data`, base64url-decode it and match
+     `^METHOD:(\S+)` (multiline, case-insensitive); else
+   - leave undetermined (attachment-only body) — the backstop in step 5
+     covers it.
+   Set `result["is_calendar_invite"] = method in INVITE_METHODS` where
+
+   ```python
+   INVITE_METHODS = {"REQUEST", "REPLY", "CANCEL", "COUNTER", "DECLINECOUNTER"}
+   ```
+
+   (define the set once in `ics_parser.py` and import it).
+3. **Store pre-skipped** *(remaining)* — when `parsed.get("is_calendar_invite")`
+   is true (the Outlook parser already sets the flag as of PR #190; Gmail gets
+   it from step 2), the parser also sets, in the same parsed dict:
+
+   ```python
+   parsed["processing_status"] = "skipped"
+   parsed["processing_outcome"] = "calendar_invite"
+   parsed["processing_explanation"] = (
+       "Calendar invitation — already handled by your email client and calendar."
+   )
+   parsed["processed_at"] = datetime.now(timezone.utc).isoformat()
+   ```
+
+   Put this in a small shared helper (e.g. `mark_parsed_as_calendar_invite(parsed)`
+   in `services/emails.py`) called from both the Gmail and Outlook parse
+   paths. Because `save_emails` upserts the parsed dict as-is, these keys flow
+   into the insert; `claim_unprocessed_email` only claims `'pending'` rows, so
+   the email is never processed. **Do NOT add these keys for non-invite
+   emails** — on upsert-conflict re-saves (folder moves), absent columns keep
+   their existing values, and including `processing_status` unconditionally
+   would clobber already-processed rows.
+4. **`ics_parser.py` backstop helper** *(shipped in PR #190)* for stored
+   `.ics` attachments:
 
 ```python
-INVITE_METHODS = {"REQUEST", "REPLY", "CANCEL", "COUNTER", "DECLINECOUNTER"}
-
 def detect_invite_method(attachments: list[dict[str, Any]]) -> Optional[str]:
     """Return the uppercased METHOD of the first parseable .ics, or None."""
     for att in _filter_ics_attachments(attachments):
@@ -711,15 +768,18 @@ def detect_invite_method(attachments: list[dict[str, Any]]) -> Optional[str]:
     return None
 ```
 
-3. **`process_email_for_events`** (`services/events.py`), after fetching
-   email + attachments and checking sender rules, before ICS/LLM extraction:
+5. **Process-time backstop** *(shipped in PR #190, one alignment remaining)* —
+   in `process_email_for_events` (`services/events.py`), after sender-rule
+   checks, before ICS/LLM extraction. As shipped it marks the email
+   `"processed"`; change it to `"skipped"` so the queue-state matches the
+   ingest-time marking and the sender-ignore path:
 
 ```python
 invite_method = ics_parser.detect_invite_method(attachments)
 if email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVITE_METHODS:
     result = {"num_events": 0, "num_new": 0, "num_updated": 0}
     mark_email_status(
-        supabase_client, email_id, "processed",
+        supabase_client, email_id, "skipped",
         outcome="calendar_invite",
         explanation="Calendar invitation — already handled by your email client and calendar.",
         result=result,
@@ -728,19 +788,25 @@ if email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVIT
 ```
 
    `fetch_email_with_attachments` must include `is_calendar_invite` in the
-   returned metadata dict. `METHOD:PUBLISH` or a missing METHOD falls through
-   to today's behavior (`parse_ics_attachments` still creates events from
-   plain calendar files).
-4. **Persistence:** ensure the email save path (`_store_email_record` /
-   `save_emails` in `workers/email_fetch.py`) carries `is_calendar_invite`
-   through to the insert (follow how another boolean like `is_spam` flows;
-   note `is_spam` is trigger-computed — this one is set explicitly by the
-   parser, so it must be in the insert payload whitelist).
-5. **History UI:** `frontend/src/routes/app/history/+page.svelte` outcome map
-   (~line 164): add `calendar_invite: $_('history.emailCalendarInvite')`; add
-   the string to every locale file under `frontend/src/lib/i18n/` (check the
-   existing `history.emailNoEvent` keys for the file layout).
-6. The existing RSVP noop rule in the propose prompt stays as belt-and-braces
+   returned metadata dict. This backstop exists for exactly three cases —
+   it should almost never fire:
+   - the `reprocess_email` RPC (`20260712000005_…`) resets any email to
+     `pending`, including ingest-skipped invites a user reprocesses from
+     History;
+   - Gmail messages whose `text/calendar` METHOD was undeterminable at fetch
+     time (attachment-only body) but is readable from the stored attachment;
+   - emails ingested before this workstream ships.
+
+   `METHOD:PUBLISH` or a missing METHOD falls through to today's behavior at
+   both layers (`parse_ics_attachments` still creates events from plain
+   "add to calendar" files).
+6. **History UI** *(shipped in PR #190)*:
+   `frontend/src/routes/app/history/+page.svelte` outcome map: `calendar_invite`
+   renders via `history.emailCalendarInvite`. Invites appear in History as
+   skipped-with-reason, never as gaps — do not silently drop invite emails at
+   fetch time; the row is the audit trail and the recovery path if detection
+   ever misfires.
+7. The existing RSVP noop rule in the propose prompt stays as belt-and-braces
    (RSVPs that slip through still gate to noop).
 
 ### Interaction with existing events
@@ -752,14 +818,28 @@ read-back (WS3) sees the moved event. Do not special-case this.
 
 ### Tests (backend unit + frontend unit)
 
+PR #190 already covers `detect_invite_method`, the Outlook flag, the
+process-time skip, and the History label. The remaining ingestion work needs:
+
+- `parse_gmail_message`: `text/calendar` part with `method=REQUEST` in
+  Content-Type → flag true + skip fields set; METHOD only in inline body
+  data → flag true; `method=PUBLISH` → flag false, no skip fields; no
+  calendar part → flag false; calendar part with attachment-only body →
+  flag false (backstop case).
+- `parse_outlook_message`: payload with
+  `"@odata.type": "#microsoft.graph.eventMessageRequest"` → flag true + skip
+  fields set; plain message → false, and the parsed dict contains NO
+  `processing_status` key.
 - `detect_invite_method`: REQUEST → "REQUEST"; PUBLISH → falls through and
   `process_email_for_events` still extracts; no METHOD → None; malformed ics →
   None.
-- `parse_outlook_message`: payload with
-  `"@odata.type": "#microsoft.graph.eventMessageRequest"` → flag true; plain
-  message → false.
-- Pipeline: email flagged `is_calendar_invite` → outcome `calendar_invite`,
-  no LLM call (assert gateway not called).
+- Ingest short-circuit: an invite-flagged parsed dict saved via `save_emails`
+  produces a row with `processing_status='skipped'` /
+  `outcome='calendar_invite'` (assert on the upsert payload with a mocked
+  client) — i.e. it can never be claimed, and no LLM gateway is constructed.
+- Backstop: email row flagged `is_calendar_invite` but status `pending`
+  (reprocess path) → `process_email_for_events` skips with outcome
+  `calendar_invite`, gateway never called.
 - History page test: outcome renders the new label.
 
 ---
@@ -769,20 +849,21 @@ read-back (WS3) sees the moved event. Do not special-case this.
 Each row is one worktree + PR per `CLAUDE.md`. Local, change-scoped tests are
 the merge gate.
 
-| # | Branch | Contents | Why this order |
-|---|--------|----------|----------------|
-| 1 | `fix/dedup-local-day-window` | WS3 (a+b+c) + regression tests | Stops new duplicates immediately |
-| 2 | `feat/retroactive-sender-ignore` | WS1 migration + web | User-visible correctness bug |
-| 3 | `fix/all-day-dates-and-duration` | WS5 (a–d) | Display + sync correctness |
-| 4 | `feat/calendar-invite-suppression` | WS6 | Removes an entire noise class |
-| 5 | `feat/update-proposal-discipline` | WS4 (a–d) | Prompt/schema work; test with evals |
-| 6 | — (script, no PR gate needed but still PR the script) `chore/cleanup-review-incident` | WS2 | Run AFTER 1–5 are deployed so reprocessing can't recreate the mess; dry-run first, share output, then `--apply` |
+| # | Branch | Contents | Status |
+|---|--------|----------|--------|
+| 1 | `fix/dedup-local-day-window` | WS3 (a+b+c) + regression tests | **Implemented — PR #187** |
+| 2 | `feat/retroactive-sender-ignore` | WS1 migration + web | **Implemented — PR #188** |
+| 3 | `fix/all-day-dates-and-duration` | WS5 (a–d) | **Implemented — PR #189** |
+| 4 | `feat/calendar-invite-suppression` | WS6 backstop layer | **Implemented — PR #190** |
+| 5 | `feat/invite-filter-at-ingestion` | WS6 remaining: Gmail parse-time detection, store pre-skipped, backstop `skipped` alignment | Remaining |
+| 6 | `feat/update-proposal-discipline` | WS4 (a–d) | Remaining — prompt/schema work; test with evals |
+| 7 | `chore/cleanup-review-incident` | WS2 script | Remaining — run AFTER everything above is deployed so reprocessing can't recreate the mess; dry-run first, share output, then `--apply` |
 
 After WS2 runs in production, verify the affected user's review list: the ~11
 incident-sourced items, the duplicate deadline event, and the second
 duplicate-appointment change card must be gone.
 
-Deployment note: rows 1–5 all touch `backend`/`supabase`/`frontend`, so each
+Deployment note: rows 1–6 all touch `backend`/`supabase`/`frontend`, so each
 PR's final report must end with the standard production-deploy question per
 `CLAUDE.md`.
 
