@@ -239,6 +239,7 @@ from a Microsoft Entra app registration.
 | **Job queue** | `docs/job-queue.md` | When working with background jobs |
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
 | **Reliable email ingestion fix-forward** | `docs/specs/reliable-email-ingestion-fix-forward.md` | When fixing email cursors, folder inclusion, processing state, or email History after PR #183 |
+| **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |
 | **Architecture** | `PRD_ARCH.md` | For product requirements and architecture |
 | **UI user journeys** | `docs/ui/01-user-journeys.md` | When planning frontend work or understanding user flows |
