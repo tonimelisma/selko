@@ -46,6 +46,7 @@
 		"allCaughtUp": "All caught up!",
 		"allCaughtUpDescription": "No events pending review. Check back later for new events from your emails.",
 		"senderIgnored": "Sender ignored: {senderEmail}",
+		"senderIgnoreInvalidSender": "This sender can't be ignored — it isn't an email address.",
 		"senderAutoApproved": "Sender auto-approved: {senderEmail}",
 		"newSection": "New",
 		"changesSection": "Changes",
