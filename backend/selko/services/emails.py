@@ -6,6 +6,7 @@ Handles email parsing and database storage.
 import base64
 import logging
 import math
+import re
 from datetime import datetime, timedelta, timezone
 from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from typing import Any, Optional
@@ -25,6 +26,7 @@ from selko.services.gmail import (
 from selko.services.attachments import AttachmentError, process_attachment, store_image_content
 from selko.services.retry_utils import calculate_retry_delay
 from selko.services.email_images import extract_data_uri_images, extract_linked_images
+from selko.services.ics_parser import INVITE_METHODS
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +110,70 @@ def _extract_body_from_payload(payload: dict[str, Any]) -> tuple[Optional[str], 
     return body_text, body_html
 
 
+_METHOD_HEADER_RE = re.compile(r"method\s*=\s*\"?([A-Za-z]+)\"?", re.IGNORECASE)
+_METHOD_BODY_RE = re.compile(r"^METHOD:(\S+)", re.IGNORECASE | re.MULTILINE)
+
+
+def _method_from_part_headers(headers: list[dict[str, Any]]) -> Optional[str]:
+    """Resolve a MIME part's calendar METHOD from its Content-Type header."""
+    for header in headers:
+        if header.get("name", "").lower() == "content-type":
+            match = _METHOD_HEADER_RE.search(header.get("value", ""))
+            if match:
+                return match.group(1).upper()
+    return None
+
+
+def _detect_gmail_invite_method(payload: dict[str, Any]) -> Optional[str]:
+    """Walk Gmail MIME parts for a text/calendar part and resolve its METHOD.
+
+    Real invite machinery (REQUEST/REPLY/CANCEL/...) is distinguished from a
+    shareable "add to calendar" file (PUBLISH / no METHOD) by RFC 5545 METHOD.
+    Resolved from the part's Content-Type header first, then from the inline
+    body if base64url data is present. Attachment-only bodies (no inline
+    data) are left undetermined — the process-time backstop covers those.
+    """
+
+    def _walk(part: dict[str, Any]) -> Optional[str]:
+        if part.get("mimeType", "") == "text/calendar":
+            method = _method_from_part_headers(part.get("headers", []))
+            if method:
+                return method
+            data = part.get("body", {}).get("data")
+            if data:
+                try:
+                    decoded = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+                except Exception:
+                    return None
+                match = _METHOD_BODY_RE.search(decoded)
+                if match:
+                    return match.group(1).strip().upper()
+            return None
+        for nested in part.get("parts", []):
+            result = _walk(nested)
+            if result:
+                return result
+        return None
+
+    return _walk(payload)
+
+
+def mark_parsed_as_calendar_invite(parsed: dict[str, Any]) -> None:
+    """Set the skip fields so an ingest-detected invite never enters the queue.
+
+    Mutates ``parsed`` in place. Only called when ``is_calendar_invite`` is
+    true — must never be called unconditionally, since ``save_emails`` upserts
+    these keys as-is and an absent key on a re-save (e.g. a folder move)
+    leaves the existing value alone, while an explicit key would clobber it.
+    """
+    parsed["processing_status"] = "skipped"
+    parsed["processing_outcome"] = "calendar_invite"
+    parsed["processing_explanation"] = (
+        "Calendar invitation — already handled by your email client and calendar."
+    )
+    parsed["processed_at"] = datetime.now(timezone.utc).isoformat()
+
+
 def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
     """Parse Gmail API email into database format.
 
@@ -166,12 +232,17 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
     if body_html:
         result["body_html"] = body_html
 
+    invite_method = _detect_gmail_invite_method(payload)
+    result["is_calendar_invite"] = invite_method in INVITE_METHODS
+    if result["is_calendar_invite"]:
+        mark_parsed_as_calendar_invite(result)
+
     return result
 
 
 def _log_email_subject(parsed: dict[str, Any], action: str) -> None:
     """Log email subject for debugging."""
-    subject = parsed.get("subject", "(no subject)")
+    subject = parsed.get("subject") or "(no subject)"
     if len(subject) > 50:
         subject = subject[:50] + "..."
     logger.debug(f"{action}: {subject}")

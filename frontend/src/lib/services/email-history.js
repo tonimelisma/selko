@@ -16,7 +16,13 @@ export async function fetchEmailHistory(options = {}) {
 				'id,email_provider,subject,from_email,from_name,date_sent,processing_status,processing_error,processing_outcome,processing_explanation,processed_at,event_sources(id,event_id,source_type,is_undone,change_set,events(id,title,status))',
 				{ count: 'exact' }
 			)
-			.in('processing_status', ['processed', 'failed'])
+			// Calendar invites are skipped (never claimed/processed), but per product
+			// decision they must still show up here as the audit trail — not just
+			// silently vanish. Other skipped emails (e.g. ignored senders) stay hidden.
+			.or(
+				'processing_status.in.(processed,failed),' +
+					'and(processing_status.eq.skipped,processing_outcome.eq.calendar_invite)'
+			)
 			.order('date_sent', { ascending: false })
 			.order('id', { ascending: false })
 			.range(offset, offset + limit - 1);

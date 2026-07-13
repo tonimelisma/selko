@@ -86,6 +86,10 @@ class TestParseOutlookMessage:
             }
         )
         assert result["is_calendar_invite"] is True
+        # Ingest-time filter: invite must be stored pre-skipped, never queued.
+        assert result["processing_status"] == "skipped"
+        assert result["processing_outcome"] == "calendar_invite"
+        assert "processed_at" in result
 
     def test_flags_event_message_response_as_calendar_invite(self):
         result = parse_outlook_message(
@@ -104,6 +108,7 @@ class TestParseOutlookMessage:
             }
         )
         assert result["is_calendar_invite"] is False
+        assert "processing_status" not in result
 
 
 class TestOutlookLabels:

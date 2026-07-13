@@ -1,5 +1,6 @@
 """Tests for email parsing."""
 
+import base64
 from datetime import datetime, timezone
 
 import pytest
@@ -198,3 +199,143 @@ class TestParseGmailMessage:
             "labelIds": ["INBOX"],
             "payload": {"headers": headers, "parts": []},
         }
+
+
+def _b64url(text: str) -> str:
+    return base64.urlsafe_b64encode(text.encode("utf-8")).decode("ascii")
+
+
+def _make_message_with_calendar_part(
+    *, content_type: str = "text/calendar", body_text: str = "", inline_data: str | None = None
+) -> dict:
+    """Gmail message with a text/calendar MIME part, method resolvable either
+    from the Content-Type header (default) or from inline body data."""
+    headers = [{"name": "From", "value": "Organizer <organizer@example.com>"}]
+    calendar_part: dict = {
+        "mimeType": "text/calendar",
+        "headers": [{"name": "Content-Type", "value": content_type}],
+        "body": {},
+    }
+    if inline_data is not None:
+        calendar_part["body"]["data"] = inline_data
+    return {
+        "id": "invite-msg-id",
+        "threadId": "invite-thread",
+        "snippet": "Meeting invite",
+        "labelIds": ["INBOX"],
+        "payload": {
+            "headers": headers,
+            "mimeType": "multipart/mixed",
+            "parts": [
+                {
+                    "mimeType": "text/plain",
+                    "body": {"data": _b64url(body_text)},
+                },
+                calendar_part,
+            ],
+        },
+    }
+
+
+class TestGmailCalendarInviteDetection:
+    """Tests for Gmail invite-at-ingestion detection (WS6)."""
+
+    def test_method_request_in_content_type_header(self):
+        msg = _make_message_with_calendar_part(content_type="text/calendar; method=REQUEST; charset=UTF-8")
+        result = parse_gmail_message(msg)
+
+        assert result["is_calendar_invite"] is True
+        assert result["processing_status"] == "skipped"
+        assert result["processing_outcome"] == "calendar_invite"
+        assert "processed_at" in result
+
+    def test_method_reply_in_content_type_header_case_insensitive(self):
+        msg = _make_message_with_calendar_part(content_type="text/calendar; METHOD=Reply")
+        result = parse_gmail_message(msg)
+
+        assert result["is_calendar_invite"] is True
+
+    def test_method_resolved_from_inline_body_when_header_absent(self):
+        ics = "BEGIN:VCALENDAR\nMETHOD:CANCEL\nEND:VCALENDAR"
+        msg = _make_message_with_calendar_part(content_type="text/calendar", inline_data=_b64url(ics))
+
+        result = parse_gmail_message(msg)
+
+        assert result["is_calendar_invite"] is True
+        assert result["processing_status"] == "skipped"
+
+    def test_method_publish_is_not_an_invite(self):
+        msg = _make_message_with_calendar_part(content_type="text/calendar; method=PUBLISH")
+        result = parse_gmail_message(msg)
+
+        assert result["is_calendar_invite"] is False
+        assert "processing_status" not in result
+
+    def test_no_method_and_no_inline_body_is_not_an_invite(self):
+        """Attachment-only calendar part (no inline data, no header method) is
+        left undetermined at ingest time — the process-time backstop covers it."""
+        msg = _make_message_with_calendar_part(content_type="text/calendar")
+        result = parse_gmail_message(msg)
+
+        assert result["is_calendar_invite"] is False
+        assert "processing_status" not in result
+
+    def test_no_calendar_part_is_not_an_invite(self):
+        msg = {
+            "id": "plain-msg",
+            "threadId": "t",
+            "snippet": "hi",
+            "labelIds": ["INBOX"],
+            "payload": {"headers": [], "parts": []},
+        }
+        result = parse_gmail_message(msg)
+
+        assert result["is_calendar_invite"] is False
+        assert "processing_status" not in result
+
+
+class TestSaveEmailsIngestShortCircuit:
+    """An invite-flagged parsed dict must upsert pre-skipped, never claimable."""
+
+    def test_invite_flagged_email_saves_as_skipped(self):
+        from unittest.mock import MagicMock
+
+        from selko.services.emails import save_emails
+
+        mock_client = MagicMock()
+        mock_execute_result = MagicMock()
+        mock_execute_result.data = [{"id": "email-1"}]
+        mock_client.table.return_value.upsert.return_value.execute.return_value = mock_execute_result
+
+        msg = _make_message_with_calendar_part(content_type="text/calendar; method=REQUEST")
+        parsed = parse_gmail_message(msg)
+
+        save_emails(mock_client, [parsed], user_id="user-1")
+
+        upsert_payload = mock_client.table.return_value.upsert.call_args[0][0]
+        assert upsert_payload["processing_status"] == "skipped"
+        assert upsert_payload["processing_outcome"] == "calendar_invite"
+
+    def test_non_invite_email_has_no_skip_fields_on_save(self):
+        from unittest.mock import MagicMock
+
+        from selko.services.emails import save_emails
+
+        mock_client = MagicMock()
+        mock_execute_result = MagicMock()
+        mock_execute_result.data = [{"id": "email-2"}]
+        mock_client.table.return_value.upsert.return_value.execute.return_value = mock_execute_result
+
+        msg = {
+            "id": "plain",
+            "threadId": "t",
+            "snippet": "hi",
+            "labelIds": ["INBOX"],
+            "payload": {"headers": [], "parts": []},
+        }
+        parsed = parse_gmail_message(msg)
+
+        save_emails(mock_client, [parsed], user_id="user-1")
+
+        upsert_payload = mock_client.table.return_value.upsert.call_args[0][0]
+        assert "processing_status" not in upsert_payload
