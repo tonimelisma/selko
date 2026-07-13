@@ -29,6 +29,7 @@ from selko.services.integrations import IntegrationError, OAuthStateError
 from selko.services.photos import PhotosError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
+from selko.services.memory_monitor import start_memory_monitor
 from selko.workers.email_fetch import schedule_email_fetches
 from selko.workers.photo_fetch import schedule_photo_fetches
 from selko.workers.pool import WorkerPool
@@ -91,6 +92,11 @@ async def lifespan(app: FastAPI):
 
     # Load configuration
     config = load_config()
+
+    memory_monitor_task = start_memory_monitor(
+        config.memory_log_interval_seconds,
+        config.memory_tracemalloc,
+    )
 
     if config.enable_background_processing:
         # Start worker pool for job processing
@@ -173,6 +179,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down Selko API")
+
+    if memory_monitor_task:
+        memory_monitor_task.cancel()
 
     # Only stop background workers if they were started
     if config.enable_background_processing:

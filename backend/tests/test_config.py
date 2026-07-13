@@ -284,3 +284,37 @@ class TestAttachmentLimitsFromEnv:
         assert config.max_pdf_pages_for_llm == 10
         assert config.max_image_size_for_llm == 10 * 1024 * 1024
         assert config.max_other_size_for_llm == 20 * 1024 * 1024
+
+
+class TestMemoryMonitorConfig:
+    """Test memory monitor configuration parsing."""
+
+    def test_env_overrides(self, monkeypatch):
+        """MEMORY_LOG_INTERVAL_SECONDS and MEMORY_TRACEMALLOC are parsed."""
+        from selko.config import load_config
+
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("MEMORY_LOG_INTERVAL_SECONDS", "300")
+        monkeypatch.setenv("MEMORY_TRACEMALLOC", "true")
+
+        config = load_config()
+
+        assert config.memory_log_interval_seconds == 300.0
+        assert config.memory_tracemalloc is True
+
+    def test_defaults_without_env(self, monkeypatch):
+        """Monitor defaults to 60s interval with tracemalloc off."""
+        from selko.config import load_config
+
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.delenv("MEMORY_LOG_INTERVAL_SECONDS", raising=False)
+        monkeypatch.delenv("MEMORY_TRACEMALLOC", raising=False)
+
+        config = load_config()
+
+        assert config.memory_log_interval_seconds == 60.0
+        assert config.memory_tracemalloc is False
