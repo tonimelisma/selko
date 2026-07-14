@@ -95,9 +95,8 @@ text, Accept is `#5FBE90` with `#12100E` text).
 
 ### 2.3 Typography
 
-Font: **Figtree** (Google Fonts, weights 400–800) on web and Android.
-**iOS keeps SF Pro** (system font) per the project rule in `CLAUDE.md` — match
-sizes/weights only. This is a deliberate deviation from the mock.
+Font: **Figtree** (Google Fonts, SIL OFL, weights 400–800) on **all platforms**,
+bundled/self-hosted per platform (see §4.1, §5.2, §6.1).
 
 | Style | Size / weight / tracking | Usage |
 |-------|--------------------------|-------|
@@ -328,12 +327,25 @@ shadow colors).
 
 ### 5.2 Typography & shape
 
-- **SF Pro stays** (project rule; no Figtree bundle). Use
-  `.system(size:weight:)` mapped to §2.3 (e.g. screen title
-  `.system(size: 26, weight: .heavy)`, title `.system(size: 15, weight: .bold)`,
-  overline `.system(size: 11, weight: .bold)` + `.kerning(0.9)` + uppercase).
-  Add a small `SelkoTypography` enum/extension in `ios/Selko/` (new file —
-  auto-discovered, no pbxproj edit).
+- **Bundle Figtree** (SIL OFL — free to embed):
+  1. Download the static TTFs and add them under `ios/Selko/Fonts/`
+     (`Figtree-Regular.ttf`, `-Medium`, `-SemiBold`, `-Bold`, `-ExtraBold`).
+     The synced root group should pick them up as resources; verify in
+     Build Phases → Copy Bundle Resources after adding.
+  2. Declare them in `ios/Selko/Info.plist` under `UIAppFonts` (one array
+     entry per file).
+  3. Add `ios/Selko/SelkoTypography.swift` (new file — auto-discovered, no
+     pbxproj edit) exposing the §2.3 scale as static `Font`s. **Always use
+     `Font.custom(_:size:relativeTo:)`** so Dynamic Type scaling keeps
+     working, e.g. screen title
+     `Font.custom("Figtree-ExtraBold", size: 26, relativeTo: .largeTitle)`,
+     title `Font.custom("Figtree-Bold", size: 15, relativeTo: .body)`,
+     overline `Font.custom("Figtree-Bold", size: 11, relativeTo: .caption)`
+     + `.kerning(0.9)` + uppercase.
+  4. Sanity-check the PostScript names at runtime once
+     (`UIFont.familyNames` dump in a debug build, or just verify rendering in
+     screenshots) — a typo in the custom-font name silently falls back to
+     the system font.
 - Radii/shadows: add `SelkoShape` constants (card 22, button 14, smallButton 11,
   chip pill). Light-mode card shadow
   `.shadow(color: Color(red:0.31,green:0.24,blue:0.18).opacity(0.28), radius: 6, y: 2)`
@@ -424,8 +436,8 @@ the design's SVG paths — preferred, they're tiny).
 ## 7. Docs & follow-through
 
 - Rewrite `docs/brand-guide.md` for the Warmth system (palette tables above,
-  typography, shape, logo construction, per-platform notes incl. the iOS
-  SF Pro deviation). Direct-to-main docs edit, ideally merged alongside the
+  Figtree typography on all platforms, shape, logo construction, per-platform
+  notes). Direct-to-main docs edit, ideally merged alongside the
   first web PR so the guide never contradicts shipped UI.
 - Update `docs/ui/03-patterns-and-components.md` component anatomy references.
 - After all platforms land, run `./scripts/capture-all-screenshots.sh` once for
