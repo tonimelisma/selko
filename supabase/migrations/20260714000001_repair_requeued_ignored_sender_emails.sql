@@ -16,6 +16,13 @@ WHERE em.processing_status = 'pending'
         AND (
               (sr.sender_email IS NOT NULL AND em.from_email = sr.sender_email)
            OR (sr.sender_domain IS NOT NULL
-               AND em.from_email LIKE '%@' || sr.sender_domain)
+               AND em.from_email LIKE '%@' || sr.sender_domain
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM public.sender_rules exact_rule
+                   WHERE exact_rule.user_id = em.user_id
+                     AND exact_rule.sender_email = em.from_email
+                     AND exact_rule.action <> 'ignore'
+               ))
         )
   );
