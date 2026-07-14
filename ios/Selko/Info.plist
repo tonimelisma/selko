@@ -13,6 +13,14 @@
 			</array>
 		</dict>
 	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Figtree-Regular.ttf</string>
+		<string>Figtree-Medium.ttf</string>
+		<string>Figtree-SemiBold.ttf</string>
+		<string>Figtree-Bold.ttf</string>
+		<string>Figtree-ExtraBold.ttf</string>
+	</array>
 	<key>SELKO_API_URL</key>
 	<string>$(SELKO_API_URL)</string>
 	<key>SUPABASE_ANON_KEY</key>

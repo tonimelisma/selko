@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "Selko",
-		"tagline": "Clear your mind.",
+		"tagline": "Sign in to continue.",
 		"loading": "Loading...",
 		"loadingEvents": "Loading events",
 		"retry": "Retry",
@@ -13,6 +13,7 @@
 		"skipToContent": "Skip to content",
 		"confirm": "Confirm",
 		"dismiss": "Dismiss",
+		"more": "More actions",
 		"unknownSender": "Unknown Sender"
 	},
 	"auth": {
@@ -29,6 +30,7 @@
 		"signUp": "Sign up",
 		"logIn": "Log in",
 		"logOut": "Log out",
+		"account": "Account",
 		"noAccount": "Don't have an account?",
 		"hasAccount": "Already have an account?",
 		"checkEmail": "Check your email to confirm your account.",
@@ -49,6 +51,8 @@
 		"senderIgnoreInvalidSender": "This sender can't be ignored — it isn't an email address.",
 		"senderAutoApproved": "Sender auto-approved: {senderEmail}",
 		"newSection": "New",
+		"subtitle": "A calm place to decide what belongs on your calendar.",
+		"acceptAll": "Accept all",
 		"changesSection": "Changes",
 		"newSectionDescription": "Events to add to your calendar",
 		"changesSectionDescription": "Updates to events already on your calendar",
@@ -101,6 +105,7 @@
 	},
 	"history": {
 		"title": "Activity History",
+		"subtitle": "A clear record of what Selko handled for you.",
 		"noActivity": "No activity yet",
 		"noActivityDescription": "Events you approve, reject, or sync will appear here.",
 		"today": "Today",
@@ -120,7 +125,7 @@
 		"actionNewEvent": "New event",
 		"actionChangeApplied": "Change applied",
 		"changeSummary": "Changed: {summary}",
-		"emailHistory": "Email Processing",
+		"emailHistory": "Emails processed",
 		"emailProcessed": "Processed",
 		"emailFailed": "Failed",
 		"emailNoEvent": "No event found",
@@ -135,6 +140,8 @@
 	},
 	"settings": {
 		"title": "Settings",
+		"subtitle": "Keep your accounts, folders, and rules in sync.",
+		"connectAccount": "Connect an account",
 		"connectedAccounts": "Connected Accounts",
 		"calendarDefaults": "Calendar Defaults",
 		"targetCalendar": "Target Calendar",
@@ -186,6 +193,8 @@
 	},
 	"senderActions": {
 		"actionsFor": "Actions for {sender}",
+		"bulkActions": "Bulk actions",
+		"autoAcceptEvents": "Auto-accept events",
 		"approveAll": "Approve all",
 		"rejectAll": "Reject all",
 		"autoApproveSender": "Auto-approve sender",

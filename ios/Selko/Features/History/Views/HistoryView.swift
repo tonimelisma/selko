@@ -6,25 +6,47 @@
 import SwiftUI
 
 struct HistoryView: View {
+    let email: String
     @State private var viewModel = HistoryViewModel()
 
+    init(email: String = "") {
+        self.email = email
+    }
+
     var body: some View {
-        Group {
-            if viewModel.isLoading && viewModel.dateGroups.isEmpty {
-                ProgressView("Loading history...")
-                    .accessibilityIdentifier("historyLoading")
-            } else if viewModel.dateGroups.isEmpty {
-                ContentUnavailableView {
-                    Label("No Activity", systemImage: "clock")
-                } description: {
-                    Text("Your reviewed events will appear here.")
+        VStack(spacing: 0) {
+            SelkoScreenHeader(title: "History", subtitle: "A clear record of what Selko handled for you.", email: email)
+            Group {
+                if viewModel.isLoading && viewModel.dateGroups.isEmpty {
+                    ProgressView("Loading history...")
+                        .tint(Color.accentColor)
+                        .accessibilityIdentifier("historyLoading")
+                } else if viewModel.dateGroups.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock")
+                            .font(SelkoTypography.sectionTitle)
+                            .foregroundStyle(Color.selkoMuted)
+                            .frame(width: 60, height: 60)
+                            .background(Color.selkoSubtle)
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        Text("No activity yet")
+                            .font(SelkoTypography.sectionTitle)
+                            .foregroundStyle(Color.selkoInk)
+                        Text("Your reviewed events will appear here.")
+                            .font(SelkoTypography.body)
+                            .foregroundStyle(Color.selkoMuted)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("historyEmptyState")
+                } else {
+                    historyList
                 }
-                .accessibilityIdentifier("historyEmptyState")
-            } else {
-                historyList
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(Color.selkoPaper.ignoresSafeArea())
         .navigationTitle("History")
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.load()
         }
@@ -50,7 +72,7 @@ struct HistoryView: View {
     private var historyList: some View {
         List {
             ForEach(viewModel.dateGroups) { group in
-                Section(group.label) {
+                Section {
                     ForEach(group.events) { event in
                         HistoryRowView(
                             event: event,
@@ -61,6 +83,9 @@ struct HistoryView: View {
                             Task { await viewModel.retrySync(event) }
                         }
                     }
+                } header: {
+                    Text(group.label)
+                        .selkoOverline()
                 }
             }
 
@@ -79,6 +104,8 @@ struct HistoryView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.selkoPaper)
         .accessibilityIdentifier("historyList")
     }
 }
@@ -97,18 +124,19 @@ struct HistoryRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(event.title)
-                        .font(.headline)
+                        .font(SelkoTypography.title)
+                        .foregroundStyle(Color.selkoInk)
                         .lineLimit(1)
                     Spacer()
                     if let updatedAt = event.updatedAt {
                         Text(updatedAt, style: .time)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(SelkoTypography.caption)
+                            .foregroundStyle(Color.selkoFaint)
                     }
                 }
                 Text(statusDescription)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(SelkoTypography.caption)
+                    .foregroundStyle(Color.selkoMuted)
             }
 
             if isProcessing {
@@ -121,9 +149,9 @@ struct HistoryRowView: View {
                 } label: {
                     Label("Retry", systemImage: "arrow.clockwise")
                 }
-                .font(.caption)
+                .font(SelkoTypography.caption)
                 .buttonStyle(.bordered)
-                .tint(.orange)
+                    .tint(Color.selkoWarning)
                 .accessibilityIdentifier("retryButton")
             } else if event.status != .cancelled && event.status != .pendingReview {
                 Button {
@@ -131,7 +159,7 @@ struct HistoryRowView: View {
                 } label: {
                     Label("Undo", systemImage: "arrow.uturn.backward")
                 }
-                .font(.caption)
+                .font(SelkoTypography.caption)
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("undoButton")
             }
@@ -144,7 +172,7 @@ struct HistoryRowView: View {
         switch event.status {
         case .approved:
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.selkoSuccess)
                 .accessibilityLabel("Approved")
         case .synced:
             Image(systemName: "checkmark.circle.fill")
@@ -156,15 +184,15 @@ struct HistoryRowView: View {
                 .accessibilityLabel("Sync failed")
         case .rejected:
             Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(Color.selkoError)
+                .foregroundStyle(Color.selkoRust)
                 .accessibilityLabel("Rejected")
         case .cancelled:
             Image(systemName: "minus.circle.fill")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.selkoMuted)
                 .accessibilityLabel("Cancelled")
-        default:
-            Image(systemName: "circle")
-                .foregroundStyle(.secondary)
+            default:
+                Image(systemName: "circle")
+                .foregroundStyle(Color.selkoMuted)
                 .accessibilityLabel("Pending")
         }
     }

@@ -62,7 +62,7 @@ class AuthScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Clear your mind.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sign in to continue.").assertIsDisplayed()
     }
 
     @Test
@@ -139,7 +139,7 @@ class AuthScreenTest {
         composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
         composeTestRule.onNodeWithText("Already have an account? Log in").performClick()
 
-        composeTestRule.onNodeWithText("Clear your mind.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Sign in to continue.").assertIsDisplayed()
     }
 
     @Test

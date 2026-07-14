@@ -2,6 +2,7 @@
 	import { _ } from 'svelte-i18n';
 	import { supabase } from '$lib/supabase.js';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+	import LogoMark from '$lib/components/LogoMark.svelte';
 
 	let email = $state('');
 	let password = $state('');
@@ -49,11 +50,14 @@
 	<title>{$_('auth.signUpTitle')}</title>
 </svelte:head>
 
-<div class="flex items-center justify-center min-h-screen px-4">
-	<div class="card w-full max-w-sm bg-base-200" style="box-shadow: 0 1px 3px rgba(0,0,0,0.06)">
+<div class="flex min-h-screen items-center justify-center bg-base-100 px-4 py-10">
+	<div class="warm-card w-full max-w-sm">
 		<div class="card-body">
-			<h1 class="text-4xl font-semibold text-center tracking-tight text-primary">{$_('common.appName')}</h1>
-			<p class="text-center text-base-content/70 text-sm mt-1">{$_('common.tagline')}</p>
+			<div class="flex flex-col items-center">
+				<LogoMark size={48} />
+				<h1 class="mt-4 text-3xl font-extrabold tracking-tight">{$_('common.appName')}</h1>
+				<p class="mt-1 text-center text-sm text-base-content/60">{$_('common.tagline')}</p>
+			</div>
 
 			{#if success}
 				<div class="alert alert-success mt-4" role="alert" aria-live="polite">
@@ -76,7 +80,7 @@
 							id="email"
 							type="email"
 							bind:value={email}
-							class="input input-bordered w-full"
+						class="input input-bordered w-full bg-base-100"
 							placeholder={$_('auth.emailPlaceholder')}
 							required
 							aria-invalid={!!error}
@@ -91,7 +95,7 @@
 							id="password"
 							type="password"
 							bind:value={password}
-							class="input input-bordered w-full"
+						class="input input-bordered w-full bg-base-100"
 							placeholder={$_('auth.passwordHint')}
 							required
 							aria-invalid={!!error}
@@ -106,14 +110,14 @@
 							id="confirmPassword"
 							type="password"
 							bind:value={confirmPassword}
-							class="input input-bordered w-full"
+						class="input input-bordered w-full bg-base-100"
 							placeholder={$_('auth.confirmPasswordPlaceholder')}
 							required
 							aria-invalid={!!error}
 						/>
 					</div>
 
-					<button type="submit" class="btn btn-primary w-full" disabled={isLoading} aria-busy={isLoading}>
+					<button type="submit" class="btn btn-primary w-full rounded-[14px] shadow-brand" disabled={isLoading} aria-busy={isLoading}>
 						{#if isLoading}
 							<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
 							<span class="sr-only">{$_('common.loading')}</span>

@@ -16,6 +16,9 @@ struct SelkoApp: App {
             Group {
                 if router.isLoading {
                     ProgressView("Loading...")
+                        .tint(Color.accentColor)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.selkoPaper.ignoresSafeArea())
                 } else if router.isAuthenticated {
                     MainTabView(router: router)
                 } else {

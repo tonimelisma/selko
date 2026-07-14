@@ -1,192 +1,91 @@
 # Selko Brand Guide
 
-The definitive design specification for all Selko platforms. Every UI decision references this document.
-
----
+The definitive visual reference for Selko. The detailed build specification is
+[`docs/specs/warmth-design-system.md`](specs/warmth-design-system.md).
 
 ## Personality
 
-Minimalist, premium, calm. Think Apple, Stripe, Linear. No visual noise. Every element earns its place.
-
----
+Calm, warm, rounded, and quietly capable. Selko should feel like a clear desk:
+soft paper surfaces, confident coral actions, restrained metadata, and enough
+space for decisions to feel easy.
 
 ## Tagline
 
-**"Clear your mind."**
+**“Make life easy.”**
 
-References Finnish origin (selko = clear). States the value proposition.
+Use this in marketing and brand contexts. Product screens should use task-focused
+supporting copy instead of repeating the tagline.
 
----
-
-## Color Palette
-
-### Selko Blue (Primary)
-
-| Token | Hex | Usage |
-|-------|-----|-------|
-| primary | `#5B63D3` | Buttons, links, active states (light mode) |
-| primary-dark | `#8B91D6` | Primary color in dark mode |
-| on-primary | `#FFFFFF` | Text on primary backgrounds |
-| primary-hover | `#4A51B8` | Button hover state |
-| primary-pressed | `#3C429A` | Button pressed state |
-| primary-tint | `#EDEDF9` | Light tinted backgrounds |
-
-### Neutral Grays
-
-Cool-toned with subtle blue undertone.
-
-| Token | Hex | Light usage | Dark usage |
-|-------|-----|-------------|------------|
-| gray-0 | `#FFFFFF` | Page bg (base-100) | — |
-| gray-50 | `#F8F9FB` | Subtle bg | — |
-| gray-100 | `#F1F2F6` | Section bg (base-200) | — |
-| gray-200 | `#E2E4EB` | Borders (base-300) | — |
-| gray-300 | `#C8CBD6` | Disabled elements | — |
-| gray-400 | `#9BA0B3` | Placeholder text | Secondary text |
-| gray-500 | `#6E7489` | Secondary text | — |
-| gray-700 | `#353845` | — | Borders |
-| gray-800 | `#24272F` | — | Section bg (base-200) |
-| gray-900 | `#1A1C23` | Primary text | Page bg (base-100) |
-| gray-950 | `#111318` | — | Deep bg |
-
-### Semantic Colors
+## Warmth palette
 
 | Token | Light | Dark | Usage |
-|-------|-------|------|-------|
-| success | `#2D8659` | `#3DA873` | Approved, synced, connected |
-| error | `#C4384B` | `#E05566` | Rejected, failed, destructive |
-| warning | `#B8860B` | `#D4A017` | Pending review |
-| info | `#5B63D3` | `#8B91D6` | Informational (same as primary) |
+|---|---|---|---|
+| paper | `#FBF7F2` | `#1A1613` | Page background |
+| surface | `#FFFFFF` | `#241F1B` | Cards, sheets, nav bars |
+| subtle | `#F5EEE6` | `#2C2621` | Secondary controls, chips |
+| ink | `#2B2622` | `#F2ECE4` | Primary text |
+| body | `#4A423B` | `#D8CFC5` | Body text |
+| muted | `#8A7F74` | `#A99E92` | Secondary text |
+| faint | `#9A8F84` | `#8E8378` | Metadata and placeholders |
+| border | `#EDE4DA` | `#322B25` | Card and navigation hairlines |
+| divider | `#F2EAE1` | `#322B25` | Internal separators |
+| primary | `#E86F52` | `#F0805C` | Coral actions and active navigation |
+| rust | `#B4553A` | `#F0805C` | Destructive actions and overlines |
+| link | `#C9603F` | `#F0805C` | Links |
+| amber | `#F0A85C` | `#F0B45C` | Secondary accent |
+| success | `#5CA07C` | `#5FBE90` | Accept and connected states |
+| changed | `#C97A2E` | `#F0B45C` | Changed state |
 
----
-
-## Action Color Mapping
-
-Semantic colors for interactive actions, consistent across all platforms.
-
-| Action | Color | Token | Rationale |
-|--------|-------|-------|-----------|
-| **Accept/Approve** | Green | `success` | Confirmatory — positive outcome |
-| **Reject** | Red | `error` | Destructive — removal action |
-| **Edit** | Purple | `primary` | Neutral modification — brand color |
-| **Disconnect** | Red (outlined) | `error` | Destructive settings action |
-| **Log out** | Red (filled) | `error` | Destructive account action |
-| **Undo** | Default (outlined) | — | Neutral reversal |
-| **Retry** | Orange (outlined) | `warning` | Recovery action |
-
-See `docs/ui/03-patterns-and-components.md` for per-platform button style details.
-
----
+Dark mode uses borders in place of shadows. Filled dark-mode buttons use dark
+ink labels on bright Warmth fills where the contrast requires it.
 
 ## Typography
 
-### Font Families
+Figtree is bundled/self-hosted on every platform. Use the available weights
+400, 500, 600, 700, and 800. Titles are compact and confident; metadata is
+smaller, quieter, and never competes with the decision.
 
-| Platform | Font | Notes |
-|----------|------|-------|
-| Web | Inter | Load from Google Fonts. Weights: 400, 500, 600 only. |
-| iOS | SF Pro (system) | Do NOT use Inter on iOS. Use system font. |
-| Android | Inter | Bundle as custom font resource. Weights: 400, 500, 600. |
+| Style | Size | Weight | Usage |
+|---|---:|---:|---|
+| Display | 40 | 800 | Marketing only |
+| H1 | 30 | 800 | Desktop page titles |
+| Screen title | 23–26 | 700–800 | Native screen titles |
+| Title | 15–16 | 700 | Card headings and event titles |
+| Body | 15 | 400 | Descriptions |
+| Caption | 12–13 | 500 | Metadata |
+| Overline | 11 | 700 | Uppercase section labels |
 
-### Type Scale
+## Shape and elevation
 
-| Scale | Size | Weight | Line height | Letter spacing |
-|-------|------|--------|-------------|----------------|
-| display | 36px | 600 | 1.2 | -0.02em |
-| h1 | 28px | 600 | 1.3 | -0.015em |
-| h2 | 22px | 600 | 1.35 | -0.01em |
-| h3 | 18px | 500 | 1.4 | -0.005em |
-| body | 15px | 400 | 1.55 | 0 |
-| small | 13px | 400 | 1.5 | 0.005em |
-| caption | 11px | 500 | 1.45 | 0.02em |
+- Small radius: 8px.
+- Button/input radius: 14px.
+- Card radius: 20px on web and 20–22px on native.
+- Badges, chips, and toggles use pill geometry.
+- Light cards use a soft brown-tinted shadow; dark cards use a 1px border and no
+  shadow.
+- Buttons are sentence case. The interface has no emoji or decorative noise.
 
----
+## Logo mark
 
-## Visual Rules
+The mark is a coral rounded calendar tile with three small rounded blocks: two
+on top and one wide bar below. Use the vector/drawn platform component, never a
+bitmap. On coral backgrounds the blocks use paper; on dark backgrounds they use
+ink.
 
-### Border Radius
+## Navigation and screens
 
-2px everywhere. Buttons, inputs, cards, badges, modals.
+- iOS and Android use a surface bottom tab bar with Review, History, and
+  Settings. Each screen starts with a title, subtitle, and account avatar.
+- Mobile web uses a sticky logo/avatar header and pill tabs below it. There is
+  no bottom bar.
+- Desktop web uses a fixed 236px sidebar with the logo, navigation, and a footer
+  account block with icon logout. Content remains on paper with a max width near
+  1120px.
+- Log out belongs at the foot of Settings on native surfaces and in the desktop
+  sidebar footer; it is not a primary header action.
 
-### Shadows
+## Voice and terminology
 
-Almost never. Only exception: login card gets `0 1px 3px rgba(0,0,0,0.06)`.
-
-### Borders
-
-1px solid. `gray-200` in light mode, `gray-700` in dark mode.
-
-### Spacing
-
-4px base grid. All spacing values are multiples of 4px.
-
----
-
-## Dark Mode
-
-Follows system preference (`prefers-color-scheme`). No manual toggle.
-
----
-
-## Terminology
-
-All platforms use identical terminology:
-
-| Context | Term |
-|---------|------|
-| Button (auth) | "Sign in" / "Sign up" |
-| Link (auth) | "Log in" / "Sign up" |
-| Menu action | "Log out" |
-| Event actions (card buttons) | "Accept" / "Reject" |
-| Event actions (detail / group) | "Approve" / "Reject" |
-| Button casing | Sentence case (not Title Case) |
-
----
-
-## Brand Voice
-
-- Brief. Direct. Calm.
-- No exclamation marks in UI.
-- No emoji in UI.
-- Sentence case for all buttons and labels.
-- Empty states: short heading + one sentence description.
-- Errors: state what happened, no apology.
-
----
-
-## Platform Mapping
-
-### Web (DaisyUI)
-
-Custom `selko-light` and `selko-dark` themes in `tailwind.config.js`. Map brand tokens to DaisyUI semantic colors:
-
-| DaisyUI token | Light value | Dark value |
-|---------------|-------------|------------|
-| primary | `#5B63D3` | `#8B91D6` |
-| primary-content | `#FFFFFF` | `#FFFFFF` |
-| base-100 | `#FFFFFF` | `#1A1C23` |
-| base-200 | `#F1F2F6` | `#24272F` |
-| base-300 | `#E2E4EB` | `#353845` |
-| base-content | `#1A1C23` | `#E2E4EB` |
-| success | `#2D8659` | `#3DA873` |
-| error | `#C4384B` | `#E05566` |
-| warning | `#B8860B` | `#D4A017` |
-| info | `#5B63D3` | `#8B91D6` |
-| neutral | `#6E7489` | `#9BA0B3` |
-| neutral-content | `#FFFFFF` | `#1A1C23` |
-| --rounded-box | 2px | 2px |
-| --rounded-btn | 2px | 2px |
-| --rounded-badge | 2px | 2px |
-| --tab-radius | 0px | 0px |
-
-### iOS (SwiftUI)
-
-- AccentColor in asset catalog: `#5B63D3` (light), `#8B91D6` (dark)
-- System font (SF Pro) — do not override
-- Semantic colors via `BrandColors.swift` extension
-
-### Android (Jetpack Compose)
-
-- Custom Material3 color schemes with `dynamicColor = false`
-- Inter font bundled as resource
-- Full color scheme override for both light and dark themes
+Brief, direct, and calm. Use “Sign in”, “Sign up”, “Accept”, “Reject”, “Undo”,
+and “Log out”. Empty states use a short heading plus one sentence. Errors state
+what happened without an apology or exclamation mark.
