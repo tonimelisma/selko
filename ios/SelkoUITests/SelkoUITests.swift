@@ -12,6 +12,7 @@ final class SelkoUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
         app.launchArguments = ["--uitesting"]
     }
@@ -21,8 +22,30 @@ final class SelkoUITests: XCTestCase {
     }
 
     @MainActor
-    func testLoginScreenDisplaysCorrectElements() throws {
+    private func launchAtLogin() {
         app.launch()
+
+        let emailField = app.textFields["emailField"]
+        if emailField.waitForExistence(timeout: 5) {
+            return
+        }
+
+        let settingsTab = app.tabBars.buttons["Settings"]
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: 5), "Expected an authenticated app or the login screen")
+        settingsTab.tap()
+
+        let signOutButton = app.buttons["signOutButton"]
+        for _ in 0..<3 where !signOutButton.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(signOutButton.waitForExistence(timeout: 5), "Authenticated test app did not expose sign out")
+        signOutButton.tap()
+        XCTAssertTrue(emailField.waitForExistence(timeout: 10), "Login screen did not appear after sign out")
+    }
+
+    @MainActor
+    func testLoginScreenDisplaysCorrectElements() throws {
+        launchAtLogin()
 
         // Verify login screen elements are present
         XCTAssertTrue(app.staticTexts["Selko"].waitForExistence(timeout: 5))
@@ -34,10 +57,12 @@ final class SelkoUITests: XCTestCase {
 
     @MainActor
     func testCreateAccountButtonOpensRegisterSheet() throws {
-        app.launch()
+        launchAtLogin()
 
         // Tap create account button
-        app.buttons["createAccountButton"].tap()
+        let createAccountButton = app.buttons["createAccountButton"]
+        XCTAssertTrue(createAccountButton.waitForExistence(timeout: 5))
+        createAccountButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
         // Verify register sheet appears
         XCTAssertTrue(app.staticTexts["Sign up"].waitForExistence(timeout: 5))
@@ -49,7 +74,7 @@ final class SelkoUITests: XCTestCase {
 
     @MainActor
     func testLoginWithEmptyFieldsShowsError() throws {
-        app.launch()
+        launchAtLogin()
 
         // Tap sign in without entering credentials
         app.buttons["signInButton"].tap()
@@ -60,7 +85,7 @@ final class SelkoUITests: XCTestCase {
 
     @MainActor
     func testCanEnterCredentials() throws {
-        app.launch()
+        launchAtLogin()
 
         // Enter email
         let emailField = app.textFields["emailField"]

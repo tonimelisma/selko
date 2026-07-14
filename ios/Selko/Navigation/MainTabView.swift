@@ -12,7 +12,7 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $router.selectedTab) {
             NavigationStack(path: $reviewPath) {
-                ReviewQueueView()
+                ReviewQueueView(email: router.userEmail)
                     .navigationDestination(for: UUID.self) { eventId in
                         EventDetailView(eventId: eventId)
                     }
@@ -23,7 +23,7 @@ struct MainTabView: View {
             .tag(Tab.review)
 
             NavigationStack {
-                HistoryView()
+                HistoryView(email: router.userEmail)
             }
             .tabItem {
                 Label("History", systemImage: "clock.arrow.circlepath")
@@ -31,7 +31,7 @@ struct MainTabView: View {
             .tag(Tab.history)
 
             NavigationStack {
-                SettingsView()
+                SettingsView(email: router.userEmail)
             }
             .tabItem {
                 Label("Settings", systemImage: "gear")
@@ -45,6 +45,9 @@ struct MainTabView: View {
                 router.pendingEventId = nil
             }
         }
+        .tint(Color.accentColor)
+        .toolbarBackground(Color.selkoSurface, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }
 

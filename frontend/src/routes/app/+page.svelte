@@ -22,6 +22,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
 
 	/** @type {any[]} */
@@ -257,6 +258,13 @@
 		}
 	}
 
+	async function handleApproveAll() {
+		await handleApproveAllNew(newEvents);
+		for (const event of changeEvents) {
+			await handleApproveChange(event);
+		}
+	}
+
 	/** @param {any[]} eventsList */
 	async function handleRejectAllNew(eventsList) {
 		for (const event of eventsList) {
@@ -370,14 +378,24 @@
 			<button class="btn btn-sm btn-ghost" onclick={() => (actionError = '')}>{$_('common.dismiss')}</button>
 		</div>
 	{/if}
+	<PageHeader title={$_('nav.review')} subtitle={$_('home.subtitle')}>
+		{#snippet children()}
+			<button class="btn btn-primary rounded-[14px] shadow-brand" onclick={handleApproveAll}>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+				{$_('home.acceptAll')}
+			</button>
+		{/snippet}
+	</PageHeader>
 	<div class="space-y-10">
 		{#if newEvents.length > 0}
 			<section>
-				<h2 class="text-lg font-semibold mb-1">{$_('home.newSection')}</h2>
-				<p class="text-sm text-base-content/60 mb-4">{$_('home.newSectionDescription')}</p>
-				<div class="space-y-6">
+				<div class="mb-4 flex items-end justify-between gap-3">
+					<div><h2 class="text-xl font-extrabold">{$_('home.newSection')}</h2><p class="mt-1 text-sm text-base-content/60">{$_('home.newSectionDescription')}</p></div>
+					<span class="badge badge-new badge-sm">{newEvents.length}</span>
+				</div>
+				<div class="grid gap-5 lg:grid-cols-2">
 					{#each [...groupedNew.entries()] as [senderKey, senderGroup] (senderKey)}
-						<div>
+						<div class="warm-card overflow-hidden">
 							<SenderHeader
 								sender={senderGroup.senderName}
 								senderEmail={senderKey}
@@ -405,11 +423,13 @@
 
 		{#if changeEvents.length > 0}
 			<section>
-				<h2 class="text-lg font-semibold mb-1">{$_('home.changesSection')}</h2>
-				<p class="text-sm text-base-content/60 mb-4">{$_('home.changesSectionDescription')}</p>
-				<div class="space-y-6">
+				<div class="mb-4 flex items-end justify-between gap-3">
+					<div><h2 class="text-xl font-extrabold">{$_('home.changesSection')}</h2><p class="mt-1 text-sm text-base-content/60">{$_('home.changesSectionDescription')}</p></div>
+					<span class="badge badge-changed badge-sm">{changeEvents.length}</span>
+				</div>
+				<div class="grid gap-5 lg:grid-cols-2">
 					{#each [...groupedChanges.entries()] as [senderKey, senderGroup] (senderKey)}
-						<div>
+						<div class="warm-card overflow-hidden">
 							<SenderHeader
 								sender={senderGroup.senderName}
 								senderEmail={senderKey}
@@ -438,5 +458,12 @@
 				</div>
 			</section>
 		{/if}
+		<div class="flex gap-2 pt-1 sm:hidden">
+			<button class="btn btn-primary min-h-12 flex-1 rounded-[14px] shadow-brand" onclick={handleApproveAll}>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+				{$_('home.acceptAll')}
+			</button>
+			<button class="btn btn-square min-h-12 w-12 rounded-[14px] bg-base-200" aria-label={$_('common.more')}><span class="text-xl leading-none">⋯</span></button>
+		</div>
 	</div>
 {/if}

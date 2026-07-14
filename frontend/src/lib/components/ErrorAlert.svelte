@@ -6,7 +6,7 @@
 </script>
 
 {#if message}
-	<div class="alert alert-error mb-4" role="alert" aria-live="polite">
+	<div class="alert alert-error mb-4 rounded-[14px]" role="alert" aria-live="polite">
 		<span>{message}</span>
 		{#if onretry}
 			<button class="btn btn-sm btn-ghost" onclick={onretry}>{$_('common.retry')}</button>

@@ -3,6 +3,7 @@ package net.melisma.selko.ui.screens.settings
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +63,8 @@ import net.melisma.selko.R
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.SenderRule
+import net.melisma.selko.ui.components.SelkoScreenHeader
+import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -71,7 +74,11 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         if (uiState.isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center)
@@ -81,11 +88,13 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(bottom = 24.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.settings_title),
-                    style = MaterialTheme.typography.headlineSmall
+                SelkoScreenHeader(
+                    title = stringResource(R.string.settings_title),
+                    subtitle = stringResource(R.string.settings_subtitle),
+                    email = uiState.userEmail,
+                    modifier = Modifier.padding(horizontal = 0.dp)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -165,9 +174,9 @@ fun SettingsScreen(
 @Composable
 private fun SectionHeader(title: String) {
     Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        color = SelkoTheme.colors.faint
     )
 }
 
@@ -186,7 +195,9 @@ private fun ConnectedAccountsSection(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Gmail
@@ -297,23 +308,23 @@ private fun IntegrationRow(
                     imageVector = Icons.Filled.CheckCircle,
                     contentDescription = stringResource(R.string.settings_connected),
                     modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = SelkoTheme.colors.success
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 OutlinedButton(
                     onClick = onDisconnect,
                     enabled = !isDisconnecting,
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
+                        contentColor = SelkoTheme.colors.rust
                     ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                    border = BorderStroke(1.dp, SelkoTheme.colors.rust),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     if (isDisconnecting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.error
+                            color = SelkoTheme.colors.rust
                         )
                     } else {
                         Text(stringResource(R.string.settings_disconnect))
@@ -341,7 +352,9 @@ private fun CalendarDefaultsSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Calendar picker
@@ -446,7 +459,9 @@ private fun AccountSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // User email
@@ -521,7 +536,9 @@ private fun AutomationRulesSection(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             if (isLoading) {

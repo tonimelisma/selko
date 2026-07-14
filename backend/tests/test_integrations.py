@@ -7,6 +7,7 @@ import pytest
 
 from selko.services.integrations import (
     IntegrationError,
+    OAuthProviderNotAllowed,
     OAuthStateError,
     _validate_and_consume_oauth_state,
     _save_oauth_state,
@@ -409,6 +410,29 @@ class TestCompleteOAuthFlow:
                 code="auth-code-123",
                 state="test-state",
             )
+
+    @patch("selko.services.integrations._validate_and_consume_oauth_state")
+    @patch("selko.services.integrations.Flow")
+    def test_rejected_provider_does_not_exchange_code(
+        self, mock_flow_class, mock_validate, mock_config
+    ):
+        """Regression: callback provider rejection must precede token exchange."""
+        mock_validate.return_value = {
+            "user_id": "user-123",
+            "provider": "google_photos",
+            "redirect_uri": "http://localhost:8000/integrations/google/callback",
+            "code_verifier": "persisted-pkce-verifier",
+        }
+
+        with pytest.raises(OAuthProviderNotAllowed, match="google_photos"):
+            complete_oauth_flow(
+                config=mock_config,
+                code="auth-code-123",
+                state="test-state",
+                allowed_providers={"gmail", "google_calendar"},
+            )
+
+        mock_flow_class.from_client_config.assert_not_called()
 
     @patch("selko.services.integrations._validate_and_consume_oauth_state")
     def test_complete_raises_on_invalid_state(self, mock_validate, mock_config):

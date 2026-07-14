@@ -28,6 +28,7 @@ final class AppRouter {
     var isLoading = true
     var selectedTab: Tab = .review
     var pendingEventId: UUID?
+    var userEmail = ""
 
     private let authService: AuthServiceProtocol
     private var cancellables = Set<AnyCancellable>()
@@ -93,12 +94,14 @@ final class AppRouter {
         case .unknown:
             isLoading = true
             isAuthenticated = false
-        case .authenticated:
+        case .authenticated(let user):
             isLoading = false
             isAuthenticated = true
+            userEmail = user.email
         case .unauthenticated:
             isLoading = false
             isAuthenticated = false
+            userEmail = ""
         }
     }
 }

@@ -2,7 +2,7 @@
     <string name="app_name">Selko</string>
 
     <!-- Auth Screen -->
-    <string name="auth_tagline">Clear your mind.</string>
+    <string name="auth_tagline">Sign in to continue.</string>
     <string name="auth_sign_up_title">Sign up</string>
     <string name="auth_email_label">Email</string>
     <string name="auth_password_label">Password</string>
@@ -22,6 +22,9 @@
 
     <!-- Review Queue Screen -->
     <string name="review_queue_title">Review Queue</string>
+    <string name="review_queue_subtitle">A calm place to decide what matters.</string>
+    <string name="review_new_section">NEW</string>
+    <string name="review_changes_section">CHANGES</string>
     <string name="review_dismiss">Dismiss</string>
     <string name="review_actions">Actions</string>
     <string name="review_approve_all">Approve all</string>
@@ -94,6 +97,7 @@
 
     <!-- History Screen -->
     <string name="history_title">Activity History</string>
+    <string name="history_subtitle">A record of what Selko handled for you.</string>
     <string name="history_dismiss">Dismiss</string>
     <string name="history_load_more">Load More</string>
     <string name="history_undo">Undo</string>
@@ -113,6 +117,7 @@
 
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Tune how Selko helps.</string>
     <string name="settings_dismiss">Dismiss</string>
     <string name="settings_section_connected_accounts">Connected Accounts</string>
     <string name="settings_section_calendar_defaults">Calendar Defaults</string>

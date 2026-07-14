@@ -1,6 +1,7 @@
 package net.melisma.selko.ui.screens.review
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -39,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -111,15 +114,41 @@ fun EventListItem(
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = event.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (event.isPendingChange) "CHANGED" else "NEW",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (event.isPendingChange) {
+                        SelkoTheme.colors.badgeChangedForeground
+                    } else {
+                        SelkoTheme.colors.badgeNewForeground
+                    },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(
+                            if (event.isPendingChange) {
+                                SelkoTheme.colors.badgeChangedBackground
+                            } else {
+                                SelkoTheme.colors.badgeNewBackground
+                            }
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = event.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             // Date/Time row
             event.startDatetime?.let { start ->

@@ -41,10 +41,10 @@
 		<LoadingSpinner class="min-h-screen" />
 	</div>
 {:else if currentUser}
-	<div class="min-h-screen flex flex-col overflow-x-hidden">
+	<div class="min-h-screen overflow-x-hidden">
 		<Navbar onLogout={handleLogout} />
-		<main id="main-content" class="flex-1">
-			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+		<main id="main-content" class="min-h-screen lg:ml-[236px]">
+			<div class="mx-auto max-w-[1120px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
 				{@render children?.()}
 			</div>
 		</main>

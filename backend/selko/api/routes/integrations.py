@@ -33,6 +33,7 @@ from selko.services.outlook import (
 )
 from selko.services.integrations import (
     IntegrationError,
+    OAuthProviderNotAllowed,
     OAuthStateError,
     complete_oauth_flow,
     initiate_oauth_flow,
@@ -361,6 +362,7 @@ async def google_oauth_callback(
             config=config,
             code=code,
             state=state,
+            allowed_providers={"gmail", "google_calendar"},
         )
 
         if provider == "google_photos":
@@ -410,6 +412,18 @@ async def google_oauth_callback(
             config, status_value="success", provider=provider
         )
 
+    except OAuthProviderNotAllowed as e:
+        if e.provider == "google_photos":
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail="Google Photos ingestion is currently parked",
+            ) from e
+        logger.warning(f"OAuth provider rejected: {e}")
+        return _frontend_oauth_redirect(
+            config,
+            status_value="error",
+            message="OAuth callback provider invalid",
+        )
     except OAuthStateError as e:
         logger.warning(f"OAuth state validation failed: {e}")
         return _frontend_oauth_redirect(

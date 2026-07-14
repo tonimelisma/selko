@@ -86,37 +86,33 @@
 </script>
 
 {#if isLoading}
-	<div class="h-12 bg-base-200 rounded animate-pulse"></div>
+	<div class="h-12 rounded-[14px] bg-base-200 animate-pulse"></div>
 {:else}
 	{#if error}
 		<ErrorAlert message={error} />
 	{/if}
 
 	{#if rules.length === 0}
-		<p class="text-base-content/60 mb-4">
+		<p class="mb-4 text-sm text-base-content/60">
 			{$_('senderRules.noRules')}
 		</p>
 	{:else}
-		<div class="space-y-2 mb-4">
+		<div class="mb-4 flex flex-wrap gap-2">
 			{#each rules as rule (rule.id)}
-				<div class="flex items-center justify-between p-3 bg-base-200 rounded">
-					<div class="flex items-center gap-3">
+				<div class="flex items-center gap-2 rounded-full border border-base-300 bg-base-200 px-3 py-2">
+					<div class="flex items-center gap-2">
 						{#if rule.action === 'ignore'}
 							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
 						{:else}
 							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 						{/if}
 						<div>
-							<span class="text-sm font-medium text-base-content">
-								{rule.action === 'ignore' ? $_('senderRules.ignore') : $_('senderRules.autoApprove')}
-							</span>
-							<span class="text-sm text-base-content/60 ml-2">
-								{rule.sender_email || rule.sender_domain}
-							</span>
+							<span class="mr-2 text-xs font-bold uppercase tracking-[0.08em] text-secondary">{rule.action === 'ignore' ? $_('senderRules.ignore') : $_('senderRules.autoApprove')}</span>
+							<span class="text-sm font-semibold">{rule.sender_email || rule.sender_domain}</span>
 						</div>
 					</div>
 					<button
-						class="btn btn-ghost btn-sm btn-square"
+						class="btn btn-ghost btn-xs btn-circle"
 						aria-label={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain } })}
 						onclick={() => handleDeleteRequest(rule)}
 					>
@@ -128,18 +124,18 @@
 	{/if}
 
 	<!-- Add rule form -->
-	<div class="flex flex-col sm:flex-row gap-2 max-w-md">
+	<div class="flex max-w-2xl flex-col gap-2 sm:flex-row">
 		<div class="form-control flex-1">
 			<input
 				type="text"
-				class="input input-bordered input-sm w-full"
+				class="input input-bordered input-sm w-full bg-base-100"
 				placeholder={$_('senderRules.senderPlaceholder')}
 				bind:value={newSenderInput}
 				onkeydown={(e) => { if (e.key === 'Enter') handleAddRule(); }}
 			/>
 		</div>
 		<select
-			class="select select-bordered select-sm"
+			class="select select-bordered select-sm bg-base-100"
 			bind:value={newAction}
 			aria-label={$_('senderRules.ruleAction')}
 		>
@@ -147,7 +143,7 @@
 			<option value="auto_approve">{$_('senderRules.autoApprove')}</option>
 		</select>
 		<button
-			class="btn btn-primary btn-sm"
+			class="btn btn-primary btn-sm rounded-[11px] shadow-brand"
 			onclick={handleAddRule}
 			disabled={isAdding || !newSenderInput.trim()}
 		>

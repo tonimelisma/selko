@@ -2,6 +2,7 @@ package net.melisma.selko.ui.screens.history
 
 import android.content.res.Resources
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,8 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -46,6 +49,7 @@ import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
+import net.melisma.selko.ui.components.SelkoScreenHeader
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -55,7 +59,11 @@ fun HistoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         when {
             uiState.isLoading -> {
                 CircularProgressIndicator(
@@ -68,19 +76,14 @@ fun HistoryScreen(
             }
 
             else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                    LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                    ) {
                     item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.history_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(
-                                start = 16.dp,
-                                end = 16.dp,
-                                bottom = 8.dp
-                            )
+                        SelkoScreenHeader(
+                            title = stringResource(R.string.history_title),
+                            subtitle = stringResource(R.string.history_subtitle)
                         )
                     }
 
@@ -177,41 +180,49 @@ private fun HistoryEventItem(
 ) {
     val resources = LocalContext.current.resources
 
-    ListItem(
-        leadingContent = { StatusIcon(status = event.status) },
-        headlineContent = {
-            Text(
-                text = event.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        supportingContent = {
-            Column {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        ListItem(
+            leadingContent = { StatusIcon(status = event.status) },
+            headlineContent = {
                 Text(
-                    text = getStatusDescription(event, resources),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = event.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                event.updatedAt?.let { updatedAt ->
-                    val tz = TimeZone.currentSystemDefault()
-                    val local = updatedAt.toLocalDateTime(tz)
+            },
+            supportingContent = {
+                Column {
                     Text(
-                        text = "${local.hour.toString().padStart(2, '0')}:${local.minute.toString().padStart(2, '0')}",
+                        text = getStatusDescription(event, resources),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    event.updatedAt?.let { updatedAt ->
+                        val tz = TimeZone.currentSystemDefault()
+                        val local = updatedAt.toLocalDateTime(tz)
+                        Text(
+                            text = "${local.hour.toString().padStart(2, '0')}:${local.minute.toString().padStart(2, '0')}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SelkoTheme.colors.faint
+                        )
+                    }
                 }
-            }
-        },
-        trailingContent = {
-            if (isProcessing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                when (event.status) {
+            },
+            trailingContent = {
+                if (isProcessing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    when (event.status) {
                     EventStatus.APPROVED, EventStatus.REJECTED, EventStatus.CANCELLED -> {
                         OutlinedButton(
                             onClick = onUndo,
@@ -264,11 +275,12 @@ private fun HistoryEventItem(
                             Text(stringResource(R.string.history_undo), style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    else -> { }
+                        else -> { }
+                    }
                 }
             }
-        }
-    )
+        )
+    }
 }
 
 @Composable

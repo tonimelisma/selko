@@ -10,56 +10,63 @@
 	});
 
 	let formattedDateTime = $derived(() => formatEventDateTime(event, $_));
+	let dateParts = $derived(() => {
+		if (!event.start_datetime) return { month: '', day: '' };
+		const date = new Date(event.start_datetime);
+		return {
+			month: date.toLocaleDateString(undefined, { month: 'short' }).toUpperCase(),
+			day: date.toLocaleDateString(undefined, { day: 'numeric' })
+		};
+	});
 </script>
 
-<div class="flex items-start justify-between p-4 border-b border-base-200">
+<div class="warm-card-row flex gap-3 border-b border-base-300 p-4 sm:gap-4">
+	<div class="date-chip flex h-[52px] w-[50px] shrink-0 flex-col items-center justify-center">
+		{#if dateParts().month}
+			<span class="text-[10px] font-bold tracking-[0.12em] text-primary">{dateParts().month}</span>
+			<span class="text-xl font-extrabold leading-5">{dateParts().day}</span>
+		{:else}
+			<span class="text-xs font-bold text-primary">—</span>
+		{/if}
+	</div>
+
 	<div class="min-w-0 flex-1">
-		<div class="flex items-center gap-2">
+		<div class="flex flex-wrap items-center gap-2">
 			{#if sourceOrigin() === 'google_photos'}
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-base-content/50 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-label={$_('eventSource.photoSource')}>
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-label={$_('eventSource.photoSource')}>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
 				</svg>
 			{:else}
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-base-content/50 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-label={$_('eventSource.emailSource')}>
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-label={$_('eventSource.emailSource')}>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5v10a2 2 0 002 2z" />
 				</svg>
 			{/if}
-			<a href="/app/events/{event.id}" class="link link-hover">
-				<h4 class="font-semibold text-base">{event.title}</h4>
+			<a href="/app/events/{event.id}" class="min-w-0 link link-hover">
+				<h4 class="truncate text-[15px] font-bold">{event.title}</h4>
 			</a>
 			{#if event.importance === 'fyi'}
-				<span class="badge badge-sm badge-info">{$_('events.fyi')}</span>
+				<span class="badge badge-neutral-warm badge-sm">{$_('events.fyi')}</span>
+			{:else}
+				<span class="badge badge-new badge-sm">{$_('home.newSection')}</span>
 			{/if}
 		</div>
-		<p class="text-sm text-base-content/70 mt-1">{formattedDateTime()}</p>
+		<p class="mt-1 text-[12px] font-medium text-base-content/55">{formattedDateTime()}</p>
 		{#if event.location}
-			<p class="text-sm text-base-content/60 mt-0.5">{event.location}</p>
+			<p class="mt-0.5 text-[13px] text-base-content/70">{event.location}</p>
 		{/if}
 		{#if event.description}
-			<p class="text-sm text-base-content/50 mt-1 line-clamp-2">{event.description}</p>
+			<p class="mt-1 line-clamp-2 text-[13px] text-base-content/60">{event.description}</p>
 		{/if}
-		<!-- Action buttons row -->
-		<div class="flex items-center gap-2 mt-2">
-			<!-- Accept: icon-only filled green button -->
-			<button class="btn btn-sm btn-success" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')} aria-busy={isProcessing}>
-				{#if isProcessing}
-					<span class="loading loading-spinner loading-xs"></span>
-				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-				{/if}
+		<div class="mt-3 flex items-center gap-2">
+			<button class="btn btn-success btn-sm min-h-9 flex-1 rounded-[11px] text-[13px] font-bold" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')} aria-busy={isProcessing}>
+				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>{/if}
+				<span>{$_('events.accept')}</span>
 			</button>
-			<!-- Edit: filled primary button with icon + text -->
-			<a href="/app/events/{event.id}" class="btn btn-sm btn-primary" aria-label={$_('common.edit')} class:btn-disabled={isProcessing}>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-				{$_('common.edit')}
+			<a href="/app/events/{event.id}" class="btn btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-base-content" class:btn-disabled={isProcessing} aria-label={$_('common.edit')}>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m15 5 4 4M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z" /></svg>
 			</a>
-			<!-- Reject: icon-only filled red button -->
-			<button class="btn btn-sm btn-error" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')} aria-busy={isProcessing}>
-				{#if isProcessing}
-					<span class="loading loading-spinner loading-xs"></span>
-				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-				{/if}
+			<button class="btn btn-error btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-secondary" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')} aria-busy={isProcessing}>
+				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="m7 7 10 10M17 7 7 17" /></svg>{/if}
 			</button>
 		</div>
 	</div>

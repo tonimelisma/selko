@@ -197,7 +197,7 @@
 			<div class="lg:col-span-2 order-1 lg:order-1">
 				<!-- Desktop: always visible -->
 				<div class="hidden lg:block">
-					<div class="card bg-base-200">
+					<div class="warm-card">
 						<div class="card-body">
 							<h3 class="card-title text-sm">{$_('eventSource.sourceEmail')}</h3>
 							<div class="space-y-2 text-sm">
@@ -207,7 +207,7 @@
 									<p><span class="font-medium">{$_('eventSource.date')}</span> {new Date(sourceEmail.date_sent).toLocaleDateString()}</p>
 								{/if}
 								{#if sourceEmail.snippet}
-									<div class="mt-3 p-3 bg-base-100 rounded text-base-content/70">
+									<div class="mt-3 rounded-[14px] border border-base-300 bg-base-100 p-3 text-sm text-base-content/70">
 										{sourceEmail.snippet}
 									</div>
 								{/if}
@@ -228,7 +228,7 @@
 
 				<!-- Mobile/Tablet: collapsible -->
 				<div class="lg:hidden">
-					<div class="collapse collapse-arrow bg-base-200">
+					<div class="collapse collapse-arrow warm-card">
 						<input type="checkbox" bind:checked={sourceExpanded} />
 						<div class="collapse-title font-medium">
 							{$_('eventSource.viewSourceEmail')}
@@ -241,7 +241,7 @@
 									<p><span class="font-medium">{$_('eventSource.date')}</span> {new Date(sourceEmail.date_sent).toLocaleDateString()}</p>
 								{/if}
 								{#if sourceEmail.snippet}
-									<div class="mt-3 p-3 bg-base-100 rounded text-base-content/70">
+									<div class="mt-3 rounded-[14px] border border-base-300 bg-base-100 p-3 text-sm text-base-content/70">
 										{sourceEmail.snippet}
 									</div>
 								{/if}
@@ -264,13 +264,13 @@
 			<div class="lg:col-span-2 order-1 lg:order-1">
 				<!-- Desktop: always visible -->
 				<div class="hidden lg:block">
-					<div class="card bg-base-200">
+					<div class="warm-card">
 						<div class="card-body">
 							<h3 class="card-title text-sm">{$_('eventSource.sourcePhoto')}</h3>
 							<div class="space-y-2 text-sm">
 								<p class="text-base-content/70">{$_('eventSource.sourcePhotoDescription')}</p>
 								{#if event.source_attribution}
-									<div class="mt-3 p-3 bg-base-100 rounded text-base-content/70">
+									<div class="mt-3 rounded-[14px] border border-base-300 bg-base-100 p-3 text-sm text-base-content/70">
 										{event.source_attribution}
 									</div>
 								{/if}
@@ -281,7 +281,7 @@
 
 				<!-- Mobile/Tablet: collapsible -->
 				<div class="lg:hidden">
-					<div class="collapse collapse-arrow bg-base-200">
+					<div class="collapse collapse-arrow warm-card">
 						<input type="checkbox" bind:checked={sourceExpanded} />
 						<div class="collapse-title font-medium">
 							{$_('eventSource.viewSourcePhoto')}
@@ -290,7 +290,7 @@
 							<div class="space-y-2 text-sm">
 								<p class="text-base-content/70">{$_('eventSource.sourcePhotoDescription')}</p>
 								{#if event.source_attribution}
-									<div class="mt-3 p-3 bg-base-100 rounded text-base-content/70">
+									<div class="mt-3 rounded-[14px] border border-base-300 bg-base-100 p-3 text-sm text-base-content/70">
 										{event.source_attribution}
 									</div>
 								{/if}
@@ -312,7 +312,7 @@
 						id="event-title"
 						type="text"
 						bind:value={title}
-						class="input input-bordered w-full"
+						class="input input-bordered w-full bg-base-100"
 						required
 						onblur={handleSave}
 					/>
@@ -324,7 +324,7 @@
 							id="event-all-day"
 							type="checkbox"
 							bind:checked={allDay}
-							class="checkbox"
+						class="checkbox checkbox-primary"
 							onchange={handleSave}
 						/>
 						<span class="label-text">{$_('events.allDay')}</span>
@@ -339,7 +339,7 @@
 						id="event-date"
 						type="date"
 						bind:value={eventDate}
-						class="input input-bordered w-full"
+						class="input input-bordered w-full bg-base-100"
 						required
 						onblur={handleSave}
 					/>
@@ -355,7 +355,7 @@
 								id="event-start-time"
 								type="time"
 								bind:value={startTime}
-								class="input input-bordered w-full"
+								class="input input-bordered w-full bg-base-100"
 								required
 								onblur={handleSave}
 							/>
@@ -368,7 +368,7 @@
 								id="event-end-time"
 								type="time"
 								bind:value={endTime}
-								class="input input-bordered w-full"
+								class="input input-bordered w-full bg-base-100"
 								onblur={handleSave}
 							/>
 						</div>
@@ -383,7 +383,7 @@
 						id="event-location"
 						type="text"
 						bind:value={location}
-						class="input input-bordered w-full"
+						class="input input-bordered w-full bg-base-100"
 						placeholder={$_('events.locationPlaceholder')}
 						onblur={handleSave}
 					/>
@@ -396,7 +396,7 @@
 					<textarea
 						id="event-description"
 						bind:value={description}
-						class="textarea textarea-bordered w-full"
+						class="textarea textarea-bordered w-full bg-base-100"
 						rows="3"
 						placeholder={$_('events.descriptionPlaceholder')}
 						onblur={handleSave}
@@ -407,14 +407,14 @@
 			<!-- Desktop action buttons -->
 			{#if event.status === 'pending_review'}
 				<div class="hidden lg:flex justify-end gap-3 mt-6">
-					<button class="btn btn-outline btn-error" onclick={handleReject} disabled={isActing}>
+					<button class="btn btn-outline btn-error rounded-[11px]" onclick={handleReject} disabled={isActing}>
 						{#if isActing}
 							<span class="loading loading-spinner loading-sm"></span>
 						{:else}
 							{$_('events.reject')}
 						{/if}
 					</button>
-					<button class="btn btn-success" onclick={handleApprove} disabled={!title || isActing}>
+					<button class="btn btn-success rounded-[11px]" onclick={handleApprove} disabled={!title || isActing}>
 						{#if isActing}
 							<span class="loading loading-spinner loading-sm"></span>
 						{:else}
@@ -428,16 +428,16 @@
 
 	<!-- Mobile fixed bottom action bar -->
 	{#if event.status === 'pending_review'}
-		<div class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 p-4 lg:hidden">
+		<div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-surface p-4 lg:hidden">
 			<div class="flex justify-end gap-3 max-w-7xl mx-auto">
-				<button class="btn btn-outline btn-error flex-1" onclick={handleReject} disabled={isActing}>
+				<button class="btn btn-outline btn-error flex-1 rounded-[11px]" onclick={handleReject} disabled={isActing}>
 					{#if isActing}
 						<span class="loading loading-spinner loading-sm"></span>
 					{:else}
 						{$_('events.reject')}
 					{/if}
 				</button>
-				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title || isActing}>
+				<button class="btn btn-success flex-1 rounded-[11px]" onclick={handleApprove} disabled={!title || isActing}>
 					{#if isActing}
 						<span class="loading loading-spinner loading-sm"></span>
 					{:else}

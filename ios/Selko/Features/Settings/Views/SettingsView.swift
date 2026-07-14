@@ -6,17 +6,29 @@
 import SwiftUI
 
 struct SettingsView: View {
+    let email: String
     @State private var viewModel = SettingsViewModel()
     @State private var showAuthError = false
 
+    init(email: String = "") {
+        self.email = email
+    }
+
     var body: some View {
-        Form {
-            connectedAccountsSection
-            calendarDefaultsSection
-            senderRulesSection
-            accountSection
+        VStack(spacing: 0) {
+            SelkoScreenHeader(title: "Settings", subtitle: "Keep your accounts, folders, and rules in sync.", email: email)
+            Form {
+                connectedAccountsSection
+                calendarDefaultsSection
+                senderRulesSection
+                accountSection
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color.selkoPaper)
         }
+        .background(Color.selkoPaper.ignoresSafeArea())
         .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.load()
         }
@@ -68,16 +80,17 @@ struct SettingsView: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(viewModel.providerDisplayName(provider))
-                    .font(.body)
+                    .font(SelkoTypography.title)
+                    .foregroundStyle(Color.selkoInk)
 
                 if let email = integration?.providerEmail {
                     Text(email)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(SelkoTypography.caption)
+                        .foregroundStyle(Color.selkoFaint)
                 } else if let integration = integration {
                     Text(integration.status.rawValue.capitalized)
-                        .font(.caption)
-                        .foregroundStyle(integration.isActive ? Color.selkoSuccess : .orange)
+                        .font(SelkoTypography.caption)
+                        .foregroundStyle(integration.isActive ? Color.selkoSuccess : Color.selkoWarning)
                 }
             }
 
@@ -88,19 +101,20 @@ struct SettingsView: View {
                     .foregroundStyle(Color.selkoSuccess)
                     .accessibilityLabel("Connected")
 
-                Button(role: .destructive) {
-                    viewModel.confirmDisconnect(provider: provider)
-                } label: {
-                    Text("Disconnect")
-                        .font(.subheadline)
+                    Button(role: .destructive) {
+                        viewModel.confirmDisconnect(provider: provider)
+                    } label: {
+                        Text("Disconnect")
+                        .font(SelkoTypography.caption.weight(.bold))
                 }
                 .buttonStyle(.bordered)
-                .tint(.red)
+                    .tint(Color.selkoRust)
             } else {
                 Button("Connect") {
                     connectProvider(provider)
                 }
                 .buttonStyle(.bordered)
+                .tint(Color.accentColor)
                 .accessibilityLabel("Connect \(viewModel.providerDisplayName(provider))")
             }
         }
@@ -120,11 +134,11 @@ struct SettingsView: View {
                             ProgressView()
                                 .controlSize(.small)
                             Text("Loading calendars...")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.selkoMuted)
                         }
                     } else {
                         Text("Connect Google Calendar to configure calendar defaults.")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.selkoMuted)
                     }
                 } else {
                     Picker("Default Calendar", selection: $viewModel.selectedCalendarId) {
@@ -133,7 +147,7 @@ struct SettingsView: View {
                                 Text(calendar.name)
                                 if calendar.isPrimary {
                                     Text("(Primary)")
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(Color.selkoMuted)
                                 }
                             }
                             .tag(calendar.id)
@@ -172,8 +186,8 @@ struct SettingsView: View {
                     Spacer()
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
+            .buttonStyle(.bordered)
+            .tint(Color.selkoRust)
             .accessibilityIdentifier("signOutButton")
         }
     }

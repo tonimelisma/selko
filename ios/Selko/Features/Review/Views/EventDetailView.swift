@@ -62,7 +62,7 @@ struct EventDetailView: View {
                         }
                     }
                     .buttonStyle(.bordered)
-                    .tint(.red)
+                    .tint(Color.selkoRust)
                     .controlSize(.large)
                     .disabled(viewModel.isActing)
                     .accessibilityIdentifier("rejectButton")
@@ -161,8 +161,8 @@ struct EventDetailView: View {
                     ProgressView()
                         .controlSize(.small)
                     Text("Saving...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(SelkoTypography.caption)
+                        .foregroundStyle(Color.selkoMuted)
                 }
             }
         }
@@ -180,8 +180,7 @@ struct EventDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text(sourceSectionTitle)
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .font(SelkoTypography.sectionTitle)
                     .padding(.horizontal)
                     .padding(.top)
 
@@ -191,12 +190,12 @@ struct EventDetailView: View {
                     }
                 } else {
                     Text("No source information available.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.selkoMuted)
                         .padding(.horizontal)
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.selkoPaper)
     }
 
     // MARK: - Source Disclosure (iPhone)
@@ -272,14 +271,14 @@ struct EventDetailView: View {
                 // Photo source card
                 HStack {
                     Image(systemName: "photo.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
+                        .font(SelkoTypography.sectionTitle)
+                        .foregroundStyle(Color.selkoMuted)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(String(localized: "event_detail.photo_source_title"))
-                            .font(.headline)
+                            .font(SelkoTypography.title)
                         Text(String(localized: "event_detail.photo_source_description"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(SelkoTypography.caption)
+                            .foregroundStyle(Color.selkoMuted)
                     }
                     Spacer()
                 }
@@ -287,46 +286,46 @@ struct EventDetailView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(email.fromName ?? String(localized: "Unknown Sender"))
-                            .font(.headline)
+                            .font(SelkoTypography.title)
                         Text(email.fromEmail ?? "")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(SelkoTypography.caption)
+                            .foregroundStyle(Color.selkoMuted)
                     }
                     Spacer()
                     if let dateSent = email.dateSent {
                         Text(dateSent, style: .date)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(SelkoTypography.caption)
+                            .foregroundStyle(Color.selkoMuted)
                     }
                 }
 
                 if let subject = email.subject {
                     Text(subject)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        .font(SelkoTypography.body.weight(.medium))
                 }
             }
 
             if let extractedData = source.extractedData,
                let quote = extractedData.sourceQuote {
                 Text(quote)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(SelkoTypography.caption)
+                    .foregroundStyle(Color.selkoMuted)
                     .padding(8)
-                    .background(Color(.tertiarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 2))
+                    .background(Color.selkoSubtle)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
 
             HStack {
                 Label(source.sourceType.rawValue.replacingOccurrences(of: "_", with: " ").capitalized,
                       systemImage: sourceOriginIcon(source.sourceOrigin))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(SelkoTypography.caption)
+                    .foregroundStyle(Color.selkoMuted)
             }
         }
         .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 2))
+        .background(Color.selkoSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.selkoBorder))
         .padding(.horizontal)
     }
 }

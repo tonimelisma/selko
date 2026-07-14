@@ -20,7 +20,16 @@ data class SelkoColors(
     val successContainer: Color,
     val onSuccessContainer: Color,
     val warning: Color,
-    val onWarning: Color
+    val onWarning: Color,
+    val rust: Color,
+    val link: Color,
+    val changed: Color,
+    val faint: Color,
+    val divider: Color,
+    val badgeNewBackground: Color,
+    val badgeNewForeground: Color,
+    val badgeChangedBackground: Color,
+    val badgeChangedForeground: Color
 )
 
 private val LightSelkoColors = SelkoColors(
@@ -29,7 +38,16 @@ private val LightSelkoColors = SelkoColors(
     successContainer = SelkoSuccessContainer,
     onSuccessContainer = SelkoOnSuccessContainer,
     warning = SelkoWarning,
-    onWarning = SelkoOnWarning
+    onWarning = SelkoOnWarning,
+    rust = SelkoRust,
+    link = SelkoLink,
+    changed = SelkoChanged,
+    faint = SelkoFaint,
+    divider = SelkoDivider,
+    badgeNewBackground = SelkoBadgeNewBackground,
+    badgeNewForeground = SelkoBadgeNewForeground,
+    badgeChangedBackground = SelkoBadgeChangedBackground,
+    badgeChangedForeground = SelkoBadgeChangedForeground
 )
 
 private val DarkSelkoColors = SelkoColors(
@@ -38,7 +56,16 @@ private val DarkSelkoColors = SelkoColors(
     successContainer = SelkoSuccessContainerDark,
     onSuccessContainer = SelkoOnSuccessContainerDark,
     warning = SelkoWarningDark,
-    onWarning = SelkoOnWarning
+    onWarning = SelkoOnWarning,
+    rust = SelkoRustDark,
+    link = SelkoLinkDark,
+    changed = SelkoChangedDark,
+    faint = SelkoFaintDark,
+    divider = SelkoDividerDark,
+    badgeNewBackground = SelkoBadgeNewBackgroundDark,
+    badgeNewForeground = SelkoBadgeNewForegroundDark,
+    badgeChangedBackground = SelkoBadgeChangedBackgroundDark,
+    badgeChangedForeground = SelkoBadgeChangedForegroundDark
 )
 
 val LocalSelkoColors = staticCompositionLocalOf { LightSelkoColors }
@@ -48,7 +75,7 @@ private val LightColorScheme = lightColorScheme(
     onPrimary = SelkoOnPrimary,
     primaryContainer = SelkoPrimaryContainer,
     onPrimaryContainer = SelkoOnPrimaryContainer,
-    secondary = SelkoPrimary,
+    secondary = SelkoRust,
     onSecondary = SelkoOnPrimary,
     background = SelkoBackground,
     onBackground = SelkoOnBackground,
@@ -64,11 +91,11 @@ private val LightColorScheme = lightColorScheme(
 
 private val DarkColorScheme = darkColorScheme(
     primary = SelkoPrimaryDark,
-    onPrimary = SelkoOnPrimary,
-    primaryContainer = SelkoPrimary,
-    onPrimaryContainer = SelkoOnPrimary,
-    secondary = SelkoPrimaryDark,
-    onSecondary = SelkoOnPrimary,
+    onPrimary = SelkoOnPrimaryDark,
+    primaryContainer = SelkoPrimaryContainerDark,
+    onPrimaryContainer = SelkoOnPrimaryContainerDark,
+    secondary = SelkoRustDark,
+    onSecondary = SelkoOnPrimaryDark,
     background = SelkoBackgroundDark,
     onBackground = SelkoOnBackgroundDark,
     surface = SelkoSurfaceDark,
@@ -78,15 +105,15 @@ private val DarkColorScheme = darkColorScheme(
     outline = SelkoOutlineDark,
     outlineVariant = SelkoOutlineVariantDark,
     error = SelkoErrorDark,
-    onError = SelkoOnError
+    onError = SelkoOnPrimaryDark
 )
 
 private val SelkoShapes = Shapes(
-    extraSmall = RoundedCornerShape(2.dp),
-    small = RoundedCornerShape(4.dp),
-    medium = RoundedCornerShape(8.dp),
-    large = RoundedCornerShape(12.dp),
-    extraLarge = RoundedCornerShape(16.dp)
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(20.dp)
 )
 
 @Composable

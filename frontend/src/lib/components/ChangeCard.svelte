@@ -4,36 +4,22 @@
 
 	let { event, isProcessing = false, onapprove, onreject } = $props();
 
-	/** @param {any} event */
-	function getChangeSet(event) {
-		const sources = event.event_sources || [];
-		for (const source of sources) {
-			if (
-				source?.change_set &&
-				!source.is_undone &&
-				(source.source_type === 'update' || source.source_type === 'cancellation')
-			) {
-				return source.change_set;
-			}
-		}
-		for (const source of sources) {
-			if (source?.change_set && !source.is_undone) return source.change_set;
-		}
-		return null;
+	/** @param {any} item */
+	function getChangeSet(item) {
+		const sources = item.event_sources || [];
+		return sources.find(
+			/** @param {any} source */
+			(source) => source?.change_set && !source.is_undone && (source.source_type === 'update' || source.source_type === 'cancellation')
+		)?.change_set || sources.find(
+			/** @param {any} source */
+			(source) => source?.change_set && !source.is_undone
+		)?.change_set || null;
 	}
 
 	/** @param {string} field */
 	function fieldLabel(field) {
 		/** @type {Record<string, string>} */
-		const map = {
-			title: $_('events.fieldTitle'),
-			start_datetime: $_('events.fieldStart'),
-			end_datetime: $_('events.fieldEnd'),
-			location: $_('events.fieldLocation'),
-			description: $_('events.fieldDescription'),
-			status: $_('events.fieldStatus'),
-			all_day: $_('events.fieldAllDay')
-		};
+		const map = { title: $_('events.fieldTitle'), start_datetime: $_('events.fieldStart'), end_datetime: $_('events.fieldEnd'), location: $_('events.fieldLocation'), description: $_('events.fieldDescription'), status: $_('events.fieldStatus'), all_day: $_('events.fieldAllDay') };
 		return map[field] || field;
 	}
 
@@ -42,73 +28,35 @@
 		return formatChangeValue(value, $_('events.none'));
 	}
 
-	let changeSet = $derived(getChangeSet(event));
-	let changes = $derived(changeSet?.changes || []);
+	let changes = $derived(getChangeSet(event)?.changes || []);
 </script>
 
-<div class="flex items-start justify-between p-4 border-b border-base-200">
+<div class="warm-card-row flex gap-3 border-b border-base-300 p-4 sm:gap-4">
+	<div class="date-chip flex h-[52px] w-[50px] shrink-0 flex-col items-center justify-center">
+		<span class="text-[10px] font-bold tracking-[0.12em] text-accent">{$_('home.changesSection')}</span>
+		<span class="text-xs font-bold text-base-content/60">{changes.length}</span>
+	</div>
 	<div class="min-w-0 flex-1">
-		<div class="flex items-center gap-2">
-			<a href="/app/events/{event.id}" class="link link-hover">
-				<h4 class="font-semibold text-base">{event.title}</h4>
-			</a>
+		<div class="flex flex-wrap items-center gap-2">
+			<a href="/app/events/{event.id}" class="link link-hover"><h4 class="text-[15px] font-bold">{event.title}</h4></a>
+			<span class="badge badge-changed badge-sm">{$_('home.changesSection')}</span>
 		</div>
 		{#if changes.length > 0}
 			<ul class="mt-2 space-y-1">
 				{#each changes as change}
-					<li class="text-sm text-base-content/80">
-						<span class="font-medium">{fieldLabel(change.field)}</span>:
-						<span class="line-through text-base-content/50">{formatValue(change.before)}</span>
-						→
-						<span>{formatValue(change.after)}</span>
-					</li>
+					<li class="text-[13px] text-base-content/75"><span class="font-semibold">{fieldLabel(change.field)}</span>: <span class="text-base-content/45 line-through">{formatValue(change.before)}</span> <span class="px-1 text-accent">→</span> <span class="font-semibold">{formatValue(change.after)}</span></li>
 				{/each}
 			</ul>
 		{:else}
-			<p class="text-sm text-base-content/60 mt-1">{$_('home.changesSectionDescription')}</p>
+			<p class="mt-1 text-[13px] text-base-content/60">{$_('home.changesSectionDescription')}</p>
 		{/if}
-		<div class="flex items-center gap-2 mt-2">
-			<button
-				class="btn btn-sm btn-success"
-				disabled={isProcessing}
-				onclick={() => onapprove?.(event)}
-				aria-label={$_('events.acceptChange')}
-				aria-busy={isProcessing}
-			>
-				{#if isProcessing}
-					<span class="loading loading-spinner loading-xs"></span>
-				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-						><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg
-					>
-				{/if}
+		<div class="mt-3 flex items-center gap-2">
+			<button class="btn btn-success btn-sm min-h-9 flex-1 rounded-[11px] text-[13px] font-bold" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptChange')} aria-busy={isProcessing}>
+				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>{/if}
+				<span>{$_('events.accept')}</span>
 			</button>
-			<a href="/app/events/{event.id}" class="btn btn-sm btn-primary" class:btn-disabled={isProcessing} aria-label={$_('common.edit')}>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-					><path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-					/></svg
-				>
-				{$_('common.edit')}
-			</a>
-			<button
-				class="btn btn-sm btn-error"
-				disabled={isProcessing}
-				onclick={() => onreject?.(event)}
-				aria-label={$_('events.rejectChange')}
-				aria-busy={isProcessing}
-			>
-				{#if isProcessing}
-					<span class="loading loading-spinner loading-xs"></span>
-				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-						><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg
-					>
-				{/if}
-			</button>
+			<a href="/app/events/{event.id}" class="btn btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-base-content" class:btn-disabled={isProcessing} aria-label={$_('common.edit')}><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m15 5 4 4M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z" /></svg></a>
+			<button class="btn btn-error btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-secondary" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectChange')} aria-busy={isProcessing}>{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="m7 7 10 10M17 7 7 17" /></svg>{/if}</button>
 		</div>
 	</div>
 </div>
