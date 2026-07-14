@@ -9,13 +9,78 @@
 -- despite docs/database-schema.md documenting both — add them here so the
 -- RPC below can safely upsert.
 
+-- Install the guarded delete trigger before deduplication. A duplicate delete
+-- is maintenance, but it must still requeue emails when the surviving rule is
+-- non-ignore (for example, an older ignore row replaced by auto_approve).
+-- When another equivalent ignore rule survives, the trigger leaves skipped
+-- emails alone.
+CREATE OR REPLACE FUNCTION reset_skipped_emails_for_sender_rule()
+RETURNS trigger AS $$
+DECLARE
+    v_count integer := 0;
+    v_count_email integer := 0;
+    v_count_domain integer := 0;
+    v_equivalent_exists boolean;
+BEGIN
+    IF OLD.action != 'ignore' THEN
+        RETURN OLD;
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM public.sender_rules
+        WHERE user_id = OLD.user_id
+          AND action = 'ignore'
+          AND id != OLD.id
+          AND (
+                (OLD.sender_email IS NOT NULL AND sender_email = OLD.sender_email)
+             OR (OLD.sender_domain IS NOT NULL AND sender_domain = OLD.sender_domain)
+          )
+    ) INTO v_equivalent_exists;
+
+    IF v_equivalent_exists THEN
+        RETURN OLD;
+    END IF;
+
+    IF OLD.sender_email IS NOT NULL THEN
+        UPDATE public.emails
+        SET processing_status = 'pending',
+            attempts = 0,
+            processing_error = NULL,
+            locked_by = NULL,
+            locked_until = NULL
+        WHERE from_email = OLD.sender_email
+          AND user_id = OLD.user_id
+          AND processing_status = 'skipped'
+          AND date_sent >= now() - interval '30 days';
+        GET DIAGNOSTICS v_count_email = ROW_COUNT;
+    END IF;
+
+    IF OLD.sender_domain IS NOT NULL THEN
+        UPDATE public.emails
+        SET processing_status = 'pending',
+            attempts = 0,
+            processing_error = NULL,
+            locked_by = NULL,
+            locked_until = NULL
+        WHERE from_email LIKE '%@' || OLD.sender_domain
+          AND user_id = OLD.user_id
+          AND processing_status = 'skipped'
+          AND date_sent >= now() - interval '30 days';
+        GET DIAGNOSTICS v_count_domain = ROW_COUNT;
+    END IF;
+
+    v_count := v_count_email + v_count_domain;
+    IF v_count > 0 THEN
+        RAISE LOG 'Un-ignore: reset % skipped emails for rule %', v_count, OLD.id;
+    END IF;
+
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+   SET search_path = public;
+
 -- De-duplicate any pre-existing rows before adding uniqueness constraints
 -- (keep the most recently created row per match key).
--- These deletes are maintenance, not an explicit un-ignore. Suppress the
--- BEFORE DELETE requeue trigger while duplicates are removed; otherwise the
--- surviving equivalent ignore rule remains active but its skipped emails are
--- incorrectly reset to pending.
-ALTER TABLE public.sender_rules DISABLE TRIGGER sender_rule_before_delete;
 
 DELETE FROM public.sender_rules a USING public.sender_rules b
 WHERE a.sender_email IS NOT NULL
@@ -28,8 +93,6 @@ WHERE a.sender_domain IS NOT NULL
   AND a.sender_domain = b.sender_domain
   AND a.user_id = b.user_id
   AND (a.created_at, a.id) < (b.created_at, b.id);
-
-ALTER TABLE public.sender_rules ENABLE TRIGGER sender_rule_before_delete;
 
 ALTER TABLE public.sender_rules
     ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now() NOT NULL;
