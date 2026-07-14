@@ -29,12 +29,24 @@
 	}
 
 	let changes = $derived(getChangeSet(event)?.changes || []);
+	let dateParts = $derived(() => {
+		if (!event.start_datetime) return { month: '', day: '' };
+		const date = new Date(event.start_datetime);
+		return {
+			month: date.toLocaleDateString(undefined, { month: 'short' }).toUpperCase(),
+			day: date.toLocaleDateString(undefined, { day: 'numeric' })
+		};
+	});
 </script>
 
 <div class="warm-card-row flex gap-3 border-b border-base-300 p-4 sm:gap-4">
 	<div class="date-chip flex h-[52px] w-[50px] shrink-0 flex-col items-center justify-center">
-		<span class="text-[10px] font-bold tracking-[0.12em] text-accent">{$_('home.changesSection')}</span>
-		<span class="text-xs font-bold text-base-content/60">{changes.length}</span>
+		{#if dateParts().month}
+			<span class="text-[10px] font-bold tracking-[0.12em] text-accent">{dateParts().month}</span>
+			<span class="text-xl font-extrabold leading-5">{dateParts().day}</span>
+		{:else}
+			<span class="text-xs font-bold text-accent">—</span>
+		{/if}
 	</div>
 	<div class="min-w-0 flex-1">
 		<div class="flex flex-wrap items-center gap-2">
@@ -56,7 +68,7 @@
 				<span>{$_('events.accept')}</span>
 			</button>
 			<a href="/app/events/{event.id}" class="btn btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-base-content" class:btn-disabled={isProcessing} aria-label={$_('common.edit')}><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m15 5 4 4M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z" /></svg></a>
-			<button class="btn btn-error btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-secondary" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectChange')} aria-busy={isProcessing}>{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="m7 7 10 10M17 7 7 17" /></svg>{/if}</button>
+			<button class="btn btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-error" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectChange')} aria-busy={isProcessing}>{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="m7 7 10 10M17 7 7 17" /></svg>{/if}</button>
 		</div>
 	</div>
 </div>

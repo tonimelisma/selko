@@ -122,7 +122,11 @@ fun EventListItem(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = if (event.isPendingChange) "CHANGED" else "NEW",
+                    text = if (event.isPendingChange) {
+                        stringResource(R.string.review_badge_changed)
+                    } else {
+                        stringResource(R.string.review_badge_new)
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (event.isPendingChange) {
                         SelkoTheme.colors.badgeChangedForeground

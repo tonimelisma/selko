@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "Selko",
-		"tagline": "Sign in to continue.",
+		"tagline": "Make life easy.",
 		"loading": "Loading...",
 		"loadingEvents": "Loading events",
 		"retry": "Retry",
@@ -13,7 +13,6 @@
 		"skipToContent": "Skip to content",
 		"confirm": "Confirm",
 		"dismiss": "Dismiss",
-		"more": "More actions",
 		"unknownSender": "Unknown Sender"
 	},
 	"auth": {
@@ -56,7 +55,8 @@
 		"changesSection": "Changes",
 		"newSectionDescription": "Events to add to your calendar",
 		"changesSectionDescription": "Updates to events already on your calendar",
-		"syncFailedAfterApprove": "Saved, but calendar sync failed. You can retry from History."
+		"syncFailedAfterApprove": "Saved, but calendar sync failed. You can retry from History.",
+		"acceptAllConfirm": "Accept all {count} pending items? New events are added to your calendar and changes are applied."
 	},
 	"events": {
 		"editEvent": "Edit Event",
@@ -194,7 +194,6 @@
 	"senderActions": {
 		"actionsFor": "Actions for {sender}",
 		"bulkActions": "Bulk actions",
-		"autoAcceptEvents": "Auto-accept events",
 		"approveAll": "Approve all",
 		"rejectAll": "Reject all",
 		"autoApproveSender": "Auto-approve sender",

@@ -99,54 +99,57 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Connected Accounts Section
-                SectionHeader(title = stringResource(R.string.settings_section_connected_accounts))
-                Spacer(modifier = Modifier.height(8.dp))
-                ConnectedAccountsSection(
-                    uiState = uiState,
-                    onDisconnect = { viewModel.disconnectIntegration(it) },
-                    gmailAuthUrl = viewModel.getGmailAuthUrl(),
-                    outlookAuthUrl = viewModel.getOutlookAuthUrl(),
-                    calendarAuthUrl = viewModel.getCalendarAuthUrl()
-                )
+                // Sections get the screen gutter; the header brings its own.
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    // Connected Accounts Section
+                    SectionHeader(title = stringResource(R.string.settings_section_connected_accounts))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ConnectedAccountsSection(
+                        uiState = uiState,
+                        onDisconnect = { viewModel.disconnectIntegration(it) },
+                        gmailAuthUrl = viewModel.getGmailAuthUrl(),
+                        outlookAuthUrl = viewModel.getOutlookAuthUrl(),
+                        calendarAuthUrl = viewModel.getCalendarAuthUrl()
+                    )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                // Calendar Defaults Section
-                SectionHeader(title = stringResource(R.string.settings_section_calendar_defaults))
-                Spacer(modifier = Modifier.height(8.dp))
-                CalendarDefaultsSection(
-                    uiState = uiState,
-                    onCalendarSelected = { viewModel.onCalendarSelected(it) },
-                    onDefaultInviteesChange = { viewModel.onDefaultInviteesChange(it) },
-                    onSaveInvitees = { viewModel.saveCalendarSettings() }
-                )
+                    // Calendar Defaults Section
+                    SectionHeader(title = stringResource(R.string.settings_section_calendar_defaults))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CalendarDefaultsSection(
+                        uiState = uiState,
+                        onCalendarSelected = { viewModel.onCalendarSelected(it) },
+                        onDefaultInviteesChange = { viewModel.onDefaultInviteesChange(it) },
+                        onSaveInvitees = { viewModel.saveCalendarSettings() }
+                    )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                // Automation Rules Section
-                SectionHeader(title = stringResource(R.string.settings_section_automation_rules))
-                Spacer(modifier = Modifier.height(8.dp))
-                AutomationRulesSection(
-                    rules = uiState.rules,
-                    isLoading = uiState.isLoadingRules,
-                    onCreateRule = { senderEmail, senderDomain, action ->
-                        viewModel.createRule(senderEmail, senderDomain, action)
-                    },
-                    onDeleteRule = { viewModel.deleteRule(it) }
-                )
+                    // Automation Rules Section
+                    SectionHeader(title = stringResource(R.string.settings_section_automation_rules))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AutomationRulesSection(
+                        rules = uiState.rules,
+                        isLoading = uiState.isLoadingRules,
+                        onCreateRule = { senderEmail, senderDomain, action ->
+                            viewModel.createRule(senderEmail, senderDomain, action)
+                        },
+                        onDeleteRule = { viewModel.deleteRule(it) }
+                    )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                // Account Section
-                SectionHeader(title = stringResource(R.string.settings_section_account))
-                Spacer(modifier = Modifier.height(8.dp))
-                AccountSection(
-                    uiState = uiState,
-                    onSignOut = { viewModel.signOut(onLogout) }
-                )
+                    // Account Section
+                    SectionHeader(title = stringResource(R.string.settings_section_account))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AccountSection(
+                        uiState = uiState,
+                        onSignOut = { viewModel.signOut(onLogout) }
+                    )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
             }
         }
 
@@ -315,16 +318,16 @@ private fun IntegrationRow(
                     onClick = onDisconnect,
                     enabled = !isDisconnecting,
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = SelkoTheme.colors.rust
+                        contentColor = MaterialTheme.colorScheme.error
                     ),
-                    border = BorderStroke(1.dp, SelkoTheme.colors.rust),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     if (isDisconnecting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
-                            color = SelkoTheme.colors.rust
+                            color = MaterialTheme.colorScheme.error
                         )
                     } else {
                         Text(stringResource(R.string.settings_disconnect))

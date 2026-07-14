@@ -361,9 +361,13 @@ class TestOAuthCallback:
 
     def test_callback_rejects_parked_google_photos(self, test_client):
         """Historical or stale Google Photos OAuth states cannot create integrations."""
+        from selko.services.integrations import OAuthProviderNotAllowed
+
         with patch(
             "selko.api.routes.integrations.complete_oauth_flow",
-            return_value=(MagicMock(), "test-user-id", "google_photos"),
+            side_effect=OAuthProviderNotAllowed(
+                "google_photos", {"gmail", "google_calendar"}
+            ),
         ):
             resp = test_client.get(
                 "/integrations/google/callback",

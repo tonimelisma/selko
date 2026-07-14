@@ -60,6 +60,53 @@ def test_authenticated_read_only_tables_are_reachable(temp_user_client):
 
 @pytest.mark.integration
 @pytest.mark.development
+def test_authenticated_cannot_read_integration_token_columns(
+    admin_client, temp_user, temp_user_client
+):
+    """OAuth token columns stay service-role-only; metadata stays readable."""
+    user_id, _, _ = temp_user
+
+    admin_client.table("integrations").insert(
+        {
+            "user_id": user_id,
+            "provider": "gmail",
+            "status": "active",
+            "access_token": "secret-access-token",
+            "refresh_token": "secret-refresh-token",
+            "provider_email": "grants-test@example.com",
+        }
+    ).execute()
+
+    metadata = (
+        temp_user_client.table("integrations")
+        .select("id,provider,status,provider_email")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    assert metadata.data["provider_email"] == "grants-test@example.com"
+
+    for column in ("access_token", "refresh_token", "token_expiry"):
+        with pytest.raises(APIError) as exc_info:
+            temp_user_client.table("integrations").select(column).eq(
+                "user_id", user_id
+            ).execute()
+        assert exc_info.value.code == "42501", column
+
+    # Disconnect (delete) must still work for the owner. The app clients all
+    # delete with minimal returns; representation would RETURNING * and hit
+    # the revoked token columns.
+    temp_user_client.table("integrations").delete(returning="minimal").eq(
+        "user_id", user_id
+    ).execute()
+    remaining = (
+        admin_client.table("integrations").select("id").eq("user_id", user_id).execute()
+    )
+    assert remaining.data == []
+
+
+@pytest.mark.integration
+@pytest.mark.development
 def test_anonymous_role_cannot_read_application_tables(config):
     """Public application tables are not exposed to anonymous Data API users."""
     anonymous_client = create_client(config.supabase_url, config.supabase_key)

@@ -116,7 +116,7 @@ struct SenderRulesView: View {
     private func ruleRow(_ rule: SenderRule) -> some View {
         HStack(spacing: 12) {
             Image(systemName: rule.ruleAction == .ignore ? "shield.slash" : "checkmark.circle")
-                .foregroundStyle(rule.ruleAction == .ignore ? Color.selkoRust : Color.selkoSuccess)
+                .foregroundStyle(rule.ruleAction == .ignore ? Color.selkoError : Color.selkoSuccess)
                 .font(SelkoTypography.sectionTitle)
 
             VStack(alignment: .leading, spacing: 2) {

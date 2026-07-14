@@ -16,7 +16,13 @@
 	let hasDropdownItems = $derived(eventCount > 1 || !isPhotoSource);
 	let tone = $derived(senderAvatarTone(senderEmail || sender));
 	let avatarInitials = $derived(initialsFromEmail(senderEmail || sender));
-	let menuOpen = $state(true);
+	let menuOpen = $state(false);
+
+	/** @param {(() => void) | undefined} action */
+	function runAndClose(action) {
+		menuOpen = false;
+		action?.();
+	}
 </script>
 
 <div class="flex items-start justify-between gap-3 p-4">
@@ -49,19 +55,16 @@
 			<div class="flex items-center justify-between gap-3 px-2 py-2">
 				<span class="text-xs font-semibold text-base-content/65">{$_('senderActions.bulkActions')}</span>
 				<div class="flex gap-1">
-					<button class="btn btn-ghost btn-xs" onclick={onapproveAll}>{$_('senderActions.approveAll')}</button>
-					<button class="btn btn-ghost btn-xs text-secondary" onclick={onrejectAll}>{$_('senderActions.rejectAll')}</button>
+					<button class="btn btn-ghost btn-xs" onclick={() => runAndClose(onapproveAll)}>{$_('senderActions.approveAll')}</button>
+					<button class="btn btn-ghost btn-xs text-error" onclick={() => runAndClose(onrejectAll)}>{$_('senderActions.rejectAll')}</button>
 				</div>
 			</div>
 			<div class="my-1 border-t border-base-300"></div>
 		{/if}
 		{#if !isPhotoSource}
-			<label class="flex items-center justify-between gap-3 px-2 py-2 text-sm font-semibold">
-				<span>{$_('senderActions.autoApproveSender')}</span>
-				<input type="checkbox" class="toggle toggle-sm toggle-primary" checked={false} onchange={onautoApproveSender} aria-label={$_('senderActions.autoApproveSender')} />
-			</label>
+			<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-base-200" onclick={() => runAndClose(onautoApproveSender)}>{$_('senderActions.autoApproveSender')}</button>
 			<div class="my-1 border-t border-base-300"></div>
-			<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-secondary hover:bg-base-200" onclick={onignoreSender}>{$_('senderActions.ignoreSender')}</button>
+			<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-error hover:bg-base-200" onclick={() => runAndClose(onignoreSender)}>{$_('senderActions.ignoreSender')}</button>
 		{/if}
 	</div>
 {/if}

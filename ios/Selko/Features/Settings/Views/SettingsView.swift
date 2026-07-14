@@ -108,7 +108,7 @@ struct SettingsView: View {
                         .font(SelkoTypography.caption.weight(.bold))
                 }
                 .buttonStyle(.bordered)
-                    .tint(Color.selkoRust)
+                    .tint(Color.selkoError)
             } else {
                 Button("Connect") {
                     connectProvider(provider)
@@ -187,7 +187,7 @@ struct SettingsView: View {
                 }
             }
             .buttonStyle(.bordered)
-            .tint(Color.selkoRust)
+            .tint(Color.selkoError)
             .accessibilityIdentifier("signOutButton")
         }
     }
