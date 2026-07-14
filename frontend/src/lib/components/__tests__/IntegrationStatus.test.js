@@ -50,37 +50,6 @@ describe('IntegrationStatus', () => {
 		expect(screen.getByText('Google Calendar')).toBeInTheDocument();
 	});
 
-	it('shows Google Photos in per-service status list', () => {
-		render(IntegrationStatus, {
-			props: {
-				integrations: [
-					{ id: '1', provider: 'gmail', status: 'active', provider_email: 'test@gmail.com' }
-				],
-				setupMode: true
-			}
-		});
-
-		expect(screen.getByText('Google Photos')).toBeInTheDocument();
-		expect(screen.getByText('Scan photos for event details')).toBeInTheDocument();
-		expect(screen.getByText('Outlook')).toBeInTheDocument();
-		expect(screen.getByText('Read Outlook emails to find calendar events')).toBeInTheDocument();
-	});
-
-	it('shows Google Photos as partially connected in setup mode', () => {
-		render(IntegrationStatus, {
-			props: {
-				integrations: [
-					{ id: '3', provider: 'google_photos', status: 'active', provider_email: 'test@gmail.com' }
-				],
-				setupMode: true
-			}
-		});
-
-		// Should show per-service status (not welcome screen) because partially connected
-		expect(screen.getByText('Connect your accounts')).toBeInTheDocument();
-		expect(screen.getByText('Google Photos')).toBeInTheDocument();
-	});
-
 	it('shows disconnect buttons in settings mode', () => {
 		render(IntegrationStatus, {
 			props: { integrations: activeIntegrations, setupMode: false }

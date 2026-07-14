@@ -277,24 +277,6 @@ describe('Backend API Client', () => {
 		});
 	});
 
-	describe('getPhotosAuthUrl', () => {
-		it('returns auth URL without redirect_uri', async () => {
-			const { getPhotosAuthUrl } = await import('../api/backend.js');
-			const url = getPhotosAuthUrl();
-
-			expect(url).toBe('http://localhost:8000/integrations/photos/auth');
-		});
-
-		it('returns auth URL with redirect_uri', async () => {
-			const { getPhotosAuthUrl } = await import('../api/backend.js');
-			const url = getPhotosAuthUrl('http://myapp.com/callback');
-
-			expect(url).toBe(
-				'http://localhost:8000/integrations/photos/auth?redirect_uri=http%3A%2F%2Fmyapp.com%2Fcallback'
-			);
-		});
-	});
-
 	describe('getOutlookAuthUrl', () => {
 		it('returns the Outlook auth endpoint', async () => {
 			const { getOutlookAuthUrl } = await import('../api/backend.js');

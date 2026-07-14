@@ -31,7 +31,6 @@ from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.services.memory_monitor import start_memory_monitor
 from selko.workers.email_fetch import schedule_email_fetches
-from selko.workers.photo_fetch import schedule_photo_fetches
 from selko.workers.pool import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -141,16 +140,6 @@ async def lifespan(app: FastAPI):
             max_instances=1,
         )
 
-        # Photo fetch scheduler - every 30 minutes after startup
-        scheduler.add_job(
-            schedule_photo_fetches,
-            "interval",
-            minutes=30,
-            id="photo_fetch_scheduler",
-            name="Photo Fetch Scheduler",
-            max_instances=1,
-        )
-
         scheduler.start()
 
         # Kick off first fetches without blocking HTTP bind. Awaiting them
@@ -159,7 +148,6 @@ async def lifespan(app: FastAPI):
         async def _run_initial_fetches() -> None:
             try:
                 await schedule_email_fetches()
-                await schedule_photo_fetches()
             except Exception:
                 logger.exception("Initial fetch scheduling failed")
 

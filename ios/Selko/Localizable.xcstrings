@@ -749,28 +749,6 @@
         }
       }
     },
-    "integration.google_photos" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google Photos"
-          }
-        }
-      }
-    },
-    "integration.google_photos_description" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scan photos for event details"
-          }
-        }
-      }
-    },
     "integration.connect" : {
       "extractionState" : "manual",
       "localizations" : {
