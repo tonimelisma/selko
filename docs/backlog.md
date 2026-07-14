@@ -2,9 +2,9 @@
 
 Future enhancements for Selko, documented for prioritization.
 
-## Google Photos Integration
+## Photo Library Ingestion (Parked)
 
-Scan Google Photos for event-related images (tickets, posters, flyers) and extract calendar event data using LLM multimodal analysis. Requires `google_photos` OAuth scope and a new `event_sources.source_origin = 'google_photos'` workflow.
+Photo-library ingestion is parked because Google Photos library-wide read access was revoked. The restoration design, including a future OneDrive path, lives in [`docs/specs/onedrive-photo-ingestion.md`](specs/onedrive-photo-ingestion.md).
 
 ## Embedded Images in Emails
 

@@ -355,7 +355,7 @@ const isConnected = data?.status === 'active';
 | Provider | Description |
 |----------|-------------|
 | `gmail` | Gmail email integration |
-| `google_photos` | Google Photos (future) |
+| `google_photos` | Google Photos (parked; retained for historical rows) |
 | `google_calendar` | Google Calendar |
 
 ### Status Values

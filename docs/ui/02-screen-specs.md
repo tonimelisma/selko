@@ -517,6 +517,8 @@ Google Account: user@gmail.com                [Disconnect]
 
 Per-service OAuth scope status is shown. If Calendar isn't authorized, an "Authorize" button triggers a scoped OAuth request for just that permission.
 
+Photo-library connections are intentionally omitted while ingestion is parked; historical photo-sourced events still use the review rendering paths.
+
 Disconnecting a Google account preserves all data. If reconnected later, sync resumes from where it left off (idempotent upsert).
 
 Future: "Add another account" button for multiple Google accounts.
