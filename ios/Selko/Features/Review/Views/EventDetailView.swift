@@ -62,7 +62,7 @@ struct EventDetailView: View {
                         }
                     }
                     .buttonStyle(.bordered)
-                    .tint(Color.selkoRust)
+                    .tint(Color.selkoError)
                     .controlSize(.large)
                     .disabled(viewModel.isActing)
                     .accessibilityIdentifier("rejectButton")

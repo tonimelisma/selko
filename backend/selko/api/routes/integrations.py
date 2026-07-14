@@ -365,12 +365,6 @@ async def google_oauth_callback(
             allowed_providers={"gmail", "google_calendar"},
         )
 
-        if provider == "google_photos":
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="Google Photos ingestion is currently parked",
-            )
-
         # Create service role client (bypasses RLS for explicit user_id)
         from selko.services.auth import get_service_client
         client = get_service_client(config)

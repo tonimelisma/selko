@@ -30,14 +30,31 @@ supporting copy instead of repeating the tagline.
 | border | `#EDE4DA` | `#322B25` | Card and navigation hairlines |
 | divider | `#F2EAE1` | `#322B25` | Internal separators |
 | primary | `#E86F52` | `#F0805C` | Coral actions and active navigation |
-| rust | `#B4553A` | `#F0805C` | Destructive actions and overlines |
+| rust | `#B4553A` | `#F0805C` | Brand-deep text: overlines, section labels, links. Never destructive. |
 | link | `#C9603F` | `#F0805C` | Links |
 | amber | `#F0A85C` | `#F0B45C` | Secondary accent |
 | success | `#5CA07C` | `#5FBE90` | Accept and connected states |
-| changed | `#C97A2E` | `#F0B45C` | Changed state |
+| changed | `#C97A2E` | `#F0B45C` | Changed / caution state |
+| berry (error) | `#AD3650` | `#EE7189` | Errors, failed syncs, destructive actions (reject, ignore, disconnect, logout) |
+| info | `#6E655C` | `#B8AC9F` | Quiet informational UI (warm slate; Selko has no loud "info" semantics) |
 
 Dark mode uses borders in place of shadows. Filled dark-mode buttons use dark
 ink labels on bright Warmth fills where the contrast requires it.
+
+### Semantic color rules
+
+1. **One hue per meaning.** Coral family = brand, green = positive, amber/ochre
+   = caution/changed, berry = danger, warm gray = informational. Rust is a
+   darker *text* shade of coral for overlines and labels — it is not a
+   semantic color.
+2. **Destructive actions always use berry (`error`),** never rust or coral.
+   Rust ≈ coral in dark mode, so styling danger with rust collapses it into
+   the brand color at night.
+3. **Dark mode adjusts lightness, never hue.** Each token has a light/dark
+   pair within its own hue family; do not remap one hue onto another.
+4. **Destructive controls are ghost/outline by default.** The only filled
+   berry button is the confirm button inside a confirmation dialog, so brand
+   CTAs (filled coral) and danger stay distinguishable by shape alone.
 
 ## Typography
 

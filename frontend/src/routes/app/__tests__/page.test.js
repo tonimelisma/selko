@@ -310,7 +310,7 @@ describe('Review Queue (App Page)', () => {
 		await waitFor(() => expect(screen.getByText('Grantmaking.ai')).toBeInTheDocument());
 
 		const grantmakingCard = screen.getByText('Grantmaking.ai').closest('div.border-b');
-		const rejectButton = grantmakingCard.querySelector('button.btn-error');
+		const rejectButton = grantmakingCard.querySelector('button.text-error');
 		await user.click(rejectButton);
 
 		await waitFor(() => {
@@ -400,6 +400,7 @@ describe('Review Queue (App Page)', () => {
 			expect(screen.getByText('Spam Event')).toBeInTheDocument();
 		});
 
+		await user.click(screen.getByRole('button', { name: /actions for/i }));
 		await user.click(screen.getByText('Ignore sender'));
 
 		await waitFor(() => {
@@ -441,6 +442,7 @@ describe('Review Queue (App Page)', () => {
 			expect(screen.getByText('Calendar Event')).toBeInTheDocument();
 		});
 
+		await user.click(screen.getByRole('button', { name: /actions for/i }));
 		await user.click(screen.getByText('Ignore sender'));
 
 		await waitFor(() => {
@@ -488,6 +490,7 @@ describe('Review Queue (App Page)', () => {
 			expect(screen.getByText('Trusted Event')).toBeInTheDocument();
 		});
 
+		await user.click(screen.getByRole('button', { name: /actions for/i }));
 		await user.click(screen.getByText('Auto-approve sender'));
 
 		await waitFor(() => {

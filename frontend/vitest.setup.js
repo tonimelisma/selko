@@ -1,3 +1,8 @@
+// Pin the timezone before anything constructs Dates: all-day fixtures are
+// stored as America/Los_Angeles local midnights, so assertions are only
+// meaningful in that zone (CI runs in UTC otherwise).
+process.env.TZ = 'America/Los_Angeles';
+
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 

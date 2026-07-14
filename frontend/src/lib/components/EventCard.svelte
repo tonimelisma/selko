@@ -65,7 +65,7 @@
 			<a href="/app/events/{event.id}" class="btn btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-base-content" class:btn-disabled={isProcessing} aria-label={$_('common.edit')}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m15 5 4 4M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z" /></svg>
 			</a>
-			<button class="btn btn-error btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-secondary" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')} aria-busy={isProcessing}>
+			<button class="btn btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-error" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')} aria-busy={isProcessing}>
 				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="m7 7 10 10M17 7 7 17" /></svg>{/if}
 			</button>
 		</div>

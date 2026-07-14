@@ -101,7 +101,7 @@ struct EventCardView: View {
                                     .frame(width: 36, height: 36)
                             }
                             .buttonStyle(.bordered)
-                            .tint(Color.selkoRust)
+                            .tint(Color.selkoError)
                             .accessibilityLabel("Reject")
                         }
                     }
