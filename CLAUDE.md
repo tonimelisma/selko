@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Selko** is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems. See `PRD_ARCH.md` for complete product requirements and architecture.
+**Selko** is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails; photo-library ingestion is parked) to manage schedules, to-do lists, and digital filing systems. See `PRD_ARCH.md` for complete product requirements and architecture.
 
 ---
 
@@ -277,6 +277,8 @@ from a Microsoft Entra app registration.
 | **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |
 | **Architecture** | `PRD_ARCH.md` | For product requirements and architecture |
+| **OneDrive photo ingestion** | `docs/specs/onedrive-photo-ingestion.md` | When restoring or implementing photo-library ingestion |
+| **Photo surface removal** | `docs/specs/photo-surface-removal.md` | When removing or restoring parked photo connect surfaces |
 | **UI user journeys** | `docs/ui/01-user-journeys.md` | When planning frontend work or understanding user flows |
 | **Screen specifications** | `docs/ui/02-screen-specs.md` | When implementing any web screen |
 | **UI patterns & components** | `docs/ui/03-patterns-and-components.md` | Before building any UI component, to follow conventions |

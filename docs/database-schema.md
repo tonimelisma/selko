@@ -316,7 +316,7 @@ Audit log of all LLM API calls with prompts, responses, token usage, latency, an
 
 ### `photos`
 
-Synced Google Photos with status-based worker claiming for LLM processing.
+Synced Google Photos with status-based worker claiming for LLM processing. Photo-library ingestion is dormant while the feature is parked; this table is retained for historical rows and restoration.
 
 | Column | Type | Description |
 |--------|------|-------------|

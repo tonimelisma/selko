@@ -1,10 +1,10 @@
 # Selko
 
-**Your inbox and camera roll, quietly turned into an organized life.** Selko is an AI-powered personal assistant that reads your emails and photos, understands what actually matters, and keeps your calendar, to-do lists, and digital filing in order — so you don't have to.
+**Your inbox, quietly turned into an organized life.** Selko is an AI-powered personal assistant that reads your emails, understands what actually matters, and keeps your calendar, to-do lists, and digital filing in order — so you don't have to.
 
 ## Project Status
 
-**Live in production.** Selko is running today for real users across web, iOS, and Android — turning everyday email and photos into calendar events, with you always in the loop. Powered by [Anthropic's Claude](https://www.anthropic.com/claude).
+**Live in production.** Selko is running today for real users across web, iOS, and Android — turning everyday email into calendar events, with you always in the loop. Powered by [Anthropic's Claude](https://www.anthropic.com/claude).
 
 ## The AI behind Selko
 

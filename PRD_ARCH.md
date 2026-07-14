@@ -8,7 +8,7 @@ An AI-powered assistant that automates personal organization by analyzing a user
 
 ### **2\. Core Value Proposition**
 
-The system automatically ingests unstructured data from emails and photos to create structured action items, calendar events, and organized files without manual user input. It acts as a "Human-in-the-loop" filter, ensuring accuracy before committing changes to the user's permanent records.
+The system automatically ingests unstructured data from emails to create structured action items, calendar events, and organized files without manual user input. Photo-library ingestion is currently parked; its restoration design is documented in [`docs/specs/onedrive-photo-ingestion.md`](docs/specs/onedrive-photo-ingestion.md). The system acts as a "Human-in-the-loop" filter, ensuring accuracy before committing changes to the user's permanent records.
 
 ### **3\. Phased Architecture & Roadmap**
 
@@ -33,7 +33,7 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 **❌ Not Yet Implemented (MVP scope):**
 - ❌ Undo/Redo functionality
-- ❌ Google Photos sync (Phase 2)
+- ⏸ Google Photos sync (parked — see [`docs/specs/onedrive-photo-ingestion.md`](docs/specs/onedrive-photo-ingestion.md))
 - ❌ Web upload interface
 
 #### **3.1. Phase 1: Web-First Cloud Processing (MVP)**
@@ -57,7 +57,7 @@ The system automatically ingests unstructured data from emails and photos to cre
 
 | ID | Feature | Description | Priority | Status |
 | :---- | :---- | :---- | :---- | :---- |
-| **FR-A.1** | **Cloud Photo Library** | Server detects new photos added to connected providers. Primary method for "mobile" photo ingestion in Phase 1\. | **P0** | ❌ Not Started |
+| **FR-A.1** | **Cloud Photo Library** | Server detects new photos added to connected providers when photo-library ingestion is restored. | **P0** | ⏸ Parked — see [`docs/specs/onedrive-photo-ingestion.md`](docs/specs/onedrive-photo-ingestion.md) |
 | **FR-A.2** | **Email Inbox** | Server detects new emails arriving in connected inboxes. Must extract attachments. | **P0** | ✅ **DONE** |
 | **FR-A.3** | **Web Upload (Manual)** | Drag-and-drop zone on Web Dashboard for direct file ingestion (PDFs/Images). | **P0** | ❌ Not Started |
 
@@ -138,19 +138,19 @@ This respects user agency while keeping them informed of new information from em
 
 The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Calendar, enabling future comparison with the actual Calendar state to detect drift.
 
-#### **Journey 4: The "Kid's Drawing" (Photo \-\> Cloud Storage)** - ❌ NOT STARTED
+#### **Journey 4: The "Kid's Drawing" (Photo \-\> Cloud Storage)** - ⏸ PARKED — see [`docs/specs/onedrive-photo-ingestion.md`](docs/specs/onedrive-photo-ingestion.md)
 
 *Goal: User snaps a memory, and system automatically files it to the correct folder.*
 
 | Step | User Action | System Action | Related FR | Status |
 | :---- | :---- | :---- | :---- | :---- |
-| 1 | User snaps a photo of child's drawing. | Phone syncs photo to Cloud Library. | FR-A.1 | ❌ Not Started |
-| 2 | N/A | Server detects new asset in Cloud Library. | FR-A.1 | ❌ Not Started |
-| 3 | N/A | **AI Analysis:** Visual recognition detects content is "Hand-drawn art" or "Child's Drawing". | FR-B.3 | ❌ Not Started |
-| 4 | N/A | **Rule Check:** System finds user rule: Type: Artwork \-\> Dest: /Family/Kids Art. | FR-B.5 | ❌ Not Started |
-| 5 | N/A | **Execution:** System copies image to specified folder automatically (bypassing review). | FR-D.2 | ❌ Not Started |
+| 1 | User snaps a photo of child's drawing. | Phone syncs photo to Cloud Library. | FR-A.1 | ⏸ Parked |
+| 2 | N/A | Server detects new asset in Cloud Library. | FR-A.1 | ⏸ Parked |
+| 3 | N/A | **AI Analysis:** Visual recognition detects content is "Hand-drawn art" or "Child's Drawing". | FR-B.3 | ⏸ Parked |
+| 4 | N/A | **Rule Check:** System finds user rule: Type: Artwork \-\> Dest: /Family/Kids Art. | FR-B.5 | ⏸ Parked |
+| 5 | N/A | **Execution:** System copies image to specified folder automatically (bypassing review). | FR-D.2 | ⏸ Parked |
 
-**Rationale:** This journey is Phase 2 (after Email→Calendar works end-to-end).
+**Rationale:** This journey remains parked while the photo-library provider path is restored (after Email→Calendar works end-to-end).
 
 ## **Part 2: Technical Architecture Specification**
 
@@ -206,7 +206,7 @@ The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Cale
 
 * **assets**: Represents the raw input unit.  
   * *Requirements:* Must store unique identifiers (external\_id), content hashes for deduplication, and reference links to Object Storage.  
-  * *Sources:* Email Providers, Photo Libraries, Manual Uploads.  
+  * *Sources:* Email Providers, Photo Libraries (parked), Manual Uploads.
 * **inferences**: Represents the AI's findings (1 Asset can yield N Inferences).  
   * *Requirements:* Stores extracted structured data (JSON), confidence scores, and links to specific user\_categories.  
   * *States:* PENDING\_REVIEW, APPROVED, REJECTED, AUTO\_EXECUTED.
@@ -277,7 +277,7 @@ The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Cale
 | Component | Priority | Blocker | Next Steps |
 |-----------|----------|---------|------------|
 | **Undo/Redo** | P0 | None | Compensating transactions (action_history table created) |
-| **Google Photos** | P1 | None | Similar to Gmail integration (OAuth scopes, fetch, LLM process) |
+| **Google Photos** | P1 | Library-wide read access revoked | Parked; restore via [`docs/specs/onedrive-photo-ingestion.md`](docs/specs/onedrive-photo-ingestion.md) |
 | **Web Upload** | P1 | None | Frontend drag-and-drop |
 
 **Current Capability:**
@@ -290,10 +290,10 @@ The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Cale
 - ✅ Sender rules for automation (ignore + auto-approve)
 - ✅ History view with undo actions
 - ❌ No full undo/redo with compensating transactions
-- ❌ No Google Photos integration
+- ⏸ Photo-library ingestion parked; historical Google Photos data and rendering remain supported
 
 **Next Milestone: Phase 2 — Extended Inputs**
-1. Google Photos integration (server-side sync + LLM analysis)
+1. Parked photo-library ingestion — restore via [`docs/specs/onedrive-photo-ingestion.md`](docs/specs/onedrive-photo-ingestion.md)
 2. Undo/Redo with compensating transactions
 3. Web upload interface
 
@@ -301,7 +301,7 @@ The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Cale
 
 ### **1. System Overview**
 
-Selko is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails, photos) to manage schedules, to-do lists, and digital filing systems.
+Selko is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails; photo ingestion parked) to manage schedules, to-do lists, and digital filing systems.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -391,7 +391,7 @@ Selko is an AI-powered assistant that automates personal organization by analyzi
 - **Status:** FUTURE
 - **Goal:** Add more input sources after Email→Calendar works
 - **Features:**
-  - Google Photos sync
+  - Google Photos sync (parked — see [`docs/specs/onedrive-photo-ingestion.md`](docs/specs/onedrive-photo-ingestion.md))
   - Web upload interface
   - Direct camera capture (mobile)
 
@@ -427,7 +427,7 @@ All frontends (Web, Android, iOS) must:
 
 #### **3.2 End-to-End First**
 Complete full journeys before expanding scope:
-- Do NOT add Google Photos until Email→Calendar works end-to-end
+- Photo-library ingestion is parked; restore it only via [`docs/specs/onedrive-photo-ingestion.md`](docs/specs/onedrive-photo-ingestion.md) after Email→Calendar works end-to-end
 - Do NOT add Task Management until Calendar integration is complete
 - Each input→output path must be fully functional before adding more
 
@@ -576,7 +576,6 @@ All database access is controlled by Supabase RLS policies:
 External integrations use OAuth with minimal scopes:
 - Gmail: `gmail.readonly` (read-only access)
 - Calendar: `calendar.events` (event management)
-- Photos: `photoslibrary.readonly` (read-only access)
 
 #### **8.3 Storage Isolation**
 Supabase Storage uses user-scoped paths:

@@ -4,6 +4,8 @@
 
 Selko uses a provider-agnostic LLM abstraction layer (`LLMProvider` + `LLMGateway`) that supports 8 providers and 37 models. The application default is Anthropic Claude Sonnet 5, but any registered provider/model can be selected via `LLM_PROVIDER` and `LLM_MODEL`.
 
+> **Photo-library status:** Google Photos/OneDrive library ingestion is dormant while photo ingestion is parked; see [`docs/specs/onedrive-photo-ingestion.md`](specs/onedrive-photo-ingestion.md). The multimodal/image-processing material below describes the active email-attachment pipeline and remains applicable to email attachments.
+
 ### Supported Providers
 
 | Provider | Env Var Key | Default Model | Vision |
