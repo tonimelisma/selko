@@ -11,6 +11,12 @@
 
 -- De-duplicate any pre-existing rows before adding uniqueness constraints
 -- (keep the most recently created row per match key).
+-- These deletes are maintenance, not an explicit un-ignore. Suppress the
+-- BEFORE DELETE requeue trigger while duplicates are removed; otherwise the
+-- surviving equivalent ignore rule remains active but its skipped emails are
+-- incorrectly reset to pending.
+ALTER TABLE public.sender_rules DISABLE TRIGGER sender_rule_before_delete;
+
 DELETE FROM public.sender_rules a USING public.sender_rules b
 WHERE a.sender_email IS NOT NULL
   AND a.sender_email = b.sender_email
@@ -22,6 +28,8 @@ WHERE a.sender_domain IS NOT NULL
   AND a.sender_domain = b.sender_domain
   AND a.user_id = b.user_id
   AND (a.created_at, a.id) < (b.created_at, b.id);
+
+ALTER TABLE public.sender_rules ENABLE TRIGGER sender_rule_before_delete;
 
 ALTER TABLE public.sender_rules
     ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now() NOT NULL;

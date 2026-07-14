@@ -17,6 +17,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## MANDATORY: Discovery Before Implementation
+
+Every non-trivial task starts with read-only research and discovery in the main
+repository. Diagnose or reproduce the issue, identify the likely root cause,
+and form a concrete increment plan before creating a branch/worktree, editing
+files, claiming review comments, or making other implementation writes.
+
+- **Worktree creation marks the start of an implementation increment.** Do not
+  create one merely to investigate.
+- A request to **fix, implement, or change** something authorizes proceeding
+  once the issue and increment plan are sufficiently understood; a ceremonial
+  approval pause is not required.
+- If the user primarily asks questions, requests investigation/discovery, or
+  raises several uncertain symptoms, present the findings and proposed
+  increment first, then wait for them to choose whether to implement it.
+- Simple, low-risk changes with an obvious cause may proceed after a brief
+  confirmation in the existing code. Use judgment; the goal is understanding
+  before mutation, not process for its own sake.
+- Run the late-review audit in Definition of Done step 0 only when an
+  implementation increment actually begins, not during discovery.
+
+---
+
 ## MANDATORY: Worktree Workflow
 
 ```

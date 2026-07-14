@@ -261,6 +261,68 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	it('keeps a sender group in place when its earliest event is rejected', async () => {
+		const user = userEvent.setup();
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		const source = (id, fromEmail, fromName) => [
+			{
+				emails: {
+					id,
+					subject: id,
+					from_email: fromEmail,
+					from_name: fromName,
+					date_sent: '2026-07-13T10:00:00Z'
+				}
+			}
+		];
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'grantmaking',
+					title: 'Grantmaking.ai',
+					start_datetime: '2026-07-13T00:00:00Z',
+					status: 'pending_review',
+					event_sources: source('email-1', 'astral@example.com', 'Astral')
+				},
+				{
+					id: 'intervening',
+					title: 'Intervening Event',
+					start_datetime: '2026-07-28T00:00:00Z',
+					status: 'pending_review',
+					event_sources: source('email-2', 'other@example.com', 'Other')
+				},
+				{
+					id: 'mats',
+					title: 'MATS Research Fellowship',
+					start_datetime: '2026-09-28T00:00:00Z',
+					status: 'pending_review',
+					event_sources: source('email-3', 'astral@example.com', 'Astral')
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+		await waitFor(() => expect(screen.getByText('Grantmaking.ai')).toBeInTheDocument());
+
+		const grantmakingCard = screen.getByText('Grantmaking.ai').closest('div.border-b');
+		const rejectButton = grantmakingCard.querySelector('button.btn-error');
+		await user.click(rejectButton);
+
+		await waitFor(() => {
+			expect(mockUpdateEventStatus).toHaveBeenCalledWith('grantmaking', 'rejected');
+			expect(screen.queryByText('Grantmaking.ai')).not.toBeInTheDocument();
+		});
+		const titles = screen.getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent);
+		expect(titles).toEqual(['MATS Research Fellowship', 'Intervening Event']);
+	});
+
 	it('shows sender menu for single-event groups', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [

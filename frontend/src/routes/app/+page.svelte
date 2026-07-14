@@ -36,6 +36,9 @@
 	let actionError = $state('');
 	let notification = $state('');
 	let processingEvents = $state(new Set());
+	/** Preserve sender-group positions while rows are removed during this review session. */
+	let newSenderOrder = $state(new Map());
+	let changeSenderOrder = $state(new Map());
 
 	let gmailIntegration = $derived(integrationsList.find((i) => i.provider === 'gmail'));
 	let outlookIntegration = $derived(integrationsList.find((i) => i.provider === 'outlook'));
@@ -50,15 +53,30 @@
 	let newEvents = $derived(events.filter((e) => e.status === 'pending_review'));
 	let changeEvents = $derived(events.filter((e) => e.status === 'pending_change'));
 
+	/** @param {any} event */
+	function senderForEvent(event) {
+		return resolveEventSender(event, {
+			unknownSender: $_('common.unknownSender'),
+			googlePhotos: $_('integrations.googlePhotos'),
+			googleCalendar: $_('integrations.googleCalendar')
+		});
+	}
+
 	/** @param {any[]} list */
-	function groupBySender(list) {
+	function captureSenderOrder(list) {
+		const order = new Map();
+		for (const event of list) {
+			const { senderKey } = senderForEvent(event);
+			if (!order.has(senderKey)) order.set(senderKey, order.size);
+		}
+		return order;
+	}
+
+	/** @param {any[]} list @param {Map<any, any>} stableOrder */
+	function groupBySender(list, stableOrder) {
 		const senderMap = new Map();
 		for (const event of list) {
-			const { senderKey, senderName } = resolveEventSender(event, {
-				unknownSender: $_('common.unknownSender'),
-				googlePhotos: $_('integrations.googlePhotos'),
-				googleCalendar: $_('integrations.googleCalendar')
-			});
+			const { senderKey, senderName } = senderForEvent(event);
 
 			if (!senderMap.has(senderKey)) {
 				senderMap.set(senderKey, {
@@ -70,11 +88,17 @@
 
 			senderMap.get(senderKey).events.push(event);
 		}
-		return senderMap;
+		return new Map(
+			[...senderMap.entries()].sort(
+				([left], [right]) =>
+					(stableOrder.get(left) ?? Number.MAX_SAFE_INTEGER) -
+					(stableOrder.get(right) ?? Number.MAX_SAFE_INTEGER)
+			)
+		);
 	}
 
-	let groupedNew = $derived(groupBySender(newEvents));
-	let groupedChanges = $derived(groupBySender(changeEvents));
+	let groupedNew = $derived(groupBySender(newEvents, newSenderOrder));
+	let groupedChanges = $derived(groupBySender(changeEvents, changeSenderOrder));
 
 	onMount(async () => {
 		const params = new URLSearchParams(window.location.search);
@@ -118,7 +142,14 @@
 		if (result.error) {
 			error = result.error.message;
 		} else {
-			events = result.data;
+			const loadedEvents = result.data;
+			newSenderOrder = captureSenderOrder(
+				loadedEvents.filter((event) => event.status === 'pending_review')
+			);
+			changeSenderOrder = captureSenderOrder(
+				loadedEvents.filter((event) => event.status === 'pending_change')
+			);
+			events = loadedEvents;
 		}
 		isLoadingEvents = false;
 	}
@@ -348,7 +379,7 @@
 				<h2 class="text-lg font-semibold mb-1">{$_('home.newSection')}</h2>
 				<p class="text-sm text-base-content/60 mb-4">{$_('home.newSectionDescription')}</p>
 				<div class="space-y-6">
-					{#each [...groupedNew.entries()] as [senderKey, senderGroup]}
+					{#each [...groupedNew.entries()] as [senderKey, senderGroup] (senderKey)}
 						<div>
 							<SenderHeader
 								sender={senderGroup.senderName}
@@ -380,7 +411,7 @@
 				<h2 class="text-lg font-semibold mb-1">{$_('home.changesSection')}</h2>
 				<p class="text-sm text-base-content/60 mb-4">{$_('home.changesSectionDescription')}</p>
 				<div class="space-y-6">
-					{#each [...groupedChanges.entries()] as [senderKey, senderGroup]}
+					{#each [...groupedChanges.entries()] as [senderKey, senderGroup] (senderKey)}
 						<div>
 							<SenderHeader
 								sender={senderGroup.senderName}
