@@ -3,10 +3,10 @@
 	import { _ } from 'svelte-i18n';
 </script>
 
-<div class="min-h-screen flex items-center justify-center bg-base-200">
-	<div class="text-center p-8">
-		<h1 class="text-6xl font-bold text-base-content/20 mb-4">{$page.status}</h1>
-		<h2 class="text-2xl font-semibold mb-2">
+<div class="flex min-h-screen items-center justify-center bg-base-100 px-4">
+	<div class="warm-card max-w-md p-8 text-center">
+		<h1 class="mb-4 text-6xl font-extrabold text-primary/30">{$page.status}</h1>
+		<h2 class="mb-2 text-2xl font-extrabold">
 			{#if $page.status === 404}
 				{$_('errors.pageNotFound')}
 			{:else}
@@ -22,6 +22,6 @@
 				{$_('errors.unexpectedError')}
 			{/if}
 		</p>
-		<a href="/app" class="btn btn-primary">{$_('errors.backToApp')}</a>
+		<a href="/app" class="btn btn-primary rounded-[14px] shadow-brand">{$_('errors.backToApp')}</a>
 	</div>
 </div>

@@ -187,7 +187,7 @@
 	}
 </script>
 
-<PageHeader title={$_('settings.title')} />
+<PageHeader title={$_('settings.title')} subtitle={$_('settings.subtitle')} />
 
 {#if isLoading}
 	<LoadingSpinner />
@@ -196,10 +196,11 @@
 		<ErrorAlert message={error} />
 	{/if}
 
-	<div class="space-y-8">
+	<div class="space-y-10">
 		<!-- Section 1: Connected Accounts -->
 		<section>
-			<h2 class="text-lg font-semibold mb-4">{$_('settings.connectedAccounts')}</h2>
+			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.connectAccount')}</h2>
+			<h3 class="mb-3 text-lg font-extrabold">{$_('settings.connectedAccounts')}</h3>
 			<IntegrationStatus
 				integrations={integrationsList}
 				setupMode={false}
@@ -210,8 +211,8 @@
 
 		<!-- Section 2: Email folders -->
 		<section>
-			<h2 class="text-lg font-semibold mb-2">{$_('settings.emailFolders')}</h2>
-			<p class="text-sm text-base-content/60 mb-4">{$_('settings.emailFoldersHint')}</p>
+			<h2 class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.emailFolders')}</h2>
+			<p class="mb-4 text-sm text-base-content/60">{$_('settings.emailFoldersHint')}</p>
 			{#if emailFolders.gmail.length === 0 && emailFolders.outlook.length === 0}
 				<p class="text-sm text-base-content/60">{$_('settings.noEmailFolders')}</p>
 			{:else}
@@ -222,7 +223,7 @@
 								<h3 class="font-medium mb-2">{group.label}</h3>
 								<div class="space-y-2">
 									{#each group.folders as folder (folder.id)}
-										<div class="flex items-center justify-between gap-3 border border-base-200 rounded-lg p-3">
+										<div class="warm-card flex items-center justify-between gap-3 p-3">
 											<div class="min-w-0">
 											<div class="font-medium text-sm truncate">{folder.full_path}</div>
 											{#if folder.classification_decision === 'exclude' && folder.classification_reason}
@@ -233,7 +234,7 @@
 										</div>
 										<button
 											class:btn-primary={folder.is_included}
-											class="btn btn-sm flex-shrink-0"
+													class="btn btn-sm shrink-0 rounded-[11px]"
 											disabled={updatingFolderId === folder.id}
 											onclick={() => handleFolderChange(group.provider, folder)}
 										>
@@ -251,17 +252,17 @@
 
 		<!-- Section 3: Calendar Defaults -->
 		<section>
-			<h2 class="text-lg font-semibold mb-4">{$_('settings.calendarDefaults')}</h2>
+			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.calendarDefaults')}</h2>
 			{#if isLoadingCalendars}
 				<div class="h-12 bg-base-200 rounded animate-pulse"></div>
 			{:else if calendars.length > 0}
-				<div class="form-control max-w-md">
+				<div class="warm-card max-w-md p-4">
 					<label class="label" for="target-calendar">
 						<span class="label-text">{$_('settings.targetCalendar')}</span>
 					</label>
 					<select
 						id="target-calendar"
-						class="select select-bordered w-full"
+						class="select select-bordered w-full bg-base-100"
 						value={selectedCalendar}
 						onchange={handleCalendarChange}
 					>
@@ -286,15 +287,15 @@
 
 		<!-- Section 4: Automation Rules -->
 		<section>
-			<h2 class="text-lg font-semibold mb-4">{$_('settings.automationRules')}</h2>
+			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.automationRules')}</h2>
 			<SenderRulesPanel />
 		</section>
 
 		<!-- Section 5: Account -->
 		<section>
-			<h2 class="text-lg font-semibold mb-4">{$_('settings.account')}</h2>
+			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.account')}</h2>
 			<div class="space-y-4">
-				<div class="form-control max-w-md">
+				<div class="warm-card max-w-md p-4">
 					<label class="label" for="account-email">
 						<span class="label-text">{$_('auth.emailLabel')}</span>
 					</label>
@@ -302,13 +303,11 @@
 						id="account-email"
 						type="email"
 						value={currentUserEmail}
-						class="input input-bordered w-full"
+						class="input input-bordered w-full bg-base-100"
 						readonly
 					/>
 				</div>
-				<div class="lg:hidden">
-					<button class="btn btn-error" onclick={handleLogout}>{$_('auth.logOut')}</button>
-				</div>
+				<button class="btn btn-outline btn-error rounded-[11px]" onclick={handleLogout}>{$_('auth.logOut')}</button>
 			</div>
 		</section>
 	</div>

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
+import net.melisma.selko.ui.components.SelkoLogoMark
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -42,7 +45,9 @@ fun AuthScreen(
         }
     }
 
-    Scaffold { paddingValues ->
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -51,11 +56,11 @@ fun AuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
+            SelkoLogoMark()
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(text = stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -67,98 +72,107 @@ fun AuthScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            OutlinedTextField(
-                value = uiState.email,
-                onValueChange = viewModel::onEmailChange,
-                label = { Text(stringResource(R.string.auth_email_label)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading,
-                shape = MaterialTheme.shapes.small
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = uiState.password,
-                onValueChange = viewModel::onPasswordChange,
-                label = { Text(stringResource(R.string.auth_password_label)) },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = if (uiState.isSignUp) ImeAction.Next else ImeAction.Done
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading,
-                shape = MaterialTheme.shapes.small
-            )
-
-            if (uiState.isSignUp) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = uiState.confirmPassword,
-                    onValueChange = viewModel::onConfirmPasswordChange,
-                    label = { Text(stringResource(R.string.auth_confirm_password_label)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading,
-                    shape = MaterialTheme.shapes.small
-                )
-            }
-
-            uiState.errorMessage?.let { error ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = viewModel::submit,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading,
-                shape = MaterialTheme.shapes.medium
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                shape = MaterialTheme.shapes.large
             ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.height(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                Column(modifier = Modifier.padding(20.dp)) {
+                    OutlinedTextField(
+                        value = uiState.email,
+                        onValueChange = viewModel::onEmailChange,
+                        label = { Text(stringResource(R.string.auth_email_label)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isLoading,
+                        shape = MaterialTheme.shapes.small
                     )
-                } else {
-                    Text(if (uiState.isSignUp) stringResource(R.string.auth_sign_up_button) else stringResource(R.string.auth_sign_in_button))
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(
-                onClick = viewModel::toggleAuthMode,
-                enabled = !uiState.isLoading,
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(
+                    OutlinedTextField(
+                        value = uiState.password,
+                        onValueChange = viewModel::onPasswordChange,
+                        label = { Text(stringResource(R.string.auth_password_label)) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = if (uiState.isSignUp) ImeAction.Next else ImeAction.Done
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isLoading,
+                        shape = MaterialTheme.shapes.small
+                    )
+
                     if (uiState.isSignUp) {
-                        stringResource(R.string.auth_switch_to_login)
-                    } else {
-                        stringResource(R.string.auth_switch_to_signup)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = uiState.confirmPassword,
+                            onValueChange = viewModel::onConfirmPasswordChange,
+                            label = { Text(stringResource(R.string.auth_confirm_password_label)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isLoading,
+                            shape = MaterialTheme.shapes.small
+                        )
                     }
-                )
+
+                    uiState.errorMessage?.let { error ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = viewModel::submit,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isLoading,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(if (uiState.isSignUp) stringResource(R.string.auth_sign_up_button) else stringResource(R.string.auth_sign_in_button))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    TextButton(
+                        onClick = viewModel::toggleAuthMode,
+                        enabled = !uiState.isLoading,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text(
+                            if (uiState.isSignUp) {
+                                stringResource(R.string.auth_switch_to_login)
+                            } else {
+                                stringResource(R.string.auth_switch_to_signup)
+                            }
+                        )
+                    }
+                }
             }
         }
     }

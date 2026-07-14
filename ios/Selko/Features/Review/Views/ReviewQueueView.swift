@@ -6,26 +6,38 @@
 import SwiftUI
 
 struct ReviewQueueView: View {
+    let email: String
     @State private var viewModel = ReviewQueueViewModel()
 
+    init(email: String = "") {
+        self.email = email
+    }
+
     var body: some View {
-        Group {
-            if viewModel.isLoading {
-                ProgressView("Loading events...")
-                    .accessibilityIdentifier("reviewQueueLoading")
-            } else if !viewModel.isConnected {
-                IntegrationSetupView(
-                    gmailConnected: viewModel.gmailConnected,
-                    calendarConnected: viewModel.calendarConnected
-                )
-                .accessibilityIdentifier("integrationSetupView")
-            } else if viewModel.newSenderGroups.isEmpty && viewModel.changeSenderGroups.isEmpty {
-                emptyState
-            } else {
-                eventList
+        VStack(spacing: 0) {
+            SelkoScreenHeader(title: "Review", subtitle: "Choose what belongs on your calendar.", email: email)
+            Group {
+                if viewModel.isLoading {
+                    ProgressView("Loading events...")
+                        .tint(Color.accentColor)
+                        .accessibilityIdentifier("reviewQueueLoading")
+                } else if !viewModel.isConnected {
+                    IntegrationSetupView(
+                        gmailConnected: viewModel.gmailConnected,
+                        calendarConnected: viewModel.calendarConnected
+                    )
+                    .accessibilityIdentifier("integrationSetupView")
+                } else if viewModel.newSenderGroups.isEmpty && viewModel.changeSenderGroups.isEmpty {
+                    emptyState
+                } else {
+                    eventList
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(Color.selkoPaper.ignoresSafeArea())
         .navigationTitle("Review")
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.load()
         }
@@ -44,10 +56,21 @@ struct ReviewQueueView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("All Caught Up!", systemImage: "checkmark.circle.fill")
-        } description: {
+        VStack(spacing: 12) {
+            Image(systemName: "checkmark")
+                .font(SelkoTypography.sectionTitle.weight(.bold))
+                .foregroundStyle(Color.selkoSuccess)
+                .frame(width: 60, height: 60)
+                .background(Color.selkoSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            Text("All caught up")
+                .font(SelkoTypography.sectionTitle)
+                .foregroundStyle(Color.selkoInk)
             Text("No events need your review right now. New events from your emails will appear here.")
+                .font(SelkoTypography.body)
+                .foregroundStyle(Color.selkoMuted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
@@ -57,22 +80,62 @@ struct ReviewQueueView: View {
     private var eventList: some View {
         List {
             if !viewModel.newSenderGroups.isEmpty {
-                Section("New") {
+                Section {
                     ForEach(viewModel.newSenderGroups) { group in
                         senderRows(group)
                     }
+                } header: {
+                    Text("New")
+                        .selkoOverline()
                 }
             }
             if !viewModel.changeSenderGroups.isEmpty {
-                Section("Changes") {
+                Section {
                     ForEach(viewModel.changeSenderGroups) { group in
                         senderRows(group)
                     }
+                } header: {
+                    Text("Changes")
+                        .selkoOverline()
                 }
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.selkoPaper)
+        .safeAreaInset(edge: .bottom) {
+            HStack(spacing: 8) {
+                Button {
+                    Task { await approveAll() }
+                } label: {
+                    Label("Accept all", systemImage: "checkmark")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.accentColor)
+                .controlSize(.large)
+
+                Button("⋯") { }
+                    .font(SelkoTypography.sectionTitle.weight(.bold))
+                    .frame(width: 48, height: 48)
+                    .background(Color.selkoSubtle)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .accessibilityLabel("More actions")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color.selkoPaper.opacity(0.96))
+        }
         .accessibilityIdentifier("eventList")
+    }
+
+    private func approveAll() async {
+        for group in viewModel.newSenderGroups {
+            await viewModel.approveAllInGroup(group)
+        }
+        for group in viewModel.changeSenderGroups {
+            await viewModel.approveAllInGroup(group)
+        }
     }
 
     @ViewBuilder

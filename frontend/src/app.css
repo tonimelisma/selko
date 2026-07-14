@@ -1,5 +1,5 @@
 /* Self-hosted — avoids third-party font CSS that Safari content blockers intercept. */
-@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/figtree/wght.css';
 @import "tailwindcss";
 
 @plugin "daisyui" {
@@ -10,60 +10,143 @@
 	name: 'selko-light';
 	default: true;
 	color-scheme: light;
-	--color-primary: #5b63d3;
+	--color-primary: #e86f52;
 	--color-primary-content: #ffffff;
-	--color-secondary: #6e7489;
+	--color-secondary: #b4553a;
 	--color-secondary-content: #ffffff;
-	--color-accent: #5b63d3;
+	--color-accent: #f0a85c;
 	--color-accent-content: #ffffff;
-	--color-neutral: #6e7489;
+	--color-neutral: #8a7f74;
 	--color-neutral-content: #ffffff;
-	--color-base-100: #ffffff;
-	--color-base-200: #f1f2f6;
-	--color-base-300: #e2e4eb;
-	--color-base-content: #1a1c23;
-	--color-info: #5b63d3;
+	--color-base-100: #fbf7f2;
+	--color-base-200: #f5eee6;
+	--color-base-300: #ede4da;
+	--color-base-content: #2b2622;
+	--color-surface: #ffffff;
+	--color-logo-block: #ffffff;
+	--color-info: #c9603f;
 	--color-info-content: #ffffff;
-	--color-success: #2d8659;
+	--color-success: #5ca07c;
 	--color-success-content: #ffffff;
-	--color-warning: #b8860b;
+	--color-warning: #c97a2e;
 	--color-warning-content: #ffffff;
-	--color-error: #c4384b;
+	--color-error: #b4553a;
 	--color-error-content: #ffffff;
-	--radius-selector: 2px;
-	--radius-field: 2px;
-	--radius-box: 2px;
+	--radius-selector: 999px;
+	--radius-field: 14px;
+	--radius-box: 20px;
+	--shadow-card: 0 2px 12px -6px rgba(80, 60, 45, 0.28);
+	--shadow-popover: 0 12px 28px -14px rgba(80, 60, 45, 0.4);
+	--shadow-brand: 0 10px 20px -8px rgba(232, 111, 82, 0.6);
 }
 
 @plugin "daisyui/theme" {
 	name: 'selko-dark';
 	prefersdark: true;
 	color-scheme: dark;
-	--color-primary: #8b91d6;
-	--color-primary-content: #ffffff;
-	--color-secondary: #9ba0b3;
-	--color-secondary-content: #1a1c23;
-	--color-accent: #8b91d6;
-	--color-accent-content: #ffffff;
-	--color-neutral: #9ba0b3;
-	--color-neutral-content: #1a1c23;
-	--color-base-100: #1a1c23;
-	--color-base-200: #24272f;
-	--color-base-300: #353845;
-	--color-base-content: #e2e4eb;
-	--color-info: #8b91d6;
-	--color-info-content: #ffffff;
-	--color-success: #3da873;
-	--color-success-content: #ffffff;
-	--color-warning: #d4a017;
-	--color-warning-content: #1a1c23;
-	--color-error: #e05566;
-	--color-error-content: #ffffff;
-	--radius-selector: 2px;
-	--radius-field: 2px;
-	--radius-box: 2px;
+	--color-primary: #f0805c;
+	--color-primary-content: #1a1613;
+	--color-secondary: #f0805c;
+	--color-secondary-content: #1a1613;
+	--color-accent: #f0b45c;
+	--color-accent-content: #1a1613;
+	--color-neutral: #a99e92;
+	--color-neutral-content: #1a1613;
+	--color-base-100: #1a1613;
+	--color-base-200: #241f1b;
+	--color-base-300: #322b25;
+	--color-base-content: #f2ece4;
+	--color-surface: #241f1b;
+	--color-logo-block: #1a1613;
+	--color-info: #f0805c;
+	--color-info-content: #1a1613;
+	--color-success: #5fbe90;
+	--color-success-content: #12100e;
+	--color-warning: #f0b45c;
+	--color-warning-content: #1a1613;
+	--color-error: #f0805c;
+	--color-error-content: #1a1613;
+	--radius-selector: 999px;
+	--radius-field: 14px;
+	--radius-box: 20px;
+	--shadow-card: none;
+	--shadow-popover: none;
+	--shadow-brand: none;
 }
 
 html {
-	font-family: 'Inter Variable', Inter, system-ui, -apple-system, sans-serif;
+	font-family: 'Figtree Variable', Figtree, system-ui, -apple-system, sans-serif;
+	background: var(--color-base-100);
+	color: var(--color-base-content);
+}
+
+body {
+	margin: 0;
+	background: var(--color-base-100);
+	color: var(--color-base-content);
+}
+
+@utility bg-surface {
+	background-color: var(--color-surface);
+}
+
+@utility shadow-card {
+	box-shadow: var(--shadow-card);
+}
+
+@utility shadow-popover {
+	box-shadow: var(--shadow-popover);
+}
+
+@utility shadow-brand {
+	box-shadow: var(--shadow-brand);
+}
+
+@utility text-ink {
+	color: var(--color-base-content);
+}
+
+.warm-card {
+	background: var(--color-surface);
+	border: 1px solid var(--color-base-300);
+	border-radius: 20px;
+	box-shadow: var(--shadow-card);
+}
+
+.warm-card-row + .warm-card-row {
+	border-top: 1px solid color-mix(in srgb, var(--color-base-300) 62%, transparent);
+}
+
+.badge-new {
+	background: #eaf3ee;
+	color: #3f7d5f;
+}
+
+.badge-changed {
+	background: #fdf1e7;
+	color: #c97a2e;
+}
+
+.badge-neutral-warm {
+	background: var(--color-base-200);
+	color: var(--color-neutral);
+}
+
+.date-chip {
+	background: var(--color-base-200);
+	border-radius: 13px;
+}
+
+[data-theme='selko-dark'] .badge-new {
+	background: rgba(95, 190, 144, 0.16);
+	color: #5fbe90;
+}
+
+[data-theme='selko-dark'] .badge-changed {
+	background: rgba(240, 180, 92, 0.16);
+	color: #f0b45c;
+}
+
+[data-theme='selko-dark'] .warm-card {
+	box-shadow: none;
 }

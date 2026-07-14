@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -43,6 +46,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
+import net.melisma.selko.ui.components.SelkoScreenHeader
+import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,7 +58,11 @@ fun ReviewQueueScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         when {
             uiState.isLoading -> {
                 CircularProgressIndicator(
@@ -86,26 +95,22 @@ fun ReviewQueueScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                     ) {
                         item {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.review_queue_title),
-                                style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.padding(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    bottom = 8.dp
-                                )
+                            SelkoScreenHeader(
+                                title = stringResource(R.string.review_queue_title),
+                                subtitle = stringResource(R.string.review_queue_subtitle)
                             )
                         }
 
                         if (uiState.newSenderGroups.isNotEmpty()) {
                             item {
                                 Text(
-                                    text = "New",
-                                    style = MaterialTheme.typography.titleMedium,
+                                    text = stringResource(R.string.review_new_section),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = SelkoTheme.colors.faint,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
                             }
@@ -136,8 +141,9 @@ fun ReviewQueueScreen(
                         if (uiState.changeSenderGroups.isNotEmpty()) {
                             item {
                                 Text(
-                                    text = "Changes",
-                                    style = MaterialTheme.typography.titleMedium,
+                                    text = stringResource(R.string.review_changes_section),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = SelkoTheme.colors.faint,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
                             }
@@ -211,7 +217,21 @@ private fun SenderGroupHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = group.senderName.filter { it.isLetterOrDigit() }.take(2).uppercase().ifEmpty { "SK" },
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
             Text(
                 text = group.senderName,
                 style = MaterialTheme.typography.titleSmall

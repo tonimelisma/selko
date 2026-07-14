@@ -455,7 +455,7 @@
 	}
 </script>
 
-<PageHeader title={$_('history.title')} />
+<PageHeader title={$_('history.title')} subtitle={$_('history.subtitle')} />
 
 {#if isLoading}
 	<div class="space-y-4">
@@ -483,22 +483,22 @@
 			<ErrorAlert message={actionError} />
 		{/if}
 	{/if}
-	<div class="space-y-6">
+	<div class="space-y-8">
 		{#each [...groupedByDate().entries()] as [dateLabel, dateEvents]}
 			<div>
-				<h2 class="text-sm font-semibold text-base-content/60 mb-3">{dateLabel}</h2>
-				<div>
+				<h2 class="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{dateLabel}</h2>
+				<div class="warm-card overflow-hidden">
 					{#each dateEvents as event (event.id)}
 						{@const isProcessing = processingEvents.has(event.id)}
-						<div class="flex items-start justify-between p-3 border-b border-base-200">
+						<div class="flex items-start justify-between gap-3 border-b border-base-300 p-4 last:border-b-0">
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2 flex-wrap">
 									<span class="font-medium text-sm">{event.title}</span>
 									<StatusBadge status={event.status} />
 									{#if isChangeEvent(event)}
-										<span class="badge badge-sm badge-outline">{$_('home.changesSection')}</span>
+										<span class="badge badge-changed badge-sm">{$_('home.changesSection')}</span>
 									{:else}
-										<span class="badge badge-sm badge-outline">{$_('home.newSection')}</span>
+										<span class="badge badge-new badge-sm">{$_('home.newSection')}</span>
 									{/if}
 								</div>
 								<div class="flex items-center gap-2 mt-1 text-xs text-base-content/60 flex-wrap">
@@ -557,7 +557,7 @@
 {#if !isLoading && (emailHistory.length > 0 || emailLoadError)}
 	<section class="mt-10" aria-labelledby="email-history-heading">
 		<div class="flex items-center justify-between mb-3">
-			<h2 id="email-history-heading" class="text-lg font-semibold">{$_('history.emailHistory')}</h2>
+			<h2 id="email-history-heading" class="text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('history.emailHistory')}</h2>
 			{#if emailHistoryCount > emailHistory.length}
 				<span class="text-xs text-base-content/60">{emailHistory.length} / {emailHistoryCount}</span>
 			{/if}
@@ -565,10 +565,10 @@
 		{#if emailLoadError}
 			<ErrorAlert message={emailLoadError} />
 		{:else}
-			<div class="space-y-2">
+			<div class="space-y-3">
 				{#each emailHistory as email (email.id)}
 					{@const emailBusy = processingEmails.has(email.id) || (['pending', 'processing'].includes(email.processing_status) && !emailTimedOut.has(email.id))}
-					<div class="flex items-start justify-between gap-3 p-3 border border-base-200 rounded-lg">
+					<div class="warm-card flex items-start justify-between gap-3 p-4">
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-2 flex-wrap">
 								<span class="font-medium text-sm truncate">{email.subject || $_('eventSource.noSubject')}</span>

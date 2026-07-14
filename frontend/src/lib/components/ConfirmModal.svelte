@@ -26,12 +26,12 @@
 </script>
 
 <dialog bind:this={dialogEl} class="modal" onclose={oncancel} aria-labelledby="modal-title" aria-describedby="modal-description">
-	<div class="modal-box">
-		<h3 id="modal-title" class="font-bold text-lg">{title}</h3>
-		<p id="modal-description" class="py-4">{description}</p>
+	<div class="modal-box warm-card">
+		<h3 id="modal-title" class="text-lg font-extrabold">{title}</h3>
+		<p id="modal-description" class="py-4 text-sm text-base-content/70">{description}</p>
 		<div class="modal-action">
-			<button class="btn" onclick={oncancel}>{$_('common.cancel')}</button>
-			<button class="btn {confirmClass}" onclick={onconfirm}>{confirmText}</button>
+			<button class="btn btn-ghost rounded-[11px]" onclick={oncancel}>{$_('common.cancel')}</button>
+			<button class="btn {confirmClass} rounded-[11px]" onclick={onconfirm}>{confirmText}</button>
 		</div>
 	</div>
 	<form method="dialog" class="modal-backdrop">

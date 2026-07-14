@@ -1,6 +1,6 @@
 # Warmth Design System — Implementation Plan
 
-**Status:** Proposed (not yet implemented)
+**Status:** Implemented
 **Source of truth:** Claude Design project — [Selko Design System](https://claude.ai/design/p/4efc1206-c41f-4d40-9f06-d52391b09388?file=Selko+Design+System.dc.html)
 **Scope:** Replace the current "Selko Blue" (#5B63D3 + Inter) visual identity with the
 "Warmth" system (coral #E86F52, warm paper/cream surfaces, Figtree, soft large radii)
@@ -8,6 +8,13 @@ across **desktop web, mobile web, iOS, and Android**. No backend or schema chang
 
 This is a restyle + navigation-shell change. All existing behavior (queries, view
 models, routing, i18n, RPCs) stays as-is. Only presentation code changes.
+
+Implementation note: the Warmth system is now shipped across the SvelteKit web
+surfaces, SwiftUI iOS app, and Jetpack Compose Android app. Shared tokens,
+Figtree font assets, logo marks, responsive shells, native bottom tabs, screen
+headers, cards, badges, empty states, settings controls, and dark-mode border
+behavior are implemented in their platform source trees. The validation gate is
+the scoped platform test suite plus the platform screenshot capture scripts.
 
 ---
 

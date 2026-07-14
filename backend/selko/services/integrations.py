@@ -71,6 +71,17 @@ class OAuthStateError(IntegrationError):
     pass
 
 
+class OAuthProviderNotAllowed(IntegrationError):
+    """Raised before token exchange when a callback rejects a provider."""
+
+    def __init__(self, provider: str, allowed_providers: set[str]) -> None:
+        self.provider = provider
+        self.allowed_providers = allowed_providers
+        super().__init__(
+            f"Provider {provider!r} is not allowed for this OAuth callback"
+        )
+
+
 def get_provider_integration(
     client: Client,
     provider: str,
@@ -645,6 +656,7 @@ def complete_oauth_flow(
     config: Config,
     code: str,
     state: str,
+    allowed_providers: set[str] | None = None,
 ) -> tuple[Credentials | dict[str, Any], str, str]:
     """Complete OAuth flow by exchanging authorization code for tokens.
 
@@ -652,6 +664,8 @@ def complete_oauth_flow(
         config: Configuration with Google OAuth client credentials.
         code: Authorization code from callback.
         state: State parameter for CSRF validation.
+        allowed_providers: Optional provider allowlist checked immediately after
+            state validation and before exchanging the authorization code.
 
     Returns:
         Tuple of (credentials, user_id, provider).
@@ -667,6 +681,9 @@ def complete_oauth_flow(
     provider = state_data["provider"]
     redirect_uri = state_data["redirect_uri"]
     code_verifier = state_data.get("code_verifier")
+
+    if allowed_providers is not None and provider not in allowed_providers:
+        raise OAuthProviderNotAllowed(provider, allowed_providers)
 
     if provider == "outlook":
         from selko.services.outlook import exchange_code

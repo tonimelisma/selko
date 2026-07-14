@@ -28,12 +28,12 @@ struct SenderRulesView: View {
                         ProgressView()
                             .controlSize(.small)
                         Text("Loading rules...")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.selkoMuted)
                     }
                 } else if rules.isEmpty {
                     Text("No sender rules yet. Add a rule to automatically approve or ignore emails from specific senders or domains.")
-                        .foregroundStyle(.secondary)
-                        .font(.subheadline)
+                        .foregroundStyle(Color.selkoMuted)
+                        .font(SelkoTypography.body)
                 } else {
                     ForEach(rules) { rule in
                         ruleRow(rule)
@@ -76,6 +76,8 @@ struct SenderRulesView: View {
                 .accessibilityIdentifier("addRuleButton")
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.selkoPaper)
         .navigationTitle("Sender Rules")
         .task {
             await loadRules()
@@ -114,17 +116,17 @@ struct SenderRulesView: View {
     private func ruleRow(_ rule: SenderRule) -> some View {
         HStack(spacing: 12) {
             Image(systemName: rule.ruleAction == .ignore ? "shield.slash" : "checkmark.circle")
-                .foregroundStyle(rule.ruleAction == .ignore ? .orange : Color.selkoSuccess)
-                .font(.title3)
+                .foregroundStyle(rule.ruleAction == .ignore ? Color.selkoRust : Color.selkoSuccess)
+                .font(SelkoTypography.sectionTitle)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(rule.ruleAction == .ignore ? "Ignore" : "Auto-approve")
-                    .font(.subheadline)
+                    .font(SelkoTypography.title)
                     .fontWeight(.medium)
 
                 Text(rule.displayTarget)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(SelkoTypography.caption)
+                    .foregroundStyle(Color.selkoMuted)
             }
 
             Spacer()
