@@ -8,6 +8,7 @@ import SwiftUI
 struct ReviewQueueView: View {
     let email: String
     @State private var viewModel = ReviewQueueViewModel()
+    @State private var showAcceptAllConfirm = false
 
     init(email: String = "") {
         self.email = email
@@ -104,27 +105,30 @@ struct ReviewQueueView: View {
         .scrollContentBackground(.hidden)
         .background(Color.selkoPaper)
         .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 8) {
-                Button {
-                    Task { await approveAll() }
-                } label: {
-                    Label("Accept all", systemImage: "checkmark")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.accentColor)
-                .controlSize(.large)
-
-                Button("⋯") { }
-                    .font(SelkoTypography.sectionTitle.weight(.bold))
-                    .frame(width: 48, height: 48)
-                    .background(Color.selkoSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .accessibilityLabel("More actions")
+            Button {
+                showAcceptAllConfirm = true
+            } label: {
+                Label("Accept all", systemImage: "checkmark")
+                    .frame(maxWidth: .infinity)
             }
+            .buttonStyle(.borderedProminent)
+            .tint(Color.accentColor)
+            .controlSize(.large)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(Color.selkoPaper.opacity(0.96))
+        }
+        .confirmationDialog(
+            "Accept all pending items?",
+            isPresented: $showAcceptAllConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Accept all") {
+                Task { await approveAll() }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("New events are added to your calendar and changes are applied.")
         }
         .accessibilityIdentifier("eventList")
     }

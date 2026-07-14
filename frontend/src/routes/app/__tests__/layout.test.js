@@ -104,8 +104,9 @@ describe('App Layout', () => {
 
 		render(AppLayout);
 
+		// Both nav layouts (desktop sidebar + mobile header) render the brand.
 		await waitFor(() => {
-			expect(screen.getByText('Selko')).toBeInTheDocument();
+			expect(screen.getAllByText('Selko').length).toBeGreaterThan(0);
 		});
 	});
 
@@ -116,13 +117,13 @@ describe('App Layout', () => {
 		render(AppLayout);
 
 		await waitFor(() => {
-			expect(screen.getByText('Review')).toBeInTheDocument();
-			expect(screen.getByText('History')).toBeInTheDocument();
-			expect(screen.getByText('Settings')).toBeInTheDocument();
+			expect(screen.getAllByText('Review').length).toBeGreaterThan(0);
+			expect(screen.getAllByText('History').length).toBeGreaterThan(0);
+			expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
 		});
 	});
 
-	it('renders logout in the sticky top navbar', async () => {
+	it('renders logout in the desktop sidebar and a sticky mobile header', async () => {
 		mockLoading.set(false);
 		mockUser.set({ id: '123', email: 'test@example.com' });
 
@@ -131,6 +132,6 @@ describe('App Layout', () => {
 		await waitFor(() => {
 			expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
 		});
-		expect(document.querySelector('nav.sticky')).toBeTruthy();
+		expect(document.querySelector('header.sticky')).toBeTruthy();
 	});
 });

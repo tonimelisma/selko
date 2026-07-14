@@ -23,6 +23,7 @@
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
 
 	/** @type {any[]} */
@@ -258,7 +259,10 @@
 		}
 	}
 
+	let acceptAllConfirmOpen = $state(false);
+
 	async function handleApproveAll() {
+		acceptAllConfirmOpen = false;
 		await handleApproveAllNew(newEvents);
 		for (const event of changeEvents) {
 			await handleApproveChange(event);
@@ -380,7 +384,7 @@
 	{/if}
 	<PageHeader title={$_('nav.review')} subtitle={$_('home.subtitle')}>
 		{#snippet children()}
-			<button class="btn btn-primary rounded-[14px] shadow-brand" onclick={handleApproveAll}>
+			<button class="btn btn-primary rounded-[14px] shadow-brand" onclick={() => (acceptAllConfirmOpen = true)}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
 				{$_('home.acceptAll')}
 			</button>
@@ -459,11 +463,19 @@
 			</section>
 		{/if}
 		<div class="flex gap-2 pt-1 sm:hidden">
-			<button class="btn btn-primary min-h-12 flex-1 rounded-[14px] shadow-brand" onclick={handleApproveAll}>
+			<button class="btn btn-primary min-h-12 flex-1 rounded-[14px] shadow-brand" onclick={() => (acceptAllConfirmOpen = true)}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
 				{$_('home.acceptAll')}
 			</button>
-			<button class="btn btn-square min-h-12 w-12 rounded-[14px] bg-base-200" aria-label={$_('common.more')}><span class="text-xl leading-none">⋯</span></button>
 		</div>
 	</div>
+	<ConfirmModal
+		open={acceptAllConfirmOpen}
+		title={$_('home.acceptAll')}
+		description={$_('home.acceptAllConfirm', { values: { count: newEvents.length + changeEvents.length } })}
+		confirmText={$_('home.acceptAll')}
+		confirmClass="btn-primary"
+		onconfirm={handleApproveAll}
+		oncancel={() => (acceptAllConfirmOpen = false)}
+	/>
 {/if}

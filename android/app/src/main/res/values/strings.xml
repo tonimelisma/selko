@@ -2,7 +2,7 @@
     <string name="app_name">Selko</string>
 
     <!-- Auth Screen -->
-    <string name="auth_tagline">Sign in to continue.</string>
+    <string name="auth_tagline">Make life easy.</string>
     <string name="auth_sign_up_title">Sign up</string>
     <string name="auth_email_label">Email</string>
     <string name="auth_password_label">Password</string>
@@ -25,6 +25,8 @@
     <string name="review_queue_subtitle">A calm place to decide what matters.</string>
     <string name="review_new_section">NEW</string>
     <string name="review_changes_section">CHANGES</string>
+    <string name="review_badge_new">NEW</string>
+    <string name="review_badge_changed">CHANGED</string>
     <string name="review_dismiss">Dismiss</string>
     <string name="review_actions">Actions</string>
     <string name="review_approve_all">Approve all</string>

@@ -184,7 +184,7 @@ struct HistoryRowView: View {
                 .accessibilityLabel("Sync failed")
         case .rejected:
             Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(Color.selkoRust)
+                .foregroundStyle(Color.selkoError)
                 .accessibilityLabel("Rejected")
         case .cancelled:
             Image(systemName: "minus.circle.fill")

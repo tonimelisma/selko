@@ -40,6 +40,13 @@ struct SenderGroupView: View {
                     Text(group.senderName)
                         .font(SelkoTypography.title)
                         .foregroundStyle(Color.selkoInk)
+                    if !group.senderEmail.isEmpty && group.senderName != group.senderEmail {
+                        Text(group.senderEmail)
+                            .font(SelkoTypography.caption)
+                            .foregroundStyle(Color.selkoMuted)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
                     Text("\(group.events.count) \(group.events.count == 1 ? "event" : "events")")
                         .font(SelkoTypography.caption)
                         .foregroundStyle(Color.selkoFaint)
@@ -68,37 +75,51 @@ struct SenderGroupView: View {
                                 .font(SelkoTypography.caption)
                                 .foregroundStyle(Color.selkoMuted)
                             Spacer()
-                            Button("Approve all", action: onApproveAll)
-                                .font(SelkoTypography.caption.weight(.bold))
-                                .foregroundStyle(Color.selkoSuccess)
-                            Button("Reject all", action: onRejectAll)
-                                .font(SelkoTypography.caption.weight(.bold))
-                                .foregroundStyle(Color.selkoRust)
+                            Button("Approve all") {
+                                withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
+                                onApproveAll()
+                            }
+                            .font(SelkoTypography.caption.weight(.bold))
+                            .foregroundStyle(Color.selkoSuccess)
+                            Button("Reject all") {
+                                withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
+                                onRejectAll()
+                            }
+                            .font(SelkoTypography.caption.weight(.bold))
+                            .foregroundStyle(Color.selkoError)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
                         Divider().overlay(Color.selkoDivider)
                     }
 
-                    HStack {
-                        Text("Auto-accept events")
-                            .font(SelkoTypography.caption.weight(.bold))
-                            .foregroundStyle(Color.selkoInk)
-                        Spacer()
-                        Toggle("Auto-accept events", isOn: Binding(get: { false }, set: { _ in onAutoApproveSender() }))
-                            .labelsHidden()
-                            .tint(Color.accentColor)
+                    // One-shot action, not a toggle: creating the rule is
+                    // immediate and this view has no rule state to reflect.
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
+                        onAutoApproveSender()
+                    } label: {
+                        HStack {
+                            Text("Auto-approve sender")
+                            Spacer()
+                        }
                     }
+                    .font(SelkoTypography.caption.weight(.bold))
+                    .foregroundStyle(Color.selkoInk)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     Divider().overlay(Color.selkoDivider)
-                    Button(role: .destructive, action: onIgnoreSender) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
+                        onIgnoreSender()
+                    } label: {
                         HStack {
                             Text("Ignore this sender")
                             Spacer()
                         }
                     }
                     .font(SelkoTypography.caption.weight(.bold))
+                    .foregroundStyle(Color.selkoError)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                 }

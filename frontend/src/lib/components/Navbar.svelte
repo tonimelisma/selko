@@ -1,5 +1,4 @@
 <script>
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { _ } from 'svelte-i18n';
 	import { user } from '$lib/stores.js';
@@ -10,16 +9,6 @@
 
 	let currentPath = $state('/app');
 	let currentUserEmail = $state('');
-	let isDesktop = $state(false);
-
-	onMount(() => {
-		const media = window.matchMedia?.('(min-width: 1024px)');
-		if (!media) return;
-		const update = () => (isDesktop = media.matches);
-		update();
-		media.addEventListener?.('change', update);
-		return () => media.removeEventListener?.('change', update);
-	});
 
 	$effect(() => {
 		const unsubscribePage = page.subscribe((value) => {
@@ -43,8 +32,8 @@
 	let initials = $derived(initialsFromEmail(currentUserEmail));
 </script>
 
-{#if isDesktop}
-<aside class="fixed inset-y-0 left-0 z-40 flex w-[236px] flex-col border-r border-base-300 bg-surface px-4 py-5">
+<!-- Desktop sidebar (≥lg). CSS breakpoints, not JS, so SSR/first paint match. -->
+<aside class="fixed inset-y-0 left-0 z-40 hidden w-[236px] flex-col border-r border-base-300 bg-surface px-4 py-5 lg:flex">
 	<a href="/app" class="flex items-center gap-2 px-2" aria-label={$_('common.appName')}>
 		<LogoMark size={34} />
 		<span class="text-xl font-extrabold tracking-tight">{$_('common.appName')}</span>
@@ -79,23 +68,22 @@
 			<p class="truncate text-sm font-semibold">{currentUserEmail || $_('auth.account')}</p>
 			<p class="text-xs text-base-content/50">{$_('common.appName')}</p>
 		</div>
-		<button class="btn btn-square btn-ghost btn-sm text-secondary" onclick={onLogout} aria-label={$_('auth.logOut')}>
+		<button class="btn btn-square btn-ghost btn-sm text-error" onclick={onLogout} aria-label={$_('auth.logOut')}>
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 8V6.5A2.5 2.5 0 0 0 11.5 4h-5A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h5a2.5 2.5 0 0 0 2.5-2.5V16M10 12h10m0 0-3-3m3 3-3 3" /></svg>
 		</button>
 	</div>
 </aside>
 
-{:else}
-<header class="sticky top-0 z-40 border-b border-base-300 bg-surface">
+<!-- Mobile header + pill tabs (<lg). Logout lives at the foot of Settings. -->
+<header class="sticky top-0 z-40 border-b border-base-300 bg-surface lg:hidden">
 	<div class="flex min-h-16 items-center justify-between px-4">
 		<a href="/app" class="flex items-center gap-2" aria-label={$_('common.appName')}>
 			<LogoMark size={32} />
 			<span class="text-lg font-extrabold tracking-tight">{$_('common.appName')}</span>
 		</a>
 		<div class="grid h-9 w-9 place-items-center rounded-full bg-primary text-xs font-bold text-primary-content" aria-label={currentUserEmail}>{initials}</div>
-		<button class="sr-only" onclick={onLogout}>{$_('auth.logOut')}</button>
 	</div>
-	<nav class="sticky top-0 px-4 pb-3" aria-label={$_('nav.mainNavigation')}>
+	<nav class="px-4 pb-3" aria-label={$_('nav.mainNavigation')}>
 		<div class="grid grid-cols-3 gap-1 rounded-full bg-base-200 p-1">
 			{#each navLinks as link}
 				<a
@@ -109,4 +97,3 @@
 		</div>
 	</nav>
 </header>
-{/if}

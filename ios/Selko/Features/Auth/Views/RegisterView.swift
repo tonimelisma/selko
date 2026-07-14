@@ -21,7 +21,7 @@ struct RegisterView: View {
 
                         if let error = viewModel.errorMessage {
                             Text(error)
-                                .foregroundStyle(Color.selkoRust)
+                                .foregroundStyle(Color.selkoError)
                                 .font(SelkoTypography.caption)
                                 .multilineTextAlignment(.center)
                                 .frame(maxWidth: .infinity)

@@ -313,6 +313,11 @@ const { data, error } = await supabase
 ### List All Integrations
 
 **Important:** Never select `access_token` or `refresh_token` on the frontend.
+Since migration `20260714000004`, this is enforced by column-level grants:
+`authenticated` can only SELECT the metadata columns below (token columns are
+service-role-only) and only DELETE rows (INSERT/UPDATE are backend-only). A
+`select=*` or representation-returning delete on `integrations` now fails with
+`42501` — always list the safe columns and delete with minimal returns.
 
 ```sql
 SELECT id, user_id, provider, status, provider_email, scopes, last_sync_at, created_at, updated_at

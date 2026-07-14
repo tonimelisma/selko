@@ -7,63 +7,48 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
+/**
+ * The Selko mark: a coral calendar tile with three event blocks settling into
+ * place — two small squares on top (right one faded) and a wide bar below.
+ * Geometry mirrors the web LogoMark's 40x40 viewBox.
+ */
 @Composable
 fun SelkoLogoMark(
     modifier: Modifier = Modifier.size(44.dp),
     color: Color = MaterialTheme.colorScheme.primary
 ) {
-    val onPrimary = MaterialTheme.colorScheme.onPrimary
+    val blockColor = MaterialTheme.colorScheme.onPrimary
 
     Canvas(modifier = modifier) {
-        val radius = size.minDimension * 0.22f
+        val u = size.minDimension / 40f
         drawRoundRect(
             color = color,
-            topLeft = Offset(size.width * 0.1f, size.height * 0.1f),
-            size = androidx.compose.ui.geometry.Size(size.width * 0.8f, size.height * 0.8f),
-            cornerRadius = CornerRadius(radius, radius)
+            topLeft = Offset(0f, 0f),
+            size = Size(40f * u, 40f * u),
+            cornerRadius = CornerRadius(12f * u, 12f * u)
         )
-        drawLine(
-            color = onPrimary,
-            start = Offset(size.width * 0.28f, size.height * 0.36f),
-            end = Offset(size.width * 0.72f, size.height * 0.36f),
-            strokeWidth = size.minDimension * 0.07f,
-            cap = StrokeCap.Round
+        val blockRadius = CornerRadius(2.5f * u, 2.5f * u)
+        drawRoundRect(
+            color = blockColor,
+            topLeft = Offset(9f * u, 10f * u),
+            size = Size(9f * u, 9f * u),
+            cornerRadius = blockRadius
         )
-        drawLine(
-            color = onPrimary,
-            start = Offset(size.width * 0.28f, size.height * 0.36f),
-            end = Offset(size.width * 0.28f, size.height * 0.72f),
-            strokeWidth = size.minDimension * 0.07f,
-            cap = StrokeCap.Round
+        drawRoundRect(
+            color = blockColor.copy(alpha = 0.55f),
+            topLeft = Offset(22f * u, 10f * u),
+            size = Size(9f * u, 9f * u),
+            cornerRadius = blockRadius
         )
-        drawLine(
-            color = onPrimary,
-            start = Offset(size.width * 0.28f, size.height * 0.72f),
-            end = Offset(size.width * 0.72f, size.height * 0.72f),
-            strokeWidth = size.minDimension * 0.07f,
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = onPrimary,
-            start = Offset(size.width * 0.72f, size.height * 0.72f),
-            end = Offset(size.width * 0.72f, size.height * 0.36f),
-            strokeWidth = size.minDimension * 0.07f,
-            cap = StrokeCap.Round
-        )
-        drawCircle(
-            color = onPrimary,
-            radius = size.minDimension * 0.055f,
-            center = Offset(size.width * 0.42f, size.height * 0.54f)
-        )
-        drawCircle(
-            color = onPrimary,
-            radius = size.minDimension * 0.055f,
-            center = Offset(size.width * 0.58f, size.height * 0.54f)
+        drawRoundRect(
+            color = blockColor.copy(alpha = 0.85f),
+            topLeft = Offset(9f * u, 23f * u),
+            size = Size(22f * u, 8f * u),
+            cornerRadius = blockRadius
         )
     }
 }
