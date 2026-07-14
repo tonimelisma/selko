@@ -217,8 +217,6 @@ class SettingsViewModel(
 
     fun getCalendarAuthUrl(): String = backendApiClient.getCalendarAuthUrl()
 
-    fun getPhotosAuthUrl(): String = backendApiClient.getPhotosAuthUrl()
-
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }

@@ -183,46 +183,7 @@ struct SettingsViewModelTests {
     }
 
     @Test
-    func loadFetchesGooglePhotosIntegration() async throws {
-        // Given
-        let mockIntegrationService = MockIntegrationService()
-        let mockBackendAPI = MockBackendAPI()
-        let mockCalendarSettingsService = MockCalendarSettingsService()
-        let mockAuthService = MockAuthService()
-
-        let photosIntegration = Integration(
-            id: UUID(),
-            userId: UUID(),
-            provider: .googlePhotos,
-            status: .active,
-            providerEmail: "user@gmail.com",
-            scopes: ["https://www.googleapis.com/auth/photoslibrary.readonly"],
-            lastSyncAt: Date(),
-            createdAt: Date(),
-            updatedAt: Date()
-        )
-        mockIntegrationService.fetchIntegrationsResult = .success([photosIntegration])
-
-        let viewModel = SettingsViewModel(
-            integrationService: mockIntegrationService,
-            backendAPI: mockBackendAPI,
-            calendarSettingsService: mockCalendarSettingsService,
-            authService: mockAuthService
-        )
-
-        // When
-        await viewModel.load()
-
-        // Then
-        #expect(viewModel.integrations.count == 1)
-        #expect(viewModel.integrations.first?.provider == .googlePhotos)
-        #expect(viewModel.integration(for: .googlePhotos)?.isActive == true)
-        #expect(viewModel.isLoading == false)
-        #expect(viewModel.errorMessage == nil)
-    }
-
-    @Test
-    func providerDisplayNameReturnsGooglePhotos() async throws {
+    func providerDisplayNameReturnsProviderNames() async throws {
         // Given
         let mockIntegrationService = MockIntegrationService()
         let mockBackendAPI = MockBackendAPI()
@@ -237,98 +198,8 @@ struct SettingsViewModelTests {
         )
 
         // When/Then
-        #expect(viewModel.providerDisplayName(.googlePhotos) == "Google Photos")
         #expect(viewModel.providerDisplayName(.gmail) == "Gmail")
         #expect(viewModel.providerDisplayName(.googleCalendar) == "Google Calendar")
-    }
-
-    @Test
-    func disconnectGooglePhotosRemovesIntegration() async throws {
-        // Given
-        let mockIntegrationService = MockIntegrationService()
-        let mockBackendAPI = MockBackendAPI()
-        let mockCalendarSettingsService = MockCalendarSettingsService()
-        let mockAuthService = MockAuthService()
-
-        let photosIntegration = Integration(
-            id: UUID(),
-            userId: UUID(),
-            provider: .googlePhotos,
-            status: .active,
-            providerEmail: "user@gmail.com",
-            scopes: [],
-            lastSyncAt: nil,
-            createdAt: Date(),
-            updatedAt: Date()
-        )
-        mockIntegrationService.fetchIntegrationsResult = .success([photosIntegration])
-
-        let viewModel = SettingsViewModel(
-            integrationService: mockIntegrationService,
-            backendAPI: mockBackendAPI,
-            calendarSettingsService: mockCalendarSettingsService,
-            authService: mockAuthService
-        )
-
-        await viewModel.load()
-        #expect(viewModel.integrations.count == 1)
-
-        // Set up the provider to disconnect
-        viewModel.providerToDisconnect = .googlePhotos
-
-        // When
-        await viewModel.disconnect()
-
-        // Then
-        #expect(viewModel.integrations.isEmpty)
-        #expect(mockIntegrationService.deleteIntegrationCallCount == 1)
-        #expect(mockIntegrationService.lastDeletedProvider == .googlePhotos)
-        #expect(viewModel.errorMessage == nil)
-    }
-
-    @Test
-    func loadMultipleIntegrationsIncludingPhotos() async throws {
-        // Given
-        let mockIntegrationService = MockIntegrationService()
-        let mockBackendAPI = MockBackendAPI()
-        let mockCalendarSettingsService = MockCalendarSettingsService()
-        let mockAuthService = MockAuthService()
-
-        let userId = UUID()
-        let gmailIntegration = Integration(
-            id: UUID(), userId: userId, provider: .gmail, status: .active,
-            providerEmail: "user@gmail.com", scopes: [], lastSyncAt: nil,
-            createdAt: Date(), updatedAt: Date()
-        )
-        let calendarIntegration = Integration(
-            id: UUID(), userId: userId, provider: .googleCalendar, status: .active,
-            providerEmail: "user@gmail.com", scopes: [], lastSyncAt: nil,
-            createdAt: Date(), updatedAt: Date()
-        )
-        let photosIntegration = Integration(
-            id: UUID(), userId: userId, provider: .googlePhotos, status: .active,
-            providerEmail: "user@gmail.com", scopes: [], lastSyncAt: nil,
-            createdAt: Date(), updatedAt: Date()
-        )
-        mockIntegrationService.fetchIntegrationsResult = .success([
-            gmailIntegration, calendarIntegration, photosIntegration
-        ])
-
-        let viewModel = SettingsViewModel(
-            integrationService: mockIntegrationService,
-            backendAPI: mockBackendAPI,
-            calendarSettingsService: mockCalendarSettingsService,
-            authService: mockAuthService
-        )
-
-        // When
-        await viewModel.load()
-
-        // Then
-        #expect(viewModel.integrations.count == 3)
-        #expect(viewModel.integration(for: .gmail)?.isActive == true)
-        #expect(viewModel.integration(for: .googleCalendar)?.isActive == true)
-        #expect(viewModel.integration(for: .googlePhotos)?.isActive == true)
     }
 
     @Test

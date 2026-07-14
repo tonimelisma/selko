@@ -90,6 +90,7 @@
 		"sourcePhoto": "Source Photo",
 		"viewSourcePhoto": "View Source Photo",
 		"sourcePhotoDescription": "This event was extracted from a Google Photos image.",
+		"googlePhotos": "Google Photos",
 		"emailSource": "From email",
 		"photoSource": "From photo",
 		"from": "From:",
@@ -168,8 +169,6 @@
 		"outlookDescription": "Read Outlook emails to find calendar events",
 		"googleCalendar": "Google Calendar",
 		"googleCalendarDescription": "Sync approved events to your calendar",
-		"googlePhotos": "Google Photos",
-		"googlePhotosDescription": "Scan photos for event details",
 		"disconnect": "Disconnect",
 		"connected": "Account connected successfully",
 		"connectFailed": "Failed to connect Google account. Please try again."

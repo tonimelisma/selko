@@ -225,26 +225,6 @@ describe('integrations service', () => {
 			expect(result).toBe(true);
 		});
 
-		it('returns false for expired provider', async () => {
-			const expiredIntegration = mockIntegrations.find(
-				(i) => i.provider === 'google_photos' && i.status === 'expired'
-			);
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: expiredIntegration,
-					error: null
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
-
-			const result = await isProviderConnected('google_photos');
-
-			expect(result).toBe(false);
-		});
-
 		it('returns false when provider not found', async () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),

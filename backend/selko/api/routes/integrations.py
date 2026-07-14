@@ -244,7 +244,7 @@ def _oauth_initiate_response(
     redirect_uri: str | None,
     accept: str | None,
 ) -> RedirectResponse | JSONResponse:
-    """Shared OAuth initiation for Gmail / Calendar / Photos."""
+    """Shared OAuth initiation for Gmail / Calendar."""
     resolved_uri = redirect_uri or _default_oauth_callback_uri(config, provider)
 
     if not _validate_redirect_uri(resolved_uri):
@@ -363,6 +363,12 @@ async def google_oauth_callback(
             state=state,
         )
 
+        if provider == "google_photos":
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail="Google Photos ingestion is currently parked",
+            )
+
         # Create service role client (bypasses RLS for explicit user_id)
         from selko.services.auth import get_service_client
         client = get_service_client(config)
@@ -376,7 +382,7 @@ async def google_oauth_callback(
                 provider_email = profile.get("emailAddress")
             except Exception as e:
                 logger.warning(f"Could not get Gmail profile: {e}")
-        # For google_calendar and google_photos, we don't fetch profile info
+        # For google_calendar, we don't fetch profile info
         # (those APIs don't have a user profile endpoint)
 
         # Save credentials with EXPLICIT user_id

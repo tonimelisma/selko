@@ -162,7 +162,7 @@ class ReviewQueueViewModel(
         }
 
         if (sources.any { it.sourceOrigin == SourceOrigin.GOOGLE_PHOTOS }) {
-            return Pair(getString(R.string.settings_google_photos), "google_photos")
+            return Pair(getString(R.string.event_source_google_photos), "google_photos")
         }
 
         if (sources.any { it.sourceOrigin == SourceOrigin.GOOGLE_CALENDAR }) {

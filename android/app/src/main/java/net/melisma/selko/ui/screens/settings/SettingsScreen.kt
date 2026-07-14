@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -99,8 +98,7 @@ fun SettingsScreen(
                     onDisconnect = { viewModel.disconnectIntegration(it) },
                     gmailAuthUrl = viewModel.getGmailAuthUrl(),
                     outlookAuthUrl = viewModel.getOutlookAuthUrl(),
-                    calendarAuthUrl = viewModel.getCalendarAuthUrl(),
-                    photosAuthUrl = viewModel.getPhotosAuthUrl()
+                    calendarAuthUrl = viewModel.getCalendarAuthUrl()
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -179,14 +177,12 @@ private fun ConnectedAccountsSection(
     onDisconnect: (IntegrationProvider) -> Unit,
     gmailAuthUrl: String,
     outlookAuthUrl: String,
-    calendarAuthUrl: String,
-    photosAuthUrl: String
+    calendarAuthUrl: String
 ) {
     val context = LocalContext.current
     val gmailIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GMAIL }
     val outlookIntegration = uiState.integrations.find { it.provider == IntegrationProvider.OUTLOOK }
     val calendarIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GOOGLE_CALENDAR }
-    val photosIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GOOGLE_PHOTOS }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -249,26 +245,6 @@ private fun ConnectedAccountsSection(
                     }
                 },
                 onDisconnect = { onDisconnect(IntegrationProvider.GOOGLE_CALENDAR) }
-            )
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // Google Photos
-            IntegrationRow(
-                icon = Icons.Filled.PhotoCamera,
-                label = stringResource(R.string.settings_google_photos),
-                email = photosIntegration?.providerEmail,
-                isConnected = photosIntegration?.status == IntegrationStatus.ACTIVE,
-                isDisconnecting = uiState.isDisconnecting,
-                onConnect = {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(photosAuthUrl))
-                        context.startActivity(intent)
-                    } catch (_: android.content.ActivityNotFoundException) {
-                        // No browser available
-                    }
-                },
-                onDisconnect = { onDisconnect(IntegrationProvider.GOOGLE_PHOTOS) }
             )
         }
     }

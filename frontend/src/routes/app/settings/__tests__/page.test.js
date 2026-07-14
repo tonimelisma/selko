@@ -50,7 +50,6 @@ const mockUpdateCalendarSettings = vi.fn();
 const mockListCalendars = vi.fn();
 const mockInitiateGmailAuth = vi.fn();
 const mockInitiateCalendarAuth = vi.fn();
-const mockInitiatePhotosAuth = vi.fn();
 
 vi.mock('$lib/supabase.js', () => ({
 	supabase: {
@@ -71,8 +70,7 @@ vi.mock('$lib/services/calendar-settings.js', () => ({
 vi.mock('$lib/api/backend.js', () => ({
 	listCalendars: (...args) => mockListCalendars(...args),
 	initiateGmailAuth: (...args) => mockInitiateGmailAuth(...args),
-	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args),
-	initiatePhotosAuth: (...args) => mockInitiatePhotosAuth(...args)
+	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args)
 }));
 
 const mockFetchSenderRules = vi.fn();
@@ -228,56 +226,6 @@ describe('Settings Page', () => {
 		await waitFor(() => {
 			const disconnectButtons = screen.getAllByText('Disconnect');
 			expect(disconnectButtons.length).toBe(2);
-		});
-	});
-
-	it('shows Google Photos in connected accounts', async () => {
-		mockFetchIntegrations.mockResolvedValue({
-			data: [
-				{
-					id: '1',
-					provider: 'gmail',
-					status: 'active',
-					provider_email: 'test@gmail.com'
-				},
-				{
-					id: '3',
-					provider: 'google_photos',
-					status: 'active',
-					provider_email: 'test@gmail.com'
-				}
-			],
-			error: null
-		});
-
-		render(SettingsPage);
-
-		await waitFor(() => {
-			expect(screen.getByText('Google Photos')).toBeInTheDocument();
-			expect(screen.getByText('Scan photos for event details')).toBeInTheDocument();
-		});
-	});
-
-	it('shows connect button for unconnected Google Photos', async () => {
-		mockFetchIntegrations.mockResolvedValue({
-			data: [
-				{
-					id: '1',
-					provider: 'gmail',
-					status: 'active',
-					provider_email: 'test@gmail.com'
-				}
-			],
-			error: null
-		});
-
-		render(SettingsPage);
-
-		await waitFor(() => {
-			expect(screen.getByText('Google Photos')).toBeInTheDocument();
-			// Google Photos should show Connect since it has no integration
-			const connectButtons = screen.getAllByText('Connect');
-			expect(connectButtons.length).toBeGreaterThanOrEqual(1);
 		});
 	});
 

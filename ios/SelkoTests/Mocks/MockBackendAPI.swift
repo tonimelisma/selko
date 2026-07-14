@@ -71,10 +71,6 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
         return "https://example.com/calendar-auth"
     }
 
-    func getPhotosAuthUrl(redirectUri: String?) -> String {
-        return "https://example.com/photos-auth"
-    }
-
     func checkHealth() async throws -> HealthResponse {
         return HealthResponse(status: "ok")
     }

@@ -10,8 +10,7 @@
 		listCalendars,
 		initiateGmailAuth,
 		initiateOutlookAuth,
-		initiateCalendarAuth,
-		initiatePhotosAuth
+		initiateCalendarAuth
 	} from '$lib/api/backend.js';
 	import { fetchEmailFolders, updateEmailFolder } from '$lib/services/email-folders.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
@@ -149,8 +148,7 @@
 		const providerNames = {
 			gmail: $_('integrations.gmail'),
 			outlook: $_('integrations.outlook'),
-			google_calendar: $_('integrations.googleCalendar'),
-			google_photos: $_('integrations.googlePhotos')
+			google_calendar: $_('integrations.googleCalendar')
 		};
 		disconnectTargetName = providerNames[integration?.provider] || integration?.provider || '';
 		showDisconnectModal = true;
@@ -180,8 +178,6 @@
 			await initiateOutlookAuth();
 		} else if (provider === 'google_calendar') {
 			await initiateCalendarAuth();
-		} else if (provider === 'google_photos') {
-			await initiatePhotosAuth();
 		}
 	}
 
