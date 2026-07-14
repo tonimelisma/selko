@@ -123,7 +123,7 @@
     <string name="settings_gmail">Gmail</string>
     <string name="settings_outlook">Outlook</string>
     <string name="settings_google_calendar">Google Calendar</string>
-    <string name="settings_google_photos">Google Photos</string>
+    <string name="event_source_google_photos">Google Photos</string>
     <string name="settings_connected">Connected</string>
     <string name="settings_disconnect">Disconnect</string>
     <string name="settings_connect">Connect</string>

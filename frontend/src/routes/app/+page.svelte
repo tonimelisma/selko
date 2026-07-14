@@ -13,8 +13,7 @@
 		syncEventToCalendar,
 		initiateGmailAuth,
 		initiateOutlookAuth,
-		initiateCalendarAuth,
-		initiatePhotosAuth
+		initiateCalendarAuth
 	} from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import SenderHeader from '$lib/components/SenderHeader.svelte';
@@ -57,7 +56,7 @@
 	function senderForEvent(event) {
 		return resolveEventSender(event, {
 			unknownSender: $_('common.unknownSender'),
-			googlePhotos: $_('integrations.googlePhotos'),
+			googlePhotos: $_('eventSource.googlePhotos'),
 			googleCalendar: $_('integrations.googleCalendar')
 		});
 	}
@@ -327,8 +326,6 @@
 			await initiateOutlookAuth();
 		} else if (provider === 'google_calendar') {
 			await initiateCalendarAuth();
-		} else if (provider === 'google_photos') {
-			await initiatePhotosAuth();
 		}
 	}
 </script>

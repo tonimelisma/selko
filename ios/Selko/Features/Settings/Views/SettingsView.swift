@@ -56,7 +56,6 @@ struct SettingsView: View {
             integrationRow(provider: .gmail)
             integrationRow(provider: .outlook)
             integrationRow(provider: .googleCalendar)
-            integrationRow(provider: .googlePhotos)
         }
         .accessibilityIdentifier("connectedAccountsSection")
     }
@@ -193,7 +192,7 @@ struct SettingsView: View {
         case .googleCalendar:
             urlString = backendAPI.getCalendarAuthUrl(redirectUri: nil)
         case .googlePhotos:
-            urlString = backendAPI.getPhotosAuthUrl(redirectUri: nil)
+            return
         }
 
         if let url = URL(string: urlString) {
