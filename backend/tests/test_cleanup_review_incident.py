@@ -7,6 +7,7 @@ so it's imported directly from its file path rather than via `selko.*`.
 import importlib.util
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 SCRIPT_PATH = (
     Path(__file__).resolve().parents[2] / "scripts" / "cleanup_review_incident_20260713.py"
@@ -17,7 +18,52 @@ sys.modules[_spec.name] = cleanup_script
 _spec.loader.exec_module(cleanup_script)
 
 find_orphaned_outlook_email_ids = cleanup_script.find_orphaned_outlook_email_ids
+fetch_all_rows = cleanup_script.fetch_all_rows
 group_duplicate_pending_events = cleanup_script.group_duplicate_pending_events
+pending_change_has_orphaned_email_source = (
+    cleanup_script.pending_change_has_orphaned_email_source
+)
+
+
+class TestFetchAllRows:
+    def test_reads_past_postgrest_row_cap_in_stable_ranges(self):
+        rows = [{"id": str(index)} for index in range(5)]
+        requested_ranges = []
+
+        class Query:
+            def order(self, column):
+                assert column == "id"
+                return self
+
+            def range(self, start, end):
+                requested_ranges.append((start, end))
+                self.start = start
+                self.end = end
+                return self
+
+            def execute(self):
+                return SimpleNamespace(data=rows[self.start : self.end + 1])
+
+        assert fetch_all_rows(Query, page_size=2) == rows
+        assert requested_ranges == [(0, 1), (2, 3), (4, 5)]
+
+
+class TestPendingChangeOrphanDetection:
+    def test_uses_email_sibling_when_latest_source_is_google_calendar(self):
+        sources = [
+            {"id": "email", "source_type": "update", "email_id": "orphan"},
+            {"id": "gcal", "source_type": "update", "email_id": None},
+        ]
+
+        assert pending_change_has_orphaned_email_source(sources, {"orphan"})
+
+    def test_ignores_non_proposal_or_non_orphaned_email_sources(self):
+        sources = [
+            {"source_type": "new_invitation", "email_id": "orphan"},
+            {"source_type": "update", "email_id": "kept"},
+        ]
+
+        assert not pending_change_has_orphaned_email_source(sources, {"orphan"})
 
 
 class TestFindOrphanedOutlookEmailIds:
