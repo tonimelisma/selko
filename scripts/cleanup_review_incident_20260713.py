@@ -34,6 +34,7 @@ Usage:
 import argparse
 import sys
 from collections import defaultdict
+from collections.abc import Callable
 from typing import Any, Optional
 
 from rich.console import Console
@@ -44,6 +45,45 @@ from selko.services.auth import get_service_client
 from selko.services.events import reject_pending_change
 
 console = Console()
+PAGE_SIZE = 1000
+
+
+def fetch_all_rows(
+    query_factory: Callable[[], Any],
+    *,
+    order_column: str = "id",
+    page_size: int = PAGE_SIZE,
+) -> list[dict[str, Any]]:
+    """Execute a PostgREST select in stable pages until all rows are read."""
+    rows: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        result = (
+            query_factory()
+            .order(order_column)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        page = result.data or []
+        rows.extend(page)
+        if len(page) < page_size:
+            return rows
+        offset += page_size
+
+
+def pending_change_has_orphaned_email_source(
+    sources: list[dict[str, Any]], orphaned_email_ids: set[str]
+) -> bool:
+    """Whether an active proposal has an orphaned email source.
+
+    Google Calendar proposal siblings have no email_id, so the latest source
+    row alone is not authoritative. Inspect the active email sibling(s).
+    """
+    return any(
+        source.get("source_type") in ("update", "cancellation")
+        and source.get("email_id") in orphaned_email_ids
+        for source in sources
+    )
 
 
 def find_orphaned_outlook_email_ids(
@@ -94,49 +134,44 @@ def cleanup_user(client, user_id: str, apply: bool) -> dict[str, int]:
         "duplicate_events_rejected": 0,
     }
 
-    folders_result = (
-        client.table("email_folders")
-        .select("provider_folder_id")
+    folder_rows = fetch_all_rows(
+        lambda: client.table("email_folders")
+        .select("id, provider_folder_id")
         .eq("user_id", user_id)
         .eq("provider", "outlook")
-        .execute()
     )
     known_folder_ids = {
         row["provider_folder_id"]
-        for row in (folders_result.data or [])
+        for row in folder_rows
         if row.get("provider_folder_id")
     }
 
-    emails_result = (
-        client.table("emails")
+    email_rows = fetch_all_rows(
+        lambda: client.table("emails")
         .select("id, provider_folder_ids")
         .eq("user_id", user_id)
         .eq("email_provider", "outlook")
-        .execute()
     )
     orphaned_email_ids = find_orphaned_outlook_email_ids(
-        emails_result.data or [], known_folder_ids
+        email_rows, known_folder_ids
     )
     summary["orphaned_emails"] = len(orphaned_email_ids)
     orphaned_set = set(orphaned_email_ids)
 
     if orphaned_email_ids:
-        events_result = (
-            client.table("events")
+        event_rows = fetch_all_rows(
+            lambda: client.table("events")
             .select("id, status")
             .eq("user_id", user_id)
             .in_("status", ["pending_review", "pending_change"])
-            .execute()
         )
-        for event in events_result.data or []:
-            sources_result = (
-                client.table("event_sources")
-                .select("email_id, source_type, created_at")
+        for event in event_rows:
+            sources = fetch_all_rows(
+                lambda: client.table("event_sources")
+                .select("id, email_id, source_type, created_at")
                 .eq("event_id", event["id"])
                 .eq("is_undone", False)
-                .execute()
             )
-            sources = sources_result.data or []
             email_sources = [s for s in sources if s.get("email_id")]
 
             if event["status"] == "pending_review":
@@ -149,13 +184,7 @@ def cleanup_user(client, user_id: str, apply: bool) -> dict[str, int]:
                             "id", event["id"]
                         ).execute()
             else:  # pending_change
-                update_sources = [
-                    s for s in sources if s.get("source_type") in ("update", "cancellation")
-                ]
-                if not update_sources:
-                    continue
-                latest = max(update_sources, key=lambda s: s.get("created_at") or "")
-                if latest.get("email_id") in orphaned_set:
+                if pending_change_has_orphaned_email_source(sources, orphaned_set):
                     summary["discarded_pending_changes"] += 1
                     if apply:
                         reject_pending_change(client, event["id"])
@@ -171,14 +200,13 @@ def cleanup_user(client, user_id: str, apply: bool) -> dict[str, int]:
                 }
             ).in_("id", orphaned_email_ids).execute()
 
-    pending_review_result = (
-        client.table("events")
+    pending_review_rows = fetch_all_rows(
+        lambda: client.table("events")
         .select("id, title, start_datetime, created_at")
         .eq("user_id", user_id)
         .eq("status", "pending_review")
-        .execute()
     )
-    duplicates = group_duplicate_pending_events(pending_review_result.data or [])
+    duplicates = group_duplicate_pending_events(pending_review_rows)
     summary["duplicate_groups"] = len(duplicates)
     for _keep_id, reject_ids in duplicates:
         summary["duplicate_events_rejected"] += len(reject_ids)
@@ -224,10 +252,12 @@ def main(argv: Optional[list[str]] = None) -> None:
 
     client = get_service_client(config)
 
-    integrations_result = (
-        client.table("integrations").select("user_id").eq("provider", "outlook").execute()
+    integration_rows = fetch_all_rows(
+        lambda: client.table("integrations")
+        .select("id, user_id")
+        .eq("provider", "outlook")
     )
-    user_ids = sorted({row["user_id"] for row in (integrations_result.data or [])})
+    user_ids = sorted({row["user_id"] for row in integration_rows})
 
     if not user_ids:
         console.print("[dim]No users with an Outlook integration found.[/dim]")
