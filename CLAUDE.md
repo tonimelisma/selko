@@ -163,7 +163,7 @@ See `docs/testing-guide.md` for the full test guide and `docs/manual-email-to-ca
 ### iOS — Pure SwiftUI
 - **Never import UIKit** unless absolutely unavoidable (e.g., `UIApplication` for opening URLs)
 - For adaptive light/dark colors: use **asset catalog color sets**, not `UIColor { traits in ... }`
-- SF Pro is the system font — do NOT bundle or override it
+- Brand font is bundled Figtree (declared in `Info.plist` under `UIAppFonts`); use `Font.custom(_:size:relativeTo:)` so Dynamic Type scaling keeps working
 - Project is `ios/iOS.xcodeproj`, scheme is `iOS` (not "Selko" — common mistake)
 - Uses `PBXFileSystemSynchronizedRootGroup` — Swift files in `Selko/` are auto-discovered, no `project.pbxproj` edits needed for new files
 - `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES` — color sets (e.g., `SelkoSuccess.colorset`) auto-generate `Color.selkoSuccess` extensions. Do NOT create manual Color extensions that duplicate asset catalog names (causes "invalid redeclaration")
