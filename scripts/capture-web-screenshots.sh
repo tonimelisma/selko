@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # INTERNAL HELPER — called by capture-all-screenshots.sh. Do not run directly.
-# Captures 12 web screenshots (6 desktop + 6 mobile) using Playwright.
+# Captures 24 web screenshots (six screens, desktop/mobile, light/dark).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

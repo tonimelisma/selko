@@ -117,7 +117,8 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 **NOT events — do NOT extract these:**
 An event is something the recipient would put on their personal calendar to attend, participate in, or prepare for.
 If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) with no event the recipient needs to attend or prepare for, set events_found=false.
-- Calendar-derived briefs, agendas, relationship digests, and reminder summaries that merely restate entries already on the recipient's calendar are NOT new event sources. Return events_found=false unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data.
+- Third-party automated calendar-derived briefs, relationship digests, and reminder summaries that merely restate entries already on the recipient's calendar are NOT new event sources. Return events_found=false unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data.
+- This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas. Extract those events when the recipient is expected to attend or prepare and the date is explicit.
 
 **Extraction rules:**
 - Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events

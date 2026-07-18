@@ -1,6 +1,8 @@
 # Selko Brand Guide
 
-The definitive visual reference for Selko. The detailed build specification is
+The definitive visual reference for Selko. The machine-readable source of truth
+is [`design/tokens.json`](../design/tokens.json); platform tests must fail when
+an implementation drifts from it. The detailed build specification is
 [`docs/specs/warmth-design-system.md`](specs/warmth-design-system.md).
 
 ## Personality
@@ -25,8 +27,8 @@ supporting copy instead of repeating the tagline.
 | subtle | `#F5EEE6` | `#2C2621` | Secondary controls, chips |
 | ink | `#2B2622` | `#F2ECE4` | Primary text |
 | body | `#4A423B` | `#D8CFC5` | Body text |
-| muted | `#8A7F74` | `#A99E92` | Secondary text |
-| faint | `#9A8F84` | `#8E8378` | Metadata and placeholders |
+| muted | `#746A61` | `#A99E92` | Secondary text |
+| faint | `#786E65` | `#9A8F84` | Metadata and placeholders |
 | border | `#EDE4DA` | `#322B25` | Card and navigation hairlines |
 | divider | `#F2EAE1` | `#322B25` | Internal separators |
 | primary | `#E86F52` | `#F0805C` | Coral actions and active navigation |
@@ -55,6 +57,11 @@ ink labels on bright Warmth fills where the contrast requires it.
 4. **Destructive controls are ghost/outline by default.** The only filled
    berry button is the confirm button inside a confirmation dialog, so brand
    CTAs (filled coral) and danger stay distinguishable by shape alone.
+5. **Filled action content is semantic.** Light coral uses ink `#2B2622`, green
+   uses `#12100E`, and berry uses white. Small successful status text uses
+   `#3F7D5F`; warning text uses `#9A5C1D`.
+6. **NEW is neutral, not successful.** NEW uses `#F5EEE6`/`#6E655C`; CHANGED
+   uses `#FDF1E7`/`#9A5C1D`.
 
 ## Typography
 
@@ -72,12 +79,15 @@ smaller, quieter, and never competes with the decision.
 | Caption | 12–13 | 500 | Metadata |
 | Overline | 11 | 700 | Uppercase section labels |
 
-## Shape and elevation
+## Shape, spacing, and elevation
 
-- Small radius: 8px.
-- Button/input radius: 14px.
-- Card radius: 20px on web and 20–22px on native.
-- Badges, chips, and toggles use pill geometry.
+- Navigation rows and contained icon tiles: 12px radius.
+- Buttons, inputs, selects, switch hit containers, and dialogs: 14px radius.
+- Cards and sheets on every platform: 20px radius.
+- State tags and removable chips only: full pill radius.
+- Use the 4px spacing grid. Standard controls are at least 44px/pt/dp high,
+  with 16px horizontal padding, 8px content gaps, 20px icons, and 14/700 labels.
+  Inputs are 46px high. Every icon-only action has a 44×44 target.
 - Light cards use a soft brown-tinted shadow; dark cards use a 1px border and no
   shadow.
 - Buttons are sentence case. The interface has no emoji or decorative noise.
@@ -104,5 +114,6 @@ ink.
 ## Voice and terminology
 
 Brief, direct, and calm. Use “Sign in”, “Sign up”, “Accept”, “Reject”, “Undo”,
-and “Log out”. Empty states use a short heading plus one sentence. Errors state
+and “Log out”. Status vocabulary is Connected, Included, Excluded, Synced,
+Failed, Rejected, Cancelled, NEW, and CHANGED. Empty states use a short heading plus one sentence. Errors state
 what happened without an apology or exclamation mark.

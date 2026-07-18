@@ -407,14 +407,14 @@
 			<!-- Desktop action buttons -->
 			{#if event.status === 'pending_review'}
 				<div class="hidden lg:flex justify-end gap-3 mt-6">
-					<button class="btn btn-outline btn-error rounded-[11px]" onclick={handleReject} disabled={isActing}>
+					<button class="btn btn-outline btn-error" onclick={handleReject} disabled={isActing}>
 						{#if isActing}
 							<span class="loading loading-spinner loading-sm"></span>
 						{:else}
 							{$_('events.reject')}
 						{/if}
 					</button>
-					<button class="btn btn-success rounded-[11px]" onclick={handleApprove} disabled={!title || isActing}>
+					<button class="btn btn-success" onclick={handleApprove} disabled={!title || isActing}>
 						{#if isActing}
 							<span class="loading loading-spinner loading-sm"></span>
 						{:else}
@@ -430,14 +430,14 @@
 	{#if event.status === 'pending_review'}
 		<div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-surface p-4 lg:hidden">
 			<div class="flex justify-end gap-3 max-w-7xl mx-auto">
-				<button class="btn btn-outline btn-error flex-1 rounded-[11px]" onclick={handleReject} disabled={isActing}>
+				<button class="btn btn-outline btn-error flex-1" onclick={handleReject} disabled={isActing}>
 					{#if isActing}
 						<span class="loading loading-spinner loading-sm"></span>
 					{:else}
 						{$_('events.reject')}
 					{/if}
 				</button>
-				<button class="btn btn-success flex-1 rounded-[11px]" onclick={handleApprove} disabled={!title || isActing}>
+				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title || isActing}>
 					{#if isActing}
 						<span class="loading loading-spinner loading-sm"></span>
 					{:else}

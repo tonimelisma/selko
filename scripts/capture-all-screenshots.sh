@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Capture all 24 screenshots (12 web + 6 iOS + 6 Android).
+# Capture the standard light/dark screenshot matrix for every platform.
 # Runs platforms in parallel when capturing all.
 #
 # Usage:
@@ -17,7 +17,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 echo "==> Checking prerequisites..."
 
 # Check Supabase is running
-if ! curl -fsS -o /dev/null http://localhost:54321/rest/v1/ 2>/dev/null; then
+if ! curl -fsS -o /dev/null http://127.0.0.1:54321/rest/v1/ 2>/dev/null; then
     echo "ERROR: Local Supabase is not running. Start it with: supabase start" >&2
     exit 1
 fi
@@ -32,7 +32,7 @@ uv run python "$PROJECT_ROOT/scripts/seed_screenshot_data.py" seed --cleanup-fir
 run_web() {
     echo ""
     echo "=============================="
-    echo "  Web Screenshots (12)"
+    echo "  Web Screenshots (24)"
     echo "=============================="
     "$SCRIPT_DIR/capture-web-screenshots.sh"
 }
