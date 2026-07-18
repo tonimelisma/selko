@@ -10,6 +10,7 @@ const VIEWPORTS = [
   { name: 'desktop', width: 1280, height: 800 },
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
+const APPEARANCES = ['light', 'dark'] as const;
 
 /**
  * Wait for the login form to be fully rendered and hydrated.
@@ -30,9 +31,10 @@ async function waitForLoginForm(page: Page): Promise<void> {
  */
 async function createAuthContext(
   browser: Browser,
-  viewport: { width: number; height: number }
+  viewport: { width: number; height: number },
+  colorScheme: 'light' | 'dark'
 ): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext({ viewport, storageState: undefined });
+  const context = await browser.newContext({ viewport, colorScheme, storageState: undefined });
   const page = await context.newPage();
 
   await page.goto('/login');
@@ -50,18 +52,20 @@ test.describe('Screenshot capture', () => {
   test.setTimeout(60000);
 
   for (const vp of VIEWPORTS) {
-    test.describe(`${vp.name} (${vp.width}x${vp.height})`, () => {
+    for (const appearance of APPEARANCES) {
+    test.describe(`${vp.name} ${appearance} (${vp.width}x${vp.height})`, () => {
 
       test('login page', async ({ browser }) => {
         const context = await browser.newContext({
           viewport: { width: vp.width, height: vp.height },
+          colorScheme: appearance,
           storageState: undefined,
         });
         const page = await context.newPage();
         await page.goto('/login');
         await waitForLoginForm(page);
         await page.screenshot({
-          path: `${SCREENSHOT_DIR}/web-login-${vp.name}.png`,
+          path: `${SCREENSHOT_DIR}/web-login-${vp.name}-${appearance}.png`,
           fullPage: false,
         });
         await context.close();
@@ -70,6 +74,7 @@ test.describe('Screenshot capture', () => {
       test('register page', async ({ browser }) => {
         const context = await browser.newContext({
           viewport: { width: vp.width, height: vp.height },
+          colorScheme: appearance,
           storageState: undefined,
         });
         const page = await context.newPage();
@@ -77,7 +82,7 @@ test.describe('Screenshot capture', () => {
         await page.getByLabel('Email').waitFor({ state: 'visible', timeout: 30000 });
         await page.waitForTimeout(500);
         await page.screenshot({
-          path: `${SCREENSHOT_DIR}/web-register-${vp.name}.png`,
+          path: `${SCREENSHOT_DIR}/web-register-${vp.name}-${appearance}.png`,
           fullPage: false,
         });
         await context.close();
@@ -87,13 +92,13 @@ test.describe('Screenshot capture', () => {
         const { context, page } = await createAuthContext(browser, {
           width: vp.width,
           height: vp.height,
-        });
+        }, appearance);
         // Already at /app after login
         await page.waitForLoadState('networkidle');
         // Allow time for data to render after network settles
         await page.waitForTimeout(1000);
         await page.screenshot({
-          path: `${SCREENSHOT_DIR}/web-review-queue-${vp.name}.png`,
+          path: `${SCREENSHOT_DIR}/web-review-queue-${vp.name}-${appearance}.png`,
           fullPage: false,
         });
         await context.close();
@@ -103,7 +108,7 @@ test.describe('Screenshot capture', () => {
         const { context, page } = await createAuthContext(browser, {
           width: vp.width,
           height: vp.height,
-        });
+        }, appearance);
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(1000);
 
@@ -115,7 +120,7 @@ test.describe('Screenshot capture', () => {
         await page.waitForSelector('#event-title', { timeout: 10000 });
         await page.waitForTimeout(500);
         await page.screenshot({
-          path: `${SCREENSHOT_DIR}/web-event-detail-${vp.name}.png`,
+          path: `${SCREENSHOT_DIR}/web-event-detail-${vp.name}-${appearance}.png`,
           fullPage: false,
         });
         await context.close();
@@ -125,12 +130,12 @@ test.describe('Screenshot capture', () => {
         const { context, page } = await createAuthContext(browser, {
           width: vp.width,
           height: vp.height,
-        });
+        }, appearance);
         await page.goto('/app/history');
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(1000);
         await page.screenshot({
-          path: `${SCREENSHOT_DIR}/web-history-${vp.name}.png`,
+          path: `${SCREENSHOT_DIR}/web-history-${vp.name}-${appearance}.png`,
           fullPage: false,
         });
         await context.close();
@@ -140,17 +145,18 @@ test.describe('Screenshot capture', () => {
         const { context, page } = await createAuthContext(browser, {
           width: vp.width,
           height: vp.height,
-        });
+        }, appearance);
         await page.goto('/app/settings');
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(1000);
         await page.screenshot({
-          path: `${SCREENSHOT_DIR}/web-settings-${vp.name}.png`,
+          path: `${SCREENSHOT_DIR}/web-settings-${vp.name}-${appearance}.png`,
           fullPage: false,
         });
         await context.close();
       });
 
     });
+    }
   }
 });

@@ -9,10 +9,10 @@
 	<div class="alert alert-error mb-4 rounded-[14px]" role="alert" aria-live="polite">
 		<span>{message}</span>
 		{#if onretry}
-			<button class="btn btn-sm btn-ghost" onclick={onretry}>{$_('common.retry')}</button>
+			<button class="btn action-tertiary" onclick={onretry}>{$_('common.retry')}</button>
 		{/if}
 		{#if onaction}
-			<button class="btn btn-sm btn-ghost" onclick={onaction}>{actionLabel}</button>
+			<button class="btn action-tertiary" onclick={onaction}>{actionLabel}</button>
 		{/if}
 	</div>
 {/if}

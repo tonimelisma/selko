@@ -120,9 +120,12 @@ class TestExtractCalendarEvents:
             "2026-07-15",
         )
 
-        assert "Calendar-derived briefs" in prompt
+        assert "calendar-derived briefs" in prompt
         assert "already on the recipient's calendar" in prompt
         assert "genuine organizer-issued change" in prompt
+        assert "does NOT apply to organizer-sent meeting invitations" in prompt
+        assert "attached agendas" in prompt
+        assert "briefs, agendas" not in prompt
 
     @pytest.mark.parametrize(
         "fixture_name,expected_found,expected_count",

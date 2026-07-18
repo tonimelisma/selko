@@ -1,6 +1,7 @@
 <script>
 	import { _ } from 'svelte-i18n';
 	import { formatEventDateTime } from '$lib/format-event-datetime.js';
+	import StateTag from './StateTag.svelte';
 
 	let { event, isProcessing = false, onapprove, onreject } = $props();
 
@@ -47,7 +48,7 @@
 			{#if event.importance === 'fyi'}
 				<span class="badge badge-neutral-warm badge-sm">{$_('events.fyi')}</span>
 			{:else}
-				<span class="badge badge-new badge-sm">{$_('home.newSection')}</span>
+				<StateTag kind="new" label={$_('home.newSection')} />
 			{/if}
 		</div>
 		<p class="mt-1 text-[12px] font-medium text-base-content/55">{formattedDateTime()}</p>
@@ -58,14 +59,14 @@
 			<p class="mt-1 line-clamp-2 text-[13px] text-base-content/60">{event.description}</p>
 		{/if}
 		<div class="mt-3 flex items-center gap-2">
-			<button class="btn btn-success btn-sm min-h-9 flex-1 rounded-[11px] text-[13px] font-bold" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')} aria-busy={isProcessing}>
+			<button class="btn btn-success flex-1" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')} aria-busy={isProcessing}>
 				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>{/if}
 				<span>{$_('events.accept')}</span>
 			</button>
-			<a href="/app/events/{event.id}" class="btn btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-base-content" class:btn-disabled={isProcessing} aria-label={$_('common.edit')}>
+			<a href="/app/events/{event.id}" class="btn btn-square bg-base-200 text-base-content" class:btn-disabled={isProcessing} aria-label={$_('common.edit')}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m15 5 4 4M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z" /></svg>
 			</a>
-			<button class="btn btn-square btn-sm min-h-9 w-9 rounded-[11px] bg-base-200 text-error" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')} aria-busy={isProcessing}>
+			<button class="btn btn-square bg-base-200 text-error" disabled={isProcessing} onclick={() => onreject?.(event)} aria-label={$_('events.rejectEvent')} aria-busy={isProcessing}>
 				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="m7 7 10 10M17 7 7 17" /></svg>{/if}
 			</button>
 		</div>
