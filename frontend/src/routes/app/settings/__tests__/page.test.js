@@ -148,8 +148,8 @@ describe('Settings Page', () => {
 
 		await waitFor(() => {
 			expect(screen.getByText('Account')).toBeInTheDocument();
-			const emailInput = screen.getByLabelText(/email/i);
-			expect(emailInput.value).toBe('test@example.com');
+			expect(screen.getByText('test@example.com')).toBeInTheDocument();
+			expect(screen.queryByRole('textbox', { name: /email/i })).not.toBeInTheDocument();
 		});
 	});
 
@@ -271,9 +271,35 @@ describe('Settings Page', () => {
 
 		render(SettingsPage);
 		await waitFor(() => expect(screen.getByText('Newsletters')).toBeInTheDocument());
-		await user.click(screen.getByRole('button', { name: 'Excluded' }));
+		await user.click(screen.getByRole('switch', { name: 'Include' }));
 
 		await waitFor(() => expect(mockUpdateEmailFolder).toHaveBeenCalledWith('gmail', 'folder-gmail', true));
-		expect(screen.getByRole('button', { name: 'Included' })).toBeInTheDocument();
+		expect(screen.getByRole('switch', { name: 'Exclude' })).toHaveAttribute('aria-checked', 'true');
+	});
+
+	it('rolls back a failed folder update and retries only that row', async () => {
+		const user = userEvent.setup();
+		mockFetchIntegrations.mockResolvedValue({
+			data: [{ id: 'gmail-1', provider: 'gmail', status: 'active', provider_email: 'test@gmail.com' }],
+			error: null
+		});
+		mockFetchEmailFolders.mockResolvedValue({
+			data: [{ id: 'folder-gmail', full_path: 'Newsletters', is_included: false, classification_decision: 'exclude', classification_reason: 'Marketing mail', user_override: false }],
+			error: null
+		});
+		mockUpdateEmailFolder
+			.mockResolvedValueOnce({ data: null, error: { message: 'Could not save folder' } })
+			.mockResolvedValueOnce({ data: { id: 'folder-gmail', is_included: true, user_override: true }, error: null });
+
+		render(SettingsPage);
+		await waitFor(() => expect(screen.getByText('Newsletters')).toBeInTheDocument());
+		await user.click(screen.getByRole('switch', { name: 'Include' }));
+
+		await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Could not save folder'));
+		expect(screen.getByRole('switch', { name: 'Include' })).toHaveAttribute('aria-checked', 'false');
+		await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+		await waitFor(() => expect(mockUpdateEmailFolder).toHaveBeenCalledTimes(2));
+		expect(screen.getByRole('switch', { name: 'Exclude' })).toHaveAttribute('aria-checked', 'true');
 	});
 });

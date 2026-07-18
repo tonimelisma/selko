@@ -127,6 +127,38 @@ def do_seed(config):
     result = admin.table("integrations").insert(integrations).execute()
     print(f"  Inserted {len(result.data)} integrations")
 
+    # Folder preferences make the Included/Excluded control visible in Settings captures.
+    gmail_integration_id = next(
+        row["id"] for row in result.data if row["provider"] == "gmail"
+    )
+    folders = [
+        {
+            "user_id": user_id,
+            "integration_id": gmail_integration_id,
+            "provider": "gmail",
+            "provider_folder_id": "all-mail",
+            "name": "All Mail",
+            "full_path": "[Gmail]/All Mail",
+            "folder_kind": "label",
+            "classification_decision": "include",
+            "is_included": True,
+        },
+        {
+            "user_id": user_id,
+            "integration_id": gmail_integration_id,
+            "provider": "gmail",
+            "provider_folder_id": "promotions",
+            "name": "Promotions",
+            "full_path": "Promotions",
+            "folder_kind": "label",
+            "classification_decision": "exclude",
+            "classification_reason": "This folder is dedicated to promotional and marketing emails.",
+            "is_included": False,
+        },
+    ]
+    admin.table("email_folders").insert(folders).execute()
+    print(f"  Inserted {len(folders)} email folders")
+
     # Step 4: Insert emails
     print("Inserting emails...")
 

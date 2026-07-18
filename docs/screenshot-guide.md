@@ -102,9 +102,13 @@ Only use if the automated scripts are broken and you need screenshots urgently.
 
 ## Complete Screenshot Checklist
 
+Every standard screen is captured in both light and dark appearances. Append
+`-light` or `-dark` immediately before `.png`; for example,
+`web-history-desktop-light.png` and `web-history-desktop-dark.png`.
+
 | Screenshot | Filename | Viewport/Device |
 |-----------|----------|-----------------|
-| Web login (desktop) | `web-login-desktop.png` | 1280x800 |
+| Web login (desktop) | `web-login-desktop-{light,dark}.png` | 1280x800 |
 | Web register (desktop) | `web-register-desktop.png` | 1280x800 |
 | Web review queue (desktop) | `web-review-queue-desktop.png` | 1280x800 |
 | Web event detail (desktop) | `web-event-detail-desktop.png` | 1280x800 |
@@ -129,7 +133,9 @@ Only use if the automated scripts are broken and you need screenshots urgently.
 | Android history | `android-history.png` | Emulator |
 | Android settings | `android-settings.png` | Emulator |
 
-**Total: 24 screenshots**
+The same appearance suffix applies to all remaining entries while native
+coverage is migrated. The final matrix contains 48 screenshots: 24 web, 12
+iOS, and 12 Android.
 
 ---
 

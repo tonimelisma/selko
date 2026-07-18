@@ -68,7 +68,7 @@
 			<p class="truncate text-sm font-semibold">{currentUserEmail || $_('auth.account')}</p>
 			<p class="text-xs text-base-content/50">{$_('common.appName')}</p>
 		</div>
-		<button class="btn btn-square btn-ghost btn-sm text-error" onclick={onLogout} aria-label={$_('auth.logOut')}>
+		<button class="btn btn-square action-tertiary text-error" onclick={onLogout} aria-label={$_('auth.logOut')}>
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 8V6.5A2.5 2.5 0 0 0 11.5 4h-5A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h5a2.5 2.5 0 0 0 2.5-2.5V16M10 12h10m0 0-3-3m3 3-3 3" /></svg>
 		</button>
 	</div>

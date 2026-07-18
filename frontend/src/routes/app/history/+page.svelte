@@ -10,6 +10,7 @@
 	import { syncEventToCalendar, undoHistoryEvent } from '$lib/api/backend.js';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import StateTag from '$lib/components/StateTag.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
@@ -496,9 +497,9 @@
 									<span class="font-medium text-sm">{event.title}</span>
 									<StatusBadge status={event.status} />
 									{#if isChangeEvent(event)}
-										<span class="badge badge-changed badge-sm">{$_('home.changesSection')}</span>
+										<StateTag kind="changed" label={$_('home.changesSection')} />
 									{:else}
-										<span class="badge badge-new badge-sm">{$_('home.newSection')}</span>
+										<StateTag kind="new" label={$_('home.newSection')} />
 									{/if}
 								</div>
 								<div class="flex items-center gap-2 mt-1 text-xs text-base-content/60 flex-wrap">
@@ -523,13 +524,13 @@
 									></span>
 								{:else if event.status === 'sync_failed'}
 									<button
-										class="btn btn-outline btn-warning btn-xs"
+									class="btn action-tertiary status-warning"
 										onclick={() => handleRetry(event)}
 									>
 										{$_('history.retrySync')}
 									</button>
 								{:else if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
-									<button class="btn btn-outline btn-xs" onclick={() => handleUndo(event)}>
+								<button class="btn action-tertiary" onclick={() => handleUndo(event)}>
 										{$_('history.undo')}
 									</button>
 								{/if}
@@ -585,7 +586,7 @@
 							{/if}
 						</div>
 						<button
-							class="btn btn-outline btn-xs flex-shrink-0"
+							class="btn action-tertiary flex-shrink-0"
 							disabled={emailBusy}
 							onclick={() => handleReprocessEmail(email)}
 						>

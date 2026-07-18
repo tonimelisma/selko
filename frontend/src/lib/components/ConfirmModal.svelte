@@ -30,8 +30,8 @@
 		<h3 id="modal-title" class="text-lg font-extrabold">{title}</h3>
 		<p id="modal-description" class="py-4 text-sm text-base-content/70">{description}</p>
 		<div class="modal-action">
-			<button class="btn btn-ghost rounded-[11px]" onclick={oncancel}>{$_('common.cancel')}</button>
-			<button class="btn {confirmClass} rounded-[11px]" onclick={onconfirm}>{confirmText}</button>
+			<button class="btn action-tertiary" onclick={oncancel}>{$_('common.cancel')}</button>
+			<button class="btn {confirmClass}" onclick={onconfirm}>{confirmText}</button>
 		</div>
 	</div>
 	<form method="dialog" class="modal-backdrop">

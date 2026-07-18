@@ -38,10 +38,11 @@ bar at the end of the list.
 
 ### Buttons and inputs
 
-- Primary: coral fill, white/light-mode or dark-ink/dark-mode label, brand shadow
+- Primary: coral fill with ink label, brand shadow
   in light mode.
 - Secondary: subtle fill with ink label.
-- Ghost: transparent with a strong warm border.
+- Destructive outline: transparent with a berry border and label.
+- Tertiary: borderless text action with a visible hover/focus surface.
 - Accept: success fill with a check icon.
 - Reject/destructive: rust/error outline or fill as appropriate.
 - Inputs: 46px tall, 14px radius, paper fill and warm border; focus uses coral
@@ -54,8 +55,13 @@ color names.
 ### Badges and chips
 
 Badges are pill-shaped, uppercase where they represent a state, and use the
-Warmth NEW, CHANGED, or neutral palettes. Category chips use a dot and label on
-subtle. Sender chips contain a circular remove affordance.
+Warmth NEW, CHANGED, or neutral palettes. NEW is neutral, never green. Static
+statuses are plain icon-and-text indicators and never capsules. Category chips
+use a dot and label on subtle. Sender chips contain a separate 44px remove
+affordance. Included/Excluded is always a labeled switch.
+
+All custom controls expose hover, pressed, visible keyboard focus, loading, and
+disabled states. Disabled controls have no brand shadow or action-colored glow.
 
 ### EventCard
 

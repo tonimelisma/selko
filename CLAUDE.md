@@ -187,6 +187,9 @@ See `docs/testing-guide.md` for the full test guide and `docs/manual-email-to-ca
 - DaisyUI semantic colors only — never use raw Tailwind colors (`text-blue-500` etc.)
 - Custom themes `selko-light` and `selko-dark` in `tailwind.config.js`
 - `svelte-check` CI is strict about types — use JSDoc annotations where needed
+- `design/tokens.json` is the canonical cross-platform control contract. Use
+  semantic control primitives; static statuses are plain icon/text, NEW is
+  neutral, Included/Excluded is a labeled switch, and all targets are ≥44.
 
 ---
 

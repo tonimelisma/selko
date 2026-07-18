@@ -120,7 +120,7 @@
 						<StatusBadge status={integration.status} type="integration" />
 						{#if !setupMode}
 							<button
-								class="btn btn-outline btn-error btn-sm rounded-[11px]"
+								class="btn btn-outline btn-error"
 								disabled={connectingKey !== null}
 								onclick={() => ondisconnect?.(integration.id)}
 							>
@@ -129,7 +129,7 @@
 						{/if}
 						{#if integration.status !== 'active'}
 							<button
-								class="btn btn-primary btn-sm rounded-[11px] shadow-brand"
+								class="btn btn-primary shadow-brand"
 								disabled={connectingKey !== null}
 								aria-busy={isConnecting}
 								onclick={() => authorizeProvider(service.key)}
@@ -145,7 +145,7 @@
 					{:else}
 						<StatusBadge status="not_connected" type="integration" />
 						<button
-							class="btn btn-primary btn-sm rounded-[11px] shadow-brand"
+							class="btn btn-primary shadow-brand"
 							disabled={connectingKey !== null}
 							aria-busy={isConnecting}
 							onclick={() => authorizeProvider(service.key)}

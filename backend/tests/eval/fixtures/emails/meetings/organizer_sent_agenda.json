@@ -1,0 +1,33 @@
+{
+  "name": "organizer_sent_agenda",
+  "category": "meetings",
+  "description": "An organizer-sent agenda is a positive event source, not an automated calendar digest",
+  "difficulty": "easy",
+  "tags": ["meeting", "agenda", "production-regression", "agenda-positive-control"],
+  "input": {
+    "provider_message_id": "eval-organizer-agenda-001",
+    "thread_id": "thread-organizer-agenda-001",
+    "subject": "Agenda: Q3 planning meeting on August 4",
+    "from_email": "organizer@company.example",
+    "from_name": "Meeting Organizer",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-07-18T16:00:00Z",
+    "snippet": "Please review the agenda and join us August 4 at 10:00 AM.",
+    "body_text": "Please review the agenda before our Q3 planning meeting on August 4, 2026 from 10:00 AM to 11:00 AM in Conference Room Cedar. You are expected to attend and bring your department priorities."
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q3 Planning Meeting",
+        "start_datetime": "2026-08-04T10:00:00",
+        "end_datetime": "2026-08-04T11:00:00",
+        "location": "Conference Room Cedar",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Regression for PR 205 review feedback: organizer-sent agendas must not be rejected by the calendar-digest exclusion."
+}

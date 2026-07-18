@@ -182,8 +182,7 @@ describe('SenderRulesPanel', () => {
 			expect(screen.getByText('spam@example.com')).toBeInTheDocument();
 		});
 
-		const deleteButtons = screen.getAllByRole('button', { name: /delete rule/i });
-		await user.click(deleteButtons[0]);
+		await user.click(screen.getByRole('button', { name: 'Delete rule for spam@example.com' }));
 
 		await waitFor(() => {
 			expect(screen.getByText('Delete rule')).toBeInTheDocument();
@@ -202,8 +201,7 @@ describe('SenderRulesPanel', () => {
 			expect(screen.getByText('spam@example.com')).toBeInTheDocument();
 		});
 
-		const deleteButtons = screen.getAllByRole('button', { name: /delete rule/i });
-		await user.click(deleteButtons[0]);
+		await user.click(screen.getByRole('button', { name: 'Delete rule for spam@example.com' }));
 
 		await waitFor(() => {
 			expect(screen.getByText('Delete rule')).toBeInTheDocument();

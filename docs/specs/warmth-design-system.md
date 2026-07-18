@@ -72,8 +72,8 @@ Round fractional mock sizes (13.5, 12.5) to the nearest token where noted.
 | `accent` | `#F0A85C` | Amber — secondary avatar color |
 | `success` | `#5CA07C` | Accept buttons, connected dots |
 | `changed` | `#C97A2E` | Ochre — CHANGED state |
-| `badge-new-bg` / `-fg` | `#EAF3EE` / `#3F7D5F` | NEW badge |
-| `badge-changed-bg` / `-fg` | `#FDF1E7` / `#C97A2E` | CHANGED badge |
+| `badge-new-bg` / `-fg` | `#F5EEE6` / `#6E655C` | NEW neutral tag |
+| `badge-changed-bg` / `-fg` | `#FDF1E7` / `#9A5C1D` | CHANGED tag |
 | `badge-neutral-bg` / `-fg` | `#F5EEE6` / `#8A7F74` | TASK/neutral badge |
 | `menu-border` | `#F3DED4` | Inline sender-menu border |
 
@@ -96,7 +96,7 @@ Round fractional mock sizes (13.5, 12.5) to the nearest token where noted.
 | `success` | `#5FBE90` | Accept buttons — content color `#12100E` |
 | `changed` | `#F0B45C` | CHANGED fg; badge bg `rgba(240,180,92,0.16)` |
 
-Light mode keeps white/near-white content on filled buttons; **dark mode inverts
+Light mode uses ink content on coral and green filled buttons; **dark mode uses
 to dark ink on bright fills** (see mock 2b: Accept-all is `#F0805C` with `#1A1613`
 text, Accept is `#5FBE90` with `#12100E` text).
 
@@ -126,8 +126,8 @@ Button labels: 13–14.5 / 700.
 | `lg` | 20 | Cards on web (22 on native card lists), empty states |
 | `pill` | 999 | Badges, chips, toggles, pill tabs |
 
-Component-specific (from mocks, keep): small action buttons 36 h / r11,
-icon buttons 32–40 sq / r10–12, date chip r13, avatar tile r12–13, inline
+All action buttons and icon buttons have 44 minimum targets and r14 containers;
+date chip r13, avatar tile r12, inline
 sender menu r15, nav items (sidebar) r12.
 
 ### 2.5 Spacing & elevation
@@ -152,7 +152,7 @@ Build these to match section 05 of mock 3a:
    1.5px coral border, 3px ring `rgba(232,111,82,0.14)`.
 3. **Toggle** — 44×26 pill; on = coral track/white thumb, off = `border-strong`
    track. (Native platforms may use the platform switch tinted coral.)
-4. **Badges** — NEW / CHANGED / neutral pill badges (10–11 / 700, pill), coral
+4. **State tags** — NEW / CHANGED / neutral pill tags (10–11 / 700, pill), coral
    count badge.
 5. **Chips** — category chip (dot + label on `subtle`), removable sender chip
    (label + circular ✕ affordance on `border-strong`).
@@ -274,7 +274,7 @@ Restyle in place — do not rename data props:
 | `EventCard.svelte` | New row anatomy: date chip, NEW/CHANGED badge, title 15/700, meta 12.5 faint, action row (Accept success button + ✎ + ✕ icon buttons). CHANGED diff line with strikethrough → new. |
 | `SenderHeader.svelte` | Avatar tile (initials + hash color), name + count, chevron icon-button; expanded inline menu = auto-accept toggle + "Ignore this sender". |
 | `SenderRulesPanel.svelte` | Removable chips (§2.6.5) under "Auto-accepted senders" / "Auto-ignored senders" overline labels. |
-| `StatusBadge.svelte` | Map statuses to the new badge palette (§2.1). |
+| `StatusIndicator.svelte` | Plain semantic icon and text; never button-like. |
 | `EmptyState.svelte` | §2.6.10 anatomy. |
 | `PageHeader.svelte` | Desktop: H1 30/800 + subtitle; actions slot right (Accept all + ⋯). |
 | `ConfirmModal.svelte`, `ErrorAlert.svelte`, `LoadingSpinner.svelte`, `IntegrationStatus.svelte` | Recolor to theme tokens only. |
@@ -353,8 +353,8 @@ shadow colors).
      (`UIFont.familyNames` dump in a debug build, or just verify rendering in
      screenshots) — a typo in the custom-font name silently falls back to
      the system font.
-- Radii/shadows: add `SelkoShape` constants (card 22, button 14, smallButton 11,
-  chip pill). Light-mode card shadow
+- Radii/shadows: use only navigation 12, control 14, card/sheet 20, and pill
+  roles. Light-mode card shadow
   `.shadow(color: Color(red:0.31,green:0.24,blue:0.18).opacity(0.28), radius: 6, y: 2)`
   — gate on `colorScheme == .light`; dark mode uses
   `.overlay(RoundedRectangle...stroke(Color.selkoBorder))`.

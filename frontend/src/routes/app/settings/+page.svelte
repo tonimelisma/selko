@@ -19,6 +19,7 @@
 	import SenderRulesPanel from '$lib/components/SenderRulesPanel.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+	import LabeledSwitch from '$lib/components/LabeledSwitch.svelte';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
@@ -31,7 +32,9 @@
 	let error = $state('');
 	/** @type {{gmail: any[], outlook: any[]}} */
 	let emailFolders = $state({ gmail: [], outlook: [] });
-	let updatingFolderId = $state('');
+	let updatingFolderIds = $state(new Set());
+	/** @type {Record<string, { message: string, nextIncluded: boolean } | null>} */
+	let folderErrors = $state({});
 
 	// Disconnect confirm modal
 	let showDisconnectModal = $state(false);
@@ -96,15 +99,24 @@
 		emailFolders = next;
 	}
 
-	/** @param {string} provider @param {any} folder */
-	async function handleFolderChange(provider, folder) {
+	/** @param {string} provider @param {any} folder @param {boolean} nextIncluded */
+	async function handleFolderChange(provider, folder, nextIncluded) {
 		if (provider !== 'gmail' && provider !== 'outlook') return;
-		if (updatingFolderId) return;
-		const nextIncluded = !folder.is_included;
-		updatingFolderId = folder.id;
+		if (updatingFolderIds.has(folder.id)) return;
+		const previous = folder.is_included;
+		updatingFolderIds = new Set([...updatingFolderIds, folder.id]);
+		folderErrors = { ...folderErrors, [folder.id]: null };
+		emailFolders = {
+			...emailFolders,
+			[provider]: emailFolders[provider].map((item) => item.id === folder.id ? { ...item, is_included: nextIncluded } : item)
+		};
 		const result = await updateEmailFolder(provider, folder.id, nextIncluded);
 		if (result.error) {
-			error = result.error.message;
+			folderErrors = { ...folderErrors, [folder.id]: { message: result.error.message, nextIncluded } };
+			emailFolders = {
+				...emailFolders,
+				[provider]: emailFolders[provider].map((item) => item.id === folder.id ? { ...item, is_included: previous } : item)
+			};
 		} else {
 			emailFolders = {
 				...emailFolders,
@@ -113,7 +125,9 @@
 				)
 			};
 		}
-		updatingFolderId = '';
+		const nextUpdating = new Set(updatingFolderIds);
+		nextUpdating.delete(folder.id);
+		updatingFolderIds = nextUpdating;
 	}
 
 	async function loadCalendars() {
@@ -223,6 +237,7 @@
 								<h3 class="font-medium mb-2">{group.label}</h3>
 								<div class="space-y-2">
 									{#each group.folders as folder (folder.id)}
+										{@const folderError = folderErrors[folder.id]}
 										<div class="warm-card flex items-center justify-between gap-3 p-3">
 											<div class="min-w-0">
 											<div class="font-medium text-sm truncate">{folder.full_path}</div>
@@ -230,16 +245,19 @@
 												<div class="text-xs text-base-content/60 mt-1">
 													{$_('settings.folderRecommendation', { values: { reason: folder.classification_reason } })}
 												</div>
-											{/if}
-										</div>
-										<button
-											class:btn-primary={folder.is_included}
-													class="btn btn-sm shrink-0 rounded-[11px]"
-											disabled={updatingFolderId === folder.id}
-											onclick={() => handleFolderChange(group.provider, folder)}
-										>
-											{folder.is_included ? $_('settings.included') : $_('settings.excluded')}
-										</button>
+												{/if}
+												{#if folderError}
+													<div class="mt-2 flex items-center gap-2 text-xs text-error" role="alert">
+														<span>{folderError.message}</span>
+														<button class="btn action-tertiary text-error" onclick={() => handleFolderChange(group.provider, folder, folderError.nextIncluded)}>{$_('common.retry')}</button>
+													</div>
+												{/if}
+											</div>
+										<LabeledSwitch
+											checked={folder.is_included}
+											disabled={updatingFolderIds.has(folder.id)}
+											onchange={(/** @type {boolean} */ included) => handleFolderChange(group.provider, folder, included)}
+										/>
 									</div>
 									{/each}
 								</div>
@@ -296,18 +314,10 @@
 			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.account')}</h2>
 			<div class="space-y-4">
 				<div class="warm-card max-w-md p-4">
-					<label class="label" for="account-email">
-						<span class="label-text">{$_('auth.emailLabel')}</span>
-					</label>
-					<input
-						id="account-email"
-						type="email"
-						value={currentUserEmail}
-						class="input input-bordered w-full bg-base-100"
-						readonly
-					/>
+					<p class="text-xs font-semibold text-base-content/65">{$_('auth.emailLabel')}</p>
+					<p class="mt-1 text-sm font-semibold">{currentUserEmail}</p>
 				</div>
-				<button class="btn btn-outline btn-error rounded-[11px]" onclick={handleLogout}>{$_('auth.logOut')}</button>
+				<button class="btn btn-outline btn-error w-full sm:w-auto lg:hidden" onclick={handleLogout}>{$_('auth.logOut')}</button>
 			</div>
 		</section>
 	</div>

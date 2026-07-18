@@ -15,46 +15,40 @@ describe('StatusBadge', () => {
 		expect(screen.getByText('Approved')).toBeInTheDocument();
 	});
 
-	it('renders synced event status with success badge', () => {
+	it('renders synced event status as a successful status indicator', () => {
 		render(StatusBadge, { props: { status: 'synced', type: 'event' } });
-		const badge = screen.getByText('Synced');
-		expect(badge).toBeInTheDocument();
-		expect(badge.className).toContain('badge-success');
+		expect(screen.getByRole('status')).toHaveClass('semantic-status-success');
+		expect(screen.getByText('Synced')).toBeInTheDocument();
 	});
 
 	it('renders sync_failed event status with error badge', () => {
 		render(StatusBadge, { props: { status: 'sync_failed', type: 'event' } });
-		const badge = screen.getByText('Failed');
-		expect(badge).toBeInTheDocument();
-		expect(badge.className).toContain('badge-error');
+		expect(screen.getByRole('status')).toHaveClass('semantic-status-error');
+		expect(screen.getByText('Failed')).toBeInTheDocument();
 	});
 
 	it('renders rejected event status with ghost badge', () => {
 		render(StatusBadge, { props: { status: 'rejected', type: 'event' } });
-		const badge = screen.getByText('Rejected');
-		expect(badge).toBeInTheDocument();
-		expect(badge.className).toContain('badge-ghost');
+		expect(screen.getByRole('status')).toHaveClass('semantic-status-error');
+		expect(screen.getByText('Rejected')).toBeInTheDocument();
 	});
 
 	it('renders active integration status', () => {
 		render(StatusBadge, { props: { status: 'active', type: 'integration' } });
-		const badge = screen.getByText('Authorized');
-		expect(badge).toBeInTheDocument();
-		expect(badge.className).toContain('badge-success');
+		expect(screen.getByRole('status')).toHaveClass('semantic-status-success');
+		expect(screen.getByText('Connected')).toBeInTheDocument();
 	});
 
 	it('renders expired integration status', () => {
 		render(StatusBadge, { props: { status: 'expired', type: 'integration' } });
-		const badge = screen.getByText('Expired');
-		expect(badge).toBeInTheDocument();
-		expect(badge.className).toContain('badge-error');
+		expect(screen.getByRole('status')).toHaveClass('semantic-status-error');
+		expect(screen.getByText('Expired')).toBeInTheDocument();
 	});
 
 	it('renders not_connected integration status', () => {
 		render(StatusBadge, { props: { status: 'not_connected', type: 'integration' } });
-		const badge = screen.getByText('Not Connected');
-		expect(badge).toBeInTheDocument();
-		expect(badge.className).toContain('badge-ghost');
+		expect(screen.getByRole('status')).toHaveClass('semantic-status-neutral');
+		expect(screen.getByText('Not Connected')).toBeInTheDocument();
 	});
 
 	it('defaults to event type', () => {

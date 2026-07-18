@@ -43,7 +43,7 @@
 		</div>
 	</div>
 	{#if hasDropdownItems}
-		<button class="btn btn-square btn-sm rounded-[11px] bg-base-200 text-base-content" aria-label={$_('senderActions.actionsFor', { values: { sender } })} aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
+		<button class="btn btn-square bg-base-200 text-base-content" aria-label={$_('senderActions.actionsFor', { values: { sender } })} aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform {menuOpen ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /></svg>
 		</button>
 	{/if}
@@ -55,8 +55,8 @@
 			<div class="flex items-center justify-between gap-3 px-2 py-2">
 				<span class="text-xs font-semibold text-base-content/65">{$_('senderActions.bulkActions')}</span>
 				<div class="flex gap-1">
-					<button class="btn btn-ghost btn-xs" onclick={() => runAndClose(onapproveAll)}>{$_('senderActions.approveAll')}</button>
-					<button class="btn btn-ghost btn-xs text-error" onclick={() => runAndClose(onrejectAll)}>{$_('senderActions.rejectAll')}</button>
+					<button class="btn action-tertiary" onclick={() => runAndClose(onapproveAll)}>{$_('senderActions.approveAll')}</button>
+					<button class="btn action-tertiary text-error" onclick={() => runAndClose(onrejectAll)}>{$_('senderActions.rejectAll')}</button>
 				</div>
 			</div>
 			<div class="my-1 border-t border-base-300"></div>

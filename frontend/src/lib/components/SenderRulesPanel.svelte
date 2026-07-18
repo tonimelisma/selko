@@ -4,6 +4,7 @@
 	import { fetchSenderRules, createSenderRule, deleteSenderRule } from '$lib/services/sender-rules.js';
 	import ConfirmModal from './ConfirmModal.svelte';
 	import ErrorAlert from './ErrorAlert.svelte';
+	import RemovableChip from './RemovableChip.svelte';
 
 	/** @type {import('$lib/services/sender-rules.js').SenderRule[]} */
 	let rules = $state([]);
@@ -14,6 +15,8 @@
 	let newSenderInput = $state('');
 	let newAction = $state('ignore');
 	let isAdding = $state(false);
+	let ignoredRules = $derived(rules.filter((rule) => rule.action === 'ignore'));
+	let approvedRules = $derived(rules.filter((rule) => rule.action === 'auto_approve'));
 
 	// Delete confirmation
 	let showDeleteModal = $state(false);
@@ -97,29 +100,17 @@
 			{$_('senderRules.noRules')}
 		</p>
 	{:else}
-		<div class="mb-4 flex flex-wrap gap-2">
-			{#each rules as rule (rule.id)}
-				<div class="flex items-center gap-2 rounded-full border border-base-300 bg-base-200 px-3 py-2">
-					<div class="flex items-center gap-2">
-						{#if rule.action === 'ignore'}
-							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-						{:else}
-							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-						{/if}
-						<div>
-							<span class="mr-2 text-xs font-bold uppercase tracking-[0.08em] text-secondary">{rule.action === 'ignore' ? $_('senderRules.ignore') : $_('senderRules.autoApprove')}</span>
-							<span class="text-sm font-semibold">{rule.sender_email || rule.sender_domain}</span>
-						</div>
-					</div>
-					<button
-						class="btn btn-ghost btn-xs btn-circle"
-						aria-label={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain } })}
-						onclick={() => handleDeleteRequest(rule)}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-					</button>
-				</div>
-			{/each}
+		<div class="mb-5 space-y-4">
+			{#if approvedRules.length > 0}
+				<div><p class="mb-2 text-xs font-bold uppercase tracking-[0.08em] semantic-status-success">{$_('senderRules.autoApprove')}</p><div class="flex flex-wrap gap-2">
+					{#each approvedRules as rule (rule.id)}<RemovableChip tone="success" category={$_('senderRules.autoApprove')} label={rule.sender_email || rule.sender_domain || ''} removeLabel={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain || '' } })} onremove={() => handleDeleteRequest(rule)} />{/each}
+				</div></div>
+			{/if}
+			{#if ignoredRules.length > 0}
+				<div><p class="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-error">{$_('senderRules.ignore')}</p><div class="flex flex-wrap gap-2">
+					{#each ignoredRules as rule (rule.id)}<RemovableChip tone="error" category={$_('senderRules.ignore')} label={rule.sender_email || rule.sender_domain || ''} removeLabel={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain || '' } })} onremove={() => handleDeleteRequest(rule)} />{/each}
+				</div></div>
+			{/if}
 		</div>
 	{/if}
 
@@ -143,7 +134,7 @@
 			<option value="auto_approve">{$_('senderRules.autoApprove')}</option>
 		</select>
 		<button
-			class="btn btn-primary btn-sm rounded-[11px] shadow-brand"
+		class="btn btn-primary shadow-brand"
 			onclick={handleAddRule}
 			disabled={isAdding || !newSenderInput.trim()}
 		>

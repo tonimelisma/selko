@@ -379,7 +379,7 @@
 	{#if actionError}
 		<div class="alert alert-error mb-4" role="alert">
 			<span>{actionError}</span>
-			<button class="btn btn-sm btn-ghost" onclick={() => (actionError = '')}>{$_('common.dismiss')}</button>
+			<button class="btn action-tertiary" onclick={() => (actionError = '')}>{$_('common.dismiss')}</button>
 		</div>
 	{/if}
 	<PageHeader title={$_('nav.review')} subtitle={$_('home.subtitle')}>
