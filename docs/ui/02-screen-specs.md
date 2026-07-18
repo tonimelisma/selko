@@ -24,7 +24,7 @@ Home screen of the app. Two review lanes grouped by sender:
 1. **New** — events to add to the calendar (`pending_review`)
 2. **Changes** — proposed updates to events already on the calendar (`pending_change`), showing field-level before → after diffs from `event_sources.change_set`
 
-When integrations are not connected or authorized, this screen is entirely replaced by an integration setup view.
+When required integrations are not Connected, this screen is entirely replaced by an integration setup view.
 
 After a calendar match, the LLM proposes a structured changeset; code gates equivalent/no-op diffs. Pure rediscoveries (RSVP replies with no real change) never appear here.
 
@@ -91,7 +91,7 @@ Same sender-grouped structure as stacked cards:
 
 ### Integration Setup State
 
-When integrations are not fully connected/authorized, the entire queue is replaced:
+When integrations are not fully Connected, the entire queue is replaced:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -106,13 +106,13 @@ When integrations are not fully connected/authorized, the entire queue is replac
 │                                                                    │
 │  ── OR, if partially connected: ──                                │
 │                                                                    │
-│  Gmail: ✓ Authorized                                              │
-│  Google Calendar: ✗ Not authorized        [Authorize]             │
+│  Gmail: ✓ Connected                                               │
+│  Google Calendar: ✗ Not connected         [Connect]               │
 │                                                                    │
 │  ── OR, if token expired: ──                                      │
 │                                                                    │
 │  Gmail: ✗ Connection expired              [Reconnect]             │
-│  Google Calendar: ✓ Authorized                                    │
+│  Google Calendar: ✓ Connected                                     │
 │                                                                    │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -512,10 +512,10 @@ Google Account: user@gmail.com                [Disconnect]
 
 Google Account: user@gmail.com                [Disconnect]
   ✅ Gmail (reading emails)
-  ❌ Google Calendar (not authorized)         [Authorize]
+  ❌ Google Calendar (Not connected)          [Connect]
 ```
 
-Per-service OAuth scope status is shown. If Calendar isn't authorized, an "Authorize" button triggers a scoped OAuth request for just that permission.
+Per-service connection status is shown. If Calendar isn't connected, a "Connect" button triggers a scoped OAuth request for just that permission.
 
 Photo-library connections are intentionally omitted while ingestion is parked; historical photo-sourced events still use the review rendering paths.
 
@@ -569,7 +569,7 @@ window.location.href = authUrl
 ### Key Interactions
 
 - **Disconnect**: shows `ConfirmModal` ("Disconnect Google account? Your existing data will be preserved."). Revokes OAuth tokens.
-- **Authorize (missing scope)**: triggers OAuth flow for just the missing permission. On return, status updates.
+- **Connect (missing scope)**: triggers OAuth flow for just the missing permission. On return, status updates.
 - **Change default calendar**: dropdown saves via `updateCalendarSettings()`.
 - **OAuth error**: shown as toast (same pattern as initial setup OAuth errors).
 

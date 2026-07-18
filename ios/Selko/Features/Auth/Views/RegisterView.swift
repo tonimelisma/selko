@@ -34,13 +34,9 @@ struct RegisterView: View {
                             Group {
                                 if viewModel.isLoading { ProgressView().tint(Color.selkoOnPrimary) } else { Text("Sign up") }
                             }
-                            .frame(maxWidth: .infinity, minHeight: 46)
+                            .frame(maxWidth: .infinity)
                         }
-                        .background(Color.accentColor)
-                        .foregroundStyle(Color.selkoOnPrimary)
-                        .font(SelkoTypography.title)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .shadow(color: Color.accentColor.opacity(0.35), radius: 10, y: 5)
+                        .buttonStyle(.selko(.primary))
                         .disabled(viewModel.isLoading)
                         .accessibilityIdentifier("registerButton")
                     }
@@ -69,10 +65,7 @@ struct RegisterView: View {
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .padding(.horizontal, 14)
-                .frame(height: 46)
-                .background(Color.selkoPaper)
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.selkoBorder, lineWidth: 1.5))
+                .selkoInput()
                 .accessibilityLabel(label)
                 .accessibilityIdentifier(identifier)
         }
@@ -84,10 +77,7 @@ struct RegisterView: View {
             Text(label).font(SelkoTypography.title).foregroundStyle(Color.selkoInk)
             SecureField(placeholder, text: text)
             .textContentType(.newPassword)
-                .padding(.horizontal, 14)
-                .frame(height: 46)
-                .background(Color.selkoPaper)
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.selkoBorder, lineWidth: 1.5))
+                .selkoInput()
                 .accessibilityLabel(label)
                 .accessibilityIdentifier(identifier)
         }

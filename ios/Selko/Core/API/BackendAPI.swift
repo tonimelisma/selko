@@ -118,6 +118,8 @@ protocol BackendAPIProtocol: Sendable {
     func applyEventChange(eventId: UUID) async throws -> EventChangeResponse
     func rejectEventChange(eventId: UUID) async throws -> EventChangeResponse
     func undoHistoryEvent(eventId: UUID, force: Bool) async throws -> EventChangeResponse
+    func listEmailFolders(provider: String) async throws -> [EmailFolderPreference]
+    func updateEmailFolder(provider: String, folderId: String, isIncluded: Bool) async throws -> EmailFolderPreference
     func getGmailAuthUrl(redirectUri: String?) -> String
     func getOutlookAuthUrl(redirectUri: String?) -> String
     func getCalendarAuthUrl(redirectUri: String?) -> String
@@ -259,6 +261,45 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
         let body = try encoder.encode(UndoHistoryRequest(force: force))
         let data = try await makeRequest(path: "/events/\(eventId)/undo", method: "POST", body: body)
         return try decoder.decode(EventChangeResponse.self, from: data)
+    }
+
+    // MARK: - Email Folder Preferences
+
+    nonisolated static func emailFolderPath(provider: String, folderId: String? = nil) -> String? {
+        guard provider == "gmail" || provider == "outlook" else { return nil }
+        let basePath = "/integrations/\(provider)/folders"
+        guard let folderId else { return basePath }
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        guard let encodedFolderId = folderId.addingPercentEncoding(withAllowedCharacters: allowed) else {
+            return nil
+        }
+        return "\(basePath)/\(encodedFolderId)"
+    }
+
+    func listEmailFolders(provider: String) async throws -> [EmailFolderPreference] {
+        guard let path = Self.emailFolderPath(provider: provider) else {
+            throw BackendAPIError.invalidResponse
+        }
+        let data = try await makeRequest(path: path, method: "GET")
+        return try decoder.decode([EmailFolderPreference].self, from: data)
+    }
+
+    private struct UpdateEmailFolderRequest: Encodable {
+        let is_included: Bool
+    }
+
+    func updateEmailFolder(provider: String, folderId: String, isIncluded: Bool) async throws -> EmailFolderPreference {
+        guard let path = Self.emailFolderPath(provider: provider, folderId: folderId) else {
+            throw BackendAPIError.invalidResponse
+        }
+        let body = try encoder.encode(UpdateEmailFolderRequest(is_included: isIncluded))
+        let data = try await makeRequest(
+            path: path,
+            method: "PATCH",
+            body: body
+        )
+        return try decoder.decode(EmailFolderPreference.self, from: data)
     }
 
     // MARK: - OAuth
