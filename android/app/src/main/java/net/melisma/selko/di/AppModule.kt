@@ -5,6 +5,7 @@ import net.melisma.selko.data.api.createSupabaseClient
 import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.EmailRepository
+import net.melisma.selko.data.repository.EmailFolderRepository
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.SenderRuleRepository
@@ -27,6 +28,7 @@ val appModule = module {
     // Repositories
     single { AuthRepository(get()) }
     single { EmailRepository(get()) }
+    single { EmailFolderRepository(get()) }
     single { EventRepository(get()) }
     single { IntegrationRepository(get()) }
     single { CalendarSettingsRepository(get()) }
@@ -37,5 +39,5 @@ val appModule = module {
     viewModel { ReviewQueueViewModel(androidApplication(), get(), get(), get(), get()) }
     viewModel { (eventId: String) -> EventDetailViewModel(androidApplication(), get(), eventId) }
     viewModel { HistoryViewModel(androidApplication(), get(), get(), get()) }
-    viewModel { SettingsViewModel(androidApplication(), get(), get(), get(), get(), get()) }
+    viewModel { SettingsViewModel(androidApplication(), get(), get(), get(), get(), get(), get()) }
 }

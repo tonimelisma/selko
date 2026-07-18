@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 @Immutable
 data class SelkoColors(
     val success: Color,
+    val successText: Color,
     val onSuccess: Color,
     val successContainer: Color,
     val onSuccessContainer: Color,
@@ -34,6 +35,7 @@ data class SelkoColors(
 
 private val LightSelkoColors = SelkoColors(
     success = SelkoSuccess,
+    successText = SelkoSuccessText,
     onSuccess = SelkoOnSuccess,
     successContainer = SelkoSuccessContainer,
     onSuccessContainer = SelkoOnSuccessContainer,
@@ -52,6 +54,7 @@ private val LightSelkoColors = SelkoColors(
 
 private val DarkSelkoColors = SelkoColors(
     success = SelkoSuccessDark,
+    successText = SelkoSuccessDark,
     onSuccess = SelkoOnSuccess,
     successContainer = SelkoSuccessContainerDark,
     onSuccessContainer = SelkoOnSuccessContainerDark,
@@ -109,8 +112,8 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val SelkoShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(8.dp),
+    extraSmall = RoundedCornerShape(12.dp),
+    small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(14.dp),
     large = RoundedCornerShape(20.dp),
     extraLarge = RoundedCornerShape(20.dp)

@@ -30,6 +30,10 @@ fun SelkoNavHost(
 
     // Handle session status changes
     LaunchedEffect(sessionStatus) {
+        // On the first resolved session, NavHost has not installed its graph yet;
+        // its startDestination below already reflects that session. Navigating
+        // before graph installation crashes cold launches and screenshot tests.
+        if (navController.currentDestination == null) return@LaunchedEffect
         when (sessionStatus) {
             is SessionStatus.Authenticated -> {
                 navController.navigate(Home) {

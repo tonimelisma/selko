@@ -28,8 +28,6 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,9 +38,7 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
@@ -64,6 +60,11 @@ import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.ui.components.SelkoScreenHeader
+import net.melisma.selko.ui.components.SelkoActionRole
+import net.melisma.selko.ui.components.SelkoButton
+import net.melisma.selko.ui.components.SelkoIconButton
+import net.melisma.selko.ui.components.SelkoLabeledSwitch
+import net.melisma.selko.ui.components.SelkoStatusIndicator
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -114,6 +115,15 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    EmailFoldersSection(
+                        uiState = uiState,
+                        onToggle = viewModel::updateEmailFolder,
+                        onRetryLoad = viewModel::loadEmailFolders,
+                        onRetryUpdate = viewModel::retryEmailFolder
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
                     // Calendar Defaults Section
                     SectionHeader(title = stringResource(R.string.settings_section_calendar_defaults))
                     Spacer(modifier = Modifier.height(8.dp))
@@ -160,12 +170,7 @@ fun SettingsScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
                 action = {
-                    TextButton(
-                        onClick = { viewModel.clearError() },
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(stringResource(R.string.settings_dismiss))
-                    }
+                    SelkoButton(stringResource(R.string.settings_dismiss), viewModel::clearError, role = SelkoActionRole.Tertiary)
                 }
             ) {
                 Text(error)
@@ -306,41 +311,79 @@ private fun IntegrationRow(
         }
 
         if (isConnected) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = stringResource(R.string.settings_connected),
-                    modifier = Modifier.size(16.dp),
-                    tint = SelkoTheme.colors.success
+            Column(horizontalAlignment = Alignment.End) {
+                SelkoStatusIndicator(
+                    text = stringResource(R.string.settings_connected),
+                    icon = Icons.Filled.CheckCircle,
+                    color = SelkoTheme.colors.successText
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                OutlinedButton(
+                SelkoButton(
+                    text = stringResource(R.string.settings_disconnect),
                     onClick = onDisconnect,
+                    role = SelkoActionRole.DestructiveOutline,
                     enabled = !isDisconnecting,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    if (isDisconnecting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    } else {
-                        Text(stringResource(R.string.settings_disconnect))
-                    }
-                }
+                    loading = isDisconnecting
+                )
             }
         } else {
-            OutlinedButton(
-                onClick = onConnect,
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(stringResource(R.string.settings_connect))
+            SelkoButton(stringResource(R.string.settings_connect), onConnect, role = SelkoActionRole.Secondary)
+        }
+    }
+}
+
+@Composable
+private fun EmailFoldersSection(
+    uiState: SettingsUiState,
+    onToggle: (IntegrationProvider, String, Boolean) -> Unit,
+    onRetryLoad: (IntegrationProvider) -> Unit,
+    onRetryUpdate: (IntegrationProvider, String) -> Unit
+) {
+    val connected = listOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK).filter { provider ->
+        uiState.integrations.any { it.provider == provider && it.status == IntegrationStatus.ACTIVE }
+    }
+    if (connected.isEmpty()) return
+    SectionHeader("Email Folders")
+    Spacer(Modifier.height(8.dp))
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            connected.forEach { provider ->
+                Text(if (provider == IntegrationProvider.GMAIL) "Gmail" else "Outlook", style = MaterialTheme.typography.titleMedium)
+                when {
+                    provider in uiState.loadingFolderProviders -> CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                    uiState.folderLoadErrors[provider] != null -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(uiState.folderLoadErrors.getValue(provider), color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+                        SelkoButton("Retry", { onRetryLoad(provider) }, role = SelkoActionRole.Tertiary)
+                    }
+                    else -> uiState.emailFolders[provider].orEmpty().forEach { folder ->
+                        Column {
+                            SelkoLabeledSwitch(
+                                title = folder.fullPath,
+                                checked = folder.isIncluded,
+                                onCheckedChange = { onToggle(provider, folder.id, it) },
+                                supportingText = folder.classificationReason?.let { "Recommendation: $it" },
+                                enabled = folder.id !in uiState.updatingFolderIds,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            if (folder.id in uiState.updatingFolderIds) {
+                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            }
+                            uiState.folderUpdateErrors[folder.id]?.let { failure ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(failure.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+                                    SelkoButton("Retry", { onRetryUpdate(provider, folder.id) }, role = SelkoActionRole.Tertiary)
+                                }
+                            }
+                        }
+                    }
+                }
+                if (provider != connected.last()) HorizontalDivider()
             }
+            Text("Included folders are scanned for calendar-relevant messages.", style = MaterialTheme.typography.bodySmall, color = SelkoTheme.colors.faint)
         }
     }
 }
@@ -383,7 +426,7 @@ private fun CalendarDefaultsSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        shape = MaterialTheme.shapes.small
+                        shape = MaterialTheme.shapes.medium
                     )
 
                     ExposedDropdownMenu(
@@ -431,25 +474,17 @@ private fun CalendarDefaultsSection(
                 placeholder = { Text(stringResource(R.string.settings_default_invitees_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = MaterialTheme.shapes.small
+                shape = MaterialTheme.shapes.medium
             )
 
             if (uiState.defaultInvitees.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = onSaveInvitees,
+                SelkoButton(
+                    stringResource(R.string.settings_save), onSaveInvitees,
+                    role = SelkoActionRole.Tertiary,
                     enabled = !uiState.isSavingCalendarSettings,
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    if (uiState.isSavingCalendarSettings) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(stringResource(R.string.settings_save))
-                    }
-                }
+                    loading = uiState.isSavingCalendarSettings
+                )
             }
         }
     }
@@ -494,32 +529,15 @@ private fun AccountSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Log out button
-            OutlinedButton(
+            SelkoButton(
+                text = stringResource(R.string.settings_log_out),
                 onClick = onSignOut,
                 modifier = Modifier.fillMaxWidth(),
+                role = SelkoActionRole.DestructiveOutline,
                 enabled = !uiState.isSigningOut,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                if (uiState.isSigningOut) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Logout,
-                        contentDescription = stringResource(R.string.settings_log_out_description),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.settings_log_out))
-            }
+                loading = uiState.isSigningOut,
+                icon = Icons.AutoMirrored.Filled.Logout
+            )
         }
     }
 }
@@ -557,44 +575,39 @@ private fun AutomationRulesSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                rules.forEachIndexed { index, rule ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (rule.action == "ignore") Icons.Filled.Block else Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = if (rule.action == "ignore")
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (rule.action == "ignore") stringResource(R.string.settings_rule_ignore) else stringResource(R.string.settings_rule_auto_approve),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = rule.senderEmail ?: rule.senderDomain ?: stringResource(R.string.settings_rule_unknown_sender),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                val groups = listOf(
+                    Triple("Auto-approved", "auto_approve", Icons.Filled.CheckCircle),
+                    Triple("Ignored", "ignore", Icons.Filled.Block)
+                )
+                groups.forEach { (heading, action, groupIcon) ->
+                    val groupRules = rules.filter { it.action == action }
+                    if (groupRules.isNotEmpty()) {
+                        Text(heading, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+                        groupRules.forEach { rule ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = groupIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = if (action == "ignore") MaterialTheme.colorScheme.error else SelkoTheme.colors.successText
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = rule.senderEmail ?: rule.senderDomain ?: stringResource(R.string.settings_rule_unknown_sender),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                SelkoIconButton(
+                                    icon = Icons.Filled.Delete,
+                                    contentDescription = stringResource(R.string.settings_rule_delete_description),
+                                    onClick = { ruleToDelete = rule },
+                                    destructive = true
+                                )
+                            }
                         }
-                        IconButton(onClick = { ruleToDelete = rule }) {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = stringResource(R.string.settings_rule_delete_description),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                    if (index < rules.lastIndex) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
                 }
             }
@@ -616,7 +629,7 @@ private fun AutomationRulesSection(
                 placeholder = { Text(stringResource(R.string.settings_add_rule_email_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = MaterialTheme.shapes.small
+                shape = MaterialTheme.shapes.medium
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -634,7 +647,7 @@ private fun AutomationRulesSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                    shape = MaterialTheme.shapes.small
+                    shape = MaterialTheme.shapes.medium
                 )
 
                 ExposedDropdownMenu(
@@ -666,7 +679,8 @@ private fun AutomationRulesSection(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Button(
+            SelkoButton(
+                text = stringResource(R.string.settings_add_rule_button),
                 onClick = {
                     val input = ruleInput.trim()
                     if (input.isNotBlank()) {
@@ -680,16 +694,8 @@ private fun AutomationRulesSection(
                 },
                 enabled = ruleInput.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.settings_add_rule_button))
-            }
+                icon = Icons.Filled.Add
+            )
         }
     }
 
@@ -705,23 +711,16 @@ private fun AutomationRulesSection(
                 Text(stringResource(R.string.settings_delete_rule_message, actionText, senderText))
             },
             confirmButton = {
-                TextButton(
+                SelkoButton(
+                    text = stringResource(R.string.settings_delete_rule_confirm),
                     onClick = {
                         onDeleteRule(rule.id)
                         ruleToDelete = null
-                    },
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(stringResource(R.string.settings_delete_rule_confirm), color = MaterialTheme.colorScheme.error)
-                }
+                    }, role = SelkoActionRole.DestructiveOutline
+                )
             },
             dismissButton = {
-                TextButton(
-                    onClick = { ruleToDelete = null },
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(stringResource(R.string.settings_delete_rule_cancel))
-                }
+                SelkoButton(stringResource(R.string.settings_delete_rule_cancel), { ruleToDelete = null }, role = SelkoActionRole.Tertiary)
             }
         )
     }

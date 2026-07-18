@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # INTERNAL HELPER — called by capture-all-screenshots.sh. Do not run directly.
-# Captures 6 Android screenshots via UiAutomator instrumented test.
+# Captures 12 Android screenshots via UiAutomator instrumented test.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -67,6 +67,12 @@ adb shell am instrument -w \
 echo "==> Pulling screenshots from device..."
 mkdir -p "$TMP_DIR"
 adb pull /sdcard/Android/data/net.melisma.selko/files/Pictures/ "$TMP_DIR/"
+
+SCREENSHOT_COUNT=$(find "$TMP_DIR/Pictures" -name 'android-*.png' | wc -l | tr -d ' ')
+if [ "$SCREENSHOT_COUNT" -ne 12 ]; then
+    echo "ERROR: Expected 12 Android screenshots, found $SCREENSHOT_COUNT" >&2
+    exit 1
+fi
 
 echo "==> Copying and resizing screenshots..."
 cp "$TMP_DIR"/Pictures/*.png "$SCREENSHOT_DIR/"

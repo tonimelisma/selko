@@ -28,11 +28,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -47,6 +45,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
 import net.melisma.selko.ui.components.SelkoScreenHeader
+import net.melisma.selko.ui.components.SelkoActionRole
+import net.melisma.selko.ui.components.SelkoButton
+import net.melisma.selko.ui.components.SelkoIconButton
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -186,12 +187,7 @@ fun ReviewQueueScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
                 action = {
-                    TextButton(
-                        onClick = { viewModel.clearError() },
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(stringResource(R.string.review_dismiss))
-                    }
+                    SelkoButton(stringResource(R.string.review_dismiss), viewModel::clearError, role = SelkoActionRole.Tertiary)
                 }
             ) {
                 Text(error)
@@ -219,7 +215,7 @@ private fun SenderGroupHeader(
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center
@@ -244,13 +240,11 @@ private fun SenderGroupHeader(
         }
 
         Box {
-            IconButton(onClick = { showMenu = true }) {
-                Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = stringResource(R.string.review_actions),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            SelkoIconButton(
+                icon = Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.review_actions),
+                onClick = { showMenu = true }
+            )
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }

@@ -26,8 +26,6 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,16 +33,12 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -67,6 +61,10 @@ import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.R
 import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.ui.theme.SelkoTheme
+import net.melisma.selko.ui.components.SelkoActionRole
+import net.melisma.selko.ui.components.SelkoButton
+import net.melisma.selko.ui.components.SelkoIconButton
+import net.melisma.selko.ui.components.SelkoLabeledSwitch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.time.Instant
@@ -96,17 +94,14 @@ fun EventDetailScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (uiState.hasUnsavedChanges) {
-                            viewModel.saveChanges()
+                    SelkoIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.event_detail_back),
+                        onClick = {
+                            if (uiState.hasUnsavedChanges) viewModel.saveChanges()
+                            onNavigateBack()
                         }
-                        onNavigateBack()
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.event_detail_back)
-                        )
-                    }
+                    )
                 }
             )
         },
@@ -122,56 +117,23 @@ fun EventDetailScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        OutlinedButton(
-                            onClick = { viewModel.rejectEvent() },
+                        SelkoButton(
+                            text = stringResource(R.string.event_detail_reject),
+                            onClick = viewModel::rejectEvent,
                             enabled = !uiState.isRejecting && !uiState.isApproving,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            ),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            if (uiState.isRejecting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Filled.Close,
-                                    contentDescription = stringResource(R.string.event_detail_reject),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.event_detail_reject))
-                        }
+                            loading = uiState.isRejecting,
+                            role = SelkoActionRole.DestructiveOutline,
+                            icon = Icons.Filled.Close
+                        )
 
-                        Button(
-                            onClick = { viewModel.approveEvent() },
+                        SelkoButton(
+                            text = stringResource(R.string.event_detail_accept),
+                            onClick = viewModel::approveEvent,
                             enabled = !uiState.isApproving && !uiState.isRejecting,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = SelkoTheme.colors.success,
-                                contentColor = SelkoTheme.colors.onSuccess
-                            ),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            if (uiState.isApproving) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                    color = SelkoTheme.colors.onSuccess
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Filled.Check,
-                                    contentDescription = stringResource(R.string.event_detail_accept),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.event_detail_accept))
-                        }
+                            loading = uiState.isApproving,
+                            role = SelkoActionRole.Success,
+                            icon = Icons.Filled.Check
+                        )
                     }
                 }
             }
@@ -217,18 +179,13 @@ fun EventDetailScreen(
             }
 
             // Error snackbar
-            uiState.errorMessage?.let { error ->
+            if (uiState.event != null) uiState.errorMessage?.let { error ->
                 Snackbar(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp),
                     action = {
-                        TextButton(
-                            onClick = { viewModel.clearError() },
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text(stringResource(R.string.event_detail_dismiss))
-                        }
+                        SelkoButton(stringResource(R.string.event_detail_dismiss), viewModel::clearError, role = SelkoActionRole.Tertiary)
                     }
                 ) {
                     Text(error)
@@ -299,7 +256,7 @@ private fun EventDetailContent(
             label = { Text(stringResource(R.string.event_detail_field_title)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.medium
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -317,7 +274,7 @@ private fun EventDetailContent(
                 disabledBorderColor = MaterialTheme.colorScheme.outline,
                 disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.medium
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -336,7 +293,7 @@ private fun EventDetailContent(
                     disabledBorderColor = MaterialTheme.colorScheme.outline,
                     disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
-                shape = MaterialTheme.shapes.small
+                shape = MaterialTheme.shapes.medium
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -355,7 +312,7 @@ private fun EventDetailContent(
                 disabledBorderColor = MaterialTheme.colorScheme.outline,
                 disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.medium
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -374,26 +331,20 @@ private fun EventDetailContent(
                     disabledBorderColor = MaterialTheme.colorScheme.outline,
                     disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
-                shape = MaterialTheme.shapes.small
+                shape = MaterialTheme.shapes.medium
             )
 
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.event_detail_all_day),
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Switch(
-                checked = uiState.allDay,
-                onCheckedChange = onAllDayChange
-            )
-        }
+        SelkoLabeledSwitch(
+            title = stringResource(R.string.event_detail_all_day),
+            checked = uiState.allDay,
+            onCheckedChange = onAllDayChange,
+            checkedLabel = "On",
+            uncheckedLabel = "Off",
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -403,7 +354,7 @@ private fun EventDetailContent(
             label = { Text(stringResource(R.string.event_detail_field_location)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.medium
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -415,7 +366,7 @@ private fun EventDetailContent(
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             maxLines = 6,
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.medium
         )
 
         // Source attribution
@@ -438,13 +389,13 @@ private fun EventDetailContent(
             DatePickerDialog(
                 onDismissRequest = { showStartDatePicker = false },
                 confirmButton = {
-                    TextButton(onClick = {
+                    SelkoButton(stringResource(R.string.event_detail_ok), onClick = {
                         datePickerState.selectedDateMillis?.let { onStartDateChange(it) }
                         showStartDatePicker = false
-                    }) { Text(stringResource(R.string.event_detail_ok)) }
+                    }, role = SelkoActionRole.Primary)
                 },
                 dismissButton = {
-                    TextButton(onClick = { showStartDatePicker = false }) { Text(stringResource(R.string.event_detail_cancel)) }
+                    SelkoButton(stringResource(R.string.event_detail_cancel), { showStartDatePicker = false }, role = SelkoActionRole.Tertiary)
                 }
             ) {
                 DatePicker(state = datePickerState)
@@ -460,13 +411,13 @@ private fun EventDetailContent(
             DatePickerDialog(
                 onDismissRequest = { showStartTimePicker = false },
                 confirmButton = {
-                    TextButton(onClick = {
+                    SelkoButton(stringResource(R.string.event_detail_ok), onClick = {
                         onStartTimeChange(timePickerState.hour, timePickerState.minute)
                         showStartTimePicker = false
-                    }) { Text(stringResource(R.string.event_detail_ok)) }
+                    }, role = SelkoActionRole.Primary)
                 },
                 dismissButton = {
-                    TextButton(onClick = { showStartTimePicker = false }) { Text(stringResource(R.string.event_detail_cancel)) }
+                    SelkoButton(stringResource(R.string.event_detail_cancel), { showStartTimePicker = false }, role = SelkoActionRole.Tertiary)
                 }
             ) {
                 TimePicker(state = timePickerState)
@@ -480,13 +431,13 @@ private fun EventDetailContent(
             DatePickerDialog(
                 onDismissRequest = { showEndDatePicker = false },
                 confirmButton = {
-                    TextButton(onClick = {
+                    SelkoButton(stringResource(R.string.event_detail_ok), onClick = {
                         datePickerState.selectedDateMillis?.let { onEndDateChange(it) }
                         showEndDatePicker = false
-                    }) { Text(stringResource(R.string.event_detail_ok)) }
+                    }, role = SelkoActionRole.Primary)
                 },
                 dismissButton = {
-                    TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.event_detail_cancel)) }
+                    SelkoButton(stringResource(R.string.event_detail_cancel), { showEndDatePicker = false }, role = SelkoActionRole.Tertiary)
                 }
             ) {
                 DatePicker(state = datePickerState)
@@ -502,13 +453,13 @@ private fun EventDetailContent(
             DatePickerDialog(
                 onDismissRequest = { showEndTimePicker = false },
                 confirmButton = {
-                    TextButton(onClick = {
+                    SelkoButton(stringResource(R.string.event_detail_ok), onClick = {
                         onEndTimeChange(timePickerState.hour, timePickerState.minute)
                         showEndTimePicker = false
-                    }) { Text(stringResource(R.string.event_detail_ok)) }
+                    }, role = SelkoActionRole.Primary)
                 },
                 dismissButton = {
-                    TextButton(onClick = { showEndTimePicker = false }) { Text(stringResource(R.string.event_detail_cancel)) }
+                    SelkoButton(stringResource(R.string.event_detail_cancel), { showEndTimePicker = false }, role = SelkoActionRole.Tertiary)
                 }
             ) {
                 TimePicker(state = timePickerState)
@@ -584,12 +535,11 @@ private fun SourceEmailCard(email: net.melisma.selko.data.model.Email) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = { isExpanded = !isExpanded }) {
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = if (isExpanded) stringResource(R.string.source_email_collapse) else stringResource(R.string.source_email_expand)
-                    )
-                }
+                SelkoIconButton(
+                    icon = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (isExpanded) stringResource(R.string.source_email_collapse) else stringResource(R.string.source_email_expand),
+                    onClick = { isExpanded = !isExpanded }
+                )
             }
 
             AnimatedVisibility(visible = isExpanded) {

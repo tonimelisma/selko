@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -54,7 +55,7 @@ class EventDetailScreenTest {
         }
 
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Back", substring = true, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Back").assertIsDisplayed()
     }
 
     @Test

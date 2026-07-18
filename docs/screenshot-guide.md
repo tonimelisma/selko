@@ -15,7 +15,7 @@ Screenshots live in `docs/screenshots/` and are used for documentation and visua
 # Single platform
 ./scripts/capture-all-screenshots.sh web       # 24 web screenshots via Playwright
 ./scripts/capture-all-screenshots.sh ios       # 12 iOS screenshots via XCUITest
-./scripts/capture-all-screenshots.sh android   # 6 Android screenshots via UiAutomator
+./scripts/capture-all-screenshots.sh android   # 12 Android screenshots via UiAutomator
 ```
 
 **That's it.** The script handles everything: seeding data, booting simulators/emulators, building, running tests, pulling screenshots, and resizing.
@@ -80,7 +80,7 @@ Use XcodeBuildMCP `snapshot_ui()` to discover identifiers for other elements.
 
 ### Android (UiAutomator)
 
-The UiAutomator test (`android/app/src/androidTest/.../ScreenshotCaptureTest.kt`) captures 6 screenshots.
+The UiAutomator test (`android/app/src/androidTest/.../ScreenshotCaptureTest.kt`) captures 12 screenshots: six screens in light and dark appearance.
 
 **Key implementation details:**
 
@@ -126,15 +126,14 @@ Every standard screen is captured in both light and dark appearances. Append
 | iOS event detail | `ios-event-detail-{light,dark}.png` | iPhone 17 Pro |
 | iOS history | `ios-history-{light,dark}.png` | iPhone 17 Pro |
 | iOS settings | `ios-settings-{light,dark}.png` | iPhone 17 Pro |
-| Android login | `android-login.png` | Emulator |
-| Android register | `android-register.png` | Emulator |
-| Android review queue | `android-review-queue.png` | Emulator |
-| Android event detail | `android-event-detail.png` | Emulator |
-| Android history | `android-history.png` | Emulator |
-| Android settings | `android-settings.png` | Emulator |
+| Android login | `android-login-{light,dark}.png` | Emulator |
+| Android register | `android-register-{light,dark}.png` | Emulator |
+| Android review queue | `android-review-queue-{light,dark}.png` | Emulator |
+| Android event detail | `android-event-detail-{light,dark}.png` | Emulator |
+| Android history | `android-history-{light,dark}.png` | Emulator |
+| Android settings | `android-settings-{light,dark}.png` | Emulator |
 
-The same appearance suffix applies to the Android entries while its native
-coverage is migrated. The final matrix contains 48 screenshots: 24 web, 12
+The final matrix contains 48 screenshots: 24 web, 12
 iOS, and 12 Android.
 
 ---
