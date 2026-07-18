@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,6 +27,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
 import net.melisma.selko.ui.components.SelkoLogoMark
+import net.melisma.selko.ui.components.SelkoActionRole
+import net.melisma.selko.ui.components.SelkoButton
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -90,7 +89,7 @@ fun AuthScreen(
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isLoading,
-                        shape = MaterialTheme.shapes.small
+                        shape = MaterialTheme.shapes.medium
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -107,7 +106,7 @@ fun AuthScreen(
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isLoading,
-                        shape = MaterialTheme.shapes.small
+                        shape = MaterialTheme.shapes.medium
                     )
 
                     if (uiState.isSignUp) {
@@ -125,7 +124,7 @@ fun AuthScreen(
                             ),
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !uiState.isLoading,
-                            shape = MaterialTheme.shapes.small
+                            shape = MaterialTheme.shapes.medium
                         )
                     }
 
@@ -140,38 +139,22 @@ fun AuthScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Button(
+                    SelkoButton(
+                        text = if (uiState.isSignUp) stringResource(R.string.auth_sign_up_button) else stringResource(R.string.auth_sign_in_button),
                         onClick = viewModel::submit,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isLoading,
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.height(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text(if (uiState.isSignUp) stringResource(R.string.auth_sign_up_button) else stringResource(R.string.auth_sign_in_button))
-                        }
-                    }
+                        loading = uiState.isLoading
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    TextButton(
+                    SelkoButton(
+                        text = if (uiState.isSignUp) stringResource(R.string.auth_switch_to_login) else stringResource(R.string.auth_switch_to_signup),
                         onClick = viewModel::toggleAuthMode,
-                        enabled = !uiState.isLoading,
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(
-                            if (uiState.isSignUp) {
-                                stringResource(R.string.auth_switch_to_login)
-                            } else {
-                                stringResource(R.string.auth_switch_to_signup)
-                            }
-                        )
-                    }
+                        role = SelkoActionRole.Tertiary,
+                        enabled = !uiState.isLoading
+                    )
                 }
             }
         }

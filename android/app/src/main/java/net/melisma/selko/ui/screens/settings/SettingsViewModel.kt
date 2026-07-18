@@ -12,14 +12,19 @@ import net.melisma.selko.R
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
+import net.melisma.selko.data.model.IntegrationStatus
+import net.melisma.selko.data.model.EmailFolderPreference
 import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.CalendarSettings
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.IntegrationRepository
+import net.melisma.selko.data.repository.EmailFolderRepository
 import net.melisma.selko.data.repository.IntegrationResult
 import net.melisma.selko.data.repository.RepositoryResult
 import net.melisma.selko.data.repository.SenderRuleRepository
+
+data class FolderUpdateFailure(val message: String, val requestedIncluded: Boolean)
 
 data class SettingsUiState(
     val isLoading: Boolean = true,
@@ -34,7 +39,12 @@ data class SettingsUiState(
     val isSigningOut: Boolean = false,
     val isSavingCalendarSettings: Boolean = false,
     val rules: List<SenderRule> = emptyList(),
-    val isLoadingRules: Boolean = false
+    val isLoadingRules: Boolean = false,
+    val emailFolders: Map<IntegrationProvider, List<EmailFolderPreference>> = emptyMap(),
+    val loadingFolderProviders: Set<IntegrationProvider> = emptySet(),
+    val folderLoadErrors: Map<IntegrationProvider, String> = emptyMap(),
+    val updatingFolderIds: Set<String> = emptySet(),
+    val folderUpdateErrors: Map<String, FolderUpdateFailure> = emptyMap()
 )
 
 class SettingsViewModel(
@@ -43,7 +53,8 @@ class SettingsViewModel(
     private val integrationRepository: IntegrationRepository,
     private val calendarSettingsRepository: CalendarSettingsRepository,
     private val backendApiClient: BackendApiClient,
-    private val senderRuleRepository: SenderRuleRepository
+    private val senderRuleRepository: SenderRuleRepository,
+    private val emailFolderRepository: EmailFolderRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -68,6 +79,10 @@ class SettingsViewModel(
             when (val result = integrationRepository.fetchIntegrations()) {
                 is IntegrationResult.Success -> {
                     _uiState.update { it.copy(integrations = result.data) }
+                    result.data.filter {
+                        it.status == IntegrationStatus.ACTIVE &&
+                            it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK)
+                    }.forEach { loadEmailFolders(it.provider) }
                 }
                 is IntegrationResult.Error -> {
                     _uiState.update { it.copy(errorMessage = result.message) }
@@ -102,6 +117,70 @@ class SettingsViewModel(
             }
 
             _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    fun loadEmailFolders(provider: IntegrationProvider) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    loadingFolderProviders = it.loadingFolderProviders + provider,
+                    folderLoadErrors = it.folderLoadErrors - provider
+                )
+            }
+            when (val result = emailFolderRepository.list(provider)) {
+                is RepositoryResult.Success -> _uiState.update {
+                    it.copy(
+                        emailFolders = it.emailFolders + (provider to result.data),
+                        loadingFolderProviders = it.loadingFolderProviders - provider
+                    )
+                }
+                is RepositoryResult.Error -> _uiState.update {
+                    it.copy(
+                        loadingFolderProviders = it.loadingFolderProviders - provider,
+                        folderLoadErrors = it.folderLoadErrors + (provider to result.message)
+                    )
+                }
+            }
+        }
+    }
+
+    fun updateEmailFolder(provider: IntegrationProvider, folderId: String, isIncluded: Boolean) {
+        val previous = _uiState.value.emailFolders[provider]?.firstOrNull { it.id == folderId } ?: return
+        if (folderId in _uiState.value.updatingFolderIds) return
+        val optimistic = previous.copy(isIncluded = isIncluded)
+        replaceFolder(provider, optimistic)
+        _uiState.update {
+            it.copy(
+                updatingFolderIds = it.updatingFolderIds + folderId,
+                folderUpdateErrors = it.folderUpdateErrors - folderId
+            )
+        }
+        viewModelScope.launch {
+            when (val result = emailFolderRepository.update(provider, folderId, isIncluded)) {
+                is RepositoryResult.Success -> replaceFolder(provider, result.data)
+                is RepositoryResult.Error -> {
+                    replaceFolder(provider, previous)
+                    _uiState.update {
+                        it.copy(folderUpdateErrors = it.folderUpdateErrors + (
+                            folderId to FolderUpdateFailure(result.message, isIncluded)
+                        ))
+                    }
+                }
+            }
+            _uiState.update { it.copy(updatingFolderIds = it.updatingFolderIds - folderId) }
+        }
+    }
+
+    fun retryEmailFolder(provider: IntegrationProvider, folderId: String) {
+        val failure = _uiState.value.folderUpdateErrors[folderId] ?: return
+        updateEmailFolder(provider, folderId, failure.requestedIncluded)
+    }
+
+    private fun replaceFolder(provider: IntegrationProvider, folder: EmailFolderPreference) {
+        _uiState.update { state ->
+            val folders = state.emailFolders[provider].orEmpty().map { if (it.id == folder.id) folder else it }
+            state.copy(emailFolders = state.emailFolders + (provider to folders))
         }
     }
 

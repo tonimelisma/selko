@@ -12,6 +12,7 @@
 		/** @type {Record<string, [string, string, string]>} */
 		const map = {
 			pending_review: ['neutral', $_('status.pending'), 'circle'],
+			pending_change: ['neutral', $_('status.pendingChange'), 'circle'],
 			approved: ['success', $_('status.approved'), 'check'],
 			synced: ['success', $_('status.synced'), 'check'],
 			sync_failed: ['error', $_('status.failed'), 'error'],

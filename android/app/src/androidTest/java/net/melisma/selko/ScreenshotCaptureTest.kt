@@ -17,7 +17,7 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Navigates through all 6 screens and saves PNG screenshots.
+ * Navigates through all 6 screens in light and dark appearances and saves 12 PNG screenshots.
  *
  * Run with:
  *   ./gradlew installDebug installDebugAndroidTest
@@ -53,6 +53,8 @@ class ScreenshotCaptureTest {
         outputDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
         outputDir.mkdirs()
 
+        device.executeShellCommand("cmd uimode night no")
+
         // Launch the app
         val intent = context.packageManager.getLaunchIntentForPackage(PACKAGE)
         requireNotNull(intent) { "Could not get launch intent for $PACKAGE" }
@@ -72,24 +74,24 @@ class ScreenshotCaptureTest {
         device.wait(Until.hasObject(By.text("Sign in")), TIMEOUT)
         dismissSystemDialogs()
         device.waitForIdle()
-        saveScreenshot("android-login")
+        saveScreenshot("android-login-light")
 
         // 2. Register screen
         val signUpToggle = device.wait(
             Until.findObject(By.text("Don't have an account? Sign up")), SHORT_TIMEOUT
         )
         requireNotNull(signUpToggle) { "Could not find 'Sign up' toggle on login screen" }
-        signUpToggle.click()
+        (signUpToggle.parent ?: signUpToggle).click()
         device.wait(Until.hasObject(By.text("Confirm password")), SHORT_TIMEOUT)
         device.waitForIdle()
-        saveScreenshot("android-register")
+        saveScreenshot("android-register-light")
 
         // Go back to login
         val loginToggle = device.wait(
             Until.findObject(By.text("Already have an account? Log in")), SHORT_TIMEOUT
         )
         requireNotNull(loginToggle) { "Could not find 'Log in' toggle on register screen" }
-        loginToggle.click()
+        (loginToggle.parent ?: loginToggle).click()
         device.wait(Until.hasObject(By.text("Sign in")), SHORT_TIMEOUT)
         device.waitForIdle()
 
@@ -135,20 +137,20 @@ class ScreenshotCaptureTest {
         device.waitForIdle()
 
         // 4. Review queue
-        saveScreenshot("android-review-queue")
+        saveScreenshot("android-review-queue-light")
 
         // 5. History tab
         tapAndAwaitScreen("History", "History screen") { waitForHistoryScreen() }
-        saveScreenshot("android-history")
+        saveScreenshot("android-history-light")
 
         // 6. Settings tab
         tapAndAwaitScreen("Settings", "Settings screen") { waitForSettingsScreen() }
-        saveScreenshot("android-settings")
+        saveScreenshot("android-settings-light")
 
         // 7. Go back to Review tab, then navigate to event detail
         tapAndAwaitScreen("Review", "Review screen") { waitForReviewScreen() }
 
-        val editButton = device.wait(Until.findObject(By.text("Edit")), SHORT_TIMEOUT)
+        val editButton = waitForObject(By.text("Edit")) ?: waitForObject(By.desc("Edit"))
         if (editButton != null) {
             editButton.click()
             require(waitForAnyObject(SHORT_TIMEOUT, By.text("Event Details"))) {
@@ -156,7 +158,66 @@ class ScreenshotCaptureTest {
             }
             device.waitForIdle()
         }
-        saveScreenshot("android-event-detail")
+        saveScreenshot("android-event-detail-light")
+
+        captureDarkScreenshots()
+    }
+
+    private fun captureDarkScreenshots() {
+        device.executeShellCommand("cmd uimode night yes")
+        SystemClock.sleep(1_500)
+        device.waitForIdle()
+        // The activity is recreated for the appearance change and returns to its
+        // authenticated Review start destination. Capture from that stable state.
+        require(waitForReviewScreen()) { "Dark Review screen did not appear after appearance change" }
+        saveScreenshot("android-review-queue-dark")
+
+        val edit = waitForObject(By.text("Edit")) ?: waitForObject(By.desc("Edit"))
+        requireNotNull(edit) { "Could not find Edit action in dark Review" }
+        edit.click()
+        require(waitForAnyObject(SHORT_TIMEOUT, By.text("Event Details"))) { "Dark Event Details did not appear" }
+        device.waitForIdle()
+        saveScreenshot("android-event-detail-dark")
+
+        val back = waitForObject(By.desc("Back"))
+        if (back != null) back.click() else device.click(64, 180)
+        require(waitForReviewScreen()) { "Review screen did not appear after leaving dark Event Detail" }
+
+        tapAndAwaitScreen("History", "History screen") { waitForHistoryScreen() }
+        saveScreenshot("android-history-dark")
+
+        tapAndAwaitScreen("Settings", "Settings screen") { waitForSettingsScreen() }
+        saveScreenshot("android-settings-dark")
+
+        var logout = waitForObject(By.text("Log out"), 1_000)
+        repeat(5) {
+            if (logout == null) {
+                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4, device.displayWidth / 2, device.displayHeight / 4, 500)
+                device.waitForIdle()
+                logout = waitForObject(By.text("Log out"), 1_000)
+            }
+        }
+        requireNotNull(logout) { "Could not find Settings Log out action" }
+        // The text node is a child of the semantic button; click its clickable
+        // parent so the action is dispatched consistently by UIAutomator.
+        (logout.parent ?: logout).click()
+        require(device.wait(Until.gone(By.text("Settings")), TIMEOUT)) {
+            "Authenticated navigation did not disappear after logout"
+        }
+        require(waitForAnyObject(TIMEOUT, By.text("Sign in"))) { "Login screen did not appear after logout" }
+        SystemClock.sleep(500)
+        device.waitForIdle()
+        saveScreenshot("android-login-dark")
+
+        val signUpToggle = waitForObject(By.text("Don't have an account? Sign up"))
+        requireNotNull(signUpToggle) { "Could not find dark-mode sign-up toggle" }
+        (signUpToggle.parent ?: signUpToggle).click()
+        require(waitForAnyObject(SHORT_TIMEOUT, By.text("Confirm password"))) { "Dark register screen did not appear" }
+        SystemClock.sleep(500)
+        device.waitForIdle()
+        saveScreenshot("android-register-dark")
+
+        device.executeShellCommand("cmd uimode night no")
     }
 
     private fun waitForObject(selector: BySelector, timeout: Long = SHORT_TIMEOUT): UiObject2? {
@@ -199,12 +260,10 @@ class ScreenshotCaptureTest {
     }
 
     private fun waitForSettingsScreen(timeout: Long = SHORT_TIMEOUT): Boolean {
-        return waitForAnyObject(
-            timeout,
-            By.text("Settings"),
-            By.text("Connected Accounts"),
-            By.text("Log out")
-        )
+        // "Settings" is always present in the bottom navigation, so it cannot
+        // prove the destination has finished composing. Wait for page-only
+        // content before capturing to avoid saving the previous screen.
+        return waitForAnyObject(timeout, By.text("CONNECTED ACCOUNTS"), By.text("ACCOUNT"))
     }
 
     private fun tapAndAwaitScreen(
