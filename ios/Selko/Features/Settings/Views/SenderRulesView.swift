@@ -16,13 +16,16 @@ struct SenderRulesView: View {
 
     private let senderRuleService: SenderRuleServiceProtocol
 
+    private var approvedRules: [SenderRule] { rules.filter { $0.ruleAction == .autoApprove } }
+    private var ignoredRules: [SenderRule] { rules.filter { $0.ruleAction == .ignore } }
+
     init(senderRuleService: SenderRuleServiceProtocol? = nil) {
         self.senderRuleService = senderRuleService ?? DependencyContainer.shared.senderRuleService
     }
 
     var body: some View {
         List {
-            Section("Automation Rules") {
+            Section("Auto-approved") {
                 if isLoading {
                     HStack {
                         ProgressView()
@@ -35,15 +38,15 @@ struct SenderRulesView: View {
                         .foregroundStyle(Color.selkoMuted)
                         .font(SelkoTypography.body)
                 } else {
-                    ForEach(rules) { rule in
+                    ForEach(approvedRules) { rule in
                         ruleRow(rule)
                     }
-                    .onDelete { indexSet in
-                        if let index = indexSet.first {
-                            ruleToDelete = rules[index]
-                            showDeleteConfirmation = true
-                        }
-                    }
+                }
+            }
+
+            if !ignoredRules.isEmpty {
+                Section("Ignored") {
+                    ForEach(ignoredRules) { rule in ruleRow(rule) }
                 }
             }
 
@@ -72,6 +75,7 @@ struct SenderRulesView: View {
                         Spacer()
                     }
                 }
+                .buttonStyle(.selko(.primary))
                 .disabled(newRuleText.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityIdentifier("addRuleButton")
             }
@@ -115,24 +119,30 @@ struct SenderRulesView: View {
     @ViewBuilder
     private func ruleRow(_ rule: SenderRule) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: rule.ruleAction == .ignore ? "shield.slash" : "checkmark.circle")
-                .foregroundStyle(rule.ruleAction == .ignore ? Color.selkoError : Color.selkoSuccess)
-                .font(SelkoTypography.sectionTitle)
+            SelkoStatusIndicator(
+                text: rule.ruleAction == .ignore ? "Ignore" : "Auto-approve",
+                systemImage: rule.ruleAction == .ignore ? "nosign" : "checkmark.circle",
+                tone: rule.ruleAction == .ignore ? .error : .success
+            )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(rule.ruleAction == .ignore ? "Ignore" : "Auto-approve")
-                    .font(SelkoTypography.title)
-                    .fontWeight(.medium)
-
                 Text(rule.displayTarget)
-                    .font(SelkoTypography.caption)
-                    .foregroundStyle(Color.selkoMuted)
+                    .font(SelkoTypography.title)
+                    .foregroundStyle(Color.selkoInk)
             }
 
             Spacer()
+            Button(role: .destructive) {
+                ruleToDelete = rule
+                showDeleteConfirmation = true
+            } label: {
+                Image(systemName: "trash")
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.selko(.tertiary))
+            .foregroundStyle(Color.selkoError)
+            .accessibilityLabel("Delete rule for \(rule.displayTarget)")
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(rule.ruleAction == .ignore ? "Ignore" : "Auto-approve") rule for \(rule.displayTarget)")
     }
 
     // MARK: - Actions

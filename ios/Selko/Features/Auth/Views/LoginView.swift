@@ -27,10 +27,7 @@ struct LoginView: View {
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                            .padding(.horizontal, 14)
-                            .frame(height: 46)
-                            .background(Color.selkoPaper)
-                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.selkoBorder, lineWidth: 1.5))
+                            .selkoInput()
                             .accessibilityLabel("Email address")
                             .accessibilityIdentifier("emailField")
                     }
@@ -41,10 +38,7 @@ struct LoginView: View {
                             .foregroundStyle(Color.selkoInk)
                         SecureField("Your password", text: $viewModel.password)
                             .textContentType(.password)
-                            .padding(.horizontal, 14)
-                            .frame(height: 46)
-                            .background(Color.selkoPaper)
-                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.selkoBorder, lineWidth: 1.5))
+                            .selkoInput()
                             .accessibilityLabel("Password")
                             .accessibilityIdentifier("passwordField")
                     }
@@ -68,13 +62,9 @@ struct LoginView: View {
                                 Text("Sign in")
                             }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 46)
+                        .frame(maxWidth: .infinity)
                     }
-                    .background(Color.accentColor)
-                    .foregroundStyle(Color.selkoOnPrimary)
-                    .font(SelkoTypography.title)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: Color.accentColor.opacity(0.35), radius: 10, y: 5)
+                    .buttonStyle(.selko(.primary))
                     .disabled(viewModel.isLoading)
                     .accessibilityIdentifier("signInButton")
                 }
@@ -86,9 +76,7 @@ struct LoginView: View {
                     Text("Don't have an account?")
                         .font(SelkoTypography.caption)
                     Button("Sign up") { showRegister = true }
-                        .font(SelkoTypography.caption.weight(.bold))
-                        .foregroundStyle(Color.selkoRust)
-                        .frame(minWidth: 44, minHeight: 44)
+                        .buttonStyle(.selko(.tertiary))
                         .accessibilityIdentifier("createAccountButton")
                 }
                 Spacer()

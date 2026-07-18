@@ -53,10 +53,10 @@ Register → Login → Review Queue shows integration setup (not connected)
 ### Partial OAuth Scopes
 
 The user may grant only some scopes (e.g., Gmail but not Calendar). In this case:
-- The integration setup screen remains, showing which services are authorized and which still need authorization.
-- Per-service status is visible: "Gmail: authorized", "Google Calendar: not authorized [Authorize]".
-- The "Authorize" button triggers a scoped OAuth request for just the missing permission.
-- Both Gmail and Calendar must be authorized before the Review Queue appears.
+- The integration setup screen remains, showing which services are Connected and which still need connection.
+- Per-service status is visible: "Gmail: Connected", "Google Calendar: Not connected [Connect]".
+- The "Connect" button triggers a scoped OAuth request for just the missing permission.
+- Both Gmail and Calendar must be Connected before the Review Queue appears.
 
 ---
 
@@ -106,7 +106,7 @@ Login → Review Queue shows pending events
 ```
 User logs in → Review Queue is replaced by integration setup screen
   → Shows which service lost authorization
-  → "Gmail: authorized" / "Google Calendar: expired [Reconnect]"
+  → "Gmail: Connected" / "Google Calendar: Connection expired [Reconnect]"
   → User clicks Reconnect → OAuth flow → back to queue
 ```
 
@@ -172,13 +172,13 @@ The Review Queue at `/app` has two top-level states: integration setup or event 
      │                     │       │                      │
      │ Shown when:         │       │ Shown when both      │
      │ - No account linked │       │ Gmail + Calendar     │
-     │ - Gmail not authed  │       │ are authorized       │
-     │ - Calendar not authed│      │                      │
+     │ - Gmail not connected│      │ are Connected        │
+     │ - Calendar not connected│   │                      │
      │ - Token expired     │       │                      │
      │ - Token revoked     │       │                      │
      │                     │       │                      │
      │ Shows connect/      │       │  ┌────────────────┐  │
-     │ reconnect/authorize │       │  │ Has pending     │  │
+     │ connect/reconnect   │       │  │ Has pending     │  │
      │ actions per service │       │  │ events?         │  │
      └─────────────────────┘       │  └───────┬────────┘  │
                                    │     ┌────┴────┐      │

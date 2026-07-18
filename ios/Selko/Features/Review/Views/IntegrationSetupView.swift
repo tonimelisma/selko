@@ -82,14 +82,12 @@ struct IntegrationSetupView: View {
             Spacer()
 
             if isConnected {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Color.selkoSuccess)
+                SelkoStatusIndicator(text: "Connected", systemImage: "checkmark.circle", tone: .success)
             } else {
                 Button("Connect") {
                     action()
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.accentColor)
+                .buttonStyle(.selko(.primary))
             }
         }
         .padding()

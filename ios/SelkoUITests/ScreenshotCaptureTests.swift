@@ -2,7 +2,7 @@
 //  ScreenshotCaptureTests.swift
 //  iOSUITests
 //
-//  Navigates through all 6 screens and saves PNG screenshots to docs/screenshots/.
+//  Navigates through all 6 screens and saves appearance-specific PNG screenshots.
 //  Run with: xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \
 //    -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
 //    -only-testing:iOSUITests/ScreenshotCaptureTests
@@ -13,6 +13,8 @@ import XCTest
 final class ScreenshotCaptureTests: XCTestCase {
     var app: XCUIApplication!
     private let pollInterval: TimeInterval = 0.2
+
+    private var appearance = "light"
 
     /// Resolve the project-root docs/screenshots directory.
     /// Prefer SCREENSHOT_DIR from the launch environment (set by capture-ios-screenshots.sh)
@@ -53,7 +55,7 @@ final class ScreenshotCaptureTests: XCTestCase {
             withIntermediateDirectories: true
         )
 
-        let filePath = (screenshotDir as NSString).appendingPathComponent("\(name).png")
+        let filePath = (screenshotDir as NSString).appendingPathComponent("\(name)-\(appearance).png")
         do {
             try pngData.write(to: URL(fileURLWithPath: filePath))
         } catch {
@@ -168,10 +170,22 @@ final class ScreenshotCaptureTests: XCTestCase {
     // MARK: - Test
 
     @MainActor
-    func testCaptureAllScreenshots() throws {
+    func testCaptureLightScreenshots() throws {
+        try captureAllScreenshots(appearance: "light")
+    }
+
+    @MainActor
+    func testCaptureDarkScreenshots() throws {
+        try captureAllScreenshots(appearance: "dark")
+    }
+
+    @MainActor
+    private func captureAllScreenshots(appearance: String) throws {
+        self.appearance = appearance
         // Force portrait orientation regardless of simulator state from previous test runs
         XCUIDevice.shared.orientation = .portrait
 
+        app.launchArguments = ["-AppleInterfaceStyle", appearance == "dark" ? "Dark" : "Light"]
         app.launch()
 
         // Handle case where app is already logged in from a previous run
@@ -271,12 +285,23 @@ final class ScreenshotCaptureTests: XCTestCase {
         let historyTab = app.tabBars.buttons["History"]
         historyTab.tap()
         XCTAssertTrue(waitForHistoryScreen(), "History screen did not appear")
+        XCTAssertFalse(app.buttons["Synced"].exists, "Static history status must not be exposed as a button")
+        XCTAssertTrue(app.staticTexts["Synced"].waitForExistence(timeout: 3))
+        let undoButton = app.buttons["undoButton"].firstMatch
+        XCTAssertTrue(undoButton.waitForExistence(timeout: 3))
+        XCTAssertGreaterThanOrEqual(undoButton.frame.height, 44)
         saveScreenshot(named: "ios-history")
 
         // 7. Settings tab
         let settingsTab = app.tabBars.buttons["Settings"]
         settingsTab.tap()
         XCTAssertTrue(waitForSettingsScreen(), "Settings screen did not appear")
+        XCTAssertTrue(
+            app.staticTexts["Email Folders"].waitForExistence(timeout: 15),
+            "Email-folder content did not finish loading"
+        )
+        XCTAssertTrue(app.staticTexts["Included"].exists)
+        XCTAssertTrue(app.staticTexts["Excluded"].exists)
         saveScreenshot(named: "ios-settings")
     }
 }

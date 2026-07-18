@@ -60,13 +60,14 @@ Round fractional mock sizes (13.5, 12.5) to the nearest token where noted.
 | `subtle` | `#F5EEE6` | Secondary buttons, icon-button bg, date chips, chips |
 | `ink` | `#2B2622` | Primary text |
 | `body` | `#4A423B` | Body text, ghost-button label |
-| `muted` | `#8A7F74` | Secondary text, inactive icons |
-| `faint` | `#9A8F84` | Meta text, placeholders |
+| `muted` | `#746A61` | Secondary text, inactive icons; AA on paper/surface |
+| `faint` | `#786E65` | Meta text, placeholders; AA on paper/surface |
 | `disabled` | `#B7ABA0` | Strikethrough old values, disabled |
 | `border` | `#EDE4DA` | Card/nav hairlines |
 | `divider` | `#F2EAE1` | Row separators inside cards |
 | `border-strong` | `#E7DBCF` | Ghost-button outlines, toggle-off track |
 | `primary` | `#E86F52` | Coral — primary buttons, active nav, brand |
+| `on-primary` | `#2B2622` | Text/icon on coral |
 | `primary-deep` | `#B4553A` | Rust — overline labels, destructive text, reject |
 | `primary-link` | `#C9603F` | Links on light |
 | `accent` | `#F0A85C` | Amber — secondary avatar color |
@@ -86,7 +87,7 @@ Round fractional mock sizes (13.5, 12.5) to the nearest token where noted.
 | `subtle` | `#2C2621` | Elevated chips, icon buttons, date chips |
 | `ink` | `#F2ECE4` | Primary text |
 | `muted` | `#A99E92` | Secondary text, inactive icons |
-| `faint` | `#8E8378` | Meta text |
+| `faint` | `#9A8F84` | Meta text |
 | `disabled` | `#6E655B` | Strikethrough old values |
 | `border` | `#322B25` | Card outlines, dividers |
 | `border-strong` | `#3A332C` | Inline menu border |
@@ -97,7 +98,7 @@ Round fractional mock sizes (13.5, 12.5) to the nearest token where noted.
 | `changed` | `#F0B45C` | CHANGED fg; badge bg `rgba(240,180,92,0.16)` |
 
 Light mode uses ink content on coral and green filled buttons; **dark mode uses
-to dark ink on bright fills** (see mock 2b: Accept-all is `#F0805C` with `#1A1613`
+dark ink on bright fills** (see mock 2b: Accept-all is `#F0805C` with `#1A1613`
 text, Accept is `#5FBE90` with `#12100E` text).
 
 ### 2.3 Typography
@@ -115,20 +116,20 @@ bundled/self-hosted per platform (see §4.1, §5.2, §6.1).
 | Caption | 12.5 / 500 | Meta lines (round to 12 or 13 where the platform needs integers) |
 | Overline | 11 / 700 / +8% / UPPERCASE | Section labels — colored `primary-deep` (light) / `primary` (dark) |
 
-Button labels: 13–14.5 / 700.
+Button labels: 14 / 700, sentence case.
 
 ### 2.4 Shape
 
 | Token | Radius | Usage |
 |-------|--------|-------|
-| `sm` | 8 | — (rare) |
-| `md` | 14 | Buttons (44–48 h), inputs, connect buttons |
-| `lg` | 20 | Cards on web (22 on native card lists), empty states |
-| `pill` | 999 | Badges, chips, toggles, pill tabs |
+| `navigation` | 12 | Navigation rows and contained icon tiles |
+| `control` | 14 | Buttons, inputs, selects, switch hit containers, dialogs |
+| `card` | 20 | Cards, sheets, empty states |
+| `pill` | 999 | State tags and removable chips only |
 
 All action buttons and icon buttons have 44 minimum targets and r14 containers;
-date chip r13, avatar tile r12, inline
-sender menu r15, nav items (sidebar) r12.
+inputs are 46 high; date and avatar tiles use r12, inline sender menus use r14,
+and navigation rows use r12.
 
 ### 2.5 Spacing & elevation
 
@@ -144,30 +145,31 @@ sender menu r15, nav items (sidebar) r12.
 
 Build these to match section 05 of mock 3a:
 
-1. **Buttons** — Primary (coral fill, white/on-primary label, brand shadow),
-   Secondary (`subtle` fill, ink label), Ghost (transparent, 1.5px
-   `border-strong` outline, `body` label), Accept (success fill + check icon),
-   square icon buttons (edit ✎ / reject ✕ on `subtle`).
+1. **Buttons** — Primary (coral fill, ink/on-primary label, brand shadow),
+   Secondary (`subtle` fill, ink label), destructive outline (transparent,
+   1.5px berry border and label), tertiary text, and Accept (success fill with
+   dark-ink content + check icon). Every icon-only target is 44×44.
 2. **Inputs** — 46 h, r14, `paper` bg + 1.5px `border` at rest; focus = white bg,
    1.5px coral border, 3px ring `rgba(232,111,82,0.14)`.
-3. **Toggle** — 44×26 pill; on = coral track/white thumb, off = `border-strong`
-   track. (Native platforms may use the platform switch tinted coral.)
+3. **Labeled switch** — minimum 44-high hit container; on = coral track with
+   position/check/shape in addition to color, off = `border-strong` track.
+   Native platforms use their platform switch tinted coral.
 4. **State tags** — NEW / CHANGED / neutral pill tags (10–11 / 700, pill), coral
    count badge.
 5. **Chips** — category chip (dot + label on `subtle`), removable sender chip
    (label + circular ✕ affordance on `border-strong`).
 6. **Date chip** — 48–50 w column: month (10/700, coral, tracked caps) over
    day (19–20/800 ink), `subtle` bg, r13. Amber variant for CHANGED senders.
-7. **Avatar tile** — rounded-square (r12–13) with 1–2 initials, white text,
+7. **Avatar tile** — rounded-square (r12) with 1–2 initials, ink text,
    bg deterministically picked from [coral, amber, success] by sender-name hash.
    User account avatar is a coral **circle** with initials.
 8. **Event card row** — date chip · (badge line) · title · meta line ·
-   action row [Accept (flex) · edit 36sq · reject 36sq]. CHANGED rows show
+   action row [Accept (flex) · edit 44sq · reject 44sq]. CHANGED rows show
    `old (strikethrough, disabled color) → new (600 weight, ink)`.
-9. **Sender group card** — surface card r20–22; header row = avatar tile,
+9. **Sender group card** — surface card r20; header row = avatar tile,
    name (15/700) + count line (12, faint), chevron icon-button; event rows
    separated by `divider`; header menu (chevron tap) expands **inline** panel
-   (r15, `menu-border` outline): "Auto-accept events" + toggle, divider,
+   (r14, `menu-border` outline): "Auto-accept events" + toggle, divider,
    "Ignore this sender" in `primary-deep`.
 10. **Empty state** — centered 60sq r20 `subtle` tile with success check,
     "All caught up" (18/800), one-line explainer (14, muted).
@@ -182,7 +184,7 @@ Build these to match section 05 of mock 3a:
 | Surface | Shell |
 |---------|-------|
 | Native iOS/Android | Bottom tab bar, 3 tabs: Review · History · Settings. Active = coral icon+label, inactive = `faint`. White/`surface` bar, top hairline `border`. Screen header = large title (26/800) + subtitle (13.5, muted) + 40sq coral circle avatar right. **Logout moves to the foot of Settings** (ghost destructive button) — remove it from any nav/header if present. |
-| Mobile web (<1024px) | Top header: logo mark + wordmark left, coral avatar circle right. Below: pill-tab row (Review / History / Settings), active pill = coral fill white label; hairline under the row. No bottom bar. |
+| Mobile web (<1024px) | Top header: logo mark + wordmark left, coral avatar circle right. Below: navigation rows/tabs (Review / History / Settings), active = subtle surface with coral icon and ink label; hairline under the row. No bottom bar. |
 | Desktop web (≥1024px) | Fixed left sidebar 236px, `surface` bg, right hairline: logo+wordmark top; nav list (icon + label, r12 rows, active = `subtle` bg + `primary-deep` text); footer pinned bottom = avatar, name/email, square logout icon-button. Content area on `paper`, 26–30px padding, max-width ~1120 with 2-column masonry for sender cards. |
 
 Tab icons (stroke style, 1.6–1.8 weight): Review = 3-line list; History =
@@ -209,7 +211,7 @@ All web work in a worktree, e.g. branch `feat/warmth-web`, worktree
      default: true;
      color-scheme: light;
      --color-primary: #E86F52;          /* coral */
-     --color-primary-content: #FFFFFF;
+     --color-primary-content: #2B2622;
      --color-secondary: #B4553A;        /* rust — overlines, destructive text */
      --color-secondary-content: #FFFFFF;
      --color-accent: #F0A85C;           /* amber */
@@ -223,12 +225,12 @@ All web work in a worktree, e.g. branch `feat/warmth-web`, worktree
      --color-info: #C9603F;
      --color-info-content: #FFFFFF;
      --color-success: #5CA07C;
-     --color-success-content: #FFFFFF;
+     --color-success-content: #12100E;
      --color-warning: #C97A2E;
      --color-warning-content: #FFFFFF;
      --color-error: #B4553A;
      --color-error-content: #FFFFFF;
-     --radius-selector: 999px;  /* toggles, badges */
+     --radius-selector: 14px;   /* selectors and switch hit containers */
      --radius-field: 14px;      /* buttons, inputs */
      --radius-box: 20px;        /* cards, modals */
    }
@@ -279,8 +281,8 @@ Restyle in place — do not rename data props:
 | `PageHeader.svelte` | Desktop: H1 30/800 + subtitle; actions slot right (Accept all + ⋯). |
 | `ConfirmModal.svelte`, `ErrorAlert.svelte`, `LoadingSpinner.svelte`, `IntegrationStatus.svelte` | Recolor to theme tokens only. |
 | `routes/app/+page.svelte` (Review) | Desktop: 2-col `columns-2` masonry of sender cards + header CTA. Mobile: single column + full-width Accept-all bar at list end. |
-| `routes/app/history/+page.svelte` | Two overline-labeled sections: "Dispositioned" (icon tile ✓ green / ✕ rust, status word, NEW/CHANGED pill, title, source · time, ghost **Undo** button) and "Emails processed" (subject, sender · account · time, outcome dot line — green "n events added" / neutral "No event found" / rust "Failed — reason", ghost **Reprocess** where applicable). Match mock 4a. |
-| `routes/app/settings/+page.svelte` | Match mock 4b top-to-bottom: "Connect an account" (two ghost cards Google / Microsoft), "Connected accounts" cards (provider tile, email, status dot line, Disconnect ghost-destructive / Reconnect coral; nested "Folders scanned" rows with Scanned coral pill-button vs Excluded ghost + rationale caption), "Target calendar" radio card, sender chips sections, ghost-destructive **Log out** at the foot. |
+| `routes/app/history/+page.svelte` | Semantic icon + plain status text, one NEW/CHANGED state tag, title, quiet source/time metadata, and always-visible tertiary **Undo**, **Retry**, or **Reprocess** actions. Static statuses never use capsules. |
+| `routes/app/settings/+page.svelte` | Connected-account cards use a green icon plus plain **Connected** text and a destructive-outline Disconnect action. Email folders use labeled Included/Excluded switches, sender rules use removable chips, the account email is read-only, and Log out appears only on mobile because the desktop sidebar owns it. |
 | `routes/login`, `routes/register` | Recolor to tokens; coral primary CTA; paper bg; centered surface card r20. |
 
 Rules: **DaisyUI semantic classes only** (no raw Tailwind palette colors);
@@ -315,18 +317,19 @@ They auto-generate `Color.<name>` extensions — **do not** write manual
 | `SelkoSurface` | `#FFFFFF` | `#241F1B` |
 | `SelkoSubtle` | `#F5EEE6` | `#2C2621` |
 | `SelkoInk` | `#2B2622` | `#F2ECE4` |
-| `SelkoMuted` | `#8A7F74` | `#A99E92` |
-| `SelkoFaint` | `#9A8F84` | `#8E8378` |
+| `SelkoMuted` | `#746A61` | `#A99E92` |
+| `SelkoFaint` | `#786E65` | `#9A8F84` |
 | `SelkoBorder` | `#EDE4DA` | `#322B25` |
 | `SelkoDivider` | `#F2EAE1` | `#322B25` |
-| `SelkoOnPrimary` | `#FFFFFF` | `#1A1613` |
+| `SelkoOnPrimary` | `#2B2622` | `#1A1613` |
 | `SelkoSuccess` (update) | `#5CA07C` | `#5FBE90` |
-| `SelkoOnSuccess` | `#FFFFFF` | `#12100E` |
+| `SelkoOnSuccess` | `#12100E` | `#12100E` |
+| `SelkoSuccessText` | `#3F7D5F` | `#5FBE90` |
 | `SelkoWarning` (update) | `#C97A2E` | `#F0B45C` |
-| `SelkoError` (update) | `#B4553A` | `#F0805C` |
+| `SelkoError` (update) | `#AD3650` | `#EE7189` |
 | `SelkoRust` | `#B4553A` | `#F0805C` |
-| `SelkoBadgeNewBg` / `Fg` | `#EAF3EE` / `#3F7D5F` | `rgba(95,190,144,0.16)` / `#5FBE90` |
-| `SelkoBadgeChangedBg` / `Fg` | `#FDF1E7` / `#C97A2E` | `rgba(240,180,92,0.16)` / `#F0B45C` |
+| `SelkoBadgeNewBg` / `Fg` | `#F5EEE6` / `#6E655C` | `#2C2621` / `#B8AC9F` |
+| `SelkoBadgeChangedBg` / `Fg` | `#FDF1E7` / `#9A5C1D` | `#3A2A20` / `#F0B45C` |
 
 Update the doc comment in `ios/Selko/BrandColors.swift` to describe the new
 palette (or fold constants there if any non-catalog values are needed, e.g.
@@ -399,15 +402,15 @@ Remove the `inter_*.ttf` files once nothing references them.
   names match; add new tokens: `SelkoPaper`, `SelkoSubtle`, `SelkoRust`,
   badge colors, etc.).
 - `Theme.kt` — Material3 mapping (`dynamicColor = false` stays):
-  - light: `primary=#E86F52`, `onPrimary=#FFFFFF`, `primaryContainer=#F5EEE6`,
+  - light: `primary=#E86F52`, `onPrimary=#2B2622`, `primaryContainer=#F5EEE6`,
     `secondary=#B4553A`, `tertiary=#F0A85C`, `background=#FBF7F2`,
     `onBackground=#2B2622`, `surface=#FFFFFF`, `surfaceVariant=#F5EEE6`,
-    `onSurfaceVariant=#8A7F74`, `outline=#E7DBCF`, `outlineVariant=#F2EAE1`,
-    `error=#B4553A`.
+    `onSurfaceVariant=#746A61`, `outline=#E7DBCF`, `outlineVariant=#F2EAE1`,
+    `error=#AD3650`, `onError=#FFFFFF`.
   - dark: `primary=#F0805C`, `onPrimary=#1A1613`, `background=#1A1613`,
     `surface=#241F1B`, `surfaceVariant=#2C2621`, `onSurface=#F2ECE4`,
     `onSurfaceVariant=#A99E92`, `outline=#3A332C`, `outlineVariant=#322B25`,
-    `error=#F0805C`, `onError=#1A1613`.
+    `error=#EE7189`, `onError=#1A1613`.
   - Success/accept isn't a Material3 slot — keep the existing extended-color
     pattern (`SelkoSuccess*`) updated to `#5CA07C`/`#5FBE90` (+ on-colors).
 - `Type.kt` — Figtree `FontFamily`; text styles per §2.3

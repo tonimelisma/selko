@@ -1,9 +1,13 @@
 import SwiftUI
 
 enum SelkoShape {
-    static let small = RoundedRectangle(cornerRadius: 8, style: .continuous)
-    static let button = RoundedRectangle(cornerRadius: 14, style: .continuous)
-    static let card = RoundedRectangle(cornerRadius: 22, style: .continuous)
+    static let navigationRadius: CGFloat = 12
+    static let controlRadius: CGFloat = 14
+    static let cardRadius: CGFloat = 20
+    static let navigation = RoundedRectangle(cornerRadius: navigationRadius, style: .continuous)
+    static let control = RoundedRectangle(cornerRadius: controlRadius, style: .continuous)
+    static let button = control
+    static let card = RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
     static let chip = Capsule()
 }
 
