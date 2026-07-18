@@ -52,9 +52,9 @@ Use semantic DaisyUI classes and Warmth utilities such as `bg-surface`,
 `shadow-card`, `shadow-popover`, and `shadow-brand`; do not use raw Tailwind
 color names.
 
-### Badges and chips
+### State tags and chips
 
-Badges are pill-shaped, uppercase where they represent a state, and use the
+State tags are pill-shaped, uppercase, and use the
 Warmth NEW, CHANGED, or neutral palettes. NEW is neutral, never green. Static
 statuses are plain icon-and-text indicators and never capsules. Category chips
 use a dot and label on subtle. Sender chips contain a separate 44px remove
@@ -65,7 +65,7 @@ disabled states. Disabled controls have no brand shadow or action-colored glow.
 
 ### EventCard
 
-An event card has a date chip, state badge, title, faint metadata, and an action
+An event card has a date chip, state tag, title, faint metadata, and an action
 row: flexible Accept, square edit, and square Reject. Changed events show the
 old value struck through in disabled text and the new value in ink.
 

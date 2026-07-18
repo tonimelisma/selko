@@ -10,6 +10,11 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
     var listCalendarsResult: Result<[CalendarInfo], Error> = .success([])
 
     var listCalendarsCallCount = 0
+    var emailFoldersByProvider: [String: Result<[EmailFolderPreference], Error>] = [:]
+    var updateEmailFolderResult: Result<EmailFolderPreference, Error>?
+    var updateEmailFolderDelayNanoseconds: UInt64 = 0
+    var listEmailFoldersCalls: [String] = []
+    var updateEmailFolderCalls: [(provider: String, folderId: String, isIncluded: Bool)] = []
     var undoHistoryEventCallCount = 0
     var lastUndoHistoryEventId: UUID?
     var lastUndoHistoryForce: Bool = false
@@ -57,6 +62,25 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
         case .success(let response): return response
         case .failure(let error): throw error
         }
+    }
+
+    func listEmailFolders(provider: String) async throws -> [EmailFolderPreference] {
+        listEmailFoldersCalls.append(provider)
+        switch emailFoldersByProvider[provider] ?? .success([]) {
+        case .success(let folders): return folders
+        case .failure(let error): throw error
+        }
+    }
+
+    func updateEmailFolder(provider: String, folderId: String, isIncluded: Bool) async throws -> EmailFolderPreference {
+        updateEmailFolderCalls.append((provider, folderId, isIncluded))
+        if updateEmailFolderDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: updateEmailFolderDelayNanoseconds)
+        }
+        guard let result = updateEmailFolderResult else {
+            throw NSError(domain: "MockBackendAPI", code: 1)
+        }
+        return try result.get()
     }
 
     func getGmailAuthUrl(redirectUri: String?) -> String {

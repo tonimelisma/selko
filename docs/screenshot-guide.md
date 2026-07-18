@@ -13,8 +13,8 @@ Screenshots live in `docs/screenshots/` and are used for documentation and visua
 ./scripts/capture-all-screenshots.sh
 
 # Single platform
-./scripts/capture-all-screenshots.sh web       # 12 web screenshots via Playwright
-./scripts/capture-all-screenshots.sh ios       # 6 iOS screenshots via XCUITest
+./scripts/capture-all-screenshots.sh web       # 24 web screenshots via Playwright
+./scripts/capture-all-screenshots.sh ios       # 12 iOS screenshots via XCUITest
 ./scripts/capture-all-screenshots.sh android   # 6 Android screenshots via UiAutomator
 ```
 
@@ -56,14 +56,14 @@ All platforms support environment variable overrides (`SUPABASE_URL`, `SUPABASE_
 
 ### Web (Playwright)
 
-The Playwright test (`frontend/tests/e2e/screenshots.spec.ts`) captures 12 screenshots (6 desktop at 1280x800 + 6 mobile at 390x844). It starts its own dev server.
+The Playwright test (`frontend/tests/e2e/screenshots.spec.ts`) captures 24 screenshots: six screens at desktop and mobile sizes, each in light and dark appearance. It starts its own dev server.
 
 - Never use `fullPage: true` — produces oversized images
 - Desktop and mobile viewports are both safe (under 2000px)
 
 ### iOS (XCUITest)
 
-The XCUITest (`ios/iOSUITests/ScreenshotCaptureTests.swift`) captures 6 screenshots on iPhone 17 Pro simulator.
+The XCUITest (`ios/iOSUITests/ScreenshotCaptureTests.swift`) captures 12 screenshots on iPhone 17 Pro simulator: six screens in light and dark appearance.
 
 **Accessibility Identifiers:**
 
@@ -109,23 +109,23 @@ Every standard screen is captured in both light and dark appearances. Append
 | Screenshot | Filename | Viewport/Device |
 |-----------|----------|-----------------|
 | Web login (desktop) | `web-login-desktop-{light,dark}.png` | 1280x800 |
-| Web register (desktop) | `web-register-desktop.png` | 1280x800 |
-| Web review queue (desktop) | `web-review-queue-desktop.png` | 1280x800 |
-| Web event detail (desktop) | `web-event-detail-desktop.png` | 1280x800 |
-| Web history (desktop) | `web-history-desktop.png` | 1280x800 |
-| Web settings (desktop) | `web-settings-desktop.png` | 1280x800 |
-| Web login (mobile) | `web-login-mobile.png` | 390x844 |
-| Web register (mobile) | `web-register-mobile.png` | 390x844 |
-| Web review queue (mobile) | `web-review-queue-mobile.png` | 390x844 |
-| Web event detail (mobile) | `web-event-detail-mobile.png` | 390x844 |
-| Web history (mobile) | `web-history-mobile.png` | 390x844 |
-| Web settings (mobile) | `web-settings-mobile.png` | 390x844 |
-| iOS login | `ios-login.png` | iPhone 17 Pro |
-| iOS register | `ios-register.png` | iPhone 17 Pro |
-| iOS review queue | `ios-review-queue.png` | iPhone 17 Pro |
-| iOS event detail | `ios-event-detail.png` | iPhone 17 Pro |
-| iOS history | `ios-history.png` | iPhone 17 Pro |
-| iOS settings | `ios-settings.png` | iPhone 17 Pro |
+| Web register (desktop) | `web-register-desktop-{light,dark}.png` | 1280x800 |
+| Web review queue (desktop) | `web-review-queue-desktop-{light,dark}.png` | 1280x800 |
+| Web event detail (desktop) | `web-event-detail-desktop-{light,dark}.png` | 1280x800 |
+| Web history (desktop) | `web-history-desktop-{light,dark}.png` | 1280x800 |
+| Web settings (desktop) | `web-settings-desktop-{light,dark}.png` | 1280x800 |
+| Web login (mobile) | `web-login-mobile-{light,dark}.png` | 390x844 |
+| Web register (mobile) | `web-register-mobile-{light,dark}.png` | 390x844 |
+| Web review queue (mobile) | `web-review-queue-mobile-{light,dark}.png` | 390x844 |
+| Web event detail (mobile) | `web-event-detail-mobile-{light,dark}.png` | 390x844 |
+| Web history (mobile) | `web-history-mobile-{light,dark}.png` | 390x844 |
+| Web settings (mobile) | `web-settings-mobile-{light,dark}.png` | 390x844 |
+| iOS login | `ios-login-{light,dark}.png` | iPhone 17 Pro |
+| iOS register | `ios-register-{light,dark}.png` | iPhone 17 Pro |
+| iOS review queue | `ios-review-queue-{light,dark}.png` | iPhone 17 Pro |
+| iOS event detail | `ios-event-detail-{light,dark}.png` | iPhone 17 Pro |
+| iOS history | `ios-history-{light,dark}.png` | iPhone 17 Pro |
+| iOS settings | `ios-settings-{light,dark}.png` | iPhone 17 Pro |
 | Android login | `android-login.png` | Emulator |
 | Android register | `android-register.png` | Emulator |
 | Android review queue | `android-review-queue.png` | Emulator |
@@ -133,7 +133,7 @@ Every standard screen is captured in both light and dark appearances. Append
 | Android history | `android-history.png` | Emulator |
 | Android settings | `android-settings.png` | Emulator |
 
-The same appearance suffix applies to all remaining entries while native
+The same appearance suffix applies to the Android entries while its native
 coverage is migrated. The final matrix contains 48 screenshots: 24 web, 12
 iOS, and 12 Android.
 

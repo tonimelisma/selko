@@ -28,7 +28,7 @@ struct HistoryView: View {
                             .foregroundStyle(Color.selkoMuted)
                             .frame(width: 60, height: 60)
                             .background(Color.selkoSubtle)
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .clipShape(SelkoShape.card)
                         Text("No activity yet")
                             .font(SelkoTypography.sectionTitle)
                             .foregroundStyle(Color.selkoInk)
@@ -100,6 +100,7 @@ struct HistoryView: View {
                             Spacer()
                         }
                     }
+                    .buttonStyle(.selko(.secondary))
                 }
             }
         }
@@ -120,23 +121,20 @@ struct HistoryRowView: View {
 
     var body: some View {
         HStack(alignment: .center) {
-            statusIcon
             VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(event.title)
-                        .font(SelkoTypography.title)
-                        .foregroundStyle(Color.selkoInk)
-                        .lineLimit(1)
-                    Spacer()
+                Text(event.title)
+                    .font(SelkoTypography.title)
+                    .foregroundStyle(Color.selkoInk)
+                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    statusIndicator
+                    SelkoStateTag(kind: isChanged ? .changed : .new)
                     if let updatedAt = event.updatedAt {
                         Text(updatedAt, style: .time)
                             .font(SelkoTypography.caption)
                             .foregroundStyle(Color.selkoFaint)
                     }
                 }
-                Text(statusDescription)
-                    .font(SelkoTypography.caption)
-                    .foregroundStyle(Color.selkoMuted)
             }
 
             if isProcessing {
@@ -147,20 +145,18 @@ struct HistoryRowView: View {
                 Button {
                     onRetry()
                 } label: {
-                    Label("Retry", systemImage: "arrow.clockwise")
+                    Text("Retry")
                 }
-                .font(SelkoTypography.caption)
-                .buttonStyle(.bordered)
-                    .tint(Color.selkoWarning)
+                .buttonStyle(.selko(.tertiary))
+                .foregroundStyle(Color.selkoWarningText)
                 .accessibilityIdentifier("retryButton")
             } else if event.status != .cancelled && event.status != .pendingReview {
                 Button {
                     onUndo()
                 } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward")
+                    Text("Undo")
                 }
-                .font(SelkoTypography.caption)
-                .buttonStyle(.bordered)
+                .buttonStyle(.selko(.tertiary))
                 .accessibilityIdentifier("undoButton")
             }
         }
@@ -168,51 +164,27 @@ struct HistoryRowView: View {
     }
 
     @ViewBuilder
-    private var statusIcon: some View {
+    private var statusIndicator: some View {
         switch event.status {
         case .approved:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Color.selkoSuccess)
-                .accessibilityLabel("Approved")
+            SelkoStatusIndicator(text: "Approved", systemImage: "checkmark.circle", tone: .success)
         case .synced:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Color.selkoSuccess)
-                .accessibilityLabel("Synced")
+            SelkoStatusIndicator(text: "Synced", systemImage: "checkmark.circle", tone: .success)
         case .syncFailed:
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color.selkoWarning)
-                .accessibilityLabel("Sync failed")
+            SelkoStatusIndicator(text: "Failed", systemImage: "exclamationmark.circle", tone: .warning)
         case .rejected:
-            Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(Color.selkoError)
-                .accessibilityLabel("Rejected")
+            SelkoStatusIndicator(text: "Rejected", systemImage: "xmark.circle", tone: .error)
         case .cancelled:
-            Image(systemName: "minus.circle.fill")
-                .foregroundStyle(Color.selkoMuted)
-                .accessibilityLabel("Cancelled")
+            SelkoStatusIndicator(text: "Cancelled", systemImage: "minus.circle", tone: .neutral)
             default:
-                Image(systemName: "circle")
-                .foregroundStyle(Color.selkoMuted)
-                .accessibilityLabel("Pending")
+                SelkoStatusIndicator(text: event.status.rawValue, systemImage: "circle", tone: .neutral)
         }
     }
 
-    private var statusDescription: String {
-        switch event.status {
-        case .approved:
-            return String(localized: "Approved, waiting to sync")
-        case .synced:
-            return String(localized: "Synced to Google Calendar")
-        case .syncFailed:
-            return String(localized: "Failed to sync to calendar")
-        case .rejected:
-            return String(localized: "Rejected")
-        case .cancelled:
-            return String(localized: "Cancelled")
-        default:
-            return event.status.rawValue
-        }
+    private var isChanged: Bool {
+        event.eventSources?.contains { $0.sourceType == .update || $0.sourceType == .cancellation } ?? false
     }
+
 }
 
 #Preview {

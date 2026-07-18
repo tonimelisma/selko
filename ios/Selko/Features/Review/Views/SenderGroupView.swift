@@ -34,7 +34,7 @@ struct SenderGroupView: View {
                     .foregroundStyle(Color.selkoOnPrimary)
                     .frame(width: 44, height: 44)
                     .background(avatarColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .clipShape(SelkoShape.navigation)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(group.senderName)
@@ -58,10 +58,9 @@ struct SenderGroupView: View {
                     Image(systemName: menuOpen ? "chevron.up" : "chevron.down")
                         .font(SelkoTypography.caption.weight(.bold))
                         .foregroundStyle(Color.selkoInk)
-                        .frame(width: 34, height: 34)
-                        .background(Color.selkoSubtle)
-                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        .frame(width: 20, height: 20)
                 }
+                .buttonStyle(.selko(.secondary))
                 .accessibilityLabel("Actions for this sender")
                 .accessibilityValue(menuOpen ? "Expanded" : "Collapsed")
             }
@@ -79,13 +78,13 @@ struct SenderGroupView: View {
                                 withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
                                 onApproveAll()
                             }
-                            .font(SelkoTypography.caption.weight(.bold))
-                            .foregroundStyle(Color.selkoSuccess)
+                            .buttonStyle(.selko(.tertiary))
+                            .foregroundStyle(Color.selkoSuccessText)
                             Button("Reject all") {
                                 withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
                                 onRejectAll()
                             }
-                            .font(SelkoTypography.caption.weight(.bold))
+                            .buttonStyle(.selko(.tertiary))
                             .foregroundStyle(Color.selkoError)
                         }
                         .padding(.horizontal, 12)
@@ -104,10 +103,7 @@ struct SenderGroupView: View {
                             Spacer()
                         }
                     }
-                    .font(SelkoTypography.caption.weight(.bold))
-                    .foregroundStyle(Color.selkoInk)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    .buttonStyle(.selko(.tertiary))
                     Divider().overlay(Color.selkoDivider)
                     Button {
                         withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
@@ -118,14 +114,12 @@ struct SenderGroupView: View {
                             Spacer()
                         }
                     }
-                    .font(SelkoTypography.caption.weight(.bold))
+                    .buttonStyle(.selko(.tertiary))
                     .foregroundStyle(Color.selkoError)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
                 }
                 .background(Color.selkoPaper)
-                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color.selkoRust.opacity(0.22)))
+                .clipShape(SelkoShape.control)
+                .overlay(SelkoShape.control.stroke(Color.selkoBorder))
                 .padding(.horizontal, 14)
                 .padding(.bottom, 12)
             }

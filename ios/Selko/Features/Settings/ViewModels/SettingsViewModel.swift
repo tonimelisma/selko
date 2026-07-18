@@ -8,6 +8,11 @@ import Foundation
 @MainActor
 @Observable
 final class SettingsViewModel {
+    struct FolderUpdateError: Equatable {
+        let message: String
+        let requestedIncluded: Bool
+    }
+
     var isLoading = false
     var integrations: [Integration] = []
     var calendars: [CalendarInfo] = []
@@ -16,6 +21,10 @@ final class SettingsViewModel {
     var errorMessage: String?
     var showDisconnectAlert = false
     var providerToDisconnect: IntegrationProvider?
+    var emailFolders: [IntegrationProvider: [EmailFolderPreference]] = [:]
+    var folderLoadErrors: [IntegrationProvider: String] = [:]
+    var updatingFolderIds: Set<String> = []
+    var folderErrors: [String: FolderUpdateError] = [:]
 
     private let integrationService: IntegrationServiceProtocol
     private let backendAPI: BackendAPIProtocol
@@ -40,6 +49,7 @@ final class SettingsViewModel {
 
         do {
             integrations = try await integrationService.fetchIntegrations()
+            await loadEmailFolders()
 
             // Load calendar settings
             calendarSettings = try await calendarSettingsService.getSettings()
@@ -63,6 +73,66 @@ final class SettingsViewModel {
         }
 
         isLoading = false
+    }
+
+    private func loadEmailFolders() async {
+        for provider in [IntegrationProvider.gmail, .outlook] {
+            guard integrations.contains(where: { $0.provider == provider && $0.isActive }) else {
+                emailFolders[provider] = []
+                folderLoadErrors.removeValue(forKey: provider)
+                continue
+            }
+            await reloadEmailFolders(provider: provider)
+        }
+    }
+
+    func reloadEmailFolders(provider: IntegrationProvider) async {
+        folderLoadErrors.removeValue(forKey: provider)
+        do {
+            emailFolders[provider] = try await backendAPI.listEmailFolders(provider: provider.rawValue)
+                .filter { !$0.isSystem }
+        } catch {
+            emailFolders[provider] = []
+            folderLoadErrors[provider] = error.localizedDescription
+        }
+    }
+
+    func folders(for provider: IntegrationProvider) -> [EmailFolderPreference] {
+        emailFolders[provider] ?? []
+    }
+
+    func updateFolder(provider: IntegrationProvider, folderId: String, isIncluded: Bool) async {
+        guard !updatingFolderIds.contains(folderId),
+              let previous = folders(for: provider).first(where: { $0.id == folderId }) else { return }
+
+        updatingFolderIds.insert(folderId)
+        folderErrors.removeValue(forKey: folderId)
+        replaceFolder(provider: provider, folder: previous.withIncluded(isIncluded))
+
+        do {
+            let updated = try await backendAPI.updateEmailFolder(
+                provider: provider.rawValue,
+                folderId: folderId,
+                isIncluded: isIncluded
+            )
+            replaceFolder(provider: provider, folder: updated)
+        } catch {
+            replaceFolder(provider: provider, folder: previous)
+            folderErrors[folderId] = FolderUpdateError(
+                message: error.localizedDescription,
+                requestedIncluded: isIncluded
+            )
+        }
+        updatingFolderIds.remove(folderId)
+    }
+
+    func retryFolderUpdate(provider: IntegrationProvider, folderId: String) async {
+        guard let failure = folderErrors[folderId] else { return }
+        await updateFolder(provider: provider, folderId: folderId, isIncluded: failure.requestedIncluded)
+    }
+
+    private func replaceFolder(provider: IntegrationProvider, folder: EmailFolderPreference) {
+        emailFolders[provider] = folders(for: provider).map { $0.id == folder.id ? folder : $0 }
     }
 
     func confirmDisconnect(provider: IntegrationProvider) {

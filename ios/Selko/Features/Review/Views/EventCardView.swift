@@ -28,7 +28,7 @@ struct EventCardView: View {
             }
             .frame(width: 50, height: 52)
             .background(Color.selkoSubtle)
-            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .clipShape(SelkoShape.navigation)
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -37,13 +37,7 @@ struct EventCardView: View {
                         .foregroundStyle(Color.selkoInk)
                         .lineLimit(2)
                         .accessibilityIdentifier("eventTitle")
-                    Text(event.status == .pendingChange ? "CHANGED" : "NEW")
-                        .font(SelkoTypography.overline)
-                        .foregroundStyle(event.status == .pendingChange ? Color.selkoBadgeChangedFg : Color.selkoBadgeNewFg)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(event.status == .pendingChange ? Color.selkoBadgeChangedBg : Color.selkoBadgeNewBg)
-                        .clipShape(Capsule())
+                    SelkoStateTag(kind: event.status == .pendingChange ? .changed : .new)
                 }
 
                 if let startDatetime = event.startDatetime {
@@ -82,26 +76,22 @@ struct EventCardView: View {
                                 Label("Accept", systemImage: "checkmark")
                                     .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(Color.selkoSuccess)
-                            .controlSize(.small)
+                            .buttonStyle(.selko(.success))
                         }
                         if let onEdit {
                             Button(action: onEdit) {
                                 Image(systemName: "pencil")
-                                    .frame(width: 36, height: 36)
+                                    .frame(width: 20, height: 20)
                             }
-                            .buttonStyle(.bordered)
-                            .tint(Color.selkoInk)
+                            .buttonStyle(.selko(.secondary))
                             .accessibilityLabel("Edit")
                         }
                         if let onReject {
                             Button(role: .destructive, action: onReject) {
                                 Image(systemName: "xmark")
-                                    .frame(width: 36, height: 36)
+                                    .frame(width: 20, height: 20)
                             }
-                            .buttonStyle(.bordered)
-                            .tint(Color.selkoError)
+                            .buttonStyle(.selko(.destructiveOutline))
                             .accessibilityLabel("Reject")
                         }
                     }

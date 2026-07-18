@@ -9,6 +9,22 @@ import Testing
 
 @MainActor
 struct SettingsViewModelTests {
+    private func folder(id: String = "folder-1", included: Bool) -> EmailFolderPreference {
+        EmailFolderPreference(
+            id: id, provider: "gmail", name: "Promotions", fullPath: "Promotions",
+            classificationDecision: "exclude", classificationReason: "Marketing mail",
+            userOverride: false, isIncluded: included, isSystem: false
+        )
+    }
+
+    private func integration(_ provider: IntegrationProvider) -> Integration {
+        Integration(
+            id: UUID(), userId: UUID(), provider: provider, status: .active,
+            providerEmail: "user@example.com", scopes: [], lastSyncAt: nil,
+            createdAt: Date(), updatedAt: Date()
+        )
+    }
+
     @Test
     func loadFetchesIntegrations() async throws {
         // Given
@@ -230,5 +246,92 @@ struct SettingsViewModelTests {
         #expect(mockCalendarSettingsService.lastUpdateCalendarId == "cal_123")
         #expect(mockCalendarSettingsService.lastUpdateCalendarName == "Work Calendar")
         #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test
+    func loadGroupsFoldersForConnectedEmailProviders() async {
+        let integrations = MockIntegrationService()
+        integrations.fetchIntegrationsResult = .success([integration(.gmail), integration(.outlook)])
+        let backend = MockBackendAPI()
+        backend.emailFoldersByProvider["gmail"] = .success([folder(included: false)])
+        backend.emailFoldersByProvider["outlook"] = .success([])
+        let viewModel = SettingsViewModel(
+            integrationService: integrations,
+            backendAPI: backend,
+            calendarSettingsService: MockCalendarSettingsService(),
+            authService: MockAuthService()
+        )
+
+        await viewModel.load()
+
+        #expect(backend.listEmailFoldersCalls == ["gmail", "outlook"])
+        #expect(viewModel.folders(for: .gmail).count == 1)
+        #expect(viewModel.folders(for: .outlook).isEmpty)
+    }
+
+    @Test
+    func folderLoadFailureIsScopedAndRetryRecovers() async {
+        let integrations = MockIntegrationService()
+        integrations.fetchIntegrationsResult = .success([integration(.gmail)])
+        let backend = MockBackendAPI()
+        backend.emailFoldersByProvider["gmail"] = .failure(
+            NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Folders unavailable"])
+        )
+        let viewModel = SettingsViewModel(
+            integrationService: integrations,
+            backendAPI: backend,
+            calendarSettingsService: MockCalendarSettingsService(),
+            authService: MockAuthService()
+        )
+
+        await viewModel.load()
+
+        #expect(viewModel.errorMessage == nil)
+        #expect(viewModel.folderLoadErrors[.gmail] == "Folders unavailable")
+        backend.emailFoldersByProvider["gmail"] = .success([folder(included: true)])
+
+        await viewModel.reloadEmailFolders(provider: .gmail)
+
+        #expect(viewModel.folderLoadErrors[.gmail] == nil)
+        #expect(viewModel.folders(for: .gmail).first?.isIncluded == true)
+    }
+
+    @Test
+    func folderUpdateIsOptimisticAndOnlyMarksThatRowBusy() async {
+        let backend = MockBackendAPI()
+        backend.updateEmailFolderDelayNanoseconds = 50_000_000
+        backend.updateEmailFolderResult = .success(folder(included: true))
+        let viewModel = SettingsViewModel(backendAPI: backend)
+        viewModel.emailFolders[.gmail] = [folder(included: false), folder(id: "folder-2", included: true)]
+
+        let task = Task { await viewModel.updateFolder(provider: .gmail, folderId: "folder-1", isIncluded: true) }
+        await Task.yield()
+
+        #expect(viewModel.folders(for: .gmail).first?.isIncluded == true)
+        #expect(viewModel.updatingFolderIds == ["folder-1"])
+        #expect(!viewModel.updatingFolderIds.contains("folder-2"))
+        await task.value
+        #expect(viewModel.updatingFolderIds.isEmpty)
+    }
+
+    @Test
+    func failedFolderUpdateRollsBackAndRetryUsesRequestedState() async {
+        let backend = MockBackendAPI()
+        backend.updateEmailFolderResult = .failure(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Save failed"]))
+        let viewModel = SettingsViewModel(backendAPI: backend)
+        viewModel.emailFolders[.gmail] = [folder(included: false)]
+
+        await viewModel.updateFolder(provider: .gmail, folderId: "folder-1", isIncluded: true)
+
+        #expect(viewModel.folders(for: .gmail).first?.isIncluded == false)
+        #expect(viewModel.folderErrors["folder-1"]?.message == "Save failed")
+        backend.updateEmailFolderResult = .success(folder(included: true))
+
+        await viewModel.retryFolderUpdate(provider: .gmail, folderId: "folder-1")
+
+        #expect(backend.updateEmailFolderCalls.count == 2)
+        #expect(backend.updateEmailFolderCalls.last?.isIncluded == true)
+        #expect(viewModel.folders(for: .gmail).first?.isIncluded == true)
+        #expect(viewModel.folderErrors["folder-1"] == nil)
     }
 }

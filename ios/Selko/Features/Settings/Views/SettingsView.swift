@@ -19,6 +19,7 @@ struct SettingsView: View {
             SelkoScreenHeader(title: "Settings", subtitle: "Keep your accounts, folders, and rules in sync.", email: email)
             Form {
                 connectedAccountsSection
+                emailFoldersSection
                 calendarDefaultsSection
                 senderRulesSection
                 accountSection
@@ -77,45 +78,146 @@ struct SettingsView: View {
         let integration = viewModel.integration(for: provider)
         let isActive = integration?.isActive ?? false
 
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(viewModel.providerDisplayName(provider))
-                    .font(SelkoTypography.title)
-                    .foregroundStyle(Color.selkoInk)
-
-                if let email = integration?.providerEmail {
-                    Text(email)
-                        .font(SelkoTypography.caption)
-                        .foregroundStyle(Color.selkoFaint)
-                } else if let integration = integration {
-                    Text(integration.status.rawValue.capitalized)
-                        .font(SelkoTypography.caption)
-                        .foregroundStyle(integration.isActive ? Color.selkoSuccess : Color.selkoWarning)
+        if isActive {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text(viewModel.providerDisplayName(provider))
+                        .font(SelkoTypography.title)
+                        .foregroundStyle(Color.selkoInk)
+                    Spacer()
+                    SelkoStatusIndicator(text: "Connected", systemImage: "checkmark.circle", tone: .success)
                 }
-            }
 
-            Spacer()
-
-            if isActive {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Color.selkoSuccess)
-                    .accessibilityLabel("Connected")
-
+                HStack(spacing: 8) {
+                    if let email = integration?.providerEmail {
+                        Text(email)
+                            .font(SelkoTypography.caption)
+                            .foregroundStyle(Color.selkoFaint)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    Spacer()
                     Button(role: .destructive) {
                         viewModel.confirmDisconnect(provider: provider)
                     } label: {
                         Text("Disconnect")
-                        .font(SelkoTypography.caption.weight(.bold))
+                    }
+                    .buttonStyle(.selko(.destructiveOutline))
                 }
-                .buttonStyle(.bordered)
-                    .tint(Color.selkoError)
-            } else {
+            }
+        } else {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(viewModel.providerDisplayName(provider))
+                        .font(SelkoTypography.title)
+                        .foregroundStyle(Color.selkoInk)
+
+                    if let integration {
+                        Text(integration.status.rawValue.capitalized)
+                            .font(SelkoTypography.caption)
+                            .foregroundStyle(Color.selkoWarningText)
+                    }
+                }
+                Spacer()
                 Button("Connect") {
                     connectProvider(provider)
                 }
-                .buttonStyle(.bordered)
-                .tint(Color.accentColor)
+                .buttonStyle(.selko(.primary))
                 .accessibilityLabel("Connect \(viewModel.providerDisplayName(provider))")
+            }
+        }
+    }
+
+    // MARK: - Email Folders
+
+    @ViewBuilder
+    private var emailFoldersSection: some View {
+        let providers = [IntegrationProvider.gmail, .outlook]
+        let connectedProviders = providers.filter {
+            viewModel.integration(for: $0)?.isActive == true
+        }
+
+        if !connectedProviders.isEmpty {
+            Section {
+                ForEach(connectedProviders, id: \.self) { provider in
+                    Text(viewModel.providerDisplayName(provider))
+                        .font(SelkoTypography.title)
+                        .foregroundStyle(Color.selkoInk)
+
+                    if let loadError = viewModel.folderLoadErrors[provider] {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(loadError)
+                                .font(SelkoTypography.caption)
+                                .foregroundStyle(Color.selkoError)
+                            Spacer()
+                            Button("Retry") {
+                                Task { await viewModel.reloadEmailFolders(provider: provider) }
+                            }
+                            .buttonStyle(.selko(.tertiary))
+                            .foregroundStyle(Color.selkoError)
+                            .accessibilityIdentifier("folderLoadRetry_\(provider.rawValue)")
+                        }
+                    } else {
+                        ForEach(viewModel.folders(for: provider)) { folder in
+                            folderRow(provider: provider, folder: folder)
+                        }
+                    }
+                }
+            } header: {
+                Text("Email Folders")
+            } footer: {
+                Text("Included folders are scanned for calendar-relevant messages.")
+            }
+            .accessibilityIdentifier("emailFoldersSection")
+        }
+    }
+
+    private func folderRow(provider: IntegrationProvider, folder: EmailFolderPreference) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: Binding(
+                get: { viewModel.folders(for: provider).first(where: { $0.id == folder.id })?.isIncluded ?? folder.isIncluded },
+                set: { included in
+                    Task { await viewModel.updateFolder(provider: provider, folderId: folder.id, isIncluded: included) }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(folder.fullPath)
+                        .font(SelkoTypography.title)
+                        .foregroundStyle(Color.selkoInk)
+                    Text(folder.isIncluded ? "Included" : "Excluded")
+                        .font(SelkoTypography.caption.weight(.semibold))
+                        .foregroundStyle(Color.selkoMuted)
+                    if folder.classificationDecision == "exclude", let reason = folder.classificationReason {
+                        Text("Recommendation: \(reason)")
+                            .font(SelkoTypography.caption)
+                            .foregroundStyle(Color.selkoFaint)
+                    }
+                }
+            }
+            .toggleStyle(.switch)
+            .tint(Color.accentColor)
+            .disabled(viewModel.updatingFolderIds.contains(folder.id))
+            .accessibilityIdentifier("folderToggle_\(folder.id)")
+
+            if viewModel.updatingFolderIds.contains(folder.id) {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Saving folder preference")
+            }
+
+            if let failure = viewModel.folderErrors[folder.id] {
+                HStack(spacing: 8) {
+                    Text(failure.message)
+                        .font(SelkoTypography.caption)
+                        .foregroundStyle(Color.selkoError)
+                    Button("Retry") {
+                        Task { await viewModel.retryFolderUpdate(provider: provider, folderId: folder.id) }
+                    }
+                    .buttonStyle(.selko(.tertiary))
+                    .foregroundStyle(Color.selkoError)
+                    .accessibilityIdentifier("folderRetry_\(folder.id)")
+                }
+                .accessibilityElement(children: .combine)
             }
         }
     }
@@ -177,6 +279,10 @@ struct SettingsView: View {
 
     private var accountSection: some View {
         Section("Account") {
+            if !email.isEmpty {
+                LabeledContent("Email", value: email)
+                    .foregroundStyle(Color.selkoInk)
+            }
             Button(role: .destructive) {
                 Task { await viewModel.signOut() }
             } label: {
@@ -186,8 +292,7 @@ struct SettingsView: View {
                     Spacer()
                 }
             }
-            .buttonStyle(.bordered)
-            .tint(Color.selkoError)
+            .buttonStyle(.selko(.destructiveOutline))
             .accessibilityIdentifier("signOutButton")
         }
     }

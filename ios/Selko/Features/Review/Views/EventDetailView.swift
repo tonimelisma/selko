@@ -61,9 +61,7 @@ struct EventDetailView: View {
                                 .frame(maxWidth: .infinity)
                         }
                     }
-                    .buttonStyle(.bordered)
-                    .tint(Color.selkoError)
-                    .controlSize(.large)
+                    .buttonStyle(.selko(.destructiveOutline))
                     .disabled(viewModel.isActing)
                     .accessibilityIdentifier("rejectButton")
 
@@ -80,9 +78,7 @@ struct EventDetailView: View {
                                 .frame(maxWidth: .infinity)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.selkoSuccess)
-                    .controlSize(.large)
+                    .buttonStyle(.selko(.success))
                     .disabled(viewModel.isActing)
                     .accessibilityIdentifier("approveButton")
                 }
@@ -312,7 +308,7 @@ struct EventDetailView: View {
                     .foregroundStyle(Color.selkoMuted)
                     .padding(8)
                     .background(Color.selkoSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .clipShape(SelkoShape.control)
             }
 
             HStack {
@@ -324,8 +320,8 @@ struct EventDetailView: View {
         }
         .padding()
         .background(Color.selkoSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.selkoBorder))
+        .clipShape(SelkoShape.card)
+        .overlay(SelkoShape.card.stroke(Color.selkoBorder))
         .padding(.horizontal)
     }
 }

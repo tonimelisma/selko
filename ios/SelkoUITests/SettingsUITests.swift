@@ -10,6 +10,7 @@ final class SettingsUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
         app.launchArguments = ["--uitesting"]
     }
@@ -81,13 +82,12 @@ final class SettingsUITests: XCTestCase {
         if settingsTab.exists {
             settingsTab.tap()
             // Look for Log out button (may need to scroll)
-            let logOutButton = app.buttons["Log out"].firstMatch
-            if !logOutButton.waitForExistence(timeout: 3) {
-                // Try scrolling down
+            let logOutButton = app.buttons["signOutButton"]
+            for _ in 0..<6 where !logOutButton.exists {
                 app.swipeUp()
             }
-            XCTAssertTrue(logOutButton.waitForExistence(timeout: 3) ||
-                           app.buttons.matching(NSPredicate(format: "label CONTAINS 'Log out'")).firstMatch.waitForExistence(timeout: 3))
+            XCTAssertTrue(logOutButton.waitForExistence(timeout: 3))
+            XCTAssertGreaterThanOrEqual(logOutButton.frame.height, 44)
         }
     }
 }
