@@ -100,3 +100,25 @@ def test_prompt_omits_date_lines_when_not_provided():
     prompt = gateway.call.call_args.kwargs["contents"][0]
     assert "This email was sent" not in prompt
     assert "current information is from an email sent" not in prompt
+
+
+def test_prompt_rejects_digest_generated_enrichment():
+    gateway = MagicMock()
+    gateway.call.return_value = MagicMock(
+        text=json.dumps({"kind": "noop", "changes": [], "reasoning": ""})
+    )
+
+    propose_event_update(
+        gateway,
+        {"title": "Evening Cleanup", "description": None},
+        {
+            "title": "Evening Cleanup",
+            "description": "1 person. Associated contact: Family Member.",
+        },
+        email_subject="Daily Brief",
+    )
+
+    prompt = gateway.call.call_args.kwargs["contents"][0]
+    assert "Digest-generated metadata" in prompt
+    assert "participant counts" in prompt
+    assert "kind=noop, changes=[]" in prompt

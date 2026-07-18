@@ -107,6 +107,10 @@ This keeps stale review feedback from silently rotting once a PR is merged and o
 
 - **Only the platform you edited counts.** Editing `backend/` requires no web/iOS/Android tests or screenshots. Editing one frontend requires nothing from the others.
 - **Bug fixes MUST include a regression test** in the module you fixed.
+- **Production LLM failures MUST also become anonymized regression eval fixtures**
+  under `backend/tests/eval/fixtures/`, with hand-written expected output. Run the
+  specific fixture before shipping; if the prompt changes, run the broader eval
+  suite required by `docs/evals-process.md` to check for regressions.
 - **Screenshots** only for the platform whose UI you changed (see "Screenshot Updates"). Skip for backend/docs/config.
 
 ### 2. Ship it

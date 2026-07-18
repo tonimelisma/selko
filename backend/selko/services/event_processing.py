@@ -117,6 +117,7 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 **NOT events — do NOT extract these:**
 An event is something the recipient would put on their personal calendar to attend, participate in, or prepare for.
 If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) with no event the recipient needs to attend or prepare for, set events_found=false.
+- Calendar-derived briefs, agendas, relationship digests, and reminder summaries that merely restate entries already on the recipient's calendar are NOT new event sources. Return events_found=false unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data.
 
 **Extraction rules:**
 - Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events
@@ -556,6 +557,11 @@ Rules:
 12. Description changes must use mode="append" with ONLY the new information
     as a short paragraph — never restate the existing description. Use
     mode="replace" only for organizer-issued corrections or cancellations.
+13. Third-party calendar briefs, relationship/contact digests, and reminder summaries
+    may repeat an event from the user's existing calendar. Digest-generated metadata
+    such as participant counts, associated contacts, or "last/upcoming event" labels
+    is NOT new event information. When the underlying event is unchanged, return
+    kind=noop, changes=[].
 
 Return JSON with kind, changes[], and reasoning.
 """

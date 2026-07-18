@@ -1,0 +1,25 @@
+{
+  "name": "calendar_derived_daily_brief_18",
+  "category": "no_events",
+  "description": "Daily relationship brief that repeats entries from the recipient's existing calendar",
+  "difficulty": "hard",
+  "tags": ["production-regression", "calendar-digest", "existing-calendar", "negative-test"],
+  "input": {
+    "provider_message_id": "eval-prod-failure-003",
+    "thread_id": "thread-prod-failure-003",
+    "subject": "Daily Brief - July 15, 2026",
+    "from_email": "notify@contacts.example",
+    "from_name": "Contact Assistant Team",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-07-15T14:01:14Z",
+    "snippet": "Good morning! You have 1 event today, with 1 person. Evening Cleanup, 7:00 PM - 7:15 PM.",
+    "body_text": "DAILY BRIEF\n\nGood morning! You have 1 event today, with 1 person.\n\nEvening Cleanup <https://calendar.example/event/today>\n7:00 PM - 7:15 PM - 1 Person\n\nFamily Member\nCalendar source\n\nLast Email - 2 years ago\nReservation confirmation\n\nLast Event - Yesterday\nEvening Cleanup <https://calendar.example/event/yesterday>\n\nUpcoming Event - Tomorrow - 7:00 PM - 7:15 PM\nEvening Cleanup <https://calendar.example/event/tomorrow>\n\nView More\nSent by Contact Assistant",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Production regression: a third-party brief derived from the user's calendar adds no new event information and must not create or enrich an event"
+}

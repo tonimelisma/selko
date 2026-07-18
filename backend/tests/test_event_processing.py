@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
 from selko.services.event_processing import (
+    _build_prompt,
     compare_events,
     extract_calendar_events,
     generate_source_attribution,
@@ -106,6 +107,22 @@ class TestT24DatetimeSanitization:
 
 class TestExtractCalendarEvents:
     """Test calendar event extraction from emails."""
+
+    def test_prompt_excludes_calendar_derived_digests(self):
+        """Calendar recaps of existing entries are not new event sources."""
+        prompt = _build_prompt(
+            {
+                "subject": "Daily Brief",
+                "from_name": "Contact Assistant",
+                "from_email": "notify@example.com",
+                "date_sent": "2026-07-15T14:01:14Z",
+            },
+            "2026-07-15",
+        )
+
+        assert "Calendar-derived briefs" in prompt
+        assert "already on the recipient's calendar" in prompt
+        assert "genuine organizer-issued change" in prompt
 
     @pytest.mark.parametrize(
         "fixture_name,expected_found,expected_count",
