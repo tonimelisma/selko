@@ -185,8 +185,19 @@ final class ScreenshotCaptureTests: XCTestCase {
         // Force portrait orientation regardless of simulator state from previous test runs
         XCUIDevice.shared.orientation = .portrait
 
-        app.launchArguments = ["-AppleInterfaceStyle", appearance == "dark" ? "Dark" : "Light"]
+        app.launchArguments = ["--selko-screenshot-appearance", appearance]
         app.launch()
+
+        let appearanceProbe = app.otherElements["screenshotAppearanceProbe"]
+        XCTAssertTrue(
+            appearanceProbe.waitForExistence(timeout: 5),
+            "Appearance probe did not appear"
+        )
+        XCTAssertEqual(
+            appearanceProbe.value as? String,
+            appearance,
+            "App did not render in the requested \(appearance) appearance"
+        )
 
         // Handle case where app is already logged in from a previous run
         let emailField = app.textFields["emailField"]
@@ -300,8 +311,14 @@ final class ScreenshotCaptureTests: XCTestCase {
             app.staticTexts["Email Folders"].waitForExistence(timeout: 15),
             "Email-folder content did not finish loading"
         )
-        XCTAssertTrue(app.staticTexts["Included"].exists)
-        XCTAssertTrue(app.staticTexts["Excluded"].exists)
+        XCTAssertTrue(
+            app.staticTexts["Included"].waitForExistence(timeout: 5),
+            "Included folder state did not finish rendering"
+        )
+        XCTAssertTrue(
+            app.staticTexts["Excluded"].waitForExistence(timeout: 5),
+            "Excluded folder state did not finish rendering"
+        )
         saveScreenshot(named: "ios-settings")
     }
 }
