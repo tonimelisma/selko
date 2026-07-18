@@ -50,7 +50,7 @@ fun SelkoScreenHeader(
 
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center

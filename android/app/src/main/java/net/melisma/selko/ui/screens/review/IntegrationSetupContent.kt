@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
 import net.melisma.selko.ui.components.SelkoLogoMark
+import net.melisma.selko.ui.components.SelkoButton
 
 @Composable
 fun IntegrationSetupContent(
@@ -74,16 +74,14 @@ fun IntegrationSetupContent(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 if (!isGmailConnected) {
-                    Button(
+                    SelkoButton(
+                        text = stringResource(R.string.integration_connect_google),
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
                             context.startActivity(intent)
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(stringResource(R.string.integration_connect_google))
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -103,16 +101,14 @@ fun IntegrationSetupContent(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
+                    SelkoButton(
+                        text = stringResource(R.string.integration_connect_calendar),
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
                             context.startActivity(intent)
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(stringResource(R.string.integration_connect_calendar))
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }

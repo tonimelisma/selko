@@ -17,11 +17,13 @@ import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
+import net.melisma.selko.data.model.EmailFolderPreference
 import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.data.repository.AuthRepository
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.EmailFolderRepository
 import net.melisma.selko.data.repository.RepositoryResult
 import net.melisma.selko.data.repository.SenderRuleRepository
 import org.junit.After
@@ -40,6 +42,7 @@ class SettingsViewModelTest {
     private lateinit var calendarSettingsRepository: CalendarSettingsRepository
     private lateinit var backendApiClient: BackendApiClient
     private lateinit var senderRuleRepository: SenderRuleRepository
+    private lateinit var emailFolderRepository: EmailFolderRepository
     private lateinit var viewModel: SettingsViewModel
     private val testDispatcher = StandardTestDispatcher()
 
@@ -74,6 +77,7 @@ class SettingsViewModelTest {
         calendarSettingsRepository = mockk(relaxed = true)
         backendApiClient = mockk(relaxed = true)
         senderRuleRepository = mockk(relaxed = true)
+        emailFolderRepository = mockk(relaxed = true)
 
         every { authRepository.getCurrentUserEmail() } returns "test@example.com"
         coEvery { integrationRepository.fetchIntegrations() } returns
@@ -96,9 +100,30 @@ class SettingsViewModelTest {
             integrationRepository,
             calendarSettingsRepository,
             backendApiClient,
-            senderRuleRepository
+            senderRuleRepository,
+            emailFolderRepository
         )
     }
+
+    private fun folder(id: String = "folder-1", included: Boolean = false) = EmailFolderPreference(
+        id = id,
+        provider = "gmail",
+        name = "Promotions",
+        fullPath = "[Gmail]/Promotions",
+        classificationDecision = "exclude",
+        classificationReason = "Marketing messages",
+        userOverride = false,
+        isIncluded = included,
+        isSystem = false
+    )
+
+    private val gmailIntegration = Integration(
+        id = "integration-1",
+        userId = "user-1",
+        provider = IntegrationProvider.GMAIL,
+        status = IntegrationStatus.ACTIVE,
+        providerEmail = "test@example.com"
+    )
 
     @Test
     fun `loadRules fetches and updates state`() = runTest {
@@ -244,5 +269,62 @@ class SettingsViewModelTest {
             assertEquals("Failed to save calendar settings", state.errorMessage)
             assertFalse(state.isSavingCalendarSettings)
         }
+    }
+
+    @Test
+    fun `connected email folders load and remain provider scoped`() = runTest {
+        coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(listOf(gmailIntegration))
+        coEvery { emailFolderRepository.list(IntegrationProvider.GMAIL) } returns RepositoryResult.Success(listOf(folder()))
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.emailFolders[IntegrationProvider.GMAIL]?.size)
+        assertTrue(viewModel.uiState.value.emailFolders[IntegrationProvider.OUTLOOK].isNullOrEmpty())
+        coVerify(exactly = 1) { emailFolderRepository.list(IntegrationProvider.GMAIL) }
+    }
+
+    @Test
+    fun `folder update is optimistic and only the changed row is busy`() = runTest {
+        val second = folder("folder-2", true)
+        coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(listOf(gmailIntegration))
+        coEvery { emailFolderRepository.list(IntegrationProvider.GMAIL) } returns RepositoryResult.Success(listOf(folder(), second))
+        coEvery { emailFolderRepository.update(IntegrationProvider.GMAIL, "folder-1", true) } coAnswers {
+            kotlinx.coroutines.delay(100)
+            RepositoryResult.Success(folder(included = true))
+        }
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.updateEmailFolder(IntegrationProvider.GMAIL, "folder-1", true)
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.emailFolders.getValue(IntegrationProvider.GMAIL).first().isIncluded)
+        assertEquals(setOf("folder-1"), viewModel.uiState.value.updatingFolderIds)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.updatingFolderIds.isEmpty())
+    }
+
+    @Test
+    fun `failed folder update rolls back and retry applies requested value`() = runTest {
+        coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(listOf(gmailIntegration))
+        coEvery { emailFolderRepository.list(IntegrationProvider.GMAIL) } returns RepositoryResult.Success(listOf(folder()))
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+        coEvery { emailFolderRepository.update(IntegrationProvider.GMAIL, "folder-1", true) } returns RepositoryResult.Error("Save failed")
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.updateEmailFolder(IntegrationProvider.GMAIL, "folder-1", true)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.emailFolders.getValue(IntegrationProvider.GMAIL).first().isIncluded)
+        assertEquals("Save failed", viewModel.uiState.value.folderUpdateErrors["folder-1"]?.message)
+
+        coEvery { emailFolderRepository.update(IntegrationProvider.GMAIL, "folder-1", true) } returns RepositoryResult.Success(folder(included = true))
+        viewModel.retryEmailFolder(IntegrationProvider.GMAIL, "folder-1")
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.emailFolders.getValue(IntegrationProvider.GMAIL).first().isIncluded)
+        assertFalse(viewModel.uiState.value.folderUpdateErrors.containsKey("folder-1"))
     }
 }

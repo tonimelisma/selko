@@ -11,6 +11,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.melisma.selko.BuildConfig
+import net.melisma.selko.data.model.EmailFolderPreference
 import net.melisma.selko.data.repository.AuthRepository
 
 /**
@@ -49,6 +50,52 @@ class BackendApiClient(
     private suspend fun getAuthHeader(): String? {
         val token = authRepository.getAccessToken()
         return token?.let { "Bearer $it" }
+    }
+
+    companion object {
+        fun emailFolderPath(provider: String, folderId: String? = null): String? {
+            if (provider !in setOf("gmail", "outlook")) return null
+            val base = "/integrations/$provider/folders"
+            return folderId?.let {
+                val encoded = it.encodeURLPathPart().replace("+", "%2B").replace("=", "%3D")
+                "$base/$encoded"
+            } ?: base
+        }
+    }
+
+    @Serializable
+    private data class UpdateEmailFolderRequest(
+        @kotlinx.serialization.SerialName("is_included") val isIncluded: Boolean
+    )
+
+    suspend fun listEmailFolders(provider: String): Result<List<EmailFolderPreference>> {
+        val path = emailFolderPath(provider)
+            ?: return Result.failure(IllegalArgumentException("Unsupported email provider"))
+        return authenticatedRequest { authHeader ->
+            httpClient.get("$baseUrl$path") { header(HttpHeaders.Authorization, authHeader) }.body()
+        }
+    }
+
+    suspend fun updateEmailFolder(
+        provider: String,
+        folderId: String,
+        isIncluded: Boolean
+    ): Result<EmailFolderPreference> {
+        val path = emailFolderPath(provider, folderId)
+            ?: return Result.failure(IllegalArgumentException("Unsupported email provider"))
+        return authenticatedRequest { authHeader ->
+            httpClient.patch("$baseUrl$path") {
+                header(HttpHeaders.Authorization, authHeader)
+                setBody(UpdateEmailFolderRequest(isIncluded))
+            }.body()
+        }
+    }
+
+    private suspend fun <T> authenticatedRequest(block: suspend (String) -> T): Result<T> = try {
+        val authHeader = getAuthHeader() ?: return Result.failure(Exception("Not authenticated"))
+        Result.success(block(authHeader))
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 
     // ============================================================================

@@ -23,14 +23,12 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,6 +48,10 @@ import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.ui.components.SelkoScreenHeader
+import net.melisma.selko.ui.components.SelkoActionRole
+import net.melisma.selko.ui.components.SelkoButton
+import net.melisma.selko.ui.components.SelkoStateTag
+import net.melisma.selko.ui.components.SelkoTagRole
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -123,12 +125,7 @@ fun HistoryScreen(
                                 if (uiState.isLoadingMore) {
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 } else {
-                                    TextButton(
-                                        onClick = { viewModel.loadMore() },
-                                        shape = MaterialTheme.shapes.medium
-                                    ) {
-                                        Text(stringResource(R.string.history_load_more))
-                                    }
+                                    SelkoButton(stringResource(R.string.history_load_more), viewModel::loadMore, role = SelkoActionRole.Tertiary)
                                 }
                             }
                         }
@@ -149,19 +146,9 @@ fun HistoryScreen(
                     .padding(16.dp),
                 action = {
                     if (uiState.canForceUndo) {
-                        TextButton(
-                            onClick = { viewModel.forceUndoPendingEvent() },
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text(stringResource(R.string.history_force_undo))
-                        }
+                        SelkoButton(stringResource(R.string.history_force_undo), viewModel::forceUndoPendingEvent, role = SelkoActionRole.Tertiary)
                     } else {
-                        TextButton(
-                            onClick = { viewModel.clearError() },
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text(stringResource(R.string.history_dismiss))
-                        }
+                        SelkoButton(stringResource(R.string.history_dismiss), viewModel::clearError, role = SelkoActionRole.Tertiary)
                     }
                 }
             ) {
@@ -186,16 +173,18 @@ private fun HistoryEventItem(
             .padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        shape = MaterialTheme.shapes.medium
+        shape = MaterialTheme.shapes.large
     ) {
         ListItem(
             leadingContent = { StatusIcon(status = event.status) },
             headlineContent = {
-                Text(
-                    text = event.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Column {
+                    SelkoStateTag(
+                        text = if (event.isPendingChange) "Changed" else "New",
+                        role = if (event.isPendingChange) SelkoTagRole.Changed else SelkoTagRole.New
+                    )
+                    Text(text = event.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             },
             supportingContent = {
                 Column {
@@ -224,56 +213,25 @@ private fun HistoryEventItem(
                 } else {
                     when (event.status) {
                     EventStatus.APPROVED, EventStatus.REJECTED, EventStatus.CANCELLED -> {
-                        OutlinedButton(
-                            onClick = onUndo,
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Undo,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.history_undo), style = MaterialTheme.typography.labelSmall)
-                        }
+                        SelkoButton(
+                            stringResource(R.string.history_undo), onUndo,
+                            role = SelkoActionRole.Tertiary,
+                            icon = Icons.AutoMirrored.Filled.Undo
+                        )
                     }
                     EventStatus.SYNC_FAILED -> {
-                        OutlinedButton(
-                            onClick = onRetry,
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = SelkoTheme.colors.warning
-                            ),
-                            border = BorderStroke(1.dp, SelkoTheme.colors.warning),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Refresh,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.history_retry), style = MaterialTheme.typography.labelSmall)
-                        }
+                        SelkoButton(
+                            stringResource(R.string.history_retry), onRetry,
+                            role = SelkoActionRole.Tertiary,
+                            icon = Icons.Filled.Refresh
+                        )
                     }
                     EventStatus.SYNCED -> {
-                        OutlinedButton(
-                            onClick = onUndo,
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Undo,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.history_undo), style = MaterialTheme.typography.labelSmall)
-                        }
+                        SelkoButton(
+                            stringResource(R.string.history_undo), onUndo,
+                            role = SelkoActionRole.Tertiary,
+                            icon = Icons.AutoMirrored.Filled.Undo
+                        )
                     }
                         else -> { }
                     }

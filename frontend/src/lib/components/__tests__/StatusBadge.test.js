@@ -15,6 +15,13 @@ describe('StatusBadge', () => {
 		expect(screen.getByText('Approved')).toBeInTheDocument();
 	});
 
+	it('renders pending_change as a localized status', () => {
+		render(StatusBadge, { props: { status: 'pending_change', type: 'event' } });
+		expect(screen.getByRole('status')).toHaveClass('semantic-status-neutral');
+		expect(screen.getByText('Pending change')).toBeInTheDocument();
+		expect(screen.queryByText('pending_change')).not.toBeInTheDocument();
+	});
+
 	it('renders synced event status as a successful status indicator', () => {
 		render(StatusBadge, { props: { status: 'synced', type: 'event' } });
 		expect(screen.getByRole('status')).toHaveClass('semantic-status-success');

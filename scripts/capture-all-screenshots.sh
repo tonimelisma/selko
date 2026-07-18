@@ -72,7 +72,7 @@ run_ios() {
 run_android() {
     echo ""
     echo "=============================="
-    echo "  Android Screenshots (6)"
+    echo "  Android Screenshots (12)"
     echo "=============================="
     "$SCRIPT_DIR/capture-android-screenshots.sh"
 }
@@ -113,7 +113,7 @@ case "$PLATFORM" in
             echo "==> Succeeded platforms may have screenshots in docs/screenshots/"
             exit 1
         else
-            echo "==> All 42 screenshots captured in docs/screenshots/"
+            echo "==> All 48 screenshots captured in docs/screenshots/"
         fi
         ;;
     *)

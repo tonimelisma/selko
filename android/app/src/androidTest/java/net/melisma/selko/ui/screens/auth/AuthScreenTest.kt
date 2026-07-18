@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -121,7 +122,7 @@ class AuthScreenTest {
 
         composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
 
-        composeTestRule.onNodeWithText("Sign up").assertIsDisplayed()
+        composeTestRule.onNode(hasText("Sign up") and hasClickAction()).assertIsDisplayed()
         composeTestRule.onNodeWithText("Already have an account? Log in").assertIsDisplayed()
     }
 
@@ -335,7 +336,7 @@ class AuthScreenTest {
         composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
         composeTestRule.onNodeWithText("Password").performTextInput("password123")
         composeTestRule.onNodeWithText("Confirm password").performTextInput("different")
-        composeTestRule.onNode(hasText("Sign up") and !hasText("Already") and !hasText("Don't")).performClick()
+        composeTestRule.onNode(hasText("Sign up") and hasClickAction()).performClick()
 
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Passwords do not match").assertIsDisplayed()
@@ -355,7 +356,7 @@ class AuthScreenTest {
         composeTestRule.onNodeWithText("Don't have an account? Sign up").performClick()
         composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
         composeTestRule.onNodeWithText("Password").performTextInput("password123")
-        composeTestRule.onNode(hasText("Sign up") and !hasText("Already") and !hasText("Don't")).performClick()
+        composeTestRule.onNode(hasText("Sign up") and hasClickAction()).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Please confirm your password").assertIsDisplayed()
 
