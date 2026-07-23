@@ -58,44 +58,21 @@ MERGE_SCORE_THRESHOLDS = {
 
 # Provider and model configuration (env overrides)
 DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", os.environ.get("SELKO_EVAL_PROVIDER", "qwen"))
-DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "qwen3.5-flash"))
+DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "qwen3.6-flash"))
 
-# Default models for multi-model evals: (provider, model, thinking_level)
-# Thinking levels: "none", "low", "medium" — providers without thinking support ignore the level
-# Gemini supports none/low/medium; OpenAI GPT-5 supports low/medium; current Claude models support none/low/medium
-# Qwen3-VL/3.5 supports none/low/medium (enable_thinking + thinking_budget)
+# Default models for multi-model evals: ONE preferred low/minimal thinking per model.
+# Gemini 3.x uses thinking_level (minimal is lowest). OpenAI/xAI use reasoning_effort=low.
+# Qwen uses enable_thinking + thinking_budget for "low". Anthropic uses adaptive effort=low.
 EVAL_MODELS = [
-    # Gemini — test at none, low, medium
-    ("gemini", "gemini-3-flash-preview", "none"),
-    ("gemini", "gemini-3-flash-preview", "low"),
-    ("gemini", "gemini-3-flash-preview", "medium"),
-    # OpenAI GPT-5.6 preview variants — test at low and medium reasoning.
-    ("openai", "gpt-5.6-sol", "low"),
-    ("openai", "gpt-5.6-sol", "medium"),
-    ("openai", "gpt-5.6-terra", "low"),
-    ("openai", "gpt-5.6-terra", "medium"),
+    ("gemini", "gemini-3.5-flash-lite", "minimal"),
+    ("gemini", "gemini-3.6-flash", "minimal"),
     ("openai", "gpt-5.6-luna", "low"),
-    ("openai", "gpt-5.6-luna", "medium"),
-    # Anthropic frontier models — compare no-thinking and adaptive low effort.
-    ("anthropic", "claude-sonnet-5", "none"),
+    ("openai", "gpt-5.6-terra", "low"),
     ("anthropic", "claude-sonnet-5", "low"),
-    ("anthropic", "claude-opus-4-8", "none"),
-    ("anthropic", "claude-opus-4-8", "low"),
-    # Qwen — thinking mode tested but dropped from defaults:
-    # - qwen3.5-plus thinking: marginal quality gain (+2 pass at low), 3-5x cost/latency
-    # - qwen3.5-flash thinking: quality *degrades* (3→5→6 fails), not worth the cost
-    # - qwen3-vl-plus thinking: catastrophically broken (returns bare floats, not JSON)
-    # Still accessible via: --provider qwen --model <model> --thinking low/medium
-    ("qwen", "qwen3.5-plus", "none"),
-    ("qwen", "qwen3.5-flash", "none"),
-    ("qwen", "qwen3-vl-flash", "none"),
-    ("qwen", "qwen3-vl-plus", "none"),
-    ("qwen", "qwen-vl-max", "none"),
-    # Moonshot — K2.6 is the general-purpose default; compare the code-tuned K2.7.
-    ("moonshot", "kimi-k2.6", "none"),
-    ("moonshot", "kimi-k2.7-code", "none"),
-    # Other frontier providers — single mode.
-    ("zai", "glm-5.2", "none"),
+    ("qwen", "qwen3.6-flash", "low"),
+    ("qwen", "qwen3.7-plus", "low"),
+    ("zai", "glm-5.2", "low"),
+    ("xai", "grok-4.5", "low"),
 ]
 
 # Monthly cost projection tiers

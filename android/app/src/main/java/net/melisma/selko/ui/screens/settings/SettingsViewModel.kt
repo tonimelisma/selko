@@ -16,6 +16,7 @@ import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.EmailFolderPreference
 import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.data.repository.AuthRepository
+import net.melisma.selko.data.repository.AllDayDisplayMode
 import net.melisma.selko.data.repository.CalendarSettings
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.IntegrationRepository
@@ -34,6 +35,12 @@ data class SettingsUiState(
     val calendarSettings: CalendarSettings? = null,
     val selectedCalendarId: String? = null,
     val defaultInvitees: String = "",
+    val allDayDisplayMode: AllDayDisplayMode = AllDayDisplayMode.ALL_DAY,
+    val allDayCustomStartHour: Int = 9,
+    val allDayCustomStartMinute: Int = 0,
+    val allDayCustomEndHour: Int = 17,
+    val allDayCustomEndMinute: Int = 0,
+    val allDayCustomError: String? = null,
     val errorMessage: String? = null,
     val isDisconnecting: Boolean = false,
     val isSigningOut: Boolean = false,
@@ -103,11 +110,19 @@ class SettingsViewModel(
             when (val result = calendarSettingsRepository.getSettings()) {
                 is RepositoryResult.Success -> {
                     val settings = result.data
+                    val mode = AllDayDisplayMode.fromValue(settings?.allDayDisplayMode)
+                    val startParts = parseTimeParts(settings?.allDayCustomStart) ?: (9 to 0)
+                    val endParts = parseTimeParts(settings?.allDayCustomEnd) ?: (17 to 0)
                     _uiState.update {
                         it.copy(
                             calendarSettings = settings,
                             selectedCalendarId = settings?.targetCalendarId,
-                            defaultInvitees = settings?.defaultInvitees ?: ""
+                            defaultInvitees = settings?.defaultInvitees ?: "",
+                            allDayDisplayMode = mode,
+                            allDayCustomStartHour = startParts.first,
+                            allDayCustomStartMinute = startParts.second,
+                            allDayCustomEndHour = endParts.first,
+                            allDayCustomEndMinute = endParts.second
                         )
                     }
                 }
@@ -218,6 +233,97 @@ class SettingsViewModel(
         _uiState.update { it.copy(defaultInvitees = value) }
     }
 
+    fun onAllDayDisplayModeChange(mode: AllDayDisplayMode) {
+        _uiState.update { it.copy(allDayDisplayMode = mode, allDayCustomError = null) }
+        if (mode == AllDayDisplayMode.CUSTOM && !customTimesValid(_uiState.value)) {
+            _uiState.update {
+                it.copy(allDayCustomError = getString(R.string.settings_date_only_custom_error))
+            }
+            return
+        }
+        saveAllDayPreference()
+    }
+
+    fun onAllDayCustomStartChange(hour: Int, minute: Int) {
+        _uiState.update {
+            it.copy(
+                allDayCustomStartHour = hour,
+                allDayCustomStartMinute = minute,
+                allDayCustomError = null
+            )
+        }
+        saveCustomTimesIfValid()
+    }
+
+    fun onAllDayCustomEndChange(hour: Int, minute: Int) {
+        _uiState.update {
+            it.copy(
+                allDayCustomEndHour = hour,
+                allDayCustomEndMinute = minute,
+                allDayCustomError = null
+            )
+        }
+        saveCustomTimesIfValid()
+    }
+
+    private fun saveCustomTimesIfValid() {
+        val state = _uiState.value
+        if (state.allDayDisplayMode != AllDayDisplayMode.CUSTOM) return
+        if (!customTimesValid(state)) {
+            _uiState.update {
+                it.copy(allDayCustomError = getString(R.string.settings_date_only_custom_error))
+            }
+            return
+        }
+        saveAllDayPreference()
+    }
+
+    private fun customTimesValid(state: SettingsUiState): Boolean {
+        val start = state.allDayCustomStartHour * 60 + state.allDayCustomStartMinute
+        val end = state.allDayCustomEndHour * 60 + state.allDayCustomEndMinute
+        return end > start
+    }
+
+    fun allDayPreviewWindow(): String {
+        val state = _uiState.value
+        return when (state.allDayDisplayMode) {
+            AllDayDisplayMode.ALL_DAY -> getString(R.string.settings_date_only_all_day)
+            AllDayDisplayMode.DAY_9_TO_5 -> getString(R.string.settings_date_only_day_9_to_5)
+            AllDayDisplayMode.MORNING_8_TO_9 -> getString(R.string.settings_date_only_morning_8_to_9)
+            AllDayDisplayMode.CUSTOM -> {
+                val start = formatTime(state.allDayCustomStartHour, state.allDayCustomStartMinute)
+                val end = formatTime(state.allDayCustomEndHour, state.allDayCustomEndMinute)
+                "$start–$end"
+            }
+        }
+    }
+
+    private fun saveAllDayPreference() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingCalendarSettings = true) }
+            val state = _uiState.value
+            val start = formatTime(state.allDayCustomStartHour, state.allDayCustomStartMinute)
+            val end = formatTime(state.allDayCustomEndHour, state.allDayCustomEndMinute)
+            when (calendarSettingsRepository.updateSettings(
+                allDayDisplayMode = state.allDayDisplayMode.value,
+                allDayCustomStart = if (state.allDayDisplayMode == AllDayDisplayMode.CUSTOM) start else null,
+                allDayCustomEnd = if (state.allDayDisplayMode == AllDayDisplayMode.CUSTOM) end else null
+            )) {
+                is RepositoryResult.Success -> {
+                    _uiState.update { it.copy(isSavingCalendarSettings = false) }
+                }
+                is RepositoryResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isSavingCalendarSettings = false,
+                            errorMessage = getString(R.string.settings_error_save_calendar)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     fun saveCalendarSettings() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingCalendarSettings = true) }
@@ -239,6 +345,18 @@ class SettingsViewModel(
                 }
             }
         }
+    }
+
+    private fun formatTime(hour: Int, minute: Int): String =
+        String.format("%02d:%02d", hour, minute)
+
+    private fun parseTimeParts(value: String?): Pair<Int, Int>? {
+        if (value.isNullOrBlank()) return null
+        val parts = value.split(":")
+        if (parts.size < 2) return null
+        val hour = parts[0].toIntOrNull() ?: return null
+        val minute = parts[1].toIntOrNull() ?: return null
+        return hour to minute
     }
 
     fun signOut(onSignOutComplete: () -> Unit) {

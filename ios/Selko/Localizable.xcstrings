@@ -419,6 +419,50 @@
         }
       }
     },
+    "event_card.show_more": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show more"
+          }
+        }
+      }
+    },
+    "event_card.show_less": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show less"
+          }
+        }
+      }
+    },
+    "event_card.expanded": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expanded"
+          }
+        }
+      }
+    },
+    "event_card.collapsed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapsed"
+          }
+        }
+      }
+    },
     "review.event_detail_hint": {
       "extractionState": "manual",
       "localizations": {
@@ -1108,6 +1152,116 @@
           "stringUnit": {
             "state": "translated",
             "value": "(Primary)"
+          }
+        }
+      }
+    },
+    "settings.date_only_events": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date-only events"
+          }
+        }
+      }
+    },
+    "settings.date_only_events_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When an email gives a date but no time, add it as:"
+          }
+        }
+      }
+    },
+    "settings.date_only_all_day": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All day"
+          }
+        }
+      }
+    },
+    "settings.date_only_day_9_to_5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "9:00 AM–5:00 PM"
+          }
+        }
+      }
+    },
+    "settings.date_only_morning_8_to_9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "8:00 AM–9:00 AM"
+          }
+        }
+      }
+    },
+    "settings.date_only_custom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom…"
+          }
+        }
+      }
+    },
+    "settings.date_only_custom_start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom start"
+          }
+        }
+      }
+    },
+    "settings.date_only_custom_end": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom end"
+          }
+        }
+      }
+    },
+    "settings.date_only_custom_error": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End time must be later than start time."
+          }
+        }
+      }
+    },
+    "settings.date_only_preview %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Example: Water Day · Mon, Jul 27 · %@"
           }
         }
       }

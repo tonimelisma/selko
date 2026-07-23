@@ -108,13 +108,12 @@ def _folder_classifier_gateway(client: Client, config: Config):
     """Build the same gateway used by API requests for background classification."""
 
     try:
-        from selko.services.llm_gateway import LLMGateway
+        from selko.services.llm_gateway import create_llm_gateway
         from selko.services.llm_logging import LLMLoggingService
-        from selko.services.llm_provider import create_provider
         from selko.services.quotas import QuotaService
 
-        return LLMGateway(
-            create_provider(config),
+        return create_llm_gateway(
+            config,
             LLMLoggingService(client),
             QuotaService(client),
         )

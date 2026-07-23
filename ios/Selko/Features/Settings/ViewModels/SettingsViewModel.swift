@@ -18,6 +18,15 @@ final class SettingsViewModel {
     var calendars: [CalendarInfo] = []
     var calendarSettings: UserCalendarSettings?
     var selectedCalendarId: String = ""
+    var allDayDisplayMode: AllDayDisplayMode = .allDay
+    var allDayCustomStart: Date = Calendar.current.date(
+        bySettingHour: 9, minute: 0, second: 0, of: Date()
+    ) ?? Date()
+    var allDayCustomEnd: Date = Calendar.current.date(
+        bySettingHour: 17, minute: 0, second: 0, of: Date()
+    ) ?? Date()
+    var allDayCustomError: String?
+    var isSavingAllDayPreference = false
     var errorMessage: String?
     var showDisconnectAlert = false
     var providerToDisconnect: IntegrationProvider?
@@ -54,6 +63,13 @@ final class SettingsViewModel {
             // Load calendar settings
             calendarSettings = try await calendarSettingsService.getSettings()
             selectedCalendarId = calendarSettings?.targetCalendarId ?? ""
+            allDayDisplayMode = calendarSettings?.allDayDisplayMode ?? .allDay
+            if let start = Self.parseTime(calendarSettings?.allDayCustomStart) {
+                allDayCustomStart = start
+            }
+            if let end = Self.parseTime(calendarSettings?.allDayCustomEnd) {
+                allDayCustomEnd = end
+            }
 
             // Try to load calendars if Google Calendar is connected
             let calendarConnected = integrations.contains { $0.provider == .googleCalendar && $0.isActive }
@@ -169,6 +185,56 @@ final class SettingsViewModel {
         }
     }
 
+    func updateAllDayDisplayMode(_ mode: AllDayDisplayMode) async {
+        allDayDisplayMode = mode
+        allDayCustomError = nil
+        if mode == .custom, !customTimesAreValid {
+            allDayCustomError = String(localized: "settings.date_only_custom_error")
+            return
+        }
+        await saveAllDayPreference()
+    }
+
+    func updateAllDayCustomTimes() async {
+        allDayCustomError = nil
+        guard allDayDisplayMode == .custom else { return }
+        guard customTimesAreValid else {
+            allDayCustomError = String(localized: "settings.date_only_custom_error")
+            return
+        }
+        await saveAllDayPreference()
+    }
+
+    var customTimesAreValid: Bool {
+        Self.timeString(from: allDayCustomEnd) > Self.timeString(from: allDayCustomStart)
+    }
+
+    var allDayPreviewWindow: String {
+        switch allDayDisplayMode {
+        case .allDay: return AllDayDisplayMode.allDay.displayName
+        case .day9to5: return AllDayDisplayMode.day9to5.displayName
+        case .morning8to9: return AllDayDisplayMode.morning8to9.displayName
+        case .custom:
+            return "\(Self.timeString(from: allDayCustomStart))–\(Self.timeString(from: allDayCustomEnd))"
+        }
+    }
+
+    private func saveAllDayPreference() async {
+        isSavingAllDayPreference = true
+        defer { isSavingAllDayPreference = false }
+        do {
+            let start = allDayDisplayMode == .custom ? Self.timeString(from: allDayCustomStart) : nil
+            let end = allDayDisplayMode == .custom ? Self.timeString(from: allDayCustomEnd) : nil
+            calendarSettings = try await calendarSettingsService.updateAllDayDisplayPreference(
+                mode: allDayDisplayMode,
+                customStart: start,
+                customEnd: end
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func signOut() async {
         do {
             try await authService.signOut()
@@ -190,5 +256,19 @@ final class SettingsViewModel {
         case .googleCalendar: return String(localized: "Google Calendar")
         case .googlePhotos: return String(localized: "Google Photos")
         }
+    }
+
+    private static func timeString(from date: Date) -> String {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return String(format: "%02d:%02d", comps.hour ?? 0, comps.minute ?? 0)
+    }
+
+    private static func parseTime(_ value: String?) -> Date? {
+        guard let value, !value.isEmpty else { return nil }
+        let parts = value.split(separator: ":")
+        guard parts.count >= 2,
+              let hour = Int(parts[0]),
+              let minute = Int(parts[1]) else { return nil }
+        return Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date())
     }
 }

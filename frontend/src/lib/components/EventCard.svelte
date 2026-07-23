@@ -1,4 +1,5 @@
 <script>
+	import { tick } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import { formatEventDateTime } from '$lib/format-event-datetime.js';
 	import StateTag from './StateTag.svelte';
@@ -19,6 +20,70 @@
 			day: date.toLocaleDateString(undefined, { day: 'numeric' })
 		};
 	});
+
+	/** @type {boolean} */
+	let descriptionExpanded = $state(false);
+	/** @type {boolean} */
+	let descriptionOverflows = $state(false);
+	/** @type {HTMLElement | undefined} */
+	let descriptionEl = $state();
+
+	function remeasureDescription() {
+		if (!descriptionEl || descriptionExpanded) return;
+		descriptionOverflows = descriptionEl.scrollHeight > descriptionEl.clientHeight;
+	}
+
+	/**
+	 * Measure whether the clamped description overflows; re-check on resize.
+	 * @param {HTMLElement} node
+	 */
+	function descriptionOverflow(node) {
+		descriptionEl = node;
+		remeasureDescription();
+		/** @type {ResizeObserver | undefined} */
+		let ro;
+		if (typeof ResizeObserver !== 'undefined') {
+			ro = new ResizeObserver(() => remeasureDescription());
+			ro.observe(node);
+		}
+		return {
+			destroy() {
+				ro?.disconnect();
+				if (descriptionEl === node) descriptionEl = undefined;
+			}
+		};
+	}
+
+	$effect(() => {
+		void event.id;
+		void event.description;
+		descriptionExpanded = false;
+		descriptionOverflows = false;
+		queueMicrotask(() => remeasureDescription());
+	});
+
+	/**
+	 * Native click listener so stopPropagation runs before ancestors see the bubble
+	 * (Svelte 5 delegates onclick to the root, which is too late).
+	 * @param {HTMLButtonElement} node
+	 */
+	function descriptionToggle(node) {
+		/** @param {MouseEvent} e */
+		async function onClick(e) {
+			e.stopPropagation();
+			descriptionExpanded = !descriptionExpanded;
+			if (!descriptionExpanded) {
+				await tick();
+				remeasureDescription();
+			}
+		}
+		node.addEventListener('click', onClick);
+		return {
+			destroy() {
+				node.removeEventListener('click', onClick);
+			}
+		};
+	}
 </script>
 
 <div class="warm-card-row flex gap-3 border-b border-base-300 p-4 sm:gap-4">
@@ -56,7 +121,25 @@
 			<p class="mt-0.5 text-[13px] text-base-content/70">{event.location}</p>
 		{/if}
 		{#if event.description}
-			<p class="mt-1 line-clamp-2 text-[13px] text-base-content/60">{event.description}</p>
+			<div class="mt-1">
+				<p
+					class="break-words whitespace-pre-wrap text-[13px] text-base-content/60"
+					class:line-clamp-3={!descriptionExpanded}
+					use:descriptionOverflow
+				>
+					{event.description}
+				</p>
+				{#if descriptionOverflows || descriptionExpanded}
+					<button
+						type="button"
+						class="link link-primary mt-0.5 text-xs font-semibold"
+						aria-expanded={descriptionExpanded}
+						use:descriptionToggle
+					>
+						{descriptionExpanded ? $_('events.showLess') : $_('events.showMore')}
+					</button>
+				{/if}
+			</div>
 		{/if}
 		<div class="mt-3 flex items-center gap-2">
 			<button class="btn btn-success flex-1" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptEvent')} aria-busy={isProcessing}>

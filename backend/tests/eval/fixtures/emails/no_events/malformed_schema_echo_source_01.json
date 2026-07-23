@@ -1,0 +1,37 @@
+{
+  "name": "malformed_schema_echo_source_01",
+  "category": "no_events",
+  "description": "Anonymized production-shaped email that previously produced schema-echo / empty JSON from a model. Used for protocol-fallback regression, not semantic quality.",
+  "difficulty": "hard",
+  "tags": [
+    "protocol",
+    "schema-echo",
+    "malformed-output",
+    "production-regression",
+    "no-events"
+  ],
+  "provenance": {
+    "failure_class": "schema_echo_or_invalid_json",
+    "anonymization_notes": "Sender, org, and links replaced. Dense HTML-like layout and promotional structure preserved to stress structured-output parsing."
+  },
+  "input": {
+    "provider_message_id": "eval-no-events-schema-echo-001",
+    "thread_id": "thread-no-events-schema-echo-001",
+    "subject": "Your weekly product digest from Northwind Tools",
+    "from_email": "digest@northwind-tools.example.com",
+    "from_name": "Northwind Tools Digest",
+    "to_emails": [
+      "member@example.com"
+    ],
+    "date_sent": "2026-06-12T08:00:00Z",
+    "snippet": "Top stories this week from Northwind Tools...",
+    "body_text": "<html><body>\n<div class=\"digest\">\n  <h1>Northwind Tools — Weekly Digest</h1>\n  <p>Hi there,</p>\n  <p>Here are this week's highlights. No meetings are scheduled in this message.</p>\n  <ul>\n    <li><strong>Feature spotlight:</strong> Export templates now support nested sections.</li>\n    <li><strong>Tip:</strong> Pin your favorite workspaces from Settings → Preferences.</li>\n    <li><strong>Community:</strong> Read the June customer story on our blog.</li>\n  </ul>\n  <table role=\"presentation\">\n    <tr><td>Promo code SAVE10 expires eventually — no calendar date given.</td></tr>\n    <tr><td><a href=\"https://northwind-tools.example.com/blog\">Read more</a></td></tr>\n  </table>\n  <p>If the JSON schema for events were echoed here by mistake, it would look like:</p>\n  <pre>{\"type\":\"object\",\"properties\":{\"events_found\":{\"type\":\"boolean\"},\"events\":{\"type\":\"array\"}}}</pre>\n  <p>This email itself contains no calendar events.</p>\n  <p>— The Northwind Tools Team</p>\n</div>\n</body></html>",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Hand-written expected: no events. Primary goal is ensuring malformed/schema-echo responses route to fallback without false-success logging."
+}

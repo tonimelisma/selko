@@ -282,6 +282,6 @@ class TestCostUnknown:
         assert estimate_cost("gemini-3-flash-preview", 1000, None) is None
 
     def test_known_model_still_computes(self):
-        cost = estimate_cost("gemini-3-flash-preview", 1000, 500)
-        expected = (1000 * 0.15 + 500 * 0.60) / 1_000_000
+        cost = estimate_cost("gemini-3.6-flash", 1000, 500)
+        expected = (1000 * 1.5 + 500 * 7.5) / 1_000_000
         assert abs(cost - expected) < 1e-10

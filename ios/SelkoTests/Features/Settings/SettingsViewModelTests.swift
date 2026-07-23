@@ -249,6 +249,75 @@ struct SettingsViewModelTests {
     }
 
     @Test
+    func updateAllDayDisplayModeSavesPreference() async throws {
+        let mockCalendarSettingsService = MockCalendarSettingsService()
+        let viewModel = SettingsViewModel(
+            integrationService: MockIntegrationService(),
+            backendAPI: MockBackendAPI(),
+            calendarSettingsService: mockCalendarSettingsService,
+            authService: MockAuthService()
+        )
+
+        await viewModel.updateAllDayDisplayMode(.day9to5)
+
+        #expect(mockCalendarSettingsService.updateAllDayDisplayPreferenceCallCount == 1)
+        #expect(mockCalendarSettingsService.lastAllDayMode == .day9to5)
+        #expect(mockCalendarSettingsService.lastCustomStart == nil)
+        #expect(mockCalendarSettingsService.lastCustomEnd == nil)
+        #expect(viewModel.allDayDisplayMode == .day9to5)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test
+    func updateAllDayCustomTimesRejectsInvalidRange() async throws {
+        let mockCalendarSettingsService = MockCalendarSettingsService()
+        let viewModel = SettingsViewModel(
+            integrationService: MockIntegrationService(),
+            backendAPI: MockBackendAPI(),
+            calendarSettingsService: mockCalendarSettingsService,
+            authService: MockAuthService()
+        )
+        viewModel.allDayDisplayMode = .custom
+        viewModel.allDayCustomStart = Calendar.current.date(
+            bySettingHour: 17, minute: 0, second: 0, of: Date()
+        ) ?? Date()
+        viewModel.allDayCustomEnd = Calendar.current.date(
+            bySettingHour: 9, minute: 0, second: 0, of: Date()
+        ) ?? Date()
+
+        await viewModel.updateAllDayCustomTimes()
+
+        #expect(mockCalendarSettingsService.updateAllDayDisplayPreferenceCallCount == 0)
+        #expect(viewModel.allDayCustomError == String(localized: "settings.date_only_custom_error"))
+    }
+
+    @Test
+    func updateAllDayCustomTimesSavesValidRange() async throws {
+        let mockCalendarSettingsService = MockCalendarSettingsService()
+        let viewModel = SettingsViewModel(
+            integrationService: MockIntegrationService(),
+            backendAPI: MockBackendAPI(),
+            calendarSettingsService: mockCalendarSettingsService,
+            authService: MockAuthService()
+        )
+        viewModel.allDayDisplayMode = .custom
+        viewModel.allDayCustomStart = Calendar.current.date(
+            bySettingHour: 10, minute: 0, second: 0, of: Date()
+        ) ?? Date()
+        viewModel.allDayCustomEnd = Calendar.current.date(
+            bySettingHour: 14, minute: 30, second: 0, of: Date()
+        ) ?? Date()
+
+        await viewModel.updateAllDayCustomTimes()
+
+        #expect(mockCalendarSettingsService.updateAllDayDisplayPreferenceCallCount == 1)
+        #expect(mockCalendarSettingsService.lastAllDayMode == .custom)
+        #expect(mockCalendarSettingsService.lastCustomStart == "10:00")
+        #expect(mockCalendarSettingsService.lastCustomEnd == "14:30")
+        #expect(viewModel.allDayCustomError == nil)
+    }
+
+    @Test
     func loadGroupsFoldersForConnectedEmailProviders() async {
         let integrations = MockIntegrationService()
         integrations.fetchIntegrationsResult = .success([integration(.gmail), integration(.outlook)])

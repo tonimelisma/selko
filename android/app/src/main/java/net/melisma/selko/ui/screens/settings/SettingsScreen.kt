@@ -43,6 +43,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -59,6 +63,7 @@ import net.melisma.selko.R
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.SenderRule
+import net.melisma.selko.data.repository.AllDayDisplayMode
 import net.melisma.selko.ui.components.SelkoScreenHeader
 import net.melisma.selko.ui.components.SelkoActionRole
 import net.melisma.selko.ui.components.SelkoButton
@@ -131,7 +136,11 @@ fun SettingsScreen(
                         uiState = uiState,
                         onCalendarSelected = { viewModel.onCalendarSelected(it) },
                         onDefaultInviteesChange = { viewModel.onDefaultInviteesChange(it) },
-                        onSaveInvitees = { viewModel.saveCalendarSettings() }
+                        onSaveInvitees = { viewModel.saveCalendarSettings() },
+                        onAllDayDisplayModeChange = { viewModel.onAllDayDisplayModeChange(it) },
+                        onAllDayCustomStartChange = { h, m -> viewModel.onAllDayCustomStartChange(h, m) },
+                        onAllDayCustomEndChange = { h, m -> viewModel.onAllDayCustomEndChange(h, m) },
+                        allDayPreviewWindow = viewModel.allDayPreviewWindow()
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -394,8 +403,16 @@ private fun CalendarDefaultsSection(
     uiState: SettingsUiState,
     onCalendarSelected: (String) -> Unit,
     onDefaultInviteesChange: (String) -> Unit,
-    onSaveInvitees: () -> Unit
+    onSaveInvitees: () -> Unit,
+    onAllDayDisplayModeChange: (AllDayDisplayMode) -> Unit,
+    onAllDayCustomStartChange: (Int, Int) -> Unit,
+    onAllDayCustomEndChange: (Int, Int) -> Unit,
+    allDayPreviewWindow: String
 ) {
+    var modeExpanded by remember { mutableStateOf(false) }
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -464,7 +481,122 @@ private fun CalendarDefaultsSection(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.height(16.dp))
             }
+
+            Text(
+                text = stringResource(R.string.settings_date_only_events),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = stringResource(R.string.settings_date_only_events_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            val modeLabel = when (uiState.allDayDisplayMode) {
+                AllDayDisplayMode.ALL_DAY -> stringResource(R.string.settings_date_only_all_day)
+                AllDayDisplayMode.DAY_9_TO_5 -> stringResource(R.string.settings_date_only_day_9_to_5)
+                AllDayDisplayMode.MORNING_8_TO_9 -> stringResource(R.string.settings_date_only_morning_8_to_9)
+                AllDayDisplayMode.CUSTOM -> stringResource(R.string.settings_date_only_custom)
+            }
+
+            ExposedDropdownMenuBox(
+                expanded = modeExpanded,
+                onExpandedChange = { modeExpanded = !modeExpanded }
+            ) {
+                OutlinedTextField(
+                    value = modeLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                    shape = MaterialTheme.shapes.medium
+                )
+                ExposedDropdownMenu(
+                    expanded = modeExpanded,
+                    onDismissRequest = { modeExpanded = false }
+                ) {
+                    AllDayDisplayMode.entries.forEach { mode ->
+                        val label = when (mode) {
+                            AllDayDisplayMode.ALL_DAY -> stringResource(R.string.settings_date_only_all_day)
+                            AllDayDisplayMode.DAY_9_TO_5 -> stringResource(R.string.settings_date_only_day_9_to_5)
+                            AllDayDisplayMode.MORNING_8_TO_9 -> stringResource(R.string.settings_date_only_morning_8_to_9)
+                            AllDayDisplayMode.CUSTOM -> stringResource(R.string.settings_date_only_custom)
+                        }
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                onAllDayDisplayModeChange(mode)
+                                modeExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (uiState.allDayDisplayMode == AllDayDisplayMode.CUSTOM) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { showStartTimePicker = true }
+                    ) {
+                        OutlinedTextField(
+                            value = stringResource(
+                                R.string.settings_date_only_time_format,
+                                uiState.allDayCustomStartHour,
+                                uiState.allDayCustomStartMinute
+                            ),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.settings_date_only_custom_start)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { showEndTimePicker = true }
+                    ) {
+                        OutlinedTextField(
+                            value = stringResource(
+                                R.string.settings_date_only_time_format,
+                                uiState.allDayCustomEndHour,
+                                uiState.allDayCustomEndMinute
+                            ),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.settings_date_only_custom_end)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium
+                        )
+                    }
+                }
+                uiState.allDayCustomError?.let { err ->
+                    Text(
+                        text = err,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.settings_date_only_preview, allDayPreviewWindow),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Default invitees
             OutlinedTextField(
@@ -486,6 +618,52 @@ private fun CalendarDefaultsSection(
                     loading = uiState.isSavingCalendarSettings
                 )
             }
+        }
+    }
+
+    if (showStartTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = uiState.allDayCustomStartHour,
+            initialMinute = uiState.allDayCustomStartMinute
+        )
+        DatePickerDialog(
+            onDismissRequest = { showStartTimePicker = false },
+            confirmButton = {
+                SelkoButton(stringResource(R.string.settings_save), onClick = {
+                    onAllDayCustomStartChange(timePickerState.hour, timePickerState.minute)
+                    showStartTimePicker = false
+                }, role = SelkoActionRole.Primary)
+            },
+            dismissButton = {
+                SelkoButton(stringResource(R.string.settings_dismiss), {
+                    showStartTimePicker = false
+                }, role = SelkoActionRole.Tertiary)
+            }
+        ) {
+            TimePicker(state = timePickerState)
+        }
+    }
+
+    if (showEndTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = uiState.allDayCustomEndHour,
+            initialMinute = uiState.allDayCustomEndMinute
+        )
+        DatePickerDialog(
+            onDismissRequest = { showEndTimePicker = false },
+            confirmButton = {
+                SelkoButton(stringResource(R.string.settings_save), onClick = {
+                    onAllDayCustomEndChange(timePickerState.hour, timePickerState.minute)
+                    showEndTimePicker = false
+                }, role = SelkoActionRole.Primary)
+            },
+            dismissButton = {
+                SelkoButton(stringResource(R.string.settings_dismiss), {
+                    showEndTimePicker = false
+                }, role = SelkoActionRole.Tertiary)
+            }
+        ) {
+            TimePicker(state = timePickerState)
         }
     }
 }

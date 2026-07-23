@@ -309,9 +309,18 @@ class TestSaveExtractedEvents:
                 mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
             )
 
-        proposal_data = mock_gcal.call_args[0][2]
-        start = datetime.fromisoformat(proposal_data["start_datetime"])
-        end = datetime.fromisoformat(proposal_data["end_datetime"])
+        # Source truth stays in extracted_data arg; min-duration is applied on change_set
+        source_data = mock_gcal.call_args[0][2]
+        assert source_data["all_day"] is False  # extraction default is timed
+        applied_change_set = mock_gcal.call_args[0][6]
+        start_after = next(
+            c.after for c in applied_change_set.changes if c.field == "start_datetime"
+        )
+        end_after = next(
+            c.after for c in applied_change_set.changes if c.field == "end_datetime"
+        )
+        start = datetime.fromisoformat(start_after)
+        end = datetime.fromisoformat(end_after)
         assert end == start + timedelta(hours=1)
 
     def test_proposes_gcal_change_when_material(self):

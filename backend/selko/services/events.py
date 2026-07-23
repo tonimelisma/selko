@@ -21,6 +21,7 @@ from selko.services.event_diff import (
     proposed_fields_from_change_set,
     resolve_description_append,
 )
+from selko.services.calendar_policy import materialize_all_day_event
 from selko.services.civil_time import ensure_aware, resolve_zone
 from selko.services.llm_gateway import LLMGateway
 from selko.services.retry_utils import calculate_retry_delay
@@ -251,7 +252,10 @@ def save_extracted_events(
     """
     num_new = 0
     num_updated = 0
-    user_timezone = get_user_timezone(supabase_client, user_id)
+    # Load timezone + all-day policy once per email (lean; no GCal list).
+    all_day_policy, user_timezone = calendars.get_all_day_policy_and_timezone(
+        supabase_client, user_id
+    )
     auto_apply = initial_status == "approved"
 
     try:
@@ -267,8 +271,12 @@ def save_extracted_events(
     cutoff = now - timedelta(hours=24)
 
     for event in extraction.events:
-        event_data = normalize_event_data(
+        source_event_data = normalize_event_data(
             event, user_timezone=user_timezone, treat_as_civil=treat_as_civil
+        )
+        # Materialized form drives dedup + events row; source stays in extracted_data.
+        event_data = materialize_all_day_event(
+            source_event_data, all_day_policy, user_timezone
         )
 
         if not event_data.get("start_datetime"):
@@ -296,8 +304,12 @@ def save_extracted_events(
 
         if match is None:
             create_event(
-                supabase_client, user_id, event_data, email_id,
+                supabase_client,
+                user_id,
+                event_data,
+                email_id,
                 initial_status=initial_status,
+                source_event_data=source_event_data,
             )
             num_new += 1
             continue
@@ -342,44 +354,40 @@ def save_extracted_events(
         source_type = (
             "cancellation" if change_set.kind == "cancellation" else "update"
         )
-        # Persist only the fields the gated changeset says to change, plus identity
-        proposed_fields = proposed_fields_from_change_set(match.baseline, change_set)
-        # Propose may emit naive civil after-values — localize them like LLM extract
+        # Persist only the fields the gated changeset says to change.
+        # Localize propose after-values onto the change_set so apply_pending_change
+        # writes storage-ready datetimes (extracted_data keeps source truth).
         from selko.services.civil_time import to_storage_iso
 
-        for dt_field in ("start_datetime", "end_datetime"):
-            if dt_field in proposed_fields and proposed_fields[dt_field] is not None:
-                proposed_fields[dt_field] = to_storage_iso(
-                    proposed_fields[dt_field],
-                    user_timezone,
-                    treat_as_civil=True,
+        for change in change_set.changes:
+            if change.field in ("start_datetime", "end_datetime") and change.after is not None:
+                change.after = to_storage_iso(
+                    change.after, user_timezone, treat_as_civil=True
                 )
+
+        proposed_fields = proposed_fields_from_change_set(match.baseline, change_set)
         if (
             "start_datetime" in proposed_fields
             and "end_datetime" in proposed_fields
             and proposed_fields["start_datetime"]
             and not proposed_fields.get("all_day", match.baseline.get("all_day", False))
         ):
-            proposed_fields["end_datetime"] = ensure_min_duration(
+            fixed_end = ensure_min_duration(
                 proposed_fields["start_datetime"], proposed_fields["end_datetime"]
             )
-        proposal_data = {
-            **{k: v for k, v in event_data.items() if k in ("source_quote", "importance")},
-            **proposed_fields,
-        }
-        if "title" not in proposal_data:
-            proposal_data["title"] = event_data.get("title") or match.baseline.get("title")
-        if "start_datetime" not in proposal_data:
-            proposal_data["start_datetime"] = (
-                event_data.get("start_datetime") or match.baseline.get("start_datetime")
-            )
+            for change in change_set.changes:
+                if change.field == "end_datetime":
+                    change.after = fixed_end
+
+        # extracted_data keeps LLM source truth; change_set carries materialized deltas
+        source_proposal = source_event_data
 
         if auto_apply:
             if match.is_gcal:
                 event_id = create_pending_change_from_gcal(
                     supabase_client,
                     user_id,
-                    proposal_data,
+                    source_proposal,
                     email_id,
                     match.gcal_id or "",
                     match.baseline,
@@ -391,7 +399,7 @@ def save_extracted_events(
                 propose_local_change(
                     supabase_client,
                     match.match_id,
-                    proposal_data,
+                    source_proposal,
                     email_id,
                     change_set,
                     source_type=source_type,
@@ -404,7 +412,7 @@ def save_extracted_events(
             create_pending_change_from_gcal(
                 supabase_client,
                 user_id,
-                proposal_data,
+                source_proposal,
                 email_id,
                 match.gcal_id or "",
                 match.baseline,
@@ -416,7 +424,7 @@ def save_extracted_events(
             propose_local_change(
                 supabase_client,
                 match.match_id,
-                proposal_data,
+                source_proposal,
                 email_id,
                 change_set,
                 source_type=source_type,
@@ -719,26 +727,71 @@ def find_matching_event(
     return EventMatch(match_id=matched_id, baseline=baseline)
 
 
+def ensure_email_event_source(
+    supabase_client: Client,
+    *,
+    event_id: str,
+    email_id: str,
+    extracted_data: dict[str, Any],
+    source_type: str = "new_invitation",
+    event_snapshot_before: Any = None,
+) -> str:
+    """Insert an email ``event_sources`` row, or reuse an existing link.
+
+    Idempotent for ``(event_id, email_id)`` email-origin rows to avoid
+    ``event_sources_event_email_unique`` failures on reprocessing.
+    """
+    existing = (
+        supabase_client.table("event_sources")
+        .select("id")
+        .eq("event_id", event_id)
+        .eq("email_id", email_id)
+        .eq("source_origin", "email")
+        .limit(1)
+        .execute()
+    )
+    if existing.data:
+        return existing.data[0]["id"]
+
+    result = supabase_client.table("event_sources").insert({
+        "event_id": event_id,
+        "email_id": email_id,
+        "source_origin": "email",
+        "source_type": source_type,
+        "extracted_data": extracted_data,
+        "event_snapshot_before": event_snapshot_before,
+    }).execute()
+    return result.data[0]["id"]
+
+
 def create_event(
     supabase_client: Client,
     user_id: str,
     event_data: dict[str, Any],
     email_id: str,
     initial_status: str = "pending_review",
+    *,
+    source_event_data: Optional[dict[str, Any]] = None,
 ) -> str:
     """Create new event and link to email source.
 
     Args:
         supabase_client: Authenticated Supabase client.
         user_id: UUID of user.
-        event_data: Event data to create.
+        event_data: Materialized event data written to the ``events`` row
+            (and used for review/sync). After all-day policy, this may differ
+            from the LLM source extraction.
         email_id: UUID of source email.
         initial_status: Status for the new event (default: pending_review).
+        source_event_data: Optional LLM source-truth payload stored on
+            ``event_sources.extracted_data``. Defaults to ``event_data``.
 
     Returns:
         UUID of created event.
     """
-    # Create event record
+    extracted = source_event_data if source_event_data is not None else event_data
+
+    # Create event record from materialized fields
     insert_data = {
         "user_id": user_id,
         "title": event_data.get("title"),
@@ -758,15 +811,16 @@ def create_event(
 
     event_id = event_result.data[0]["id"]
 
-    # Create event_source link
-    supabase_client.table("event_sources").insert({
-        "event_id": event_id,
-        "email_id": email_id,
-        "source_type": "new_invitation",
-        "extracted_data": event_data,
-        "event_snapshot_before": None,  # No snapshot for new events
-    }).execute()
-    
+    # Create event_source link — retain LLM source truth in extracted_data
+    ensure_email_event_source(
+        supabase_client,
+        event_id=event_id,
+        email_id=email_id,
+        extracted_data=extracted,
+        source_type="new_invitation",
+        event_snapshot_before=None,
+    )
+
     # Generate source attribution
     attribution = generate_source_attribution(supabase_client, event_id)
     if attribution:
@@ -993,7 +1047,12 @@ def _latest_pending_change_source(
 
 
 def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, Any]:
-    """Apply the latest pending change proposal and mark event approved."""
+    """Apply the latest pending change proposal and mark event approved.
+
+    Prefers ``change_set`` after-values so source-truth ``extracted_data``
+    (which may still say ``all_day=true``) cannot undo all-day materialization.
+    Falls back to ``extracted_data`` only when no change_set is present (legacy).
+    """
     event_result = supabase_client.table("events").select("*").eq(
         "id", event_id
     ).single().execute()
@@ -1003,17 +1062,8 @@ def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, An
     if not source:
         raise EventsError(f"No pending change proposal for event {event_id}")
 
-    proposed = source.get("extracted_data") or {}
-    # Ignore non-event metadata keys from GCal-only source rows
-    proposed_fields = {
-        k: v for k, v in proposed.items()
-        if k in {
-            "title", "start_datetime", "end_datetime", "all_day",
-            "location", "description", "importance", "status", "recurrence_rule",
-        }
-    }
-    if not proposed_fields and source.get("source_origin") == "google_calendar":
-        # Prefer the email source sibling
+    # Prefer the email source sibling when the latest row is GCal metadata-only
+    if source.get("source_origin") == "google_calendar" and not source.get("change_set"):
         email_sources = supabase_client.table("event_sources").select("*").eq(
             "event_id", event_id
         ).eq("source_origin", "email").eq("is_undone", False).order(
@@ -1021,15 +1071,38 @@ def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, An
         ).limit(1).execute()
         if email_sources.data:
             source = email_sources.data[0]
-            proposed = source.get("extracted_data") or {}
-            proposed_fields = {
-                k: v for k, v in proposed.items()
-                if k in {
-                    "title", "start_datetime", "end_datetime", "all_day",
-                    "location", "description", "importance", "status",
-                    "recurrence_rule",
-                }
+
+    proposed_fields: dict[str, Any] = {}
+    change_set_raw = source.get("change_set")
+    if change_set_raw:
+        change_set = EventChangeSet.model_validate(change_set_raw)
+        proposed_fields = proposed_fields_from_change_set(event, change_set)
+    else:
+        proposed = source.get("extracted_data") or {}
+        proposed_fields = {
+            k: v for k, v in proposed.items()
+            if k in {
+                "title", "start_datetime", "end_datetime", "all_day",
+                "location", "description", "importance", "status", "recurrence_rule",
             }
+        }
+        if not proposed_fields and source.get("source_origin") == "google_calendar":
+            email_sources = supabase_client.table("event_sources").select("*").eq(
+                "event_id", event_id
+            ).eq("source_origin", "email").eq("is_undone", False).order(
+                "created_at", desc=True
+            ).limit(1).execute()
+            if email_sources.data:
+                source = email_sources.data[0]
+                proposed = source.get("extracted_data") or {}
+                proposed_fields = {
+                    k: v for k, v in proposed.items()
+                    if k in {
+                        "title", "start_datetime", "end_datetime", "all_day",
+                        "location", "description", "importance", "status",
+                        "recurrence_rule",
+                    }
+                }
 
     merged = apply_asserted_fields(event, proposed_fields)
     if source.get("source_type") == "cancellation":

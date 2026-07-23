@@ -3,7 +3,8 @@
 Provides a unified interface for multiple LLM providers:
 - Google Gemini (native SDK)
 - Anthropic Claude (native SDK)
-- OpenAI, Moonshot/Kimi, Z.AI/Zhipu, Alibaba/Qwen, DeepSeek, MiniMax (OpenAI-compatible)
+- OpenAI, xAI, Z.AI/Zhipu, Alibaba/Qwen (OpenAI-compatible)
+- Optional keys retained for Moonshot/DeepSeek/MiniMax (models deferred until IDs verified)
 
 All providers implement the same LLMProvider interface, allowing transparent
 switching between providers via environment variables.
@@ -15,7 +16,8 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional
+from datetime import date
+from typing import Any, Literal, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -42,300 +44,203 @@ class LLMResponse:
     finish_reason: Optional[str] = None
 
 
-# Model registry: every supported model with provider, capabilities, and pricing
-# Pricing is per 1M tokens in USD
+@dataclass(frozen=True)
+class Pricing:
+    """Per-1M-token USD pricing. Prefer None over zero when unknown."""
+
+    input: float
+    output: float
+    estimated: bool = False
+
+
+@dataclass(frozen=True)
+class ThinkingConfig:
+    """Explicit provider thinking/reasoning capability."""
+
+    mode: Literal["effort", "level", "toggle", "budget", "provider_default"]
+    value: str | int | bool
+
+
+@dataclass(frozen=True)
+class ModelSpec:
+    """Curated model capability + pricing entry."""
+
+    provider: str
+    model: str
+    vision: bool
+    structured_output: Literal["json_schema", "json_object", "prompt_json"]
+    preferred_thinking: ThinkingConfig
+    supported_thinking: tuple[ThinkingConfig, ...]
+    request_api: str
+    pricing: Pricing | None
+    pricing_as_of: date | None
+    base_url: str | None = None
+
+
+_QWEN_BASE = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+_OPENAI_BASE = "https://api.openai.com/v1"
+_ZAI_BASE = "https://api.z.ai/api/paas/v4/"
+_XAI_BASE = "https://api.x.ai/v1"
+
+_EFFORT_NONE = ThinkingConfig("effort", "none")
+_EFFORT_LOW = ThinkingConfig("effort", "low")
+_EFFORT_MEDIUM = ThinkingConfig("effort", "medium")
+_LEVEL_MINIMAL = ThinkingConfig("level", "minimal")
+_LEVEL_LOW = ThinkingConfig("level", "low")
+_LEVEL_MEDIUM = ThinkingConfig("level", "medium")
+_BUDGET_LOW = ThinkingConfig("budget", 2048)
+_BUDGET_OFF = ThinkingConfig("toggle", False)
+_TOGGLE_ON = ThinkingConfig("toggle", True)
+_TOGGLE_OFF = ThinkingConfig("toggle", False)
+_ADAPTIVE_LOW = ThinkingConfig("effort", "low")
+
+# Curated current candidates only (WS4). Unverified family IDs (Kimi K3,
+# MiniMax M3, DeepSeek V4, Meta Spark, Inkling) are omitted until authenticated.
+MODEL_SPECS: dict[str, ModelSpec] = {
+    "gemini-3.5-flash-lite": ModelSpec(
+        provider="gemini",
+        model="gemini-3.5-flash-lite",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_LEVEL_MINIMAL,
+        supported_thinking=(_LEVEL_MINIMAL, _LEVEL_LOW, _LEVEL_MEDIUM),
+        request_api="gemini_native",
+        pricing=Pricing(0.30, 2.50),
+        pricing_as_of=date(2026, 7, 22),
+    ),
+    "gemini-3.6-flash": ModelSpec(
+        provider="gemini",
+        model="gemini-3.6-flash",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_LEVEL_MINIMAL,
+        supported_thinking=(_LEVEL_MINIMAL, _LEVEL_LOW, _LEVEL_MEDIUM),
+        request_api="gemini_native",
+        pricing=Pricing(1.50, 7.50),
+        pricing_as_of=date(2026, 7, 22),
+    ),
+    "gpt-5.6-luna": ModelSpec(
+        provider="openai",
+        model="gpt-5.6-luna",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(5.00, 30.00, estimated=True),
+        pricing_as_of=date(2026, 7, 22),
+        base_url=_OPENAI_BASE,
+    ),
+    "gpt-5.6-terra": ModelSpec(
+        provider="openai",
+        model="gpt-5.6-terra",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(5.00, 30.00, estimated=True),
+        pricing_as_of=date(2026, 7, 22),
+        base_url=_OPENAI_BASE,
+    ),
+    "qwen3.6-flash": ModelSpec(
+        provider="qwen",
+        model="qwen3.6-flash",
+        vision=True,
+        # DashScope docs list structured output; keep prompt_json until verified
+        # under thinking+json_schema together.
+        structured_output="prompt_json",
+        preferred_thinking=_BUDGET_LOW,
+        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.10, 0.40, estimated=True),
+        pricing_as_of=date(2026, 7, 22),
+        base_url=_QWEN_BASE,
+    ),
+    "qwen3.7-plus": ModelSpec(
+        provider="qwen",
+        model="qwen3.7-plus",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_BUDGET_LOW,
+        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.40, 1.60),
+        pricing_as_of=date(2026, 7, 22),
+        base_url=_QWEN_BASE,
+    ),
+    "glm-5.2": ModelSpec(
+        provider="zai",
+        model="glm-5.2",
+        vision=True,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
+        request_api="openai_compatible",
+        pricing=Pricing(1.40, 4.40, estimated=True),
+        pricing_as_of=date(2026, 7, 22),
+        base_url=_ZAI_BASE,
+    ),
+    "grok-4.5": ModelSpec(
+        provider="xai",
+        model="grok-4.5",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(2.00, 6.00),
+        pricing_as_of=date(2026, 7, 22),
+        base_url=_XAI_BASE,
+    ),
+    "claude-sonnet-5": ModelSpec(
+        provider="anthropic",
+        model="claude-sonnet-5",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_ADAPTIVE_LOW,
+        supported_thinking=(_EFFORT_NONE, _ADAPTIVE_LOW, _EFFORT_MEDIUM),
+        request_api="anthropic_native",
+        pricing=Pricing(2.00, 10.00),
+        pricing_as_of=date(2026, 7, 22),
+    ),
+}
+
+
+def _spec_to_registry_entry(spec: ModelSpec) -> dict[str, Any]:
+    """Dict view used by estimate_cost / create_provider / legacy callers."""
+    entry: dict[str, Any] = {
+        "provider": spec.provider,
+        "vision": spec.vision,
+        "json_schema": spec.structured_output == "json_schema",
+        "structured_output": spec.structured_output,
+        "preferred_thinking": spec.preferred_thinking,
+        "supported_thinking": spec.supported_thinking,
+        "request_api": spec.request_api,
+        "pricing_as_of": (
+            spec.pricing_as_of.isoformat() if spec.pricing_as_of else None
+        ),
+    }
+    if spec.pricing is not None:
+        entry["pricing"] = {"input": spec.pricing.input, "output": spec.pricing.output}
+        if spec.pricing.estimated:
+            entry["pricing_estimated"] = True
+    else:
+        entry["pricing"] = None
+    if spec.base_url:
+        entry["base_url"] = spec.base_url
+    if spec.preferred_thinking.mode == "effort" and spec.provider in ("openai", "xai"):
+        entry["reasoning"] = True
+    if spec.preferred_thinking.mode in ("budget", "toggle") and spec.provider == "qwen":
+        entry["qwen_thinking"] = True
+    if spec.provider == "anthropic":
+        entry["adaptive_thinking"] = True
+    return entry
+
+
+# Pricing / capability lookup dict (kept for estimate_cost and older callers)
 MODEL_REGISTRY: dict[str, dict[str, Any]] = {
-    # --- Gemini (1 model) ---
-    "gemini-3-flash-preview": {
-        "provider": "gemini",
-        "vision": True,
-        "json_schema": True,
-        "pricing": {"input": 0.15, "output": 0.60},
-    },
-    # --- Moonshot/Kimi (6 models) ---
-    "kimi-k2.7-code": {
-        "provider": "moonshot",
-        "vision": True,
-        "json_schema": True,
-        "base_url": "https://api.moonshot.ai/v1",
-        # Public pricing has not caught up with the authenticated model catalog.
-        "pricing": {"input": 0.60, "output": 3.00},
-        "pricing_estimated": True,
-    },
-    "kimi-k2.6": {
-        "provider": "moonshot",
-        "vision": True,
-        "json_schema": True,
-        "base_url": "https://api.moonshot.ai/v1",
-        # Public pricing has not caught up with the authenticated model catalog.
-        "pricing": {"input": 0.60, "output": 3.00},
-        "pricing_estimated": True,
-    },
-    "kimi-k2.5": {
-        "provider": "moonshot",
-        "vision": True,
-        "json_schema": True,
-        "base_url": "https://api.moonshot.ai/v1",
-        "pricing": {"input": 0.60, "output": 3.00},
-    },
-    "moonshot-v1-8k-vision-preview": {
-        "provider": "moonshot",
-        "vision": True,
-        "json_schema": True,
-        "base_url": "https://api.moonshot.ai/v1",
-        "pricing": {"input": 0.20, "output": 2.00},
-    },
-    "moonshot-v1-32k-vision-preview": {
-        "provider": "moonshot",
-        "vision": True,
-        "json_schema": True,
-        "base_url": "https://api.moonshot.ai/v1",
-        "pricing": {"input": 1.00, "output": 3.00},
-    },
-    "moonshot-v1-128k-vision-preview": {
-        "provider": "moonshot",
-        "vision": True,
-        "json_schema": True,
-        "base_url": "https://api.moonshot.ai/v1",
-        "pricing": {"input": 2.00, "output": 5.00},
-    },
-    # --- Z.AI / Zhipu (7 models) ---
-    # Z.AI strict mode doesn't enforce field names; use prompt-based JSON
-    "glm-5.2": {
-        "provider": "zai",
-        "vision": True,
-        "json_schema": False,
-        "base_url": "https://api.z.ai/api/paas/v4/",
-        # Estimated from the prior GLM-5.x public price until 5.2 is published.
-        "pricing": {"input": 1.40, "output": 4.40},
-        "pricing_estimated": True,
-    },
-    "glm-5": {
-        "provider": "zai",
-        "vision": False,
-        "json_schema": False,
-        "base_url": "https://api.z.ai/api/paas/v4/",
-        "pricing": {"input": 1.00, "output": 3.20},
-    },
-    "glm-4.6v": {
-        "provider": "zai",
-        "vision": True,
-        "json_schema": False,
-        "base_url": "https://api.z.ai/api/paas/v4/",
-        "pricing": {"input": 0.30, "output": 0.90},
-    },
-    "glm-4.6v-flashx": {
-        "provider": "zai",
-        "vision": True,
-        "json_schema": False,
-        "base_url": "https://api.z.ai/api/paas/v4/",
-        "pricing": {"input": 0.04, "output": 0.40},
-    },
-    "glm-4.6v-flash": {
-        "provider": "zai",
-        "vision": True,
-        "json_schema": False,
-        "base_url": "https://api.z.ai/api/paas/v4/",
-        "pricing": {"input": 0.00, "output": 0.00},
-    },
-    "glm-4.5v": {
-        "provider": "zai",
-        "vision": True,
-        "json_schema": False,
-        "base_url": "https://api.z.ai/api/paas/v4/",
-        "pricing": {"input": 0.60, "output": 1.80},
-    },
-    "glm-4.7-flash": {
-        "provider": "zai",
-        "vision": False,
-        "json_schema": False,
-        "base_url": "https://api.z.ai/api/paas/v4/",
-        "pricing": {"input": 0.00, "output": 0.00},
-    },
-    # --- Alibaba / Qwen (8 models) ---
-    "qwen3.5-plus": {
-        "provider": "qwen",
-        "vision": True,
-        "json_schema": False,
-        "qwen_thinking": True,
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.40, "output": 2.40},
-    },
-    "qwen3.5-flash": {
-        "provider": "qwen",
-        "vision": True,
-        "json_schema": False,
-        "qwen_thinking": True,
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.10, "output": 0.40},
-    },
-    "qwen3-vl-plus": {
-        "provider": "qwen",
-        "vision": True,
-        "json_schema": False,
-        "qwen_thinking": True,
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.20, "output": 1.60},
-    },
-    "qwen3-vl-flash": {
-        "provider": "qwen",
-        "vision": True,
-        "json_schema": False,
-        "qwen_thinking": True,
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.05, "output": 0.40},
-    },
-    "qwen-vl-max": {
-        "provider": "qwen",
-        "vision": True,
-        "json_schema": False,
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.80, "output": 3.20},
-    },
-    "qwen-vl-plus": {
-        "provider": "qwen",
-        "vision": True,
-        "json_schema": False,
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.21, "output": 0.63},
-    },
-    "qwen-plus": {
-        "provider": "qwen",
-        "vision": False,
-        "json_schema": True,
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.80, "output": 8.00},
-    },
-    "qwen-turbo": {
-        "provider": "qwen",
-        "vision": False,
-        "json_schema": True,
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "pricing": {"input": 0.05, "output": 0.35},
-    },
-    # --- DeepSeek (2 models, text-only) ---
-    # DeepSeek doesn't support json_schema response_format; use prompt-based JSON
-    "deepseek-chat": {
-        "provider": "deepseek",
-        "vision": False,
-        "json_schema": False,
-        "base_url": "https://api.deepseek.com/v1",
-        "pricing": {"input": 0.27, "output": 1.10},
-    },
-    "deepseek-reasoner": {
-        "provider": "deepseek",
-        "vision": False,
-        "json_schema": False,
-        "base_url": "https://api.deepseek.com/v1",
-        "pricing": {"input": 0.55, "output": 2.19},
-    },
-    # --- MiniMax (2 models, text-only) ---
-    "MiniMax-M2.5": {
-        "provider": "minimax",
-        "vision": False,
-        "json_schema": True,
-        "base_url": "https://api.minimax.io/v1",
-        "pricing": {"input": 0.30, "output": 1.20},
-    },
-    "MiniMax-01": {
-        "provider": "minimax",
-        "vision": False,
-        "json_schema": True,
-        "base_url": "https://api.minimax.io/v1",
-        "pricing": {"input": 0.20, "output": 1.10},
-    },
-    # --- OpenAI (7 models, all GPT-5 reasoning) ---
-    "gpt-5.6-sol": {
-        "provider": "openai",
-        "vision": True,
-        "json_schema": True,
-        "reasoning": True,
-        "base_url": "https://api.openai.com/v1",
-        # Preview pricing is not public; estimate at the GPT-5.5 API rate.
-        "pricing": {"input": 5.00, "output": 30.00},
-        "pricing_estimated": True,
-    },
-    "gpt-5.6-terra": {
-        "provider": "openai",
-        "vision": True,
-        "json_schema": True,
-        "reasoning": True,
-        "base_url": "https://api.openai.com/v1",
-        # Preview pricing is not public; estimate at the GPT-5.5 API rate.
-        "pricing": {"input": 5.00, "output": 30.00},
-        "pricing_estimated": True,
-    },
-    "gpt-5.6-luna": {
-        "provider": "openai",
-        "vision": True,
-        "json_schema": True,
-        "reasoning": True,
-        "base_url": "https://api.openai.com/v1",
-        # Preview pricing is not public; estimate at the GPT-5.5 API rate.
-        "pricing": {"input": 5.00, "output": 30.00},
-        "pricing_estimated": True,
-    },
-    "gpt-5.2": {
-        "provider": "openai",
-        "vision": True,
-        "json_schema": True,
-        "reasoning": True,
-        "base_url": "https://api.openai.com/v1",
-        "pricing": {"input": 1.75, "output": 14.00},
-    },
-    "gpt-5.1": {
-        "provider": "openai",
-        "vision": True,
-        "json_schema": True,
-        "reasoning": True,
-        "base_url": "https://api.openai.com/v1",
-        "pricing": {"input": 1.25, "output": 10.00},
-    },
-    "gpt-5-mini": {
-        "provider": "openai",
-        "vision": True,
-        "json_schema": True,
-        "reasoning": True,
-        "base_url": "https://api.openai.com/v1",
-        "pricing": {"input": 0.25, "output": 2.00},
-    },
-    "gpt-5-nano": {
-        "provider": "openai",
-        "vision": True,
-        "json_schema": True,
-        "reasoning": True,
-        "base_url": "https://api.openai.com/v1",
-        "pricing": {"input": 0.05, "output": 0.40},
-    },
-    # --- Anthropic / Claude (4 models) ---
-    "claude-sonnet-5": {
-        "provider": "anthropic",
-        "vision": True,
-        "json_schema": False,
-        "adaptive_thinking": True,
-        # Introductory price through 2026-08-31.
-        "pricing": {"input": 2.00, "output": 10.00},
-    },
-    "claude-opus-4-8": {
-        "provider": "anthropic",
-        "vision": True,
-        "json_schema": False,
-        "adaptive_thinking": True,
-        "pricing": {"input": 5.00, "output": 25.00},
-    },
-    "claude-sonnet-4-6": {
-        "provider": "anthropic",
-        "vision": True,
-        "json_schema": False,
-        "adaptive_thinking": True,
-        "pricing": {"input": 3.00, "output": 15.00},
-    },
-    "claude-haiku-4-5-20251001": {
-        "provider": "anthropic",
-        "vision": True,
-        "json_schema": False,
-        "pricing": {"input": 0.80, "output": 4.00},
-    },
+    name: _spec_to_registry_entry(spec) for name, spec in MODEL_SPECS.items()
 }
 
 # Map provider name → Config attribute name for API key
@@ -348,18 +253,17 @@ PROVIDER_API_KEY_MAP = {
     "minimax": "minimax_api_key",
     "openai": "openai_api_key",
     "anthropic": "anthropic_api_key",
+    "xai": "xai_api_key",
 }
 
-# Default model per provider (first listed model)
+# Default model per provider with a curated registry entry
 PROVIDER_DEFAULT_MODEL = {
-    "gemini": "gemini-3-flash-preview",
-    "moonshot": "kimi-k2.6",
+    "gemini": "gemini-3.5-flash-lite",
     "zai": "glm-5.2",
-    "qwen": "qwen3.5-flash",
-    "deepseek": "deepseek-chat",
-    "minimax": "MiniMax-M2.5",
-    "openai": "gpt-5.6-sol",
+    "qwen": "qwen3.6-flash",
+    "openai": "gpt-5.6-luna",
     "anthropic": "claude-sonnet-5",
+    "xai": "grok-4.5",
 }
 
 
@@ -489,6 +393,10 @@ def _strip_markdown_json(text: str) -> str:
         return cleaned[start_pos : end_pos + 1]
 
     return text
+
+
+# Public alias for validators / callers outside this module.
+strip_markdown_json = _strip_markdown_json
 
 
 def _sanitize_schema_for_strict(schema: dict) -> dict:
@@ -744,10 +652,14 @@ class GeminiProvider(LLMProvider):
             sanitized = _sanitize_schema_for_gemini(json_schema)
             self._last_sanitized_schema = sanitized
             config_kwargs["response_schema"] = sanitized
-        if self.thinking != "none":
-            config_kwargs["thinking_config"] = types.ThinkingConfig(
-                thinking_level=self.thinking
-            )
+        # Gemini 3.x cannot fully disable thinking; omit ≠ none. Map none→minimal
+        # and always send an explicit thinking_level.
+        thinking_level = (
+            "minimal" if self.thinking in (None, "", "none") else self.thinking
+        )
+        config_kwargs["thinking_config"] = types.ThinkingConfig(
+            thinking_level=thinking_level
+        )
         config = types.GenerateContentConfig(**config_kwargs)
 
         response = self.client.models.generate_content(
@@ -851,17 +763,23 @@ class OpenAICompatibleProvider(LLMProvider):
             "messages": messages,
         }
 
-        # Set reasoning effort for GPT-5 reasoning models
-        if self.reasoning_model and self.thinking != "none":
-            kwargs["reasoning_effort"] = self.thinking
+        # OpenAI/xAI reasoning: always send reasoning_effort explicitly.
+        # Omitting defaults to medium on GPT-5.6 — never treat omit as "none"/"low".
+        if self.reasoning_model:
+            kwargs["reasoning_effort"] = self.thinking or "low"
 
         # Qwen thinking mode (enable_thinking + thinking_budget via extra_body)
         if self.qwen_thinking:
             if self.thinking != "none":
-                thinking_budgets = {"low": 2048, "medium": 8192}
+                thinking_budgets = {"low": 2048, "medium": 8192, "minimal": 1024}
+                budget = (
+                    self.thinking
+                    if isinstance(self.thinking, int)
+                    else thinking_budgets.get(self.thinking, 2048)
+                )
                 kwargs["extra_body"] = {
                     "enable_thinking": True,
-                    "thinking_budget": thinking_budgets.get(self.thinking, 8192),
+                    "thinking_budget": budget,
                 }
             else:
                 kwargs["extra_body"] = {"enable_thinking": False}
@@ -1041,7 +959,13 @@ class LLMProviderError(Exception):
     pass
 
 
-def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
+def create_provider(
+    config: Any,
+    thinking: str = "low",
+    *,
+    provider_name: Optional[str] = None,
+    model_name: Optional[str] = None,
+) -> LLMProvider:
     """Create an LLM provider from configuration.
 
     Uses LLM_PROVIDER to select the API key and LLM_MODEL to select
@@ -1052,6 +976,8 @@ def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
         thinking: Thinking/reasoning level ("none", "low", "medium").
             Gemini maps to thinking_level, OpenAI GPT-5 maps to reasoning_effort.
             Providers without thinking support ignore this parameter.
+        provider_name: Optional override (e.g. fallback route provider).
+        model_name: Optional override (e.g. fallback route model).
 
     Returns:
         Configured LLMProvider instance.
@@ -1059,8 +985,10 @@ def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
     Raises:
         LLMProviderError: If API key is missing or model is invalid.
     """
-    provider_name = getattr(config, "llm_provider", "qwen")
-    model_name = getattr(config, "llm_model", None)
+    if provider_name is None:
+        provider_name = getattr(config, "llm_provider", "qwen")
+    if model_name is None:
+        model_name = getattr(config, "llm_model", None)
 
     # Determine model
     if model_name is None:
@@ -1100,19 +1028,22 @@ def create_provider(config: Any, thinking: str = "low") -> LLMProvider:
             adaptive_thinking=registry_entry.get("adaptive_thinking", False),
         )
     else:
-        # OpenAI-compatible (moonshot, zai, qwen, deepseek, minimax, openai)
+        # OpenAI-compatible (openai, xai, zai, qwen, and deferred providers)
         base_url = registry_entry.get("base_url")
         if not base_url:
             raise LLMProviderError(
                 f"No base_url configured for model '{model_name}'"
             )
+        supports_json_schema = registry_entry.get("json_schema", True)
+        if registry_entry.get("structured_output") == "json_object":
+            supports_json_schema = False
         return OpenAICompatibleProvider(
             api_key=api_key,
             model=model_name,
             base_url=base_url,
             provider_name=provider_name,
             supports_vision=registry_entry.get("vision", False),
-            supports_json_schema=registry_entry.get("json_schema", True),
+            supports_json_schema=supports_json_schema,
             reasoning_model=registry_entry.get("reasoning", False),
             qwen_thinking=registry_entry.get("qwen_thinking", False),
             thinking=thinking,

@@ -2,24 +2,49 @@
 
 ## Overview
 
-Selko uses a provider-agnostic LLM abstraction layer (`LLMProvider` + `LLMGateway`) that supports 8 providers and 37 models. The application default is Anthropic Claude Sonnet 5, but any registered provider/model can be selected via `LLM_PROVIDER` and `LLM_MODEL`.
+Selko uses a provider-agnostic LLM abstraction layer (`LLMProvider` +
+`LLMGateway`) with an explicit `ModelSpec` / `ThinkingConfig` registry.
+Production calendar extraction uses **validated primary → fallback routing**
+(`LLMGateway.call_validated`): three primary attempts for transient failures,
+immediate fallback for empty/invalid/schema-echo/truncated output, and two
+fallback attempts for transient failures only. Fallback must be a different
+provider.
+
+Provisional production defaults (see
+`backend/tests/eval/reports/2026-07-23-current-model-low-thinking-recommendation.md`):
+
+```dotenv
+LLM_PROVIDER=anthropic
+LLM_MODEL=claude-sonnet-5
+LLM_THINKING=low
+LLM_FALLBACK_PROVIDER=openai
+LLM_FALLBACK_MODEL=gpt-5.6-terra
+LLM_FALLBACK_THINKING=low
+```
 
 > **Photo-library status:** Google Photos/OneDrive library ingestion is dormant while photo ingestion is parked; see [`docs/specs/onedrive-photo-ingestion.md`](specs/onedrive-photo-ingestion.md). The multimodal/image-processing material below describes the active email-attachment pipeline and remains applicable to email attachments.
 
-### Supported Providers
+### Current registry models (one preferred low/minimal thinking each)
 
-| Provider | Env Var Key | Default Model | Vision |
-|----------|-------------|---------------|--------|
-| Gemini | `GEMINI_API_KEY` | `gemini-3-flash-preview` | Yes |
-| Moonshot (Kimi) | `MOONSHOT_API_KEY` | `kimi-k2.6` | Yes |
-| ZAI (GLM) | `ZAI_API_KEY` | `glm-5.2` | Yes |
-| Qwen | `ALIBABA_API_KEY` | `qwen3.5-flash` | Yes |
-| DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-chat` | No |
-| MiniMax | `MINIMAX_API_KEY` | `MiniMax-M2.5` | No |
-| OpenAI | `OPENAI_API_KEY` | `gpt-5.6-sol` | Yes |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-sonnet-5` | Yes |
+| Provider | Env Var Key | Model ID | Preferred thinking |
+|----------|-------------|----------|--------------------|
+| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite`, `gemini-3.6-flash` | minimal |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5.6-luna`, `gpt-5.6-terra` | low (always explicit) |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-sonnet-5` | adaptive low |
+| Qwen | `ALIBABA_API_KEY` | `qwen3.6-flash`, `qwen3.7-plus` | low budget |
+| Z.AI | `ZAI_API_KEY` | `glm-5.2` | low |
+| xAI | `XAI_API_KEY` | `grok-4.5` | low |
 
-See `backend/selko/services/llm_provider.py` for the full `MODEL_REGISTRY` with pricing, context windows, and capabilities.
+See `backend/selko/services/llm_provider.py` for `MODEL_SPECS` / `MODEL_REGISTRY`.
+Old Sol / MiniMax-M2.5 / DeepSeek chat-reasoner / legacy Qwen VL IDs are removed.
+
+### All-day materialization
+
+LLM extractions `all_day: true` events remain source truth in
+`event_sources.extracted_data`. A single user preference
+(`user_calendar_settings.all_day_display_mode`) materializes the `events` row
+as all-day or a timed window. See
+`docs/specs/calendar-policy-llm-fallback-and-incremental-evals.md`.
 
 ## Gemini-Specific Setup
 

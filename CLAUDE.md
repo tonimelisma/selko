@@ -282,6 +282,7 @@ from a Microsoft Entra app registration.
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
 | **Reliable email ingestion fix-forward** | `docs/specs/reliable-email-ingestion-fix-forward.md` | When fixing email cursors, folder inclusion, processing state, or email History after PR #183 |
 | **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |
+| **Calendar policy + LLM fallback** | `docs/specs/calendar-policy-llm-fallback-and-incremental-evals.md` | When changing all-day materialization, primary/fallback LLM routing, or incremental eval identity |
 | **Warmth design system rollout** | `docs/specs/warmth-design-system.md` | When implementing the new coral/Figtree "Warmth" visual identity on any platform |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |
 | **Architecture** | `PRD_ARCH.md` | For product requirements and architecture |
