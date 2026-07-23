@@ -68,23 +68,23 @@ class TestCostEstimation:
         cost = estimate_cost("glm-4.6v-flash", 5000, 2000)
         assert cost == 0.0
 
-    def test_unknown_model_returns_zero(self):
+    def test_unknown_model_returns_none(self):
         from tests.eval.run_eval import estimate_cost
 
         cost = estimate_cost("nonexistent-model", 1000, 500)
-        assert cost == 0.0
+        assert cost is None
 
-    def test_none_tokens_returns_zero(self):
+    def test_none_tokens_returns_none(self):
         from tests.eval.run_eval import estimate_cost
 
         cost = estimate_cost("gemini-3-flash-preview", None, None)
-        assert cost == 0.0
+        assert cost is None
 
-    def test_partial_none_tokens_returns_zero(self):
+    def test_partial_none_tokens_returns_none(self):
         from tests.eval.run_eval import estimate_cost
 
         cost = estimate_cost("gemini-3-flash-preview", 1000, None)
-        assert cost == 0.0
+        assert cost is None
 
 
 class TestCompareScoring:

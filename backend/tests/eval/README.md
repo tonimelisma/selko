@@ -31,13 +31,32 @@ eval/
 │   ├── attachments/         # Text/image attachment fixtures
 │   └── threads/             # Multi-email thread scenarios (4)
 ├── results/                 # Cached evaluation results (tracked in git)
-│   ├── extract/             # Per-model extract results
-│   ├── compare/             # Per-model compare results
-│   └── merge/               # Per-model merge results
+│   ├── inference/           # Content-addressed model inference artifacts
+│   ├── scores/              # Deterministic score artifacts
+│   ├── manifests/           # Per-run HIT/MISS manifests
+│   ├── reports/             # Markdown reports
+│   ├── extract/             # Legacy per-model extract results (compat)
+│   ├── compare/             # Legacy per-model compare results (compat)
+│   └── merge/               # Legacy per-model merge results (compat)
+├── identity.py              # InferenceIdentity / ScoreIdentity hashing
+├── artifact_store.py        # Atomic immutable artifact storage
 ├── run_eval.py              # Evaluation runner CLI
 ├── eval_config.py           # Configuration (models, thresholds, cost tiers)
 └── conftest.py              # Pytest fixtures
 ```
+
+## Immutable cache (content-addressed)
+
+Model inference and scoring are separate identities:
+
+- **Inference key** = operation + provider/model + effective thinking/settings +
+  prompt contract + adapter contract + fixture *input* + attachment bytes.
+- **Score key** = inference key + expected-output hash + scorer hash.
+
+Identical invocations never repurchase a model call. Editing expected output or
+scorer code rescores only. Use `--plan` to print HIT/MISS without API calls.
+`--no-cache` is removed; use `--replicate N` for intentional nondeterminism
+studies (writes a side artifact, never overwrites the canonical key).
 
 ## Running Evaluations
 
@@ -88,11 +107,14 @@ uv run python -m backend.tests.eval.run_eval --report-md backend/tests/eval/REPO
 ### Using Cached Results
 
 ```bash
-# Use cached results if available (skip LLM calls)
-uv run python -m backend.tests.eval.run_eval --all --use-cache
+# Inspect HIT/MISS without provider calls
+uv run python -m backend.tests.eval.run_eval --all --plan
 
-# Force re-run even if cached
-uv run python -m backend.tests.eval.run_eval --all --no-cache
+# Canonical cache is always on; identical cells never repurchase a model call
+uv run python -m backend.tests.eval.run_eval --all
+
+# Intentional nondeterminism study (side replica; does not overwrite canonical)
+uv run python -m backend.tests.eval.run_eval --fixture invitations/birthday_party_kids_01 --replicate 1
 
 # Clear all cached results
 uv run python -m backend.tests.eval.run_eval --clear-cache
@@ -271,13 +293,14 @@ Text-based attachments supported:
 
 ## Results Cache
 
-Results are cached in `results/` directory as JSON files and tracked in git for regression analysis.
+Results are cached under `results/inference/` and `results/scores/` as content-addressed
+JSON artifacts (see `identity.py`). An inference key covers operation, provider/model,
+effective thinking/settings, prompt contract, adapter contract, fixture input, and
+attachment bytes. Score keys additionally include expected-output and scorer hashes.
 
-Result files are named `result_{prompt_hash}.json` where `prompt_hash` is a 12-char SHA256 of the
-prompt-affecting functions only (`_build_prompt`, `compare_events`, `merge_event_data`, `CalendarEvent`,
-`EventExtractionResponse`). This means scaffolding-only changes to `event_processing.py` (e.g., renaming
-a variable, adding a comment, changing a log statement) **do not** invalidate the cache. Use `--no-cache`
-to force a re-run regardless.
+Scaffolding-only changes outside the prompt/adapter contracts do not invalidate inference.
+Expected-only or scorer-only changes rescore without model calls. Use `--replicate N` for
+intentional nondeterminism studies; there is no overwrite path for canonical keys.
 
 ```json
 {

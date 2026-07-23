@@ -64,7 +64,8 @@ uv run python -m backend.tests.eval.run_eval --show invitations/birthday_party_0
 # 5. Edit the prompt in event_processing.py
 #    (code_hash changes automatically, so cache invalidates)
 
-# 6. Re-run the same eval
+# 6. Re-run the same eval (identical cells are cache HITs — zero model calls)
+uv run python -m backend.tests.eval.run_eval --all --all-operations --plan
 uv run python -m backend.tests.eval.run_eval --all --all-operations
 
 # 7. Save the new report and compare
@@ -184,12 +185,16 @@ When a real email is mishandled in production, or you identify an untested edge 
 
 ## Caching Behavior
 
-The eval framework caches LLM results keyed by `{fixture_hash}_{code_hash}_{model}_{thinking_level}`:
+The eval framework uses content-addressed inference and score identities
+(`backend/tests/eval/identity.py`):
 
-- **Fixture changes** → cache miss (new fixture hash)
-- **Prompt/schema changes** in `event_processing.py` → cache miss (new code hash)
-- **Scoring-only changes** (thresholds, scorer logic) → cache HIT — the LLM output is the same, only the score changes. No need to re-run LLM calls; just re-score with `--use-cache`
-- **Force re-run**: `--no-cache` ignores existing cache, `--clear-cache` deletes all cached results
+- **Fixture input / attachment byte changes** → inference miss
+- **Operation-specific prompt/schema changes** → miss for that operation only
+- **Expected-output or scorer/threshold changes** → rescore only (zero model calls)
+- **Unrelated backend/UI code** → no invalidation
+- **`--plan`** prints HIT/MISS with zero provider calls
+- **`--replicate N`** writes a side artifact for nondeterminism studies (never overwrites)
+- **`--clear-cache`** deletes cached results
 
 ---
 
