@@ -133,6 +133,13 @@ def list_calendars(
         raise CalendarsError(f"Failed to list calendars: {e}") from e
 
 
+_DEFAULT_ALL_DAY_SETTINGS: dict[str, Any] = {
+    "all_day_display_mode": "all_day",
+    "all_day_custom_start": None,
+    "all_day_custom_end": None,
+}
+
+
 def get_calendar_settings(
     supabase_client: Client, user_id: str
 ) -> dict[str, Any]:
@@ -143,7 +150,8 @@ def get_calendar_settings(
         user_id: UUID of user.
 
     Returns:
-        Dict with target_calendar_id, target_calendar_name, default_invitees.
+        Dict with target_calendar_id, target_calendar_name, default_invitees,
+        timezone, and all-day materialization preference fields.
     """
     result = supabase_client.table("user_calendar_settings").select("*").eq(
         "user_id", user_id
@@ -155,6 +163,7 @@ def get_calendar_settings(
             "target_calendar_name": None,
             "default_invitees": None,
             "timezone": "America/New_York",
+            **_DEFAULT_ALL_DAY_SETTINGS,
         }
 
     settings = result.data[0]
@@ -176,7 +185,47 @@ def get_calendar_settings(
         "target_calendar_name": calendar_name,
         "default_invitees": settings.get("default_invitees"),
         "timezone": settings.get("timezone", "America/New_York"),
+        "all_day_display_mode": settings.get("all_day_display_mode") or "all_day",
+        "all_day_custom_start": settings.get("all_day_custom_start"),
+        "all_day_custom_end": settings.get("all_day_custom_end"),
     }
+
+
+def get_all_day_policy_and_timezone(
+    supabase_client: Client, user_id: str
+) -> tuple["AllDayPolicy", str]:
+    """Lean fetch of timezone + all-day preference (no GCal list call).
+
+    Returns:
+        (AllDayPolicy, IANA timezone name)
+    """
+    from selko.services.calendar_policy import all_day_policy_from_settings
+
+    try:
+        result = (
+            supabase_client.table("user_calendar_settings")
+            .select(
+                "timezone, all_day_display_mode, "
+                "all_day_custom_start, all_day_custom_end"
+            )
+            .eq("user_id", user_id)
+            .execute()
+        )
+        row: dict[str, Any] = {}
+        if (
+            result.data
+            and isinstance(result.data, list)
+            and result.data
+            and isinstance(result.data[0], dict)
+        ):
+            row = result.data[0]
+    except Exception as e:
+        logger.warning(f"Failed to fetch all-day policy for user {user_id}: {e}")
+        row = {}
+
+    timezone_name = row.get("timezone") or "America/New_York"
+    policy = all_day_policy_from_settings(row)
+    return policy, timezone_name
 
 
 def update_calendar_settings(
@@ -184,6 +233,11 @@ def update_calendar_settings(
     user_id: str,
     target_calendar_id: Optional[str] = None,
     default_invitees: Optional[str] = None,
+    *,
+    all_day_display_mode: Optional[str] = None,
+    all_day_custom_start: Optional[str] = None,
+    all_day_custom_end: Optional[str] = None,
+    update_all_day_policy: bool = False,
 ) -> None:
     """Update calendar settings.
 
@@ -192,13 +246,50 @@ def update_calendar_settings(
         user_id: UUID of user.
         target_calendar_id: Google Calendar ID to sync to (None = primary).
         default_invitees: Comma-separated emails to add to all events.
+        all_day_display_mode: How to materialize date-only extractions events.
+        all_day_custom_start: Custom window start (HH:MM[:SS]) when mode=custom.
+        all_day_custom_end: Custom window end (HH:MM[:SS]) when mode=custom.
+        update_all_day_policy: When True, write the all-day preference fields.
+            Custom times are only cleared when switching modes if explicitly
+            passed as None while mode is not custom — callers should omit
+            custom times when switching presets so saved custom values remain.
     """
-    # Upsert settings
-    supabase_client.table("user_calendar_settings").upsert({
+    payload: dict[str, Any] = {
         "user_id": user_id,
         "target_calendar_id": target_calendar_id,
         "default_invitees": default_invitees,
-    }).execute()
+    }
+
+    if update_all_day_policy or all_day_display_mode is not None:
+        from selko.services.calendar_policy import validate_all_day_policy
+
+        mode = all_day_display_mode or "all_day"
+        policy = validate_all_day_policy(
+            mode,
+            custom_start=all_day_custom_start,
+            custom_end=all_day_custom_end,
+        )
+        payload["all_day_display_mode"] = policy.mode.value
+        # Preserve previously saved custom times when switching to a preset:
+        # only write custom columns when provided or when mode is custom.
+        if policy.mode.value == "custom":
+            payload["all_day_custom_start"] = (
+                policy.custom_start.isoformat(timespec="minutes")
+                if policy.custom_start
+                else None
+            )
+            payload["all_day_custom_end"] = (
+                policy.custom_end.isoformat(timespec="minutes")
+                if policy.custom_end
+                else None
+            )
+        elif all_day_custom_start is not None or all_day_custom_end is not None:
+            if all_day_custom_start is not None:
+                payload["all_day_custom_start"] = all_day_custom_start
+            if all_day_custom_end is not None:
+                payload["all_day_custom_end"] = all_day_custom_end
+
+    supabase_client.table("user_calendar_settings").upsert(payload).execute()
 
     logger.info(f"Updated calendar settings for user {user_id}")
 

@@ -13,16 +13,41 @@ from datetime import datetime
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
+from pydantic import BaseModel, ValidationError
 from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
 from selko.services.event_diff import EventChangeSet, FieldChange, gate_change_set
-from selko.services.llm_gateway import LLMGateway, LLMGatewayError
+from selko.services.llm_gateway import (
+    LLMFailureKind,
+    LLMGateway,
+    LLMGatewayError,
+    LLMValidationError,
+)
 from selko.services.llm_logging import LLMOperationType
-from selko.services.llm_provider import ContentPart, ImageContent
+from selko.services.llm_provider import ContentPart, ImageContent, LLMResponse, strip_markdown_json
 
 logger = logging.getLogger(__name__)
+
+
+class CompareEventsResponse(BaseModel):
+    """Structured compare-events response."""
+
+    matched_event_id: Optional[str] = None
+    reasoning: str = ""
+
+
+class MergedEventData(BaseModel):
+    """Structured merge-events response."""
+
+    title: str
+    start_datetime: str
+    end_datetime: Optional[str] = None
+    all_day: bool
+    location: Optional[str] = None
+    description: Optional[str] = None
+    importance: str = "action_required"
 
 
 def looks_like_json_schema(parsed: Any) -> bool:
@@ -45,6 +70,58 @@ def looks_like_json_schema(parsed: Any) -> bool:
     return False
 
 
+def _parse_json_payload(response: LLMResponse) -> Any:
+    """Strip documented code fences, parse JSON exactly once, reject schema echoes."""
+    raw = response.text if response.text is not None else ""
+    cleaned = strip_markdown_json(raw).strip()
+    if not cleaned:
+        raise LLMValidationError(LLMFailureKind.EMPTY, "Empty LLM response after stripping")
+    try:
+        parsed = json.loads(cleaned, strict=False)
+    except json.JSONDecodeError as e:
+        raise LLMValidationError(
+            LLMFailureKind.INVALID_JSON, f"Invalid JSON response: {e}"
+        ) from e
+    if looks_like_json_schema(parsed):
+        raise LLMValidationError(
+            LLMFailureKind.INVALID_SCHEMA,
+            "LLM returned JSON schema instead of extraction data",
+        )
+    return parsed
+
+
+def validate_extraction_response(response: LLMResponse) -> EventExtractionResponse:
+    """Validator for extract_events structured output."""
+    parsed = _parse_json_payload(response)
+    try:
+        return EventExtractionResponse.model_validate(parsed)
+    except ValidationError as e:
+        raise LLMValidationError(
+            LLMFailureKind.INVALID_SCHEMA, f"Extraction schema validation failed: {e}"
+        ) from e
+
+
+def validate_compare_response(response: LLMResponse) -> CompareEventsResponse:
+    """Validator for compare_events structured output."""
+    parsed = _parse_json_payload(response)
+    try:
+        return CompareEventsResponse.model_validate(parsed)
+    except ValidationError as e:
+        raise LLMValidationError(
+            LLMFailureKind.INVALID_SCHEMA, f"Compare schema validation failed: {e}"
+        ) from e
+
+
+def validate_merge_response(response: LLMResponse) -> dict[str, Any]:
+    """Validator for merge_events structured output."""
+    parsed = _parse_json_payload(response)
+    try:
+        merged = MergedEventData.model_validate(parsed)
+    except ValidationError as e:
+        raise LLMValidationError(
+            LLMFailureKind.INVALID_SCHEMA, f"Merge schema validation failed: {e}"
+        ) from e
+    return merged.model_dump()
 
 def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
     """Build the system prompt for calendar event extraction.
@@ -221,7 +298,8 @@ def extract_calendar_events(
         email_text: Email body text (plain text or HTML).
         email_metadata: Dict with keys: provider_message_id, subject, from_name, from_email, date_sent.
         attachments: Optional list of attachment dicts with keys: data (bytes), mime_type.
-        max_retries: Maximum retries for rate-limited requests.
+        max_retries: Deprecated; routing attempts come from gateway config
+            (``llm_primary_max_attempts`` / ``llm_fallback_max_attempts``).
         config: Optional Config for per-type attachment size limits.
 
     Returns:
@@ -230,6 +308,7 @@ def extract_calendar_events(
     Raises:
         LLMGatewayError: If extraction fails after retries.
     """
+    del max_retries  # routing attempts owned by LLMGateway.call_validated
     user_tz_name = email_metadata.get("user_timezone", "America/New_York")
     try:
         user_tz = ZoneInfo(user_tz_name)
@@ -244,20 +323,12 @@ def extract_calendar_events(
     json_schema = EventExtractionResponse.model_json_schema()
 
     try:
-        response = gateway.call(
+        llm_result = gateway.call_validated(
             operation=LLMOperationType.EXTRACT_EVENTS,
             contents=content_parts,
+            validator=validate_extraction_response,
             json_schema=json_schema,
-            max_retries=max_retries,
         )
-
-        # Parse response JSON
-        parsed = json.loads(response.text, strict=False)
-        if looks_like_json_schema(parsed):
-            raise LLMGatewayError(
-                "LLM returned JSON schema instead of extraction data"
-            )
-        llm_result = EventExtractionResponse.model_validate(parsed)
 
         logger.info(
             f"Extraction complete: {len(llm_result.events)} events found "
@@ -441,15 +512,15 @@ Return the matching Event ID (or null if no match) and brief reasoning.
     }
 
     try:
-        response = gateway.call(
+        parsed = gateway.call_validated(
             operation=LLMOperationType.COMPARE_EVENTS,
             contents=[prompt],
+            validator=validate_compare_response,
             json_schema=compare_schema,
         )
 
-        parsed = json.loads(response.text, strict=False)
-        matched_id = parsed.get("matched_event_id")
-        reasoning = parsed.get("reasoning", "")
+        matched_id = parsed.matched_event_id
+        reasoning = parsed.reasoning
         logger.info(f"Event comparison result: {matched_id} ({reasoning})")
 
         if matched_id is None:
@@ -732,18 +803,16 @@ Output JSON with merged event data:
     }
 
     try:
-        response = gateway.call(
+        merged = gateway.call_validated(
             operation=LLMOperationType.MERGE_EVENTS,
             contents=[prompt],
+            validator=validate_merge_response,
             json_schema=merge_schema,
         )
 
-        merged = json.loads(response.text, strict=False)
         logger.info(f"Event merge complete: {merged.get('title')}")
         return merged
 
-    except json.JSONDecodeError as e:
-        raise LLMGatewayError(f"Event merge failed: invalid JSON response: {e}") from e
     except LLMGatewayError:
         raise
     except Exception as e:

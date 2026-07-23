@@ -82,6 +82,9 @@ class CalendarSettingsRequest(BaseModel):
 
     target_calendar_id: Optional[str] = None
     default_invitees: Optional[str] = None  # Comma-separated emails
+    all_day_display_mode: Optional[str] = None
+    all_day_custom_start: Optional[str] = None  # HH:MM[:SS]
+    all_day_custom_end: Optional[str] = None
 
 
 class CalendarSettingsResponse(BaseModel):
@@ -90,6 +93,10 @@ class CalendarSettingsResponse(BaseModel):
     target_calendar_id: Optional[str] = None
     target_calendar_name: Optional[str] = None
     default_invitees: Optional[str] = None
+    timezone: Optional[str] = None
+    all_day_display_mode: str = "all_day"
+    all_day_custom_start: Optional[str] = None
+    all_day_custom_end: Optional[str] = None
 
 
 class CalendarSyncResponse(BaseModel):

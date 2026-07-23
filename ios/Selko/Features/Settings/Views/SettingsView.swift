@@ -228,27 +228,27 @@ struct SettingsView: View {
     private var calendarDefaultsSection: some View {
         let calendarConnected = viewModel.integrations.contains { $0.provider == .googleCalendar && $0.isActive }
 
-        if calendarConnected {
-            Section("Calendar Defaults") {
+        Section {
+            if calendarConnected {
                 if viewModel.calendars.isEmpty {
                     if viewModel.isLoading {
                         HStack {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Loading calendars...")
+                            Text(String(localized: "settings.loading_calendars"))
                                 .foregroundStyle(Color.selkoMuted)
                         }
                     } else {
-                        Text("Connect Google Calendar to configure calendar defaults.")
+                        Text(String(localized: "settings.connect_calendar_hint"))
                             .foregroundStyle(Color.selkoMuted)
                     }
                 } else {
-                    Picker("Default Calendar", selection: $viewModel.selectedCalendarId) {
+                    Picker(String(localized: "settings.default_calendar"), selection: $viewModel.selectedCalendarId) {
                         ForEach(viewModel.calendars) { calendar in
                             HStack {
                                 Text(calendar.name)
                                 if calendar.isPrimary {
-                                    Text("(Primary)")
+                                    Text(String(localized: "settings.primary"))
                                         .foregroundStyle(Color.selkoMuted)
                                 }
                             }
@@ -260,6 +260,57 @@ struct SettingsView: View {
                     }
                 }
             }
+
+            Picker(String(localized: "settings.date_only_events"), selection: $viewModel.allDayDisplayMode) {
+                ForEach(AllDayDisplayMode.allCases, id: \.self) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .onChange(of: viewModel.allDayDisplayMode) { _, newMode in
+                Task { await viewModel.updateAllDayDisplayMode(newMode) }
+            }
+            .accessibilityIdentifier("allDayDisplayModePicker")
+
+            if viewModel.allDayDisplayMode == .custom {
+                DatePicker(
+                    String(localized: "settings.date_only_custom_start"),
+                    selection: $viewModel.allDayCustomStart,
+                    displayedComponents: .hourAndMinute
+                )
+                .onChange(of: viewModel.allDayCustomStart) { _, _ in
+                    Task { await viewModel.updateAllDayCustomTimes() }
+                }
+                .accessibilityIdentifier("allDayCustomStartPicker")
+
+                DatePicker(
+                    String(localized: "settings.date_only_custom_end"),
+                    selection: $viewModel.allDayCustomEnd,
+                    displayedComponents: .hourAndMinute
+                )
+                .onChange(of: viewModel.allDayCustomEnd) { _, _ in
+                    Task { await viewModel.updateAllDayCustomTimes() }
+                }
+                .accessibilityIdentifier("allDayCustomEndPicker")
+
+                if let error = viewModel.allDayCustomError {
+                    Text(error)
+                        .font(SelkoTypography.caption)
+                        .foregroundStyle(Color.selkoError)
+                }
+            }
+
+            Text(
+                String(
+                    format: String(localized: "settings.date_only_preview %@"),
+                    viewModel.allDayPreviewWindow
+                )
+            )
+            .font(SelkoTypography.caption)
+            .foregroundStyle(Color.selkoMuted)
+        } header: {
+            Text(String(localized: "settings.calendar_defaults"))
+        } footer: {
+            Text(String(localized: "settings.date_only_events_hint"))
         }
     }
 

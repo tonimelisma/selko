@@ -7,6 +7,11 @@ struct EventCardView: View {
     var onEdit: (() -> Void)? = nil
     var onReject: (() -> Void)? = nil
 
+    @State private var isDescriptionExpanded = false
+    @State private var descriptionOverflows = false
+    @State private var truncatedDescriptionHeight: CGFloat = 0
+    @State private var fullDescriptionHeight: CGFloat = 0
+
     private var dateParts: (month: String, day: String) {
         guard let date = event.startDatetime else { return ("", "—") }
         let formatter = DateFormatter()
@@ -58,10 +63,7 @@ struct EventCardView: View {
                 }
 
                 if let description = event.description, !description.isEmpty {
-                    Text(description)
-                        .font(SelkoTypography.caption)
-                        .foregroundStyle(Color.selkoMuted)
-                        .lineLimit(2)
+                    descriptionSection(description)
                 }
 
                 HStack(spacing: 8) {
@@ -103,6 +105,108 @@ struct EventCardView: View {
         .accessibilityHint("Double tap to view details")
         .accessibilityIdentifier("eventCard")
         .listRowBackground(Color.clear)
+        .onChange(of: event.id) { _, _ in
+            resetDescriptionExpansion()
+        }
+        .onChange(of: event.description) { _, _ in
+            resetDescriptionExpansion()
+        }
+        .onChange(of: truncatedDescriptionHeight) { _, _ in
+            updateDescriptionOverflow()
+        }
+        .onChange(of: fullDescriptionHeight) { _, _ in
+            updateDescriptionOverflow()
+        }
+    }
+
+    @ViewBuilder
+    private func descriptionSection(_ description: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(description)
+                .font(SelkoTypography.caption)
+                .foregroundStyle(Color.selkoMuted)
+                .lineLimit(isDescriptionExpanded ? nil : 3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: isDescriptionExpanded)
+                .background(alignment: .topLeading) {
+                    descriptionOverflowProbe(description)
+                }
+
+            if descriptionOverflows || isDescriptionExpanded {
+                Button {
+                    isDescriptionExpanded.toggle()
+                } label: {
+                    Text(
+                        isDescriptionExpanded
+                            ? String(localized: "event_card.show_less")
+                            : String(localized: "event_card.show_more")
+                    )
+                    .font(SelkoTypography.caption)
+                    .fontWeight(.semibold)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(Color.accentColor)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityValue(
+                    isDescriptionExpanded
+                        ? String(localized: "event_card.expanded")
+                        : String(localized: "event_card.collapsed")
+                )
+            }
+        }
+    }
+
+    private func descriptionOverflowProbe(_ description: String) -> some View {
+        ZStack {
+            Text(description)
+                .font(SelkoTypography.caption)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .hidden()
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(
+                                key: DescriptionTruncatedHeightKey.self,
+                                value: geometry.size.height
+                            )
+                    }
+                )
+
+            Text(description)
+                .font(SelkoTypography.caption)
+                .fixedSize(horizontal: false, vertical: true)
+                .hidden()
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(
+                                key: DescriptionFullHeightKey.self,
+                                value: geometry.size.height
+                            )
+                    }
+                )
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .onPreferenceChange(DescriptionTruncatedHeightKey.self) { height in
+            truncatedDescriptionHeight = height
+        }
+        .onPreferenceChange(DescriptionFullHeightKey.self) { height in
+            fullDescriptionHeight = height
+        }
+    }
+
+    private func updateDescriptionOverflow() {
+        guard truncatedDescriptionHeight > 0, fullDescriptionHeight > 0 else { return }
+        descriptionOverflows = fullDescriptionHeight > truncatedDescriptionHeight + 1
+    }
+
+    private func resetDescriptionExpansion() {
+        isDescriptionExpanded = false
+        descriptionOverflows = false
+        truncatedDescriptionHeight = 0
+        fullDescriptionHeight = 0
     }
 
     private func formattedDateTime(_ date: Date, allDay: Bool) -> String {
@@ -115,6 +219,20 @@ struct EventCardView: View {
             formatter.timeStyle = .short
         }
         return formatter.string(from: date)
+    }
+}
+
+private struct DescriptionTruncatedHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct DescriptionFullHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

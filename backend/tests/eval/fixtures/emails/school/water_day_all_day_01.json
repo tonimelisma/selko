@@ -1,0 +1,63 @@
+{
+  "name": "water_day_all_day_01",
+  "category": "school",
+  "description": "Anonymized school newsletter announcing Water Day as date-only all-day events on two dates (production regression: extraction must stay all_day=true; materialization policy is tested outside LLM evals)",
+  "difficulty": "medium",
+  "tags": [
+    "school",
+    "all-day",
+    "date-only",
+    "water-day",
+    "production-regression",
+    "real-world"
+  ],
+  "provenance": {
+    "failure_class": "policy_not_extraction",
+    "anonymization_notes": "School name, child names, addresses, and message IDs replaced. Date wording and all-day structure preserved."
+  },
+  "input": {
+    "provider_message_id": "eval-school-water-day-001",
+    "thread_id": "thread-school-water-day-001",
+    "subject": "This Week at Riverside Elementary — Water Day & Early Release",
+    "from_email": "office@riverside-elementary.example.edu",
+    "from_name": "Riverside Elementary Office",
+    "to_emails": [
+      "families@riverside-elementary.example.edu"
+    ],
+    "date_sent": "2026-07-20T15:30:00Z",
+    "snippet": "Reminder: Water Day is Monday, July 27 and Tuesday, July 28...",
+    "body_text": "RIVERSIDE ELEMENTARY SCHOOL\nFamily Newsletter — Week of July 20\n\nDear Families,\n\nA few important calendar notes for the coming week:\n\nWATER DAY\nMonday, July 27 and Tuesday, July 28 are Water Days for all grades.\nStudents may bring a towel and a change of clothes. There is no specific start or end time — Water Day is an all-day campus activity on each of those dates.\n\nEARLY RELEASE\nFriday, July 31 is a regular early-release day at 12:30 PM for teacher planning.\n\nPlease mark your calendars.\n\nThank you,\nRiverside Elementary Office\noffice@riverside-elementary.example.edu",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 3,
+    "events": [
+      {
+        "title": "Water Day",
+        "start_datetime": "2026-07-27",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "importance": "fyi"
+      },
+      {
+        "title": "Water Day",
+        "start_datetime": "2026-07-28",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "importance": "fyi"
+      },
+      {
+        "title": "Early Release",
+        "start_datetime": "2026-07-31T12:30:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": null,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "notes": "LLM must keep Water Day as all_day=true. Timed conversion is a user preference applied after extraction."
+}

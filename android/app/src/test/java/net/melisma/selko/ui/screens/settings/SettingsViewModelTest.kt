@@ -20,6 +20,8 @@ import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.EmailFolderPreference
 import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.data.repository.AuthRepository
+import net.melisma.selko.data.repository.AllDayDisplayMode
+import net.melisma.selko.data.repository.CalendarSettings
 import net.melisma.selko.data.repository.CalendarSettingsRepository
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
@@ -29,6 +31,8 @@ import net.melisma.selko.data.repository.SenderRuleRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -72,6 +76,15 @@ class SettingsViewModelTest {
         every { application.getString(R.string.settings_error_create_rule) } returns "Failed to create rule"
         every { application.getString(R.string.settings_error_delete_rule) } returns "Failed to delete rule"
         every { application.getString(R.string.settings_error_save_calendar) } returns "Failed to save calendar settings"
+        every { application.getString(R.string.settings_date_only_custom_error) } returns "End time must be later than start time."
+        every { application.getString(R.string.settings_date_only_all_day) } returns "All day"
+        every { application.getString(R.string.settings_date_only_day_9_to_5) } returns "9:00 AM–5:00 PM"
+        every { application.getString(R.string.settings_date_only_morning_8_to_9) } returns "8:00 AM–9:00 AM"
+        every {
+            application.getString(R.string.settings_date_only_time_format, any(), any())
+        } answers {
+            String.format("%02d:%02d", secondArg<Int>(), thirdArg<Int>())
+        }
         authRepository = mockk(relaxed = true)
         integrationRepository = mockk(relaxed = true)
         calendarSettingsRepository = mockk(relaxed = true)
@@ -255,7 +268,13 @@ class SettingsViewModelTest {
     fun `saveCalendarSettings shows error on failure`() = runTest {
         coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
         coEvery {
-            calendarSettingsRepository.updateSettings(any(), any())
+            calendarSettingsRepository.updateSettings(
+                targetCalendarId = any(),
+                defaultInvitees = any(),
+                allDayDisplayMode = any(),
+                allDayCustomStart = any(),
+                allDayCustomEnd = any()
+            )
         } returns RepositoryResult.Error("Save failed")
 
         viewModel = createViewModel()
@@ -326,5 +345,100 @@ class SettingsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
         assertTrue(viewModel.uiState.value.emailFolders.getValue(IntegrationProvider.GMAIL).first().isIncluded)
         assertFalse(viewModel.uiState.value.folderUpdateErrors.containsKey("folder-1"))
+    }
+
+    @Test
+    fun `all day display mode change persists preference without clearing custom times`() = runTest {
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+        coEvery {
+            calendarSettingsRepository.updateSettings(
+                targetCalendarId = any(),
+                defaultInvitees = any(),
+                allDayDisplayMode = any(),
+                allDayCustomStart = any(),
+                allDayCustomEnd = any()
+            )
+        } returns RepositoryResult.Success(
+            CalendarSettings(allDayDisplayMode = AllDayDisplayMode.DAY_9_TO_5.value)
+        )
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAllDayDisplayModeChange(AllDayDisplayMode.DAY_9_TO_5)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(AllDayDisplayMode.DAY_9_TO_5, viewModel.uiState.value.allDayDisplayMode)
+        coVerify {
+            calendarSettingsRepository.updateSettings(
+                targetCalendarId = null,
+                defaultInvitees = null,
+                allDayDisplayMode = AllDayDisplayMode.DAY_9_TO_5.value,
+                allDayCustomStart = null,
+                allDayCustomEnd = null
+            )
+        }
+    }
+
+    @Test
+    fun `custom all day times reject end before start`() = runTest {
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+        coEvery {
+            calendarSettingsRepository.updateSettings(
+                targetCalendarId = any(),
+                defaultInvitees = any(),
+                allDayDisplayMode = any(),
+                allDayCustomStart = any(),
+                allDayCustomEnd = any()
+            )
+        } returns RepositoryResult.Success(
+            CalendarSettings(allDayDisplayMode = AllDayDisplayMode.CUSTOM.value)
+        )
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAllDayDisplayModeChange(AllDayDisplayMode.CUSTOM)
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onAllDayCustomStartChange(17, 0)
+        viewModel.onAllDayCustomEndChange(9, 0)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNotNull(viewModel.uiState.value.allDayCustomError)
+        assertEquals(17, viewModel.uiState.value.allDayCustomStartHour)
+        assertEquals(9, viewModel.uiState.value.allDayCustomEndHour)
+    }
+
+    @Test
+    fun `valid custom all day times are saved`() = runTest {
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+        coEvery {
+            calendarSettingsRepository.updateSettings(
+                targetCalendarId = any(),
+                defaultInvitees = any(),
+                allDayDisplayMode = any(),
+                allDayCustomStart = any(),
+                allDayCustomEnd = any()
+            )
+        } returns RepositoryResult.Success(
+            CalendarSettings(allDayDisplayMode = AllDayDisplayMode.CUSTOM.value)
+        )
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAllDayDisplayModeChange(AllDayDisplayMode.CUSTOM)
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onAllDayCustomStartChange(10, 0)
+        viewModel.onAllDayCustomEndChange(14, 30)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.allDayCustomError)
+        coVerify {
+            calendarSettingsRepository.updateSettings(
+                targetCalendarId = null,
+                defaultInvitees = null,
+                allDayDisplayMode = AllDayDisplayMode.CUSTOM.value,
+                allDayCustomStart = "10:00",
+                allDayCustomEnd = "14:30"
+            )
+        }
     }
 }

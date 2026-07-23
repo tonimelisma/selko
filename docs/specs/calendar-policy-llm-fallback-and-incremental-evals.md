@@ -1,6 +1,6 @@
 # Calendar Policy, LLM Fallback, and Incremental Evals
 
-**Status:** In progress (WS5 eval identity implemented; remaining workstreams pending)
+**Status:** Implemented (WS1–WS7 landed on `feat/calendar-policy-plan`; Stage A/B full spend provisional — see eval recommendation report)
 **Date:** 2026-07-22
 **Scope:** Supabase calendar preferences; backend event materialization and LLM
 routing; web, iOS, and Android settings/review UI; production-derived eval

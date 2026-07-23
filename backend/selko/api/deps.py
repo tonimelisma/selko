@@ -10,12 +10,11 @@ from supabase import Client, create_client
 
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.config import Config, load_config
-from selko.services.llm_gateway import LLMGateway
+from selko.services.llm_gateway import LLMGateway, create_llm_gateway
 from selko.services.llm_logging import (
     LLMLoggingService,
     get_llm_logging_service as create_llm_logging_service,
 )
-from selko.services.llm_provider import create_provider
 from selko.services.quotas import QuotaService, get_quota_service as create_quota_service
 
 logger = logging.getLogger(__name__)
@@ -201,5 +200,4 @@ def get_llm_gateway(
     Returns:
         Configured LLMGateway instance.
     """
-    provider = create_provider(config)
-    return LLMGateway(provider, logging_service, quota_service)
+    return create_llm_gateway(config, logging_service, quota_service)

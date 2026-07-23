@@ -141,6 +141,26 @@ Email attachment metadata.
 
 **RLS Policies:** Users manage own attachments only.
 
+### `user_calendar_settings`
+
+Per-user calendar defaults and all-day materialization preference.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `user_id` | uuid, PK | References `users.id` |
+| `target_calendar_id` | text | Provider calendar id (null = primary) |
+| `default_invitees` | text | Comma-separated invitee emails |
+| `timezone` | text | IANA timezone (default `America/New_York`) |
+| `all_day_display_mode` | text | `all_day`, `day_9_to_5`, `morning_8_to_9`, or `custom` |
+| `all_day_custom_start` | time | Required when mode is `custom` |
+| `all_day_custom_end` | time | Required when mode is `custom`; must be later than start |
+| `updated_at` | timestamptz | Auto-updated |
+
+LLM extractions keep `all_day: true` in `event_sources.extracted_data`. The
+display mode materializes the `events` row before dedup/persist.
+
+**RLS Policies:** Users manage own calendar settings only.
+
 ### `events`
 
 Calendar events with status-based worker claiming for sync.

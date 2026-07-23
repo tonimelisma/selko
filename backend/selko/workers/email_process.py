@@ -16,9 +16,8 @@ from supabase import Client
 
 from selko.config import Config
 from selko.services.events import EventsError, process_email_for_events
-from selko.services.llm_gateway import LLMGateway
+from selko.services.llm_gateway import create_llm_gateway
 from selko.services.llm_logging import LLMLoggingService
-from selko.services.llm_provider import create_provider
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +58,7 @@ async def process_email(
     # Create gateway with logging service (worker uses service role client)
     # Note: Workers don't enforce quotas (that's done at the API level)
     logging_service = LLMLoggingService(client)
-    provider = create_provider(config)
-    gateway = LLMGateway(provider, logging_service=logging_service, quota_service=None)
+    gateway = create_llm_gateway(config, logging_service=logging_service, quota_service=None)
 
     # Run sync LLM/DB work off the event loop so HTTP stays responsive
     try:

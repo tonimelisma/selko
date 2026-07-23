@@ -31,9 +31,9 @@ from selko.services.google_photos import (
     get_credentials,
     build_service,
 )
-from selko.services.llm_gateway import LLMGateway, LLMGatewayError
+from selko.services.llm_gateway import LLMGatewayError, create_llm_gateway
 from selko.services.llm_logging import LLMLoggingService, LLMOperationType
-from selko.services.llm_provider import ContentPart, ImageContent, create_provider
+from selko.services.llm_provider import ContentPart, ImageContent
 
 logger = logging.getLogger(__name__)
 
@@ -166,8 +166,7 @@ def _process_photo_sync(
 
     # Step 4: Call LLM with photo
     logging_service = LLMLoggingService(client)
-    provider = create_provider(config)
-    gateway = LLMGateway(provider, logging_service=logging_service, quota_service=None)
+    gateway = create_llm_gateway(config, logging_service=logging_service, quota_service=None)
     gateway.for_user(user_id)
 
     content_parts: list[ContentPart] = [

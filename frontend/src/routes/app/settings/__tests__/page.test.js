@@ -70,6 +70,7 @@ vi.mock('$lib/services/calendar-settings.js', () => ({
 vi.mock('$lib/api/backend.js', () => ({
 	listCalendars: (...args) => mockListCalendars(...args),
 	initiateGmailAuth: (...args) => mockInitiateGmailAuth(...args),
+	initiateOutlookAuth: vi.fn(),
 	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args)
 }));
 
@@ -301,5 +302,69 @@ describe('Settings Page', () => {
 
 		await waitFor(() => expect(mockUpdateEmailFolder).toHaveBeenCalledTimes(2));
 		expect(screen.getByRole('switch', { name: 'Exclude' })).toHaveAttribute('aria-checked', 'true');
+	});
+
+	it('loads and saves date-only event preference', async () => {
+		const user = userEvent.setup();
+		mockGetCalendarSettings.mockResolvedValue({
+			data: {
+				user_id: '123',
+				target_calendar_id: null,
+				default_invitees: null,
+				all_day_display_mode: 'all_day',
+				all_day_custom_start: null,
+				all_day_custom_end: null,
+				updated_at: '2026-07-22T00:00:00Z'
+			},
+			error: null
+		});
+		mockUpdateCalendarSettings.mockResolvedValue({
+			data: {
+				user_id: '123',
+				all_day_display_mode: 'day_9_to_5',
+				updated_at: '2026-07-22T00:00:00Z'
+			},
+			error: null
+		});
+
+		render(SettingsPage);
+		await waitFor(() => expect(screen.getByLabelText('Date-only events')).toBeInTheDocument());
+
+		const select = screen.getByLabelText('Date-only events');
+		await user.selectOptions(select, 'day_9_to_5');
+
+		await waitFor(() =>
+			expect(mockUpdateCalendarSettings).toHaveBeenCalledWith({
+				all_day_display_mode: 'day_9_to_5'
+			})
+		);
+		expect(screen.getByText(/Example: Water Day/)).toBeInTheDocument();
+	});
+
+	it('shows an inline error when custom end is not later than start', async () => {
+		const user = userEvent.setup();
+		mockGetCalendarSettings.mockResolvedValue({
+			data: {
+				user_id: '123',
+				all_day_display_mode: 'custom',
+				all_day_custom_start: '09:00:00',
+				all_day_custom_end: '17:00:00',
+				updated_at: '2026-07-22T00:00:00Z'
+			},
+			error: null
+		});
+
+		render(SettingsPage);
+		await waitFor(() => expect(screen.getByLabelText('Custom start')).toBeInTheDocument());
+
+		const endInput = screen.getByLabelText('Custom end');
+		await user.clear(endInput);
+		await user.type(endInput, '08:00');
+		endInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+		await waitFor(() =>
+			expect(screen.getByRole('alert')).toHaveTextContent('End time must be later than start time.')
+		);
+		expect(mockUpdateCalendarSettings).not.toHaveBeenCalled();
 	});
 });

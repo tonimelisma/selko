@@ -42,8 +42,16 @@ class Config:
     microsoft_client_secret: Optional[str] = None
 
     # LLM provider configuration
-    llm_provider: str = "anthropic"  # gemini|moonshot|zai|qwen|deepseek|minimax|openai|anthropic
+    llm_provider: str = "anthropic"  # gemini|zai|qwen|openai|anthropic|xai (+ deferred keys)
     llm_model: Optional[str] = None  # specific model ID (None = provider default)
+    llm_thinking: str = "low"
+
+    # Fallback route (different provider). Provisional defaults until eval report.
+    llm_fallback_provider: Optional[str] = None
+    llm_fallback_model: Optional[str] = None
+    llm_fallback_thinking: str = "low"
+    llm_primary_max_attempts: int = 3
+    llm_fallback_max_attempts: int = 2
 
     # API keys (one per provider)
     gemini_api_key: Optional[str] = None
@@ -54,6 +62,9 @@ class Config:
     minimax_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    xai_api_key: Optional[str] = None
+    meta_api_key: Optional[str] = None
+    tinker_api_key: Optional[str] = None
 
     # Test user credentials for CLI authentication
     test_user_email: Optional[str] = None
@@ -133,6 +144,85 @@ def _parse_allowed_origins() -> list[str]:
     return defaults
 
 
+# Provisional primary→fallback pairs until the Stage C eval report lands.
+# Always a *different* provider so a provider-wide outage cannot defeat both.
+_PROVISIONAL_FALLBACK: dict[str, tuple[str, str]] = {
+    "anthropic": ("openai", "gpt-5.6-terra"),
+    "qwen": ("anthropic", "claude-sonnet-5"),
+    "openai": ("anthropic", "claude-sonnet-5"),
+    "gemini": ("anthropic", "claude-sonnet-5"),
+}
+
+
+def _resolve_provisional_fallback(
+    primary_provider: str,
+    fallback_provider: Optional[str],
+    fallback_model: Optional[str],
+) -> tuple[Optional[str], Optional[str]]:
+    """Fill missing fallback provider/model with provisional defaults."""
+    if fallback_provider and fallback_model:
+        return fallback_provider, fallback_model
+    provisional = _PROVISIONAL_FALLBACK.get(primary_provider)
+    if not provisional:
+        return fallback_provider, fallback_model
+    prov_provider, prov_model = provisional
+    return (
+        fallback_provider or prov_provider,
+        fallback_model or prov_model,
+    )
+
+
+def _fallback_key_present(provider_name: Optional[str]) -> bool:
+    """Return True when the env has an API key for the fallback provider."""
+    if not provider_name:
+        return False
+    key_env = {
+        "gemini": "GEMINI_API_KEY",
+        "moonshot": "MOONSHOT_API_KEY",
+        "zai": "ZAI_API_KEY",
+        "qwen": "ALIBABA_API_KEY",
+        "deepseek": "DEEPSEEK_API_KEY",
+        "minimax": "MINIMAX_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "xai": "XAI_API_KEY",
+        "meta": "META_API_KEY",
+        "tinker": "TINKER_API_KEY",
+    }.get(provider_name)
+    if not key_env:
+        return False
+    return bool(os.getenv(key_env))
+
+
+def _warn_if_fallback_unavailable(
+    environment: str,
+    fallback_provider: Optional[str],
+    fallback_model: Optional[str],
+) -> None:
+    """Loud warning when fallback cannot be used outside test runs."""
+    if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
+        return
+    # Treat explicit test-ish environments quietly; staging/prod/dev warn.
+    missing_bits = []
+    if not fallback_provider:
+        missing_bits.append("LLM_FALLBACK_PROVIDER")
+    if not fallback_model:
+        missing_bits.append("LLM_FALLBACK_MODEL")
+    if fallback_provider and not _fallback_key_present(fallback_provider):
+        missing_bits.append(f"API key for fallback provider '{fallback_provider}'")
+    if not missing_bits:
+        return
+    logger.warning(
+        "⚠️  LLM FALLBACK UNAVAILABLE in %s environment: missing %s. "
+        "Primary failures that need a different provider will not be recovered. "
+        "Set LLM_FALLBACK_PROVIDER / LLM_FALLBACK_MODEL and the matching API key. "
+        "Current provisional pairing (until eval report): anthropic→openai/gpt-5.6-terra, "
+        "qwen→anthropic/claude-sonnet-5.",
+        environment,
+        ", ".join(missing_bits),
+    )
+
+
 def load_config(env_override: Optional[str] = None) -> Config:
     """Load configuration from environment variables or .env file.
 
@@ -188,6 +278,16 @@ def load_config(env_override: Optional[str] = None) -> Config:
         logger.error(f"Check your {env_file} file.")
         sys.exit(1)
 
+    llm_provider = os.getenv("LLM_PROVIDER", "anthropic")
+    llm_fallback_provider = os.getenv("LLM_FALLBACK_PROVIDER") or None
+    llm_fallback_model = os.getenv("LLM_FALLBACK_MODEL") or None
+    llm_fallback_provider, llm_fallback_model = _resolve_provisional_fallback(
+        llm_provider, llm_fallback_provider, llm_fallback_model
+    )
+    _warn_if_fallback_unavailable(
+        environment, llm_fallback_provider, llm_fallback_model
+    )
+
     return Config(
         environment=environment,
         supabase_url=supabase_url,
@@ -198,8 +298,14 @@ def load_config(env_override: Optional[str] = None) -> Config:
         google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
         microsoft_client_id=os.getenv("MICROSOFT_CLIENT_ID"),
         microsoft_client_secret=os.getenv("MICROSOFT_CLIENT_SECRET"),
-        llm_provider=os.getenv("LLM_PROVIDER", "anthropic"),
+        llm_provider=llm_provider,
         llm_model=os.getenv("LLM_MODEL") or None,
+        llm_thinking=os.getenv("LLM_THINKING", "low") or "low",
+        llm_fallback_provider=llm_fallback_provider,
+        llm_fallback_model=llm_fallback_model,
+        llm_fallback_thinking=os.getenv("LLM_FALLBACK_THINKING", "low") or "low",
+        llm_primary_max_attempts=int(os.getenv("LLM_PRIMARY_MAX_ATTEMPTS", "3")),
+        llm_fallback_max_attempts=int(os.getenv("LLM_FALLBACK_MAX_ATTEMPTS", "2")),
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
         moonshot_api_key=os.getenv("MOONSHOT_API_KEY"),
         zai_api_key=os.getenv("ZAI_API_KEY"),
@@ -208,6 +314,9 @@ def load_config(env_override: Optional[str] = None) -> Config:
         minimax_api_key=os.getenv("MINIMAX_API_KEY"),
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
+        xai_api_key=os.getenv("XAI_API_KEY"),
+        meta_api_key=os.getenv("META_API_KEY"),
+        tinker_api_key=os.getenv("TINKER_API_KEY"),
         test_user_email=os.getenv("TEST_USER_EMAIL"),
         test_user_password=os.getenv("TEST_USER_PASSWORD"),
         worker_pool_size=int(os.getenv("WORKER_POOL_SIZE", "3")),

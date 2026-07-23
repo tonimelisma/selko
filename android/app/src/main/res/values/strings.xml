@@ -49,6 +49,10 @@
     <string name="event_card_edit">Edit</string>
     <string name="event_card_time_description">Event time</string>
     <string name="event_card_location_description">Event location</string>
+    <string name="event_card_show_more">Show more</string>
+    <string name="event_card_show_less">Show less</string>
+    <string name="event_card_description_expanded">Expanded</string>
+    <string name="event_card_description_collapsed">Collapsed</string>
 
     <!-- Event Detail Screen -->
     <string name="event_detail_title">Event Details</string>
@@ -145,6 +149,17 @@
     <string name="settings_default_invitees_placeholder">email1@example.com, email2@example.com</string>
     <string name="settings_save">Save</string>
     <string name="settings_error_save_calendar">Failed to save calendar settings</string>
+    <string name="settings_date_only_events">Date-only events</string>
+    <string name="settings_date_only_events_hint">When an email gives a date but no time, add it as:</string>
+    <string name="settings_date_only_all_day">All day</string>
+    <string name="settings_date_only_day_9_to_5">9:00 AM–5:00 PM</string>
+    <string name="settings_date_only_morning_8_to_9">8:00 AM–9:00 AM</string>
+    <string name="settings_date_only_custom">Custom…</string>
+    <string name="settings_date_only_custom_start">Custom start</string>
+    <string name="settings_date_only_custom_end">Custom end</string>
+    <string name="settings_date_only_custom_error">End time must be later than start time.</string>
+    <string name="settings_date_only_preview">Example: Water Day · Mon, Jul 27 · %1$s</string>
+    <string name="settings_date_only_time_format">%1$02d:%2$02d</string>
 
     <!-- Settings - Automation Rules -->
     <string name="settings_rules_empty">No automation rules yet. Add a rule to automatically approve or ignore emails from specific senders.</string>
