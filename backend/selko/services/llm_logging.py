@@ -94,7 +94,13 @@ def estimate_cost(
     from selko.services.llm_provider import MODEL_REGISTRY
 
     registry_entry = MODEL_REGISTRY.get(model)
-    pricing = registry_entry["pricing"] if registry_entry else _DEFAULT_PRICING
+    if not registry_entry or not registry_entry.get("pricing"):
+        if registry_entry is None:
+            pricing = _DEFAULT_PRICING
+        else:
+            return None
+    else:
+        pricing = registry_entry["pricing"]
 
     input_cost = (prompt_tokens / 1_000_000) * pricing["input"]
     output_cost = (completion_tokens / 1_000_000) * pricing["output"]

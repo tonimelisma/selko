@@ -349,8 +349,7 @@ class TestEmailProcessWorker:
 
         with (
             patch("selko.workers.email_process.LLMLoggingService"),
-            patch("selko.workers.email_process.create_provider"),
-            patch("selko.workers.email_process.LLMGateway"),
+            patch("selko.workers.email_process.create_llm_gateway"),
             patch(
                 "selko.workers.email_process.process_email_for_events",
                 return_value={"num_events": 1, "num_new": 1, "num_updated": 0},

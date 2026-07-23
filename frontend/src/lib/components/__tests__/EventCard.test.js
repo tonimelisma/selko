@@ -96,14 +96,113 @@ describe('EventCard', () => {
 		expect(mockReject).toHaveBeenCalledWith(mockEvent);
 	});
 
-	it('renders long descriptions with CSS truncation', () => {
+	it('renders long descriptions in the DOM for line-clamp', () => {
 		const longEvent = {
 			...mockEvent,
 			description: 'A'.repeat(200)
 		};
 		render(EventCard, { props: { event: longEvent } });
-		// Description is rendered in full; CSS line-clamp-2 handles visual truncation
+		// Full text stays in the DOM; CSS line-clamp-3 handles visual truncation
 		expect(screen.getByText('A'.repeat(200))).toBeInTheDocument();
+	});
+
+	it('does not show Show more when description fits without overflow', () => {
+		render(EventCard, { props: { event: mockEvent } });
+		expect(screen.queryByRole('button', { name: /show more/i })).not.toBeInTheDocument();
+	});
+
+	it('shows Show more when description overflows and toggles expansion', async () => {
+		const user = userEvent.setup();
+		const longDescription =
+			'Line one of a long calendar description.\n' +
+			'Line two continues with more detail.\n' +
+			'Line three adds still more context.\n' +
+			'Line four should force overflow beyond three lines.';
+		const longEvent = { ...mockEvent, description: longDescription };
+
+		const scrollDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
+		const clientDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight');
+		Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+			configurable: true,
+			get() {
+				return this.classList?.contains('line-clamp-3') ? 120 : 40;
+			}
+		});
+		Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+			configurable: true,
+			get() {
+				return 40;
+			}
+		});
+
+		try {
+			render(EventCard, { props: { event: longEvent } });
+
+			const showMore = await screen.findByRole('button', { name: /show more/i });
+			expect(showMore).toHaveAttribute('aria-expanded', 'false');
+			expect(
+				screen.getByText((_, node) => node?.textContent === longDescription)
+			).toBeInTheDocument();
+
+			await user.click(showMore);
+			const showLess = screen.getByRole('button', { name: /show less/i });
+			expect(showLess).toHaveAttribute('aria-expanded', 'true');
+			expect(
+				screen.getByText((_, node) => node?.textContent === longDescription)
+			).toBeInTheDocument();
+
+			await user.click(showLess);
+			expect(screen.getByRole('button', { name: /show more/i })).toHaveAttribute(
+				'aria-expanded',
+				'false'
+			);
+		} finally {
+			if (scrollDesc) Object.defineProperty(HTMLElement.prototype, 'scrollHeight', scrollDesc);
+			else delete HTMLElement.prototype.scrollHeight;
+			if (clientDesc) Object.defineProperty(HTMLElement.prototype, 'clientHeight', clientDesc);
+			else delete HTMLElement.prototype.clientHeight;
+		}
+	});
+
+	it('stops propagation when toggling description expansion', async () => {
+		const user = userEvent.setup();
+		const longEvent = {
+			...mockEvent,
+			description: 'A'.repeat(200)
+		};
+		const parentClick = vi.fn();
+
+		const scrollDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
+		const clientDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight');
+		Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+			configurable: true,
+			get() {
+				return this.classList?.contains('line-clamp-3') ? 120 : 40;
+			}
+		});
+		Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+			configurable: true,
+			get() {
+				return 40;
+			}
+		});
+
+		try {
+			const { container } = render(EventCard, { props: { event: longEvent } });
+			const card = container.querySelector('.warm-card-row');
+			card?.addEventListener('click', parentClick);
+
+			const showMore = await screen.findByRole('button', { name: /show more/i });
+			await user.click(showMore);
+
+			expect(parentClick).not.toHaveBeenCalled();
+			expect(screen.getByRole('button', { name: /show less/i })).toBeInTheDocument();
+		} finally {
+			if (scrollDesc) Object.defineProperty(HTMLElement.prototype, 'scrollHeight', scrollDesc);
+			else delete HTMLElement.prototype.scrollHeight;
+			if (clientDesc) Object.defineProperty(HTMLElement.prototype, 'clientHeight', clientDesc);
+			else delete HTMLElement.prototype.clientHeight;
+		}
 	});
 
 	it('does not show FYI badge for action_required events', () => {

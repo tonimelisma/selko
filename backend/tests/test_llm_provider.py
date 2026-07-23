@@ -7,6 +7,7 @@ import pytest
 
 from selko.services.llm_provider import (
     MODEL_REGISTRY,
+    MODEL_SPECS,
     PROVIDER_API_KEY_MAP,
     PROVIDER_DEFAULT_MODEL,
     AnthropicProvider,
@@ -16,7 +17,9 @@ from selko.services.llm_provider import (
     LLMProvider,
     LLMProviderError,
     LLMResponse,
+    ModelSpec,
     OpenAICompatibleProvider,
+    ThinkingConfig,
     _resize_image_if_needed,
     _sanitize_schema_for_gemini,
     _sanitize_schema_for_strict,
@@ -26,11 +29,12 @@ from selko.services.llm_provider import (
 
 
 class TestModelRegistry:
-    """Test the model registry."""
+    """Test the curated model registry."""
 
-    def test_registry_has_37_models(self):
-        """Test that all 37 models are in the registry."""
-        assert len(MODEL_REGISTRY) == 37
+    def test_registry_matches_model_specs(self):
+        """MODEL_REGISTRY is the dict view of MODEL_SPECS."""
+        assert set(MODEL_REGISTRY) == set(MODEL_SPECS)
+        assert len(MODEL_SPECS) == 9
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -39,8 +43,11 @@ class TestModelRegistry:
             assert "vision" in entry, f"{model_name} missing 'vision'"
             assert "json_schema" in entry, f"{model_name} missing 'json_schema'"
             assert "pricing" in entry, f"{model_name} missing 'pricing'"
+            assert entry["pricing"] is not None, f"{model_name} pricing must be set"
             assert "input" in entry["pricing"], f"{model_name} missing pricing 'input'"
             assert "output" in entry["pricing"], f"{model_name} missing pricing 'output'"
+            assert isinstance(MODEL_SPECS[model_name], ModelSpec)
+            assert isinstance(MODEL_SPECS[model_name].preferred_thinking, ThinkingConfig)
 
     def test_non_native_sdk_models_have_base_url(self):
         """Test that non-native-SDK models have base_url."""
@@ -50,13 +57,13 @@ class TestModelRegistry:
                 assert "base_url" in entry, f"{model_name} missing 'base_url'"
 
     def test_all_providers_have_default_model(self):
-        """Test that every provider has a default model."""
+        """Test that every registered provider has a default model."""
         providers = set(entry["provider"] for entry in MODEL_REGISTRY.values())
         for provider in providers:
             assert provider in PROVIDER_DEFAULT_MODEL, f"No default model for {provider}"
 
     def test_all_providers_have_api_key_mapping(self):
-        """Test that every provider has an API key mapping."""
+        """Test that every registered provider has an API key mapping."""
         providers = set(entry["provider"] for entry in MODEL_REGISTRY.values())
         for provider in providers:
             assert provider in PROVIDER_API_KEY_MAP, f"No API key mapping for {provider}"
@@ -66,68 +73,49 @@ class TestModelRegistry:
         for provider, model in PROVIDER_DEFAULT_MODEL.items():
             assert model in MODEL_REGISTRY, f"Default model {model} for {provider} not in registry"
 
-    def test_gpt5_models_have_reasoning_flag(self):
-        """Test that all GPT-5 models are marked as reasoning models."""
-        gpt5_models = [m for m in MODEL_REGISTRY if m.startswith("gpt-5")]
-        assert len(gpt5_models) == 7
-        for model_name in gpt5_models:
-            assert MODEL_REGISTRY[model_name].get("reasoning") is True, (
-                f"{model_name} should have reasoning=True"
-            )
+    def test_openai_and_xai_models_have_reasoning_flag(self):
+        """GPT-5.6 and Grok use explicit reasoning_effort."""
+        for model_name in ("gpt-5.6-luna", "gpt-5.6-terra", "grok-4.5"):
+            assert MODEL_REGISTRY[model_name].get("reasoning") is True
 
     def test_sonnet_has_adaptive_thinking(self):
-        """Test that Sonnet models have the adaptive_thinking flag."""
+        """Claude Sonnet 5 uses Anthropic adaptive thinking."""
         assert MODEL_REGISTRY["claude-sonnet-5"].get("adaptive_thinking") is True
-        assert MODEL_REGISTRY["claude-sonnet-4-6"].get("adaptive_thinking") is True
 
-    def test_requested_frontier_models_are_registered(self):
-        """The July 2026 frontier eval targets remain available by exact ID."""
+    def test_current_candidates_are_registered(self):
+        """WS4 curated IDs remain available by exact string."""
         expected = {
-            "glm-5.2",
-            "kimi-k2.6",
-            "kimi-k2.7-code",
-            "gpt-5.6-sol",
-            "gpt-5.6-terra",
+            "gemini-3.5-flash-lite",
+            "gemini-3.6-flash",
             "gpt-5.6-luna",
+            "gpt-5.6-terra",
+            "qwen3.6-flash",
+            "qwen3.7-plus",
+            "glm-5.2",
+            "grok-4.5",
             "claude-sonnet-5",
-            "claude-opus-4-8",
         }
-        assert expected <= MODEL_REGISTRY.keys()
+        assert expected == MODEL_REGISTRY.keys()
+        assert "gpt-5.6-sol" not in MODEL_REGISTRY
 
     def test_frontier_provider_defaults(self):
-        """Providers default to the requested frontier generation."""
-        assert PROVIDER_DEFAULT_MODEL["moonshot"] == "kimi-k2.6"
+        """Providers default to the curated generation."""
+        assert PROVIDER_DEFAULT_MODEL["gemini"] == "gemini-3.5-flash-lite"
         assert PROVIDER_DEFAULT_MODEL["zai"] == "glm-5.2"
-        assert PROVIDER_DEFAULT_MODEL["openai"] == "gpt-5.6-sol"
-
-    def test_opus_4_8_has_adaptive_thinking(self):
-        """Claude Opus 4.8 uses Anthropic adaptive thinking."""
-        assert MODEL_REGISTRY["claude-opus-4-8"].get("adaptive_thinking") is True
+        assert PROVIDER_DEFAULT_MODEL["openai"] == "gpt-5.6-luna"
+        assert PROVIDER_DEFAULT_MODEL["qwen"] == "qwen3.6-flash"
+        assert PROVIDER_DEFAULT_MODEL["xai"] == "grok-4.5"
 
     def test_anthropic_default_is_sonnet_5(self):
         """Test that the Anthropic provider defaults to Claude Sonnet 5."""
         assert PROVIDER_DEFAULT_MODEL["anthropic"] == "claude-sonnet-5"
         assert "claude-sonnet-5" in MODEL_REGISTRY
 
-    def test_haiku_has_no_adaptive_thinking(self):
-        """Test that Haiku 4.5 does not have adaptive_thinking flag."""
-        assert MODEL_REGISTRY["claude-haiku-4-5-20251001"].get("adaptive_thinking") is not True
-
     def test_qwen_thinking_models_have_flag(self):
-        """Test that Qwen3-VL and Qwen3.5 models have qwen_thinking flag."""
-        thinking_models = ["qwen3.5-plus", "qwen3.5-flash", "qwen3-vl-plus", "qwen3-vl-flash"]
-        for model_name in thinking_models:
-            assert MODEL_REGISTRY[model_name].get("qwen_thinking") is True, (
-                f"{model_name} should have qwen_thinking=True"
-            )
-
-    def test_older_qwen_models_no_thinking(self):
-        """Test that older Qwen models don't have qwen_thinking flag."""
-        non_thinking = ["qwen-vl-max", "qwen-vl-plus", "qwen-plus", "qwen-turbo"]
-        for model_name in non_thinking:
-            assert MODEL_REGISTRY[model_name].get("qwen_thinking") is not True, (
-                f"{model_name} should NOT have qwen_thinking"
-            )
+        """Current Qwen models use enable_thinking budget mode."""
+        for model_name in ("qwen3.6-flash", "qwen3.7-plus"):
+            assert MODEL_REGISTRY[model_name].get("qwen_thinking") is True
+            assert MODEL_SPECS[model_name].preferred_thinking.mode == "budget"
 
 
 class TestCreateProvider:
@@ -144,30 +132,30 @@ class TestCreateProvider:
             provider = create_provider(config)
 
         assert isinstance(provider, OpenAICompatibleProvider)
-        assert provider.model == "qwen3.5-flash"
+        assert provider.model == "qwen3.6-flash"
         assert provider.provider_name == "qwen"
 
     def test_create_openai_compatible_provider(self):
         """Test creating an OpenAI-compatible provider."""
         config = MagicMock()
-        config.llm_provider = "moonshot"
-        config.llm_model = "kimi-k2.5"
-        config.moonshot_api_key = "test-key"
+        config.llm_provider = "xai"
+        config.llm_model = "grok-4.5"
+        config.xai_api_key = "test-key"
 
         with patch("openai.OpenAI"):
             provider = create_provider(config)
 
         assert isinstance(provider, OpenAICompatibleProvider)
-        assert provider.model == "kimi-k2.5"
-        assert provider.provider_name == "moonshot"
+        assert provider.model == "grok-4.5"
+        assert provider.provider_name == "xai"
         assert provider.supports_vision is True
 
     def test_missing_api_key_raises_error(self):
         """Test that missing API key raises LLMProviderError."""
         config = MagicMock()
-        config.llm_provider = "moonshot"
-        config.llm_model = "kimi-k2.5"
-        config.moonshot_api_key = None
+        config.llm_provider = "xai"
+        config.llm_model = "grok-4.5"
+        config.xai_api_key = None
 
         with pytest.raises(LLMProviderError, match="API key not configured"):
             create_provider(config)
@@ -193,41 +181,41 @@ class TestCreateProvider:
     def test_default_model_selection(self):
         """Test that default model is selected when none specified."""
         config = MagicMock()
-        config.llm_provider = "deepseek"
+        config.llm_provider = "zai"
         config.llm_model = None
-        config.deepseek_api_key = "test-key"
+        config.zai_api_key = "test-key"
 
         with patch("openai.OpenAI"):
             provider = create_provider(config)
 
-        assert provider.model == "deepseek-chat"
+        assert provider.model == "glm-5.2"
 
     def test_create_anthropic_provider(self):
         """Test creating an Anthropic provider."""
         config = MagicMock()
         config.llm_provider = "anthropic"
-        config.llm_model = "claude-haiku-4-5-20251001"
+        config.llm_model = "claude-sonnet-5"
         config.anthropic_api_key = "test-key"
 
         with patch("anthropic.Anthropic"):
             provider = create_provider(config)
 
         assert isinstance(provider, AnthropicProvider)
-        assert provider.model == "claude-haiku-4-5-20251001"
+        assert provider.model == "claude-sonnet-5"
         assert provider.provider_name == "anthropic"
 
     def test_create_openai_provider(self):
         """Test creating an OpenAI provider (uses OpenAI-compatible path)."""
         config = MagicMock()
         config.llm_provider = "openai"
-        config.llm_model = "gpt-5-nano"
+        config.llm_model = "gpt-5.6-luna"
         config.openai_api_key = "test-key"
 
         with patch("openai.OpenAI"):
             provider = create_provider(config)
 
         assert isinstance(provider, OpenAICompatibleProvider)
-        assert provider.model == "gpt-5-nano"
+        assert provider.model == "gpt-5.6-luna"
         assert provider.provider_name == "openai"
         assert provider.supports_vision is True
         assert provider.reasoning_model is True
@@ -235,9 +223,9 @@ class TestCreateProvider:
     def test_non_reasoning_model_has_no_reasoning_flag(self):
         """Test that non-reasoning models don't get reasoning_model=True."""
         config = MagicMock()
-        config.llm_provider = "moonshot"
-        config.llm_model = "kimi-k2.5"
-        config.moonshot_api_key = "test-key"
+        config.llm_provider = "zai"
+        config.llm_model = "glm-5.2"
+        config.zai_api_key = "test-key"
 
         with patch("openai.OpenAI"):
             provider = create_provider(config)
@@ -262,7 +250,7 @@ class TestCreateProvider:
         """Test that thinking level is passed through to OpenAICompatibleProvider."""
         config = MagicMock()
         config.llm_provider = "openai"
-        config.llm_model = "gpt-5-nano"
+        config.llm_model = "gpt-5.6-luna"
         config.openai_api_key = "test-key"
 
         with patch("openai.OpenAI"):
@@ -275,7 +263,7 @@ class TestCreateProvider:
         """Test that thinking level is passed through to AnthropicProvider."""
         config = MagicMock()
         config.llm_provider = "anthropic"
-        config.llm_model = "claude-haiku-4-5-20251001"
+        config.llm_model = "claude-sonnet-5"
         config.anthropic_api_key = "test-key"
 
         with patch("anthropic.Anthropic"):
@@ -283,13 +271,13 @@ class TestCreateProvider:
 
         assert isinstance(provider, AnthropicProvider)
         assert provider.thinking == "none"
-        assert provider.adaptive_thinking is False
+        assert provider.adaptive_thinking is True
 
     def test_create_provider_sonnet_gets_adaptive_thinking(self):
-        """Test that Sonnet 4.6 gets adaptive_thinking=True via create_provider."""
+        """Test that Sonnet 5 gets adaptive_thinking=True via create_provider."""
         config = MagicMock()
         config.llm_provider = "anthropic"
-        config.llm_model = "claude-sonnet-4-6"
+        config.llm_model = "claude-sonnet-5"
         config.anthropic_api_key = "test-key"
 
         with patch("anthropic.Anthropic"):
@@ -300,10 +288,10 @@ class TestCreateProvider:
         assert provider.adaptive_thinking is True
 
     def test_create_provider_qwen_thinking_model_gets_flag(self):
-        """Test that Qwen3-VL-Plus gets qwen_thinking=True via create_provider."""
+        """Test that Qwen 3.7 Plus gets qwen_thinking=True via create_provider."""
         config = MagicMock()
         config.llm_provider = "qwen"
-        config.llm_model = "qwen3-vl-plus"
+        config.llm_model = "qwen3.7-plus"
         config.alibaba_api_key = "test-key"
 
         with patch("openai.OpenAI"):
@@ -314,11 +302,11 @@ class TestCreateProvider:
         assert provider.thinking == "low"
 
     def test_create_provider_qwen_non_thinking_model_no_flag(self):
-        """Test that older Qwen model gets qwen_thinking=False."""
+        """Non-Qwen OpenAI-compatible models do not get qwen_thinking."""
         config = MagicMock()
-        config.llm_provider = "qwen"
-        config.llm_model = "qwen-vl-max"
-        config.alibaba_api_key = "test-key"
+        config.llm_provider = "zai"
+        config.llm_model = "glm-5.2"
+        config.zai_api_key = "test-key"
 
         with patch("openai.OpenAI"):
             provider = create_provider(config, thinking="none")
@@ -494,7 +482,7 @@ class TestOpenAIReasoningEffort:
         with patch("openai.OpenAI", return_value=mock_client):
             provider = OpenAICompatibleProvider(
                 api_key="test-key",
-                model="gpt-5-nano",
+                model="gpt-5.6-luna",
                 base_url="https://api.openai.com/v1",
                 provider_name="openai",
                 supports_vision=True,
@@ -518,7 +506,7 @@ class TestOpenAIReasoningEffort:
         with patch("openai.OpenAI", return_value=mock_client):
             provider = OpenAICompatibleProvider(
                 api_key="test-key",
-                model="gpt-5-nano",
+                model="gpt-5.6-luna",
                 base_url="https://api.openai.com/v1",
                 provider_name="openai",
                 supports_vision=True,
@@ -531,8 +519,8 @@ class TestOpenAIReasoningEffort:
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
         assert call_kwargs.get("reasoning_effort") == "medium"
 
-    def test_reasoning_model_with_thinking_none_omits_reasoning_effort(self):
-        """Reasoning model with thinking='none' should NOT pass reasoning_effort."""
+    def test_reasoning_model_with_thinking_none_sends_reasoning_effort(self):
+        """Reasoning model with thinking='none' still sends reasoning_effort explicitly."""
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.choices = [MagicMock(message=MagicMock(content='{"events_found": false, "events": []}'))]
@@ -542,7 +530,7 @@ class TestOpenAIReasoningEffort:
         with patch("openai.OpenAI", return_value=mock_client):
             provider = OpenAICompatibleProvider(
                 api_key="test-key",
-                model="gpt-5-nano",
+                model="gpt-5.6-luna",
                 base_url="https://api.openai.com/v1",
                 provider_name="openai",
                 supports_vision=True,
@@ -553,7 +541,7 @@ class TestOpenAIReasoningEffort:
         provider.generate(["Hello"])
 
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
-        assert "reasoning_effort" not in call_kwargs
+        assert call_kwargs.get("reasoning_effort") == "none"
 
     def test_non_reasoning_model_omits_reasoning_effort(self):
         """Non-reasoning models should NOT pass reasoning_effort."""
@@ -566,9 +554,9 @@ class TestOpenAIReasoningEffort:
         with patch("openai.OpenAI", return_value=mock_client):
             provider = OpenAICompatibleProvider(
                 api_key="test-key",
-                model="kimi-k2.5",
-                base_url="https://api.moonshot.ai/v1",
-                provider_name="moonshot",
+                model="glm-5.2",
+                base_url="https://api.z.ai/api/paas/v4/",
+                provider_name="zai",
                 supports_vision=True,
                 reasoning_model=False,
             )
@@ -591,7 +579,7 @@ class TestAnthropicProviderPDFHandling:
         mock_client.messages.create.return_value = mock_response
 
         with patch("anthropic.Anthropic", return_value=mock_client):
-            provider = AnthropicProvider(api_key="test-key", model="claude-haiku-4-5-20251001")
+            provider = AnthropicProvider(api_key="test-key", model="claude-sonnet-5")
 
         # Call generate with a PDF attachment
         contents = [
@@ -627,7 +615,7 @@ class TestAnthropicProviderPDFHandling:
         mock_client.messages.create.return_value = mock_response
 
         with patch("anthropic.Anthropic", return_value=mock_client):
-            provider = AnthropicProvider(api_key="test-key", model="claude-haiku-4-5-20251001")
+            provider = AnthropicProvider(api_key="test-key", model="claude-sonnet-5")
 
         # Create a tiny valid PNG for the test
         from PIL import Image
@@ -673,7 +661,7 @@ class TestAnthropicAdaptiveThinking:
 
         with patch("anthropic.Anthropic", return_value=mock_client):
             provider = AnthropicProvider(
-                api_key="test-key", model="claude-sonnet-4-6",
+                api_key="test-key", model="claude-sonnet-5",
                 thinking="low", adaptive_thinking=True,
             )
 
@@ -694,7 +682,7 @@ class TestAnthropicAdaptiveThinking:
 
         with patch("anthropic.Anthropic", return_value=mock_client):
             provider = AnthropicProvider(
-                api_key="test-key", model="claude-sonnet-4-6",
+                api_key="test-key", model="claude-sonnet-5",
                 thinking="medium", adaptive_thinking=True,
             )
 
@@ -714,7 +702,7 @@ class TestAnthropicAdaptiveThinking:
 
         with patch("anthropic.Anthropic", return_value=mock_client):
             provider = AnthropicProvider(
-                api_key="test-key", model="claude-sonnet-4-6",
+                api_key="test-key", model="claude-sonnet-5",
                 thinking="none", adaptive_thinking=True,
             )
 
@@ -735,7 +723,7 @@ class TestAnthropicAdaptiveThinking:
 
         with patch("anthropic.Anthropic", return_value=mock_client):
             provider = AnthropicProvider(
-                api_key="test-key", model="claude-haiku-4-5-20251001",
+                api_key="test-key", model="claude-sonnet-5",
                 thinking="low", adaptive_thinking=False,
             )
 
@@ -763,7 +751,7 @@ class TestQwenThinking:
 
         with patch("openai.OpenAI", return_value=mock_client):
             provider = OpenAICompatibleProvider(
-                api_key="test-key", model="qwen3-vl-plus",
+                api_key="test-key", model="qwen3.7-plus",
                 base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
                 provider_name="qwen", qwen_thinking=True, thinking="low",
             )
@@ -782,7 +770,7 @@ class TestQwenThinking:
 
         with patch("openai.OpenAI", return_value=mock_client):
             provider = OpenAICompatibleProvider(
-                api_key="test-key", model="qwen3.5-plus",
+                api_key="test-key", model="qwen3.6-flash",
                 base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
                 provider_name="qwen", qwen_thinking=True, thinking="medium",
             )
@@ -801,7 +789,7 @@ class TestQwenThinking:
 
         with patch("openai.OpenAI", return_value=mock_client):
             provider = OpenAICompatibleProvider(
-                api_key="test-key", model="qwen3-vl-plus",
+                api_key="test-key", model="qwen3.7-plus",
                 base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
                 provider_name="qwen", qwen_thinking=True, thinking="none",
             )
@@ -812,20 +800,68 @@ class TestQwenThinking:
         assert call_kwargs["extra_body"] == {"enable_thinking": False}
 
     def test_non_thinking_qwen_no_extra_body(self):
-        """Older Qwen model (no qwen_thinking) should NOT pass extra_body."""
+        """Provider with qwen_thinking=False should NOT pass extra_body."""
         mock_client = self._make_mock_client()
 
         with patch("openai.OpenAI", return_value=mock_client):
             provider = OpenAICompatibleProvider(
-                api_key="test-key", model="qwen-vl-max",
-                base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-                provider_name="qwen", qwen_thinking=False, thinking="none",
+                api_key="test-key", model="glm-5.2",
+                base_url="https://api.z.ai/api/paas/v4/",
+                provider_name="zai", qwen_thinking=False, thinking="none",
             )
 
         provider.generate(["Hello"])
 
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
         assert "extra_body" not in call_kwargs
+
+
+class TestGeminiThinkingLevel:
+    """Gemini 3.x always sends thinking_level; none maps to minimal."""
+
+    def _make_provider(self, thinking: str) -> GeminiProvider:
+        with patch("google.genai.Client"):
+            return GeminiProvider(
+                api_key="test-key",
+                model="gemini-3.5-flash-lite",
+                thinking=thinking,
+            )
+
+    def test_thinking_none_maps_to_minimal(self):
+        provider = self._make_provider("none")
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = '{"events_found": false, "events": []}'
+        mock_response.usage_metadata = None
+        mock_response.candidates = []
+        mock_client.models.generate_content.return_value = mock_response
+        provider.client = mock_client
+
+        with patch("google.genai.types") as mock_types:
+            mock_types.ThinkingConfig = MagicMock(side_effect=lambda **kw: kw)
+            mock_types.GenerateContentConfig = MagicMock(side_effect=lambda **kw: kw)
+            provider.generate(["Hello"])
+
+        config = mock_client.models.generate_content.call_args.kwargs["config"]
+        assert config["thinking_config"]["thinking_level"] == "minimal"
+
+    def test_thinking_minimal_sent_explicitly(self):
+        provider = self._make_provider("minimal")
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = '{"ok": true}'
+        mock_response.usage_metadata = None
+        mock_response.candidates = []
+        mock_client.models.generate_content.return_value = mock_response
+        provider.client = mock_client
+
+        with patch("google.genai.types") as mock_types:
+            mock_types.ThinkingConfig = MagicMock(side_effect=lambda **kw: kw)
+            mock_types.GenerateContentConfig = MagicMock(side_effect=lambda **kw: kw)
+            provider.generate(["Hello"])
+
+        config = mock_client.models.generate_content.call_args.kwargs["config"]
+        assert config["thinking_config"]["thinking_level"] == "minimal"
 
 
 class TestSanitizeSchemaForStrict:

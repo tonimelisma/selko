@@ -225,13 +225,13 @@ class TestExtractCalendarEvents:
         assert mock_provider.generate.call_count == 2
 
     def test_rate_limit_exhausted(self, mock_config):
-        """Test failure after exhausting retries."""
+        """Test failure after exhausting primary transient attempts."""
         mock_provider = MagicMock(spec=LLMProvider)
         mock_provider.provider_name = "gemini"
         mock_provider.model = "gemini-3-flash-preview"
         mock_provider.generate.side_effect = Exception("429 Rate limit exceeded")
 
-        gateway = LLMGateway(mock_provider)
+        gateway = LLMGateway(mock_provider, primary_max_attempts=2)
 
         email_metadata = {
             "provider_message_id": "test-123",
@@ -246,10 +246,12 @@ class TestExtractCalendarEvents:
                     gateway=gateway,
                     email_text="Test email",
                     email_metadata=email_metadata,
-                    max_retries=2,
                 )
 
-        assert "rate limited" in str(exc_info.value).lower()
+        assert "rate limited" in str(exc_info.value).lower() or "transient" in str(
+            exc_info.value
+        ).lower() or "validated llm call failed" in str(exc_info.value).lower()
+        assert mock_provider.generate.call_count == 2
 
     def test_non_rate_limit_error(self, mock_config):
         """Test immediate failure on non-rate-limit errors."""

@@ -48,25 +48,25 @@ class TestCostEstimation:
     def test_gemini_cost(self):
         from tests.eval.run_eval import estimate_cost
 
-        # gemini-3-flash-preview: input=$0.15/1M, output=$0.60/1M
-        cost = estimate_cost("gemini-3-flash-preview", 1000, 500)
-        expected = (1000 * 0.15 + 500 * 0.60) / 1_000_000
+        # gemini-3.6-flash: input=$1.50/1M, output=$7.50/1M
+        cost = estimate_cost("gemini-3.6-flash", 1000, 500)
+        expected = (1000 * 1.5 + 500 * 7.5) / 1_000_000
         assert abs(cost - expected) < 1e-10
 
-    def test_deepseek_cost(self):
+    def test_claude_cost(self):
         from tests.eval.run_eval import estimate_cost
 
-        # deepseek-chat: input=$0.27/1M, output=$1.10/1M
-        cost = estimate_cost("deepseek-chat", 2000, 1000)
-        expected = (2000 * 0.27 + 1000 * 1.10) / 1_000_000
+        # claude-sonnet-5: input=$2.00/1M, output=$10.00/1M
+        cost = estimate_cost("claude-sonnet-5", 2000, 1000)
+        expected = (2000 * 2.0 + 1000 * 10.0) / 1_000_000
         assert abs(cost - expected) < 1e-10
 
-    def test_free_model_returns_zero(self):
+    def test_known_model_returns_float(self):
         from tests.eval.run_eval import estimate_cost
 
-        # glm-4.6v-flash: $0.00/$0.00
-        cost = estimate_cost("glm-4.6v-flash", 5000, 2000)
-        assert cost == 0.0
+        cost = estimate_cost("qwen3.6-flash", 5000, 2000)
+        expected = (5000 * 0.1 + 2000 * 0.4) / 1_000_000
+        assert abs(cost - expected) < 1e-10
 
     def test_unknown_model_returns_none(self):
         from tests.eval.run_eval import estimate_cost
@@ -77,13 +77,13 @@ class TestCostEstimation:
     def test_none_tokens_returns_none(self):
         from tests.eval.run_eval import estimate_cost
 
-        cost = estimate_cost("gemini-3-flash-preview", None, None)
+        cost = estimate_cost("gemini-3.6-flash", None, None)
         assert cost is None
 
     def test_partial_none_tokens_returns_none(self):
         from tests.eval.run_eval import estimate_cost
 
-        cost = estimate_cost("gemini-3-flash-preview", 1000, None)
+        cost = estimate_cost("gemini-3.6-flash", 1000, None)
         assert cost is None
 
 

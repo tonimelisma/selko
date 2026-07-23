@@ -26,6 +26,12 @@
 	/** @type {any[]} */
 	let calendars = $state([]);
 	let selectedCalendar = $state('');
+	/** @type {'all_day' | 'day_9_to_5' | 'morning_8_to_9' | 'custom'} */
+	let allDayDisplayMode = $state('all_day');
+	let allDayCustomStart = $state('09:00');
+	let allDayCustomEnd = $state('17:00');
+	let allDayCustomError = $state('');
+	let isSavingAllDay = $state(false);
 	let currentUserEmail = $state('');
 	let isLoading = $state(true);
 	let isLoadingCalendars = $state(false);
@@ -40,6 +46,29 @@
 	let showDisconnectModal = $state(false);
 	let disconnectTargetId = $state('');
 	let disconnectTargetName = $state('');
+
+	/** @param {string | null | undefined} value */
+	function toTimeInputValue(value) {
+		if (!value) return '';
+		return String(value).slice(0, 5);
+	}
+
+	function allDayPreviewWindow() {
+		if (allDayDisplayMode === 'all_day') return $_('settings.dateOnlyAllDay');
+		if (allDayDisplayMode === 'day_9_to_5') return $_('settings.dateOnlyDay9to5');
+		if (allDayDisplayMode === 'morning_8_to_9') return $_('settings.dateOnlyMorning8to9');
+		const start = toTimeInputValue(allDayCustomStart) || '—';
+		const end = toTimeInputValue(allDayCustomEnd) || '—';
+		return `${start}–${end}`;
+	}
+
+	function customTimesValid() {
+		if (allDayDisplayMode !== 'custom') return true;
+		const start = toTimeInputValue(allDayCustomStart);
+		const end = toTimeInputValue(allDayCustomEnd);
+		if (!start || !end) return false;
+		return end > start;
+	}
 
 	onMount(() => {
 		const unsub = user.subscribe((u) => {
@@ -68,6 +97,15 @@
 
 		if (settingsResult.data?.target_calendar_id) {
 			selectedCalendar = settingsResult.data.target_calendar_id;
+		}
+		if (settingsResult.data?.all_day_display_mode) {
+			allDayDisplayMode = settingsResult.data.all_day_display_mode;
+		}
+		if (settingsResult.data?.all_day_custom_start) {
+			allDayCustomStart = toTimeInputValue(settingsResult.data.all_day_custom_start);
+		}
+		if (settingsResult.data?.all_day_custom_end) {
+			allDayCustomEnd = toTimeInputValue(settingsResult.data.all_day_custom_end);
 		}
 
 		isLoading = false;
@@ -152,6 +190,48 @@
 		if (result.error) {
 			error = result.error.message;
 		}
+	}
+
+	/** @param {any} event */
+	async function handleAllDayModeChange(event) {
+		/** @type {'all_day' | 'day_9_to_5' | 'morning_8_to_9' | 'custom'} */
+		const mode = event.target.value;
+		allDayDisplayMode = mode;
+		allDayCustomError = '';
+		if (mode === 'custom') {
+			if (!customTimesValid()) {
+				allDayCustomError = $_('settings.dateOnlyCustomError');
+				return;
+			}
+		}
+		await saveAllDayPreference();
+	}
+
+	async function handleCustomTimeChange() {
+		allDayCustomError = '';
+		if (!customTimesValid()) {
+			allDayCustomError = $_('settings.dateOnlyCustomError');
+			return;
+		}
+		if (allDayDisplayMode !== 'custom') return;
+		await saveAllDayPreference();
+	}
+
+	async function saveAllDayPreference() {
+		isSavingAllDay = true;
+		/** @type {Record<string, string>} */
+		const payload = { all_day_display_mode: allDayDisplayMode };
+		// Preserve custom times when switching presets by only sending them for custom
+		// (and when the user edits them while in custom mode).
+		if (allDayDisplayMode === 'custom') {
+			payload.all_day_custom_start = toTimeInputValue(allDayCustomStart);
+			payload.all_day_custom_end = toTimeInputValue(allDayCustomEnd);
+		}
+		const result = await updateCalendarSettings(payload);
+		if (result.error) {
+			error = result.error.message;
+		}
+		isSavingAllDay = false;
 	}
 
 	/** @param {string} integrationId */
@@ -271,36 +351,101 @@
 		<!-- Section 3: Calendar Defaults -->
 		<section>
 			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.calendarDefaults')}</h2>
-			{#if isLoadingCalendars}
-				<div class="h-12 bg-base-200 rounded animate-pulse"></div>
-			{:else if calendars.length > 0}
-				<div class="warm-card max-w-md p-4">
-					<label class="label" for="target-calendar">
-						<span class="label-text">{$_('settings.targetCalendar')}</span>
+			<div class="space-y-4 max-w-md">
+				{#if isLoadingCalendars}
+					<div class="h-12 bg-base-200 rounded animate-pulse"></div>
+				{:else if calendars.length > 0}
+					<div class="warm-card p-4">
+						<label class="label" for="target-calendar">
+							<span class="label-text">{$_('settings.targetCalendar')}</span>
+						</label>
+						<select
+							id="target-calendar"
+							class="select select-bordered w-full bg-base-100"
+							value={selectedCalendar}
+							onchange={handleCalendarChange}
+						>
+							{#each calendars as calendar}
+								<option value={calendar.id}>
+									{calendar.name}{calendar.is_primary ? ' ' + $_('settings.calendarPrimary') : ''}
+								</option>
+							{/each}
+						</select>
+						<label class="label" for="target-calendar">
+							<span class="label-text-alt text-base-content/60">
+								{$_('settings.targetCalendarHint')}
+							</span>
+						</label>
+					</div>
+				{:else}
+					<p class="text-base-content/60">
+						{$_('settings.connectCalendarPrompt')}
+					</p>
+				{/if}
+
+				<div class="warm-card p-4">
+					<label class="label" for="all-day-display-mode">
+						<span class="label-text">{$_('settings.dateOnlyEvents')}</span>
 					</label>
+					<p class="mb-2 text-sm text-base-content/60">{$_('settings.dateOnlyEventsHint')}</p>
 					<select
-						id="target-calendar"
+						id="all-day-display-mode"
 						class="select select-bordered w-full bg-base-100"
-						value={selectedCalendar}
-						onchange={handleCalendarChange}
+						value={allDayDisplayMode}
+						onchange={handleAllDayModeChange}
+						disabled={isSavingAllDay}
 					>
-						{#each calendars as calendar}
-							<option value={calendar.id}>
-								{calendar.name}{calendar.is_primary ? ' ' + $_('settings.calendarPrimary') : ''}
-							</option>
-						{/each}
+						<option value="all_day">{$_('settings.dateOnlyAllDay')}</option>
+						<option value="day_9_to_5">{$_('settings.dateOnlyDay9to5')}</option>
+						<option value="morning_8_to_9">{$_('settings.dateOnlyMorning8to9')}</option>
+						<option value="custom">{$_('settings.dateOnlyCustom')}</option>
 					</select>
-					<label class="label" for="target-calendar">
-						<span class="label-text-alt text-base-content/60">
-							{$_('settings.targetCalendarHint')}
-						</span>
-					</label>
+
+					{#if allDayDisplayMode === 'custom'}
+						<div class="mt-3 grid grid-cols-2 gap-3">
+							<div>
+								<label class="label" for="all-day-custom-start">
+									<span class="label-text">{$_('settings.dateOnlyCustomStart')}</span>
+								</label>
+								<input
+									id="all-day-custom-start"
+									type="time"
+									class="input input-bordered w-full bg-base-100"
+									value={allDayCustomStart}
+									onchange={(event) => {
+										allDayCustomStart = event.currentTarget.value;
+										handleCustomTimeChange();
+									}}
+									disabled={isSavingAllDay}
+								/>
+							</div>
+							<div>
+								<label class="label" for="all-day-custom-end">
+									<span class="label-text">{$_('settings.dateOnlyCustomEnd')}</span>
+								</label>
+								<input
+									id="all-day-custom-end"
+									type="time"
+									class="input input-bordered w-full bg-base-100"
+									value={allDayCustomEnd}
+									onchange={(event) => {
+										allDayCustomEnd = event.currentTarget.value;
+										handleCustomTimeChange();
+									}}
+									disabled={isSavingAllDay}
+								/>
+							</div>
+						</div>
+						{#if allDayCustomError}
+							<p class="mt-2 text-sm text-error" role="alert">{allDayCustomError}</p>
+						{/if}
+					{/if}
+
+					<p class="mt-3 text-sm text-base-content/60">
+						{$_('settings.dateOnlyPreview', { values: { window: allDayPreviewWindow() } })}
+					</p>
 				</div>
-			{:else}
-				<p class="text-base-content/60">
-					{$_('settings.connectCalendarPrompt')}
-				</p>
-			{/if}
+			</div>
 		</section>
 
 		<!-- Section 4: Automation Rules -->

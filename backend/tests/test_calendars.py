@@ -188,6 +188,9 @@ class TestGetCalendarSettings:
         assert settings["target_calendar_id"] is None
         assert settings["target_calendar_name"] is None
         assert settings["default_invitees"] is None
+        assert settings["all_day_display_mode"] == "all_day"
+        assert settings["all_day_custom_start"] is None
+        assert settings["all_day_custom_end"] is None
 
     def test_returns_stored_settings(self):
         """Test that stored settings are returned."""

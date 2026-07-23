@@ -189,12 +189,14 @@ class TestExtractCalendarEventsTzAwareness:
 
     def test_current_date_uses_user_timezone(self):
         """current_date computed in user's timezone, not server UTC."""
+        from selko.api.schemas.calendar import EventExtractionResponse
         from selko.services.event_processing import extract_calendar_events
-        from selko.services.llm_gateway import LLMGateway, LLMGatewayError
-        from selko.api.schemas.calendar import CalendarEventExtraction
+        from selko.services.llm_gateway import LLMGateway
 
         mock_gateway = MagicMock(spec=LLMGateway)
-        mock_gateway.call.return_value.text = '{"events_found": false, "events": []}'
+        mock_gateway.call_validated.return_value = EventExtractionResponse(
+            events_found=False, events=[]
+        )
         mock_gateway.for_user = MagicMock(return_value=mock_gateway)
         mock_gateway.for_email = MagicMock(return_value=mock_gateway)
 
@@ -215,14 +217,17 @@ class TestExtractCalendarEventsTzAwareness:
         )
         assert result is not None
         # Verify the LLM was called (prompt was built)
-        mock_gateway.call.assert_called_once()
+        mock_gateway.call_validated.assert_called_once()
 
     def test_invalid_user_timezone_falls_back_gracefully(self):
         """Invalid user_timezone in email_metadata falls back without error."""
+        from selko.api.schemas.calendar import EventExtractionResponse
         from selko.services.event_processing import extract_calendar_events
 
         mock_gateway = MagicMock()
-        mock_gateway.call.return_value.text = '{"events_found": false, "events": []}'
+        mock_gateway.call_validated.return_value = EventExtractionResponse(
+            events_found=False, events=[]
+        )
 
         email_metadata = {
             "provider_message_id": "test-456",
@@ -235,7 +240,7 @@ class TestExtractCalendarEventsTzAwareness:
 
         result = extract_calendar_events(mock_gateway, "Email body", email_metadata)
         assert result is not None
-        mock_gateway.call.assert_called_once()
+        mock_gateway.call_validated.assert_called_once()
 
 
 class TestOAuthTimezoneDetection:
