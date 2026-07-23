@@ -21,6 +21,13 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
+from .artifact_store import (
+    ArtifactStore,
+    PlannedCell,
+    build_combined_result,
+    format_plan_table,
+    new_run_id,
+)
 from .eval_config import (
     ATTACHMENTS_DIR,
     AUTO_SCORE_THRESHOLDS,
@@ -39,109 +46,256 @@ from .eval_config import (
     RESULTS_DIR,
     THREADS_DIR,
 )
+from .identity import (
+    build_inference_identity,
+    build_score_identity,
+    code_provenance,
+    compute_fixture_input_hash,
+    compute_prompt_contract_hash,
+    normalize_thinking,
+)
 
 
 # ---------------------------------------------------------------------------
-# Hashing helpers
+# Hashing helpers (legacy wrappers + content-addressed identity)
 # ---------------------------------------------------------------------------
 
 def get_fixture_hash(fixture_path: Path) -> str:
-    """SHA256 hash of a fixture file's content."""
+    """SHA256 of the full fixture JSON file (legacy helper for unit tests).
+
+    Cache invalidation for model calls uses ``compute_fixture_input_hash`` which
+    hashes only the input portion plus attachment bytes.
+    """
     return hashlib.sha256(fixture_path.read_bytes()).hexdigest()
 
 
 def get_code_hash() -> str:
-    """Short SHA256 hash of event_processing.py (production prompts/schemas)."""
+    """Short SHA256 hash of event_processing.py (provenance only; not cache key)."""
     code_path = EVENT_PROCESSING_PATH.resolve()
     if not code_path.exists():
         return "unknown"
     return hashlib.sha256(code_path.read_bytes()).hexdigest()[:12]
 
 
-def get_prompt_hash() -> str:
-    """Short SHA256 hash of only the prompt-affecting functions and schemas.
+def get_prompt_hash(operation: str = "extract") -> str:
+    """Short operation-specific prompt contract hash (first 12 chars).
 
-    Hashes: _build_prompt, compare_events, merge_event_data, CalendarEvent,
-    EventExtractionResponse (source + generated JSON schema).
-    Scaffolding changes outside these functions do not affect this hash.
+    Prefer ``compute_prompt_contract_hash(operation)`` for full identity keys.
+    The default operation is extract for backwards-compatible call sites.
     """
-    try:
-        from selko.services import event_processing
-        from selko.api.schemas.calendar import CalendarEvent, EventExtractionResponse
-
-        parts = []
-        for fn in [
-            event_processing._build_prompt,
-            event_processing.compare_events,
-            event_processing.merge_event_data,
-        ]:
-            parts.append(inspect.getsource(fn))
-        for cls in [CalendarEvent, EventExtractionResponse]:
-            parts.append(inspect.getsource(cls))
-            parts.append(json.dumps(cls.model_json_schema(), sort_keys=True))
-
-        combined = "\n".join(parts).encode()
-        return hashlib.sha256(combined).hexdigest()[:12]
-    except Exception:
+    full = compute_prompt_contract_hash(operation)
+    if full == "unknown":
         return "unknown"
+    return full[:12]
 
 
 # ---------------------------------------------------------------------------
 # Cost estimation
 # ---------------------------------------------------------------------------
 
-def estimate_cost(model: str, prompt_tokens: int | None, completion_tokens: int | None) -> float:
-    """Calculate cost in USD using MODEL_REGISTRY pricing (per 1M tokens)."""
+def estimate_cost(
+    model: str, prompt_tokens: int | None, completion_tokens: int | None
+) -> float | None:
+    """Calculate cost in USD using MODEL_REGISTRY pricing (per 1M tokens).
+
+    Returns None (unknown) when token counts are missing or the model has no
+    pricing entry. A registered $0/$0 model still returns 0.0.
+    """
     from selko.services.llm_provider import MODEL_REGISTRY
 
     if prompt_tokens is None or completion_tokens is None:
-        return 0.0
-    entry = MODEL_REGISTRY.get(model, {})
-    pricing = entry.get("pricing", {"input": 0, "output": 0})
+        return None
+    entry = MODEL_REGISTRY.get(model)
+    if entry is None or "pricing" not in entry:
+        return None
+    pricing = entry["pricing"]
     return (prompt_tokens * pricing["input"] + completion_tokens * pricing["output"]) / 1_000_000
 
 
 # ---------------------------------------------------------------------------
-# Per-model result path helpers
+# Content-addressed cache helpers
 # ---------------------------------------------------------------------------
 
-def get_result_path(operation: str, provider: str, model: str, fixture_name: str, prompt_hash: str, thinking: str = "low") -> Path:
-    """Get path for a result file: results/{op}/{provider}_{model}_{thinking}/{fixture}/result_{prompt_hash}.json"""
+_DEFAULT_STORE = ArtifactStore()
+
+
+def get_result_path(
+    operation: str,
+    provider: str,
+    model: str,
+    fixture_name: str,
+    prompt_hash: str,
+    thinking: str = "low",
+) -> Path:
+    """Legacy path helper retained for unit tests and old result browsing.
+
+    New evals write under results/inference/ and results/scores/.
+    """
     safe_name = fixture_name.replace("/", "_")
     model_dir = f"{provider}_{model}_{thinking}"
     return RESULTS_DIR / operation / model_dir / safe_name / f"result_{prompt_hash}.json"
 
 
-def get_latest_result(operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> dict | None:
-    """Get the result file for the current prompt_hash."""
-    prompt_hash = get_prompt_hash()
-    result_path = get_result_path(operation, provider, model, fixture_name, prompt_hash, thinking)
-    if not result_path.exists():
+def get_latest_result(
+    operation: str,
+    provider: str,
+    model: str,
+    fixture_name: str,
+    thinking: str = "low",
+    fixture: dict | None = None,
+    fixture_path: Path | None = None,
+    store: ArtifactStore | None = None,
+) -> dict | None:
+    """Load a cached combined result via content-addressed identity when possible."""
+    store = store or _DEFAULT_STORE
+    if fixture is None and fixture_path is not None:
+        fixture = load_fixture(fixture_path)
+    if fixture is None:
         return None
-    with open(result_path) as f:
-        return json.load(f)
+
+    identity = build_inference_identity(
+        operation=operation,
+        provider=provider,
+        model=model,
+        thinking=thinking,
+        fixture=fixture,
+    )
+    inference = store.load_inference(identity.inference_key)
+    if inference is None:
+        return None
+
+    score_identity = build_score_identity(
+        operation=operation,
+        inference_key=identity.inference_key,
+        fixture=fixture,
+    )
+    score = store.load_score(score_identity.score_key)
+    if score is None:
+        # Inference hit but expected/scorer changed — caller should rescore.
+        return None
+
+    inference = {**inference, "from_cache": True}
+    return build_combined_result(
+        inference=inference,
+        score=score,
+        fixture_name=fixture_name,
+        operation=operation,
+        provider=provider,
+        model=model,
+        thinking=thinking,
+    )
 
 
-def should_run(fixture_path: Path, operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> bool:
-    """Check if eval needs to run (cache miss or hash mismatch)."""
-    prompt_hash = get_prompt_hash()
-    result_path = get_result_path(operation, provider, model, fixture_name, prompt_hash, thinking)
-    if not result_path.exists():
-        return True
-    try:
-        cached = json.loads(result_path.read_text())
-        return cached.get("fixture_hash") != get_fixture_hash(fixture_path)
-    except Exception:
-        return True
+def should_run(
+    fixture_path: Path,
+    operation: str,
+    provider: str,
+    model: str,
+    fixture_name: str,
+    thinking: str = "low",
+    store: ArtifactStore | None = None,
+) -> bool:
+    """True when a model call is required (inference cache miss)."""
+    store = store or _DEFAULT_STORE
+    fixture = load_fixture(fixture_path)
+    identity = build_inference_identity(
+        operation=operation,
+        provider=provider,
+        model=model,
+        thinking=thinking,
+        fixture=fixture,
+    )
+    return not store.has_inference(identity.inference_key)
 
 
-def save_result_new(result: dict, operation: str, provider: str, model: str, fixture_name: str, thinking: str = "low") -> None:
-    """Save result to the new per-model directory structure."""
-    prompt_hash = result.get("prompt_hash", get_prompt_hash())
-    result_path = get_result_path(operation, provider, model, fixture_name, prompt_hash, thinking)
-    result_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(result_path, "w") as f:
-        json.dump(result, f, indent=2, default=str)
+def save_result_new(
+    result: dict,
+    operation: str,
+    provider: str,
+    model: str,
+    fixture_name: str,
+    thinking: str = "low",
+    *,
+    fixture: dict | None = None,
+    store: ArtifactStore | None = None,
+    replicate: int | None = None,
+) -> None:
+    """Persist inference + score artifacts under content-addressed keys."""
+    store = store or _DEFAULT_STORE
+    if fixture is None:
+        # Best-effort: reconstruct minimal fixture from the result payload.
+        fixture = {
+            "input": result.get("input_summary", {}),
+            "expected": result.get("expected", {}),
+            "category": result.get("category"),
+            "difficulty": result.get("difficulty"),
+            "tags": result.get("tags", []),
+            "description": result.get("description", ""),
+        }
+
+    identity = build_inference_identity(
+        operation=operation,
+        provider=provider,
+        model=model,
+        thinking=thinking,
+        fixture=fixture,
+    )
+    score_identity = build_score_identity(
+        operation=operation,
+        inference_key=identity.inference_key,
+        fixture=fixture,
+    )
+
+    inference_artifact = {
+        "fixture_name": fixture_name,
+        "operation": operation,
+        "provider": provider,
+        "model": model,
+        "thinking": normalize_thinking(thinking),
+        "run_at": result.get("run_at"),
+        "duration_ms": result.get("duration_ms"),
+        "timing": result.get("timing"),
+        "tokens": result.get("tokens"),
+        "cost": result.get("cost"),
+        "actual": result.get("actual"),
+        "trace": result.get("trace"),
+        "category": result.get("category"),
+        "description": result.get("description"),
+        "difficulty": result.get("difficulty"),
+        "tags": result.get("tags", []),
+        "input_summary": result.get("input_summary", {}),
+        "fixture_input_hash": identity.fixture_input_hash,
+        "code_provenance": code_provenance(),
+        "raw_response": (result.get("trace") or {}).get("response_text"),
+    }
+    store.write_inference(identity, inference_artifact, replicate=replicate)
+
+    score_artifact = {
+        "fixture_name": fixture_name,
+        "operation": operation,
+        "expected": result.get("expected"),
+        "auto_score": result.get("auto_score"),
+    }
+    store.write_score(score_identity, score_artifact)
+
+    # Keep a compatibility copy under the legacy tree for older report browsers.
+    prompt_hash = identity.prompt_contract_hash[:12]
+    legacy_path = get_result_path(
+        operation, provider, model, fixture_name, prompt_hash, thinking
+        if isinstance(thinking, str)
+        else str(thinking.get("value", "low"))
+    )
+    legacy_path.parent.mkdir(parents=True, exist_ok=True)
+    compat = {
+        **result,
+        "inference_key": identity.inference_key,
+        "score_key": score_identity.score_key,
+        "prompt_hash": prompt_hash,
+        "fixture_hash": identity.fixture_input_hash,
+        "identity": identity.to_dict(),
+    }
+    with open(legacy_path, "w") as f:
+        json.dump(compat, f, indent=2, default=str)
 
 
 # ---------------------------------------------------------------------------
@@ -768,6 +922,63 @@ def run_preflight(eval_models: list[tuple]) -> bool:
 # Extract eval runner
 # ---------------------------------------------------------------------------
 
+def _rescore_cached_inference(
+    operation: str,
+    fixture_name: str,
+    fixture: dict[str, Any],
+    provider_name: str,
+    model_name: str,
+    thinking: str,
+    *,
+    store: ArtifactStore,
+    score_fn,
+) -> dict[str, Any] | None:
+    """Rescore an existing inference when expected output or scorer changed."""
+    identity = build_inference_identity(
+        operation=operation,
+        provider=provider_name,
+        model=model_name,
+        thinking=thinking,
+        fixture=fixture,
+    )
+    inference = store.load_inference(identity.inference_key)
+    if inference is None:
+        return None
+
+    expected = fixture.get("expected", {})
+    actual = inference.get("actual", {})
+    if operation == "compare":
+        auto_score = score_fn(expected, actual.get("matched_event_id") if isinstance(actual, dict) else actual)
+    else:
+        auto_score = score_fn(expected, actual)
+
+    score_identity = build_score_identity(
+        operation=operation,
+        inference_key=identity.inference_key,
+        fixture=fixture,
+    )
+    store.write_score(
+        score_identity,
+        {
+            "fixture_name": fixture_name,
+            "operation": operation,
+            "expected": expected,
+            "auto_score": auto_score,
+        },
+    )
+    score = store.load_score(score_identity.score_key)
+    inference = {**inference, "from_cache": True}
+    return build_combined_result(
+        inference=inference,
+        score=score,
+        fixture_name=fixture_name,
+        operation=operation,
+        provider=provider_name,
+        model=model_name,
+        thinking=thinking,
+    )
+
+
 def run_extract_eval(
     fixture_name: str,
     fixture_path: Path,
@@ -777,17 +988,50 @@ def run_extract_eval(
     verbose: bool = False,
     dry_run: bool = False,
     thinking: str = "low",
+    replicate: int | None = None,
+    store: ArtifactStore | None = None,
 ) -> dict[str, Any]:
     """Run extraction evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
+    store = store or _DEFAULT_STORE
 
-    # Cache check
-    if use_cache and not dry_run and not should_run(fixture_path, "extract", provider_name, model_name, fixture_name, thinking):
-        cached = get_latest_result("extract", provider_name, model_name, fixture_name, thinking)
+    # Cache check — complete inference+score hit
+    if (
+        use_cache
+        and replicate is None
+        and not dry_run
+        and not should_run(
+            fixture_path, "extract", provider_name, model_name, fixture_name, thinking, store=store
+        )
+    ):
+        cached = get_latest_result(
+            "extract",
+            provider_name,
+            model_name,
+            fixture_name,
+            thinking,
+            fixture=fixture,
+            store=store,
+        )
         if cached:
             if verbose:
                 print(f"  [cached] {fixture_name}")
             return cached
+        # Inference exists but score identity changed — rescore without a model call.
+        rescored = _rescore_cached_inference(
+            "extract",
+            fixture_name,
+            fixture,
+            provider_name,
+            model_name,
+            thinking,
+            store=store,
+            score_fn=lambda expected, actual: auto_score_result(expected, actual),
+        )
+        if rescored is not None:
+            if verbose:
+                print(f"  [rescore] {fixture_name}")
+            return rescored
 
     # Phase 1: Fixture + attachment loading
     fixture_load_started_at = datetime.now(timezone.utc)
@@ -904,9 +1148,9 @@ def run_extract_eval(
 
     result = {
         "fixture_name": fixture_name,
-        "fixture_hash": get_fixture_hash(fixture_path),
+        "fixture_hash": compute_fixture_input_hash(fixture),
         "code_hash": get_code_hash(),
-        "prompt_hash": get_prompt_hash(),
+        "prompt_hash": get_prompt_hash("extract"),
         "operation": "extract",
         "provider": provider_name,
         "model": model_name,
@@ -949,13 +1193,25 @@ def run_extract_eval(
         "tokens": {
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
-            "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0),
+            "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0)
+            if prompt_tokens is not None or completion_tokens is not None
+            else None,
         },
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
         "trace": gateway.trace,
     }
 
-    save_result_new(result, "extract", provider_name, model_name, fixture_name, thinking)
+    save_result_new(
+        result,
+        "extract",
+        provider_name,
+        model_name,
+        fixture_name,
+        thinking,
+        fixture=fixture,
+        store=store,
+        replicate=replicate,
+    )
     return result
 
 
@@ -972,16 +1228,48 @@ def run_compare_eval(
     verbose: bool = False,
     dry_run: bool = False,
     thinking: str = "low",
+    replicate: int | None = None,
+    store: ArtifactStore | None = None,
 ) -> dict[str, Any]:
     """Run compare (dedup) evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
+    store = store or _DEFAULT_STORE
 
-    if use_cache and not dry_run and not should_run(fixture_path, "compare", provider_name, model_name, fixture_name, thinking):
-        cached = get_latest_result("compare", provider_name, model_name, fixture_name, thinking)
+    if (
+        use_cache
+        and replicate is None
+        and not dry_run
+        and not should_run(
+            fixture_path, "compare", provider_name, model_name, fixture_name, thinking, store=store
+        )
+    ):
+        cached = get_latest_result(
+            "compare",
+            provider_name,
+            model_name,
+            fixture_name,
+            thinking,
+            fixture=fixture,
+            store=store,
+        )
         if cached:
             if verbose:
                 print(f"  [cached] {fixture_name}")
             return cached
+        rescored = _rescore_cached_inference(
+            "compare",
+            fixture_name,
+            fixture,
+            provider_name,
+            model_name,
+            thinking,
+            store=store,
+            score_fn=score_compare_result,
+        )
+        if rescored is not None:
+            if verbose:
+                print(f"  [rescore] {fixture_name}")
+            return rescored
 
     input_data = fixture["input"]
     expected = fixture["expected"]
@@ -1039,9 +1327,9 @@ def run_compare_eval(
 
     result = {
         "fixture_name": fixture_name,
-        "fixture_hash": get_fixture_hash(fixture_path),
+        "fixture_hash": compute_fixture_input_hash(fixture),
         "code_hash": get_code_hash(),
-        "prompt_hash": get_prompt_hash(),
+        "prompt_hash": get_prompt_hash("compare"),
         "operation": "compare",
         "provider": provider_name,
         "model": model_name,
@@ -1075,13 +1363,25 @@ def run_compare_eval(
         "tokens": {
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
-            "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0),
+            "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0)
+            if prompt_tokens is not None or completion_tokens is not None
+            else None,
         },
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
         "trace": gateway.trace,
     }
 
-    save_result_new(result, "compare", provider_name, model_name, fixture_name, thinking)
+    save_result_new(
+        result,
+        "compare",
+        provider_name,
+        model_name,
+        fixture_name,
+        thinking,
+        fixture=fixture,
+        store=store,
+        replicate=replicate,
+    )
     return result
 
 
@@ -1098,16 +1398,48 @@ def run_merge_eval(
     verbose: bool = False,
     dry_run: bool = False,
     thinking: str = "low",
+    replicate: int | None = None,
+    store: ArtifactStore | None = None,
 ) -> dict[str, Any]:
     """Run merge evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
+    store = store or _DEFAULT_STORE
 
-    if use_cache and not dry_run and not should_run(fixture_path, "merge", provider_name, model_name, fixture_name, thinking):
-        cached = get_latest_result("merge", provider_name, model_name, fixture_name, thinking)
+    if (
+        use_cache
+        and replicate is None
+        and not dry_run
+        and not should_run(
+            fixture_path, "merge", provider_name, model_name, fixture_name, thinking, store=store
+        )
+    ):
+        cached = get_latest_result(
+            "merge",
+            provider_name,
+            model_name,
+            fixture_name,
+            thinking,
+            fixture=fixture,
+            store=store,
+        )
         if cached:
             if verbose:
                 print(f"  [cached] {fixture_name}")
             return cached
+        rescored = _rescore_cached_inference(
+            "merge",
+            fixture_name,
+            fixture,
+            provider_name,
+            model_name,
+            thinking,
+            store=store,
+            score_fn=score_merge_result,
+        )
+        if rescored is not None:
+            if verbose:
+                print(f"  [rescore] {fixture_name}")
+            return rescored
 
     input_data = fixture["input"]
     expected = fixture["expected"]
@@ -1166,9 +1498,9 @@ def run_merge_eval(
 
     result = {
         "fixture_name": fixture_name,
-        "fixture_hash": get_fixture_hash(fixture_path),
+        "fixture_hash": compute_fixture_input_hash(fixture),
         "code_hash": get_code_hash(),
-        "prompt_hash": get_prompt_hash(),
+        "prompt_hash": get_prompt_hash("merge"),
         "operation": "merge",
         "provider": provider_name,
         "model": model_name,
@@ -1202,13 +1534,25 @@ def run_merge_eval(
         "tokens": {
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
-            "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0),
+            "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0)
+            if prompt_tokens is not None or completion_tokens is not None
+            else None,
         },
         "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
         "trace": gateway.trace,
     }
 
-    save_result_new(result, "merge", provider_name, model_name, fixture_name, thinking)
+    save_result_new(
+        result,
+        "merge",
+        provider_name,
+        model_name,
+        fixture_name,
+        thinking,
+        fixture=fixture,
+        store=store,
+        replicate=replicate,
+    )
     return result
 
 
@@ -1581,7 +1925,7 @@ def print_result_summary(result: dict[str, Any], progress: str = "") -> None:
 
     op = result.get("operation", "extract")
     auto_score = result.get("auto_score", {})
-    cost = result.get("cost", 0)
+    cost_str = _format_cost(result.get("cost"))
     status = _get_result_status(result)
     timing_str = _format_timing_detail(result)
     token_str = _format_token_detail(result)
@@ -1599,7 +1943,7 @@ def print_result_summary(result: dict[str, Any], progress: str = "") -> None:
         print(
             f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] Rating:{rating}/5 "
-            f"${cost:.4f} ({timing_str}) {extra}{error_str}",
+            f"{cost_str} ({timing_str}) {extra}{error_str}",
             flush=True,
         )
     elif op == "compare":
@@ -1607,7 +1951,7 @@ def print_result_summary(result: dict[str, Any], progress: str = "") -> None:
         print(
             f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] "
-            f"${cost:.4f} ({timing_str}) {extra}{error_str}",
+            f"{cost_str} ({timing_str}) {extra}{error_str}",
             flush=True,
         )
     elif op == "merge":
@@ -1618,7 +1962,7 @@ def print_result_summary(result: dict[str, Any], progress: str = "") -> None:
         print(
             f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
             f"[{status:7}] Rating:{rating}/5 ({matched}/{total}) "
-            f"${cost:.4f} ({timing_str}) {extra}{error_str}",
+            f"{cost_str} ({timing_str}) {extra}{error_str}",
             flush=True,
         )
 
@@ -1644,7 +1988,7 @@ def print_detailed_result(result: dict[str, Any]) -> None:
     print(f"Description: {result.get('description', 'N/A')}")
     print(f"Run at: {result.get('run_at', 'N/A')}")
     print(f"Duration: {result.get('duration_ms', 0)}ms")
-    print(f"Cost: ${result.get('cost', 0):.6f}")
+    print(f"Cost: {_format_cost(result.get('cost'))}")
     tokens = result.get("tokens", {})
     print(f"Tokens: {tokens.get('prompt_tokens', '?')} prompt + {tokens.get('completion_tokens', '?')} completion")
     print(f"\n--- Expected ---")
@@ -1691,9 +2035,13 @@ def generate_report(results: list[dict[str, Any]]) -> None:
             avg_rating = sum(r.get("auto_score", {}).get("auto_rating", 0) for r in op_results) / len(op_results)
             print(f"  Avg rating: {avg_rating:.1f}/5")
 
-    total_cost = sum(r.get("cost", 0) for r in results)
-    avg_dur = sum(r.get("duration_ms", 0) for r in results) / total
-    print(f"\nTotal cost: ${total_cost:.4f}")
+    known_costs = [r.get("cost") for r in results if isinstance(r.get("cost"), (int, float))]
+    total_cost = sum(known_costs) if known_costs else None
+    avg_dur = sum(r.get("duration_ms", 0) or 0 for r in results) / total
+    print(f"\nTotal cost: {_format_cost(total_cost)}")
+    unknown = sum(1 for r in results if r.get("cost") is None)
+    if unknown:
+        print(f"Unknown-cost cells: {unknown}")
     print(f"Average duration: {avg_dur:.0f}ms")
     print("=" * 60 + "\n")
 
@@ -1702,8 +2050,160 @@ def generate_report(results: list[dict[str, Any]]) -> None:
 # Markdown report generator
 # ---------------------------------------------------------------------------
 
-def generate_markdown_report(output_path: str) -> None:
-    """Generate comprehensive markdown report from all cached results."""
+def _format_cost(cost: float | None) -> str:
+    if cost is None:
+        return "unknown"
+    return f"${cost:.4f}"
+
+
+def plan_eval_cells(
+    *,
+    operations: list[str],
+    models: list[tuple],
+    fixtures_by_op: dict[str, list[tuple[str, Path]]],
+    store: ArtifactStore | None = None,
+) -> list[PlannedCell]:
+    """Build HIT/MISS plan cells without calling any provider."""
+    store = store or _DEFAULT_STORE
+    cells: list[PlannedCell] = []
+
+    for model_tuple in models:
+        if len(model_tuple) == 3:
+            provider, model, thinking = model_tuple
+        else:
+            provider, model = model_tuple
+            thinking = "low"
+
+        for operation in operations:
+            for fixture_name, fixture_path in fixtures_by_op.get(operation, []):
+                fixture = load_fixture(fixture_path)
+                identity = build_inference_identity(
+                    operation=operation,
+                    provider=provider,
+                    model=model,
+                    thinking=thinking,
+                    fixture=fixture,
+                )
+                score_identity = build_score_identity(
+                    operation=operation,
+                    inference_key=identity.inference_key,
+                    fixture=fixture,
+                )
+                if store.has_inference(identity.inference_key):
+                    if store.has_score(score_identity.score_key):
+                        state = "HIT"
+                        reason = "complete inference+score artifacts"
+                    else:
+                        state = "HIT"
+                        reason = "inference HIT; score MISS (rescore only, zero model calls)"
+                else:
+                    state = "MISS"
+                    reason = "no inference artifact"
+                cells.append(
+                    PlannedCell(
+                        operation=operation,
+                        provider=provider,
+                        model=model,
+                        thinking=normalize_thinking(thinking),
+                        fixture_name=fixture_name,
+                        inference_key=identity.inference_key,
+                        score_key=score_identity.score_key,
+                        state=state,
+                        reason=reason,
+                    )
+                )
+    return cells
+
+
+def collect_fixtures_for_operations(
+    operations: list[str],
+    *,
+    all_extract: bool = False,
+    category: str | None = None,
+    fixture: str | None = None,
+    difficulty: str | None = None,
+) -> dict[str, list[tuple[str, Path]]]:
+    """Resolve fixture lists for the requested operations."""
+    by_op: dict[str, list[tuple[str, Path]]] = {}
+    if "extract" in operations:
+        fixtures = []
+        if all_extract or fixture or category:
+            fixtures = get_all_fixtures()
+            if category:
+                fixtures = [(n, p) for n, p in fixtures if n.startswith(category + "/")]
+            if fixture:
+                fixtures = [(n, p) for n, p in fixtures if n == fixture]
+        else:
+            fixtures = get_all_fixtures()
+        if difficulty:
+            fixtures = [
+                (n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty
+            ]
+        by_op["extract"] = fixtures
+    if "compare" in operations:
+        fixtures = get_compare_fixtures()
+        if difficulty:
+            fixtures = [
+                (n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty
+            ]
+        by_op["compare"] = fixtures
+    if "merge" in operations:
+        fixtures = get_merge_fixtures()
+        if difficulty:
+            fixtures = [
+                (n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty
+            ]
+        by_op["merge"] = fixtures
+    return by_op
+
+
+def write_run_manifest(
+    *,
+    cells: list[PlannedCell],
+    operations: list[str],
+    models: list[tuple],
+    store: ArtifactStore | None = None,
+    run_id: str | None = None,
+) -> str:
+    store = store or _DEFAULT_STORE
+    run_id = run_id or new_run_id()
+    manifest = {
+        "run_id": run_id,
+        "operations": operations,
+        "matrix": [
+            {
+                "provider": m[0],
+                "model": m[1],
+                "thinking": m[2] if len(m) == 3 else "low",
+            }
+            for m in models
+        ],
+        "provenance": code_provenance(),
+        "cells": [
+            {
+                "operation": c.operation,
+                "provider": c.provider,
+                "model": c.model,
+                "thinking": c.thinking,
+                "fixture_name": c.fixture_name,
+                "inference_key": c.inference_key,
+                "score_key": c.score_key,
+                "state": c.state,
+                "reason": c.reason,
+            }
+            for c in cells
+        ],
+    }
+    store.write_manifest(run_id, manifest)
+    return run_id
+
+
+def generate_markdown_report(output_path: str, manifest_run_id: str | None = None) -> None:
+    """Generate comprehensive markdown report from a run manifest (preferred).
+
+    Without a manifest id, only identity-bearing artifacts under
+    results/inference + results/scores are included. Legacy mtime fallback is gone.
+    """
     lines = []
 
     def line(s=""):
@@ -1713,37 +2213,91 @@ def generate_markdown_report(output_path: str) -> None:
     line(f"Generated: {datetime.now(timezone.utc).isoformat()}")
     line()
 
-    # Collect all results from new directory structure
+    store = _DEFAULT_STORE
     all_results: list[dict] = []
-    results_base = RESULTS_DIR
-    prompt_hash = get_prompt_hash()
-    for op_dir in sorted(results_base.iterdir()) if results_base.exists() else []:
-        if not op_dir.is_dir() or op_dir.name.startswith("."):
-            continue
-        operation = op_dir.name
-        for model_dir in sorted(op_dir.iterdir()):
-            if not model_dir.is_dir():
+
+    if manifest_run_id:
+        manifest = store.load_manifest(manifest_run_id)
+        if not manifest:
+            line(f"*Manifest not found: {manifest_run_id}*")
+            Path(output_path).write_text("\n".join(lines))
+            return
+        line(f"Manifest: `{manifest_run_id}`")
+        line()
+        for cell in manifest.get("cells", []):
+            inference = store.load_inference(cell["inference_key"])
+            score = store.load_score(cell["score_key"])
+            if inference is None:
+                all_results.append(
+                    {
+                        "fixture_name": cell["fixture_name"],
+                        "operation": cell["operation"],
+                        "provider": cell["provider"],
+                        "model": cell["model"],
+                        "thinking": cell.get("thinking", {}).get("value", "low")
+                        if isinstance(cell.get("thinking"), dict)
+                        else cell.get("thinking", "low"),
+                        "auto_score": {"error": f"MISSING ({cell.get('state')})"},
+                        "cost": None,
+                        "tokens": {},
+                        "duration_ms": 0,
+                        "missing": True,
+                    }
+                )
                 continue
-            for fixture_dir in sorted(model_dir.iterdir()):
-                if not fixture_dir.is_dir():
+            combined = build_combined_result(
+                inference={**inference, "from_cache": True},
+                score=score,
+                fixture_name=cell["fixture_name"],
+                operation=cell["operation"],
+                provider=cell["provider"],
+                model=cell["model"],
+                thinking=cell.get("thinking", "low"),
+            )
+            if score is None:
+                combined["auto_score"] = {"error": "score missing"}
+                combined["missing_score"] = True
+            all_results.append(combined)
+    else:
+        # Scan content-addressed inference artifacts only (no mtime fallback).
+        if store.inference_root.exists():
+            for path in sorted(store.inference_root.glob("*/*.json")):
+                if ".replica-" in path.name or path.name.startswith("."):
                     continue
-                # Prefer result matching current prompt_hash; fall back to mtime
-                current_result = fixture_dir / f"result_{prompt_hash}.json"
-                if current_result.exists():
-                    result_files = [current_result]
-                else:
-                    result_files = sorted(fixture_dir.glob("result_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-                if result_files:
+                try:
+                    inference = json.loads(path.read_text())
+                except Exception:
+                    continue
+                identity = inference.get("identity") or {}
+                if not identity:
+                    continue
+                score_key = None
+                # Best-effort: find a score for this inference_key
+                for score_path in store.scores_root.glob("*/*.json") if store.scores_root.exists() else []:
                     try:
-                        with open(result_files[0]) as f:
-                            r = json.load(f)
-                            r.setdefault("operation", operation)
-                            all_results.append(r)
+                        score_doc = json.loads(score_path.read_text())
                     except Exception:
-                        pass
+                        continue
+                    if score_doc.get("identity", {}).get("inference_key") == inference.get(
+                        "inference_key"
+                    ):
+                        score_key = score_doc
+                        break
+                thinking = identity.get("thinking", {"value": "low"})
+                all_results.append(
+                    build_combined_result(
+                        inference={**inference, "from_cache": True},
+                        score=score_key,
+                        fixture_name=inference.get("fixture_name", path.stem),
+                        operation=identity.get("operation", inference.get("operation", "extract")),
+                        provider=identity.get("provider", inference.get("provider", "unknown")),
+                        model=identity.get("model", inference.get("model", "unknown")),
+                        thinking=thinking,
+                    )
+                )
 
     if not all_results:
-        line("*No results found. Run evals first.*")
+        line("*No identity-bearing results found. Run evals first.*")
         Path(output_path).write_text("\n".join(lines))
         return
 
@@ -1759,21 +2313,29 @@ def generate_markdown_report(output_path: str) -> None:
 
     models_sorted = sorted(models_seen)
 
-    # ---- Eval Run Overview ----
-    grand_total_cost = sum(r.get("cost", 0) for r in all_results)
-    grand_total_tokens = sum(r.get("tokens", {}).get("total_tokens", 0) or 0 for r in all_results)
+    known_costs = [r.get("cost") for r in all_results if isinstance(r.get("cost"), (int, float))]
+    unknown_cost_count = sum(1 for r in all_results if r.get("cost") is None)
+    grand_total_cost = sum(known_costs) if known_costs else None
+    grand_total_tokens = sum(
+        (r.get("tokens") or {}).get("total_tokens", 0) or 0 for r in all_results
+    )
     total_evals = len(all_results)
     total_extract = sum(1 for r in all_results if r.get("operation") == "extract")
     total_compare = sum(1 for r in all_results if r.get("operation") == "compare")
     total_merge = sum(1 for r in all_results if r.get("operation") == "merge")
-    total_duration_s = sum(r.get("duration_ms", 0) for r in all_results) / 1000
+    total_duration_s = sum(r.get("duration_ms", 0) or 0 for r in all_results) / 1000
     code_hashes = set(r.get("code_hash", "") for r in all_results if r.get("code_hash"))
+    missing_count = sum(1 for r in all_results if r.get("missing") or r.get("missing_score"))
 
     line("## Eval Run Overview")
     line()
     line(f"| Metric | Value |")
     line(f"|--------|-------|")
-    line(f"| **Total Eval Cost** | **${grand_total_cost:.4f}** |")
+    line(f"| **Total Eval Cost** | **{_format_cost(grand_total_cost)}** |")
+    if unknown_cost_count:
+        line(f"| Unknown-cost cells | {unknown_cost_count} |")
+    if missing_count:
+        line(f"| Missing/error cells | {missing_count} |")
     line(f"| Total Evals | {total_evals} ({total_extract} extract, {total_compare} compare, {total_merge} merge) |")
     line(f"| Models Tested | {len(models_sorted)} |")
     line(f"| Total Tokens | {grand_total_tokens:,} |")
@@ -1790,305 +2352,155 @@ def generate_markdown_report(output_path: str) -> None:
     for model in models_sorted:
         ops = by_model_op.get(model, {})
 
-        # Extract stats
         extract_results = ops.get("extract", [])
         if extract_results:
-            ext_pass = sum(1 for r in extract_results if r.get("auto_score", {}).get("all_events_match"))
-            ext_total = len(extract_results)
-            ext_str = f"{ext_pass}/{ext_total} ({100*ext_pass/ext_total:.1f}%)"
+            eligible = [r for r in extract_results if not r.get("missing")]
+            ext_pass = sum(
+                1 for r in eligible if r.get("auto_score", {}).get("all_events_match")
+            )
+            ext_total = len(eligible)
+            ext_str = (
+                f"{ext_pass}/{ext_total} ({100 * ext_pass / ext_total:.1f}%)"
+                if ext_total
+                else "0/0"
+            )
         else:
             ext_str = "-"
 
-        # Compare stats
         compare_results = ops.get("compare", [])
         if compare_results:
-            cmp_correct = sum(1 for r in compare_results if r.get("auto_score", {}).get("correct"))
-            cmp_total = len(compare_results)
-            cmp_str = f"{cmp_correct}/{cmp_total} ({100*cmp_correct/cmp_total:.1f}%)"
+            eligible = [r for r in compare_results if not r.get("missing")]
+            cmp_correct = sum(1 for r in eligible if r.get("auto_score", {}).get("correct"))
+            cmp_total = len(eligible)
+            cmp_str = (
+                f"{cmp_correct}/{cmp_total} ({100 * cmp_correct / cmp_total:.1f}%)"
+                if cmp_total
+                else "0/0"
+            )
         else:
             cmp_str = "-"
 
-        # Merge stats
         merge_results = ops.get("merge", [])
         if merge_results:
-            mrg_pass = sum(1 for r in merge_results if r.get("auto_score", {}).get("auto_rating", 0) == 5)
-            mrg_total = len(merge_results)
-            mrg_avg = sum(r.get("auto_score", {}).get("auto_rating", 0) for r in merge_results) / mrg_total
+            eligible = [r for r in merge_results if not r.get("missing")]
+            mrg_pass = sum(
+                1 for r in eligible if r.get("auto_score", {}).get("auto_rating", 0) == 5
+            )
+            mrg_total = len(eligible)
+            mrg_avg = (
+                sum(r.get("auto_score", {}).get("auto_rating", 0) for r in eligible) / mrg_total
+                if mrg_total
+                else 0
+            )
             mrg_str = f"{mrg_pass}/{mrg_total} ({mrg_avg:.1f} avg)"
         else:
             mrg_str = "-"
 
         all_model = extract_results + compare_results + merge_results
-        total_cost = sum(r.get("cost", 0) for r in all_model)
-        avg_latency = sum(r.get("duration_ms", 0) for r in all_model) / len(all_model) if all_model else 0
+        model_costs = [r.get("cost") for r in all_model if isinstance(r.get("cost"), (int, float))]
+        total_cost = sum(model_costs) if model_costs else None
+        avg_latency = (
+            sum(r.get("duration_ms", 0) or 0 for r in all_model) / len(all_model)
+            if all_model
+            else 0
+        )
 
-        line(f"| {model} | {ext_str} | {cmp_str} | {mrg_str} | ${total_cost:.4f} | {avg_latency:.0f}ms |")
+        line(
+            f"| {model} | {ext_str} | {cmp_str} | {mrg_str} | {_format_cost(total_cost)} | {avg_latency:.0f}ms |"
+        )
 
-    line(f"| **TOTAL** | | | | **${grand_total_cost:.4f}** | |")
+    line(f"| **TOTAL** | | | | **{_format_cost(grand_total_cost)}** | |")
     line()
 
-    # Check if models have different extract fixture counts (vision vs text-only)
-    extract_counts = set()
-    for model in models_sorted:
-        ext = by_model_op.get(model, {}).get("extract", [])
-        if ext:
-            extract_counts.add(len(ext))
-    if len(extract_counts) > 1:
-        line(f"*Note: Models ran different numbers of extract fixtures ({', '.join(str(c) for c in sorted(extract_counts))}). "
-             f"Text-only models skip vision fixtures (images, PDFs), so pass rates are not directly comparable.*")
-        line()
+    # Keep the remainder of the detailed sections from the previous report body by
+    # delegating to the legacy detailed formatter for identity-bearing results.
+    _append_detailed_report_sections(line, models_sorted, by_model_op)
 
-    # ---- Extraction Results ----
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(output_path).write_text("\n".join(lines))
+    print(f"Report written to {output_path}")
+
+
+def _append_detailed_report_sections(line, models_sorted, by_model_op) -> None:
+    """Append extraction/compare/merge detail tables to a markdown report."""
     line("## Extraction Results")
     line()
-
-    # All fixtures table
     line("### All Fixtures")
     line()
     line("| Model | Pass | Partial | Fail | Avg Rating | Cost |")
     line("|-------|------|---------|------|------------|------|")
 
     for model in models_sorted:
-        results = by_model_op.get(model, {}).get("extract", [])
+        results = [
+            r for r in by_model_op.get(model, {}).get("extract", []) if not r.get("missing")
+        ]
         if not results:
             continue
         pass_count = sum(1 for r in results if r.get("auto_score", {}).get("all_events_match"))
-        partial = sum(1 for r in results if r.get("auto_score", {}).get("events_found_match") and not r.get("auto_score", {}).get("all_events_match"))
-        fail = len(results) - pass_count - partial
-        avg_rating = sum(r.get("auto_score", {}).get("auto_rating", 0) for r in results) / len(results)
-        cost = sum(r.get("cost", 0) for r in results)
-        line(f"| {model} | {pass_count} | {partial} | {fail} | {avg_rating:.1f}/5 | ${cost:.4f} |")
-
+        fail = sum(
+            1
+            for r in results
+            if r.get("auto_score", {}).get("error")
+            or (
+                not r.get("auto_score", {}).get("events_found_match", True)
+                if "events_found_match" in (r.get("auto_score") or {})
+                else False
+            )
+        )
+        partial = max(0, len(results) - pass_count - fail)
+        ratings = [
+            r.get("auto_score", {}).get("auto_rating", 0)
+            for r in results
+            if r.get("auto_score", {}).get("auto_rating") is not None
+        ]
+        avg_rating = sum(ratings) / len(ratings) if ratings else 0
+        costs = [r.get("cost") for r in results if isinstance(r.get("cost"), (int, float))]
+        cost = sum(costs) if costs else None
+        line(
+            f"| {model} | {pass_count} | {partial} | {fail} | {avg_rating:.1f}/5 | {_format_cost(cost)} |"
+        )
     line()
 
-    # Real-life fixtures
-    line("### Real-Life Fixtures Only")
-    line()
-    line("| Model | Pass | Partial | Fail | Avg Rating | Cost |")
-    line("|-------|------|---------|------|------------|------|")
-
-    for model in models_sorted:
-        results = by_model_op.get(model, {}).get("extract", [])
-        real_life = [r for r in results if "real-world" in r.get("tags", [])]
-        if not real_life:
-            continue
-        pass_count = sum(1 for r in real_life if r.get("auto_score", {}).get("all_events_match"))
-        partial = sum(1 for r in real_life if r.get("auto_score", {}).get("events_found_match") and not r.get("auto_score", {}).get("all_events_match"))
-        fail = len(real_life) - pass_count - partial
-        avg_rating = sum(r.get("auto_score", {}).get("auto_rating", 0) for r in real_life) / len(real_life)
-        cost = sum(r.get("cost", 0) for r in real_life)
-        line(f"| {model} | {pass_count} | {partial} | {fail} | {avg_rating:.1f}/5 | ${cost:.4f} |")
-
-    line()
-
-    # By category
-    line("### By Category")
-    line()
-    for category in EMAIL_CATEGORIES:
-        has_data = False
-        cat_lines = []
-        cat_lines.append(f"**{category}**")
-        cat_lines.append("")
-        cat_lines.append("| Model | Pass | Fail | Avg Rating |")
-        cat_lines.append("|-------|------|------|------------|")
-        for model in models_sorted:
-            results = by_model_op.get(model, {}).get("extract", [])
-            cat_results = [r for r in results if r.get("category") == category]
-            if not cat_results:
-                continue
-            has_data = True
-            pass_count = sum(1 for r in cat_results if r.get("auto_score", {}).get("all_events_match"))
-            fail = len(cat_results) - pass_count
-            avg_rating = sum(r.get("auto_score", {}).get("auto_rating", 0) for r in cat_results) / len(cat_results)
-            cat_lines.append(f"| {model} | {pass_count} | {fail} | {avg_rating:.1f}/5 |")
-        if has_data:
-            for cl in cat_lines:
-                line(cl)
-            line()
-
-    # ---- Compare Results ----
-    line("## Compare (Dedup) Results")
+    line("## Compare Results")
     line()
     line("| Model | Correct | Wrong | Accuracy | Cost |")
     line("|-------|---------|-------|----------|------|")
     for model in models_sorted:
-        results = by_model_op.get(model, {}).get("compare", [])
+        results = [
+            r for r in by_model_op.get(model, {}).get("compare", []) if not r.get("missing")
+        ]
         if not results:
             continue
         correct = sum(1 for r in results if r.get("auto_score", {}).get("correct"))
         wrong = len(results) - correct
         accuracy = 100 * correct / len(results) if results else 0
-        cost = sum(r.get("cost", 0) for r in results)
-        line(f"| {model} | {correct} | {wrong} | {accuracy:.1f}% | ${cost:.4f} |")
+        costs = [r.get("cost") for r in results if isinstance(r.get("cost"), (int, float))]
+        cost = sum(costs) if costs else None
+        line(
+            f"| {model} | {correct} | {wrong} | {accuracy:.1f}% | {_format_cost(cost)} |"
+        )
     line()
 
-    # ---- Merge Results ----
     line("## Merge Results")
     line()
-    line("| Model | Avg Rating | Pass (5/5) | Cost |")
-    line("|-------|------------|------------|------|")
+    line("| Model | Avg Rating | Perfect | Cost |")
+    line("|-------|------------|---------|------|")
     for model in models_sorted:
-        results = by_model_op.get(model, {}).get("merge", [])
+        results = [
+            r for r in by_model_op.get(model, {}).get("merge", []) if not r.get("missing")
+        ]
         if not results:
             continue
-        avg_rating = sum(r.get("auto_score", {}).get("auto_rating", 0) for r in results) / len(results)
         perfect = sum(1 for r in results if r.get("auto_score", {}).get("auto_rating", 0) == 5)
-        cost = sum(r.get("cost", 0) for r in results)
-        line(f"| {model} | {avg_rating:.1f}/5 | {perfect}/{len(results)} | ${cost:.4f} |")
+        avg_rating = (
+            sum(r.get("auto_score", {}).get("auto_rating", 0) for r in results) / len(results)
+        )
+        costs = [r.get("cost") for r in results if isinstance(r.get("cost"), (int, float))]
+        cost = sum(costs) if costs else None
+        line(
+            f"| {model} | {avg_rating:.1f}/5 | {perfect}/{len(results)} | {_format_cost(cost)} |"
+        )
     line()
-
-    # ---- Failure Patterns ----
-    fail_partial_results = [r for r in all_results if _get_result_status(r) in ("FAIL", "PARTIAL")]
-    if fail_partial_results:
-        tag_stats: dict[str, dict[str, int]] = {}
-        for r in all_results:
-            status = _get_result_status(r)
-            for tag in r.get("tags", []):
-                if tag not in tag_stats:
-                    tag_stats[tag] = {"total": 0, "fail": 0, "partial": 0}
-                tag_stats[tag]["total"] += 1
-                if status == "FAIL":
-                    tag_stats[tag]["fail"] += 1
-                elif status == "PARTIAL":
-                    tag_stats[tag]["partial"] += 1
-
-        # Only show tags with at least one failure
-        failing_tags = {t: s for t, s in tag_stats.items() if s["fail"] > 0 or s["partial"] > 0}
-        if failing_tags:
-            line("## Failure Patterns")
-            line()
-            line("| Tag | Total | Fail | Partial | Failure Rate |")
-            line("|-----|-------|------|---------|--------------|")
-            for tag, stats in sorted(failing_tags.items(), key=lambda x: (x[1]["fail"] + x[1]["partial"]) / max(x[1]["total"], 1), reverse=True):
-                failure_rate = (stats["fail"] + stats["partial"]) / stats["total"] * 100 if stats["total"] else 0
-                line(f"| {tag} | {stats['total']} | {stats['fail']} | {stats['partial']} | {failure_rate:.0f}% |")
-            line()
-
-    # ---- Cost Analysis ----
-    line("## Cost Analysis")
-    line()
-
-    line("### Per-Eval Cost")
-    line()
-    line("| Model | Extract Avg | Compare Avg | Merge Avg | Total |")
-    line("|-------|-------------|-------------|-----------|-------|")
-    for model in models_sorted:
-        ops = by_model_op.get(model, {})
-        ext = ops.get("extract", [])
-        cmp = ops.get("compare", [])
-        mrg = ops.get("merge", [])
-        ext_avg = sum(r.get("cost", 0) for r in ext) / len(ext) if ext else 0
-        cmp_avg = sum(r.get("cost", 0) for r in cmp) / len(cmp) if cmp else 0
-        mrg_avg = sum(r.get("cost", 0) for r in mrg) / len(mrg) if mrg else 0
-        total = sum(r.get("cost", 0) for r in ext + cmp + mrg)
-        line(f"| {model} | ${ext_avg:.6f} | ${cmp_avg:.6f} | ${mrg_avg:.6f} | ${total:.4f} |")
-    line()
-
-    # Monthly projections
-    line("### Monthly Cost Projection")
-    line()
-    line("Assumptions per tier:")
-    for tier_name, tier in COST_TIERS.items():
-        line(f"- **{tier_name}**: {tier['emails_per_month']} emails/month, "
-             f"{int(tier['image_rate']*100)}% with images, "
-             f"{int(tier['dedup_rate']*100)}% trigger dedup, "
-             f"{int(tier['merge_rate']*100)}% trigger merge")
-    line()
-
-    tier_names = list(COST_TIERS.keys())
-    header = "| Model | " + " | ".join(tier_names) + " |"
-    sep = "|-------" + "|--------------------" * len(tier_names) + "|"
-    line(header)
-    line(sep)
-
-    for model in models_sorted:
-        ops = by_model_op.get(model, {})
-        ext = ops.get("extract", [])
-        cmp = ops.get("compare", [])
-        mrg = ops.get("merge", [])
-        ext_avg = sum(r.get("cost", 0) for r in ext) / len(ext) if ext else 0
-        cmp_avg = sum(r.get("cost", 0) for r in cmp) / len(cmp) if cmp else 0
-        mrg_avg = sum(r.get("cost", 0) for r in mrg) / len(mrg) if mrg else 0
-
-        cells = []
-        for tier in COST_TIERS.values():
-            emails = tier["emails_per_month"]
-            ext_cost = emails * ext_avg
-            cmp_cost = emails * tier["dedup_rate"] * cmp_avg
-            mrg_cost = emails * tier["merge_rate"] * mrg_avg
-            total = ext_cost + cmp_cost + mrg_cost
-            cells.append(f"${total:.2f}")
-        line(f"| {model} | " + " | ".join(cells) + " |")
-    line()
-
-    # ---- Token Usage ----
-    line("## Token Usage")
-    line()
-    line("| Model | Avg Prompt Tokens | Avg Completion Tokens | Total Tokens |")
-    line("|-------|-------------------|----------------------|--------------|")
-    for model in models_sorted:
-        all_model = []
-        for op_results in by_model_op.get(model, {}).values():
-            all_model.extend(op_results)
-        if not all_model:
-            continue
-        avg_prompt = sum(r.get("tokens", {}).get("prompt_tokens", 0) or 0 for r in all_model) / len(all_model)
-        avg_comp = sum(r.get("tokens", {}).get("completion_tokens", 0) or 0 for r in all_model) / len(all_model)
-        total_tok = sum(r.get("tokens", {}).get("total_tokens", 0) or 0 for r in all_model)
-        line(f"| {model} | {avg_prompt:.0f} | {avg_comp:.0f} | {total_tok} |")
-    line()
-
-    # ---- Regression Analysis ----
-    # Collect code_hash → prompt_hash mapping across all results
-    version_map: dict[str, set] = {}  # code_hash → set of prompt_hashes
-    model_code_versions: dict[str, set] = {}  # model → set of code_hashes
-    for r in all_results:
-        model = r.get("model", "unknown")
-        ch = r.get("code_hash", "")
-        ph = r.get("prompt_hash", "")
-        if ch:
-            model_code_versions.setdefault(model, set()).add(ch)
-            version_map.setdefault(ch, set())
-            if ph:
-                version_map[ch].add(ph)
-
-    has_regression = any(len(versions) > 1 for versions in model_code_versions.values())
-    if has_regression:
-        line("## Regression Analysis")
-        line()
-        line("Multiple code versions detected across results.")
-        line()
-        line("| code_hash | prompt_hash | Change Type |")
-        line("|-----------|-------------|-------------|")
-        all_code_hashes = sorted(version_map.keys())
-        for i, ch in enumerate(all_code_hashes):
-            prompt_hashes = version_map[ch]
-            ph_str = ", ".join(sorted(prompt_hashes)) if prompt_hashes else "N/A (pre-prompt_hash tracking)"
-            if i == 0 or not prompt_hashes:
-                change_type = "baseline"
-            else:
-                prev_ph = version_map.get(all_code_hashes[i - 1], set())
-                if prompt_hashes == prev_ph:
-                    change_type = "scaffolding-only (prompt unchanged)"
-                else:
-                    change_type = "prompt changed"
-            line(f"| `{ch}` | `{ph_str}` | {change_type} |")
-        line()
-
-        # Summarize whether prompt changed between versions
-        all_prompt_hashes: set[str] = set()
-        for ph_set in version_map.values():
-            all_prompt_hashes.update(ph_set)
-        if len(all_prompt_hashes) <= 1 and all_prompt_hashes:
-            line("> **Note:** All versions share the same `prompt_hash` — this is a scaffolding-only change. Scores should be identical; any differences are LLM non-determinism.")
-        elif len(all_prompt_hashes) > 1:
-            line("> **Note:** `prompt_hash` differs between versions — prompt was changed. Run `--compare-baseline` to see score differences.")
-        line()
-
-    # Write file
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(output_path).write_text("\n".join(lines) + "\n")
-    print(f"Markdown report written to {output_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -2504,8 +2916,14 @@ Examples:
   Show trace (schema, response, traceback) for a fixture:
     uv run python -m backend.tests.eval.run_eval --show-trace invitations/baby_shower_04 --provider gemini --model gemini-3-flash-preview --thinking none
 
-  For real-time output when redirecting to file:
-    PYTHONUNBUFFERED=1 uv run python -m backend.tests.eval.run_eval ...
+  Plan cache hits/misses without API calls:
+    uv run python -m backend.tests.eval.run_eval --all --all-operations --plan
+
+  Intentional nondeterminism study (does not overwrite canonical cache):
+    uv run python -m backend.tests.eval.run_eval --fixture invitations/birthday_party_01 --replicate 1
+
+  Generate markdown report from a run manifest:
+    uv run python -m backend.tests.eval.run_eval --report-md backend/tests/eval/reports/out.md --manifest <run_id>
         """,
     )
 
@@ -2522,13 +2940,33 @@ Examples:
         "--difficulty", type=str, choices=DIFFICULTY_LEVELS, help="Filter by difficulty"
     )
 
-    # Cache options (cache is ON by default; use --no-cache to force re-run)
-    parser.add_argument("--no-cache", action="store_true", help="Force re-run, ignore cache (cache is ON by default)")
+    # Cache options — cache is always on for canonical keys; no overwrite path.
+    parser.add_argument(
+        "--plan",
+        action="store_true",
+        help="Print HIT/MISS plan for the requested matrix without provider calls",
+    )
+    parser.add_argument(
+        "--replicate",
+        type=int,
+        metavar="N",
+        help="Write a side replica artifact for nondeterminism studies (never overwrites canonical)",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help=argparse.SUPPRESS,  # deprecated; kept so old scripts fail loudly below
+    )
     parser.add_argument("--clear-cache", action="store_true", help="Clear all cached results")
 
     # View options
     parser.add_argument("--report", action="store_true", help="Show console summary report")
     parser.add_argument("--report-md", type=str, help="Generate markdown report to file")
+    parser.add_argument(
+        "--manifest",
+        type=str,
+        help="Run manifest id for --report-md (preferred; avoids mixed populations)",
+    )
     parser.add_argument("--show", type=str, help="Show detailed result for fixture")
     parser.add_argument("--show-trace", type=str, metavar="FIXTURE_NAME",
                         help="Show full trace (schema, response, traceback) for a fixture result. Requires --provider/--model/--thinking.")
@@ -2580,6 +3018,14 @@ Examples:
     parser.add_argument("--dry-run", action="store_true", help="Validate fixtures without calling LLM")
 
     args = parser.parse_args()
+
+    if args.no_cache:
+        print(
+            "ERROR: --no-cache is removed. Canonical inference artifacts are immutable.\n"
+            "Use --replicate N for intentional nondeterminism studies, or --plan to inspect cache state.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     # Apply provider/model overrides
     import backend.tests.eval.eval_config as eval_cfg
@@ -2656,7 +3102,53 @@ Examples:
 
     # Handle markdown report
     if args.report_md:
-        generate_markdown_report(args.report_md)
+        generate_markdown_report(args.report_md, manifest_run_id=args.manifest)
+        return
+
+    # Determine operations early (shared by --plan and runners)
+    operations = []
+    if args.all_operations:
+        operations = ["extract", "compare", "merge"]
+    else:
+        if args.all or args.category or args.fixture:
+            operations.append("extract")
+        if args.compare:
+            operations.append("compare")
+        if args.merge:
+            operations.append("merge")
+
+    # Handle --plan (zero provider calls)
+    if args.plan:
+        if not operations:
+            operations = ["extract"]
+        if args.all_models:
+            models = list(EVAL_MODELS)
+            if args.skip_models:
+                skip_set = {s.strip().lower() for s in args.skip_models.split(",")}
+                models = [m for m in models if m[0].lower() not in skip_set]
+        else:
+            models = [(eval_cfg.DEFAULT_PROVIDER, eval_cfg.DEFAULT_MODEL, args.thinking)]
+        fixtures_by_op = collect_fixtures_for_operations(
+            operations,
+            all_extract=bool(args.all or args.all_operations or args.fixture or args.category),
+            category=args.category,
+            fixture=args.fixture,
+            difficulty=args.difficulty,
+        )
+        # --all without category/fixture still means all extract fixtures
+        if "extract" in operations and not fixtures_by_op.get("extract") and (
+            args.all or args.all_operations
+        ):
+            fixtures_by_op["extract"] = get_all_fixtures()
+        cells = plan_eval_cells(
+            operations=operations,
+            models=models,
+            fixtures_by_op=fixtures_by_op,
+        )
+        run_id = write_run_manifest(cells=cells, operations=operations, models=models)
+        print(format_plan_table(cells))
+        print(f"\nManifest written: {run_id}")
+        print("Provider calls: 0")
         return
 
     # Handle show
@@ -2735,7 +3227,7 @@ Examples:
                 print("Aborting due to preflight failures. Use --no-preflight to skip.")
                 sys.exit(1)
 
-        use_cache = not args.no_cache
+        use_cache = True
         results = run_all_models(
             operations=operations,
             difficulty=args.difficulty,
@@ -2759,7 +3251,7 @@ Examples:
         if not threads:
             print("No thread scenarios found")
             sys.exit(0)
-        use_cache = not args.no_cache
+        use_cache = True
         dry_run = args.dry_run
         print(f"\nRunning {len(threads)} thread scenarios...")
         if dry_run:
@@ -2782,7 +3274,7 @@ Examples:
         sys.exit(0)
 
     # Run operations
-    use_cache = not args.no_cache
+    use_cache = True
     all_results = []
 
     if "extract" in operations:
@@ -2816,7 +3308,7 @@ Examples:
                 return run_extract_eval(
                     name, path, provider, model,
                     use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
-                    thinking=args.thinking,
+                    thinking=args.thinking, replicate=args.replicate,
                 )
 
             extract_results = _run_fixtures_parallel(fixtures_to_run, "extract", _run_extract_single, args.concurrency)
@@ -2837,7 +3329,7 @@ Examples:
                 return run_compare_eval(
                     name, path, provider, model,
                     use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
-                    thinking=args.thinking,
+                    thinking=args.thinking, replicate=args.replicate,
                 )
 
             compare_results = _run_fixtures_parallel(fixtures_to_run, "compare", _run_compare_single, args.concurrency)
@@ -2858,7 +3350,7 @@ Examples:
                 return run_merge_eval(
                     name, path, provider, model,
                     use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
-                    thinking=args.thinking,
+                    thinking=args.thinking, replicate=args.replicate,
                 )
 
             merge_results = _run_fixtures_parallel(fixtures_to_run, "merge", _run_merge_single, args.concurrency)

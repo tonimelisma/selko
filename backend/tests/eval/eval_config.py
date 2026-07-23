@@ -12,6 +12,10 @@ THREADS_DIR = FIXTURES_DIR / "threads"
 COMPARE_DIR = FIXTURES_DIR / "compare"
 MERGE_DIR = FIXTURES_DIR / "merge"
 RESULTS_DIR = EVAL_DIR / "results"
+INFERENCE_RESULTS_DIR = RESULTS_DIR / "inference"
+SCORE_RESULTS_DIR = RESULTS_DIR / "scores"
+MANIFESTS_DIR = RESULTS_DIR / "manifests"
+REPORTS_DIR = RESULTS_DIR / "reports"
 
 # Production code path for hashing (detects prompt/schema changes)
 EVENT_PROCESSING_PATH = Path(__file__).parent / "../../selko/services/event_processing.py"
