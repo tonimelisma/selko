@@ -1,0 +1,256 @@
+{
+  "fixture_name": "event_time_extended_03",
+  "fixture_hash": "b42fedf1ebd8e67f3a83e463151e79a707cf683449de6b17fdb562eb8d6c3210",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "df0f5eda5c27",
+  "operation": "merge",
+  "provider": "tinker",
+  "model": "inkling",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:49:55.763285+00:00",
+  "duration_ms": 5131,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:49:50.630614+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:49:50.630638+00:00",
+      "duration_ms": 10
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:49:50.640739+00:00",
+      "duration_ms": 5121
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:49:55.762671+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Event end time extended - same start time but longer duration",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "duration-change",
+    "time-update"
+  ],
+  "expected": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description_contains": [
+      "Python workshop",
+      "basics",
+      "extended",
+      "hands-on project"
+    ]
+  },
+  "actual": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description": "Beginner-friendly Python workshop covering basics. Extended session - now includes hands-on project time until 4:30pm",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "Python workshop",
+        "basics",
+        "extended",
+        "hands-on project"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 0,
+    "completion_tokens": 127,
+    "total_tokens": 127
+  },
+  "cost": 0.00059436,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1237,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Workshop: Intro to Python\n- Start: 2026-04-10T13:00:00\n- End: 2026-04-10T15:00:00\n- All Day: False\n- Location: Training Room 2\n- Description: Beginner-friendly Python workshop covering basics\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Workshop: Intro to Python\n- Start: 2026-04-10T13:00:00\n- End: 2026-04-10T16:30:00\n- All Day: False\n- Location: Training Room 2\n- Description: Extended session - now includes hands-on project time until 4:30pm\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n  \"title\": \"Workshop: Intro to Python\",\n  \"start_datetime\": \"2026-04-10T13:00:00\",\n  \"end_datetime\": \"2026-04-10T16:30:00\",\n  \"all_day\": false,\n  \"location\": \"Training Room 2\",\n  \"description\": \"Beginner-friendly Python workshop covering basics. Extended session - now includes hands-on project time until 4:30pm\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "96246147cc34425e9e337de235835f20",
+    "route_role": "primary"
+  },
+  "inference_key": "ee05b3f445a68ab364b6d22e721e80233be70099cad4453ad027927af1beda5f",
+  "score_key": "1d6530c3e299258e3ad759f4419c5bb2d41ace7a309013111ce749a76f23907d",
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "tinker",
+    "model": "inkling",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "tinker/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "inkling",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "26df3f87b7c852a12f0b4ae080f7b6880d6fea476c9b0b50f51ada1ab38f3791",
+    "fixture_input_hash": "b42fedf1ebd8e67f3a83e463151e79a707cf683449de6b17fdb562eb8d6c3210"
+  }
+}

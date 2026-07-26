@@ -1,6 +1,7 @@
 package net.melisma.selko.data.repository
 
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -50,7 +51,9 @@ class CalendarSettingsRepository(private val supabaseClient: SupabaseClient) {
         allDayCustomEnd: String? = null
     ): RepositoryResult<CalendarSettings> {
         return try {
-            val updates = mutableMapOf<String, Any?>()
+            val userId = supabaseClient.auth.currentUserOrNull()?.id
+                ?: throw IllegalStateException("User not authenticated")
+            val updates = mutableMapOf<String, Any?>("user_id" to userId)
             targetCalendarId?.let { updates["target_calendar_id"] = it }
             defaultInvitees?.let { updates["default_invitees"] = it }
             allDayDisplayMode?.let { updates["all_day_display_mode"] = it }

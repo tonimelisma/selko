@@ -1,0 +1,200 @@
+{
+  "fixture_name": "update_adds_dresscode_10",
+  "fixture_hash": "3b66c2304094f351b7a07a048a21ab818dce52336813dd4a7180fbdcf9012053",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "df0f5eda5c27",
+  "operation": "merge",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:46:10.943638+00:00",
+  "duration_ms": 30984,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:45:39.957469+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:45:39.957485+00:00",
+      "duration_ms": 34
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:45:39.992002+00:00",
+      "duration_ms": 30950
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:46:10.942911+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Update email adds dress code information to social event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "dress-code"
+  ],
+  "expected": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description_contains": [
+      "10 years",
+      "black tie",
+      "cocktail hour",
+      "plus-ones welcome"
+    ]
+  },
+  "actual": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description": "Annual company gala celebrating 10 years\nDress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "10 years",
+        "black tie",
+        "cocktail hour",
+        "plus-ones welcome"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 516,
+    "completion_tokens": 1280,
+    "total_tokens": 1796
+  },
+  "cost": 0.004149600000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1246,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Company Gala Dinner\n- Start: 2026-08-15T18:00:00\n- End: 2026-08-15T22:00:00\n- All Day: False\n- Location: Grand Ballroom Hotel\n- Description: Annual company gala celebrating 10 years\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Company Gala Dinner\n- Start: 2026-08-15T18:00:00\n- End: 2026-08-15T22:00:00\n- All Day: False\n- Location: Grand Ballroom Hotel\n- Description: Dress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n    \"title\": \"Company Gala Dinner\",\n    \"start_datetime\": \"2026-08-15T18:00:00\",\n    \"end_datetime\": \"2026-08-15T22:00:00\",\n    \"all_day\": false,\n    \"location\": \"Grand Ballroom Hotel\",\n    \"description\": \"Annual company gala celebrating 10 years\\nDress code: Black tie optional. Cocktail hour 6-7pm, dinner at 7pm. Plus-ones welcome!\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "ea42db91e82a45558dba10c2433ebe68",
+    "route_role": "primary"
+  },
+  "inference_key": "bb0382274583bf74e97ceef66e9b4a9c8b9cf47b9f3847d81da9fbf6a2f345fa",
+  "score_key": "7a9239548ce17036cd0d01057fea9aab764ff004fba48a7b0ce91eb84dee5c78",
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "moonshot",
+    "model": "kimi-k2.5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k2.5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "359d3e212909f5193d4acf852234c01412e7737d41ff900f59817d680942598a",
+    "fixture_input_hash": "3b66c2304094f351b7a07a048a21ab818dce52336813dd4a7180fbdcf9012053"
+  }
+}

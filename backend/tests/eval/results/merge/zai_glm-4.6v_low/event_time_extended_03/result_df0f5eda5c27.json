@@ -1,0 +1,200 @@
+{
+  "fixture_name": "event_time_extended_03",
+  "fixture_hash": "b42fedf1ebd8e67f3a83e463151e79a707cf683449de6b17fdb562eb8d6c3210",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "df0f5eda5c27",
+  "operation": "merge",
+  "provider": "zai",
+  "model": "glm-4.6v",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:09:28.434239+00:00",
+  "duration_ms": 15302,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:09:13.130047+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:09:13.130055+00:00",
+      "duration_ms": 5
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:09:13.135940+00:00",
+      "duration_ms": 15297
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:09:28.433415+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Event end time extended - same start time but longer duration",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "duration-change",
+    "time-update"
+  ],
+  "expected": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description_contains": [
+      "Python workshop",
+      "basics",
+      "extended",
+      "hands-on project"
+    ]
+  },
+  "actual": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description": "Beginner-friendly Python workshop covering basics. Extended session - now includes hands-on project time until 4:30pm",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "Python workshop",
+        "basics",
+        "extended",
+        "hands-on project"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 570,
+    "completion_tokens": 491,
+    "total_tokens": 1061
+  },
+  "cost": 0.0012955,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1237,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Workshop: Intro to Python\n- Start: 2026-04-10T13:00:00\n- End: 2026-04-10T15:00:00\n- All Day: False\n- Location: Training Room 2\n- Description: Beginner-friendly Python workshop covering basics\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Workshop: Intro to Python\n- Start: 2026-04-10T13:00:00\n- End: 2026-04-10T16:30:00\n- All Day: False\n- Location: Training Room 2\n- Description: Extended session - now includes hands-on project time until 4:30pm\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"title\":\"Workshop: Intro to Python\",\"start_datetime\":\"2026-04-10T13:00:00\",\"end_datetime\":\"2026-04-10T16:30:00\",\"all_day\":false,\"location\":\"Training Room 2\",\"description\":\"Beginner-friendly Python workshop covering basics. Extended session - now includes hands-on project time until 4:30pm\",\"importance\":\"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "9c7a03bac3d74e8b9da28195fd5e8663",
+    "route_role": "primary"
+  },
+  "inference_key": "1e4c9dca91c91bd00f8f5e249d7ac54f71f11ca6940e45a810201c1cb228da80",
+  "score_key": "4173920bbc04cc1d900ddedce87ae013cd61e8fc38d644c09173570ed113d7f4",
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "zai",
+    "model": "glm-4.6v",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.6v",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "b42fedf1ebd8e67f3a83e463151e79a707cf683449de6b17fdb562eb8d6c3210"
+  }
+}

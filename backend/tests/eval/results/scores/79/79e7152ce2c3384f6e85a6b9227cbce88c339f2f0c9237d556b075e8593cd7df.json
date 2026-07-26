@@ -1,0 +1,20 @@
+{
+  "fixture_name": "conference_day1_vs_day2_15",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "40e7d8e0ee54a787a035e241df0d8e4768b119b069e7dbacc90d10eed420a530",
+    "expected_output_hash": "4486b03d387fa4a0aa0f782ea4e16cb28dc9732fa759705666a69458617a92bf",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "79e7152ce2c3384f6e85a6b9227cbce88c339f2f0c9237d556b075e8593cd7df",
+  "stored_at": "2026-07-26T00:24:18.526651+00:00"
+}

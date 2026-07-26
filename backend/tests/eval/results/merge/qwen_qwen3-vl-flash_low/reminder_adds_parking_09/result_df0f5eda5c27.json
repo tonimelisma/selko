@@ -1,0 +1,200 @@
+{
+  "fixture_name": "reminder_adds_parking_09",
+  "fixture_hash": "d1cdb595a3817ee072baacbbe4680457d219517c3192edd43c1d4bdb7faa003a",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "df0f5eda5c27",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:37:19.461279+00:00",
+  "duration_ms": 5786,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:37:13.673992+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:37:13.674003+00:00",
+      "duration_ms": 21
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:37:13.695602+00:00",
+      "duration_ms": 5765
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:37:19.460670+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Reminder email adds parking instructions to existing event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "logistics"
+  ],
+  "expected": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description_contains": [
+      "annual checkup",
+      "15 min early",
+      "parking",
+      "insurance card"
+    ]
+  },
+  "actual": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description": "Annual checkup appointment. Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "annual checkup",
+        "15 min early",
+        "parking",
+        "insurance card"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 554,
+    "completion_tokens": 741,
+    "total_tokens": 1295
+  },
+  "cost": 0.0003518000000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1284,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Medical Appointment - Dr. Smith\n- Start: 2026-03-30T11:00:00\n- End: 2026-03-30T11:30:00\n- All Day: False\n- Location: Downtown Medical Center, Suite 405\n- Description: Annual checkup appointment\n- Importance: action_required\n\n**New Information (source type: reminder):**\n- Title: Medical Appointment - Dr. Smith\n- Start: 2026-03-30T11:00:00\n- End: 2026-03-30T11:30:00\n- All Day: False\n- Location: Downtown Medical Center, Suite 405\n- Description: Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"title\": \"Medical Appointment - Dr. Smith\",\n  \"start_datetime\": \"2026-03-30T11:00:00\",\n  \"end_datetime\": \"2026-03-30T11:30:00\",\n  \"all_day\": false,\n  \"location\": \"Downtown Medical Center, Suite 405\",\n  \"description\": \"Annual checkup appointment. Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "6b5feb3b9d1c465caae67e59b2d07ab5",
+    "route_role": "primary"
+  },
+  "inference_key": "5fc2eb2c31d31e014fb843c0fdd5de63650e84da5881e614dad17afabf376e32",
+  "score_key": "f8d57b5a3d0297b62f196f56e0c3d1e43fa77d69405200be22b87d9f41b4831e",
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "qwen",
+    "model": "qwen3-vl-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "qwen/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "qwen3-vl-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "ca72602ea37eced027677b9a7d6155ce8b30c2f665c495dc52c83af8f5e9c935",
+    "fixture_input_hash": "d1cdb595a3817ee072baacbbe4680457d219517c3192edd43c1d4bdb7faa003a"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/notetaker_not_admitted_13",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "03b3a71be171b2a98550caa5ae5e87c4a94a2a93db119503fd7c497c1556f8b3",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "04a2abc9e34ed132ec4d4b4603eb1d6fccf3635c235474f6516d8ac8f5cd7f9c",
+  "stored_at": "2026-07-26T02:27:05.414568+00:00"
+}

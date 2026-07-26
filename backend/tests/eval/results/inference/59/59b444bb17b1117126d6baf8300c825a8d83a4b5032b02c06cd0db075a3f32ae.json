@@ -1,0 +1,120 @@
+{
+  "fixture_name": "different_events_same_day_09",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:36:56.011793+00:00",
+  "duration_ms": 8050,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:36:47.959963+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:36:47.959971+00:00",
+      "duration_ms": 5
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:36:47.965668+00:00",
+      "duration_ms": 8045
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:36:56.010850+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 519,
+    "completion_tokens": 1086,
+    "total_tokens": 1605
+  },
+  "cost": 0.00048630000000000006,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1188,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Max's 5th Birthday Party\n- Start: 2026-03-21T15:00:00\n- End: 2026-03-21T18:00:00\n- Location: Bounce House Adventure\n- Description: Celebrating Max turning 5! Bounce houses, pizza, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Daily Standup\n   - Start: 2026-03-21T09:00:00\n   - End: 2026-03-21T09:15:00\n   - Location: Office - Conference Room A\n   - Description: Team sync meeting\n\n2. Event ID: event-002\n   - Title: Lunch with Client\n   - Start: 2026-03-21T12:00:00\n   - End: 2026-03-21T13:30:00\n   - Location: The Blue Bistro\n   - Description: Quarterly business lunch\n\n3. Event ID: event-003\n   - Title: Gym Session\n   - Start: 2026-03-21T18:30:00\n   - End: 2026-03-21T19:30:00\n   - Location: 24 Hour Fitness\n   - Description: Evening workout\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event 'Max's 5th Birthday Party' from 15:00-18:00 at Bounce House Adventure is distinct from all existing events. Event 001 is a morning meeting, event 002 is a lunch at 12:00-13:30, and event 003 is a gym session starting at 18:30 (after the new event ends). The times, locations, and descriptions are all different, indicating this is a completely different event.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "f0ce542353ef4bde9bd3f397a6feebcc",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "qwen",
+    "model": "qwen3-vl-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "qwen/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "qwen3-vl-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "ca72602ea37eced027677b9a7d6155ce8b30c2f665c495dc52c83af8f5e9c935",
+    "fixture_input_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603"
+  },
+  "inference_key": "59b444bb17b1117126d6baf8300c825a8d83a4b5032b02c06cd0db075a3f32ae",
+  "stored_at": "2026-07-26T00:36:56.037079+00:00"
+}

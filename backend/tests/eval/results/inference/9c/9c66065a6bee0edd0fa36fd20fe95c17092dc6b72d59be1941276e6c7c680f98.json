@@ -1,0 +1,135 @@
+{
+  "fixture_name": "same_parent_teacher_08",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.6-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "minimal"
+  },
+  "run_at": "2026-07-23T06:21:30.542786+00:00",
+  "duration_ms": 1081,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:21:29.460081+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:21:29.460088+00:00",
+      "duration_ms": 11
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:21:29.471783+00:00",
+      "duration_ms": 1070
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:21:30.542201+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 377,
+    "completion_tokens": 87,
+    "total_tokens": 464
+  },
+  "cost": 0.001218,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Parent-Teacher Conference\n- Start: 2026-05-12T15:30:00\n- End: 2026-05-12T16:00:00\n- Location: Room 204, Lincoln Elementary\n- Description: Reminder: Conference with Mrs. Johnson tomorrow at 3:30pm to discuss Jake's progress.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Conference - Mrs. Johnson\n   - Start: 2026-05-12T15:30:00\n   - End: 2026-05-12T16:00:00\n   - Location: Lincoln Elementary, Room 204\n   - Description: Parent-teacher conference for Jake\n\n2. Event ID: event-002\n   - Title: Pick up dry cleaning\n   - Start: 2026-05-12T17:00:00\n   - End: 2026-05-12T17:30:00\n   - Location: QuickClean\n   - Description: Get suits before Friday\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"Both events refer to the same parent-teacher conference with Mrs. Johnson regarding Jake's progress at Lincoln Elementary Room 204, scheduled for the exact same date and time (May 12, 2026, 15:30-16:00).\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "31dac3fd3a884a9399fcb1ad2804bdb6",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same parent-teacher conference with reminder vs original - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "d9142b557e1ef150dabeaa6e54479898aecff04136deb2eb5eaacd5a7edd74c5",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.6-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "minimal"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.6-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "minimal"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "e88e9a93c73fbdb09f8a21065a7ce67dd005dde1bcd9062d10ec15617ba19875",
+    "fixture_input_hash": "d9142b557e1ef150dabeaa6e54479898aecff04136deb2eb5eaacd5a7edd74c5"
+  },
+  "inference_key": "9c66065a6bee0edd0fa36fd20fe95c17092dc6b72d59be1941276e6c7c680f98",
+  "stored_at": "2026-07-23T06:21:30.562083+00:00"
+}

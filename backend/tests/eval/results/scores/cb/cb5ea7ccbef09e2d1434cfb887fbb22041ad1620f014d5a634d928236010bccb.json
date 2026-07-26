@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_doctor_appointment_02",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "6dfcd3be1d641ff3a9cc71c2bc9cc5fa91e05eba459044e53bc0b630a6e4da85",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "cb5ea7ccbef09e2d1434cfb887fbb22041ad1620f014d5a634d928236010bccb",
+  "stored_at": "2026-07-23T06:22:18.808790+00:00"
+}

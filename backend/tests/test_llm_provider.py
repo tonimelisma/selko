@@ -34,7 +34,7 @@ class TestModelRegistry:
     def test_registry_matches_model_specs(self):
         """MODEL_REGISTRY is the dict view of MODEL_SPECS."""
         assert set(MODEL_REGISTRY) == set(MODEL_SPECS)
-        assert len(MODEL_SPECS) == 9
+        assert len(MODEL_SPECS) == 29
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -51,6 +51,8 @@ class TestModelRegistry:
 
     def test_non_native_sdk_models_have_base_url(self):
         """Test that non-native-SDK models have base_url."""
+        # Anthropic native uses default Anthropic host; Tinker is Anthropic-compatible
+        # but still requires an explicit base_url.
         native_sdk_providers = {"gemini", "anthropic"}
         for model_name, entry in MODEL_REGISTRY.items():
             if entry["provider"] not in native_sdk_providers:
@@ -74,26 +76,70 @@ class TestModelRegistry:
             assert model in MODEL_REGISTRY, f"Default model {model} for {provider} not in registry"
 
     def test_openai_and_xai_models_have_reasoning_flag(self):
-        """GPT-5.6 and Grok use explicit reasoning_effort."""
-        for model_name in ("gpt-5.6-luna", "gpt-5.6-terra", "grok-4.5"):
+        """GPT-5.6, Grok, Meta Spark, Kimi K3, and DeepSeek use reasoning_effort."""
+        for model_name in (
+            "gpt-5.6-luna",
+            "gpt-5.6-terra",
+            "grok-4.5",
+            "muse-spark-1.1",
+            "kimi-k3",
+            "deepseek-v4-flash",
+        ):
             assert MODEL_REGISTRY[model_name].get("reasoning") is True
+
+    def test_moonshot_k2_uses_thinking_toggle_not_reasoning_effort(self):
+        """K2.5/K2.6 use thinking.type; K2.7 omits both; none get reasoning_effort."""
+        assert MODEL_REGISTRY["kimi-k2.5"].get("moonshot_thinking") is True
+        assert MODEL_REGISTRY["kimi-k2.6"].get("moonshot_thinking") is True
+        assert MODEL_REGISTRY["kimi-k2.5"].get("reasoning") is not True
+        assert MODEL_REGISTRY["kimi-k2.6"].get("reasoning") is not True
+        assert MODEL_REGISTRY["kimi-k2.7-code"].get("moonshot_thinking") is not True
+        assert MODEL_REGISTRY["kimi-k2.7-code"].get("reasoning") is not True
+        assert MODEL_SPECS["kimi-k2.5"].preferred_thinking.mode == "toggle"
+        assert MODEL_SPECS["kimi-k2.6"].preferred_thinking.mode == "toggle"
 
     def test_sonnet_has_adaptive_thinking(self):
         """Claude Sonnet 5 uses Anthropic adaptive thinking."""
         assert MODEL_REGISTRY["claude-sonnet-5"].get("adaptive_thinking") is True
+        assert MODEL_REGISTRY["claude-haiku-4-5"].get("adaptive_thinking") is not True
+
+    def test_inkling_uses_tinker_effort(self):
+        """Inkling uses Tinker output_config.effort via Anthropic-compatible adapter."""
+        assert MODEL_REGISTRY["inkling"].get("tinker_effort") is True
+        assert MODEL_REGISTRY["inkling"]["api_model"] == "thinkingmachines/Inkling"
 
     def test_current_candidates_are_registered(self):
-        """WS4 curated IDs remain available by exact string."""
+        """Expanded current + value-tier IDs remain available by exact string."""
         expected = {
-            "gemini-3.5-flash-lite",
             "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.1-flash-lite",
             "gpt-5.6-luna",
             "gpt-5.6-terra",
-            "qwen3.6-flash",
             "qwen3.7-plus",
-            "glm-5.2",
-            "grok-4.5",
+            "qwen3.7-flash",
+            "qwen3.6-flash",
+            "qwen3.5-flash",
+            "qwen3-vl-flash",
             "claude-sonnet-5",
+            "claude-haiku-4-5",
+            "kimi-k3",
+            "kimi-k2.6",
+            "kimi-k2.7-code",
+            "kimi-k2.5",
+            "deepseek-v4-pro",
+            "deepseek-v4-flash",
+            "MiniMax-M3",
+            "MiniMax-M2.7",
+            "glm-5.2",
+            "glm-5.1",
+            "glm-5-turbo",
+            "glm-4.5-air",
+            "glm-4.6v",
+            "grok-4.5",
+            "muse-spark-1.1",
+            "inkling",
         }
         assert expected == MODEL_REGISTRY.keys()
         assert "gpt-5.6-sol" not in MODEL_REGISTRY
@@ -103,8 +149,13 @@ class TestModelRegistry:
         assert PROVIDER_DEFAULT_MODEL["gemini"] == "gemini-3.5-flash-lite"
         assert PROVIDER_DEFAULT_MODEL["zai"] == "glm-5.2"
         assert PROVIDER_DEFAULT_MODEL["openai"] == "gpt-5.6-luna"
-        assert PROVIDER_DEFAULT_MODEL["qwen"] == "qwen3.6-flash"
+        assert PROVIDER_DEFAULT_MODEL["qwen"] == "qwen3.7-flash"
         assert PROVIDER_DEFAULT_MODEL["xai"] == "grok-4.5"
+        assert PROVIDER_DEFAULT_MODEL["meta"] == "muse-spark-1.1"
+        assert PROVIDER_DEFAULT_MODEL["tinker"] == "inkling"
+        assert PROVIDER_DEFAULT_MODEL["moonshot"] == "kimi-k3"
+        assert PROVIDER_DEFAULT_MODEL["deepseek"] == "deepseek-v4-flash"
+        assert PROVIDER_DEFAULT_MODEL["minimax"] == "MiniMax-M3"
 
     def test_anthropic_default_is_sonnet_5(self):
         """Test that the Anthropic provider defaults to Claude Sonnet 5."""
@@ -113,9 +164,27 @@ class TestModelRegistry:
 
     def test_qwen_thinking_models_have_flag(self):
         """Current Qwen models use enable_thinking budget mode."""
-        for model_name in ("qwen3.6-flash", "qwen3.7-plus"):
+        for model_name in (
+            "qwen3.6-flash",
+            "qwen3.7-plus",
+            "qwen3.7-flash",
+            "qwen3.5-flash",
+        ):
             assert MODEL_REGISTRY[model_name].get("qwen_thinking") is True
             assert MODEL_SPECS[model_name].preferred_thinking.mode == "budget"
+
+    def test_text_only_models_flagged(self):
+        """DeepSeek V4 and GLM-5.x text lines are vision=False."""
+        for model_name in (
+            "deepseek-v4-pro",
+            "deepseek-v4-flash",
+            "glm-5.2",
+            "glm-5.1",
+            "glm-5-turbo",
+            "glm-4.5-air",
+        ):
+            assert MODEL_REGISTRY[model_name]["vision"] is False
+        assert MODEL_REGISTRY["glm-4.6v"]["vision"] is True
 
 
 class TestCreateProvider:
@@ -132,7 +201,7 @@ class TestCreateProvider:
             provider = create_provider(config)
 
         assert isinstance(provider, OpenAICompatibleProvider)
-        assert provider.model == "qwen3.6-flash"
+        assert provider.model == "qwen3.7-flash"
         assert provider.provider_name == "qwen"
 
     def test_create_openai_compatible_provider(self):
@@ -232,6 +301,38 @@ class TestCreateProvider:
 
         assert isinstance(provider, OpenAICompatibleProvider)
         assert provider.reasoning_model is False
+
+    def test_create_meta_provider(self):
+        """Test creating Meta Muse Spark provider."""
+        config = MagicMock()
+        config.llm_provider = "meta"
+        config.llm_model = "muse-spark-1.1"
+        config.meta_api_key = "test-key"
+
+        with patch("openai.OpenAI"):
+            provider = create_provider(config, thinking="minimal")
+
+        assert isinstance(provider, OpenAICompatibleProvider)
+        assert provider.model == "muse-spark-1.1"
+        assert provider.provider_name == "meta"
+        assert provider.reasoning_model is True
+        assert provider.thinking == "minimal"
+
+    def test_create_tinker_inkling_provider(self):
+        """Test creating Tinker Inkling via Anthropic-compatible adapter."""
+        config = MagicMock()
+        config.llm_provider = "tinker"
+        config.llm_model = "inkling"
+        config.tinker_api_key = "test-key"
+
+        with patch("anthropic.Anthropic"):
+            provider = create_provider(config, thinking="low")
+
+        assert isinstance(provider, AnthropicProvider)
+        assert provider.model == "thinkingmachines/Inkling"
+        assert provider.provider_name == "tinker"
+        assert provider.tinker_effort is True
+        assert provider.thinking == "low"
 
     def test_create_provider_passes_thinking_to_gemini(self):
         """Test that thinking level is passed through to GeminiProvider."""
@@ -814,6 +915,89 @@ class TestQwenThinking:
 
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
         assert "extra_body" not in call_kwargs
+
+
+class TestMoonshotThinking:
+    """Moonshot K2.x uses thinking.type; K3 uses reasoning_effort; K2.7 omits both."""
+
+    def _make_mock_client(self):
+        mock_client = MagicMock()
+        mock_choice = MagicMock()
+        mock_choice.message.content = '{"ok": true}'
+        mock_choice.finish_reason = "stop"
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=5)
+        mock_client.chat.completions.create.return_value = mock_response
+        return mock_client
+
+    def test_k26_sends_thinking_enabled_for_low(self):
+        mock_client = self._make_mock_client()
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key",
+                model="kimi-k2.6",
+                base_url="https://api.moonshot.ai/v1",
+                provider_name="moonshot",
+                supports_json_schema=False,
+                moonshot_thinking=True,
+                thinking="low",
+            )
+        provider.generate(["Hello"])
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["extra_body"] == {"thinking": {"type": "enabled"}}
+        assert "reasoning_effort" not in call_kwargs
+
+    def test_k25_sends_thinking_disabled_for_none(self):
+        mock_client = self._make_mock_client()
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key",
+                model="kimi-k2.5",
+                base_url="https://api.moonshot.ai/v1",
+                provider_name="moonshot",
+                moonshot_thinking=True,
+                thinking="none",
+            )
+        provider.generate(["Hello"])
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+        assert "reasoning_effort" not in call_kwargs
+
+    def test_k27_omits_thinking_and_reasoning_effort(self):
+        mock_client = self._make_mock_client()
+        with patch("openai.OpenAI", return_value=mock_client):
+            provider = OpenAICompatibleProvider(
+                api_key="test-key",
+                model="kimi-k2.7-code",
+                base_url="https://api.moonshot.ai/v1",
+                provider_name="moonshot",
+                reasoning_model=False,
+                moonshot_thinking=False,
+                thinking="low",
+            )
+        provider.generate(["Hello"])
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert "extra_body" not in call_kwargs
+        assert "reasoning_effort" not in call_kwargs
+
+    def test_create_provider_wires_moonshot_flags(self):
+        config = MagicMock()
+        config.llm_provider = "moonshot"
+        config.moonshot_api_key = "test-key"
+        with patch("openai.OpenAI"):
+            config.llm_model = "kimi-k2.6"
+            k26 = create_provider(config, thinking="low")
+            config.llm_model = "kimi-k2.7-code"
+            k27 = create_provider(config, thinking="low")
+            config.llm_model = "kimi-k3"
+            k3 = create_provider(config, thinking="low")
+        assert k26.moonshot_thinking is True
+        assert k26.reasoning_model is False
+        assert k27.moonshot_thinking is False
+        assert k27.reasoning_model is False
+        assert k3.moonshot_thinking is False
+        assert k3.reasoning_model is True
 
 
 class TestGeminiThinkingLevel:

@@ -46,9 +46,12 @@ PROVIDER_ACCEPTED_FORMATS: dict[str, set[str]] = {
     "zai": {"image/png", "image/jpeg", "image/gif", "image/webp"},
     "qwen": {"image/png", "image/jpeg", "image/gif", "image/webp"},
     "deepseek": set(),   # text-only
-    "minimax": set(),    # text-only
+    "minimax": {"image/png", "image/jpeg", "image/gif", "image/webp"},
     "openai": {"image/png", "image/jpeg", "image/gif", "image/webp"},
-    "anthropic": {"image/png", "image/jpeg", "image/gif", "image/webp"},
+    "anthropic": {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"},
+    "xai": {"image/png", "image/jpeg", "image/gif", "image/webp"},
+    "meta": {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"},
+    "tinker": {"image/png", "image/jpeg", "image/gif", "image/webp"},
 }
 
 

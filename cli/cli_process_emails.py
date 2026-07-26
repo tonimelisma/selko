@@ -203,9 +203,8 @@ Note:
 
     # Create LLM Gateway (no quota service for CLI - that's done at API level)
     try:
-        from selko.services.llm_provider import create_provider
-        provider = create_provider(config)
-        gateway = LLMGateway(provider, logging_service=logging_service, quota_service=None)
+        from selko.services.llm_gateway import create_llm_gateway
+        gateway = create_llm_gateway(config, logging_service=logging_service, quota_service=None)
     except LLMGatewayError as e:
         logger.error(f"Failed to initialize LLM Gateway: {e}")
         sys.exit(1)

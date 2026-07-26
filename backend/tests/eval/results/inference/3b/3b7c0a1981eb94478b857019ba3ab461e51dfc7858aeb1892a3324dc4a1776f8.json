@@ -1,0 +1,120 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "operation": "compare",
+  "provider": "minimax",
+  "model": "MiniMax-M2.7",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T01:03:55.453018+00:00",
+  "duration_ms": 12847,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:03:42.602936+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:03:42.602943+00:00",
+      "duration_ms": 5
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:03:42.608710+00:00",
+      "duration_ms": 12842
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:03:55.451569+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 502,
+    "completion_tokens": 635,
+    "total_tokens": 1137
+  },
+  "cost": 0.0009126000000000001,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1257,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sophie's 6th Birthday Party\n- Start: 2026-08-15T13:00:00\n- End: 2026-08-15T16:00:00\n- Location: Rainbow Play Center\n- Description: Join us for Sophie's princess-themed birthday bash! Arts and crafts, games, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Lucas's 8th Birthday Celebration\n   - Start: 2026-08-22T14:00:00\n   - End: 2026-08-22T17:00:00\n   - Location: Laser Tag Arena\n   - Description: Laser tag party for Lucas turning 8!\n\n2. Event ID: event-002\n   - Title: Swimming Lesson\n   - Start: 2026-08-15T10:00:00\n   - End: 2026-08-15T11:00:00\n   - Location: Community Pool\n   - Description: Level 3 swimming class\n\n3. Event ID: event-003\n   - Title: Book Club\n   - Start: 2026-08-15T19:00:00\n   - End: 2026-08-15T21:00:00\n   - Location: Barnes & Noble Cafe\n   - Description: Discussing 'The Midnight Library'\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new Sophie's 6th Birthday Party event does not correspond to any of the existing events, which are for a different person, a different activity, or a different date/time.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "b018982876ff46bc9588e8fdaa9cb41b",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "birthday"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "d70cb423f79a8aeb6d2b81acbf6cabd8121f2a0f7a7fbcca8839094e162baff2",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "minimax/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "MiniMax-M2.7",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "2a5cd8b1778ab652436bc3114740637e89e127114021db05e3fa5eb33b49e8c0",
+    "fixture_input_hash": "d70cb423f79a8aeb6d2b81acbf6cabd8121f2a0f7a7fbcca8839094e162baff2"
+  },
+  "inference_key": "3b7c0a1981eb94478b857019ba3ab461e51dfc7858aeb1892a3324dc4a1776f8",
+  "stored_at": "2026-07-26T01:03:55.487989+00:00"
+}

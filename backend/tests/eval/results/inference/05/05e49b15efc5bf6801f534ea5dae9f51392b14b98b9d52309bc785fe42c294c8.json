@@ -1,0 +1,220 @@
+{
+  "fixture_name": "event_cancelled_06",
+  "operation": "merge",
+  "provider": "xai",
+  "model": "grok-4.5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T02:11:40.112637+00:00",
+  "duration_ms": 4676,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:11:35.435478+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:11:35.435485+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:11:35.442643+00:00",
+      "duration_ms": 4669
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:11:40.111930+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 726,
+    "completion_tokens": 112,
+    "total_tokens": 838
+  },
+  "cost": 0.002124,
+  "actual": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description": "Bi-weekly sprint review and retrospective\nMeeting cancelled due to team offsite. Will reschedule next week.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1214,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Sprint Review\n- Start: 2026-04-18T14:00:00\n- End: 2026-04-18T15:00:00\n- All Day: False\n- Location: Conference Room A\n- Description: Bi-weekly sprint review and retrospective\n- Importance: action_required\n\n**New Information (source type: cancellation):**\n- Title: Sprint Review\n- Start: 2026-04-18T14:00:00\n- End: 2026-04-18T15:00:00\n- All Day: False\n- Location: Conference Room A\n- Description: Meeting cancelled due to team offsite. Will reschedule next week.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "end_datetime",
+        "all_day",
+        "location",
+        "description",
+        "importance"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"title\": \"CANCELLED: Sprint Review\",\n  \"start_datetime\": \"2026-04-18T14:00:00\",\n  \"end_datetime\": \"2026-04-18T15:00:00\",\n  \"all_day\": false,\n  \"location\": \"Conference Room A\",\n  \"description\": \"Bi-weekly sprint review and retrospective\\nMeeting cancelled due to team offsite. Will reschedule next week.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "31654e177dc740688f2f57f743111844",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Event cancelled - title should get CANCELLED prefix",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "cancellation"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "df8a096891d240fd2289dea1b179ed7dc0035ef97307a3ca27c73f250c3d6d16",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "xai",
+    "model": "grok-4.5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "xai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "grok-4.5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "dd29cbf9b6a44f9e4ac38c46f298bd4cb144a28654174a80d269efcba1e9b439",
+    "fixture_input_hash": "df8a096891d240fd2289dea1b179ed7dc0035ef97307a3ca27c73f250c3d6d16"
+  },
+  "inference_key": "05e49b15efc5bf6801f534ea5dae9f51392b14b98b9d52309bc785fe42c294c8",
+  "stored_at": "2026-07-26T02:11:40.135673+00:00"
+}

@@ -1,0 +1,221 @@
+{
+  "fixture_name": "vague_to_specific_location_04",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5.6-luna",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-23T06:22:25.530015+00:00",
+  "duration_ms": 1569,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:22:23.959640+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:22:23.959646+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:22:23.966098+00:00",
+      "duration_ms": 1563
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:22:25.529116+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 444,
+    "completion_tokens": 108,
+    "total_tokens": 552
+  },
+  "cost": 0.00546,
+  "actual": {
+    "title": "Team Dinner",
+    "start_datetime": "2026-05-22T19:00:00",
+    "end_datetime": "2026-05-22T21:00:00",
+    "all_day": false,
+    "location": "Pasta Bella, 456 Main St",
+    "description": "Team celebration dinner. Reservation confirmed at Pasta Bella for 8 people.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1187,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Team Dinner\n- Start: 2026-05-22T19:00:00\n- End: 2026-05-22T21:00:00\n- All Day: False\n- Location: Italian restaurant downtown\n- Description: Team celebration dinner\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Team Dinner\n- Start: 2026-05-22T19:00:00\n- End: 2026-05-22T21:00:00\n- All Day: False\n- Location: Pasta Bella, 456 Main St\n- Description: Reservation confirmed at Pasta Bella for 8 people\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "end_datetime",
+        "all_day",
+        "location",
+        "description",
+        "importance"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"all_day\":false,\"description\":\"Team celebration dinner. Reservation confirmed at Pasta Bella for 8 people.\",\"end_datetime\":\"2026-05-22T21:00:00\",\"importance\":\"action_required\",\"location\":\"Pasta Bella, 456 Main St\",\"start_datetime\":\"2026-05-22T19:00:00\",\"title\":\"Team Dinner\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "effe29b273f94312942f372ec31c69f3",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Vague location updated to specific address - prefer specific location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "location-update",
+    "specificity"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "f439eb7e0952e3a144665e18ce5600e5df9d64e2062d475a9438a86982beb1ff",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "openai",
+    "model": "gpt-5.6-luna",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "openai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-luna",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "186355b6f68457ee80bf932d5466b4e8678e74a8baa694e2b01035a685a05c67",
+    "fixture_input_hash": "f439eb7e0952e3a144665e18ce5600e5df9d64e2062d475a9438a86982beb1ff"
+  },
+  "inference_key": "1aaf4cb56852a8919bf7b443410925adb704ee14db4b2872ef909e97b20576ff",
+  "stored_at": "2026-07-23T06:22:25.557172+00:00"
+}

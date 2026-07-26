@@ -1,0 +1,161 @@
+{
+  "fixture_name": "conference_session_update_12",
+  "operation": "merge",
+  "provider": "zai",
+  "model": "glm-4.6v",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T02:09:23.521483+00:00",
+  "duration_ms": 10796,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:09:12.724212+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:09:12.724218+00:00",
+      "duration_ms": 5
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:09:12.729752+00:00",
+      "duration_ms": 10791
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:09:23.520769+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 600,
+    "completion_tokens": 464,
+    "total_tokens": 1064
+  },
+  "cost": 0.001258,
+  "actual": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description": "Opening keynote session about AI trends and predictions. Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1328,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: DevCon 2026: Keynote - Future of AI\n- Start: 2026-09-12T09:00:00\n- End: 2026-09-12T10:30:00\n- All Day: False\n- Location: Convention Center\n- Description: Opening keynote session about AI trends and predictions\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: DevCon 2026: Keynote - Future of AI\n- Start: 2026-09-12T09:00:00\n- End: 2026-09-12T10:30:00\n- All Day: False\n- Location: Convention Center - Main Hall A\n- Description: Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"title\":\"DevCon 2026: Keynote - Future of AI\",\"start_datetime\":\"2026-09-12T09:00:00\",\"end_datetime\":\"2026-09-12T10:30:00\",\"all_day\":false,\"location\":\"Convention Center - Main Hall A\",\"description\":\"Opening keynote session about AI trends and predictions. Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.\",\"importance\":\"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "7971d52c0c3f4ab29aa15946da52e270",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Conference session: early-bird announcement has basic info, later update adds speaker and room details",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "conference"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "b75416d594aa097b236df8327187712986496a798e4dec5b74e6b3ea853588b3",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "zai",
+    "model": "glm-4.6v",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.6v",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "b75416d594aa097b236df8327187712986496a798e4dec5b74e6b3ea853588b3"
+  },
+  "inference_key": "d93bab38fb83928fe21a5430077e46e211e3df790ed5264402eef3960ede2291",
+  "stored_at": "2026-07-26T02:09:23.543622+00:00"
+}
