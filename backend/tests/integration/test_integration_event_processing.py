@@ -1,7 +1,7 @@
 """Integration tests for LLM calendar event extraction.
 
 These tests make real calls to the LLM API and require:
-- GEMINI_API_KEY (or other provider key) in environment
+- The active provider API key in environment (see LLM_PROVIDER)
 - Local Supabase running (for database tests)
 - TEST_USER_EMAIL and TEST_USER_PASSWORD configured
 """
@@ -29,18 +29,6 @@ def config():
 
 
 @pytest.fixture
-def gemini_client(config):
-    """Get LLM Gateway for real API calls."""
-    if not config.gemini_api_key:
-        pytest.fail(
-            "GEMINI_API_KEY not configured. "
-            "Get your API key from https://aistudio.google.com/apikey"
-        )
-    provider = create_provider(config)
-    return LLMGateway(provider)
-
-
-@pytest.fixture
 def fixtures_dir():
     """Get path to test fixtures directory."""
     return Path(__file__).parent.parent / "fixtures" / "emails"
@@ -59,13 +47,13 @@ def load_fixture(fixtures_dir: Path, fixture_name: str) -> dict:
 @pytest.mark.integration
 @pytest.mark.development
 @pytest.mark.llm
-class TestGeminiRealAPI:
-    """Test Gemini extraction with real API calls.
-    
+class TestLlmRealAPI:
+    """Test calendar extraction with real LLM API calls.
+
     These tests require --run-llm flag to run (costs money).
     """
 
-    def test_birthday_party_extraction(self, gemini_client, fixtures_dir):
+    def test_birthday_party_extraction(self, llm_gateway, fixtures_dir):
         """Test extraction from birthday party invitation."""
         fixture = load_fixture(fixtures_dir, "event_birthday_party")
         input_data = fixture["input"]
@@ -79,7 +67,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            gateway=gemini_client,
+            gateway=llm_gateway,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -95,7 +83,7 @@ class TestGeminiRealAPI:
         assert event.start_datetime is not None
         assert "birthday" in event.title.lower() or "jake" in event.title.lower()
 
-    def test_doctor_appointment_extraction(self, gemini_client, fixtures_dir):
+    def test_doctor_appointment_extraction(self, llm_gateway, fixtures_dir):
         """Test extraction from doctor appointment confirmation."""
         fixture = load_fixture(fixtures_dir, "event_doctor_appointment")
         input_data = fixture["input"]
@@ -109,7 +97,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            gateway=gemini_client,
+            gateway=llm_gateway,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -121,7 +109,7 @@ class TestGeminiRealAPI:
         assert event.start_datetime is not None
         assert event.location is not None
 
-    def test_newsletter_no_events(self, gemini_client, fixtures_dir):
+    def test_newsletter_no_events(self, llm_gateway, fixtures_dir):
         """Test that newsletter correctly returns no events."""
         fixture = load_fixture(fixtures_dir, "no_event_newsletter")
         input_data = fixture["input"]
@@ -135,7 +123,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            gateway=gemini_client,
+            gateway=llm_gateway,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -144,7 +132,7 @@ class TestGeminiRealAPI:
         assert result.events_found is False
         assert len(result.events) == 0
 
-    def test_receipt_no_events(self, gemini_client, fixtures_dir):
+    def test_receipt_no_events(self, llm_gateway, fixtures_dir):
         """Test that receipt correctly returns no events."""
         fixture = load_fixture(fixtures_dir, "no_event_receipt")
         input_data = fixture["input"]
@@ -158,7 +146,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            gateway=gemini_client,
+            gateway=llm_gateway,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -167,7 +155,7 @@ class TestGeminiRealAPI:
         assert result.events_found is False
         assert len(result.events) == 0
 
-    def test_multiple_events_extraction(self, gemini_client, fixtures_dir):
+    def test_multiple_events_extraction(self, llm_gateway, fixtures_dir):
         """Test extraction of multiple events from conference schedule."""
         fixture = load_fixture(fixtures_dir, "event_multiple_events")
         input_data = fixture["input"]
@@ -181,7 +169,7 @@ class TestGeminiRealAPI:
         }
 
         result = extract_calendar_events(
-            gateway=gemini_client,
+            gateway=llm_gateway,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -195,7 +183,7 @@ class TestGeminiRealAPI:
             assert event.title
             assert event.start_datetime is not None
 
-    def test_thinking_level_low(self, gemini_client, fixtures_dir):
+    def test_thinking_level_low(self, llm_gateway, fixtures_dir):
         """Test that thinking_level='low' is being used correctly."""
         fixture = load_fixture(fixtures_dir, "event_birthday_party")
         input_data = fixture["input"]
@@ -210,7 +198,7 @@ class TestGeminiRealAPI:
 
         # Should complete successfully with low thinking level
         result = extract_calendar_events(
-            gateway=gemini_client,
+            gateway=llm_gateway,
             email_text=input_data["body_text"],
             email_metadata=email_metadata,
         )
@@ -222,17 +210,17 @@ class TestGeminiRealAPI:
 @pytest.mark.integration
 @pytest.mark.development
 @pytest.mark.llm
-class TestGeminiWithDatabase:
-    """Test Gemini extraction with real database emails.
+class TestLlmWithDatabase:
+    """Test LLM extraction with real database emails.
 
     These tests require local Supabase running and at least one email
     in the database for the authenticated test user.
-    
+
     These tests require --run-llm flag to run (costs money).
     """
 
     def test_fetch_and_extract_from_database(
-        self, gemini_client, authenticated_client
+        self, llm_gateway, authenticated_client
     ):
         """Test fetching email from database and extracting events.
 
@@ -264,7 +252,7 @@ class TestGeminiWithDatabase:
 
         # Extract events
         extraction_result = extract_calendar_events(
-            gateway=gemini_client,
+            gateway=llm_gateway,
             email_text=email_text,
             email_metadata=email_metadata,
             attachments=attachments,
@@ -290,8 +278,8 @@ class TestGeminiWithDatabase:
 @pytest.mark.development
 @pytest.mark.llm
 class TestLLMGatewayErrorHandling:
-    """Test Gemini API error handling.
-    
+    """Test LLM provider/gateway error handling.
+
     These tests require --run-llm flag to run (costs money).
     """
 
@@ -303,6 +291,8 @@ class TestLLMGatewayErrorHandling:
             environment=config.environment,
             supabase_url=config.supabase_url,
             supabase_key=config.supabase_key,
+            llm_provider="gemini",
+            llm_model="gemini-3.5-flash-lite",
             gemini_api_key="invalid-key-12345",
         )
 
@@ -332,6 +322,8 @@ class TestLLMGatewayErrorHandling:
             environment="development",
             supabase_url="http://localhost:54321",
             supabase_key="test-key",
+            llm_provider="gemini",
+            llm_model="gemini-3.5-flash-lite",
             gemini_api_key=None,
         )
 

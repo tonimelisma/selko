@@ -17,7 +17,7 @@ class TestEventProcessingMocked:
     """
 
     def test_process_email_creates_event_mocked(
-        self, authenticated_client, test_user_id, mock_gemini_client
+        self, authenticated_client, test_user_id, mock_llm_gateway
     ):
         """Test that processing an email creates event records (mocked LLM)."""
         # Create a test email
@@ -38,7 +38,7 @@ class TestEventProcessingMocked:
         # Process email with mocked LLM
         processing_result = events.process_email_for_events(
             authenticated_client,
-            mock_gemini_client,
+            mock_llm_gateway,
             email_id,
             test_user_id
         )
@@ -55,10 +55,10 @@ class TestEventProcessingMocked:
         assert email_result.data["processing_status"] == "processed"
         
         # Verify mock was called (gateway stores mock client for testing)
-        assert mock_gemini_client._mock_provider.generate.called
+        assert mock_llm_gateway._mock_provider.generate.called
 
     def test_process_email_no_events_mocked(
-        self, authenticated_client, test_user_id, mock_gemini_no_events
+        self, authenticated_client, test_user_id, mock_llm_no_events
     ):
         """Test processing email that has no events (mocked LLM)."""
         email_data = {
@@ -78,7 +78,7 @@ class TestEventProcessingMocked:
         # Process email
         processing_result = events.process_email_for_events(
             authenticated_client,
-            mock_gemini_no_events,
+            mock_llm_no_events,
             email_id,
             test_user_id
         )
@@ -95,7 +95,7 @@ class TestEventProcessingMocked:
         assert email_result.data["processing_status"] == "processed"
 
     def test_process_email_sender_ignored_mocked(
-        self, authenticated_client, test_user_id, mock_gemini_client
+        self, authenticated_client, test_user_id, mock_llm_gateway
     ):
         """Test that ignored senders are skipped (mocked LLM)."""
         # Create ignore rule
@@ -123,7 +123,7 @@ class TestEventProcessingMocked:
         # Process email
         processing_result = events.process_email_for_events(
             authenticated_client,
-            mock_gemini_client,
+            mock_llm_gateway,
             email_id,
             test_user_id
         )
@@ -139,7 +139,7 @@ class TestEventProcessingMocked:
         assert email_result.data["processing_status"] == "skipped"
         
         # Mock should NOT be called (gateway stores mock client for testing)
-        assert not mock_gemini_client._mock_provider.generate.called
+        assert not mock_llm_gateway._mock_provider.generate.called
 
 
 @pytest.mark.integration
@@ -149,7 +149,7 @@ class TestEventProcessing:
 
     @pytest.mark.llm
     def test_process_email_creates_event(
-        self, authenticated_client, test_user_id, gemini_client
+        self, authenticated_client, test_user_id, llm_gateway
     ):
         """Test that processing an email with events creates event records.
         
@@ -170,11 +170,11 @@ class TestEventProcessing:
         result = authenticated_client.table("emails").insert(email_data).execute()
         email_id = result.data[0]["id"]
         
-        # Process email for events (this will call real Gemini API)
+        # Process email for events (real LLM when --run-llm is set)
         try:
             processing_result = events.process_email_for_events(
                 authenticated_client,
-                gemini_client,
+                llm_gateway,
                 email_id,
                 test_user_id
             )
@@ -190,9 +190,10 @@ class TestEventProcessing:
             assert email_result.data["processing_status"] in ["processed", "skipped"]
             
         except Exception as e:
-            # If Gemini API fails (no key, rate limit), skip gracefully
-            if "GEMINI_API_KEY" in str(e) or "rate limit" in str(e):
-                pytest.skip(f"Gemini API unavailable: {e}")
+            # If provider API fails (missing key, rate limit), skip gracefully
+            err = str(e)
+            if "API_KEY" in err or "API key" in err or "rate limit" in err.lower():
+                pytest.skip(f"LLM API unavailable: {e}")
             raise
 
     def test_get_events_new(self, authenticated_client, test_user_id):
@@ -411,7 +412,7 @@ class TestEventSources:
 class TestEventUndoRedo:
     """Test event undo/redo functionality with snapshot restore."""
 
-    def test_undo_restores_snapshot(self, authenticated_client, test_user_id, mock_gemini_client):
+    def test_undo_restores_snapshot(self, authenticated_client, test_user_id, mock_llm_gateway):
         """Test that undo restores the event to its previous snapshot."""
         # Create test email
         email_data = {
@@ -469,7 +470,7 @@ class TestEventUndoRedo:
 
         events.update_event(
             authenticated_client,
-            mock_gemini_client,
+            mock_llm_gateway,
             event_id,
             updated_data,
             email_id_2,
@@ -516,7 +517,7 @@ class TestEventUndoRedo:
 
         assert source_after.data["is_undone"] is True
 
-    def test_redo_reactivates_source(self, authenticated_client, test_user_id, mock_gemini_client):
+    def test_redo_reactivates_source(self, authenticated_client, test_user_id, mock_llm_gateway):
         """Test that redo marks the source as active again."""
         # Create test email
         email_data = {
@@ -572,7 +573,7 @@ class TestEventUndoRedo:
 
         events.update_event(
             authenticated_client,
-            mock_gemini_client,
+            mock_llm_gateway,
             event_id,
             updated_data,
             email_id_2,
@@ -647,7 +648,7 @@ class TestEventUndoRedo:
 
         assert "No snapshot available" in str(exc_info.value)
 
-    def test_attribution_excludes_undone_sources(self, authenticated_client, test_user_id, mock_gemini_client):
+    def test_attribution_excludes_undone_sources(self, authenticated_client, test_user_id, mock_llm_gateway):
         """Test that source attribution excludes undone sources."""
         # Create first email
         email_data_1 = {
@@ -700,7 +701,7 @@ class TestEventUndoRedo:
 
         events.update_event(
             authenticated_client,
-            mock_gemini_client,
+            mock_llm_gateway,
             event_id,
             updated_data,
             email_id_2,

@@ -215,8 +215,8 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        # NOTE: Uses mocked LLM to avoid API costs. Run `uv run pytest --run-llm` locally for real LLM tests.
+        # NOTE: Uses mocked LLM fixtures — no provider API keys required.
+        # Real LLM calls are opt-in locally: `uv run pytest --run-llm`.
 
   deploy-production:
     name: Deploy to Production
