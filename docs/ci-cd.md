@@ -40,7 +40,8 @@ Deploy to Staging (ATOMIC)
     |-- 2. Deploy FastAPI to Render (auto-deploys via GitHub integration)
     |-- 3. Deploy frontend to Render (auto-deploys via GitHub integration)
     |
-    +-- Integration Tests (Staging backend) - real Gmail API + real LLM
+    +-- Integration Tests (Staging backend) — real Supabase/Gmail OAuth;
+        LLM mocked (no provider API keys in CI; use `--run-llm` locally)
     |
 Staging environment running latest code
 ```
