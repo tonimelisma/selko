@@ -42,9 +42,9 @@ class TestGmailStaging:
     3. ENVIRONMENT=staging or --env staging
     """
 
-    def test_get_credentials_real(self, authenticated_client, config):
+    def test_get_credentials_real(self, admin_client, test_user_id, config):
         """Can retrieve real Gmail credentials from staging DB."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
 
         # If no credentials, fail the test
         if creds is None:
@@ -54,9 +54,9 @@ class TestGmailStaging:
         # Real credentials should have refresh token
         assert creds.refresh_token is not None
 
-    def test_build_service_real(self, authenticated_client, config):
+    def test_build_service_real(self, admin_client, test_user_id, config):
         """Can build service with real credentials."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
             pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
@@ -64,9 +64,9 @@ class TestGmailStaging:
         assert service is not None
 
     @skip_if_token_expired
-    def test_get_user_profile_real(self, authenticated_client, config):
+    def test_get_user_profile_real(self, admin_client, test_user_id, config):
         """Can get real user profile from Gmail."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
             pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
@@ -77,9 +77,9 @@ class TestGmailStaging:
         assert "@" in profile["emailAddress"]
 
     @skip_if_token_expired
-    def test_fetch_messages_real(self, authenticated_client, config):
+    def test_fetch_messages_real(self, admin_client, test_user_id, config):
         """Can fetch real messages from Gmail."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
             pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
@@ -96,11 +96,11 @@ class TestGmailStaging:
             assert "threadId" in msg
             assert "labelIds" in msg
 
-    def test_token_refresh_if_expired(self, authenticated_client, config):
+    def test_token_refresh_if_expired(self, admin_client, test_user_id, config):
         """Expired tokens are automatically refreshed."""
         # This test verifies the refresh logic works
         # The get_credentials function handles refresh automatically
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
             pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 

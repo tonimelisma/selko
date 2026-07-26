@@ -348,6 +348,34 @@ class TestCrossUserRLSIsolation:
 class TestCrossUserRLSIsolationStaging:
     """Test RLS isolation in staging environment."""
 
+    def test_oauth_tokens_require_service_role(
+        self,
+        authenticated_client,
+        admin_client,
+        test_user_id,
+    ):
+        """Token columns stay private while the backend can load them."""
+        with pytest.raises(Exception, match="permission denied"):
+            (
+                authenticated_client.table("integrations")
+                .select("access_token,refresh_token")
+                .eq("user_id", test_user_id)
+                .eq("provider", "gmail")
+                .execute()
+            )
+
+        result = (
+            admin_client.table("integrations")
+            .select("access_token,refresh_token")
+            .eq("user_id", test_user_id)
+            .eq("provider", "gmail")
+            .maybe_single()
+            .execute()
+        )
+        assert result is not None and result.data
+        assert result.data["access_token"]
+        assert result.data["refresh_token"]
+
     def test_rls_enforced_staging(
         self, config, authenticated_client, test_user_id, cleanup_emails, temp_user
     ):

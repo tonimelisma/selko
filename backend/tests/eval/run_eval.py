@@ -15,6 +15,7 @@ import json
 import sys
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -1013,7 +1014,81 @@ def _rescore_cached_inference(
     )
 
 
+def _run_eval_with_lease(
+    runner: Callable[..., dict[str, Any]],
+    operation: str,
+    *,
+    fixture_name: str,
+    fixture_path: Path,
+    provider_name: str,
+    model_name: str,
+    use_cache: bool,
+    verbose: bool,
+    dry_run: bool,
+    thinking: str,
+    replicate: int | None,
+    store: ArtifactStore | None,
+) -> dict[str, Any]:
+    """Run one cell while owning its cross-process cache-miss lease."""
+    active_store = store or _DEFAULT_STORE
+    runner_kwargs = {
+        "fixture_name": fixture_name,
+        "fixture_path": fixture_path,
+        "provider_name": provider_name,
+        "model_name": model_name,
+        "use_cache": use_cache,
+        "verbose": verbose,
+        "dry_run": dry_run,
+        "thinking": thinking,
+        "replicate": replicate,
+        "store": active_store,
+    }
+    if not use_cache or dry_run or replicate is not None:
+        return runner(**runner_kwargs)
+
+    fixture = load_fixture(fixture_path)
+    identity = build_inference_identity(
+        operation=operation,
+        provider=provider_name,
+        model=model_name,
+        thinking=thinking,
+        fixture=fixture,
+    )
+    with active_store.inference_lease(identity.inference_key):
+        # The runner repeats its cache check after the lease is acquired, so a
+        # waiter reuses the winner instead of purchasing a duplicate call.
+        return runner(**runner_kwargs)
+
+
 def run_extract_eval(
+    fixture_name: str,
+    fixture_path: Path,
+    provider_name: str,
+    model_name: str,
+    use_cache: bool = True,
+    verbose: bool = False,
+    dry_run: bool = False,
+    thinking: str = "low",
+    replicate: int | None = None,
+    store: ArtifactStore | None = None,
+) -> dict[str, Any]:
+    return _run_eval_with_lease(
+        _run_extract_eval_locked,
+        "extract",
+        fixture_name=fixture_name,
+        fixture_path=fixture_path,
+        provider_name=provider_name,
+        model_name=model_name,
+        use_cache=use_cache,
+        verbose=verbose,
+        dry_run=dry_run,
+        thinking=thinking,
+        replicate=replicate,
+        store=store,
+    )
+
+
+def _run_extract_eval_locked(
     fixture_name: str,
     fixture_path: Path,
     provider_name: str,
@@ -1265,6 +1340,34 @@ def run_compare_eval(
     replicate: int | None = None,
     store: ArtifactStore | None = None,
 ) -> dict[str, Any]:
+    return _run_eval_with_lease(
+        _run_compare_eval_locked,
+        "compare",
+        fixture_name=fixture_name,
+        fixture_path=fixture_path,
+        provider_name=provider_name,
+        model_name=model_name,
+        use_cache=use_cache,
+        verbose=verbose,
+        dry_run=dry_run,
+        thinking=thinking,
+        replicate=replicate,
+        store=store,
+    )
+
+
+def _run_compare_eval_locked(
+    fixture_name: str,
+    fixture_path: Path,
+    provider_name: str,
+    model_name: str,
+    use_cache: bool = True,
+    verbose: bool = False,
+    dry_run: bool = False,
+    thinking: str = "low",
+    replicate: int | None = None,
+    store: ArtifactStore | None = None,
+) -> dict[str, Any]:
     """Run compare (dedup) evaluation for a single fixture."""
     fixture = load_fixture(fixture_path)
     store = store or _DEFAULT_STORE
@@ -1424,6 +1527,34 @@ def run_compare_eval(
 # ---------------------------------------------------------------------------
 
 def run_merge_eval(
+    fixture_name: str,
+    fixture_path: Path,
+    provider_name: str,
+    model_name: str,
+    use_cache: bool = True,
+    verbose: bool = False,
+    dry_run: bool = False,
+    thinking: str = "low",
+    replicate: int | None = None,
+    store: ArtifactStore | None = None,
+) -> dict[str, Any]:
+    return _run_eval_with_lease(
+        _run_merge_eval_locked,
+        "merge",
+        fixture_name=fixture_name,
+        fixture_path=fixture_path,
+        provider_name=provider_name,
+        model_name=model_name,
+        use_cache=use_cache,
+        verbose=verbose,
+        dry_run=dry_run,
+        thinking=thinking,
+        replicate=replicate,
+        store=store,
+    )
+
+
+def _run_merge_eval_locked(
     fixture_name: str,
     fixture_path: Path,
     provider_name: str,
@@ -1754,12 +1885,18 @@ def run_single_eval(
 class ProgressTracker:
     """Thread-safe progress tracker for parallel fixture execution."""
 
-    def __init__(self, total: int, operation: str):
+    def __init__(
+        self,
+        total: int,
+        operation: str,
+        result_context: dict[str, Any] | None = None,
+    ):
         self._lock = threading.Lock()
         self._completed = 0
         self._total = total
         self._operation = operation
         self._results: list[dict] = []
+        self._result_context = result_context or {}
 
     def record(self, result: dict) -> None:
         with self._lock:
@@ -1773,6 +1910,15 @@ class ProgressTracker:
     def record_error(self, name: str, error: str) -> None:
         with self._lock:
             self._completed += 1
+            self._results.append(
+                {
+                    **self._result_context,
+                    "fixture_name": name,
+                    "operation": self._operation,
+                    "error": error,
+                    "auto_score": {"error": error},
+                }
+            )
             print(
                 f"  [{self._completed}/{self._total}] [{self._operation:7}] "
                 f"{name:40} [ERROR ] {error}",
@@ -1785,9 +1931,15 @@ class ProgressTracker:
             return list(self._results)
 
 
-def _run_fixtures_parallel(fixtures, operation, run_fn, concurrency=10):
+def _run_fixtures_parallel(
+    fixtures,
+    operation,
+    run_fn,
+    concurrency=10,
+    result_context: dict[str, Any] | None = None,
+):
     """Run fixtures with ThreadPoolExecutor. Sequential if concurrency <= 1."""
-    tracker = ProgressTracker(len(fixtures), operation)
+    tracker = ProgressTracker(len(fixtures), operation, result_context=result_context)
 
     if concurrency <= 1:
         for name, path in fixtures:
@@ -2147,6 +2299,80 @@ def plan_eval_cells(
                     )
                 )
     return cells
+
+
+def finalize_run_cells(
+    cells: list[PlannedCell],
+    results: list[dict[str, Any]],
+) -> list[PlannedCell]:
+    """Convert a cache plan into the actual HIT/ERROR states from execution."""
+
+    def cell_key(
+        operation: str,
+        provider: str,
+        model: str,
+        thinking: str | dict[str, Any],
+        fixture_name: str,
+    ) -> tuple[str, str, str, str, str]:
+        thinking_key = json.dumps(normalize_thinking(thinking), sort_keys=True)
+        return operation, provider, model, thinking_key, fixture_name
+
+    results_by_key = {
+        cell_key(
+            result.get("operation", "extract"),
+            result.get("provider", ""),
+            result.get("model", ""),
+            result.get("thinking", "low"),
+            result.get("fixture_name", ""),
+        ): result
+        for result in results
+    }
+
+    finalized: list[PlannedCell] = []
+    for cell in cells:
+        result = results_by_key.get(
+            cell_key(
+                cell.operation,
+                cell.provider,
+                cell.model,
+                cell.thinking,
+                cell.fixture_name,
+            )
+        )
+        # A model may intentionally skip unsupported vision fixtures; those
+        # were not part of the executed run and do not belong in its manifest.
+        if result is None:
+            continue
+
+        error = (
+            result.get("error")
+            or (result.get("auto_score") or {}).get("error")
+            or (result.get("actual") or {}).get("error")
+        )
+        if error:
+            state = "ERROR"
+            reason = str(error)
+        else:
+            state = "HIT"
+            reason = (
+                "cache hit during execution"
+                if result.get("from_cache")
+                else "execution completed"
+            )
+        finalized.append(
+            PlannedCell(
+                operation=cell.operation,
+                provider=cell.provider,
+                model=cell.model,
+                thinking=cell.thinking,
+                fixture_name=cell.fixture_name,
+                inference_key=cell.inference_key,
+                score_key=cell.score_key,
+                state=state,
+                reason=reason,
+            )
+        )
+    return finalized
 
 
 def collect_fixtures_for_operations(
@@ -2830,7 +3056,17 @@ def run_all_models(
                     thinking=thinking, replicate=replicate,
                 )
 
-            model_extract_results = _run_fixtures_parallel(fixtures, "extract", _run_extract, concurrency)
+            model_extract_results = _run_fixtures_parallel(
+                fixtures,
+                "extract",
+                _run_extract,
+                concurrency,
+                {
+                    "provider": provider_name,
+                    "model": model_name,
+                    "thinking": thinking,
+                },
+            )
             all_results.extend(model_extract_results)
             if not dry_run:
                 _print_model_summary(model_name, thinking, model_extract_results)
@@ -2850,7 +3086,17 @@ def run_all_models(
                     thinking=thinking, replicate=replicate,
                 )
 
-            model_compare_results = _run_fixtures_parallel(fixtures, "compare", _run_compare, concurrency)
+            model_compare_results = _run_fixtures_parallel(
+                fixtures,
+                "compare",
+                _run_compare,
+                concurrency,
+                {
+                    "provider": provider_name,
+                    "model": model_name,
+                    "thinking": thinking,
+                },
+            )
             all_results.extend(model_compare_results)
             if not dry_run:
                 _print_model_summary(model_name, thinking, model_compare_results)
@@ -2870,7 +3116,17 @@ def run_all_models(
                     thinking=thinking, replicate=replicate,
                 )
 
-            model_merge_results = _run_fixtures_parallel(fixtures, "merge", _run_merge, concurrency)
+            model_merge_results = _run_fixtures_parallel(
+                fixtures,
+                "merge",
+                _run_merge,
+                concurrency,
+                {
+                    "provider": provider_name,
+                    "model": model_name,
+                    "thinking": thinking,
+                },
+            )
             all_results.extend(model_merge_results)
             if not dry_run:
                 _print_model_summary(model_name, thinking, model_merge_results)
@@ -3284,6 +3540,7 @@ Examples:
                 models=filtered_models,
                 fixtures_by_op=fixtures_by_op,
             )
+            cells = finalize_run_cells(cells, results)
             run_id = write_run_manifest(
                 cells=cells,
                 operations=operations,
@@ -3328,6 +3585,7 @@ Examples:
     # Run operations
     use_cache = True
     all_results = []
+    executed_fixtures_by_op: dict[str, list[tuple[str, Path]]] = {}
 
     if "extract" in operations:
         fixtures_to_run = []
@@ -3350,6 +3608,7 @@ Examples:
             fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
 
         if fixtures_to_run:
+            executed_fixtures_by_op["extract"] = fixtures_to_run
             total = len(fixtures_to_run)
             print(f"\nRunning {total} extraction fixtures ({provider}/{model}, concurrency: {args.concurrency})...")
             if args.dry_run:
@@ -3363,7 +3622,13 @@ Examples:
                     thinking=args.thinking, replicate=args.replicate,
                 )
 
-            extract_results = _run_fixtures_parallel(fixtures_to_run, "extract", _run_extract_single, args.concurrency)
+            extract_results = _run_fixtures_parallel(
+                fixtures_to_run,
+                "extract",
+                _run_extract_single,
+                args.concurrency,
+                {"provider": provider, "model": model, "thinking": args.thinking},
+            )
             all_results.extend(extract_results)
 
     if "compare" in operations:
@@ -3371,6 +3636,7 @@ Examples:
         if args.difficulty:
             fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
         if fixtures_to_run:
+            executed_fixtures_by_op["compare"] = fixtures_to_run
             total = len(fixtures_to_run)
             print(f"\nRunning {total} compare fixtures ({provider}/{model}, concurrency: {args.concurrency})...")
             if args.dry_run:
@@ -3384,7 +3650,13 @@ Examples:
                     thinking=args.thinking, replicate=args.replicate,
                 )
 
-            compare_results = _run_fixtures_parallel(fixtures_to_run, "compare", _run_compare_single, args.concurrency)
+            compare_results = _run_fixtures_parallel(
+                fixtures_to_run,
+                "compare",
+                _run_compare_single,
+                args.concurrency,
+                {"provider": provider, "model": model, "thinking": args.thinking},
+            )
             all_results.extend(compare_results)
 
     if "merge" in operations:
@@ -3392,6 +3664,7 @@ Examples:
         if args.difficulty:
             fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
         if fixtures_to_run:
+            executed_fixtures_by_op["merge"] = fixtures_to_run
             total = len(fixtures_to_run)
             print(f"\nRunning {total} merge fixtures ({provider}/{model}, concurrency: {args.concurrency})...")
             if args.dry_run:
@@ -3405,7 +3678,13 @@ Examples:
                     thinking=args.thinking, replicate=args.replicate,
                 )
 
-            merge_results = _run_fixtures_parallel(fixtures_to_run, "merge", _run_merge_single, args.concurrency)
+            merge_results = _run_fixtures_parallel(
+                fixtures_to_run,
+                "merge",
+                _run_merge_single,
+                args.concurrency,
+                {"provider": provider, "model": model, "thinking": args.thinking},
+            )
             all_results.extend(merge_results)
 
     if not operations and not args.threads:
@@ -3414,6 +3693,19 @@ Examples:
 
     # Summary
     if all_results and not args.dry_run:
+        models = [(provider, model, args.thinking)]
+        cells = plan_eval_cells(
+            operations=operations,
+            models=models,
+            fixtures_by_op=executed_fixtures_by_op,
+        )
+        cells = finalize_run_cells(cells, all_results)
+        run_id = write_run_manifest(
+            cells=cells,
+            operations=operations,
+            models=models,
+        )
+        print(f"\nPost-run manifest: {run_id}")
         generate_report(all_results)
     elif args.dry_run and all_results:
         print("-" * 60)

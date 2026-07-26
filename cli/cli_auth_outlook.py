@@ -14,6 +14,7 @@ from selko.services.auth import (
     AuthenticationError,
     get_authenticated_client,
     get_current_user_id,
+    get_service_client,
 )
 from selko.services.integrations import (
     IntegrationError,
@@ -102,8 +103,9 @@ def main() -> None:
 
         profile = get_user_profile(token_result["access_token"])
         provider_email = profile.get("mail") or profile.get("userPrincipalName")
+        service_client = get_service_client(config)
         save_provider_tokens(
-            client,
+            service_client,
             callback_user_id,
             provider,
             token_result,

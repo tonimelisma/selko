@@ -1,1 +1,2 @@
 # Results are tracked in git for debugging and regression analysis
+.locks/

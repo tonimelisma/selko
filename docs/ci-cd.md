@@ -41,7 +41,7 @@ Deploy to Staging (ATOMIC)
     |-- 3. Deploy frontend to Render (auto-deploys via GitHub integration)
     |
     +-- Integration Tests (Staging backend) — real Supabase/Gmail OAuth;
-        LLM mocked (no provider API keys in CI; use `--run-llm` locally)
+        no LLM tests selected (use `--run-llm` locally for real LLM coverage)
     |
 Staging environment running latest code
 ```

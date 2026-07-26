@@ -58,7 +58,7 @@ cd android && ./gradlew test
 | Unit | None | Mocked | Mocked | $0 |
 | Integration (default) | Local | **Mocked** | Real | $0 |
 | Integration (real LLM) | Local | **Real** | Real | $$$ |
-| Staging (CI only) | Cloud | Real | Real | $$$ |
+| Staging (CI only) | Cloud | None | Real | $0 |
 
 ## When to Use `--run-llm`
 

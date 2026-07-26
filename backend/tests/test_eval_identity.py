@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
-from tests.eval.artifact_store import ArtifactStore, format_plan_table
+from tests.eval.artifact_store import ArtifactStore, PlannedCell, format_plan_table
 from tests.eval.identity import (
     InferenceIdentity,
     build_inference_identity,
@@ -18,11 +20,13 @@ from tests.eval.identity import (
     clear_source_hash_cache,
     compute_fixture_input_hash,
     compute_prompt_contract_hash,
+    compute_scorer_hash,
     normalize_thinking,
     sha256_of_canonical,
 )
 from tests.eval.run_eval import (
     estimate_cost,
+    finalize_run_cells,
     plan_eval_cells,
     should_run,
 )
@@ -52,6 +56,27 @@ def _sample_fixture(**overrides):
     }
     base.update(overrides)
     return base
+
+
+def _process_cache_miss(
+    root: str,
+    identity: InferenceIdentity,
+    call_log: str,
+    start_event,
+    result_queue,
+) -> None:
+    """Simulate a purchased provider call behind a cross-process lease."""
+    store = ArtifactStore(root=Path(root))
+    start_event.wait()
+    with store.inference_lease(identity.inference_key):
+        if store.has_inference(identity.inference_key):
+            result_queue.put("hit")
+            return
+        with Path(call_log).open("a", encoding="utf-8") as log:
+            log.write("provider-call\n")
+        time.sleep(0.2)
+        store.write_inference(identity, {"actual": {"winner": True}})
+        result_queue.put("write")
 
 
 class TestCanonicalIdentity:
@@ -205,6 +230,47 @@ class TestArtifactStoreImmutability:
         files = list((tmp_path / "inference" / identity.inference_key[:2]).glob(f"{identity.inference_key}.json"))
         assert len(files) == 1
 
+    def test_cache_miss_lease_prevents_duplicate_process_calls(self, tmp_path):
+        store = ArtifactStore(root=tmp_path)
+        identity = build_inference_identity(
+            operation="extract",
+            provider="qwen",
+            model="qwen3.5-flash",
+            thinking="none",
+            fixture=_sample_fixture(),
+            attachments_dir=tmp_path,
+        )
+        call_log = tmp_path / "provider-calls.log"
+        ctx = multiprocessing.get_context("spawn")
+        start_event = ctx.Event()
+        result_queue = ctx.Queue()
+        processes = [
+            ctx.Process(
+                target=_process_cache_miss,
+                args=(
+                    str(tmp_path),
+                    identity,
+                    str(call_log),
+                    start_event,
+                    result_queue,
+                ),
+            )
+            for _ in range(2)
+        ]
+        for process in processes:
+            process.start()
+        start_event.set()
+        for process in processes:
+            process.join(timeout=10)
+            assert process.exitcode == 0
+
+        assert sorted(result_queue.get(timeout=1) for _ in range(2)) == [
+            "hit",
+            "write",
+        ]
+        assert call_log.read_text().splitlines() == ["provider-call"]
+        assert store.has_inference(identity.inference_key)
+
     def test_replicate_does_not_overwrite_canonical(self, tmp_path):
         store = ArtifactStore(root=tmp_path)
         fixture = _sample_fixture()
@@ -271,6 +337,74 @@ class TestPlanAndShouldRun:
             "none",
             store=store,
         ) is False
+
+    def test_finalize_manifest_records_execution_errors(self):
+        thinking = normalize_thinking("low")
+        cells = [
+            PlannedCell(
+                operation="extract",
+                provider="qwen",
+                model="qwen3.5-flash",
+                thinking=thinking,
+                fixture_name="invitations/good",
+                inference_key="a" * 64,
+                score_key="b" * 64,
+                state="MISS",
+                reason="no inference artifact",
+            ),
+            PlannedCell(
+                operation="extract",
+                provider="qwen",
+                model="qwen3.5-flash",
+                thinking=thinking,
+                fixture_name="invitations/bad",
+                inference_key="c" * 64,
+                score_key="d" * 64,
+                state="MISS",
+                reason="no inference artifact",
+            ),
+        ]
+        finalized = finalize_run_cells(
+            cells,
+            [
+                {
+                    "operation": "extract",
+                    "provider": "qwen",
+                    "model": "qwen3.5-flash",
+                    "thinking": "low",
+                    "fixture_name": "invitations/good",
+                    "actual": {"events_found": True},
+                },
+                {
+                    "operation": "extract",
+                    "provider": "qwen",
+                    "model": "qwen3.5-flash",
+                    "thinking": "low",
+                    "fixture_name": "invitations/bad",
+                    "error": "provider timeout",
+                },
+            ],
+        )
+        assert [cell.state for cell in finalized] == ["HIT", "ERROR"]
+        assert finalized[1].reason == "provider timeout"
+
+
+class TestScorerIdentity:
+    def test_merge_hash_includes_shared_helpers(self, monkeypatch):
+        from tests.eval import identity as identity_module
+        from tests.eval import run_eval
+
+        original_getsource = identity_module.inspect.getsource
+        baseline = compute_scorer_hash("merge")
+
+        def changed_getsource(obj):
+            source = original_getsource(obj)
+            if obj is run_eval.string_similarity:
+                return source + "\n# changed helper implementation"
+            return source
+
+        monkeypatch.setattr(identity_module.inspect, "getsource", changed_getsource)
+        assert compute_scorer_hash("merge") != baseline
 
 
 class TestCostUnknown:

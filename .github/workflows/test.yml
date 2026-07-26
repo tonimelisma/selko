@@ -203,7 +203,7 @@ jobs:
           uv sync --extra test
           uv pip install pytest-xdist
 
-      - name: Run staging integration tests (mocked LLM)
+      - name: Run staging integration tests (no LLM calls)
         # Parallelized - each test uses isolated data (uuid4 IDs, temp_user fixtures, SKIP LOCKED claiming)
         run: uv run pytest backend/tests/integration/ -m "staging" -v --tb=short -n auto
         env:
@@ -215,8 +215,8 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-        # NOTE: Uses mocked LLM fixtures — no provider API keys required.
-        # Real LLM calls are opt-in locally: `uv run pytest --run-llm`.
+        # NOTE: The staging marker selects real Supabase/Gmail coverage but no
+        # LLM tests. Real LLM calls are opt-in locally with `--run-llm`.
 
   deploy-production:
     name: Deploy to Production
