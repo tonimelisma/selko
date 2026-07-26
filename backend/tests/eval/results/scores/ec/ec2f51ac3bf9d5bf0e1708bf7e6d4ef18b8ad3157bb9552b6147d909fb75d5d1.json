@@ -1,0 +1,57 @@
+{
+  "fixture_name": "school/sports_game_03",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Soccer Game - Wildcats vs Eagles",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": null,
+        "location": "Sunnyvale Sports Complex, Field #3, 500 Athletic Way, Sunnyvale, CA 94086",
+        "description": "Youth soccer game - arrive by 9:30 AM",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "6e494f8b8d182c529f7efa5008bab4030fc97d62c7ef30c778594d0f580b0757",
+    "expected_output_hash": "9d38bcda7e6e7876a79f3a85f4d814cfeb1462189f5b08ee9cc24be131e57e13",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "ec2f51ac3bf9d5bf0e1708bf7e6d4ef18b8ad3157bb9552b6147d909fb75d5d1",
+  "stored_at": "2026-07-26T00:25:18.037959+00:00"
+}

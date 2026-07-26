@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-5.2",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:08:57.778426+00:00",
+  "duration_ms": 5026,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:08:52.751279+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:08:52.751286+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:08:52.757319+00:00",
+      "duration_ms": 5020
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:08:57.777815+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 511,
+    "completion_tokens": 375,
+    "total_tokens": 886
+  },
+  "cost": 0.0023654,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1190,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Q2 Planning Session\n- Start: 2026-03-30T13:00:00\n- End: 2026-03-30T15:00:00\n- Location: Conference Room B\n- Description: Quarterly planning for engineering team. Bring your roadmap ideas.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Coffee Chat with Sarah\n   - Start: 2026-03-30T10:00:00\n   - End: 2026-03-30T10:30:00\n   - Location: Starbucks\n   - Description: Catch up\n\n2. Event ID: event-002\n   - Title: Engineering Q2 Planning\n   - Start: 2026-03-30T13:00:00\n   - End: 2026-03-30T15:00:00\n   - Location: \n   - Description: Planning session for second quarter. All team members required.\n\n3. Event ID: event-003\n   - Title: Yoga Class\n   - Start: 2026-03-30T18:00:00\n   - End: 2026-03-30T19:00:00\n   - Location: Zen Studio\n   - Description: Evening yoga\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":\"event-002\",\"reasoning\":\"The new event 'Q2 Planning Session' matches event-002 'Engineering Q2 Planning' - they occur at the same date and time (2026-03-30 13:00-15:00), both refer to Q2/quarterly planning for the engineering team. The new event simply has more details (location added, slightly different description wording), which is consistent with an updated version of the same event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "6bbae1d8283a4dc3b4d6e74fb486c8c3",
+    "route_role": "primary"
+  },
+  "inference_key": "dfa2229193e71cf1eddcb2b1a1669ddc27a201c6443a76eda3c7a21771a974de",
+  "score_key": "010cd513da9e02da0b4fc051e252b0dbd0aa17e449c5d334400560c16057598f",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "zai",
+    "model": "glm-5.2",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-5.2",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3"
+  }
+}

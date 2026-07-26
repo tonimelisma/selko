@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_conference_06",
+  "fixture_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:44:06.887487+00:00",
+  "duration_ms": 12592,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:43:54.292909+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:43:54.292916+00:00",
+      "duration_ms": 5
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:43:54.298825+00:00",
+      "duration_ms": 12587
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:44:06.886622+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 459,
+    "completion_tokens": 761,
+    "total_tokens": 1220
+  },
+  "cost": 0.0025584,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1227,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: TechSummit 2026\n- Start: 2026-09-15T09:00:00\n- End: 2026-09-17T17:00:00\n- Location: Moscone Center, San Francisco\n- Description: Registration confirmed! Three days of cutting-edge tech talks and networking.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: TechSummit Conference\n   - Start: 2026-09-15T09:00:00\n   - End: 2026-09-17T17:00:00\n   - Location: Moscone Center, SF\n   - Description: Early bird tickets available! Sept 15-17.\n\n2. Event ID: event-002\n   - Title: Code Review Session\n   - Start: 2026-09-15T10:00:00\n   - End: 2026-09-15T11:00:00\n   - Location: Office\n   - Description: Weekly code review\n\n3. Event ID: event-003\n   - Title: Dinner with Alex\n   - Start: 2026-09-15T19:00:00\n   - End: 2026-09-15T21:00:00\n   - Location: The Garden Restaurant\n   - Description: Catch up dinner\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event matches event-001. Both have identical start/end times (2026-09-15T09:00:00 to 2026-09-17T17:00:00), the same location (Moscone Center in San Francisco/SF), and similar titles referring to the TechSummit conference. Both descriptions reference the same dates (Sept 15-17) and indicate this is a multi-day tech conference, suggesting they refer to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "0fc87c499b2d40b298f9240dd7d25064",
+    "route_role": "primary"
+  },
+  "inference_key": "c64795c12fc3f2dc6bec5dccb966b03788db9562d45f86007bee5eed69e8327b",
+  "score_key": "91f7f55e8a63336a6928502d22c58101e17f7ccf37993d7aa22a5e03819c144a",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "moonshot",
+    "model": "kimi-k2.5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k2.5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "359d3e212909f5193d4acf852234c01412e7737d41ff900f59817d680942598a",
+    "fixture_input_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77"
+  }
+}

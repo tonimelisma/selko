@@ -1,0 +1,142 @@
+{
+  "fixture_name": "conference_day1_vs_day2_15",
+  "fixture_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:23:08.246161+00:00",
+  "duration_ms": 1392,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:23:06.852686+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:23:06.852694+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:23:06.858746+00:00",
+      "duration_ms": 1386
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:23:08.245478+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Conference day 1 vs day 2 - multi-day event different days - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "conference"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 438,
+    "completion_tokens": 86,
+    "total_tokens": 524
+  },
+  "cost": 0.00477,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1293,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: DevOps Summit - Day 2\n- Start: 2026-10-16T09:00:00\n- End: 2026-10-16T18:00:00\n- Location: Convention Center, Hall B\n- Description: Second day of DevOps Summit. Featured talks on Kubernetes and CI/CD pipelines.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: DevOps Summit - Day 1\n   - Start: 2026-10-15T09:00:00\n   - End: 2026-10-15T18:00:00\n   - Location: Convention Center, Hall B\n   - Description: Opening day of DevOps Summit with keynote speakers\n\n2. Event ID: event-002\n   - Title: Flight Home\n   - Start: 2026-10-17T14:30:00\n   - End: 2026-10-17T17:15:00\n   - Location: Airport\n   - Description: Return flight after conference\n\n3. Event ID: event-003\n   - Title: Networking Dinner\n   - Start: 2026-10-16T19:00:00\n   - End: 2026-10-16T22:00:00\n   - Location: The Waterfront Restaurant\n   - Description: Evening networking event for DevOps Summit attendees\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event is DevOps Summit Day 2 on 2026-10-16 from 09:00\u201318:00. Event event-001 is explicitly Day 1 on the prior day, event-002 is a flight, and event-003 is a separate evening networking dinner. None refer to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "aa61cc0fee634b918bfa0f507cceaa32",
+    "route_role": "primary"
+  },
+  "inference_key": "38e7ff8db62560b80b1c2a67f4e095bfa8ac8b12c9e8e2b2876b8b3fa564175f",
+  "score_key": "24e8c9d296fe896edd6a89f1e74b97e63331f171b5500e364c1c0b6a3230e4d7",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "openai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-terra",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "186355b6f68457ee80bf932d5466b4e8678e74a8baa694e2b01035a685a05c67",
+    "fixture_input_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2"
+  }
+}

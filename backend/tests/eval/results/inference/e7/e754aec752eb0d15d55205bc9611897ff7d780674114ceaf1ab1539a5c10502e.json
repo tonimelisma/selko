@@ -1,0 +1,161 @@
+{
+  "fixture_name": "vague_to_specific_location_04",
+  "operation": "merge",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:57:51.115116+00:00",
+  "duration_ms": 2769,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:57:48.344093+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:57:48.344099+00:00",
+      "duration_ms": 10
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:57:48.354938+00:00",
+      "duration_ms": 2759
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:57:51.114417+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 541,
+    "completion_tokens": 240,
+    "total_tokens": 781
+  },
+  "cost": 0.00014294,
+  "actual": {
+    "title": "Team Dinner",
+    "start_datetime": "2026-05-22T19:00:00",
+    "end_datetime": "2026-05-22T21:00:00",
+    "all_day": false,
+    "location": "Pasta Bella, 456 Main St",
+    "description": "Team celebration dinner. Reservation confirmed at Pasta Bella for 8 people",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1187,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Team Dinner\n- Start: 2026-05-22T19:00:00\n- End: 2026-05-22T21:00:00\n- All Day: False\n- Location: Italian restaurant downtown\n- Description: Team celebration dinner\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Team Dinner\n- Start: 2026-05-22T19:00:00\n- End: 2026-05-22T21:00:00\n- All Day: False\n- Location: Pasta Bella, 456 Main St\n- Description: Reservation confirmed at Pasta Bella for 8 people\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n    \"title\": \"Team Dinner\",\n    \"start_datetime\": \"2026-05-22T19:00:00\",\n    \"end_datetime\": \"2026-05-22T21:00:00\",\n    \"all_day\": false,\n    \"location\": \"Pasta Bella, 456 Main St\",\n    \"description\": \"Team celebration dinner. Reservation confirmed at Pasta Bella for 8 people\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "c7ff7bb6fd754631a263f5c8d1009d14",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Vague location updated to specific address - prefer specific location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "location-update",
+    "specificity"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "f439eb7e0952e3a144665e18ce5600e5df9d64e2062d475a9438a86982beb1ff",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "deepseek/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "fe5b82ab7fd368ada6fca9fc852e7060a5fa15093523a930ba9478c61caf97d7",
+    "fixture_input_hash": "f439eb7e0952e3a144665e18ce5600e5df9d64e2062d475a9438a86982beb1ff"
+  },
+  "inference_key": "e754aec752eb0d15d55205bc9611897ff7d780674114ceaf1ab1539a5c10502e",
+  "stored_at": "2026-07-26T00:57:51.133806+00:00"
+}

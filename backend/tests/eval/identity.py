@@ -211,6 +211,10 @@ def compute_prompt_contract_hash(operation: OperationName | str) -> str:
     if operation == "extract":
         parts.append(inspect.getsource(event_processing._build_prompt))
         parts.append(inspect.getsource(event_processing.extract_calendar_events))
+        for helper_name in ("_build_content_parts", "_get_attachment_size_limit"):
+            helper = getattr(event_processing, helper_name, None)
+            if helper is not None:
+                parts.append(inspect.getsource(helper))
         parts.append(_schema_hash(CalendarEvent))
         parts.append(_schema_hash(EventExtractionResponse))
     elif operation == "compare":
@@ -241,13 +245,16 @@ def compute_adapter_contract_hash(provider: str) -> str:
     # Include concrete provider class source when known.
     provider_classes = {
         "gemini": getattr(llm_provider, "GeminiProvider", None),
-        "openai": getattr(llm_provider, "OpenAIProvider", None),
+        "openai": getattr(llm_provider, "OpenAICompatibleProvider", None),
         "anthropic": getattr(llm_provider, "AnthropicProvider", None),
         "qwen": getattr(llm_provider, "OpenAICompatibleProvider", None),
         "moonshot": getattr(llm_provider, "OpenAICompatibleProvider", None),
         "zai": getattr(llm_provider, "OpenAICompatibleProvider", None),
         "deepseek": getattr(llm_provider, "OpenAICompatibleProvider", None),
         "minimax": getattr(llm_provider, "OpenAICompatibleProvider", None),
+        "xai": getattr(llm_provider, "OpenAICompatibleProvider", None),
+        "meta": getattr(llm_provider, "OpenAICompatibleProvider", None),
+        "tinker": getattr(llm_provider, "AnthropicProvider", None),
     }
     cls = provider_classes.get(provider)
     if cls is not None:
@@ -273,6 +280,10 @@ def compute_scorer_hash(operation: OperationName | str) -> str:
 
     if operation == "extract":
         objs = [run_eval.auto_score_result, run_eval.auto_score_event]
+        for helper_name in ("_parse_date_only", "time_difference_minutes"):
+            helper = getattr(run_eval, helper_name, None)
+            if helper is not None:
+                objs.append(helper)
     elif operation == "compare":
         objs = [run_eval.score_compare_result]
     elif operation == "merge":

@@ -1,0 +1,62 @@
+{
+  "fixture_name": "cancelled_and_rescheduled_07",
+  "operation": "merge",
+  "expected": {
+    "title": "CANCELLED: Webinar: Cloud Security Best Practices",
+    "start_datetime": "2026-06-17T15:00:00",
+    "end_datetime": "2026-06-17T16:00:00",
+    "all_day": false,
+    "location": "https://webinar.example.com/cloudsec-new",
+    "description_contains": [
+      "cloud security",
+      "cancelled",
+      "rescheduled",
+      "June 17",
+      "AWS"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "cancellation_prefix": true,
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "cloud security",
+        "cancelled",
+        "rescheduled",
+        "June 17",
+        "AWS"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "85feb9a666d67c613fd421a586ec614624042a0f716ba506b67a4fd3aee29b34",
+    "expected_output_hash": "1d91b99db6c94750308bd10544bd6bca7cab8202f0681c3fc5f7e6360a09561a",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "86561add20828338c84adcf8d5e9ce8e2b51cae31afd054c5890d97e654acf34",
+  "stored_at": "2026-07-26T00:40:30.244404+00:00"
+}

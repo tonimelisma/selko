@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "108b3906cdddab1edd4d0cb6f8441c4c7982f9e9dee5674bc7c6ecccd0317493",
+    "expected_output_hash": "07c0cad35a9e6a119fdc68b31f2b33f0e4446054e0f7130bb6383f4767d4b28f",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "f5c891eea222c8741a7265b71206dde12b349a2859a9f308cda36ea7442e95db",
+  "stored_at": "2026-07-23T06:17:25.633921+00:00"
+}

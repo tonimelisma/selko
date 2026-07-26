@@ -1,0 +1,141 @@
+{
+  "fixture_name": "same_conference_06",
+  "fixture_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "tinker",
+  "model": "inkling",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:49:35.750751+00:00",
+  "duration_ms": 3178,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:49:32.569873+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:49:32.569894+00:00",
+      "duration_ms": 13
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:49:32.583895+00:00",
+      "duration_ms": 3165
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:49:35.749753+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 0,
+    "completion_tokens": 125,
+    "total_tokens": 125
+  },
+  "cost": 0.000585,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1227,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: TechSummit 2026\n- Start: 2026-09-15T09:00:00\n- End: 2026-09-17T17:00:00\n- Location: Moscone Center, San Francisco\n- Description: Registration confirmed! Three days of cutting-edge tech talks and networking.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: TechSummit Conference\n   - Start: 2026-09-15T09:00:00\n   - End: 2026-09-17T17:00:00\n   - Location: Moscone Center, SF\n   - Description: Early bird tickets available! Sept 15-17.\n\n2. Event ID: event-002\n   - Title: Code Review Session\n   - Start: 2026-09-15T10:00:00\n   - End: 2026-09-15T11:00:00\n   - Location: Office\n   - Description: Weekly code review\n\n3. Event ID: event-003\n   - Title: Dinner with Alex\n   - Start: 2026-09-15T19:00:00\n   - End: 2026-09-15T21:00:00\n   - Location: The Garden Restaurant\n   - Description: Catch up dinner\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Same title theme (TechSummit), identical start/end times (Sept 15-17 2026 09:00 to 17:00), same venue (Moscone Center, SF), and overlapping description about the conference; clearly the same real-world event with slightly different wording/details.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "f227cd56f33a47e089e400da4b5f0d31",
+    "route_role": "primary"
+  },
+  "inference_key": "ae8e1e03d242d3489dd92e453eeeaa83fcd49fbbd86f3424589f5f7d92865b2a",
+  "score_key": "269472d85b3a374ed3cbe4f7b4193709bea1d36b958a51682beecc4003abb243",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "tinker",
+    "model": "inkling",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "tinker/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "inkling",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "26df3f87b7c852a12f0b4ae080f7b6880d6fea476c9b0b50f51ada1ab38f3791",
+    "fixture_input_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77"
+  }
+}

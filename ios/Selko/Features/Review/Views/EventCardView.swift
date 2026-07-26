@@ -143,6 +143,8 @@ struct EventCardView: View {
                     )
                     .font(SelkoTypography.caption)
                     .fontWeight(.semibold)
+                    .frame(minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(Color.accentColor)

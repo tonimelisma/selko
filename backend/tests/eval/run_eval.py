@@ -246,6 +246,20 @@ def save_result_new(
         fixture=fixture,
     )
 
+    has_error = bool(
+        result.get("error")
+        or (result.get("auto_score") or {}).get("error")
+        or (result.get("actual") or {}).get("error")
+    )
+    # Never poison the canonical cache with failed provider calls. Replicas may
+    # still record failures for nondeterminism studies under side paths.
+    if has_error and replicate is None:
+        print(
+            f"  [skip-cache] failed {operation}/{provider}/{model} ({fixture_name})",
+            flush=True,
+        )
+        return
+
     inference_artifact = {
         "fixture_name": fixture_name,
         "operation": operation,
@@ -270,13 +284,33 @@ def save_result_new(
     }
     store.write_inference(identity, inference_artifact, replicate=replicate)
 
-    score_artifact = {
-        "fixture_name": fixture_name,
-        "operation": operation,
-        "expected": result.get("expected"),
-        "auto_score": result.get("auto_score"),
-    }
-    store.write_score(score_identity, score_artifact)
+    # Replica scores must not occupy the canonical score key.
+    if replicate is None:
+        score_artifact = {
+            "fixture_name": fixture_name,
+            "operation": operation,
+            "expected": result.get("expected"),
+            "auto_score": result.get("auto_score"),
+        }
+        store.write_score(score_identity, score_artifact)
+    else:
+        score_artifact = {
+            "fixture_name": fixture_name,
+            "operation": operation,
+            "expected": result.get("expected"),
+            "auto_score": result.get("auto_score"),
+            "replicate": replicate,
+            "inference_key": identity.inference_key,
+        }
+        replica_score_path = (
+            store.scores_root
+            / identity.inference_key[:2]
+            / f"{identity.inference_key}.r{replicate}.score.json"
+        )
+        replica_score_path.parent.mkdir(parents=True, exist_ok=True)
+        replica_score_path.write_text(
+            json.dumps(score_artifact, indent=2, default=str) + "\n"
+        )
 
     # Keep a compatibility copy under the legacy tree for older report browsers.
     prompt_hash = identity.prompt_contract_hash[:12]
@@ -1790,7 +1824,7 @@ def _print_model_summary(model_name: str, thinking: str, results: list[dict]) ->
     pass_count = sum(1 for r in non_dry if _get_result_status(r) == "PASS")
     partial_count = sum(1 for r in non_dry if _get_result_status(r) == "PARTIAL")
     fail_count = sum(1 for r in non_dry if _get_result_status(r) in ("FAIL", "ERROR"))
-    total_cost = sum(r.get("cost", 0) for r in non_dry)
+    total_cost = sum((r.get("cost") or 0) for r in non_dry)
     # Prefer api_call timing when available
     api_durations = []
     for r in non_dry:
@@ -1843,8 +1877,8 @@ def _print_progress_totals(results: list[dict], operation: str) -> None:
     pass_count = sum(1 for r in op_results if _get_result_status(r) == "PASS")
     partial_count = sum(1 for r in op_results if _get_result_status(r) == "PARTIAL")
     fail_count = sum(1 for r in op_results if _get_result_status(r) in ("FAIL", "ERROR"))
-    total_cost = sum(r.get("cost", 0) for r in op_results)
-    total_duration = sum(r.get("duration_ms", 0) for r in op_results)
+    total_cost = sum((r.get("cost") or 0) for r in op_results)
+    total_duration = sum((r.get("duration_ms") or 0) for r in op_results)
     avg_duration = total_duration // len(op_results) if op_results else 0
     print(
         f"         Running: {pass_count} pass, {partial_count} partial, "
@@ -2743,6 +2777,7 @@ def run_all_models(
     dry_run: bool = False,
     models: list[tuple] | None = None,
     concurrency: int = 10,
+    replicate: int | None = None,
 ) -> list[dict]:
     """Run evals across multiple models and operations."""
     from selko.services.llm_provider import MODEL_REGISTRY
@@ -2792,7 +2827,7 @@ def run_all_models(
                 return run_extract_eval(
                     name, path, provider_name, model_name,
                     use_cache=use_cache, verbose=verbose, dry_run=dry_run,
-                    thinking=thinking,
+                    thinking=thinking, replicate=replicate,
                 )
 
             model_extract_results = _run_fixtures_parallel(fixtures, "extract", _run_extract, concurrency)
@@ -2812,7 +2847,7 @@ def run_all_models(
                 return run_compare_eval(
                     name, path, provider_name, model_name,
                     use_cache=use_cache, verbose=verbose, dry_run=dry_run,
-                    thinking=thinking,
+                    thinking=thinking, replicate=replicate,
                 )
 
             model_compare_results = _run_fixtures_parallel(fixtures, "compare", _run_compare, concurrency)
@@ -2832,7 +2867,7 @@ def run_all_models(
                 return run_merge_eval(
                     name, path, provider_name, model_name,
                     use_cache=use_cache, verbose=verbose, dry_run=dry_run,
-                    thinking=thinking,
+                    thinking=thinking, replicate=replicate,
                 )
 
             model_merge_results = _run_fixtures_parallel(fixtures, "merge", _run_merge, concurrency)
@@ -3236,8 +3271,25 @@ Examples:
             dry_run=args.dry_run,
             models=filtered_models,
             concurrency=args.concurrency,
+            replicate=args.replicate,
         )
         if not args.dry_run:
+            fixtures_by_op = collect_fixtures_for_operations(
+                operations,
+                all_extract=True,
+                difficulty=args.difficulty,
+            )
+            cells = plan_eval_cells(
+                operations=operations,
+                models=filtered_models,
+                fixtures_by_op=fixtures_by_op,
+            )
+            run_id = write_run_manifest(
+                cells=cells,
+                operations=operations,
+                models=filtered_models,
+            )
+            print(f"\nPost-run manifest: {run_id}")
             generate_report(results)
         return
 

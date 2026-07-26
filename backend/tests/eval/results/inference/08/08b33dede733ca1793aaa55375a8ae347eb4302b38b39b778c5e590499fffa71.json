@@ -1,0 +1,161 @@
+{
+  "fixture_name": "allday_gets_time_02",
+  "operation": "merge",
+  "provider": "minimax",
+  "model": "MiniMax-M2.7",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T01:04:18.766047+00:00",
+  "duration_ms": 6057,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:04:12.707206+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:04:12.707213+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:04:12.713791+00:00",
+      "duration_ms": 6051
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:04:18.765311+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 554,
+    "completion_tokens": 328,
+    "total_tokens": 882
+  },
+  "cost": 0.0005598,
+  "actual": {
+    "title": "Annual Company Picnic",
+    "start_datetime": "2026-07-20T11:00:00",
+    "end_datetime": "2026-07-20T15:00:00",
+    "all_day": false,
+    "location": "City Park - Pavilion 3",
+    "description": "Annual summer picnic for all employees and families\n\nAnnual summer picnic starts at 11am. Bring your family! BBQ lunch served at noon.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1246,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Annual Company Picnic\n- Start: 2026-07-20T00:00:00\n- End: 2026-07-20T23:59:59\n- All Day: True\n- Location: City Park\n- Description: Annual summer picnic for all employees and families\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Annual Company Picnic\n- Start: 2026-07-20T11:00:00\n- End: 2026-07-20T15:00:00\n- All Day: False\n- Location: City Park - Pavilion 3\n- Description: Annual summer picnic starts at 11am. Bring your family! BBQ lunch served at noon.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"title\": \"Annual Company Picnic\",\n  \"start_datetime\": \"2026-07-20T11:00:00\",\n  \"end_datetime\": \"2026-07-20T15:00:00\",\n  \"all_day\": false,\n  \"location\": \"City Park - Pavilion 3\",\n  \"description\": \"Annual summer picnic for all employees and families\\n\\nAnnual summer picnic starts at 11am. Bring your family! BBQ lunch served at noon.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "fc6452089a054834b37997f303f3bce9",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "All-day event gets specific time - should prefer specific time over vague all-day",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "all-day-to-timed",
+    "specificity"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "7a4e657096602186f37dae02e3abf5e5448524557f208c0c3d155631ab9f53e7",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "minimax/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "MiniMax-M2.7",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "2a5cd8b1778ab652436bc3114740637e89e127114021db05e3fa5eb33b49e8c0",
+    "fixture_input_hash": "7a4e657096602186f37dae02e3abf5e5448524557f208c0c3d155631ab9f53e7"
+  },
+  "inference_key": "08b33dede733ca1793aaa55375a8ae347eb4302b38b39b778c5e590499fffa71",
+  "stored_at": "2026-07-26T01:04:18.788568+00:00"
+}

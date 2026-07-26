@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_conference_06",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "c75e44aebde195ddc82b780777d2b63d409e4cd7a9baf0d3c0553b425fb6f39d",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "a7d499d8773774c95eeecd2b4ea94dd708b7b7a370135ef678b6692813082242",
+  "stored_at": "2026-07-23T06:21:29.770805+00:00"
+}

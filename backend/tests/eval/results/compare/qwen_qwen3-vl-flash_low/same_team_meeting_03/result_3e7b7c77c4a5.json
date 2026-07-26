@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:37:01.515450+00:00",
+  "duration_ms": 6205,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:36:55.308543+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:36:55.308549+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:36:55.315173+00:00",
+      "duration_ms": 6199
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:37:01.514851+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 507,
+    "completion_tokens": 879,
+    "total_tokens": 1386
+  },
+  "cost": 0.0004023,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1190,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Q2 Planning Session\n- Start: 2026-03-30T13:00:00\n- End: 2026-03-30T15:00:00\n- Location: Conference Room B\n- Description: Quarterly planning for engineering team. Bring your roadmap ideas.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Coffee Chat with Sarah\n   - Start: 2026-03-30T10:00:00\n   - End: 2026-03-30T10:30:00\n   - Location: Starbucks\n   - Description: Catch up\n\n2. Event ID: event-002\n   - Title: Engineering Q2 Planning\n   - Start: 2026-03-30T13:00:00\n   - End: 2026-03-30T15:00:00\n   - Location: \n   - Description: Planning session for second quarter. All team members required.\n\n3. Event ID: event-003\n   - Title: Yoga Class\n   - Start: 2026-03-30T18:00:00\n   - End: 2026-03-30T19:00:00\n   - Location: Zen Studio\n   - Description: Evening yoga\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-002\",\n  \"reasoning\": \"The new event 'Q2 Planning Session' matches event-002 'Engineering Q2 Planning' in terms of date, time (13:00-15:00), and description context (both refer to Q2 planning). The slight wording differences and the fact that the existing event doesn't have a location listed suggest these represent the same real-world event.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "889d59a8cbf94760ad2dfa9ea50c67b3",
+    "route_role": "primary"
+  },
+  "inference_key": "b44b8999cdba3a9472e6636a7c8ef8f71b862d5019a35cda6cb056f5bafda615",
+  "score_key": "24a59edf416cac9eb198f01b8c0d67da6a73a8e75e3884c85a1a3c2bb78700e4",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "qwen",
+    "model": "qwen3-vl-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "qwen/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "qwen3-vl-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "ca72602ea37eced027677b9a7d6155ce8b30c2f665c495dc52c83af8f5e9c935",
+    "fixture_input_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3"
+  }
+}

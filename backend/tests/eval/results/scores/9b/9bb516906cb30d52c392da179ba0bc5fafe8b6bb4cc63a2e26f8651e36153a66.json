@@ -1,0 +1,57 @@
+{
+  "fixture_name": "school/public_hearing_08",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Public Hearing - Education Parcel Tax",
+        "start_datetime": "2026-02-23T18:00:00",
+        "end_datetime": null,
+        "location": "960 Ygnacio Valley Road, Walnut Creek, CA 94596",
+        "description": "Public hearing by Walnut Creek School District governing board regarding calling an election to levy new $98 education parcel tax",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "89bbf9af497235a1b0967ab5a45b7acdae32ba8b5487388c6657d41362c8079f",
+    "expected_output_hash": "a31451c53905a7b048e928fd8934cca54ca32c260763206d2f754368e2577c47",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "9bb516906cb30d52c392da179ba0bc5fafe8b6bb4cc63a2e26f8651e36153a66",
+  "stored_at": "2026-07-26T00:39:06.031991+00:00"
+}

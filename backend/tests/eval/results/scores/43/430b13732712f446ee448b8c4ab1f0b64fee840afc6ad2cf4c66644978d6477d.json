@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/calendar_derived_daily_brief_18",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "9fa7291d3df70783f0d6fd2a5bfb80d9c3d7384e3c339624af03aafdb7dc7272",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "430b13732712f446ee448b8c4ab1f0b64fee840afc6ad2cf4c66644978d6477d",
+  "stored_at": "2026-07-23T06:23:01.460529+00:00"
+}

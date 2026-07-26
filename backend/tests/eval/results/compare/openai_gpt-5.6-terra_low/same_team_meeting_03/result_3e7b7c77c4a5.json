@@ -1,0 +1,142 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:23:11.121825+00:00",
+  "duration_ms": 1635,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:23:09.483999+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:23:09.484007+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:23:09.491720+00:00",
+      "duration_ms": 1628
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:23:11.120491+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 414,
+    "completion_tokens": 61,
+    "total_tokens": 475
+  },
+  "cost": 0.0039,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1190,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Q2 Planning Session\n- Start: 2026-03-30T13:00:00\n- End: 2026-03-30T15:00:00\n- Location: Conference Room B\n- Description: Quarterly planning for engineering team. Bring your roadmap ideas.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Coffee Chat with Sarah\n   - Start: 2026-03-30T10:00:00\n   - End: 2026-03-30T10:30:00\n   - Location: Starbucks\n   - Description: Catch up\n\n2. Event ID: event-002\n   - Title: Engineering Q2 Planning\n   - Start: 2026-03-30T13:00:00\n   - End: 2026-03-30T15:00:00\n   - Location: \n   - Description: Planning session for second quarter. All team members required.\n\n3. Event ID: event-003\n   - Title: Yoga Class\n   - Start: 2026-03-30T18:00:00\n   - End: 2026-03-30T19:00:00\n   - Location: Zen Studio\n   - Description: Evening yoga\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-002\",\"reasoning\":\"Both describe the engineering team's Q2 planning session and have the exact same start and end times. The new event adds a room location and slightly different wording, consistent with a more detailed version of the same event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "92cf014314f54cc88d9b2926c1e5b6d6",
+    "route_role": "primary"
+  },
+  "inference_key": "17e0a71ddfba47fdc90e8141c4e3dc6f27a6fc077b7cfc12513293487863d28e",
+  "score_key": "f2e586463fe85eb450afaca23df450ace6760537b4e9ba7e4b461536aad2cfd5",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "openai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-terra",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "186355b6f68457ee80bf932d5466b4e8678e74a8baa694e2b01035a685a05c67",
+    "fixture_input_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3"
+  }
+}

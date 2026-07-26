@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_doctor_appointment_02",
+  "fixture_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.5-air",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:57:04.519653+00:00",
+  "duration_ms": 15173,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:56:49.345288+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:56:49.345295+00:00",
+      "duration_ms": 10
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:56:49.355905+00:00",
+      "duration_ms": 15163
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:57:04.519089+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same doctor appointment with different description details - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 448,
+    "completion_tokens": 903,
+    "total_tokens": 1351
+  },
+  "cost": 0.0009926,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dr. Smith - Annual Physical\n- Start: 2026-04-22T10:30:00\n- End: 2026-04-22T11:30:00\n- Location: Riverside Medical Center, Suite 200\n- Description: Appointment confirmation for annual physical exam. Please arrive 15 minutes early to complete paperwork.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Annual Physical Exam\n   - Start: 2026-04-22T10:30:00\n   - End: 2026-04-22T11:30:00\n   - Location: Riverside Medical Center\n   - Description: Dr. Smith - yearly checkup\n\n2. Event ID: event-002\n   - Title: Grocery Shopping\n   - Start: 2026-04-22T14:00:00\n   - End: 2026-04-22T15:00:00\n   - Location: Whole Foods\n   - Description: Weekly shopping\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"The events refer to the same real-world event (annual physical exam with Dr. Smith) with identical date, time, and location. The titles and descriptions are slightly different but refer to the same event, with the new event providing more specific details about the appointment.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "9bf05fb5c37a400e8be1b924445b19e1",
+    "route_role": "primary"
+  },
+  "inference_key": "041db8b3b93f9ed49ab0031130aef6399401290fcb1c9a088e6e6c514a8386fb",
+  "score_key": "6b067a3f9aa6aa5830997196054f0804519766ff4bbb1caf7b136cbf1efaf5d2",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "zai",
+    "model": "glm-4.5-air",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.5-air",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c"
+  }
+}

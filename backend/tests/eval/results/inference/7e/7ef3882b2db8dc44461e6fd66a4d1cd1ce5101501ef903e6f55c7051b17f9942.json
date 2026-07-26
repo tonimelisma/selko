@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_doctor_appointment_02",
+  "operation": "compare",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T02:44:14.536786+00:00",
+  "duration_ms": 17746,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:43:56.787976+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:43:56.787987+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:43:56.802925+00:00",
+      "duration_ms": 17732
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:44:14.534956+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 389,
+    "completion_tokens": 831,
+    "total_tokens": 1220
+  },
+  "cost": 0.0027264,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dr. Smith - Annual Physical\n- Start: 2026-04-22T10:30:00\n- End: 2026-04-22T11:30:00\n- Location: Riverside Medical Center, Suite 200\n- Description: Appointment confirmation for annual physical exam. Please arrive 15 minutes early to complete paperwork.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Annual Physical Exam\n   - Start: 2026-04-22T10:30:00\n   - End: 2026-04-22T11:30:00\n   - Location: Riverside Medical Center\n   - Description: Dr. Smith - yearly checkup\n\n2. Event ID: event-002\n   - Title: Grocery Shopping\n   - Start: 2026-04-22T14:00:00\n   - End: 2026-04-22T15:00:00\n   - Location: Whole Foods\n   - Description: Weekly shopping\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"Both events represent the same annual physical appointment with Dr. Smith at Riverside Medical Center on 2026-04-22 from 10:30-11:30. The new event includes 'Dr. Smith' in the title while the existing event mentions it in the description. Both refer to an annual/yearly physical exam at the same location (Suite 200 is a more specific detail of the same venue). The identical timing and matching subject matter confirm this is the same real-world appointment.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "ec1c9e7625564b6b8ace0777ce35d0af",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same doctor appointment with different description details - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "medical"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "moonshot",
+    "model": "kimi-k2.5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k2.5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "359d3e212909f5193d4acf852234c01412e7737d41ff900f59817d680942598a",
+    "fixture_input_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c"
+  },
+  "inference_key": "7ef3882b2db8dc44461e6fd66a4d1cd1ce5101501ef903e6f55c7051b17f9942",
+  "stored_at": "2026-07-26T02:44:14.563273+00:00"
+}

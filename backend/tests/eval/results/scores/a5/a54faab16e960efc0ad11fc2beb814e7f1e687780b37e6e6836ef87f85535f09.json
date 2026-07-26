@@ -1,0 +1,63 @@
+{
+  "fixture_name": "recurring/biweekly_one_on_one_03",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Mark Chen",
+        "start_datetime": "2026-02-13T15:00:00",
+        "end_datetime": "2026-02-13T15:30:00",
+        "location": "Mark's office or Zoom",
+        "description": "Bi-weekly 1:1 meeting",
+        "all_day": false,
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "recurrence_rule": {
+          "expected": "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR",
+          "actual": "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=FR",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "a8702296826a14823c3117707fd3fe97a0b62be554ba07064b5adfb0250a6c59",
+    "expected_output_hash": "bf3dd26c8a6e3d0eab679dfca7c42e1b667e8de0278ba12948ccb15932f34e17",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "a54faab16e960efc0ad11fc2beb814e7f1e687780b37e6e6836ef87f85535f09",
+  "stored_at": "2026-07-23T06:22:07.746333+00:00"
+}

@@ -1,0 +1,57 @@
+{
+  "fixture_name": "conferences/webinar_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "AI in Practice Webinar",
+        "start_datetime": "2026-02-24T13:00:00",
+        "end_datetime": "2026-02-24T14:30:00",
+        "location": "Zoom",
+        "description": "Webinar on AI implementation strategies with Dr. Maria Santos",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "c7ebab0c3b3dabaeb92a3297fa1b22318eb92caf1baa696af1d5258e22e25b65",
+    "expected_output_hash": "eb152b8b6f52b7df7b3abba78d0ca8d81d534fc89969251395bbe40cd699bc9b",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "1052f73ec5bf877d992a3dea8e3353b97ca79d94f2a9af17cbf4e59bf228634d",
+  "stored_at": "2026-07-26T01:06:18.941184+00:00"
+}

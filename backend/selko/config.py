@@ -42,9 +42,9 @@ class Config:
     microsoft_client_secret: Optional[str] = None
 
     # LLM provider configuration
-    llm_provider: str = "anthropic"  # gemini|zai|qwen|openai|anthropic|xai (+ deferred keys)
-    llm_model: Optional[str] = None  # specific model ID (None = provider default)
-    llm_thinking: str = "low"
+    llm_provider: str = "gemini"  # gemini|qwen|anthropic|openai|zai|xai|…
+    llm_model: Optional[str] = None  # None = PROVIDER_DEFAULT_MODEL[provider]
+    llm_thinking: str = "minimal"
 
     # Fallback route (different provider). Provisional defaults until eval report.
     llm_fallback_provider: Optional[str] = None
@@ -144,13 +144,13 @@ def _parse_allowed_origins() -> list[str]:
     return defaults
 
 
-# Provisional primary→fallback pairs until the Stage C eval report lands.
-# Always a *different* provider so a provider-wide outage cannot defeat both.
+# Primary→fallback pairs (eval-backed Jul 2026). Always a *different* provider
+# so a provider-wide outage cannot defeat both.
 _PROVISIONAL_FALLBACK: dict[str, tuple[str, str]] = {
-    "anthropic": ("openai", "gpt-5.6-terra"),
-    "qwen": ("anthropic", "claude-sonnet-5"),
-    "openai": ("anthropic", "claude-sonnet-5"),
-    "gemini": ("anthropic", "claude-sonnet-5"),
+    "gemini": ("qwen", "qwen3.7-flash"),
+    "qwen": ("gemini", "gemini-3.5-flash-lite"),
+    "anthropic": ("gemini", "gemini-3.5-flash-lite"),
+    "openai": ("gemini", "gemini-3.5-flash-lite"),
 }
 
 
@@ -191,6 +191,14 @@ def _fallback_key_present(provider_name: Optional[str]) -> bool:
     }.get(provider_name)
     if not key_env:
         return False
+    if provider_name == "meta":
+        return bool(
+            os.getenv("META_API_KEY")
+            or os.getenv("META_MODEL_API_KEY")
+            or os.getenv("MODEL_API_KEY")
+        )
+    if provider_name == "zai":
+        return bool(os.getenv("ZAI_API_KEY") or os.getenv("ZHIPU_API_KEY"))
     return bool(os.getenv(key_env))
 
 
@@ -216,8 +224,7 @@ def _warn_if_fallback_unavailable(
         "⚠️  LLM FALLBACK UNAVAILABLE in %s environment: missing %s. "
         "Primary failures that need a different provider will not be recovered. "
         "Set LLM_FALLBACK_PROVIDER / LLM_FALLBACK_MODEL and the matching API key. "
-        "Current provisional pairing (until eval report): anthropic→openai/gpt-5.6-terra, "
-        "qwen→anthropic/claude-sonnet-5.",
+        "Current pairing: gemini→qwen/qwen3.7-flash (primary gemini-3.5-flash-lite).",
         environment,
         ", ".join(missing_bits),
     )
@@ -278,7 +285,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         logger.error(f"Check your {env_file} file.")
         sys.exit(1)
 
-    llm_provider = os.getenv("LLM_PROVIDER", "anthropic")
+    llm_provider = os.getenv("LLM_PROVIDER", "gemini")
     llm_fallback_provider = os.getenv("LLM_FALLBACK_PROVIDER") or None
     llm_fallback_model = os.getenv("LLM_FALLBACK_MODEL") or None
     llm_fallback_provider, llm_fallback_model = _resolve_provisional_fallback(
@@ -300,7 +307,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         microsoft_client_secret=os.getenv("MICROSOFT_CLIENT_SECRET"),
         llm_provider=llm_provider,
         llm_model=os.getenv("LLM_MODEL") or None,
-        llm_thinking=os.getenv("LLM_THINKING", "low") or "low",
+        llm_thinking=os.getenv("LLM_THINKING", "minimal") or "minimal",
         llm_fallback_provider=llm_fallback_provider,
         llm_fallback_model=llm_fallback_model,
         llm_fallback_thinking=os.getenv("LLM_FALLBACK_THINKING", "low") or "low",
@@ -308,14 +315,20 @@ def load_config(env_override: Optional[str] = None) -> Config:
         llm_fallback_max_attempts=int(os.getenv("LLM_FALLBACK_MAX_ATTEMPTS", "2")),
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
         moonshot_api_key=os.getenv("MOONSHOT_API_KEY"),
-        zai_api_key=os.getenv("ZAI_API_KEY"),
+        # Local .env may use Zhipu's ZHIPU_API_KEY; Z.AI console uses ZAI_API_KEY.
+        zai_api_key=os.getenv("ZAI_API_KEY") or os.getenv("ZHIPU_API_KEY"),
         deepseek_api_key=os.getenv("DEEPSEEK_API_KEY"),
         alibaba_api_key=os.getenv("ALIBABA_API_KEY"),
         minimax_api_key=os.getenv("MINIMAX_API_KEY"),
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
         xai_api_key=os.getenv("XAI_API_KEY"),
-        meta_api_key=os.getenv("META_API_KEY"),
+        # Meta docs use MODEL_API_KEY; local .env may use META_MODEL_API_KEY.
+        meta_api_key=(
+            os.getenv("META_API_KEY")
+            or os.getenv("META_MODEL_API_KEY")
+            or os.getenv("MODEL_API_KEY")
+        ),
         tinker_api_key=os.getenv("TINKER_API_KEY"),
         test_user_email=os.getenv("TEST_USER_EMAIL"),
         test_user_password=os.getenv("TEST_USER_PASSWORD"),

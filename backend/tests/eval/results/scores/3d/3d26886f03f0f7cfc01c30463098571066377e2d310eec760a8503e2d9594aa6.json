@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/shipping_notification_03",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "65cb725863bee1fbfae0e0d529469481d0ab72f58829fac0b580bc333cdaeb68",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "3d26886f03f0f7cfc01c30463098571066377e2d310eec760a8503e2d9594aa6",
+  "stored_at": "2026-07-26T00:24:17.109900+00:00"
+}

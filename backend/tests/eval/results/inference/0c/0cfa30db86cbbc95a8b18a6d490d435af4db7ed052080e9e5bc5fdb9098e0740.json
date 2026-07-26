@@ -1,0 +1,120 @@
+{
+  "fixture_name": "different_doctor_appointments_12",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3-vl-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:36:55.170923+00:00",
+  "duration_ms": 7410,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:36:47.758712+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:36:47.758723+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:36:47.766387+00:00",
+      "duration_ms": 7403
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:36:55.170348+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 518,
+    "completion_tokens": 963,
+    "total_tokens": 1481
+  },
+  "cost": 0.00043700000000000005,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1184,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dermatology Appointment\n- Start: 2026-06-04T14:00:00\n- End: 2026-06-04T14:30:00\n- Location: Skin Health Clinic, Suite 301\n- Description: Annual skin check with Dr. Patel\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Dentist - Dr. Lee\n   - Start: 2026-06-02T09:00:00\n   - End: 2026-06-02T10:00:00\n   - Location: Bright Smiles Dental\n   - Description: 6-month cleaning and checkup\n\n2. Event ID: event-002\n   - Title: Eye Exam\n   - Start: 2026-06-05T11:00:00\n   - End: 2026-06-05T12:00:00\n   - Location: Vision Care Center\n   - Description: Annual eye examination with Dr. Wong\n\n3. Event ID: event-003\n   - Title: Team Lunch\n   - Start: 2026-06-04T12:00:00\n   - End: 2026-06-04T13:00:00\n   - Location: Italian Garden\n   - Description: Monthly team lunch\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event (Dermatology Appointment on 2026-06-04 at 14:00-14:30) is different from all existing events. Event-001 is a dental appointment on a different date (2026-06-02). Event-002 is an eye exam on a different date (2026-06-05). Event-003 is a team lunch on the same date but at different times (12:00-13:00) and is not a medical appointment.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "b385ec852c6247b4896edb8722edf261",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Two different doctor appointments in same week - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "medical"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "qwen",
+    "model": "qwen3-vl-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "qwen/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "qwen3-vl-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "ca72602ea37eced027677b9a7d6155ce8b30c2f665c495dc52c83af8f5e9c935",
+    "fixture_input_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3"
+  },
+  "inference_key": "0cfa30db86cbbc95a8b18a6d490d435af4db7ed052080e9e5bc5fdb9098e0740",
+  "stored_at": "2026-07-26T00:36:55.189789+00:00"
+}

@@ -1,0 +1,135 @@
+{
+  "fixture_name": "same_conference_06",
+  "fixture_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.6-flash",
+  "thinking": "minimal",
+  "run_at": "2026-07-23T06:21:29.742526+00:00",
+  "duration_ms": 1096,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:21:28.645024+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:21:28.645033+00:00",
+      "duration_ms": 11
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:21:28.656826+00:00",
+      "duration_ms": 1085
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:21:29.741888+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 454,
+    "completion_tokens": 49,
+    "total_tokens": 503
+  },
+  "cost": 0.0010485,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1227,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: TechSummit 2026\n- Start: 2026-09-15T09:00:00\n- End: 2026-09-17T17:00:00\n- Location: Moscone Center, San Francisco\n- Description: Registration confirmed! Three days of cutting-edge tech talks and networking.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: TechSummit Conference\n   - Start: 2026-09-15T09:00:00\n   - End: 2026-09-17T17:00:00\n   - Location: Moscone Center, SF\n   - Description: Early bird tickets available! Sept 15-17.\n\n2. Event ID: event-002\n   - Title: Code Review Session\n   - Start: 2026-09-15T10:00:00\n   - End: 2026-09-15T11:00:00\n   - Location: Office\n   - Description: Weekly code review\n\n3. Event ID: event-003\n   - Title: Dinner with Alex\n   - Start: 2026-09-15T19:00:00\n   - End: 2026-09-15T21:00:00\n   - Location: The Garden Restaurant\n   - Description: Catch up dinner\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Both events refer to the same multi-day tech conference at Moscone Center with identical start and end dates and times, and nearly identical title and location descriptions.\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "8fb644503feb44cebdd0561284fde824",
+    "route_role": "primary"
+  },
+  "inference_key": "c75e44aebde195ddc82b780777d2b63d409e4cd7a9baf0d3c0553b425fb6f39d",
+  "score_key": "a7d499d8773774c95eeecd2b4ea94dd708b7b7a370135ef678b6692813082242",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.6-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "minimal"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.6-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "minimal"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "e88e9a93c73fbdb09f8a21065a7ce67dd005dde1bcd9062d10ec15617ba19875",
+    "fixture_input_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77"
+  }
+}

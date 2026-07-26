@@ -1,0 +1,87 @@
+{
+  "fixture_name": "travel/flight_confirmation_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Flight UA 1234 - SFO to JFK",
+        "start_datetime": "2026-03-13T08:00:00",
+        "end_datetime": "2026-03-13T16:35:00",
+        "location": "San Francisco International Airport (SFO)",
+        "description": "United Airlines flight to New York JFK",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight UA 5678 - JFK to SFO",
+        "start_datetime": "2026-03-15T19:00:00",
+        "end_datetime": "2026-03-15T22:15:00",
+        "location": "John F. Kennedy International Airport (JFK)",
+        "description": "United Airlines return flight to San Francisco",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "c644b45c4f0595e4ad2bb59e01a9972ea66d905629a1c1e4697b9c7f1a3afc50",
+    "expected_output_hash": "d118654f17a2d347d01951b968b8259fb7328f5d8322e8496727f19e96b72bfb",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "7db27ec5b07890ab0b82b462b485dc2a86ef74773463d01fa96c62318496d55a",
+  "stored_at": "2026-07-23T06:17:45.564682+00:00"
+}

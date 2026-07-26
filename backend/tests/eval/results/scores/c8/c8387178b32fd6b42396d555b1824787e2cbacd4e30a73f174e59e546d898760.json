@@ -1,0 +1,57 @@
+{
+  "fixture_name": "appointments/doctor_appointment_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Doctor Appointment - Dr. Jennifer Smith",
+        "start_datetime": "2026-02-03T10:30:00",
+        "end_datetime": "2026-02-03T11:00:00",
+        "location": "Valley Medical Center, 1500 Medical Plaza Drive, Suite 200, San Jose, CA 95128",
+        "description": "Internal Medicine appointment with Dr. Jennifer Smith",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 360.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 360.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "c3ceaa80cf1f2c480d874f038446faf2a0ff57ccad88260290eabc056fdeb577",
+    "expected_output_hash": "bc5c14ccc4dffd3f2f071abcb3065782cfabb185f2958dd7c5e503c06d80bbdc",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "c8387178b32fd6b42396d555b1824787e2cbacd4e30a73f174e59e546d898760",
+  "stored_at": "2026-07-23T06:21:42.813723+00:00"
+}

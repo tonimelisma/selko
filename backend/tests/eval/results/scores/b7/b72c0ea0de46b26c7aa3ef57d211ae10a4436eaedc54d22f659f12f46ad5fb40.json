@@ -1,0 +1,57 @@
+{
+  "fixture_name": "appointments/dentist_appointment_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Dental Appointment - Bright Smile Dental",
+        "start_datetime": "2026-02-10T14:00:00",
+        "end_datetime": null,
+        "location": "Bright Smile Dental, 250 First Street, Suite 100, San Francisco, CA 94105",
+        "description": "Routine cleaning and exam with Dr. Michael Chen",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "61ff1ae39f5e878af395d994ce4baeaacf2b964102ff96e9fdbd7fc9280ab2ae",
+    "expected_output_hash": "d5bc317d5b0353d2011ff85edf33ff54e5e6889b14fcecf9dc93b10bbb035c70",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "b72c0ea0de46b26c7aa3ef57d211ae10a4436eaedc54d22f659f12f46ad5fb40",
+  "stored_at": "2026-07-26T02:31:24.731107+00:00"
+}

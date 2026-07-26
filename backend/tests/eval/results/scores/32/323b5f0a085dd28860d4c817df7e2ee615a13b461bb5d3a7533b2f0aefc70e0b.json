@@ -1,0 +1,120 @@
+{
+  "fixture_name": "school/pdf_dance_performance_03",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "event_count_min": 1,
+    "events": [
+      {
+        "title": "Winter Dance Performance - Pre-Ballet",
+        "start_datetime": "2025-12-11T15:55:00",
+        "end_datetime": "2025-12-11T16:15:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Jazz Ballet Tap",
+        "start_datetime": "2025-12-11T16:40:00",
+        "end_datetime": "2025-12-11T17:00:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Jr Hip Hop",
+        "start_datetime": "2025-12-11T17:25:00",
+        "end_datetime": "2025-12-11T17:45:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "importance": "action_required"
+      },
+      {
+        "title": "Winter Dance Performance - Hip Hop",
+        "start_datetime": "2025-12-11T18:10:00",
+        "end_datetime": "2025-12-11T18:30:00",
+        "location": "111 N Wiget Lane, Walnut Creek, CA",
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "23fce43d3a1b46c7993860c2b39a667968884b953cc1f07d699cccee80042274",
+    "expected_output_hash": "3f489c8671bef4d6704ace564cd4c9e47eab264c382fdea87d29b2ceacfd7d6e",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "323b5f0a085dd28860d4c817df7e2ee615a13b461bb5d3a7533b2f0aefc70e0b",
+  "stored_at": "2026-07-26T00:25:14.604856+00:00"
+}

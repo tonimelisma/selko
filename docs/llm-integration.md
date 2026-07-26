@@ -10,33 +10,34 @@ immediate fallback for empty/invalid/schema-echo/truncated output, and two
 fallback attempts for transient failures only. Fallback must be a different
 provider.
 
-Provisional production defaults (see
-`backend/tests/eval/reports/2026-07-23-current-model-low-thinking-recommendation.md`):
+Production defaults (eval-backed Jul 2026; see
+`backend/tests/eval/reports/2026-07-25-expanded-matrix-results.md`):
 
 ```dotenv
-LLM_PROVIDER=anthropic
-LLM_MODEL=claude-sonnet-5
-LLM_THINKING=low
-LLM_FALLBACK_PROVIDER=openai
-LLM_FALLBACK_MODEL=gpt-5.6-terra
+LLM_PROVIDER=gemini
+LLM_MODEL=gemini-3.5-flash-lite
+LLM_THINKING=minimal
+LLM_FALLBACK_PROVIDER=qwen
+LLM_FALLBACK_MODEL=qwen3.7-flash
 LLM_FALLBACK_THINKING=low
 ```
 
 > **Photo-library status:** Google Photos/OneDrive library ingestion is dormant while photo ingestion is parked; see [`docs/specs/onedrive-photo-ingestion.md`](specs/onedrive-photo-ingestion.md). The multimodal/image-processing material below describes the active email-attachment pipeline and remains applicable to email attachments.
 
-### Current registry models (one preferred low/minimal thinking each)
+### Current registry models (preferred low/minimal thinking each)
 
 | Provider | Env Var Key | Model ID | Preferred thinking |
 |----------|-------------|----------|--------------------|
-| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite`, `gemini-3.6-flash` | minimal |
-| OpenAI | `OPENAI_API_KEY` | `gpt-5.6-luna`, `gpt-5.6-terra` | low (always explicit) |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-sonnet-5` | adaptive low |
-| Qwen | `ALIBABA_API_KEY` | `qwen3.6-flash`, `qwen3.7-plus` | low budget |
-| Z.AI | `ZAI_API_KEY` | `glm-5.2` | low |
-| xAI | `XAI_API_KEY` | `grok-4.5` | low |
+| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` (default), `gemini-3.6-flash`, … | minimal |
+| Qwen | `ALIBABA_API_KEY` | `qwen3.7-flash` (fallback default), `qwen3.7-plus`, … | low budget |
+| OpenAI | `OPENAI_API_KEY` | `gpt-5.6-luna`, `gpt-5.6-terra`, … | low |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-sonnet-5`, `claude-haiku-4-5` | adaptive low |
+| Moonshot | `MOONSHOT_API_KEY` | `kimi-k3`, `kimi-k2.5`, `kimi-k2.6`, `kimi-k2.7-code` | effort / thinking toggle |
+| Z.AI | `ZAI_API_KEY` | `glm-5.2`, … | toggle |
+| xAI | `XAI_API_KEY` | `grok-4.5`, … | low |
+| DeepSeek / MiniMax / Meta / Tinker | matching keys | see registry | varies |
 
-See `backend/selko/services/llm_provider.py` for `MODEL_SPECS` / `MODEL_REGISTRY`.
-Old Sol / MiniMax-M2.5 / DeepSeek chat-reasoner / legacy Qwen VL IDs are removed.
+See `backend/selko/services/llm_provider.py` for the full `MODEL_SPECS` / `MODEL_REGISTRY`.
 
 ### All-day materialization
 

@@ -1,0 +1,141 @@
+{
+  "fixture_name": "same_conference_06",
+  "fixture_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:25:30.612084+00:00",
+  "duration_ms": 1455,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:25:29.155659+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:25:29.155667+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:25:29.161924+00:00",
+      "duration_ms": 1449
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:25:30.611350+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 498,
+    "completion_tokens": 145,
+    "total_tokens": 643
+  },
+  "cost": 0.001223,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1227,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: TechSummit 2026\n- Start: 2026-09-15T09:00:00\n- End: 2026-09-17T17:00:00\n- Location: Moscone Center, San Francisco\n- Description: Registration confirmed! Three days of cutting-edge tech talks and networking.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: TechSummit Conference\n   - Start: 2026-09-15T09:00:00\n   - End: 2026-09-17T17:00:00\n   - Location: Moscone Center, SF\n   - Description: Early bird tickets available! Sept 15-17.\n\n2. Event ID: event-002\n   - Title: Code Review Session\n   - Start: 2026-09-15T10:00:00\n   - End: 2026-09-15T11:00:00\n   - Location: Office\n   - Description: Weekly code review\n\n3. Event ID: event-003\n   - Title: Dinner with Alex\n   - Start: 2026-09-15T19:00:00\n   - End: 2026-09-15T21:00:00\n   - Location: The Garden Restaurant\n   - Description: Catch up dinner\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event 'TechSummit 2026' matches event-001 'TechSummit Conference'. Both events have identical start times (2026-09-15T09:00:00), end times (2026-09-17T17:00:00), and location (Moscone Center, San Francisco/SF). The titles are variations of the same conference, and the descriptions both reference the same multi-day tech summit event. This is clearly the same real-world event with updated registration confirmation details.\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "f05bb7009f65436c908fe9a03ca5ca1e",
+    "route_role": "primary"
+  },
+  "inference_key": "221491d842602635d251ed05ce5abb58b27e130bfbd8b6fc25c8e812e8f914bd",
+  "score_key": "e2e06f148de4dcfcc0c34594b646dae9f1ed4a93eb3895dba69070d46061f1ec",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-4-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "9509ea1b891a9b481d3cbb41e40d9a16932e349762b3bf4cb2872e2580422e3b",
+    "fixture_input_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77"
+  }
+}

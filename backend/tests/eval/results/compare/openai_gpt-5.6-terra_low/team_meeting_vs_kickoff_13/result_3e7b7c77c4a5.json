@@ -1,0 +1,142 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "fixture_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:23:11.916255+00:00",
+  "duration_ms": 1545,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:23:10.370133+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:23:10.370142+00:00",
+      "duration_ms": 8
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:23:10.378437+00:00",
+      "duration_ms": 1537
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:23:11.915620+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 423,
+    "completion_tokens": 68,
+    "total_tokens": 491
+  },
+  "cost": 0.004155,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1221,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Phoenix Project Kickoff\n- Start: 2026-07-08T10:00:00\n- End: 2026-07-08T12:00:00\n- Location: Large Conference Room\n- Description: Initial kickoff for Phoenix redesign project. All stakeholders required.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Weekly Team Sync\n   - Start: 2026-07-08T09:00:00\n   - End: 2026-07-08T09:30:00\n   - Location: Conference Room B\n   - Description: Regular Tuesday morning team standup\n\n2. Event ID: event-002\n   - Title: 1:1 with Manager\n   - Start: 2026-07-08T14:00:00\n   - End: 2026-07-08T14:30:00\n   - Location: Manager's Office\n   - Description: Bi-weekly check-in\n\n3. Event ID: event-003\n   - Title: Code Review\n   - Start: 2026-07-08T15:00:00\n   - End: 2026-07-08T16:00:00\n   - Location: Dev Room\n   - Description: Review PRs for authentication module\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"No existing event matches the Phoenix Project Kickoff. The title, 10:00\u201312:00 time, Large Conference Room location, and project-kickoff description are distinct from the team sync, manager 1:1, and code review.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "8191843db2124ac2b0272a84dd75a233",
+    "route_role": "primary"
+  },
+  "inference_key": "d69502ac1f8151ac187589e984884f6581494a81f8012ac1008c1579ce33d66f",
+  "score_key": "e26244aae2e71b2bd034d3896986bfe057f7ac46800f6123bed80d054166f1c0",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "openai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-terra",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "186355b6f68457ee80bf932d5466b4e8678e74a8baa694e2b01035a685a05c67",
+    "fixture_input_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41"
+  }
+}

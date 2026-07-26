@@ -1,0 +1,20 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "2dfffd7196de7c9a097cf7953abff0e944a64050fa88486c9f9a9915ae366982",
+    "expected_output_hash": "4486b03d387fa4a0aa0f782ea4e16cb28dc9732fa759705666a69458617a92bf",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "810d03d26f66023bc8e91bba2d1ff21afdeb88454fcbf7acca1379947934d5d1",
+  "stored_at": "2026-07-23T06:21:29.457156+00:00"
+}

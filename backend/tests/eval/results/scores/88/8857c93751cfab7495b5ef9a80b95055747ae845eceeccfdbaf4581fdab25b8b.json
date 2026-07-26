@@ -1,0 +1,57 @@
+{
+  "fixture_name": "appointments/home_repair_08",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Plumbing Service - Ace Plumbing",
+        "start_datetime": "2026-02-24T13:00:00",
+        "end_datetime": "2026-02-24T16:00:00",
+        "location": "456 Homeowner Drive, Santa Clara, CA 95050",
+        "description": "Water heater inspection and repair - technician will call 30 minutes before arrival",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "93d66a08f1a6bcff7c065abf32bb3661d1007e7433fd4b62564a696f828d2075",
+    "expected_output_hash": "bda43761db33a01a8a090e72be9bc05c432244cef8a6ef38ffca3612b19adf84",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "8857c93751cfab7495b5ef9a80b95055747ae845eceeccfdbaf4581fdab25b8b",
+  "stored_at": "2026-07-26T02:31:20.390544+00:00"
+}

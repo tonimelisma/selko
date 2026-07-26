@@ -74,12 +74,23 @@ class TestWhitelists:
         assert ALWAYS_CONVERT.issubset(INGESTIBLE_FORMATS)
 
     def test_all_providers_have_entries(self):
-        expected_providers = {"gemini", "moonshot", "zai", "qwen", "deepseek", "minimax", "openai", "anthropic"}
+        expected_providers = {
+            "gemini",
+            "moonshot",
+            "zai",
+            "qwen",
+            "deepseek",
+            "minimax",
+            "openai",
+            "anthropic",
+            "xai",
+            "meta",
+            "tinker",
+        }
         assert set(PROVIDER_ACCEPTED_FORMATS.keys()) == expected_providers
 
     def test_text_only_providers_have_empty_sets(self):
         assert PROVIDER_ACCEPTED_FORMATS["deepseek"] == set()
-        assert PROVIDER_ACCEPTED_FORMATS["minimax"] == set()
 
     def test_provider_accepted_are_subsets_of_ingestible(self):
         for provider, formats in PROVIDER_ACCEPTED_FORMATS.items():
@@ -192,7 +203,7 @@ class TestPrepareContentForProvider:
         assert result == []
 
     def test_text_only_provider_discards_pdf(self):
-        result = prepare_content_for_provider(PDF_1PAGE, "application/pdf", "minimax")
+        result = prepare_content_for_provider(PDF_1PAGE, "application/pdf", "deepseek")
         assert result == []
 
     # Step 3: Accepted format → pass-through
@@ -278,18 +289,14 @@ class TestPrepareContentForProvider:
         assert len(result) == 1
         assert result[0].mime_type == "image/webp"
 
-    # Bug 6 regression: Anthropic PDF → PNG conversion
-    def test_anthropic_pdf_converted_to_images(self):
-        """PDFs sent to Anthropic must be converted to PNG images, not passed through.
-
-        Regression test for Bug 6: Anthropic Haiku rejects PDF as document type
-        with 'media_type should be image/jpeg, image/png, image/gif or image/webp'.
-        """
+    # Anthropic PDF → native document passthrough (adapter sends type=document)
+    def test_anthropic_pdf_passthrough(self):
+        """Anthropic accepts application/pdf via document content blocks."""
         result = prepare_content_for_provider(PDF_1PAGE, "application/pdf", "anthropic")
         assert len(result) == 1
-        assert result[0].mime_type == "image/png"  # Converted, not PDF
-        assert result[0].data != PDF_1PAGE
+        assert result[0].mime_type == "application/pdf"
+        assert result[0].data == PDF_1PAGE
 
-    def test_anthropic_does_not_accept_pdf(self):
-        """Anthropic's accepted formats must NOT include application/pdf."""
-        assert "application/pdf" not in PROVIDER_ACCEPTED_FORMATS["anthropic"]
+    def test_anthropic_accepts_pdf(self):
+        """Anthropic's accepted formats include application/pdf."""
+        assert "application/pdf" in PROVIDER_ACCEPTED_FORMATS["anthropic"]

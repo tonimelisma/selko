@@ -1,0 +1,259 @@
+{
+  "fixture_name": "travel_itinerary_update_15",
+  "fixture_hash": "193758bc1cdefa9527948e2ad8adb1389ff9b720b3149d0baf73b8a9b5403e47",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "df0f5eda5c27",
+  "operation": "merge",
+  "provider": "tinker",
+  "model": "inkling",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:50:02.484081+00:00",
+  "duration_ms": 5826,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:49:56.655847+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:49:56.655855+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:49:56.663248+00:00",
+      "duration_ms": 5819
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:50:02.482449+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Travel: booking confirmation has basic flight info, itinerary update adds gate and terminal details",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "travel",
+    "logistics"
+  ],
+  "expected": {
+    "title": "Flight to Seattle - UA 1847",
+    "start_datetime": "2026-06-08T07:30:00",
+    "end_datetime": "2026-06-08T10:15:00",
+    "all_day": false,
+    "location": "SFO Terminal 3, Gate 75 \u2192 SEA",
+    "description_contains": [
+      "United Airlines",
+      "seat 12A",
+      "boarding starts",
+      "TSA PreCheck",
+      "mobile boarding pass"
+    ]
+  },
+  "actual": {
+    "title": "Flight to Seattle - UA 1847",
+    "start_datetime": "2026-06-08T07:30:00",
+    "end_datetime": "2026-06-08T10:15:00",
+    "all_day": false,
+    "location": "SFO Terminal 3, Gate 75 \u2192 SEA",
+    "description": "United Airlines flight 1847. Confirmation #ABC123. Seat 12A. Boarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "United Airlines",
+        "seat 12A",
+        "boarding starts",
+        "TSA PreCheck",
+        "mobile boarding pass"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 0,
+    "completion_tokens": 181,
+    "total_tokens": 181
+  },
+  "cost": 0.00084708,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1330,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Flight to Seattle - UA 1847\n- Start: 2026-06-08T07:30:00\n- End: 2026-06-08T10:15:00\n- All Day: False\n- Location: SFO \u2192 SEA\n- Description: United Airlines flight 1847. Confirmation #ABC123. Seat 12A.\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Flight to Seattle - UA 1847\n- Start: 2026-06-08T07:30:00\n- End: 2026-06-08T10:15:00\n- All Day: False\n- Location: SFO Terminal 3, Gate 75 \u2192 SEA\n- Description: Boarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n  \"title\": \"Flight to Seattle - UA 1847\",\n  \"start_datetime\": \"2026-06-08T07:30:00\",\n  \"end_datetime\": \"2026-06-08T10:15:00\",\n  \"all_day\": false,\n  \"location\": \"SFO Terminal 3, Gate 75 \u2192 SEA\",\n  \"description\": \"United Airlines flight 1847. Confirmation #ABC123. Seat 12A. Boarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "999ee397e5974f67af319b8b427bd6ea",
+    "route_role": "primary"
+  },
+  "inference_key": "1c99fbffe238a169e55cbd63a3131ae99d75e148e283fbea667d8482a77e1618",
+  "score_key": "f8cc4d5e17ce7367ca1c34b8de458465b38772c6647b7dbe55d70a3cfe2eb31f",
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "tinker",
+    "model": "inkling",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "tinker/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "inkling",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "26df3f87b7c852a12f0b4ae080f7b6880d6fea476c9b0b50f51ada1ab38f3791",
+    "fixture_input_hash": "193758bc1cdefa9527948e2ad8adb1389ff9b720b3149d0baf73b8a9b5403e47"
+  }
+}

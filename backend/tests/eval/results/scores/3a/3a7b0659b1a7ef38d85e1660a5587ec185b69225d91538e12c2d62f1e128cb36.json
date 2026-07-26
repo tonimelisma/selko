@@ -1,0 +1,59 @@
+{
+  "fixture_name": "allday_gets_time_02",
+  "operation": "merge",
+  "expected": {
+    "title": "Annual Company Picnic",
+    "start_datetime": "2026-07-20T11:00:00",
+    "end_datetime": "2026-07-20T15:00:00",
+    "all_day": false,
+    "location": "City Park - Pavilion 3",
+    "description_contains": [
+      "summer picnic",
+      "employees and families",
+      "BBQ lunch",
+      "noon"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "summer picnic",
+        "employees and families",
+        "BBQ lunch",
+        "noon"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "92af93400070a56d10eba717aaf2709bf4d9d1683313a75b5f2adc3e9940ab83",
+    "expected_output_hash": "60d7e2664d18d9d9421f7db89d7ac09c284f327fae3d1b76f93e74f30f345dcf",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "3a7b0659b1a7ef38d85e1660a5587ec185b69225d91538e12c2d62f1e128cb36",
+  "stored_at": "2026-07-23T06:22:22.202881+00:00"
+}

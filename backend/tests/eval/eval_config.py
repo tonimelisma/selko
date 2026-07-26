@@ -57,22 +57,51 @@ MERGE_SCORE_THRESHOLDS = {
 }
 
 # Provider and model configuration (env overrides)
-DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", os.environ.get("SELKO_EVAL_PROVIDER", "qwen"))
-DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "qwen3.6-flash"))
+DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", os.environ.get("SELKO_EVAL_PROVIDER", "gemini"))
+DEFAULT_MODEL = os.environ.get("LLM_MODEL", os.environ.get("SELKO_EVAL_MODEL", "gemini-3.5-flash-lite"))
 
 # Default models for multi-model evals: ONE preferred low/minimal thinking per model.
 # Gemini 3.x uses thinking_level (minimal is lowest). OpenAI/xAI use reasoning_effort=low.
 # Qwen uses enable_thinking + thinking_budget for "low". Anthropic uses adaptive effort=low.
 EVAL_MODELS = [
-    ("gemini", "gemini-3.5-flash-lite", "minimal"),
+    # Gemini
     ("gemini", "gemini-3.6-flash", "minimal"),
-    ("openai", "gpt-5.6-luna", "low"),
-    ("openai", "gpt-5.6-terra", "low"),
+    ("gemini", "gemini-3.5-flash", "minimal"),
+    ("gemini", "gemini-3.5-flash-lite", "minimal"),
+    ("gemini", "gemini-3.1-flash-lite", "minimal"),
+    # Anthropic
     ("anthropic", "claude-sonnet-5", "low"),
-    ("qwen", "qwen3.6-flash", "low"),
+    ("anthropic", "claude-haiku-4-5", "low"),
+    # OpenAI
+    ("openai", "gpt-5.6-terra", "low"),
+    ("openai", "gpt-5.6-luna", "low"),
+    # Qwen
     ("qwen", "qwen3.7-plus", "low"),
+    ("qwen", "qwen3.7-flash", "low"),
+    ("qwen", "qwen3.6-flash", "low"),
+    ("qwen", "qwen3.5-flash", "low"),
+    ("qwen", "qwen3-vl-flash", "low"),
+    # Moonshot / Kimi
+    ("moonshot", "kimi-k3", "low"),
+    ("moonshot", "kimi-k2.6", "low"),
+    ("moonshot", "kimi-k2.7-code", "low"),
+    ("moonshot", "kimi-k2.5", "low"),
+    # DeepSeek (text-only)
+    ("deepseek", "deepseek-v4-pro", "low"),
+    ("deepseek", "deepseek-v4-flash", "low"),
+    # MiniMax
+    ("minimax", "MiniMax-M3", "low"),
+    ("minimax", "MiniMax-M2.7", "low"),
+    # Z.AI
     ("zai", "glm-5.2", "low"),
+    ("zai", "glm-5.1", "low"),
+    ("zai", "glm-5-turbo", "low"),
+    ("zai", "glm-4.5-air", "low"),
+    ("zai", "glm-4.6v", "low"),
+    # xAI / Meta / Tinker
     ("xai", "grok-4.5", "low"),
+    ("meta", "muse-spark-1.1", "minimal"),
+    ("tinker", "inkling", "low"),
 ]
 
 # Monthly cost projection tiers

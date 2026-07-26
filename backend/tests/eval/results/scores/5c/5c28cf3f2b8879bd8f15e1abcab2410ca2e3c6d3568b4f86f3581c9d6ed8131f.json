@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/account_statement_07",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "2198d242aaa7bc4f32740610bbf6aabedeb07ce12226a807bbb0edb63e0b3694",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "5c28cf3f2b8879bd8f15e1abcab2410ca2e3c6d3568b4f86f3581c9d6ed8131f",
+  "stored_at": "2026-07-26T00:23:21.356599+00:00"
+}

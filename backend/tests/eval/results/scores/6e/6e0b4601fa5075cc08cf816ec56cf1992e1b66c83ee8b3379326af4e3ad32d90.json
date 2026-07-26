@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/order_receipt_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "e705eede7dc26cf42f6bdb0208bf2fb7fc942f58c2554ee914f94701ff380cb8",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "6e0b4601fa5075cc08cf816ec56cf1992e1b66c83ee8b3379326af4e3ad32d90",
+  "stored_at": "2026-07-23T06:23:03.718011+00:00"
+}

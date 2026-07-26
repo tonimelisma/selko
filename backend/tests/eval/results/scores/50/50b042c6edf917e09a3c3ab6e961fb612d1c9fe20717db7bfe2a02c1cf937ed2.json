@@ -1,0 +1,57 @@
+{
+  "fixture_name": "school/field_trip_04",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Field Trip - California Science Museum",
+        "start_datetime": "2026-03-12T08:30:00",
+        "end_datetime": "2026-03-12T15:00:00",
+        "location": "California Science Museum, 700 Museum Way, San Francisco, CA 94107",
+        "description": "4th grade field trip to science museum with guided tour and planetarium show",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "7fe372f079a30849702ba91b6d76fa50cad7beb0bfffbc5d0ce012c50522cc96",
+    "expected_output_hash": "5ee52a671c2103574c8204d939431a1db6d407ab80050b1cc32e4ccefb7fdab2",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "50b042c6edf917e09a3c3ab6e961fb612d1c9fe20717db7bfe2a02c1cf937ed2",
+  "stored_at": "2026-07-26T02:00:30.427801+00:00"
+}

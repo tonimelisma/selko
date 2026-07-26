@@ -1,0 +1,142 @@
+{
+  "fixture_name": "same_wedding_05",
+  "fixture_hash": "f8f539a57b2f649c77faeb3fde6e915cb040df9000404e5c105f8ae114f1c38e",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:23:11.234008+00:00",
+  "duration_ms": 1381,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:23:09.851575+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:23:09.851583+00:00",
+      "duration_ms": 8
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:23:09.860022+00:00",
+      "duration_ms": 1373
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:23:11.233396+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "social"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 361,
+    "completion_tokens": 51,
+    "total_tokens": 412
+  },
+  "cost": 0.003335,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1062,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-06-20T16:00:00\n- End: 2026-06-20T22:00:00\n- Location: Sunset Gardens, Napa Valley\n- Description: Thank you for RSVPing! Ceremony at 4pm, reception to follow. Cocktail attire.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Wedding - Sarah and Michael\n   - Start: 2026-06-20T16:00:00\n   - End: 2026-06-20T22:00:00\n   - Location: Sunset Gardens, Napa\n   - Description: You're invited to celebrate our special day!\n\n2. Event ID: event-002\n   - Title: Summer BBQ\n   - Start: 2026-06-21T12:00:00\n   - End: 2026-06-21T16:00:00\n   - Location: Central Park\n   - Description: Annual neighborhood BBQ\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Same wedding for Sarah and Michael, with identical start/end times and matching Sunset Gardens location (Napa vs. Napa Valley). The descriptions differ only in detail.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "8228e646552e44efad5f9e3b6b1603d4",
+    "route_role": "primary"
+  },
+  "inference_key": "3b82f548a659a374e9ea5d3abc67c89c541188ce69a9bab3240cd9882cd6f763",
+  "score_key": "be435d49cffa564c893850fa24344a25c4152b8240c1e0f2712164801f25a5f4",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "openai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-terra",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "186355b6f68457ee80bf932d5466b4e8678e74a8baa694e2b01035a685a05c67",
+    "fixture_input_hash": "f8f539a57b2f649c77faeb3fde6e915cb040df9000404e5c105f8ae114f1c38e"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/malformed_schema_echo_source_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "cc9e26d7e7343e060a10d98bcda1481f1ba46bd48e9518741f494fb65303f1d6",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "49b0790283600c21cf9a66f214aca46e7930922c2ce6c574b605a89ba21b3e4e",
+  "stored_at": "2026-07-23T06:18:09.116532+00:00"
+}

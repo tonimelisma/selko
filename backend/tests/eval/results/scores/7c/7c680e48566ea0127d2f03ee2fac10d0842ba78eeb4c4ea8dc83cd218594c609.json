@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_school_play_07",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "0f6a47c0de85aacce8edbe4248ca0f2528647b1217648c58bb7f2325ac630b91",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "7c680e48566ea0127d2f03ee2fac10d0842ba78eeb4c4ea8dc83cd218594c609",
+  "stored_at": "2026-07-26T00:37:03.278729+00:00"
+}

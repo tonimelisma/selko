@@ -1,0 +1,161 @@
+{
+  "fixture_name": "event_time_extended_03",
+  "operation": "merge",
+  "provider": "qwen",
+  "model": "qwen3.6-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-23T06:28:45.515727+00:00",
+  "duration_ms": 9773,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:28:35.740109+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:28:35.740137+00:00",
+      "duration_ms": 8
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:28:35.749096+00:00",
+      "duration_ms": 9765
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:28:45.514336+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 558,
+    "completion_tokens": 1271,
+    "total_tokens": 1829
+  },
+  "cost": 0.0005642,
+  "actual": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description": "Beginner-friendly Python workshop covering basics Extended session - now includes hands-on project time until 4:30pm",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1237,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Workshop: Intro to Python\n- Start: 2026-04-10T13:00:00\n- End: 2026-04-10T15:00:00\n- All Day: False\n- Location: Training Room 2\n- Description: Beginner-friendly Python workshop covering basics\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Workshop: Intro to Python\n- Start: 2026-04-10T13:00:00\n- End: 2026-04-10T16:30:00\n- All Day: False\n- Location: Training Room 2\n- Description: Extended session - now includes hands-on project time until 4:30pm\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"title\": \"Workshop: Intro to Python\",\n  \"start_datetime\": \"2026-04-10T13:00:00\",\n  \"end_datetime\": \"2026-04-10T16:30:00\",\n  \"all_day\": false,\n  \"location\": \"Training Room 2\",\n  \"description\": \"Beginner-friendly Python workshop covering basics Extended session - now includes hands-on project time until 4:30pm\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "dd3e6563946643c386116bce7e4c7983",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Event end time extended - same start time but longer duration",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "duration-change",
+    "time-update"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "b42fedf1ebd8e67f3a83e463151e79a707cf683449de6b17fdb562eb8d6c3210",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "qwen",
+    "model": "qwen3.6-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "qwen/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "qwen3.6-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "ca72602ea37eced027677b9a7d6155ce8b30c2f665c495dc52c83af8f5e9c935",
+    "fixture_input_hash": "b42fedf1ebd8e67f3a83e463151e79a707cf683449de6b17fdb562eb8d6c3210"
+  },
+  "inference_key": "2933c59c1b869a8a176bc21593e80d69b64a7af41e2680626af98e5df363451f",
+  "stored_at": "2026-07-23T06:28:45.543444+00:00"
+}

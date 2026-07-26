@@ -1,0 +1,120 @@
+{
+  "fixture_name": "different_events_same_day_09",
+  "fixture_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.5-air",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:56:50.171088+00:00",
+  "duration_ms": 14487,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:56:35.682638+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:56:35.682650+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:56:35.689077+00:00",
+      "duration_ms": 14481
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:56:50.170551+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 516,
+    "completion_tokens": 906,
+    "total_tokens": 1422
+  },
+  "cost": 0.0010092,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1188,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Max's 5th Birthday Party\n- Start: 2026-03-21T15:00:00\n- End: 2026-03-21T18:00:00\n- Location: Bounce House Adventure\n- Description: Celebrating Max turning 5! Bounce houses, pizza, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Daily Standup\n   - Start: 2026-03-21T09:00:00\n   - End: 2026-03-21T09:15:00\n   - Location: Office - Conference Room A\n   - Description: Team sync meeting\n\n2. Event ID: event-002\n   - Title: Lunch with Client\n   - Start: 2026-03-21T12:00:00\n   - End: 2026-03-21T13:30:00\n   - Location: The Blue Bistro\n   - Description: Quarterly business lunch\n\n3. Event ID: event-003\n   - Title: Gym Session\n   - Start: 2026-03-21T18:30:00\n   - End: 2026-03-21T19:30:00\n   - Location: 24 Hour Fitness\n   - Description: Evening workout\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event 'Max's 5th Birthday Party' does not match any existing events. All three existing events (Daily Standup, Lunch with Client, and Gym Session) have different titles, times, locations, and descriptions compared to the birthday party. The birthday party is scheduled for 15:00-18:00, while the existing events are at different times (09:00-09:15, 12:00-13:30, and 18:30-19:30) with completely different purposes and locations.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "3fa706612c5c4070ae5fe8fa66b2c5f8",
+    "route_role": "primary"
+  },
+  "inference_key": "5c83f7f5c44c9f8ae859481746b74d53cd0216a46979365aa6721162505086a5",
+  "score_key": "a5b70df3a5ca7dcfbd7ab8f983aee005e3e25b1e3804bf9efa0556117ad8b3df",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "zai",
+    "model": "glm-4.5-air",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.5-air",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603"
+  }
+}

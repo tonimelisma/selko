@@ -1,0 +1,32 @@
+{
+  "fixture_name": "meetings/meeting_with_agenda_attachment",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Quarterly Planning Meeting",
+        "start_datetime": "2026-03-10T09:00:00",
+        "end_datetime": "2026-03-10T12:00:00",
+        "location": "Main Conference Room, Building A",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": true,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "3cf8ae49feda34676133526ad4ebb728dd09211e5ed0b69d08a4f61fed11d8ac",
+    "expected_output_hash": "ff8f9a64a22100337f71bcb502cfb0f58055f75b29f09d5a0d12a2b22ee61efe",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "e806c29599374d5bd0cede3cc7bbf11d458c60fa208548382fa930bcdb9ecd40",
+  "stored_at": "2026-07-26T00:31:46.790908+00:00"
+}

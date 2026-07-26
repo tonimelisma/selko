@@ -1,0 +1,142 @@
+{
+  "fixture_name": "same_location_different_events_11",
+  "fixture_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "openai",
+  "model": "gpt-5.6-luna",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:22:18.960338+00:00",
+  "duration_ms": 1023,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:22:17.936071+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:22:17.936077+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:22:17.942514+00:00",
+      "duration_ms": 1017
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:22:18.959625+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same location but different events - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 416,
+    "completion_tokens": 53,
+    "total_tokens": 469
+  },
+  "cost": 0.00367,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1230,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Yoga Workshop - Advanced Flow\n- Start: 2026-05-18T10:00:00\n- End: 2026-05-18T12:00:00\n- Location: Zen Wellness Studio\n- Description: Two-hour intensive workshop on advanced vinyasa sequences\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Meditation Class\n   - Start: 2026-05-18T08:00:00\n   - End: 2026-05-18T09:00:00\n   - Location: Zen Wellness Studio\n   - Description: Morning meditation and breathing exercises\n\n2. Event ID: event-002\n   - Title: Pilates Session\n   - Start: 2026-05-18T14:00:00\n   - End: 2026-05-18T15:00:00\n   - Location: Zen Wellness Studio\n   - Description: Core strengthening pilates class\n\n3. Event ID: event-003\n   - Title: Coffee with Maria\n   - Start: 2026-05-18T16:00:00\n   - End: 2026-05-18T17:00:00\n   - Location: Starbucks Downtown\n   - Description: Catch up meeting\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"No existing event matches the new Yoga Workshop - Advanced Flow. The existing events are a meditation class, Pilates session, and coffee meeting, with different titles, descriptions, and times.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "bdb91cc375d64ac1a8d21c65032c7f9f",
+    "route_role": "primary"
+  },
+  "inference_key": "32125086ce57952f55ee2e37694f8466b341cb984e287ea3e62e218450cdac76",
+  "score_key": "8b3b681757d183f5ca6df763c46cfdda8eb691576d43cff4377a464a18268b46",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "openai",
+    "model": "gpt-5.6-luna",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "openai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-luna",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "186355b6f68457ee80bf932d5466b4e8678e74a8baa694e2b01035a685a05c67",
+    "fixture_input_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d"
+  }
+}

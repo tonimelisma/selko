@@ -1,0 +1,58 @@
+{
+  "fixture_name": "event_cancelled_06",
+  "operation": "merge",
+  "expected": {
+    "title": "CANCELLED: Sprint Review",
+    "start_datetime": "2026-04-18T14:00:00",
+    "end_datetime": "2026-04-18T15:00:00",
+    "all_day": false,
+    "location": "Conference Room A",
+    "description_contains": [
+      "cancelled",
+      "team offsite",
+      "reschedule next week"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "cancellation_prefix": true,
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "cancelled",
+        "team offsite",
+        "reschedule next week"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "55971f2dfa1c2dd436459daed6cc9fd78801adf66437737d0b224af6e0e6fe06",
+    "expected_output_hash": "c2f5dea87ca185ebda7d6fd06d371948f62214f8c614dad68c1b38344b56b08e",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "d4de5c7b653a67bb67e9f5c5849c9ba985a7f472d5ace23b04b787839b705711",
+  "stored_at": "2026-07-23T06:21:33.467895+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_parent_teacher_08",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "15161890802d6d2055ba8c4a42a25c81a3f71ee83ff53810528148b8eaf3ebec",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "2bdf2eaf7795706afcb0e8d95299f139c14837782f86830b103e0c2e8c2a961f",
+  "stored_at": "2026-07-23T06:17:25.145964+00:00"
+}

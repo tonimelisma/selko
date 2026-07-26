@@ -1,0 +1,61 @@
+{
+  "fixture_name": "travel_itinerary_update_15",
+  "operation": "merge",
+  "expected": {
+    "title": "Flight to Seattle - UA 1847",
+    "start_datetime": "2026-06-08T07:30:00",
+    "end_datetime": "2026-06-08T10:15:00",
+    "all_day": false,
+    "location": "SFO Terminal 3, Gate 75 \u2192 SEA",
+    "description_contains": [
+      "United Airlines",
+      "seat 12A",
+      "boarding starts",
+      "TSA PreCheck",
+      "mobile boarding pass"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "United Airlines",
+        "seat 12A",
+        "boarding starts",
+        "TSA PreCheck",
+        "mobile boarding pass"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "9efac2f8a2c1f3e74aa6df7a9a84411f3eb9d7a280f5245bc3c1e680105bd767",
+    "expected_output_hash": "c9c19113df43c45b823e0352cd72568c7c42a6d85f0aca4834903f87f41e38b2",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "75a7c897f15b00b2df134d30766d0bb391c9bce3b6bcd6de52b36aa0a276aa0f",
+  "stored_at": "2026-07-26T01:00:21.774588+00:00"
+}

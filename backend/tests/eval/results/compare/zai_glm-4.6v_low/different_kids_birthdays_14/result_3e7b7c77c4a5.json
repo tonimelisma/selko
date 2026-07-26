@@ -1,0 +1,120 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "fixture_hash": "d70cb423f79a8aeb6d2b81acbf6cabd8121f2a0f7a7fbcca8839094e162baff2",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.6v",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:08:39.324074+00:00",
+  "duration_ms": 15533,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:08:23.788748+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:08:23.788768+00:00",
+      "duration_ms": 10
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:08:23.798808+00:00",
+      "duration_ms": 15523
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:08:39.322678+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 529,
+    "completion_tokens": 767,
+    "total_tokens": 1296
+  },
+  "cost": 0.00182495,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1257,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sophie's 6th Birthday Party\n- Start: 2026-08-15T13:00:00\n- End: 2026-08-15T16:00:00\n- Location: Rainbow Play Center\n- Description: Join us for Sophie's princess-themed birthday bash! Arts and crafts, games, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Lucas's 8th Birthday Celebration\n   - Start: 2026-08-22T14:00:00\n   - End: 2026-08-22T17:00:00\n   - Location: Laser Tag Arena\n   - Description: Laser tag party for Lucas turning 8!\n\n2. Event ID: event-002\n   - Title: Swimming Lesson\n   - Start: 2026-08-15T10:00:00\n   - End: 2026-08-15T11:00:00\n   - Location: Community Pool\n   - Description: Level 3 swimming class\n\n3. Event ID: event-003\n   - Title: Book Club\n   - Start: 2026-08-15T19:00:00\n   - End: 2026-08-15T21:00:00\n   - Location: Barnes & Noble Cafe\n   - Description: Discussing 'The Midnight Library'\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event is Sophie's 6th Birthday Party on August 15, 2026, from 13:00-16:00 at Rainbow Play Center. None of the existing events match this event. Event-001 is Lucas's birthday on a different date, Event-002 is a swimming lesson at a different time and location, and Event-003 is a book club at a different time and location. There are no matching events with the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "3b3780510cb54500bb485c2cc17b791e",
+    "route_role": "primary"
+  },
+  "inference_key": "54d9f8efbdec9e4d0ce6597b06f556effb2b13d1d2ddd1612b3ab38ccd290122",
+  "score_key": "ba6a9b6c0573ce7326e43d42b17b9d13d94838b5db2bf0f33a0142b654b06c4e",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "zai",
+    "model": "glm-4.6v",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.6v",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "d70cb423f79a8aeb6d2b81acbf6cabd8121f2a0f7a7fbcca8839094e162baff2"
+  }
+}

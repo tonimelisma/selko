@@ -1,0 +1,59 @@
+{
+  "fixture_name": "inperson_to_virtual_05",
+  "operation": "merge",
+  "expected": {
+    "title": "Client Presentation (Virtual)",
+    "start_datetime": "2026-03-25T10:00:00",
+    "end_datetime": "2026-03-25T11:30:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/123456789",
+    "description_contains": [
+      "Q1 results",
+      "ABC Corp",
+      "moved to Zoom",
+      "virtual format"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "Q1 results",
+        "ABC Corp",
+        "moved to Zoom",
+        "virtual format"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "4b06d531f228af0e26e50466e91ddfc267b4b67f0af11f9afa97a759a5f0af1d",
+    "expected_output_hash": "ea57c46e4cec798ec9c8d30d7dcae5902a4a43b91fe852e3e7483e114ecc1c4a",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "9ff5b7499b021f872f3f47ae8de153b5fbfac89f2d1ddbc49952c00a59255be4",
+  "stored_at": "2026-07-26T00:57:50.274425+00:00"
+}

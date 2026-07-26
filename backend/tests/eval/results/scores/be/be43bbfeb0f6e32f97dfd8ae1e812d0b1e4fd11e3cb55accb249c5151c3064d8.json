@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/post_visit_survey_17",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "cb1788dd0ae6a56dd96ac46d9ae6889b6defcd0d6ca73b7c16beb80d67889548",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "be43bbfeb0f6e32f97dfd8ae1e812d0b1e4fd11e3cb55accb249c5151c3064d8",
+  "stored_at": "2026-07-26T01:23:47.997101+00:00"
+}

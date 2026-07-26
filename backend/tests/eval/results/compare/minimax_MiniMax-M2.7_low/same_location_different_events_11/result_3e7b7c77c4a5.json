@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_location_different_events_11",
+  "fixture_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "minimax",
+  "model": "MiniMax-M2.7",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:03:59.206925+00:00",
+  "duration_ms": 7559,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:03:51.645132+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:03:51.645139+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:03:51.651994+00:00",
+      "duration_ms": 7553
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:03:59.205447+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same location but different events - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 481,
+    "completion_tokens": 382,
+    "total_tokens": 863
+  },
+  "cost": 0.0006027,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1230,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Yoga Workshop - Advanced Flow\n- Start: 2026-05-18T10:00:00\n- End: 2026-05-18T12:00:00\n- Location: Zen Wellness Studio\n- Description: Two-hour intensive workshop on advanced vinyasa sequences\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Meditation Class\n   - Start: 2026-05-18T08:00:00\n   - End: 2026-05-18T09:00:00\n   - Location: Zen Wellness Studio\n   - Description: Morning meditation and breathing exercises\n\n2. Event ID: event-002\n   - Title: Pilates Session\n   - Start: 2026-05-18T14:00:00\n   - End: 2026-05-18T15:00:00\n   - Location: Zen Wellness Studio\n   - Description: Core strengthening pilates class\n\n3. Event ID: event-003\n   - Title: Coffee with Maria\n   - Start: 2026-05-18T16:00:00\n   - End: 2026-05-18T17:00:00\n   - Location: Starbucks Downtown\n   - Description: Catch up meeting\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event 'Yoga Workshop - Advanced Flow' (10:00-12:00) does not match any existing events. Event 1 (Meditation Class) is a different activity at a different time. Event 2 (Pilates Session) is a different activity at a different time. Event 3 (Coffee with Maria) is a different activity, time, and location. There are no similarities in title, timing, or description to suggest any of these are the same real-world event.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "98067aa16e0d471d8989e3c967392934",
+    "route_role": "primary"
+  },
+  "inference_key": "991bd01ed78a139902c2b69ebfbcfdd7c78496cf18427697136421915d565e40",
+  "score_key": "5d39c3d28686004befd6e5a2d17108d8af61c8b8f95371e9135eb3020332e057",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "minimax/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "MiniMax-M2.7",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "2a5cd8b1778ab652436bc3114740637e89e127114021db05e3fa5eb33b49e8c0",
+    "fixture_input_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d"
+  }
+}

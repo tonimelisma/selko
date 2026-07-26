@@ -1,0 +1,84 @@
+{
+  "fixture_name": "school/pdf_calendar_personal_fwd_04",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 10,
+    "events": [
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Wear Anything Sparkle Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Selfie Day",
+        "start_datetime": "2026-01-05",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Resolutions Day",
+        "start_datetime": "2026-01-07",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-09",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Happy Birthday to Ms Ashley",
+        "start_datetime": "2026-01-13",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Let's Make a Snowflake Day",
+        "start_datetime": "2026-01-15",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "KinderCare Closed - Martin Luther King Day",
+        "start_datetime": "2026-01-19",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-23",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Dress Like a Rainbow Day",
+        "start_datetime": "2026-01-28",
+        "all_day": true,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "19591e3c597027d3a292aef302ed0f27d00afb4d819d410723ee02b12d0acd9c",
+    "expected_output_hash": "adeb6dcaf8073453ee225d54a5197beefe2ef50d77a7fead39508f871da6a603",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "a0a1aec78423da0d3b56e83f71dd572c296c646118565d634bd74e2e860301f8",
+  "stored_at": "2026-07-26T01:02:14.275155+00:00"
+}

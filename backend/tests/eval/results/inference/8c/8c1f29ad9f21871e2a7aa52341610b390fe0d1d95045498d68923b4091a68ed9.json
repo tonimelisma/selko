@@ -1,0 +1,217 @@
+{
+  "fixture_name": "cancelled_and_rescheduled_07",
+  "operation": "merge",
+  "provider": "anthropic",
+  "model": "claude-sonnet-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-23T06:24:27.464053+00:00",
+  "duration_ms": 2142,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:24:25.320046+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:24:25.320059+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:24:25.327653+00:00",
+      "duration_ms": 2135
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:24:27.463265+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 797,
+    "completion_tokens": 185,
+    "total_tokens": 982
+  },
+  "cost": 0.003444,
+  "actual": {
+    "title": "CANCELLED: Webinar: Cloud Security Best Practices",
+    "start_datetime": "2026-06-17T15:00:00",
+    "end_datetime": "2026-06-17T16:00:00",
+    "all_day": false,
+    "location": "https://webinar.example.com/cloudsec-new",
+    "description": "Learn about latest cloud security practices and tools June 10 session cancelled. Rescheduled to June 17 with new guest speaker from AWS.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1335,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Webinar: Cloud Security Best Practices\n- Start: 2026-06-10T15:00:00\n- End: 2026-06-10T16:00:00\n- All Day: False\n- Location: https://webinar.example.com/cloudsec\n- Description: Learn about latest cloud security practices and tools\n- Importance: action_required\n\n**New Information (source type: cancellation):**\n- Title: Webinar: Cloud Security Best Practices\n- Start: 2026-06-17T15:00:00\n- End: 2026-06-17T16:00:00\n- All Day: False\n- Location: https://webinar.example.com/cloudsec-new\n- Description: June 10 session cancelled. Rescheduled to June 17 with new guest speaker from AWS.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n    \"title\": \"CANCELLED: Webinar: Cloud Security Best Practices\",\n    \"start_datetime\": \"2026-06-17T15:00:00\",\n    \"end_datetime\": \"2026-06-17T16:00:00\",\n    \"all_day\": false,\n    \"location\": \"https://webinar.example.com/cloudsec-new\",\n    \"description\": \"Learn about latest cloud security practices and tools June 10 session cancelled. Rescheduled to June 17 with new guest speaker from AWS.\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "75c27466272a4cae8748f9a6117434b7",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Event cancelled and rescheduled to new date - complex cancellation with new time",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "cancellation",
+    "reschedule"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "6d11f486f16660bd9089953c4fbe529f2e23977e4966b6ea4b48b5928915307e",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-sonnet-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "9509ea1b891a9b481d3cbb41e40d9a16932e349762b3bf4cb2872e2580422e3b",
+    "fixture_input_hash": "6d11f486f16660bd9089953c4fbe529f2e23977e4966b6ea4b48b5928915307e"
+  },
+  "inference_key": "8c1f29ad9f21871e2a7aa52341610b390fe0d1d95045498d68923b4091a68ed9",
+  "stored_at": "2026-07-23T06:24:27.484873+00:00"
+}

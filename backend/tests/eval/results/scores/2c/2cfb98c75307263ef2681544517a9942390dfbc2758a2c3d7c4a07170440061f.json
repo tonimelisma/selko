@@ -1,0 +1,57 @@
+{
+  "fixture_name": "conferences/virtual_summit_05",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "PM Summit 2026",
+        "start_datetime": "2026-04-07T09:00:00",
+        "end_datetime": "2026-04-08T16:30:00",
+        "location": "Virtual (Hopin)",
+        "description": "Product Management Virtual Summit - 2-day event with keynotes, track sessions, and workshops",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "1d76b63fa2998ffad3a66627eeac0bda7abb4b5565a08dda19a28612f9220cd0",
+    "expected_output_hash": "6514a0372af818e27b335c18e9946ea9dcf34f5e8af06938c70ba24c2c4e9ed1",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "2cfb98c75307263ef2681544517a9942390dfbc2758a2c3d7c4a07170440061f",
+  "stored_at": "2026-07-23T06:23:50.094673+00:00"
+}

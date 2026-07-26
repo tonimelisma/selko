@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/password_reset_06",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "ee52a4ba705f0ae17b58561c1dfef9e73308d05a290dc3778b6a0b58a447723b",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "9cc1e212d0633d4a66d64673e7680d5a72a80716bd1c03eded9b9ba7ce59dbb9",
+  "stored_at": "2026-07-26T00:29:26.833612+00:00"
+}

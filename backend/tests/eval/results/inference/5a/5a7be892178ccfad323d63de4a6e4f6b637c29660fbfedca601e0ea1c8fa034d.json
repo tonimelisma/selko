@@ -1,0 +1,135 @@
+{
+  "fixture_name": "same_doctor_appointment_02",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "minimal"
+  },
+  "run_at": "2026-07-26T00:23:28.376830+00:00",
+  "duration_ms": 1044,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:23:27.331407+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:23:27.331415+00:00",
+      "duration_ms": 12
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:23:27.344268+00:00",
+      "duration_ms": 1032
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:23:28.376323+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 366,
+    "completion_tokens": 76,
+    "total_tokens": 442
+  },
+  "cost": 0.000411,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dr. Smith - Annual Physical\n- Start: 2026-04-22T10:30:00\n- End: 2026-04-22T11:30:00\n- Location: Riverside Medical Center, Suite 200\n- Description: Appointment confirmation for annual physical exam. Please arrive 15 minutes early to complete paperwork.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Annual Physical Exam\n   - Start: 2026-04-22T10:30:00\n   - End: 2026-04-22T11:30:00\n   - Location: Riverside Medical Center\n   - Description: Dr. Smith - yearly checkup\n\n2. Event ID: event-002\n   - Title: Grocery Shopping\n   - Start: 2026-04-22T14:00:00\n   - End: 2026-04-22T15:00:00\n   - Location: Whole Foods\n   - Description: Weekly shopping\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"The new event and event-001 occur on the same day and at the exact same time (10:30 - 11:30). Both refer to an annual physical exam with Dr. Smith at Riverside Medical Center, making them the same real-world event.\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "7ef36a305f194178bcb4099488571805",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same doctor appointment with different description details - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "medical"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "minimal"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "minimal"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "e88e9a93c73fbdb09f8a21065a7ce67dd005dde1bcd9062d10ec15617ba19875",
+    "fixture_input_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c"
+  },
+  "inference_key": "5a7be892178ccfad323d63de4a6e4f6b637c29660fbfedca601e0ea1c8fa034d",
+  "stored_at": "2026-07-26T00:23:28.398185+00:00"
+}

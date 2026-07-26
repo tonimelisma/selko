@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:55:53.780645+00:00",
+  "duration_ms": 6114,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:55:47.665256+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:55:47.665262+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:55:47.671542+00:00",
+      "duration_ms": 6108
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:55:53.779603+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 466,
+    "completion_tokens": 408,
+    "total_tokens": 874
+  },
+  "cost": 0.00056874,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1190,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Q2 Planning Session\n- Start: 2026-03-30T13:00:00\n- End: 2026-03-30T15:00:00\n- Location: Conference Room B\n- Description: Quarterly planning for engineering team. Bring your roadmap ideas.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Coffee Chat with Sarah\n   - Start: 2026-03-30T10:00:00\n   - End: 2026-03-30T10:30:00\n   - Location: Starbucks\n   - Description: Catch up\n\n2. Event ID: event-002\n   - Title: Engineering Q2 Planning\n   - Start: 2026-03-30T13:00:00\n   - End: 2026-03-30T15:00:00\n   - Location: \n   - Description: Planning session for second quarter. All team members required.\n\n3. Event ID: event-003\n   - Title: Yoga Class\n   - Start: 2026-03-30T18:00:00\n   - End: 2026-03-30T19:00:00\n   - Location: Zen Studio\n   - Description: Evening yoga\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event and event-002 share the same exact time (2026-03-30 13:00-15:00) and refer to an engineering Q2 planning meeting. Titles (Q2 Planning Session vs Engineering Q2 Planning) and descriptions (quarterly planning for engineering team) are semantically identical, differing only in minor phrasing and added location detail, indicating the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "0355c3b5935641508e165d82e26fdab0",
+    "route_role": "primary"
+  },
+  "inference_key": "0ebaaef4113eb68d69591388267812ad015d462d5b9c26098e9d3bcee091ed1d",
+  "score_key": "05c23a0439e642a4fb82bfa750de93e39f2c448b3676d641beb1623e62bc707c",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "deepseek/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-pro",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "fe5b82ab7fd368ada6fca9fc852e7060a5fa15093523a930ba9478c61caf97d7",
+    "fixture_input_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3"
+  }
+}
