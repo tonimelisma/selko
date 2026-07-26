@@ -215,13 +215,19 @@ class TestOAuthIntegrationsStaging:
 
     def test_read_existing_credentials_staging(
         self,
-        authenticated_client,
+        admin_client,
+        test_user_id,
         config,
     ):
         """Can retrieve existing credentials from staging DB."""
         # Do NOT use cleanup_integrations - we're reading, not creating
         # This test expects real Gmail OAuth tokens from cli_auth_gmail
-        creds = get_oauth_credentials(authenticated_client, config, "gmail")
+        creds = get_oauth_credentials(
+            admin_client,
+            config,
+            "gmail",
+            user_id=test_user_id,
+        )
         
         if creds is None:
             pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")

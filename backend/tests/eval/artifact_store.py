@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import tempfile
 import threading
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -77,6 +80,10 @@ class ArtifactStore:
     def legacy_root(self) -> Path:
         return self.root / LEGACY_DIRNAME
 
+    @property
+    def locks_root(self) -> Path:
+        return self.root / ".locks"
+
     def inference_path(self, inference_key: str) -> Path:
         return self.inference_root / _key_subdir(inference_key) / f"{inference_key}.json"
 
@@ -103,6 +110,25 @@ class ArtifactStore:
         if not path.is_file():
             return None
         return json.loads(path.read_text())
+
+    @contextmanager
+    def inference_lease(self, inference_key: str) -> Iterator[None]:
+        """Serialize a canonical inference across threads and processes.
+
+        The caller must acquire this lease before checking the cache and keep it
+        through the provider call and canonical commit. Persistent empty lock
+        files are intentional; deleting them can split concurrent waiters
+        across different inodes.
+        """
+        path = self.locks_root / "inference" / f"{inference_key}.lock"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        thread_lock = _get_lock(f"inference-lease:{inference_key}")
+        with thread_lock, path.open("a+", encoding="utf-8") as lock_file:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
     def write_inference(
         self,
@@ -145,7 +171,11 @@ class ArtifactStore:
                 "inference_key": key,
                 "stored_at": _utc_now(),
             }
-            return self._atomic_write(path, payload)
+            try:
+                return self._atomic_write_exclusive(path, payload)
+            except FileExistsError:
+                # Another process won the immutable canonical commit.
+                return path
 
     def write_score(
         self,
@@ -196,6 +226,27 @@ class ArtifactStore:
             except OSError:
                 pass
             raise
+        return path
+
+    def _atomic_write_exclusive(self, path: Path, payload: dict[str, Any]) -> Path:
+        """Atomically publish a new immutable path without replacing a winner."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f".{path.stem}.",
+            suffix=".tmp",
+            dir=str(path.parent),
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+                json.dump(payload, tmp, indent=2, default=str)
+                tmp.flush()
+                os.fsync(tmp.fileno())
+            os.link(tmp_name, path)
+        finally:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
         return path
 
 

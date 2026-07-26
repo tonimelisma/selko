@@ -12,7 +12,12 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 from selko.config import add_logging_arguments, load_config
 from selko.logging import setup_logging
-from selko.services.auth import AuthenticationError, get_authenticated_client, get_current_user_id
+from selko.services.auth import (
+    AuthenticationError,
+    get_authenticated_client,
+    get_current_user_id,
+    get_service_client,
+)
 from selko.services.integrations import CALENDAR_SCOPES, IntegrationError, save_oauth_credentials
 
 logger = logging.getLogger(__name__)
@@ -115,9 +120,16 @@ Note:
     # so we don't store provider_email
     try:
         user_id = get_current_user_id(client)
-        save_oauth_credentials(client, user_id, "google_calendar", creds, None)
+        service_client = get_service_client(config)
+        save_oauth_credentials(
+            service_client,
+            user_id,
+            "google_calendar",
+            creds,
+            None,
+        )
         logger.info("Google Calendar integration saved successfully!")
-    except IntegrationError as e:
+    except (AuthenticationError, IntegrationError) as e:
         logger.error(f"Error saving integration: {e}")
         sys.exit(1)
 

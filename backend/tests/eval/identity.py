@@ -288,6 +288,10 @@ def compute_scorer_hash(operation: OperationName | str) -> str:
         objs = [run_eval.score_compare_result]
     elif operation == "merge":
         objs = [run_eval.score_merge_result]
+        for helper_name in ("string_similarity", "time_difference_minutes"):
+            helper = getattr(run_eval, helper_name, None)
+            if helper is not None:
+                objs.append(helper)
     else:
         raise ValueError(f"Unknown operation for scorer hash: {operation}")
 

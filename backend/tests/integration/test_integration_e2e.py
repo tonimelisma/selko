@@ -198,10 +198,12 @@ class TestEndToEndStaging:
     - OAuth tokens stored in staging database
     """
 
-    def test_full_email_sync_pipeline(self, authenticated_client, config):
+    def test_full_email_sync_pipeline(
+        self, authenticated_client, admin_client, test_user_id, config
+    ):
         """Complete pipeline: auth → fetch Gmail → store in DB."""
         # Get Gmail credentials
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
             pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
@@ -232,9 +234,11 @@ class TestEndToEndStaging:
             fetched_ids = {m["id"] for m in messages}
             assert fetched_ids.issubset(stored_ids)
 
-    def test_existing_user_fetch_new_emails(self, authenticated_client, config):
+    def test_existing_user_fetch_new_emails(
+        self, admin_client, test_user_id, config
+    ):
         """Existing user can sign in and fetch new emails."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
             pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
 
