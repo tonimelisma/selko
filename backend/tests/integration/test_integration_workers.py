@@ -491,7 +491,7 @@ class TestEmailProcessWorker:
 
     @pytest.mark.asyncio
     async def test_processes_email_for_events(
-        self, service_client, authenticated_client, test_user_id, config, mock_gemini_client
+        self, service_client, authenticated_client, test_user_id, config, mock_llm_gateway
     ):
         """Test that email_process worker extracts events from email."""
         from selko.workers.email_process import process_email
@@ -514,7 +514,7 @@ class TestEmailProcessWorker:
 
         # Process with mocked LLM Gateway
         with patch("selko.workers.email_process.LLMGateway") as mock_gateway_class:
-            mock_gateway_class.return_value = mock_gemini_client
+            mock_gateway_class.return_value = mock_llm_gateway
 
             await process_email(service_client, config, email)
 

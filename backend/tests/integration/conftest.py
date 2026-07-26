@@ -317,36 +317,46 @@ def sample_attachment_data():
     return b"This is sample attachment content for testing purposes."
 
 
+# Config attr → env var name for clear --run-llm failure messages
+_API_KEY_ENV_NAMES = {
+    "gemini_api_key": "GEMINI_API_KEY",
+    "alibaba_api_key": "ALIBABA_API_KEY",
+    "anthropic_api_key": "ANTHROPIC_API_KEY",
+    "openai_api_key": "OPENAI_API_KEY",
+    "moonshot_api_key": "MOONSHOT_API_KEY",
+    "zai_api_key": "ZAI_API_KEY",
+    "deepseek_api_key": "DEEPSEEK_API_KEY",
+    "minimax_api_key": "MINIMAX_API_KEY",
+    "xai_api_key": "XAI_API_KEY",
+    "meta_api_key": "META_API_KEY",
+    "tinker_api_key": "TINKER_API_KEY",
+}
+
+
 @pytest.fixture
-def gemini_client(config):
-    """Get LLM Gateway for real API calls.
+def llm_gateway(config):
+    """Real LLMGateway for tests marked @pytest.mark.llm (requires --run-llm).
 
-    Requires GEMINI_API_KEY in environment.
-    This fixture is for tests marked with @pytest.mark.llm.
-
-    Note: This now returns an LLMGateway (not a raw client) since the
-    codebase uses LLMGateway for all LLM operations.
+    Uses config.llm_provider / llm_model and the matching provider API key.
     """
     from selko.services.llm_gateway import LLMGateway
-    from selko.services.llm_provider import create_provider
+    from selko.services.llm_provider import PROVIDER_API_KEY_MAP, create_provider
 
-    if not config.gemini_api_key:
+    provider_name = getattr(config, "llm_provider", None) or "gemini"
+    api_key_attr = PROVIDER_API_KEY_MAP.get(provider_name)
+    if not api_key_attr or not getattr(config, api_key_attr, None):
+        env_name = _API_KEY_ENV_NAMES.get(api_key_attr or "", "LLM provider API key")
         pytest.fail(
-            "GEMINI_API_KEY not configured. "
-            "Get your API key from https://aistudio.google.com/apikey"
+            f"{env_name} not configured for provider '{provider_name}'. "
+            "Set the matching key in your environment before using --run-llm."
         )
     provider = create_provider(config)
     return LLMGateway(provider)
 
 
 @pytest.fixture
-def mock_gemini_client():
-    """Get mocked LLM Gateway for integration tests without API costs.
-
-    This fixture provides a mock gateway that returns realistic responses
-    without making actual LLM API calls. Use for integration tests that
-    test service orchestration without LLM costs.
-    """
+def mock_llm_gateway():
+    """Mocked LLM Gateway for integration tests without API costs."""
     from unittest.mock import MagicMock
     from selko.api.schemas.calendar import (
         CalendarEvent,
@@ -357,8 +367,8 @@ def mock_gemini_client():
     from datetime import datetime
 
     mock_provider = MagicMock(spec=LLMProvider)
-    mock_provider.provider_name = "gemini"
-    mock_provider.model = "gemini-3-flash-preview"
+    mock_provider.provider_name = "mock"
+    mock_provider.model = "mock-llm"
     mock_provider.supports_vision = True
     mock_provider.supports_json_schema = True
 
@@ -406,7 +416,7 @@ def mock_gemini_client():
 
 
 @pytest.fixture
-def mock_gemini_no_events():
+def mock_llm_no_events():
     """Mock LLM Gateway that returns no events found."""
     from unittest.mock import MagicMock
     from selko.api.schemas.calendar import EventExtractionResponse
@@ -414,8 +424,8 @@ def mock_gemini_no_events():
     from selko.services.llm_provider import LLMProvider, LLMResponse
 
     mock_provider = MagicMock(spec=LLMProvider)
-    mock_provider.provider_name = "gemini"
-    mock_provider.model = "gemini-3-flash-preview"
+    mock_provider.provider_name = "mock"
+    mock_provider.model = "mock-llm"
     mock_provider.supports_vision = True
     mock_provider.supports_json_schema = True
 
