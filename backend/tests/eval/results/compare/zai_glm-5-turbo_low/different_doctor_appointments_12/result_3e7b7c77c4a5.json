@@ -1,0 +1,120 @@
+{
+  "fixture_name": "different_doctor_appointments_12",
+  "fixture_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-5-turbo",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:24:03.133880+00:00",
+  "duration_ms": 11461,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:23:51.670967+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:23:51.670975+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:23:51.677613+00:00",
+      "duration_ms": 11455
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:24:03.133106+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different doctor appointments in same week - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 513,
+    "completion_tokens": 558,
+    "total_tokens": 1071
+  },
+  "cost": 0.0018054000000000002,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1184,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dermatology Appointment\n- Start: 2026-06-04T14:00:00\n- End: 2026-06-04T14:30:00\n- Location: Skin Health Clinic, Suite 301\n- Description: Annual skin check with Dr. Patel\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Dentist - Dr. Lee\n   - Start: 2026-06-02T09:00:00\n   - End: 2026-06-02T10:00:00\n   - Location: Bright Smiles Dental\n   - Description: 6-month cleaning and checkup\n\n2. Event ID: event-002\n   - Title: Eye Exam\n   - Start: 2026-06-05T11:00:00\n   - End: 2026-06-05T12:00:00\n   - Location: Vision Care Center\n   - Description: Annual eye examination with Dr. Wong\n\n3. Event ID: event-003\n   - Title: Team Lunch\n   - Start: 2026-06-04T12:00:00\n   - End: 2026-06-04T13:00:00\n   - Location: Italian Garden\n   - Description: Monthly team lunch\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event is a dermatology appointment on June 4th. None of the existing events match this; they are a dentist appointment on June 2nd, an eye exam on June 5th, and a team lunch on June 4th.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "4d7a752b04ce4cca94d56780de306517",
+    "route_role": "primary"
+  },
+  "inference_key": "e3add79c7d6c8d72b242bfdc54512042ef33269cf2ee59d074bf63d64fe578b0",
+  "score_key": "c47eb69203b5774017f9bcafb6795647287db33feb21cfa32db65c4a34593f68",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "zai",
+    "model": "glm-5-turbo",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-5-turbo",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3"
+  }
+}

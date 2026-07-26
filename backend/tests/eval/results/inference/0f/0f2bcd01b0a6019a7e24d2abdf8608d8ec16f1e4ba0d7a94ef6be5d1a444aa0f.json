@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_wedding_05",
+  "operation": "compare",
+  "provider": "moonshot",
+  "model": "kimi-k3",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:40:15.612755+00:00",
+  "duration_ms": 6004,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:40:09.606087+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:40:09.606095+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:40:09.612819+00:00",
+      "duration_ms": 5998
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:40:15.611469+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 517,
+    "completion_tokens": 137,
+    "total_tokens": 654
+  },
+  "cost": 0.003606,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1062,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-06-20T16:00:00\n- End: 2026-06-20T22:00:00\n- Location: Sunset Gardens, Napa Valley\n- Description: Thank you for RSVPing! Ceremony at 4pm, reception to follow. Cocktail attire.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Wedding - Sarah and Michael\n   - Start: 2026-06-20T16:00:00\n   - End: 2026-06-20T22:00:00\n   - Location: Sunset Gardens, Napa\n   - Description: You're invited to celebrate our special day!\n\n2. Event ID: event-002\n   - Title: Summer BBQ\n   - Start: 2026-06-21T12:00:00\n   - End: 2026-06-21T16:00:00\n   - Location: Central Park\n   - Description: Annual neighborhood BBQ\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 both refer to Sarah and Michael's wedding on 2026-06-20 from 16:00 to 22:00 at Sunset Gardens in Napa (Valley). Title wording and description details differ slightly, but they clearly describe the same real-world event. Event-002 is a different event (BBQ) on a different date.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "198b45186ef94253af26f880eabedd64",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "social"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "f8f539a57b2f649c77faeb3fde6e915cb040df9000404e5c105f8ae114f1c38e",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "moonshot",
+    "model": "kimi-k3",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k3",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "e85cb07a92e42c6b2cbbc2a1845c6220b2bcd6df0dd63df23a3fe60288065f85",
+    "fixture_input_hash": "f8f539a57b2f649c77faeb3fde6e915cb040df9000404e5c105f8ae114f1c38e"
+  },
+  "inference_key": "0f2bcd01b0a6019a7e24d2abdf8608d8ec16f1e4ba0d7a94ef6be5d1a444aa0f",
+  "stored_at": "2026-07-26T00:40:15.651038+00:00"
+}

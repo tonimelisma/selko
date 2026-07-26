@@ -1,0 +1,199 @@
+{
+  "fixture_name": "event_time_extended_03",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3.6-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "minimal"
+  },
+  "run_at": "2026-07-23T06:21:33.872179+00:00",
+  "duration_ms": 1319,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:21:32.551410+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:21:32.551422+00:00",
+      "duration_ms": 11
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:21:32.562580+00:00",
+      "duration_ms": 1308
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:21:33.871504+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 402,
+    "completion_tokens": 106,
+    "total_tokens": 508
+  },
+  "cost": 0.001398,
+  "actual": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description": "Beginner-friendly Python workshop covering basics\nExtended session - now includes hands-on project time until 4:30pm",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1237,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Workshop: Intro to Python\n- Start: 2026-04-10T13:00:00\n- End: 2026-04-10T15:00:00\n- All Day: False\n- Location: Training Room 2\n- Description: Beginner-friendly Python workshop covering basics\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Workshop: Intro to Python\n- Start: 2026-04-10T13:00:00\n- End: 2026-04-10T16:30:00\n- All Day: False\n- Location: Training Room 2\n- Description: Extended session - now includes hands-on project time until 4:30pm\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\"title\":\"Workshop: Intro to Python\",\"start_datetime\":\"2026-04-10T13:00:00\",\"end_datetime\":\"2026-04-10T16:30:00\",\"all_day\":false,\"location\":\"Training Room 2\",\"description\":\"Beginner-friendly Python workshop covering basics\\nExtended session - now includes hands-on project time until 4:30pm\",\"importance\":\"action_required\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "38bd9f1acac64415b5025f04b4a3d8f4",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Event end time extended - same start time but longer duration",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "duration-change",
+    "time-update"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "b42fedf1ebd8e67f3a83e463151e79a707cf683449de6b17fdb562eb8d6c3210",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "gemini",
+    "model": "gemini-3.6-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "minimal"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.6-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "minimal"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "e88e9a93c73fbdb09f8a21065a7ce67dd005dde1bcd9062d10ec15617ba19875",
+    "fixture_input_hash": "b42fedf1ebd8e67f3a83e463151e79a707cf683449de6b17fdb562eb8d6c3210"
+  },
+  "inference_key": "84731c503a93a6e4b9a702a4b38e9c460a5d57a88f646262cf51a77c27040b44",
+  "stored_at": "2026-07-23T06:21:33.894269+00:00"
+}

@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_wedding_05",
+  "fixture_hash": "f8f539a57b2f649c77faeb3fde6e915cb040df9000404e5c105f8ae114f1c38e",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:57:39.970985+00:00",
+  "duration_ms": 2119,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:57:37.850000+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:57:37.850007+00:00",
+      "duration_ms": 8
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:57:37.859014+00:00",
+      "duration_ms": 2111
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:57:39.970138+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "social"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 419,
+    "completion_tokens": 162,
+    "total_tokens": 581
+  },
+  "cost": 0.00010402000000000001,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1062,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-06-20T16:00:00\n- End: 2026-06-20T22:00:00\n- Location: Sunset Gardens, Napa Valley\n- Description: Thank you for RSVPing! Ceremony at 4pm, reception to follow. Cocktail attire.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Wedding - Sarah and Michael\n   - Start: 2026-06-20T16:00:00\n   - End: 2026-06-20T22:00:00\n   - Location: Sunset Gardens, Napa\n   - Description: You're invited to celebrate our special day!\n\n2. Event ID: event-002\n   - Title: Summer BBQ\n   - Start: 2026-06-21T12:00:00\n   - End: 2026-06-21T16:00:00\n   - Location: Central Park\n   - Description: Annual neighborhood BBQ\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"Same date, time, location (Sunset Gardens, Napa), and event (Sarah & Michael's wedding). Descriptions match in essence.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "202703ec78194741b0c1c2e931d70589",
+    "route_role": "primary"
+  },
+  "inference_key": "fd6629af04667a6a6ac2c3c0c2a05c9f4ee61024de04fb0874db0796c58db4e4",
+  "score_key": "3b69845b6f8a9d362d9ad043e5023bfaf760e8e763ca117d4727d475c4059099",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "deepseek/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "fe5b82ab7fd368ada6fca9fc852e7060a5fa15093523a930ba9478c61caf97d7",
+    "fixture_input_hash": "f8f539a57b2f649c77faeb3fde6e915cb040df9000404e5c105f8ae114f1c38e"
+  }
+}

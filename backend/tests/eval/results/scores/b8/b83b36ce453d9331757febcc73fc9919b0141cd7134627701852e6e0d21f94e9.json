@@ -1,0 +1,61 @@
+{
+  "fixture_name": "school_event_detailed_14",
+  "operation": "merge",
+  "expected": {
+    "title": "Spring Science Fair",
+    "start_datetime": "2026-05-14T17:00:00",
+    "end_datetime": "2026-05-14T19:00:00",
+    "all_day": false,
+    "location": "Lincoln Elementary School - Main Gymnasium",
+    "description_contains": [
+      "student projects",
+      "grades 3-5",
+      "volunteers",
+      "awards ceremony",
+      "parking"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "student projects",
+        "grades 3-5",
+        "volunteers",
+        "awards ceremony",
+        "parking"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "5bef933af4a0befe8a812a41e7aee41b9da3f97a6be8bfab29a43e5e525e0819",
+    "expected_output_hash": "cda3939e45617d078f49e7050e30e4e44237497a1a0fab7ae4849d7a971512bc",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "b83b36ce453d9331757febcc73fc9919b0141cd7134627701852e6e0d21f94e9",
+  "stored_at": "2026-07-26T01:24:57.265504+00:00"
+}

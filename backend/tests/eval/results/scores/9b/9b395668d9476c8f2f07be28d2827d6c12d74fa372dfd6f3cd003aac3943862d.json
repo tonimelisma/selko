@@ -1,0 +1,61 @@
+{
+  "fixture_name": "school/government_comment_period_13",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Public Comment Period - Safety Element",
+        "start_datetime": "2026-02-09",
+        "end_datetime": "2026-03-11",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-02-09",
+          "actual_date": "2026-02-09",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "expected_date": "2026-03-11",
+          "actual_date": "2026-03-11",
+          "day_difference": 0,
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "0cec48e3c82bb623f0a7b36099dd0bc85b41900b8895c2faad31ffc886245635",
+    "expected_output_hash": "f7ec6a4ab4700985c8bc4bb9fb233736057c90f7fd1fcb8b14297445fae90340",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "9b395668d9476c8f2f07be28d2827d6c12d74fa372dfd6f3cd003aac3943862d",
+  "stored_at": "2026-07-26T02:25:14.257593+00:00"
+}

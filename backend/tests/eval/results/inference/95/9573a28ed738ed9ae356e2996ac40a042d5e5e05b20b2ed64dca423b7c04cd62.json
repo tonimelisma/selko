@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_school_play_07",
+  "operation": "compare",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:57:38.675834+00:00",
+  "duration_ms": 2605,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:57:36.069021+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:57:36.069026+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:57:36.075704+00:00",
+      "duration_ms": 2599
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:57:38.675032+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 491,
+    "completion_tokens": 226,
+    "total_tokens": 717
+  },
+  "cost": 0.00013202,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1294,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Spring Musical: The Wizard of Oz\n- Start: 2026-04-25T19:00:00\n- End: 2026-04-25T21:00:00\n- Location: Lincoln Elementary Auditorium\n- Description: Your child's class is performing! Tickets available at the door, $5 per person.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: School Play - Wizard of Oz\n   - Start: 2026-04-25T19:00:00\n   - End: 2026-04-25T21:00:00\n   - Location: Lincoln Elementary\n   - Description: Annual spring performance by 3rd and 4th graders\n\n2. Event ID: event-002\n   - Title: PTA Meeting\n   - Start: 2026-04-24T18:30:00\n   - End: 2026-04-24T20:00:00\n   - Location: Lincoln Elementary Library\n   - Description: Monthly PTA meeting - all parents welcome\n\n3. Event ID: event-003\n   - Title: Soccer Practice\n   - Start: 2026-04-25T16:00:00\n   - End: 2026-04-25T17:30:00\n   - Location: Community Field\n   - Description: Regular Friday practice\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event matches event-001: same date, time, approximate location (Lincoln Elementary), and both refer to the school play 'Wizard of Oz'. The slight differences in title and description are typical duplicates.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "a1dde5d82fde41439d7c43118f0c5b10",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "deepseek/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "fe5b82ab7fd368ada6fca9fc852e7060a5fa15093523a930ba9478c61caf97d7",
+    "fixture_input_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61"
+  },
+  "inference_key": "9573a28ed738ed9ae356e2996ac40a042d5e5e05b20b2ed64dca423b7c04cd62",
+  "stored_at": "2026-07-26T00:57:38.733353+00:00"
+}

@@ -1,0 +1,59 @@
+{
+  "fixture_name": "reminder_adds_parking_09",
+  "operation": "merge",
+  "expected": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description_contains": [
+      "annual checkup",
+      "15 min early",
+      "parking",
+      "insurance card"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "annual checkup",
+        "15 min early",
+        "parking",
+        "insurance card"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "35d5e09babb93f6136a0c678593693beda58a381c50940051bbeecd27c2d47ca",
+    "expected_output_hash": "d2b56013e3cb0317b96629e6efab2cf19ef657cb74b2ae3c3fbdc7a2477eca58",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "fc8e32889e0e0c4b8ae8802b17dfe7595a0017b807d6a91b4ab10081d895d897",
+  "stored_at": "2026-07-26T00:34:35.917381+00:00"
+}

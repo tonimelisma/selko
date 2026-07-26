@@ -1,0 +1,61 @@
+{
+  "fixture_name": "wedding_full_details_13",
+  "operation": "merge",
+  "expected": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description_contains": [
+      "wedding celebration",
+      "ceremony",
+      "reception",
+      "cocktail attire",
+      "hotel block"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "wedding celebration",
+        "ceremony",
+        "reception",
+        "cocktail attire",
+        "hotel block"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "8655626017d8bfa9ff7676909adba5237f5c6636f36a522faa5c28776b4224bd",
+    "expected_output_hash": "0eadd6cb6dafd8fc880c9b08fb076ed705d2f8b1073898a16438acd8b730c6ce",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "9d2538b3672bba00cf30e7073863a9a063da55f2b3dcd1d2beacb924df414c17",
+  "stored_at": "2026-07-26T01:57:59.972423+00:00"
+}

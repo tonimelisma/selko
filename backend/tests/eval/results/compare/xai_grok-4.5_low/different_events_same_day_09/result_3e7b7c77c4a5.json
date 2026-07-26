@@ -1,0 +1,142 @@
+{
+  "fixture_name": "different_events_same_day_09",
+  "fixture_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "xai",
+  "model": "grok-4.5",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:11:27.875860+00:00",
+  "duration_ms": 2740,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:11:25.134046+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:11:25.134054+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:11:25.140988+00:00",
+      "duration_ms": 2734
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:11:27.875133+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 660,
+    "completion_tokens": 62,
+    "total_tokens": 722
+  },
+  "cost": 0.001692,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1188,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Max's 5th Birthday Party\n- Start: 2026-03-21T15:00:00\n- End: 2026-03-21T18:00:00\n- Location: Bounce House Adventure\n- Description: Celebrating Max turning 5! Bounce houses, pizza, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Daily Standup\n   - Start: 2026-03-21T09:00:00\n   - End: 2026-03-21T09:15:00\n   - Location: Office - Conference Room A\n   - Description: Team sync meeting\n\n2. Event ID: event-002\n   - Title: Lunch with Client\n   - Start: 2026-03-21T12:00:00\n   - End: 2026-03-21T13:30:00\n   - Location: The Blue Bistro\n   - Description: Quarterly business lunch\n\n3. Event ID: event-003\n   - Title: Gym Session\n   - Start: 2026-03-21T18:30:00\n   - End: 2026-03-21T19:30:00\n   - Location: 24 Hour Fitness\n   - Description: Evening workout\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event is a children's birthday party at a bounce house in the afternoon. None of the existing events (morning standup, client lunch, evening gym) share the same title, time, location, or purpose, so there is no duplicate.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "39911bc667e5407c85099a044ff52445",
+    "route_role": "primary"
+  },
+  "inference_key": "59de50c33225f2b5217e122544de35b4be38291712075b1157c6f9ff3976b7e9",
+  "score_key": "95b32386a5b79543f6ccb9a876ba55340343d9c5d0ebfc5e687060f0337dee5e",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "xai",
+    "model": "grok-4.5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "xai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "grok-4.5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "dd29cbf9b6a44f9e4ac38c46f298bd4cb144a28654174a80d269efcba1e9b439",
+    "fixture_input_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603"
+  }
+}

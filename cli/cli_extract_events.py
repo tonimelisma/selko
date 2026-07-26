@@ -18,8 +18,7 @@ from selko.services.event_processing import (
     extract_calendar_events,
     fetch_email_with_attachments,
 )
-from selko.services.llm_gateway import LLMGateway, LLMGatewayError
-from selko.services.llm_provider import create_provider
+from selko.services.llm_gateway import LLMGatewayError, create_llm_gateway
 
 logger = logging.getLogger(__name__)
 
@@ -289,10 +288,9 @@ Note:
     setup_logging(verbose=args.verbose, quiet=args.quiet)
     config = load_config()
 
-    # Initialize LLM Gateway
+    # Initialize LLM Gateway (includes configured fallback route)
     try:
-        provider = create_provider(config)
-        gateway = LLMGateway(provider)
+        gateway = create_llm_gateway(config)
     except LLMGatewayError as e:
         logger.error(f"Failed to initialize LLM Gateway: {e}")
         sys.exit(1)

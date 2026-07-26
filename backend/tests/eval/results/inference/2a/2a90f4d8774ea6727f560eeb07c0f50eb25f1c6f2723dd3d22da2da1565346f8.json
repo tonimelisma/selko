@@ -1,0 +1,141 @@
+{
+  "fixture_name": "same_location_different_events_11",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:25:31.766721+00:00",
+  "duration_ms": 1543,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:25:30.222656+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:25:30.222663+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:25:30.228880+00:00",
+      "duration_ms": 1537
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:25:31.766043+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 490,
+    "completion_tokens": 128,
+    "total_tokens": 618
+  },
+  "cost": 0.00113,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1230,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Yoga Workshop - Advanced Flow\n- Start: 2026-05-18T10:00:00\n- End: 2026-05-18T12:00:00\n- Location: Zen Wellness Studio\n- Description: Two-hour intensive workshop on advanced vinyasa sequences\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Meditation Class\n   - Start: 2026-05-18T08:00:00\n   - End: 2026-05-18T09:00:00\n   - Location: Zen Wellness Studio\n   - Description: Morning meditation and breathing exercises\n\n2. Event ID: event-002\n   - Title: Pilates Session\n   - Start: 2026-05-18T14:00:00\n   - End: 2026-05-18T15:00:00\n   - Location: Zen Wellness Studio\n   - Description: Core strengthening pilates class\n\n3. Event ID: event-003\n   - Title: Coffee with Maria\n   - Start: 2026-05-18T16:00:00\n   - End: 2026-05-18T17:00:00\n   - Location: Starbucks Downtown\n   - Description: Catch up meeting\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event 'Yoga Workshop - Advanced Flow' (10:00-12:00) does not match any existing events. It differs from event-001 (Meditation Class, different activity and time), event-002 (Pilates Session, different activity and time), and event-003 (Coffee with Maria, different location and activity). While all events occur at the same venue or nearby, they are distinct activities with different times, instructors, and purposes.\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "5345f338d51b45dea2239bae3abc29dd",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same location but different events - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-4-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "9509ea1b891a9b481d3cbb41e40d9a16932e349762b3bf4cb2872e2580422e3b",
+    "fixture_input_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d"
+  },
+  "inference_key": "2a90f4d8774ea6727f560eeb07c0f50eb25f1c6f2723dd3d22da2da1565346f8",
+  "stored_at": "2026-07-26T00:25:31.791911+00:00"
+}

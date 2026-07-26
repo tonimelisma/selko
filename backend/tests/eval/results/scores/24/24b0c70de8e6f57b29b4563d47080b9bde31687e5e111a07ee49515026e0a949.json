@@ -1,0 +1,57 @@
+{
+  "fixture_name": "invitations/birthday_party_kids_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Emma's 6th Birthday Party",
+        "start_datetime": "2026-02-22T14:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "location": "FunZone Play Center, 456 Rainbow Lane, Pleasantville, CA 94123",
+        "description": "Unicorns & Rainbows theme birthday party for Emma",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "0d4db357566ea3609b241f232735e6d0f093030ee8a81c6e1d3c4d0b908330a7",
+    "expected_output_hash": "46f55c6be30ebc6c640d2fe44282f1ba5ce95f58da93508f20a6e66450436bd7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "24b0c70de8e6f57b29b4563d47080b9bde31687e5e111a07ee49515026e0a949",
+  "stored_at": "2026-07-26T02:48:25.894907+00:00"
+}

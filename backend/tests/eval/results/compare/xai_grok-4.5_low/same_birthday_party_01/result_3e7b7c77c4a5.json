@@ -1,0 +1,142 @@
+{
+  "fixture_name": "same_birthday_party_01",
+  "fixture_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "xai",
+  "model": "grok-4.5",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:11:28.492330+00:00",
+  "duration_ms": 2948,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:11:25.543220+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:11:25.543228+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:11:25.550360+00:00",
+      "duration_ms": 2941
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:11:28.491674+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same birthday party with slightly different wording - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 681,
+    "completion_tokens": 57,
+    "total_tokens": 738
+  },
+  "cost": 0.001704,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1263,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Emily's 7th Birthday Party\n- Start: 2026-03-15T14:00:00\n- End: 2026-03-15T17:00:00\n- Location: Adventure Zone, 123 Main St\n- Description: Come celebrate Emily turning 7! Pizza, cake, and fun activities. Please RSVP by March 10th.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Emily's Birthday Celebration\n   - Start: 2026-03-15T14:00:00\n   - End: 2026-03-15T17:00:00\n   - Location: Adventure Zone\n   - Description: Join us for Emily's 7th birthday! Pizza, cake, games.\n\n2. Event ID: event-002\n   - Title: Team Standup\n   - Start: 2026-03-15T09:00:00\n   - End: 2026-03-15T09:30:00\n   - Location: Office\n   - Description: Daily standup meeting\n\n3. Event ID: event-003\n   - Title: Dentist Appointment\n   - Start: 2026-03-14T10:00:00\n   - End: 2026-03-14T11:00:00\n   - Location: Bright Smiles Dental\n   - Description: Regular checkup\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"Same date/time, location (Adventure Zone), and both describe Emily's 7th birthday party with pizza/cake/activities; minor title/description wording differences do not make them distinct events.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "476be30c9a694189858148059649cc9d",
+    "route_role": "primary"
+  },
+  "inference_key": "56b54c9e7a1515849eeaad7aaee6794b272382480c42c13d3f8c13654e0fca64",
+  "score_key": "7e27b9d6fe0615c7fe0ef552593257ced691cf96c939c2092842071381da902b",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "xai",
+    "model": "grok-4.5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "xai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "grok-4.5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "dd29cbf9b6a44f9e4ac38c46f298bd4cb144a28654174a80d269efcba1e9b439",
+    "fixture_input_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2"
+  }
+}

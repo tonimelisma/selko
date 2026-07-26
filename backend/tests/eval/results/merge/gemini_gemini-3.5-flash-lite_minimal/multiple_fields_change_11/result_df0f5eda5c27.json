@@ -1,0 +1,240 @@
+{
+  "fixture_name": "multiple_fields_change_11",
+  "fixture_hash": "f0172d53754013612961aae71d93066af846c1c68585c1435f5f4a759cbdf8d1",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "df0f5eda5c27",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": "minimal",
+  "run_at": "2026-07-23T06:17:28.558975+00:00",
+  "duration_ms": 750,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:17:27.807182+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:17:27.807192+00:00",
+      "duration_ms": 12
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:17:27.819776+00:00",
+      "duration_ms": 738
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:17:28.558234+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Multiple fields change simultaneously - time, location, and description all updated",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "multi-field-update",
+    "complex"
+  ],
+  "expected": {
+    "title": "Customer Workshop",
+    "start_datetime": "2026-04-22T13:00:00",
+    "end_datetime": "2026-04-22T16:00:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/987654321",
+    "description_contains": [
+      "product training",
+      "new customers",
+      "virtual",
+      "Q&A session",
+      "materials"
+    ]
+  },
+  "actual": {
+    "title": "Customer Workshop",
+    "start_datetime": "2026-04-22T13:00:00",
+    "end_datetime": "2026-04-22T16:00:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/987654321",
+    "description": "Product training workshop for new customers. Moved to afternoon and now virtual. Extended to 3 hours with Q&A session. Materials will be emailed beforehand.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "product training",
+        "new customers",
+        "virtual",
+        "Q&A session",
+        "materials"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 416,
+    "completion_tokens": 150,
+    "total_tokens": 566
+  },
+  "cost": 0.0004998,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1280,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Customer Workshop\n- Start: 2026-04-22T10:00:00\n- End: 2026-04-22T12:00:00\n- All Day: False\n- Location: Office Building A\n- Description: Product training workshop for new customers\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Customer Workshop\n- Start: 2026-04-22T13:00:00\n- End: 2026-04-22T16:00:00\n- All Day: False\n- Location: Zoom: https://zoom.us/j/987654321\n- Description: Moved to afternoon and now virtual. Extended to 3 hours with Q&A session. Materials will be emailed beforehand.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n  \"title\": \"Customer Workshop\",\n  \"start_datetime\": \"2026-04-22T13:00:00\",\n  \"end_datetime\": \"2026-04-22T16:00:00\",\n  \"all_day\": false,\n  \"location\": \"Zoom: https://zoom.us/j/987654321\",\n  \"description\": \"Product training workshop for new customers. Moved to afternoon and now virtual. Extended to 3 hours with Q&A session. Materials will be emailed beforehand.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "ddd2e4d5319b4b9b970ecbe4110854cc",
+    "route_role": "primary"
+  },
+  "inference_key": "b5777b9b406953222e905324c7bda46d9c4ba27c4d11873ffb74b228d99c6bb1",
+  "score_key": "231fded5680907d82d3a1f9e960e0374e509abc0f3b538219de633fc45dc4300",
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "minimal"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "minimal"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "e88e9a93c73fbdb09f8a21065a7ce67dd005dde1bcd9062d10ec15617ba19875",
+    "fixture_input_hash": "f0172d53754013612961aae71d93066af846c1c68585c1435f5f4a759cbdf8d1"
+  }
+}

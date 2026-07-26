@@ -1,0 +1,120 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "operation": "compare",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:55:53.179323+00:00",
+  "duration_ms": 3005,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:55:50.172838+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:55:50.172849+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:55:50.178937+00:00",
+      "duration_ms": 2999
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:55:53.178182+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 476,
+    "completion_tokens": 179,
+    "total_tokens": 655
+  },
+  "cost": 0.00037172,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1221,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Phoenix Project Kickoff\n- Start: 2026-07-08T10:00:00\n- End: 2026-07-08T12:00:00\n- Location: Large Conference Room\n- Description: Initial kickoff for Phoenix redesign project. All stakeholders required.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Weekly Team Sync\n   - Start: 2026-07-08T09:00:00\n   - End: 2026-07-08T09:30:00\n   - Location: Conference Room B\n   - Description: Regular Tuesday morning team standup\n\n2. Event ID: event-002\n   - Title: 1:1 with Manager\n   - Start: 2026-07-08T14:00:00\n   - End: 2026-07-08T14:30:00\n   - Location: Manager's Office\n   - Description: Bi-weekly check-in\n\n3. Event ID: event-003\n   - Title: Code Review\n   - Start: 2026-07-08T15:00:00\n   - End: 2026-07-08T16:00:00\n   - Location: Dev Room\n   - Description: Review PRs for authentication module\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event's title, time, and location do not match any existing event. They are distinctly different meetings.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "daa26a233f514b31b9c49ae18e2ea378",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "work"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "deepseek/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-pro",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "fe5b82ab7fd368ada6fca9fc852e7060a5fa15093523a930ba9478c61caf97d7",
+    "fixture_input_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41"
+  },
+  "inference_key": "f169947a5e96eec231e579ceab08bc5506cd3219646c0c53362f0b9c8373ef8c",
+  "stored_at": "2026-07-26T00:55:53.203641+00:00"
+}

@@ -1,0 +1,63 @@
+{
+  "fixture_name": "conferences/training_with_schedule_csv",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Python Programming Fundamentals Training",
+        "start_datetime": "2026-03-23",
+        "end_datetime": "2026-03-24",
+        "location": "LearnTech Training Center, 100 Tech Blvd, Austin, TX 78701",
+        "description": "2-day Python programming training course",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-03-23",
+          "actual_date": "2026-03-23",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "expected_date": "2026-03-24",
+          "actual_date": "2026-03-25",
+          "day_difference": 1,
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "91de1179aa970278d5adc782230299bd089606b9361c71447af533d15b087292",
+    "expected_output_hash": "efa3c2f8a083cff26a8cdd470ee0fa0a0b3b12409a65aac0495fa0ede7e6c868",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "346b3a56397fed9083d24f3fde03199a32d5f007b49f1a07ccf4caa96cbd7d66",
+  "stored_at": "2026-07-23T06:21:53.580572+00:00"
+}

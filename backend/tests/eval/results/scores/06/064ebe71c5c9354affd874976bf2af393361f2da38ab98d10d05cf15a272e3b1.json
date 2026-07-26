@@ -1,0 +1,57 @@
+{
+  "fixture_name": "meeting_rescheduled_01",
+  "operation": "merge",
+  "expected": {
+    "title": "Q1 Planning Meeting",
+    "start_datetime": "2026-03-15T16:00:00",
+    "end_datetime": "2026-03-15T17:00:00",
+    "all_day": false,
+    "location": "Conference Room B",
+    "description_contains": [
+      "quarterly planning",
+      "department heads",
+      "moved to 4pm"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "quarterly planning",
+        "department heads",
+        "moved to 4pm"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "0b490d1a249a643920ef4fabe5c1719f82d69a75e89655e6eaa90af3a2ee00e8",
+    "expected_output_hash": "bc1817b482e87398946058bbb385d105e4ed7165a7ab204dd23cabd501d3f244",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "064ebe71c5c9354affd874976bf2af393361f2da38ab98d10d05cf15a272e3b1",
+  "stored_at": "2026-07-23T06:49:59.743836+00:00"
+}

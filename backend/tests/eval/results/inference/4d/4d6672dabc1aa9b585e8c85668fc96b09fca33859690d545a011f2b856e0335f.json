@@ -1,0 +1,142 @@
+{
+  "fixture_name": "similar_titles_different_dates_10",
+  "operation": "compare",
+  "provider": "xai",
+  "model": "grok-4.5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T02:11:33.958481+00:00",
+  "duration_ms": 3338,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:11:30.618045+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:11:30.618050+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:11:30.624976+00:00",
+      "duration_ms": 3332
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:11:33.957829+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 584,
+    "completion_tokens": 84,
+    "total_tokens": 668
+  },
+  "cost": 0.001672,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1012,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Team Retrospective\n- Start: 2026-04-10T14:00:00\n- End: 2026-04-10T15:00:00\n- Location: Conference Room B\n- Description: Sprint 12 retrospective - discuss what went well and what to improve\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Team Retrospective\n   - Start: 2026-04-03T14:00:00\n   - End: 2026-04-03T15:00:00\n   - Location: Conference Room B\n   - Description: Sprint 11 retrospective meeting\n\n2. Event ID: event-002\n   - Title: Sprint Planning\n   - Start: 2026-04-10T10:00:00\n   - End: 2026-04-10T12:00:00\n   - Location: Conference Room A\n   - Description: Plan sprint 13\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event is a Sprint 12 retrospective on April 10. event-001 is a similar retrospective but for Sprint 11 on a different date (April 3), so it is a distinct prior occurrence. event-002 is a different meeting (Sprint Planning) at a different time. No existing event refers to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "c8dc8ebcb1d849afbba44385ee5c61b9",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Similar titles but different dates - weekly meetings - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-date"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "d5500d95f6226e630b3359a75ea3d1073de624471c6ea5f05d7f5d350aa4cce3",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "xai",
+    "model": "grok-4.5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "xai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "grok-4.5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "dd29cbf9b6a44f9e4ac38c46f298bd4cb144a28654174a80d269efcba1e9b439",
+    "fixture_input_hash": "d5500d95f6226e630b3359a75ea3d1073de624471c6ea5f05d7f5d350aa4cce3"
+  },
+  "inference_key": "4d6672dabc1aa9b585e8c85668fc96b09fca33859690d545a011f2b856e0335f",
+  "stored_at": "2026-07-26T02:11:33.983875+00:00"
+}

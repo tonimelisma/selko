@@ -1,0 +1,57 @@
+{
+  "fixture_name": "meetings/board_meeting_03",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q1 2026 Board Meeting",
+        "start_datetime": "2026-03-15T10:00:00",
+        "end_datetime": "2026-03-15T16:00:00",
+        "location": "ACME Corp Headquarters, Executive Boardroom, 25th Floor, 200 Park Avenue, New York, NY 10166",
+        "description": "Quarterly board of directors meeting",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 60.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 60.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "c80a81ce3a87b948f7ce82c70b7d44843fd8b3924ce5e9862b5535baeff11cde",
+    "expected_output_hash": "7c919b8b607c1703c8a6e5d49161bb2f315fabe1e205be63be7d8928c105b78a",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "3b723dd88dcab64f2b961937313d116fa11f6bec4038127957123b5960a6fa37",
+  "stored_at": "2026-07-26T01:59:12.124842+00:00"
+}

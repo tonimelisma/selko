@@ -1,0 +1,239 @@
+{
+  "fixture_name": "invitations/birthday_party_kids_01",
+  "operation": "extract",
+  "provider": "zai",
+  "model": "glm-5.2",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T01:04:46.069331+00:00",
+  "duration_ms": 8249,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:04:37.816765+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:04:37.816791+00:00",
+      "duration_ms": 10
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:04:37.827547+00:00",
+      "duration_ms": 8239
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:04:46.067060+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 1817,
+    "completion_tokens": 450,
+    "total_tokens": 2267
+  },
+  "cost": 0.0045238000000000006,
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Emma's 6th Birthday Party",
+        "start_datetime": "2026-02-22T14:00:00",
+        "end_datetime": "2026-02-22T17:00:00",
+        "all_day": false,
+        "location": "FunZone Play Center, 456 Rainbow Lane, Pleasantville, CA 94123",
+        "description": "You're invited to celebrate Emma's 6th birthday! Theme: Unicorns & Rainbows. Please RSVP by February 15th to lisa.chen@gmail.com or text (555) 123-4567.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4356,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-01-15\n**User timezone (local wall clock):** America/New_York\n\n**Email Metadata:**\n- Subject: You're Invited! Emma's 6th Birthday Party!\n- From: Lisa Chen <lisa.chen@gmail.com>\n- Date Sent: 2026-01-15T09:30:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time as a LOCAL wall-clock time in America/New_York\n   - End date/time as a LOCAL wall-clock time in America/New_York (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Time rules (critical):**\n- Emit start_datetime / end_datetime as naive local ISO strings like 2026-09-13T10:00:00\n- Do NOT include Z, +00:00, or any numeric timezone offset \u2014 the system applies America/New_York\n- When an email lists both an Event Time (or doors / show time) AND setup / vendor / cleanup windows, use the Event Time for start/end. Put setup and cleanup only in the description.\n- Example: \"Event Time: 10:00 AM \u2013 2:00 PM\" with \"Vendor Set-Up: 7:00 AM \u2013 9:00 AM\" \u2192 start 10:00, end 14:00 (not 7:00\u201315:00)\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events \u2014 do NOT extract these:**\nAn event is something the recipient would put on their personal calendar to attend, participate in, or prepare for.\nIf the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) with no event the recipient needs to attend or prepare for, set events_found=false.\n- Third-party automated calendar-derived briefs, relationship digests, and reminder summaries that merely restate entries already on the recipient's calendar are NOT new event sources. Return events_found=false unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data.\n- This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas. Extract those events when the recipient is expected to attend or prepare and the date is explicit.\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 367,
+        "text": "\n**Email Body:**\nHi there!\n\nYou're invited to celebrate Emma's 6th birthday!\n\nWhen: Saturday, February 22nd, 2026\nTime: 2:00 PM - 5:00 PM\nWhere: FunZone Play Center\n        456 Rainbow Lane\n        Pleasantville, CA 94123\n\nTheme: Unicorns & Rainbows!\n\nPlease RSVP by February 15th to lisa.chen@gmail.com or text (555) 123-4567.\n\nWe hope to see you there!\n\nLisa & Emma"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"events_found\":true,\"events\":[{\"title\":\"Emma's 6th Birthday Party\",\"start_datetime\":\"2026-02-22T14:00:00\",\"end_datetime\":\"2026-02-22T17:00:00\",\"all_day\":false,\"location\":\"FunZone Play Center, 456 Rainbow Lane, Pleasantville, CA 94123\",\"description\":\"You're invited to celebrate Emma's 6th birthday! Theme: Unicorns & Rainbows. Please RSVP by February 15th to lisa.chen@gmail.com or text (555) 123-4567.\",\"importance\":\"action_required\",\"recurrence_rule\":null}]}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "0c8f644fd7594ecaaef282622609072d",
+    "route_role": "primary"
+  },
+  "category": "invitations",
+  "description": "Child's birthday party with time range and venue address",
+  "difficulty": "easy",
+  "tags": [
+    "birthday",
+    "kids",
+    "time-range",
+    "venue"
+  ],
+  "input_summary": {
+    "subject": "You're Invited! Emma's 6th Birthday Party!",
+    "from": "lisa.chen@gmail.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "fixture_input_hash": "ab5f37bac823a73377f8f677e44aee0be12b28044cf816ce6509550556068044",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "extract",
+    "provider": "zai",
+    "model": "glm-5.2",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-5.2",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "d803234903fdf23d6ddc74a34b9340444ef86b0b68235fbb8973adfb74bb2226",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "ab5f37bac823a73377f8f677e44aee0be12b28044cf816ce6509550556068044"
+  },
+  "inference_key": "b3cdb204d87c1b82874bd204a273b9e5a1ce6c9456c1c707e63db60992db3bfc",
+  "stored_at": "2026-07-26T01:04:46.091990+00:00"
+}

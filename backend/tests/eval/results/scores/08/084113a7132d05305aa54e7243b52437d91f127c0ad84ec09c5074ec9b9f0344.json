@@ -1,0 +1,57 @@
+{
+  "fixture_name": "appointments/lawyer_consultation_05",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Consultation with Attorney Williams",
+        "start_datetime": "2026-02-11T11:00:00",
+        "end_datetime": "2026-02-11T12:00:00",
+        "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
+        "description": "Estate planning consultation",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "c1a24ae8368128b4a92dabbf09d6f771c9a42e1e63c2e6829d6a5a902c0ef5d8",
+    "expected_output_hash": "c75344b85fa885cf9bd316224ddd7baccae95e47afddec806adb14d3935364a6",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "084113a7132d05305aa54e7243b52437d91f127c0ad84ec09c5074ec9b9f0344",
+  "stored_at": "2026-07-26T01:21:43.309633+00:00"
+}

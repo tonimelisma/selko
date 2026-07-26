@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_location_different_events_11",
+  "fixture_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.5-air",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:57:03.360330+00:00",
+  "duration_ms": 13165,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:56:50.193878+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:56:50.193882+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:56:50.200060+00:00",
+      "duration_ms": 13159
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:57:03.359480+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same location but different events - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 508,
+    "completion_tokens": 786,
+    "total_tokens": 1294
+  },
+  "cost": 0.0008876,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1230,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Yoga Workshop - Advanced Flow\n- Start: 2026-05-18T10:00:00\n- End: 2026-05-18T12:00:00\n- Location: Zen Wellness Studio\n- Description: Two-hour intensive workshop on advanced vinyasa sequences\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Meditation Class\n   - Start: 2026-05-18T08:00:00\n   - End: 2026-05-18T09:00:00\n   - Location: Zen Wellness Studio\n   - Description: Morning meditation and breathing exercises\n\n2. Event ID: event-002\n   - Title: Pilates Session\n   - Start: 2026-05-18T14:00:00\n   - End: 2026-05-18T15:00:00\n   - Location: Zen Wellness Studio\n   - Description: Core strengthening pilates class\n\n3. Event ID: event-003\n   - Title: Coffee with Maria\n   - Start: 2026-05-18T16:00:00\n   - End: 2026-05-18T17:00:00\n   - Location: Starbucks Downtown\n   - Description: Catch up meeting\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event 'Yoga Workshop - Advanced Flow' at 10:00-12:00 does not match any existing events. It has a different title, time, and description compared to all existing events, even though it shares the same location as events 1 and 2.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "54798a4975ca463aa362762ab1a2d8da",
+    "route_role": "primary"
+  },
+  "inference_key": "0e3785d901bf91274b145cf8908c270f709e1c6e4b712742fabeda31c13d40aa",
+  "score_key": "ce2f01322fd03d83bbf01b5e9d76fc8750fd4eaabdabed0741e6256eedd9de41",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "zai",
+    "model": "glm-4.5-air",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.5-air",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d"
+  }
+}

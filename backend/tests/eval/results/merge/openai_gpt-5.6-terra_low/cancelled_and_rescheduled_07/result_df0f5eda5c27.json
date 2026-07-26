@@ -1,0 +1,263 @@
+{
+  "fixture_name": "cancelled_and_rescheduled_07",
+  "fixture_hash": "6d11f486f16660bd9089953c4fbe529f2e23977e4966b6ea4b48b5928915307e",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "df0f5eda5c27",
+  "operation": "merge",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:23:14.012867+00:00",
+  "duration_ms": 1853,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:23:12.156407+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:23:12.156415+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:23:12.163845+00:00",
+      "duration_ms": 1846
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:23:14.010292+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Event cancelled and rescheduled to new date - complex cancellation with new time",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "cancellation",
+    "reschedule"
+  ],
+  "expected": {
+    "title": "CANCELLED: Webinar: Cloud Security Best Practices",
+    "start_datetime": "2026-06-17T15:00:00",
+    "end_datetime": "2026-06-17T16:00:00",
+    "all_day": false,
+    "location": "https://webinar.example.com/cloudsec-new",
+    "description_contains": [
+      "cloud security",
+      "cancelled",
+      "rescheduled",
+      "June 17",
+      "AWS"
+    ]
+  },
+  "actual": {
+    "title": "CANCELLED: Webinar: Cloud Security Best Practices",
+    "start_datetime": "2026-06-17T15:00:00",
+    "end_datetime": "2026-06-17T16:00:00",
+    "all_day": false,
+    "location": "https://webinar.example.com/cloudsec-new",
+    "description": "Learn about latest cloud security practices and tools\n\nJune 10 session cancelled. Rescheduled to June 17 with new guest speaker from AWS.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "cancellation_prefix": true,
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "cloud security",
+        "cancelled",
+        "rescheduled",
+        "June 17",
+        "AWS"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 473,
+    "completion_tokens": 105,
+    "total_tokens": 578
+  },
+  "cost": 0.005515,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1335,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Webinar: Cloud Security Best Practices\n- Start: 2026-06-10T15:00:00\n- End: 2026-06-10T16:00:00\n- All Day: False\n- Location: https://webinar.example.com/cloudsec\n- Description: Learn about latest cloud security practices and tools\n- Importance: action_required\n\n**New Information (source type: cancellation):**\n- Title: Webinar: Cloud Security Best Practices\n- Start: 2026-06-17T15:00:00\n- End: 2026-06-17T16:00:00\n- All Day: False\n- Location: https://webinar.example.com/cloudsec-new\n- Description: June 10 session cancelled. Rescheduled to June 17 with new guest speaker from AWS.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "end_datetime",
+        "all_day",
+        "location",
+        "description",
+        "importance"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"all_day\":false,\"description\":\"Learn about latest cloud security practices and tools\\n\\nJune 10 session cancelled. Rescheduled to June 17 with new guest speaker from AWS.\",\"end_datetime\":\"2026-06-17T16:00:00\",\"importance\":\"action_required\",\"location\":\"https://webinar.example.com/cloudsec-new\",\"start_datetime\":\"2026-06-17T15:00:00\",\"title\":\"CANCELLED: Webinar: Cloud Security Best Practices\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "0a63ac31ab6b406d96731e73564d7e62",
+    "route_role": "primary"
+  },
+  "inference_key": "0f23aee30ab9f40be01c96c1c1df39666c6019d81564d0fdfac99ea58d6bf703",
+  "score_key": "cfd3875b8963a495d4a2c68924c189a88c65c0f138b1716f68a79c4e62705921",
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "openai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-terra",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "186355b6f68457ee80bf932d5466b4e8678e74a8baa694e2b01035a685a05c67",
+    "fixture_input_hash": "6d11f486f16660bd9089953c4fbe529f2e23977e4966b6ea4b48b5928915307e"
+  }
+}

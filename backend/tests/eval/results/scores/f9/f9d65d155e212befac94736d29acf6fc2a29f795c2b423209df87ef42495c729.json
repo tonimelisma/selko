@@ -1,0 +1,57 @@
+{
+  "fixture_name": "conferences/workshop_03",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Leadership Essentials Workshop",
+        "start_datetime": "2026-03-07T09:00:00",
+        "end_datetime": "2026-03-07T16:00:00",
+        "location": "Leadership Institute Training Center, 800 Corporate Drive, Suite 500, Chicago, IL 60601",
+        "description": "Full-day leadership workshop",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "f58290f26995efa0d7928cf91b62321de902297714966f0797441e195d9ff714",
+    "expected_output_hash": "3a3ff3be4112e6782f05982bbb36d1e48109aecf533f1c8ff044a4b8f3706a07",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "f9d65d155e212befac94736d29acf6fc2a29f795c2b423209df87ef42495c729",
+  "stored_at": "2026-07-26T02:25:06.582860+00:00"
+}

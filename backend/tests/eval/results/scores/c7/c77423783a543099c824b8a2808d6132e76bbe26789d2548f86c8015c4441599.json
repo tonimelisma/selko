@@ -1,0 +1,57 @@
+{
+  "fixture_name": "invitations/birthday_party_adult_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Mark's 40th Birthday Party",
+        "start_datetime": "2026-03-06T19:30:00",
+        "end_datetime": null,
+        "location": "The Capital Grille, 150 E 42nd Street, New York, NY 10017",
+        "description": "Surprise 40th birthday dinner for Mark",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "547c832a076555cb75ed3e2e94e6175f9ba9fbff3435f0117a6f2da00609018c",
+    "expected_output_hash": "994a26f164c1a552f7e29ac47aab193f26c0e96d9412ca38b3ea618253b45a9b",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "c77423783a543099c824b8a2808d6132e76bbe26789d2548f86c8015c4441599",
+  "stored_at": "2026-07-26T00:34:53.861024+00:00"
+}

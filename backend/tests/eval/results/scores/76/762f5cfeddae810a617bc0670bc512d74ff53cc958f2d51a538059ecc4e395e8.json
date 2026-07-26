@@ -1,0 +1,57 @@
+{
+  "fixture_name": "travel/train_booking_04",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amtrak Acela 2151 - Washington to New York",
+        "start_datetime": "2026-03-02T07:05:00",
+        "end_datetime": "2026-03-02T10:00:00",
+        "location": "Union Station, Washington DC",
+        "description": "Amtrak Acela train to New York Penn Station",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "268311484556374fcba3254a9cf3198bcd2498a96aa1019942cc02636c905a2d",
+    "expected_output_hash": "91c5cca1a26507089c0ab0f1a9c97773058ad1d188418327ab58dad8e7a68e86",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "762f5cfeddae810a617bc0670bc512d74ff53cc958f2d51a538059ecc4e395e8",
+  "stored_at": "2026-07-23T06:39:41.309911+00:00"
+}

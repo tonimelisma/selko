@@ -1,0 +1,57 @@
+{
+  "fixture_name": "meetings/client_call_04",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Kickoff - GlobalTech Partnership",
+        "start_datetime": "2026-02-10T11:00:00",
+        "end_datetime": "2026-02-10T12:30:00",
+        "location": "Microsoft Teams",
+        "description": "Project kickoff call with GlobalTech",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "a7fef1babbaccc8f842c63ad4d7ea5f82aa7a97c428ccee5beab511488382d72",
+    "expected_output_hash": "047267caa83dc609189cbfa26c638db7d7480e152b5fc77bf57cb7df1ab18ddb",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "e7534d231f269d5bcfe61acdc8ef313558f8c7b693e231e6b966148b1db6520c",
+  "stored_at": "2026-07-26T00:54:06.360104+00:00"
+}

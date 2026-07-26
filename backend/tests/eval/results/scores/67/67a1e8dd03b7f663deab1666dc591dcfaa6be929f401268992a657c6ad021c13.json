@@ -1,0 +1,57 @@
+{
+  "fixture_name": "invitations/housewarming_06",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Chris & Jamie's Housewarming Party",
+        "start_datetime": "2026-02-28T16:00:00",
+        "end_datetime": "2026-02-28T21:00:00",
+        "location": "567 Willow Way, Apt 12B, Seattle, WA 98101",
+        "description": "Housewarming party - drop by anytime, BYOB",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "820d20404e0c84d419131ff51d6ae6df97c48a884f53d581177305091df8e270",
+    "expected_output_hash": "590b97bc5d39a0cf0ef04fe0b7f636fc8b0c0581f7ca1462db8b8e7975a5fb11",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "67a1e8dd03b7f663deab1666dc591dcfaa6be929f401268992a657c6ad021c13",
+  "stored_at": "2026-07-26T01:05:28.770022+00:00"
+}

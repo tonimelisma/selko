@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/meeting_recap_recording_11",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "cc6311d9fb5787a7adf3e9f7a442d9195ae3d9b2cf4bd89ba5eb01900c3c0917",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "e87c1c4a94e6b5f346b53b73b7ebde60599a717f9f3831f5567c7aef69299cf7",
+  "stored_at": "2026-07-26T01:14:14.537085+00:00"
+}

@@ -132,7 +132,7 @@
 				{#if descriptionOverflows || descriptionExpanded}
 					<button
 						type="button"
-						class="link link-primary mt-0.5 text-xs font-semibold"
+						class="link link-primary mt-0.5 inline-flex min-h-11 items-center text-xs font-semibold"
 						aria-expanded={descriptionExpanded}
 						use:descriptionToggle
 					>

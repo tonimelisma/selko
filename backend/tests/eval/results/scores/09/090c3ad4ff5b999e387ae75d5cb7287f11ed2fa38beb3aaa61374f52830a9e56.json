@@ -1,0 +1,57 @@
+{
+  "fixture_name": "invitations/baby_shower_04",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Amanda's Baby Shower",
+        "start_datetime": "2026-03-15T11:00:00",
+        "end_datetime": "2026-03-15T14:00:00",
+        "location": "789 Maple Street, Austin, TX 78701",
+        "description": "Baby shower brunch for Amanda Rodriguez",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "ae52315cb6ac3475c4fcd662bd7738db2e902052a3e30915062305b0c118f4b8",
+    "expected_output_hash": "74ae0cfb8bbcc5100214272b415e13b059e430f6d456cbce306067ee06aa1e0b",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "090c3ad4ff5b999e387ae75d5cb7287f11ed2fa38beb3aaa61374f52830a9e56",
+  "stored_at": "2026-07-23T06:25:00.476416+00:00"
+}

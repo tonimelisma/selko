@@ -1,0 +1,200 @@
+{
+  "fixture_name": "reminder_adds_parking_09",
+  "fixture_hash": "d1cdb595a3817ee072baacbbe4680457d219517c3192edd43c1d4bdb7faa003a",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "df0f5eda5c27",
+  "operation": "merge",
+  "provider": "zai",
+  "model": "glm-4.6v",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:09:32.834344+00:00",
+  "duration_ms": 8807,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:09:24.026201+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:09:24.026207+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:09:24.033266+00:00",
+      "duration_ms": 8800
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:09:32.833624+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Reminder email adds parking instructions to existing event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "logistics"
+  ],
+  "expected": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description_contains": [
+      "annual checkup",
+      "15 min early",
+      "parking",
+      "insurance card"
+    ]
+  },
+  "actual": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description": "Annual checkup appointment. Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "annual checkup",
+        "15 min early",
+        "parking",
+        "insurance card"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 583,
+    "completion_tokens": 454,
+    "total_tokens": 1037
+  },
+  "cost": 0.0012286500000000002,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1284,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Medical Appointment - Dr. Smith\n- Start: 2026-03-30T11:00:00\n- End: 2026-03-30T11:30:00\n- All Day: False\n- Location: Downtown Medical Center, Suite 405\n- Description: Annual checkup appointment\n- Importance: action_required\n\n**New Information (source type: reminder):**\n- Title: Medical Appointment - Dr. Smith\n- Start: 2026-03-30T11:00:00\n- End: 2026-03-30T11:30:00\n- All Day: False\n- Location: Downtown Medical Center, Suite 405\n- Description: Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"title\":\"Medical Appointment - Dr. Smith\",\"start_datetime\":\"2026-03-30T11:00:00\",\"end_datetime\":\"2026-03-30T11:30:00\",\"all_day\":false,\"location\":\"Downtown Medical Center, Suite 405\",\"description\":\"Annual checkup appointment. Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.\",\"importance\":\"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "c51cf43a8271414bac422d2f59f308a3",
+    "route_role": "primary"
+  },
+  "inference_key": "ecee5e74b36552dcef3414872fe2cbffe756f1d601a97bcc04840132f1f8ca10",
+  "score_key": "15c62bdfb7d15739dce56fc8702a9fe1d2c3e1d1031e41b9b6baf8c308bc52a7",
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "zai",
+    "model": "glm-4.6v",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.6v",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "d1cdb595a3817ee072baacbbe4680457d219517c3192edd43c1d4bdb7faa003a"
+  }
+}

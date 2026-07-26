@@ -1,0 +1,59 @@
+{
+  "fixture_name": "event_time_extended_03",
+  "operation": "merge",
+  "expected": {
+    "title": "Workshop: Intro to Python",
+    "start_datetime": "2026-04-10T13:00:00",
+    "end_datetime": "2026-04-10T16:30:00",
+    "all_day": false,
+    "location": "Training Room 2",
+    "description_contains": [
+      "Python workshop",
+      "basics",
+      "extended",
+      "hands-on project"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "Python workshop",
+        "basics",
+        "extended",
+        "hands-on project"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "623652749b3cf7404909967c5eb07b11cb47904e473d47af04511a9c1162f8f1",
+    "expected_output_hash": "481dcf543a867084fd02fe7a633d83738d2e03085f75196fa8503e3d4b3b3e40",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "6ea1ef50c40894d4871ba93634da816b3b29f587c1148fd5b0e2b240142e696a",
+  "stored_at": "2026-07-23T06:37:51.387592+00:00"
+}

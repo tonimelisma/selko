@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_parent_teacher_08",
+  "fixture_hash": "d9142b557e1ef150dabeaa6e54479898aecff04136deb2eb5eaacd5a7edd74c5",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "minimax",
+  "model": "MiniMax-M2.7",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:04:01.185250+00:00",
+  "duration_ms": 9005,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:03:52.178293+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:03:52.178300+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:03:52.184601+00:00",
+      "duration_ms": 8999
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:04:01.184594+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same parent-teacher conference with reminder vs original - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 432,
+    "completion_tokens": 505,
+    "total_tokens": 937
+  },
+  "cost": 0.0007356,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Parent-Teacher Conference\n- Start: 2026-05-12T15:30:00\n- End: 2026-05-12T16:00:00\n- Location: Room 204, Lincoln Elementary\n- Description: Reminder: Conference with Mrs. Johnson tomorrow at 3:30pm to discuss Jake's progress.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Conference - Mrs. Johnson\n   - Start: 2026-05-12T15:30:00\n   - End: 2026-05-12T16:00:00\n   - Location: Lincoln Elementary, Room 204\n   - Description: Parent-teacher conference for Jake\n\n2. Event ID: event-002\n   - Title: Pick up dry cleaning\n   - Start: 2026-05-12T17:00:00\n   - End: 2026-05-12T17:30:00\n   - Location: QuickClean\n   - Description: Get suits before Friday\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event has the same start and end times, the same location (Room 204, Lincoln Elementary), and a description that clearly refers to a conference with Mrs. Johnson for Jake, which matches event\u2011001 despite slight differences in wording.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "49a523b6b41f417f8f657e91c3e91ce2",
+    "route_role": "primary"
+  },
+  "inference_key": "ace07dc9a62e066f3f825c3caab634b12fccf707d502ec73c31def63bc596ce4",
+  "score_key": "1c546092423a5f9fe6a93fffef65df481f195edf1a7bf59b6cf45deb033b8e47",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "minimax/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "MiniMax-M2.7",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "2a5cd8b1778ab652436bc3114740637e89e127114021db05e3fa5eb33b49e8c0",
+    "fixture_input_hash": "d9142b557e1ef150dabeaa6e54479898aecff04136deb2eb5eaacd5a7edd74c5"
+  }
+}

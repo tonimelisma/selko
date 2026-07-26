@@ -318,3 +318,55 @@ class TestMemoryMonitorConfig:
 
         assert config.memory_log_interval_seconds == 60.0
         assert config.memory_tracemalloc is False
+
+
+class TestLlmDefaultsAndFallback:
+    """Production LLM pairing defaults and provisional fallback fill-in."""
+
+    def test_resolve_provisional_gemini_to_qwen_flash(self):
+        from selko.config import _resolve_provisional_fallback
+
+        provider, model = _resolve_provisional_fallback("gemini", None, None)
+        assert provider == "qwen"
+        assert model == "qwen3.7-flash"
+
+    def test_resolve_provisional_qwen_to_gemini_lite(self):
+        from selko.config import _resolve_provisional_fallback
+
+        provider, model = _resolve_provisional_fallback("qwen", None, None)
+        assert provider == "gemini"
+        assert model == "gemini-3.5-flash-lite"
+
+    def test_resolve_provisional_respects_explicit(self):
+        from selko.config import _resolve_provisional_fallback
+
+        provider, model = _resolve_provisional_fallback(
+            "gemini", "anthropic", "claude-sonnet-5"
+        )
+        assert provider == "anthropic"
+        assert model == "claude-sonnet-5"
+
+    def test_load_config_default_pairing(self, monkeypatch):
+        from selko.config import load_config
+
+        monkeypatch.setattr("selko.config.load_dotenv", lambda *a, **k: None)
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        for key in (
+            "LLM_PROVIDER",
+            "LLM_MODEL",
+            "LLM_THINKING",
+            "LLM_FALLBACK_PROVIDER",
+            "LLM_FALLBACK_MODEL",
+            "LLM_FALLBACK_THINKING",
+        ):
+            monkeypatch.delenv(key, raising=False)
+
+        config = load_config()
+
+        assert config.llm_provider == "gemini"
+        assert config.llm_model is None  # resolved via PROVIDER_DEFAULT_MODEL
+        assert config.llm_thinking == "minimal"
+        assert config.llm_fallback_provider == "qwen"
+        assert config.llm_fallback_model == "qwen3.7-flash"

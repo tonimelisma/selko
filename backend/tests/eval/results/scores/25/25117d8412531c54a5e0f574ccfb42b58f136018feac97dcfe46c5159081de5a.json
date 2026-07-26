@@ -1,0 +1,62 @@
+{
+  "fixture_name": "meetings/performance_review_08",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Performance Review with Robert Chen",
+        "start_datetime": "2026-03-05T15:00:00",
+        "end_datetime": "2026-03-05T16:00:00",
+        "location": "Room 512",
+        "description": "Annual performance review meeting",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "f8800587ee8811906ca9f8235bd80a7c6ec4133fb002e3e6db56da9fea89dc8b",
+    "expected_output_hash": "0db088b6b1caba1080908f20b376cd4e37a44a54b44947891487634ce7ab6cef",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "25117d8412531c54a5e0f574ccfb42b58f136018feac97dcfe46c5159081de5a",
+  "stored_at": "2026-07-23T06:46:52.964977+00:00"
+}

@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_flight_04",
+  "fixture_hash": "32c87702f55274c4b4a38de375d2716d6068149d2b340df126659d183b59d753",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.5-air",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:57:08.254142+00:00",
+  "duration_ms": 18536,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:56:49.715898+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:56:49.715903+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:56:49.722764+00:00",
+      "duration_ms": 18530
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:57:08.253439+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "travel"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 539,
+    "completion_tokens": 1123,
+    "total_tokens": 1662
+  },
+  "cost": 0.0012308,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1213,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Flight to Denver - UA 1234\n- Start: 2026-05-10T08:15:00\n- End: 2026-05-10T11:45:00\n- Location: SFO to DEN\n- Description: United Airlines confirmation #ABC123XYZ. Seat 12A.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Pack for Trip\n   - Start: 2026-05-09T20:00:00\n   - End: 2026-05-09T21:00:00\n   - Location: Home\n   - Description: Pack bags for Denver\n\n2. Event ID: event-002\n   - Title: UA1234 - San Francisco to Denver\n   - Start: 2026-05-10T08:15:00\n   - End: 2026-05-10T11:45:00\n   - Location: SFO Terminal 3\n   - Description: Flight itinerary - departs 8:15am, arrives 11:45am MT\n\n3. Event ID: event-003\n   - Title: Hotel Check-in Denver\n   - Start: 2026-05-10T15:00:00\n   - End: 2026-05-10T15:30:00\n   - Location: Hyatt Regency Denver\n   - Description: Reservation #456789\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":\"event-002\",\"reasoning\":\"The new event matches event-002 as both refer to the same UA1234 flight from San Francisco to Denver on 2026-05-10 at 08:15-11:45. The titles are slightly different but clearly refer to the same flight, and the times are identical. The locations and descriptions provide complementary information about the same flight.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "4b0e43978fc846e7ab13c96563ed7095",
+    "route_role": "primary"
+  },
+  "inference_key": "5782687ca615f2e337cc76bf1f3bed3a35d099151692184eeda6c7613f938ae6",
+  "score_key": "b408c1524bedae8fc552ab6f749d1f483e88dc7cceff9508b0d49f89a058fcdd",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "zai",
+    "model": "glm-4.5-air",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.5-air",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "32c87702f55274c4b4a38de375d2716d6068149d2b340df126659d183b59d753"
+  }
+}

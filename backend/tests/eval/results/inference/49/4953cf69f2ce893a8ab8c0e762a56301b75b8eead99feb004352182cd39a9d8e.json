@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_conference_06",
+  "operation": "compare",
+  "provider": "moonshot",
+  "model": "kimi-k3",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T02:27:31.060416+00:00",
+  "duration_ms": 6046,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:27:25.013248+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:27:25.013258+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:27:25.020493+00:00",
+      "duration_ms": 6039
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:27:31.059803+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 585,
+    "completion_tokens": 140,
+    "total_tokens": 725
+  },
+  "cost": 0.003855,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1227,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: TechSummit 2026\n- Start: 2026-09-15T09:00:00\n- End: 2026-09-17T17:00:00\n- Location: Moscone Center, San Francisco\n- Description: Registration confirmed! Three days of cutting-edge tech talks and networking.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: TechSummit Conference\n   - Start: 2026-09-15T09:00:00\n   - End: 2026-09-17T17:00:00\n   - Location: Moscone Center, SF\n   - Description: Early bird tickets available! Sept 15-17.\n\n2. Event ID: event-002\n   - Title: Code Review Session\n   - Start: 2026-09-15T10:00:00\n   - End: 2026-09-15T11:00:00\n   - Location: Office\n   - Description: Weekly code review\n\n3. Event ID: event-003\n   - Title: Dinner with Alex\n   - Start: 2026-09-15T19:00:00\n   - End: 2026-09-15T21:00:00\n   - Location: The Garden Restaurant\n   - Description: Catch up dinner\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":\"event-001\",\"reasoning\":\"Same conference (TechSummit), identical start/end datetimes, and same venue with SF abbreviation; wording/details differ but refer to the same real-world event.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "a87e60f832b0425bad463a917c7b4704",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same conference with early-bird registration vs regular email - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "professional"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "moonshot",
+    "model": "kimi-k3",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k3",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "359d3e212909f5193d4acf852234c01412e7737d41ff900f59817d680942598a",
+    "fixture_input_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77"
+  },
+  "inference_key": "4953cf69f2ce893a8ab8c0e762a56301b75b8eead99feb004352182cd39a9d8e",
+  "stored_at": "2026-07-26T02:27:31.087214+00:00"
+}

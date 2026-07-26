@@ -1,0 +1,135 @@
+{
+  "fixture_name": "conference_day1_vs_day2_15",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.6-flash",
+  "thinking": {
+    "mode": "level",
+    "value": "minimal"
+  },
+  "run_at": "2026-07-23T06:21:28.907465+00:00",
+  "duration_ms": 1294,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:21:27.611125+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:21:27.611132+00:00",
+      "duration_ms": 19
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:21:27.630947+00:00",
+      "duration_ms": 1275
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:21:28.906743+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 455,
+    "completion_tokens": 85,
+    "total_tokens": 540
+  },
+  "cost": 0.00132,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1293,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: DevOps Summit - Day 2\n- Start: 2026-10-16T09:00:00\n- End: 2026-10-16T18:00:00\n- Location: Convention Center, Hall B\n- Description: Second day of DevOps Summit. Featured talks on Kubernetes and CI/CD pipelines.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: DevOps Summit - Day 1\n   - Start: 2026-10-15T09:00:00\n   - End: 2026-10-15T18:00:00\n   - Location: Convention Center, Hall B\n   - Description: Opening day of DevOps Summit with keynote speakers\n\n2. Event ID: event-002\n   - Title: Flight Home\n   - Start: 2026-10-17T14:30:00\n   - End: 2026-10-17T17:15:00\n   - Location: Airport\n   - Description: Return flight after conference\n\n3. Event ID: event-003\n   - Title: Networking Dinner\n   - Start: 2026-10-16T19:00:00\n   - End: 2026-10-16T22:00:00\n   - Location: The Waterfront Restaurant\n   - Description: Evening networking event for DevOps Summit attendees\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event is Day 2 of the DevOps Summit on October 16, 2026. The existing events include Day 1 (October 15), a Networking Dinner later that evening (19:00), and a flight home on October 17. None of the existing events cover Day 2 of the summit.\"}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "1763e81e0d774d738fb2fbd040d9aa57",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Conference day 1 vs day 2 - multi-day event different days - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "conference"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.6-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "minimal"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.6-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "minimal"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "e88e9a93c73fbdb09f8a21065a7ce67dd005dde1bcd9062d10ec15617ba19875",
+    "fixture_input_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2"
+  },
+  "inference_key": "4d85f34b862fb6fb655e33ef868ab6061af950e29423c1cea6ea0187928b70e0",
+  "stored_at": "2026-07-23T06:21:28.938219+00:00"
+}

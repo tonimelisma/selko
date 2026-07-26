@@ -1,0 +1,20 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "b5d8f9c93b69ab030dc5c04ed789f4577b9fc06a51ba248c9f288b40b5fb50a6",
+    "expected_output_hash": "4486b03d387fa4a0aa0f782ea4e16cb28dc9732fa759705666a69458617a92bf",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "da7df2173e2939fa11b0550569b4438215e292e3eccc71879552a0bdded774d5",
+  "stored_at": "2026-07-26T01:57:20.410322+00:00"
+}

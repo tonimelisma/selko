@@ -1,0 +1,120 @@
+{
+  "fixture_name": "similar_titles_different_dates_10",
+  "fixture_hash": "d5500d95f6226e630b3359a75ea3d1073de624471c6ea5f05d7f5d350aa4cce3",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3.5-flash",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:34:03.860801+00:00",
+  "duration_ms": 5244,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:33:58.601935+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:33:58.601943+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:33:58.608426+00:00",
+      "duration_ms": 5238
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:34:03.847220+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Similar titles but different dates - weekly meetings - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-date"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 442,
+    "completion_tokens": 868,
+    "total_tokens": 1310
+  },
+  "cost": 0.0003914,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1012,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Team Retrospective\n- Start: 2026-04-10T14:00:00\n- End: 2026-04-10T15:00:00\n- Location: Conference Room B\n- Description: Sprint 12 retrospective - discuss what went well and what to improve\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Team Retrospective\n   - Start: 2026-04-03T14:00:00\n   - End: 2026-04-03T15:00:00\n   - Location: Conference Room B\n   - Description: Sprint 11 retrospective meeting\n\n2. Event ID: event-002\n   - Title: Sprint Planning\n   - Start: 2026-04-10T10:00:00\n   - End: 2026-04-10T12:00:00\n   - Location: Conference Room A\n   - Description: Plan sprint 13\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event (Team Retrospective for Sprint 12 on 2026-04-10) does not match any existing events. Event-001 is the same meeting type but on a different date (2026-04-03) for a previous sprint (Sprint 11). Event-002 is on the same date (2026-04-10) but is a different meeting entirely (Sprint Planning) with a different time and location.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "add1887fc1bf4868952b1727ddcd84db",
+    "route_role": "primary"
+  },
+  "inference_key": "5dced08b6fbab39b7191bfa1a75cb9ccaae11b0e79f349d112d29bc01b76bceb",
+  "score_key": "ab60fc1882cb65da7a9493098ed605c5a1e44172a261f8619022f75030fb4a86",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "qwen",
+    "model": "qwen3.5-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "qwen/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "qwen3.5-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "ca72602ea37eced027677b9a7d6155ce8b30c2f665c495dc52c83af8f5e9c935",
+    "fixture_input_hash": "d5500d95f6226e630b3359a75ea3d1073de624471c6ea5f05d7f5d350aa4cce3"
+  }
+}

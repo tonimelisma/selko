@@ -1,0 +1,142 @@
+{
+  "fixture_name": "same_school_play_07",
+  "operation": "compare",
+  "provider": "meta",
+  "model": "muse-spark-1.1",
+  "thinking": {
+    "mode": "level",
+    "value": "minimal"
+  },
+  "run_at": "2026-07-23T06:45:19.633137+00:00",
+  "duration_ms": 5516,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:45:14.115538+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:45:14.115545+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:45:14.122800+00:00",
+      "duration_ms": 5509
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:45:19.632434+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 394,
+    "completion_tokens": 632,
+    "total_tokens": 1026
+  },
+  "cost": 0.0031785,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1294,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Spring Musical: The Wizard of Oz\n- Start: 2026-04-25T19:00:00\n- End: 2026-04-25T21:00:00\n- Location: Lincoln Elementary Auditorium\n- Description: Your child's class is performing! Tickets available at the door, $5 per person.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: School Play - Wizard of Oz\n   - Start: 2026-04-25T19:00:00\n   - End: 2026-04-25T21:00:00\n   - Location: Lincoln Elementary\n   - Description: Annual spring performance by 3rd and 4th graders\n\n2. Event ID: event-002\n   - Title: PTA Meeting\n   - Start: 2026-04-24T18:30:00\n   - End: 2026-04-24T20:00:00\n   - Location: Lincoln Elementary Library\n   - Description: Monthly PTA meeting - all parents welcome\n\n3. Event ID: event-003\n   - Title: Soccer Practice\n   - Start: 2026-04-25T16:00:00\n   - End: 2026-04-25T17:30:00\n   - Location: Community Field\n   - Description: Regular Friday practice\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{ \n  \"matched_event_id\": \"event-001\", \n  \"reasoning\": \"New event and event-001 are the same real-world event. Both are Wizard of Oz school play on 2026-04-25 at 19:00-21:00 at Lincoln Elementary / Auditorium. Title wording differs slightly but core event is identical. event-002 is different event type/date and event-003 is soccer practice earlier that day.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "7bb08ee6aac34783aca6ab9975835394",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "meta",
+    "model": "muse-spark-1.1",
+    "thinking": {
+      "mode": "level",
+      "value": "minimal"
+    },
+    "request_settings": {
+      "api_surface": "meta/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "muse-spark-1.1",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "minimal"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "2dc33a6d6c0329d78002b8a6bf259d6c55f477ac14db027c204edf68a9585f77",
+    "fixture_input_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61"
+  },
+  "inference_key": "be20a6925ff547c6666b1e0c534ccf81d97e487b910ea9bb7b94759cc8dfc69c",
+  "stored_at": "2026-07-23T06:45:19.655180+00:00"
+}

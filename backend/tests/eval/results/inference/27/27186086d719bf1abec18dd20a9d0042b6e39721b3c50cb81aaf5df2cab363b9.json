@@ -1,0 +1,161 @@
+{
+  "fixture_name": "meeting_rescheduled_01",
+  "operation": "merge",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:56:08.021872+00:00",
+  "duration_ms": 6535,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:56:01.483768+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:56:01.483773+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:56:01.490253+00:00",
+      "duration_ms": 6529
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:56:08.019943+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 545,
+    "completion_tokens": 467,
+    "total_tokens": 1012
+  },
+  "cost": 0.0006562100000000001,
+  "actual": {
+    "title": "Q1 Planning Meeting",
+    "start_datetime": "2026-03-15T16:00:00",
+    "end_datetime": "2026-03-15T17:00:00",
+    "all_day": false,
+    "location": "Conference Room B",
+    "description": "Quarterly planning session with department heads - moved to 4pm",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1225,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Q1 Planning Meeting\n- Start: 2026-03-15T14:00:00\n- End: 2026-03-15T15:00:00\n- All Day: False\n- Location: Conference Room B\n- Description: Quarterly planning session with department heads\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Q1 Planning Meeting\n- Start: 2026-03-15T16:00:00\n- End: 2026-03-15T17:00:00\n- All Day: False\n- Location: Conference Room B\n- Description: Quarterly planning session with department heads - moved to 4pm\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n    \"title\": \"Q1 Planning Meeting\",\n    \"start_datetime\": \"2026-03-15T16:00:00\",\n    \"end_datetime\": \"2026-03-15T17:00:00\",\n    \"all_day\": false,\n    \"location\": \"Conference Room B\",\n    \"description\": \"Quarterly planning session with department heads - moved to 4pm\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "ad017f494eca41d48e08de04920fc7a2",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Meeting rescheduled to new time - simple time change with same location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "time-update",
+    "reschedule"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "c825ad95858186ea3ba36fe8a3ed100acda9a266edd239232d2ce1295afcb014",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "deepseek/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-pro",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "fe5b82ab7fd368ada6fca9fc852e7060a5fa15093523a930ba9478c61caf97d7",
+    "fixture_input_hash": "c825ad95858186ea3ba36fe8a3ed100acda9a266edd239232d2ce1295afcb014"
+  },
+  "inference_key": "27186086d719bf1abec18dd20a9d0042b6e39721b3c50cb81aaf5df2cab363b9",
+  "stored_at": "2026-07-26T00:56:08.057658+00:00"
+}

@@ -1,0 +1,147 @@
+{
+  "fixture_name": "school/school_play_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "events": [
+      {
+        "title": "The Wizard of Oz - School Musical",
+        "start_datetime": "2026-04-03T19:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical performance",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical (Matinee)",
+        "start_datetime": "2026-04-04T14:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Saturday matinee",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical",
+        "start_datetime": "2026-04-04T19:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Saturday evening",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical (Matinee)",
+        "start_datetime": "2026-04-05T14:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Sunday matinee",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 480.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 300.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "be81ad7f95db57239489f35a18bdd3aac34a85eb90bcd5f4c1ec44425a8d5a6b",
+    "expected_output_hash": "71ecf3c1c1ee4c728b5a1a480bf22d6b0b93e4d831e3fdaa81c67f50de0b03eb",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "9cf76c5c9900e482337a06b23d3ecbbc6edee89839e3671e551c7a35c7209593",
+  "stored_at": "2026-07-26T01:28:51.824590+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_location_different_events_11",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "5c979f6995ff181568b30463c654dcee33ae6af374f2d2b9d4fbae4e581636b0",
+    "expected_output_hash": "4486b03d387fa4a0aa0f782ea4e16cb28dc9732fa759705666a69458617a92bf",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "0232eba6d8faa8419b35f35ac2e961d138b95df8e1f33da7431c2d253a5f0c62",
+  "stored_at": "2026-07-23T06:49:38.566571+00:00"
+}

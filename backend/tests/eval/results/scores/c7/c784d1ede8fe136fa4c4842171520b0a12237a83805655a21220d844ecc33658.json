@@ -1,0 +1,57 @@
+{
+  "fixture_name": "travel/car_rental_03",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Car Rental - Hertz LAX",
+        "start_datetime": "2026-02-21T10:00:00",
+        "end_datetime": "2026-02-25T18:00:00",
+        "location": "Hertz LAX Airport, 9000 Airport Blvd, Los Angeles, CA 90045",
+        "description": "Full size car rental (Toyota Camry or similar)",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "334966e3e69dbc8fdc33da6f1fbb0d56f74363eb9447cbd8673faa8896c69bbd",
+    "expected_output_hash": "be7ab0a6b443d477e4b693c59b87fa944f5ed38d81e12e2546eeae009673048d",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "c784d1ede8fe136fa4c4842171520b0a12237a83805655a21220d844ecc33658",
+  "stored_at": "2026-07-23T06:17:44.896523+00:00"
+}

@@ -1,0 +1,120 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "fixture_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3.5-flash",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:34:09.989470+00:00",
+  "duration_ms": 9533,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:34:00.454689+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:34:00.454694+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:34:00.461226+00:00",
+      "duration_ms": 9527
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:34:09.988444+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 528,
+    "completion_tokens": 1555,
+    "total_tokens": 2083
+  },
+  "cost": 0.0006747999999999999,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1221,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Phoenix Project Kickoff\n- Start: 2026-07-08T10:00:00\n- End: 2026-07-08T12:00:00\n- Location: Large Conference Room\n- Description: Initial kickoff for Phoenix redesign project. All stakeholders required.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Weekly Team Sync\n   - Start: 2026-07-08T09:00:00\n   - End: 2026-07-08T09:30:00\n   - Location: Conference Room B\n   - Description: Regular Tuesday morning team standup\n\n2. Event ID: event-002\n   - Title: 1:1 with Manager\n   - Start: 2026-07-08T14:00:00\n   - End: 2026-07-08T14:30:00\n   - Location: Manager's Office\n   - Description: Bi-weekly check-in\n\n3. Event ID: event-003\n   - Title: Code Review\n   - Start: 2026-07-08T15:00:00\n   - End: 2026-07-08T16:00:00\n   - Location: Dev Room\n   - Description: Review PRs for authentication module\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"No match found. The new event has a different title ('Phoenix Project Kickoff'), different time (10:00-12:00), and different description than all listed existing events which occur at different times or describe different activities.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "af9ba36b93bf4df6bf9acf72e77a8f23",
+    "route_role": "primary"
+  },
+  "inference_key": "4040ae3b8b3e35ee3b7b6931af994bb9fc85d9f464c0b77f1af68fbe0d9a6e66",
+  "score_key": "447f9f3ab10d8cc44b47b528ad94ef22ac279957bf604148a4163173efdd96c3",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "qwen",
+    "model": "qwen3.5-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "qwen/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "qwen3.5-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "ca72602ea37eced027677b9a7d6155ce8b30c2f665c495dc52c83af8f5e9c935",
+    "fixture_input_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "fixture_name": "travel/hotel_reservation_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hotel Stay - Marriott Times Square",
+        "start_datetime": "2026-03-13T15:00:00",
+        "end_datetime": "2026-03-15T11:00:00",
+        "location": "Marriott Times Square, 1535 Broadway, New York, NY 10036",
+        "description": "2-night hotel stay, King Room with City View",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "0d99962eefce9797ddfaaa4d360e9ada0e555823b9b7f8898d727933aeb6e136",
+    "expected_output_hash": "ea9b9291ab7b43281d01ec778fa361668fc2f90660e2c85f1313e4fb59cdeb7b",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "316e836d5f1f94767c3602df95e76fe57425801e523cb4a72b0e3661a8855f58",
+  "stored_at": "2026-07-26T00:35:32.718280+00:00"
+}

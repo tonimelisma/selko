@@ -1,0 +1,59 @@
+{
+  "fixture_name": "update_adds_dresscode_10",
+  "operation": "merge",
+  "expected": {
+    "title": "Company Gala Dinner",
+    "start_datetime": "2026-08-15T18:00:00",
+    "end_datetime": "2026-08-15T22:00:00",
+    "all_day": false,
+    "location": "Grand Ballroom Hotel",
+    "description_contains": [
+      "10 years",
+      "black tie",
+      "cocktail hour",
+      "plus-ones welcome"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "10 years",
+        "black tie",
+        "cocktail hour",
+        "plus-ones welcome"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "85c96db53aa72e80f1c26aa9ae07de80a7f59bf1b2dc88042fffa2443cffae2e",
+    "expected_output_hash": "39f2b8c63b488b3e6d86bc6f966512cfb40aa6df5fa82ec1fc7870c07a5eb85f",
+    "scorer_hash": "6fcc17c85d6d81e3eb96df1e323375913aeb192959274ac23b92873546bf9225"
+  },
+  "score_key": "f2f682f844104fc534abe7586cdc66b702e0370af4dbf028fcfc6e2ba59f53b0",
+  "stored_at": "2026-07-26T01:00:18.501133+00:00"
+}

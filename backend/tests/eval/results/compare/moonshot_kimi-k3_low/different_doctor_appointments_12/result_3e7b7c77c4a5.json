@@ -1,0 +1,120 @@
+{
+  "fixture_name": "different_doctor_appointments_12",
+  "fixture_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "moonshot",
+  "model": "kimi-k3",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:27:24.986517+00:00",
+  "duration_ms": 6452,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:27:18.533083+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:27:18.533092+00:00",
+      "duration_ms": 8
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:27:18.541408+00:00",
+      "duration_ms": 6444
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:27:24.985594+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different doctor appointments in same week - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 579,
+    "completion_tokens": 144,
+    "total_tokens": 723
+  },
+  "cost": 0.003897,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1184,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dermatology Appointment\n- Start: 2026-06-04T14:00:00\n- End: 2026-06-04T14:30:00\n- Location: Skin Health Clinic, Suite 301\n- Description: Annual skin check with Dr. Patel\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Dentist - Dr. Lee\n   - Start: 2026-06-02T09:00:00\n   - End: 2026-06-02T10:00:00\n   - Location: Bright Smiles Dental\n   - Description: 6-month cleaning and checkup\n\n2. Event ID: event-002\n   - Title: Eye Exam\n   - Start: 2026-06-05T11:00:00\n   - End: 2026-06-05T12:00:00\n   - Location: Vision Care Center\n   - Description: Annual eye examination with Dr. Wong\n\n3. Event ID: event-003\n   - Title: Team Lunch\n   - Start: 2026-06-04T12:00:00\n   - End: 2026-06-04T13:00:00\n   - Location: Italian Garden\n   - Description: Monthly team lunch\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new dermatology appointment (June 4, 14:00, Skin Health Clinic, Dr. Patel) does not match any existing event. Event-003 is on the same date but is a team lunch at a different time, location, and purpose; events-001 and -002 are different appointments on different dates.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "a8fe9b6c5bca4acb9df07075d7a0b41c",
+    "route_role": "primary"
+  },
+  "inference_key": "a3928c0b32f1f86e2d6f78a101efaf1a5d2fc338f06ed6ccfd1511997d285aca",
+  "score_key": "b334b77ff8a3370075c5a06c5cc3b108d344e8dd5cc3315a7ae2a2a8d6bd4df5",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "moonshot",
+    "model": "kimi-k3",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k3",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "359d3e212909f5193d4acf852234c01412e7737d41ff900f59817d680942598a",
+    "fixture_input_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3"
+  }
+}

@@ -3,8 +3,9 @@
 Provides a unified interface for multiple LLM providers:
 - Google Gemini (native SDK)
 - Anthropic Claude (native SDK)
-- OpenAI, xAI, Z.AI/Zhipu, Alibaba/Qwen (OpenAI-compatible)
-- Optional keys retained for Moonshot/DeepSeek/MiniMax (models deferred until IDs verified)
+- OpenAI, xAI, Meta, Z.AI/Zhipu, Alibaba/Qwen, Moonshot, DeepSeek, MiniMax
+  (OpenAI-compatible)
+- Thinking Machines Tinker / Inkling (Anthropic-compatible)
 
 All providers implement the same LLMProvider interface, allowing transparent
 switching between providers via environment variables.
@@ -81,8 +82,16 @@ _QWEN_BASE = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 _OPENAI_BASE = "https://api.openai.com/v1"
 _ZAI_BASE = "https://api.z.ai/api/paas/v4/"
 _XAI_BASE = "https://api.x.ai/v1"
+_META_BASE = "https://api.meta.ai/v1"
+_MOONSHOT_BASE = "https://api.moonshot.ai/v1"
+_DEEPSEEK_BASE = "https://api.deepseek.com"
+_MINIMAX_BASE = "https://api.minimax.io/v1"
+_TINKER_ANTHROPIC_BASE = (
+    "https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api"
+)
 
 _EFFORT_NONE = ThinkingConfig("effort", "none")
+_EFFORT_MINIMAL = ThinkingConfig("effort", "minimal")
 _EFFORT_LOW = ThinkingConfig("effort", "low")
 _EFFORT_MEDIUM = ThinkingConfig("effort", "medium")
 _LEVEL_MINIMAL = ThinkingConfig("level", "minimal")
@@ -93,21 +102,11 @@ _BUDGET_OFF = ThinkingConfig("toggle", False)
 _TOGGLE_ON = ThinkingConfig("toggle", True)
 _TOGGLE_OFF = ThinkingConfig("toggle", False)
 _ADAPTIVE_LOW = ThinkingConfig("effort", "low")
+_AS_OF = date(2026, 7, 25)
 
-# Curated current candidates only (WS4). Unverified family IDs (Kimi K3,
-# MiniMax M3, DeepSeek V4, Meta Spark, Inkling) are omitted until authenticated.
+# Expanded current + value-tier matrix (live-verified IDs, Jul 2026).
 MODEL_SPECS: dict[str, ModelSpec] = {
-    "gemini-3.5-flash-lite": ModelSpec(
-        provider="gemini",
-        model="gemini-3.5-flash-lite",
-        vision=True,
-        structured_output="json_schema",
-        preferred_thinking=_LEVEL_MINIMAL,
-        supported_thinking=(_LEVEL_MINIMAL, _LEVEL_LOW, _LEVEL_MEDIUM),
-        request_api="gemini_native",
-        pricing=Pricing(0.30, 2.50),
-        pricing_as_of=date(2026, 7, 22),
-    ),
+    # --- Gemini ---
     "gemini-3.6-flash": ModelSpec(
         provider="gemini",
         model="gemini-3.6-flash",
@@ -117,8 +116,42 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         supported_thinking=(_LEVEL_MINIMAL, _LEVEL_LOW, _LEVEL_MEDIUM),
         request_api="gemini_native",
         pricing=Pricing(1.50, 7.50),
-        pricing_as_of=date(2026, 7, 22),
+        pricing_as_of=_AS_OF,
     ),
+    "gemini-3.5-flash": ModelSpec(
+        provider="gemini",
+        model="gemini-3.5-flash",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_LEVEL_MINIMAL,
+        supported_thinking=(_LEVEL_MINIMAL, _LEVEL_LOW, _LEVEL_MEDIUM),
+        request_api="gemini_native",
+        pricing=Pricing(0.50, 3.00, estimated=True),
+        pricing_as_of=_AS_OF,
+    ),
+    "gemini-3.5-flash-lite": ModelSpec(
+        provider="gemini",
+        model="gemini-3.5-flash-lite",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_LEVEL_MINIMAL,
+        supported_thinking=(_LEVEL_MINIMAL, _LEVEL_LOW, _LEVEL_MEDIUM),
+        request_api="gemini_native",
+        pricing=Pricing(0.30, 2.50),
+        pricing_as_of=_AS_OF,
+    ),
+    "gemini-3.1-flash-lite": ModelSpec(
+        provider="gemini",
+        model="gemini-3.1-flash-lite",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_LEVEL_MINIMAL,
+        supported_thinking=(_LEVEL_MINIMAL, _LEVEL_LOW, _LEVEL_MEDIUM),
+        request_api="gemini_native",
+        pricing=Pricing(0.25, 2.00, estimated=True),
+        pricing_as_of=_AS_OF,
+    ),
+    # --- OpenAI ---
     "gpt-5.6-luna": ModelSpec(
         provider="openai",
         model="gpt-5.6-luna",
@@ -128,7 +161,7 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
         request_api="openai_compatible",
         pricing=Pricing(5.00, 30.00, estimated=True),
-        pricing_as_of=date(2026, 7, 22),
+        pricing_as_of=_AS_OF,
         base_url=_OPENAI_BASE,
     ),
     "gpt-5.6-terra": ModelSpec(
@@ -140,59 +173,10 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
         request_api="openai_compatible",
         pricing=Pricing(5.00, 30.00, estimated=True),
-        pricing_as_of=date(2026, 7, 22),
+        pricing_as_of=_AS_OF,
         base_url=_OPENAI_BASE,
     ),
-    "qwen3.6-flash": ModelSpec(
-        provider="qwen",
-        model="qwen3.6-flash",
-        vision=True,
-        # DashScope docs list structured output; keep prompt_json until verified
-        # under thinking+json_schema together.
-        structured_output="prompt_json",
-        preferred_thinking=_BUDGET_LOW,
-        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
-        request_api="openai_compatible",
-        pricing=Pricing(0.10, 0.40, estimated=True),
-        pricing_as_of=date(2026, 7, 22),
-        base_url=_QWEN_BASE,
-    ),
-    "qwen3.7-plus": ModelSpec(
-        provider="qwen",
-        model="qwen3.7-plus",
-        vision=True,
-        structured_output="prompt_json",
-        preferred_thinking=_BUDGET_LOW,
-        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
-        request_api="openai_compatible",
-        pricing=Pricing(0.40, 1.60),
-        pricing_as_of=date(2026, 7, 22),
-        base_url=_QWEN_BASE,
-    ),
-    "glm-5.2": ModelSpec(
-        provider="zai",
-        model="glm-5.2",
-        vision=True,
-        structured_output="json_object",
-        preferred_thinking=_TOGGLE_ON,
-        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
-        request_api="openai_compatible",
-        pricing=Pricing(1.40, 4.40, estimated=True),
-        pricing_as_of=date(2026, 7, 22),
-        base_url=_ZAI_BASE,
-    ),
-    "grok-4.5": ModelSpec(
-        provider="xai",
-        model="grok-4.5",
-        vision=True,
-        structured_output="json_schema",
-        preferred_thinking=_EFFORT_LOW,
-        supported_thinking=(_EFFORT_LOW, _EFFORT_MEDIUM),
-        request_api="openai_compatible",
-        pricing=Pricing(2.00, 6.00),
-        pricing_as_of=date(2026, 7, 22),
-        base_url=_XAI_BASE,
-    ),
+    # --- Anthropic ---
     "claude-sonnet-5": ModelSpec(
         provider="anthropic",
         model="claude-sonnet-5",
@@ -202,7 +186,281 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         supported_thinking=(_EFFORT_NONE, _ADAPTIVE_LOW, _EFFORT_MEDIUM),
         request_api="anthropic_native",
         pricing=Pricing(2.00, 10.00),
-        pricing_as_of=date(2026, 7, 22),
+        pricing_as_of=_AS_OF,
+    ),
+    "claude-haiku-4-5": ModelSpec(
+        provider="anthropic",
+        model="claude-haiku-4-5",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_ADAPTIVE_LOW,
+        supported_thinking=(_EFFORT_NONE, _ADAPTIVE_LOW, _EFFORT_MEDIUM),
+        request_api="anthropic_native",
+        pricing=Pricing(1.00, 5.00, estimated=True),
+        pricing_as_of=_AS_OF,
+    ),
+    # --- Qwen ---
+    "qwen3.7-plus": ModelSpec(
+        provider="qwen",
+        model="qwen3.7-plus",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_BUDGET_LOW,
+        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.40, 1.60),
+        pricing_as_of=_AS_OF,
+        base_url=_QWEN_BASE,
+    ),
+    "qwen3.7-flash": ModelSpec(
+        provider="qwen",
+        model="qwen3.7-flash",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_BUDGET_LOW,
+        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.10, 0.40, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_QWEN_BASE,
+    ),
+    "qwen3.6-flash": ModelSpec(
+        provider="qwen",
+        model="qwen3.6-flash",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_BUDGET_LOW,
+        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.10, 0.40, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_QWEN_BASE,
+    ),
+    "qwen3.5-flash": ModelSpec(
+        provider="qwen",
+        model="qwen3.5-flash",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_BUDGET_LOW,
+        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.10, 0.40, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_QWEN_BASE,
+    ),
+    "qwen3-vl-flash": ModelSpec(
+        provider="qwen",
+        model="qwen3-vl-flash",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_BUDGET_OFF,
+        supported_thinking=(_BUDGET_OFF, _BUDGET_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.10, 0.40, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_QWEN_BASE,
+    ),
+    # --- Moonshot / Kimi ---
+    # Moonshot parameter split (platform.kimi.ai docs):
+    # - kimi-k3: top-level reasoning_effort (low/high/max); do not send thinking
+    # - kimi-k2.5 / k2.6: thinking.type enabled|disabled; no reasoning_effort
+    # - kimi-k2.7-code: thinking always on; omit thinking; no reasoning_effort
+    # All Kimi models: response_format json_object (+ schema described in prompt)
+    "kimi-k3": ModelSpec(
+        provider="moonshot",
+        model="kimi-k3",
+        vision=True,
+        structured_output="json_object",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(3.00, 15.00),
+        pricing_as_of=_AS_OF,
+        base_url=_MOONSHOT_BASE,
+    ),
+    "kimi-k2.6": ModelSpec(
+        provider="moonshot",
+        model="kimi-k2.6",
+        vision=True,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
+        request_api="openai_compatible",
+        pricing=Pricing(0.95, 4.00),
+        pricing_as_of=_AS_OF,
+        base_url=_MOONSHOT_BASE,
+    ),
+    "kimi-k2.7-code": ModelSpec(
+        provider="moonshot",
+        model="kimi-k2.7-code",
+        vision=True,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_ON,),
+        request_api="openai_compatible",
+        pricing=Pricing(0.95, 4.00),
+        pricing_as_of=_AS_OF,
+        base_url=_MOONSHOT_BASE,
+    ),
+    "kimi-k2.5": ModelSpec(
+        provider="moonshot",
+        model="kimi-k2.5",
+        vision=True,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
+        request_api="openai_compatible",
+        pricing=Pricing(0.60, 3.00),
+        pricing_as_of=_AS_OF,
+        base_url=_MOONSHOT_BASE,
+    ),
+    # --- DeepSeek (text-only) ---
+    "deepseek-v4-pro": ModelSpec(
+        provider="deepseek",
+        model="deepseek-v4-pro",
+        vision=False,
+        structured_output="prompt_json",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(0.45, 0.88, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_DEEPSEEK_BASE,
+    ),
+    "deepseek-v4-flash": ModelSpec(
+        provider="deepseek",
+        model="deepseek-v4-flash",
+        vision=False,
+        structured_output="prompt_json",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(0.14, 0.28),
+        pricing_as_of=_AS_OF,
+        base_url=_DEEPSEEK_BASE,
+    ),
+    # --- MiniMax ---
+    "MiniMax-M3": ModelSpec(
+        provider="minimax",
+        model="MiniMax-M3",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_NONE, _EFFORT_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.30, 1.20, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_MINIMAX_BASE,
+    ),
+    "MiniMax-M2.7": ModelSpec(
+        provider="minimax",
+        model="MiniMax-M2.7",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_NONE, _EFFORT_LOW),
+        request_api="openai_compatible",
+        pricing=Pricing(0.30, 1.20, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_MINIMAX_BASE,
+    ),
+    # --- Z.AI ---
+    "glm-5.2": ModelSpec(
+        provider="zai",
+        model="glm-5.2",
+        vision=False,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
+        request_api="openai_compatible",
+        pricing=Pricing(1.40, 4.40, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_ZAI_BASE,
+    ),
+    "glm-5.1": ModelSpec(
+        provider="zai",
+        model="glm-5.1",
+        vision=False,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
+        request_api="openai_compatible",
+        pricing=Pricing(1.00, 3.00, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_ZAI_BASE,
+    ),
+    "glm-5-turbo": ModelSpec(
+        provider="zai",
+        model="glm-5-turbo",
+        vision=False,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
+        request_api="openai_compatible",
+        pricing=Pricing(0.80, 2.50, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_ZAI_BASE,
+    ),
+    "glm-4.5-air": ModelSpec(
+        provider="zai",
+        model="glm-4.5-air",
+        vision=False,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
+        request_api="openai_compatible",
+        pricing=Pricing(0.20, 1.00, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_ZAI_BASE,
+    ),
+    "glm-4.6v": ModelSpec(
+        provider="zai",
+        model="glm-4.6v",
+        vision=True,
+        structured_output="json_object",
+        preferred_thinking=_TOGGLE_ON,
+        supported_thinking=(_TOGGLE_OFF, _TOGGLE_ON),
+        request_api="openai_compatible",
+        pricing=Pricing(0.55, 2.00, estimated=True),
+        pricing_as_of=_AS_OF,
+        base_url=_ZAI_BASE,
+    ),
+    # --- xAI / Meta / Tinker ---
+    "grok-4.5": ModelSpec(
+        provider="xai",
+        model="grok-4.5",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(2.00, 6.00),
+        pricing_as_of=_AS_OF,
+        base_url=_XAI_BASE,
+    ),
+    "muse-spark-1.1": ModelSpec(
+        provider="meta",
+        model="muse-spark-1.1",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_EFFORT_MINIMAL,
+        supported_thinking=(_EFFORT_MINIMAL, _EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(1.25, 4.25),
+        pricing_as_of=_AS_OF,
+        base_url=_META_BASE,
+    ),
+    "inkling": ModelSpec(
+        provider="tinker",
+        model="thinkingmachines/Inkling",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_EFFORT_LOW,
+        supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="anthropic_compatible",
+        pricing=Pricing(1.87, 4.68),
+        pricing_as_of=_AS_OF,
+        base_url=_TINKER_ANTHROPIC_BASE,
     ),
 }
 
@@ -229,12 +487,28 @@ def _spec_to_registry_entry(spec: ModelSpec) -> dict[str, Any]:
         entry["pricing"] = None
     if spec.base_url:
         entry["base_url"] = spec.base_url
-    if spec.preferred_thinking.mode == "effort" and spec.provider in ("openai", "xai"):
+    if spec.preferred_thinking.mode == "effort" and spec.provider in (
+        "openai",
+        "xai",
+        "meta",
+        "deepseek",
+    ):
         entry["reasoning"] = True
     if spec.preferred_thinking.mode in ("budget", "toggle") and spec.provider == "qwen":
         entry["qwen_thinking"] = True
-    if spec.provider == "anthropic":
+    # Moonshot: K3 → reasoning_effort; K2.5/K2.6 → thinking.type; K2.7 → omit both.
+    if spec.provider == "moonshot":
+        if "k3" in spec.model:
+            entry["reasoning"] = True
+        elif "k2.7" not in spec.model:
+            entry["moonshot_thinking"] = True
+    # Adaptive thinking is Sonnet/Opus (4.6+); Haiku rejects it.
+    if spec.provider == "anthropic" and "haiku" not in spec.model:
         entry["adaptive_thinking"] = True
+    if spec.provider == "tinker":
+        entry["tinker_effort"] = True
+    # API model ID may differ from the registry key (e.g. inkling → thinkingmachines/Inkling).
+    entry["api_model"] = spec.model
     return entry
 
 
@@ -254,16 +528,23 @@ PROVIDER_API_KEY_MAP = {
     "openai": "openai_api_key",
     "anthropic": "anthropic_api_key",
     "xai": "xai_api_key",
+    "meta": "meta_api_key",
+    "tinker": "tinker_api_key",
 }
 
 # Default model per provider with a curated registry entry
 PROVIDER_DEFAULT_MODEL = {
     "gemini": "gemini-3.5-flash-lite",
     "zai": "glm-5.2",
-    "qwen": "qwen3.6-flash",
+    "qwen": "qwen3.7-flash",
     "openai": "gpt-5.6-luna",
     "anthropic": "claude-sonnet-5",
     "xai": "grok-4.5",
+    "meta": "muse-spark-1.1",
+    "tinker": "inkling",
+    "moonshot": "kimi-k3",
+    "deepseek": "deepseek-v4-flash",
+    "minimax": "MiniMax-M3",
 }
 
 
@@ -707,6 +988,7 @@ class OpenAICompatibleProvider(LLMProvider):
         supports_json_schema: bool = True,
         reasoning_model: bool = False,
         qwen_thinking: bool = False,
+        moonshot_thinking: bool = False,
         thinking: str = "low",
     ):
         from openai import OpenAI
@@ -717,6 +999,7 @@ class OpenAICompatibleProvider(LLMProvider):
         self.supports_json_schema = supports_json_schema
         self.reasoning_model = reasoning_model
         self.qwen_thinking = qwen_thinking
+        self.moonshot_thinking = moonshot_thinking
         self.thinking = thinking
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self._last_sanitized_schema: Optional[dict] = None
@@ -763,10 +1046,17 @@ class OpenAICompatibleProvider(LLMProvider):
             "messages": messages,
         }
 
-        # OpenAI/xAI reasoning: always send reasoning_effort explicitly.
+        # OpenAI/xAI/Meta reasoning: always send reasoning_effort explicitly.
         # Omitting defaults to medium on GPT-5.6 — never treat omit as "none"/"low".
+        # Meta Spark rejects "none"; map it to the lowest supported level.
         if self.reasoning_model:
-            kwargs["reasoning_effort"] = self.thinking or "low"
+            effort = self.thinking or "low"
+            if self.provider_name == "meta" and effort == "none":
+                effort = "minimal"
+            kwargs["reasoning_effort"] = effort
+            if self.provider_name == "meta":
+                # Reasoning tokens count against the completion budget.
+                kwargs["max_completion_tokens"] = 16000
 
         # Qwen thinking mode (enable_thinking + thinking_budget via extra_body)
         if self.qwen_thinking:
@@ -783,6 +1073,13 @@ class OpenAICompatibleProvider(LLMProvider):
                 }
             else:
                 kwargs["extra_body"] = {"enable_thinking": False}
+
+        # Moonshot K2.5/K2.6: thinking.type (not reasoning_effort). K2.7 omits this.
+        if self.moonshot_thinking:
+            thinking_type = "disabled" if self.thinking == "none" else "enabled"
+            extra = dict(kwargs.get("extra_body") or {})
+            extra["thinking"] = {"type": thinking_type}
+            kwargs["extra_body"] = extra
 
         # Handle structured output
         if json_schema is not None:
@@ -837,23 +1134,42 @@ class OpenAICompatibleProvider(LLMProvider):
 
 
 class AnthropicProvider(LLMProvider):
-    """Anthropic Claude provider using native anthropic SDK."""
+    """Anthropic Claude provider using native anthropic SDK.
+
+    Also used for Anthropic-compatible endpoints (e.g. Tinker Inkling) by
+    passing ``base_url`` and enabling ``tinker_effort``.
+    """
 
     def __init__(
-        self, api_key: str, model: str, thinking: str = "low",
+        self,
+        api_key: str,
+        model: str,
+        thinking: str = "low",
         adaptive_thinking: bool = False,
+        base_url: Optional[str] = None,
+        tinker_effort: bool = False,
+        provider_name: str = "anthropic",
     ):
         import anthropic
 
-        self.provider_name = "anthropic"
+        self.provider_name = provider_name
         self.model = model
         self.supports_vision = True
         self.supports_json_schema = False
         self.thinking = thinking
         self.adaptive_thinking = adaptive_thinking
-        self.client = anthropic.Anthropic(api_key=api_key)
+        self.tinker_effort = tinker_effort
+        client_kwargs: dict[str, Any] = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        self.client = anthropic.Anthropic(**client_kwargs)
         self._last_sanitized_schema: Optional[dict] = None
-        logger.debug(f"Initialized Anthropic provider with model {model}")
+        logger.debug(
+            "Initialized %s provider with model %s (base_url=%s)",
+            provider_name,
+            model,
+            base_url or "default",
+        )
 
     def generate(
         self,
@@ -919,8 +1235,16 @@ class AnthropicProvider(LLMProvider):
             "messages": [{"role": "user", "content": message_content}],
         }
 
+        # Tinker Inkling: effort via output_config; none disables thinking.
+        if self.tinker_effort:
+            if self.thinking == "none":
+                api_kwargs["thinking"] = {"type": "disabled"}
+            else:
+                effort = self.thinking or "low"
+                api_kwargs["extra_body"] = {"output_config": {"effort": effort}}
+                api_kwargs["max_tokens"] = 16000
         # Adaptive thinking for Sonnet 4.6+ (thinking=none skips entirely)
-        if self.adaptive_thinking and self.thinking != "none":
+        elif self.adaptive_thinking and self.thinking != "none":
             api_kwargs["thinking"] = {"type": "adaptive"}
             api_kwargs["output_config"] = {"effort": self.thinking}
             # Adaptive thinking needs higher max_tokens to include thinking tokens
@@ -1020,15 +1344,21 @@ def create_provider(
         )
 
     # Create provider
+    api_model = registry_entry.get("api_model", model_name)
     if provider_name == "gemini":
-        return GeminiProvider(api_key=api_key, model=model_name, thinking=thinking)
-    elif provider_name == "anthropic":
+        return GeminiProvider(api_key=api_key, model=api_model, thinking=thinking)
+    elif provider_name in ("anthropic", "tinker"):
         return AnthropicProvider(
-            api_key=api_key, model=model_name, thinking=thinking,
+            api_key=api_key,
+            model=api_model,
+            thinking=thinking,
             adaptive_thinking=registry_entry.get("adaptive_thinking", False),
+            base_url=registry_entry.get("base_url"),
+            tinker_effort=registry_entry.get("tinker_effort", False),
+            provider_name=provider_name,
         )
     else:
-        # OpenAI-compatible (openai, xai, zai, qwen, and deferred providers)
+        # OpenAI-compatible (openai, xai, meta, zai, qwen, and deferred providers)
         base_url = registry_entry.get("base_url")
         if not base_url:
             raise LLMProviderError(
@@ -1037,14 +1367,16 @@ def create_provider(
         supports_json_schema = registry_entry.get("json_schema", True)
         if registry_entry.get("structured_output") == "json_object":
             supports_json_schema = False
+        # Meta Spark burns reasoning tokens into the completion budget; keep headroom.
         return OpenAICompatibleProvider(
             api_key=api_key,
-            model=model_name,
+            model=api_model,
             base_url=base_url,
             provider_name=provider_name,
             supports_vision=registry_entry.get("vision", False),
             supports_json_schema=supports_json_schema,
             reasoning_model=registry_entry.get("reasoning", False),
             qwen_thinking=registry_entry.get("qwen_thinking", False),
+            moonshot_thinking=registry_entry.get("moonshot_thinking", False),
             thinking=thinking,
         )

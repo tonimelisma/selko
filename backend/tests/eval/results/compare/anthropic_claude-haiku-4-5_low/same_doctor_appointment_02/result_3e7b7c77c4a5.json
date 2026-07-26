@@ -1,0 +1,141 @@
+{
+  "fixture_name": "same_doctor_appointment_02",
+  "fixture_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-4-5",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:25:31.485813+00:00",
+  "duration_ms": 1665,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:25:29.818970+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:25:29.818977+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:25:29.825970+00:00",
+      "duration_ms": 1659
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:25:31.485172+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same doctor appointment with different description details - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 425,
+    "completion_tokens": 149,
+    "total_tokens": 574
+  },
+  "cost": 0.00117,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1075,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dr. Smith - Annual Physical\n- Start: 2026-04-22T10:30:00\n- End: 2026-04-22T11:30:00\n- Location: Riverside Medical Center, Suite 200\n- Description: Appointment confirmation for annual physical exam. Please arrive 15 minutes early to complete paperwork.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Annual Physical Exam\n   - Start: 2026-04-22T10:30:00\n   - End: 2026-04-22T11:30:00\n   - Location: Riverside Medical Center\n   - Description: Dr. Smith - yearly checkup\n\n2. Event ID: event-002\n   - Title: Grocery Shopping\n   - Start: 2026-04-22T14:00:00\n   - End: 2026-04-22T15:00:00\n   - Location: Whole Foods\n   - Description: Weekly shopping\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event and event-001 refer to the same real-world appointment. They have identical start/end times (2026-04-22T10:30:00 to 11:30:00), same provider (Dr. Smith), same medical facility (Riverside Medical Center), and the same purpose (annual physical exam). The differences in wording and detail level (event-001 says 'yearly checkup' vs new event's 'annual physical exam' with arrival instructions) are minor variations expected when comparing calendar entries for the same appointment.\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "facb67112e1b431395d0ddffe5cae3e0",
+    "route_role": "primary"
+  },
+  "inference_key": "e6e83ca512c4366609ebf035089cba58f0f3626ee3f2ee002958cfa17c005756",
+  "score_key": "8d866ef530ecd83c65a28c81466eeceddd0be9681efb14062601742024eb5baa",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-4-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "9509ea1b891a9b481d3cbb41e40d9a16932e349762b3bf4cb2872e2580422e3b",
+    "fixture_input_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c"
+  }
+}

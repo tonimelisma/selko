@@ -1,0 +1,63 @@
+{
+  "fixture_name": "recurring/weekly_team_meeting_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Weekly Team Sync",
+        "start_datetime": "2026-02-09T10:00:00",
+        "end_datetime": "2026-02-09T10:30:00",
+        "location": "Conference Room A",
+        "description": "Weekly team sync meeting",
+        "all_day": false,
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=WEEKLY;BYDAY=MO"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "recurrence_rule": {
+          "expected": "RRULE:FREQ=WEEKLY;BYDAY=MO",
+          "actual": "RRULE:FREQ=WEEKLY;BYDAY=MO",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "6c1e22d457f802a8c818af6ade5eb50f2bcfc71f6b06c0ab61f59210a01a0348",
+    "expected_output_hash": "8f906d0540a0d4586591219b073e668de05842c608b5adfc72e896f2e1071f11",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "251c55d94acdf123ab81edc442f704bd6001679e60c1b34e4f901f753bc6efb8",
+  "stored_at": "2026-07-26T00:33:17.988645+00:00"
+}

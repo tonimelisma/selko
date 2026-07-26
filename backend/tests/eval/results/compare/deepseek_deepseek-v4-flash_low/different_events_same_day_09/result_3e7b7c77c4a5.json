@@ -1,0 +1,120 @@
+{
+  "fixture_name": "different_events_same_day_09",
+  "fixture_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:57:35.764492+00:00",
+  "duration_ms": 2613,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:57:33.150248+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:57:33.150256+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:57:33.156282+00:00",
+      "duration_ms": 2607
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:57:35.763873+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Different events on same day - birthday party vs standup - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 477,
+    "completion_tokens": 198,
+    "total_tokens": 675
+  },
+  "cost": 0.00012222,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1188,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Max's 5th Birthday Party\n- Start: 2026-03-21T15:00:00\n- End: 2026-03-21T18:00:00\n- Location: Bounce House Adventure\n- Description: Celebrating Max turning 5! Bounce houses, pizza, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Daily Standup\n   - Start: 2026-03-21T09:00:00\n   - End: 2026-03-21T09:15:00\n   - Location: Office - Conference Room A\n   - Description: Team sync meeting\n\n2. Event ID: event-002\n   - Title: Lunch with Client\n   - Start: 2026-03-21T12:00:00\n   - End: 2026-03-21T13:30:00\n   - Location: The Blue Bistro\n   - Description: Quarterly business lunch\n\n3. Event ID: event-003\n   - Title: Gym Session\n   - Start: 2026-03-21T18:30:00\n   - End: 2026-03-21T19:30:00\n   - Location: 24 Hour Fitness\n   - Description: Evening workout\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event is a birthday party with different title, location, and time (15:00-18:00) compared to all existing events. None of the existing events overlap in time or share common details.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "f5731bfe99164f9e84615e0e5b7791c0",
+    "route_role": "primary"
+  },
+  "inference_key": "41cc341e7f8da4a3017800c452ebacc1cf0a3eb2962c9ec11bff92ea1ec02f20",
+  "score_key": "701e862220f94fb1850377f5bde68a53c08d3f9c672236251e1b690feb729da2",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "deepseek/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-flash",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "fe5b82ab7fd368ada6fca9fc852e7060a5fa15093523a930ba9478c61caf97d7",
+    "fixture_input_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603"
+  }
+}

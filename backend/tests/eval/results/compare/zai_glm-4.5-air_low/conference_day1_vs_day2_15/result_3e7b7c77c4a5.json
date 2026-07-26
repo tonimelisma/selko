@@ -1,0 +1,120 @@
+{
+  "fixture_name": "conference_day1_vs_day2_15",
+  "fixture_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "zai",
+  "model": "glm-4.5-air",
+  "thinking": "low",
+  "run_at": "2026-07-26T01:56:49.315115+00:00",
+  "duration_ms": 14036,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T01:56:35.276545+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T01:56:35.276553+00:00",
+      "duration_ms": 9
+    },
+    "api_call": {
+      "started_at": "2026-07-26T01:56:35.286331+00:00",
+      "duration_ms": 14027
+    },
+    "scoring": {
+      "started_at": "2026-07-26T01:56:49.313893+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Conference day 1 vs day 2 - multi-day event different days - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "conference"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 531,
+    "completion_tokens": 875,
+    "total_tokens": 1406
+  },
+  "cost": 0.0009812,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1293,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: DevOps Summit - Day 2\n- Start: 2026-10-16T09:00:00\n- End: 2026-10-16T18:00:00\n- Location: Convention Center, Hall B\n- Description: Second day of DevOps Summit. Featured talks on Kubernetes and CI/CD pipelines.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: DevOps Summit - Day 1\n   - Start: 2026-10-15T09:00:00\n   - End: 2026-10-15T18:00:00\n   - Location: Convention Center, Hall B\n   - Description: Opening day of DevOps Summit with keynote speakers\n\n2. Event ID: event-002\n   - Title: Flight Home\n   - Start: 2026-10-17T14:30:00\n   - End: 2026-10-17T17:15:00\n   - Location: Airport\n   - Description: Return flight after conference\n\n3. Event ID: event-003\n   - Title: Networking Dinner\n   - Start: 2026-10-16T19:00:00\n   - End: 2026-10-16T22:00:00\n   - Location: The Waterfront Restaurant\n   - Description: Evening networking event for DevOps Summit attendees\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\":null,\"reasoning\":\"The new event (DevOps Summit - Day 2 on Oct 16) doesn't match any existing event. While event-001 is also part of the DevOps Summit, it's for Day 1 on Oct 15. The other events (Flight Home and Networking Dinner) are completely different activities on different dates/locations.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "96294ecc87564824aacc076948c70faf",
+    "route_role": "primary"
+  },
+  "inference_key": "2840495e92ce079384b4582a4806380eb4c092711f5060a95268a80474e85b42",
+  "score_key": "3b2eba9a73a69df979261ad05bfd5e9d0fad3bdee63ecf7422a70c925c371410",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "zai",
+    "model": "glm-4.5-air",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "zai/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "glm-4.5-air",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "75693477e66162205b8d9889b97e841d327b13e632f2a465e6e83e3a91deba28",
+    "fixture_input_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2"
+  }
+}

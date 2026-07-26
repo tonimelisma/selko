@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_flight_04",
+  "fixture_hash": "32c87702f55274c4b4a38de375d2716d6068149d2b340df126659d183b59d753",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "thinking": "low",
+  "run_at": "2026-07-26T00:55:48.555991+00:00",
+  "duration_ms": 4070,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:55:44.483943+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:55:44.483949+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:55:44.491254+00:00",
+      "duration_ms": 4063
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:55:48.554694+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "travel"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 497,
+    "completion_tokens": 236,
+    "total_tokens": 733
+  },
+  "cost": 0.00043133000000000006,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1213,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Flight to Denver - UA 1234\n- Start: 2026-05-10T08:15:00\n- End: 2026-05-10T11:45:00\n- Location: SFO to DEN\n- Description: United Airlines confirmation #ABC123XYZ. Seat 12A.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Pack for Trip\n   - Start: 2026-05-09T20:00:00\n   - End: 2026-05-09T21:00:00\n   - Location: Home\n   - Description: Pack bags for Denver\n\n2. Event ID: event-002\n   - Title: UA1234 - San Francisco to Denver\n   - Start: 2026-05-10T08:15:00\n   - End: 2026-05-10T11:45:00\n   - Location: SFO Terminal 3\n   - Description: Flight itinerary - departs 8:15am, arrives 11:45am MT\n\n3. Event ID: event-003\n   - Title: Hotel Check-in Denver\n   - Start: 2026-05-10T15:00:00\n   - End: 2026-05-10T15:30:00\n   - Location: Hyatt Regency Denver\n   - Description: Reservation #456789\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"Same flight number (UA1234), identical start and end times, and similar route (SFO to Denver). They refer to the same flight.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "0ebd5323a90648e6bdf6b5fecacb8851",
+    "route_role": "primary"
+  },
+  "inference_key": "dbc9b0984d6391fdf8a57503c637f1f19a02efd80c3ffaa5fd99c0737f5f8d6c",
+  "score_key": "eda53194ffe02efe83a7462e0a7d395fad9d2ad3f72c0400d689f83b3f6c4078",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "deepseek/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-pro",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "fe5b82ab7fd368ada6fca9fc852e7060a5fa15093523a930ba9478c61caf97d7",
+    "fixture_input_hash": "32c87702f55274c4b4a38de375d2716d6068149d2b340df126659d183b59d753"
+  }
+}

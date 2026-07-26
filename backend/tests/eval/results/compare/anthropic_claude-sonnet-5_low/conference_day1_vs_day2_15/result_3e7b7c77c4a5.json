@@ -1,0 +1,141 @@
+{
+  "fixture_name": "conference_day1_vs_day2_15",
+  "fixture_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-sonnet-5",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:24:20.694231+00:00",
+  "duration_ms": 2171,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:24:18.520770+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:24:18.520776+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:24:18.528539+00:00",
+      "duration_ms": 2164
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:24:20.693366+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Conference day 1 vs day 2 - multi-day event different days - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "conference"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 665,
+    "completion_tokens": 118,
+    "total_tokens": 783
+  },
+  "cost": 0.00251,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1293,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: DevOps Summit - Day 2\n- Start: 2026-10-16T09:00:00\n- End: 2026-10-16T18:00:00\n- Location: Convention Center, Hall B\n- Description: Second day of DevOps Summit. Featured talks on Kubernetes and CI/CD pipelines.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: DevOps Summit - Day 1\n   - Start: 2026-10-15T09:00:00\n   - End: 2026-10-15T18:00:00\n   - Location: Convention Center, Hall B\n   - Description: Opening day of DevOps Summit with keynote speakers\n\n2. Event ID: event-002\n   - Title: Flight Home\n   - Start: 2026-10-17T14:30:00\n   - End: 2026-10-17T17:15:00\n   - Location: Airport\n   - Description: Return flight after conference\n\n3. Event ID: event-003\n   - Title: Networking Dinner\n   - Start: 2026-10-16T19:00:00\n   - End: 2026-10-16T22:00:00\n   - Location: The Waterfront Restaurant\n   - Description: Evening networking event for DevOps Summit attendees\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"No existing event matches this one. event-001 is Day 1 on a different date, event-002 is an unrelated flight, and event-003 is a separate networking dinner event on the same day but different time and purpose. The new event (Day 2, Oct 16 9am-6pm) has no duplicate among existing events.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "93037354cdba46e0a4262544b0fe0ddc",
+    "route_role": "primary"
+  },
+  "inference_key": "e35a10301b2bea5863895e6e6c4ca2620608c8a2d2522be0f4999fac62d22281",
+  "score_key": "8707bd2f6add5948bfa3e315ed36e54490e6a1b7e4a8658c8ba638c04b8150e2",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-sonnet-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "9509ea1b891a9b481d3cbb41e40d9a16932e349762b3bf4cb2872e2580422e3b",
+    "fixture_input_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2"
+  }
+}

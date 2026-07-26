@@ -1,0 +1,57 @@
+{
+  "fixture_name": "conferences/training_session_04",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Annual Compliance Training",
+        "start_datetime": "2026-02-25T10:00:00",
+        "end_datetime": "2026-02-25T12:00:00",
+        "location": "Training Room A (Building 2, Floor 1)",
+        "description": "Mandatory annual compliance training session",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "75b48c334ed3d0da41c4d0be141e1f3dca812c5a53177ead76b752870586a53f",
+    "expected_output_hash": "55fc8e1b9a30faf83c0f2d4e38154089aee6fb7bf680d29185b68e14f5993760",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "7510ab47c8a6b1fb36b190ca4505b5397a5a668f79be5a8c07c4219e6a1a0325",
+  "stored_at": "2026-07-26T00:23:09.720578+00:00"
+}

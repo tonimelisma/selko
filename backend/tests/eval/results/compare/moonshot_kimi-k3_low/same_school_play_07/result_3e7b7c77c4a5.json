@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_school_play_07",
+  "fixture_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "moonshot",
+  "model": "kimi-k3",
+  "thinking": "low",
+  "run_at": "2026-07-26T02:27:41.584766+00:00",
+  "duration_ms": 8403,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:27:33.179695+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:27:33.179702+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:27:33.186375+00:00",
+      "duration_ms": 8397
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:27:41.584152+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 591,
+    "completion_tokens": 241,
+    "total_tokens": 832
+  },
+  "cost": 0.005388,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1294,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Spring Musical: The Wizard of Oz\n- Start: 2026-04-25T19:00:00\n- End: 2026-04-25T21:00:00\n- Location: Lincoln Elementary Auditorium\n- Description: Your child's class is performing! Tickets available at the door, $5 per person.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: School Play - Wizard of Oz\n   - Start: 2026-04-25T19:00:00\n   - End: 2026-04-25T21:00:00\n   - Location: Lincoln Elementary\n   - Description: Annual spring performance by 3rd and 4th graders\n\n2. Event ID: event-002\n   - Title: PTA Meeting\n   - Start: 2026-04-24T18:30:00\n   - End: 2026-04-24T20:00:00\n   - Location: Lincoln Elementary Library\n   - Description: Monthly PTA meeting - all parents welcome\n\n3. Event ID: event-003\n   - Title: Soccer Practice\n   - Start: 2026-04-25T16:00:00\n   - End: 2026-04-25T17:30:00\n   - Location: Community Field\n   - Description: Regular Friday practice\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"Both events refer to the same Wizard of Oz school performance at Lincoln Elementary on 2026-04-25 from 19:00-21:00. The titles differ slightly ('Spring Musical' vs 'School Play') and the new event adds auditorium/ticket details, but the date, exact start/end times, location, and subject all match.\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "4c3a271b75044f2798f601a16fec59d0",
+    "route_role": "primary"
+  },
+  "inference_key": "cd3ca8cc5bb872dfae4ef7d9650daa51436f96b7f4bb00e219a6ec9a378c89cc",
+  "score_key": "7c806a7d8cca889c9b74527873cc2abe456d67abdded4cb7a79353ed3a352fdb",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "moonshot",
+    "model": "kimi-k3",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k3",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "359d3e212909f5193d4acf852234c01412e7737d41ff900f59817d680942598a",
+    "fixture_input_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61"
+  }
+}

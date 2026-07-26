@@ -1,0 +1,141 @@
+{
+  "fixture_name": "different_doctor_appointments_12",
+  "fixture_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3",
+  "code_hash": "ec71a4813782",
+  "prompt_hash": "3e7b7c77c4a5",
+  "operation": "compare",
+  "provider": "tinker",
+  "model": "inkling",
+  "thinking": "low",
+  "run_at": "2026-07-23T06:49:35.731254+00:00",
+  "duration_ms": 3988,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:49:31.740891+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:49:31.740910+00:00",
+      "duration_ms": 11
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:49:31.752317+00:00",
+      "duration_ms": 3977
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:49:35.729636+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Two different doctor appointments in same week - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "medical"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 0,
+    "completion_tokens": 124,
+    "total_tokens": 124
+  },
+  "cost": 0.00058032,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1184,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dermatology Appointment\n- Start: 2026-06-04T14:00:00\n- End: 2026-06-04T14:30:00\n- Location: Skin Health Clinic, Suite 301\n- Description: Annual skin check with Dr. Patel\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Dentist - Dr. Lee\n   - Start: 2026-06-02T09:00:00\n   - End: 2026-06-02T10:00:00\n   - Location: Bright Smiles Dental\n   - Description: 6-month cleaning and checkup\n\n2. Event ID: event-002\n   - Title: Eye Exam\n   - Start: 2026-06-05T11:00:00\n   - End: 2026-06-05T12:00:00\n   - Location: Vision Care Center\n   - Description: Annual eye examination with Dr. Wong\n\n3. Event ID: event-003\n   - Title: Team Lunch\n   - Start: 2026-06-04T12:00:00\n   - End: 2026-06-04T13:00:00\n   - Location: Italian Garden\n   - Description: Monthly team lunch\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is a dermatology appointment on June 4 at 14:00 at Skin Health Clinic. None of the existing events share the same purpose, provider, or overlapping time; event-003 is on the same date but is a team lunch at a different time and location.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "c76e4e95a6824682bcaa1de3f9f147d9",
+    "route_role": "primary"
+  },
+  "inference_key": "3e37bb31573d1e07ff9d28239f09bcc732fab120bf4d1b84be7a7e74857c9143",
+  "score_key": "e51e193c7beccd85a851cb2c9dcd85c90875c4e51268f776d64532c5eea938c1",
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "tinker",
+    "model": "inkling",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "tinker/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "inkling",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "26df3f87b7c852a12f0b4ae080f7b6880d6fea476c9b0b50f51ada1ab38f3791",
+    "fixture_input_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3"
+  }
+}

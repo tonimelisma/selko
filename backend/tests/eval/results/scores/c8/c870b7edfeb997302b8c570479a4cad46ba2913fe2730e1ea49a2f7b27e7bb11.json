@@ -1,0 +1,63 @@
+{
+  "fixture_name": "recurring/monthly_book_club_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Book Club - The Midnight Library",
+        "start_datetime": "2026-03-05T19:00:00",
+        "end_datetime": "2026-03-05T21:00:00",
+        "location": "42 Reading Lane, Cupertino, CA 95014",
+        "description": "Monthly book club meeting to discuss The Midnight Library by Matt Haig",
+        "all_day": false,
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=MONTHLY;BYDAY=1TH"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "recurrence_rule": {
+          "expected": "RRULE:FREQ=MONTHLY;BYDAY=1TH",
+          "actual": null,
+          "match": false
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "86c0fbe55c4ec0dc1d6479318214306bfd91c36626b79ed8a40bce1094b46ad0",
+    "expected_output_hash": "f31b1ece2ea99149cdbc609de9e740ae1b5d77c310e3e3eb524591d7476cb7ab",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "c870b7edfeb997302b8c570479a4cad46ba2913fe2730e1ea49a2f7b27e7bb11",
+  "stored_at": "2026-07-23T06:22:08.186074+00:00"
+}

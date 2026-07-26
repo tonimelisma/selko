@@ -1,0 +1,57 @@
+{
+  "fixture_name": "invitations/holiday_party_07",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechCorp Annual Holiday Celebration",
+        "start_datetime": "2026-12-18T18:00:00",
+        "end_datetime": "2026-12-18T22:00:00",
+        "location": "Grand Ballroom, The Ritz-Carlton, 181 Fremont Street, San Francisco, CA 94105",
+        "description": "Annual holiday party with dinner, live band, and awards ceremony",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "3b18d978a5ca3ebb725825486880b3dcc133f72d685c9eedd00b1dcb13b307d5",
+    "expected_output_hash": "95ae72e62ae987daf77dc5a5fe6c787745909ecf8899e2e1588dd34bb9e24453",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "97606c9d402ccb4de086fe9e78d969667d35cb1fb0671549a74a9e84dc37712b",
+  "stored_at": "2026-07-26T00:31:12.828531+00:00"
+}

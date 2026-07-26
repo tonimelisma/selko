@@ -1,0 +1,297 @@
+{
+  "fixture_name": "school/pdf_calendar_kindercare_dec_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 19,
+    "events": [
+      {
+        "title": "Mad about Plaid! Day",
+        "start_datetime": "2025-12-01",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Write a Letter to Santa Day",
+        "start_datetime": "2025-12-03",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-05",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Wear a Santa Hat Day",
+        "start_datetime": "2025-12-09",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Candy Cane Day",
+        "start_datetime": "2025-12-11",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-12",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Ugly Sweater Day",
+        "start_datetime": "2025-12-15",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Rudolf Day",
+        "start_datetime": "2025-12-17",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Movie Day - The Grinch",
+        "start_datetime": "2025-12-19",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-22",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-23",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Christmas Party - Half Day",
+        "start_datetime": "2025-12-24",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - Christmas Day",
+        "start_datetime": "2025-12-25",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Happy Birthday to Ms Noella",
+        "start_datetime": "2025-12-26",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-29",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-30",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "New Year's Eve - Early Close at 3pm",
+        "start_datetime": "2025-12-31",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "event_scores": [
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2025-12-24",
+          "actual_date": "2025-12-24",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": false,
+          "match": true,
+          "allday_relaxed": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2025-12-25",
+          "actual_date": "2025-12-25",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2025-12-31",
+          "actual_date": "2025-12-31",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": false,
+          "match": true,
+          "allday_relaxed": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-01-01",
+          "actual_date": "2026-01-01",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "bac1ecfc53af1f2f4e96ce5e5d3ebd080a48dca81d7749fce7d21463991fefaf",
+    "expected_output_hash": "6918a1b58ce755934bb872894265cf11c78e6ec574d28be0781dc78b33161019",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "615186484738d67d18eab01134ae7f39b5a6a23f10d6530a6cdc83c67e2f6740",
+  "stored_at": "2026-07-26T01:02:46.356321+00:00"
+}

@@ -1,0 +1,142 @@
+{
+  "fixture_name": "different_doctor_appointments_12",
+  "operation": "compare",
+  "provider": "meta",
+  "model": "muse-spark-1.1",
+  "thinking": {
+    "mode": "level",
+    "value": "minimal"
+  },
+  "run_at": "2026-07-23T06:45:12.481246+00:00",
+  "duration_ms": 5029,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:45:07.448598+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:45:07.448618+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:45:07.456136+00:00",
+      "duration_ms": 5022
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:45:12.479060+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 379,
+    "completion_tokens": 605,
+    "total_tokens": 984
+  },
+  "cost": 0.003045,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1184,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Dermatology Appointment\n- Start: 2026-06-04T14:00:00\n- End: 2026-06-04T14:30:00\n- Location: Skin Health Clinic, Suite 301\n- Description: Annual skin check with Dr. Patel\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Dentist - Dr. Lee\n   - Start: 2026-06-02T09:00:00\n   - End: 2026-06-02T10:00:00\n   - Location: Bright Smiles Dental\n   - Description: 6-month cleaning and checkup\n\n2. Event ID: event-002\n   - Title: Eye Exam\n   - Start: 2026-06-05T11:00:00\n   - End: 2026-06-05T12:00:00\n   - Location: Vision Care Center\n   - Description: Annual eye examination with Dr. Wong\n\n3. Event ID: event-003\n   - Title: Team Lunch\n   - Start: 2026-06-04T12:00:00\n   - End: 2026-06-04T13:00:00\n   - Location: Italian Garden\n   - Description: Monthly team lunch\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"New event is a Dermatology Appointment on 2026-06-04 14:00 at Skin Health Clinic. None of the existing events match: event-001 is a dentist appointment on 2026-06-02, event-002 is an eye exam on 2026-06-05, and event-003 is a team lunch on 2026-06-04 but at a different time, location, and purpose. No duplicate found.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "e27e2550cc3543b98f89740f53c3c49b",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Two different doctor appointments in same week - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "medical"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "meta",
+    "model": "muse-spark-1.1",
+    "thinking": {
+      "mode": "level",
+      "value": "minimal"
+    },
+    "request_settings": {
+      "api_surface": "meta/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "muse-spark-1.1",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "minimal"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "2dc33a6d6c0329d78002b8a6bf259d6c55f477ac14db027c204edf68a9585f77",
+    "fixture_input_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3"
+  },
+  "inference_key": "68ef6c31f3787c7302b1ccd9ce3a619b5dafd6657afd727f833c7b8ecf49324a",
+  "stored_at": "2026-07-23T06:45:12.535103+00:00"
+}

@@ -1,0 +1,95 @@
+{
+  "fixture_name": "school/school_digest_author_visit_07",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "events": [
+      {
+        "title": "Double Author Visit",
+        "start_datetime": "2026-03-12",
+        "end_datetime": null,
+        "location": "Walnut Heights School, 4064 Walnut Blvd, Walnut Creek, CA 94596",
+        "description": "Author visit at school with book signing. Books can be pre-ordered through Rakestraw Bookstore.",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Spring Music Showcase",
+        "start_datetime": "2026-03-24T09:30:00",
+        "end_datetime": null,
+        "location": "Walnut Heights MPR",
+        "description": "TK and K music showcase. Livestream available.",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-03-12",
+          "actual_date": "2026-03-12",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [
+      {
+        "extra": true,
+        "overall_match": false
+      }
+    ],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "5345962666e2f7927ed209ebdefff10ea1ca952e93dd592c3d21649f33ac7393",
+    "expected_output_hash": "9fa5ad89a514094526c1dea5e85e5dcfb88a09a0beb46ce05bafc3e1e85313b9",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "9de8fbcfc71d3bf1bec82807cd9a02c5f4ddc26f5be1007ba3f5b218b4b1bdd1",
+  "stored_at": "2026-07-26T02:40:08.866239+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_flight_04",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "a925c2acf77da7cdee9a6a62d8d73344df0cb6752be535ef0fdba8670c7f9628",
+    "expected_output_hash": "07c0cad35a9e6a119fdc68b31f2b33f0e4446054e0f7130bb6383f4767d4b28f",
+    "scorer_hash": "21cc4e6da647069be8d7bd39c0c9b152308629cedd8347cddfae68bd64eedd73"
+  },
+  "score_key": "fb67b526f6575dc677496fe8040a7efcdf2c5ce6a3ffa4710b91849721b9b76e",
+  "stored_at": "2026-07-26T00:36:55.306877+00:00"
+}

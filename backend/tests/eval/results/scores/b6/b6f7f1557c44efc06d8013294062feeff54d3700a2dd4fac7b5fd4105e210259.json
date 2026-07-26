@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/autopay_scheduled_15",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "4ccd1d7d8827690b1b13b2ce2271ba4002bc12c32feb4f472524486678f46e06",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "b6f7f1557c44efc06d8013294062feeff54d3700a2dd4fac7b5fd4105e210259",
+  "stored_at": "2026-07-26T01:07:10.321447+00:00"
+}

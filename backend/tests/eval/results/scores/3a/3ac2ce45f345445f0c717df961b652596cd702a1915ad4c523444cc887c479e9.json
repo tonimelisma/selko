@@ -1,0 +1,100 @@
+{
+  "fixture_name": "school/water_day_all_day_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 3,
+    "events": [
+      {
+        "title": "Water Day",
+        "start_datetime": "2026-07-27",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "importance": "fyi"
+      },
+      {
+        "title": "Water Day",
+        "start_datetime": "2026-07-28",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "importance": "fyi"
+      },
+      {
+        "title": "Early Release",
+        "start_datetime": "2026-07-31T12:30:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": null,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-07-27",
+          "actual_date": "2026-07-27",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "action_required",
+          "match": false
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "752bca43816113fd20c29ca8a9c5536b8a41dc92dc7b258cfb1b023a004b0c18",
+    "expected_output_hash": "10ba10103ecd05aca36be1d5bfa2eb1b6377fca1c829c3758611a4f223f7963b",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "3ac2ce45f345445f0c717df961b652596cd702a1915ad4c523444cc887c479e9",
+  "stored_at": "2026-07-26T00:59:29.164950+00:00"
+}

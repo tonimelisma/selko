@@ -1,0 +1,162 @@
+{
+  "fixture_name": "school_event_detailed_14",
+  "operation": "merge",
+  "provider": "moonshot",
+  "model": "kimi-k2.5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T02:45:50.135257+00:00",
+  "duration_ms": 21968,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T02:45:28.164095+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T02:45:28.164102+00:00",
+      "duration_ms": 8
+    },
+    "api_call": {
+      "started_at": "2026-07-26T02:45:28.173010+00:00",
+      "duration_ms": 21960
+    },
+    "scoring": {
+      "started_at": "2026-07-26T02:45:50.134007+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 530,
+    "completion_tokens": 1114,
+    "total_tokens": 1644
+  },
+  "cost": 0.00366,
+  "actual": {
+    "title": "Spring Science Fair",
+    "start_datetime": "2026-05-14T17:00:00",
+    "end_datetime": "2026-05-14T19:00:00",
+    "all_day": false,
+    "location": "Lincoln Elementary School - Main Gymnasium",
+    "description": "Annual science fair showcasing student projects\n\nGrades 3-5 projects on display. Volunteers needed for setup at 4pm. Light refreshments provided. Awards ceremony at 6:30pm. Parking in west lot.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1338,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Spring Science Fair\n- Start: 2026-05-14T17:00:00\n- End: 2026-05-14T19:00:00\n- All Day: False\n- Location: Lincoln Elementary School\n- Description: Annual science fair showcasing student projects\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Spring Science Fair\n- Start: 2026-05-14T17:00:00\n- End: 2026-05-14T19:00:00\n- All Day: False\n- Location: Lincoln Elementary School - Main Gymnasium\n- Description: Grades 3-5 projects on display. Volunteers needed for setup at 4pm. Light refreshments provided. Awards ceremony at 6:30pm. Parking in west lot.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n    \"title\": \"Spring Science Fair\",\n    \"start_datetime\": \"2026-05-14T17:00:00\",\n    \"end_datetime\": \"2026-05-14T19:00:00\",\n    \"all_day\": false,\n    \"location\": \"Lincoln Elementary School - Main Gymnasium\",\n    \"description\": \"Annual science fair showcasing student projects\\n\\nGrades 3-5 projects on display. Volunteers needed for setup at 4pm. Light refreshments provided. Awards ceremony at 6:30pm. Parking in west lot.\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "0d66852ab6ee418098c8cb3761131492",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "School event: newsletter brief mention, then dedicated email with volunteer needs and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "school",
+    "family"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "4097a9a1a243c7fda826013595acce0b475cee5bbaae8015152b303ecfdbf6f8",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "moonshot",
+    "model": "kimi-k2.5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k2.5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "359d3e212909f5193d4acf852234c01412e7737d41ff900f59817d680942598a",
+    "fixture_input_hash": "4097a9a1a243c7fda826013595acce0b475cee5bbaae8015152b303ecfdbf6f8"
+  },
+  "inference_key": "acd9da71cbf1b115f5d76b878f49b5542dec80232c6d3213792250bc523e85e6",
+  "stored_at": "2026-07-26T02:45:50.161689+00:00"
+}

@@ -1,0 +1,63 @@
+{
+  "fixture_name": "meetings/one_on_one_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "1:1 with Alex Rivera",
+        "start_datetime": "2026-02-03T14:00:00",
+        "end_datetime": "2026-02-03T14:30:00",
+        "location": "Room 401 or Zoom",
+        "description": "Weekly 1:1 sync meeting",
+        "all_day": false,
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=WEEKLY;BYDAY=TU"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "recurrence_rule": {
+          "expected": "RRULE:FREQ=WEEKLY;BYDAY=TU",
+          "actual": "RRULE:FREQ=WEEKLY;BYDAY=TU",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 1,
+    "inference_key": "7fcb8c38eec72a2721d7f26e0479288a55c95357e836ffc480b8bf771e8d2da9",
+    "expected_output_hash": "e262b1e7ea686b3ae03afc1a0d3e595ea7b66b667fe4a16d32c175b6ac5cb647",
+    "scorer_hash": "dbdb9613426b6fc259cd347042285c296c1234b3bd45e74fdef6fead407689c8"
+  },
+  "score_key": "7ccb4ccb41b2cda8a0148269446ce0b60d795fd9133d45228e387a37d6ef2f3a",
+  "stored_at": "2026-07-23T06:21:47.065715+00:00"
+}

@@ -1,0 +1,162 @@
+{
+  "fixture_name": "travel_itinerary_update_15",
+  "operation": "merge",
+  "provider": "moonshot",
+  "model": "kimi-k3",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-26T00:40:36.680251+00:00",
+  "duration_ms": 6395,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-26T00:40:30.283464+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-26T00:40:30.283469+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-26T00:40:30.289584+00:00",
+      "duration_ms": 6389
+    },
+    "scoring": {
+      "started_at": "2026-07-26T00:40:36.679391+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 680,
+    "completion_tokens": 216,
+    "total_tokens": 896
+  },
+  "cost": 0.00528,
+  "actual": {
+    "title": "Flight to Seattle - UA 1847",
+    "start_datetime": "2026-06-08T07:30:00",
+    "end_datetime": "2026-06-08T10:15:00",
+    "all_day": false,
+    "location": "SFO Terminal 3, Gate 75 \u2192 SEA",
+    "description": "United Airlines flight 1847. Confirmation #ABC123. Seat 12A. Boarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1330,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Flight to Seattle - UA 1847\n- Start: 2026-06-08T07:30:00\n- End: 2026-06-08T10:15:00\n- All Day: False\n- Location: SFO \u2192 SEA\n- Description: United Airlines flight 1847. Confirmation #ABC123. Seat 12A.\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Flight to Seattle - UA 1847\n- Start: 2026-06-08T07:30:00\n- End: 2026-06-08T10:15:00\n- All Day: False\n- Location: SFO Terminal 3, Gate 75 \u2192 SEA\n- Description: Boarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\"title\":\"Flight to Seattle - UA 1847\",\"start_datetime\":\"2026-06-08T07:30:00\",\"end_datetime\":\"2026-06-08T10:15:00\",\"all_day\":false,\"location\":\"SFO Terminal 3, Gate 75 \u2192 SEA\",\"description\":\"United Airlines flight 1847. Confirmation #ABC123. Seat 12A. Boarding starts 7:00am at Gate 75. TSA PreCheck available. Mobile boarding pass ready. Arrive 90min early for international connections.\",\"importance\":\"action_required\"}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "6bb101964e364d0f803e9ab9900f38fc",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Travel: booking confirmation has basic flight info, itinerary update adds gate and terminal details",
+  "difficulty": "hard",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "travel",
+    "logistics"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "193758bc1cdefa9527948e2ad8adb1389ff9b720b3149d0baf73b8a9b5403e47",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "merge",
+    "provider": "moonshot",
+    "model": "kimi-k3",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "moonshot/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "kimi-k3",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "df0f5eda5c2745a869851fed4ac31028e0899ef3ce5326cddeda2433f7a3f91d",
+    "adapter_contract_hash": "e85cb07a92e42c6b2cbbc2a1845c6220b2bcd6df0dd63df23a3fe60288065f85",
+    "fixture_input_hash": "193758bc1cdefa9527948e2ad8adb1389ff9b720b3149d0baf73b8a9b5403e47"
+  },
+  "inference_key": "f690bce2476083df30db3eeb55b6f3a5f3be92067d01b1bc9eb6e3c88ebaf857",
+  "stored_at": "2026-07-26T00:40:36.705786+00:00"
+}

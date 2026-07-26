@@ -1,0 +1,120 @@
+{
+  "fixture_name": "same_birthday_party_01",
+  "operation": "compare",
+  "provider": "qwen",
+  "model": "qwen3.7-plus",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-07-23T06:36:34.976715+00:00",
+  "duration_ms": 12593,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-07-23T06:36:22.379389+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-07-23T06:36:22.379403+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-07-23T06:36:22.386273+00:00",
+      "duration_ms": 12587
+    },
+    "scoring": {
+      "started_at": "2026-07-23T06:36:34.973967+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 554,
+    "completion_tokens": 588,
+    "total_tokens": 1142
+  },
+  "cost": 0.0011624,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1263,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Emily's 7th Birthday Party\n- Start: 2026-03-15T14:00:00\n- End: 2026-03-15T17:00:00\n- Location: Adventure Zone, 123 Main St\n- Description: Come celebrate Emily turning 7! Pizza, cake, and fun activities. Please RSVP by March 10th.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Emily's Birthday Celebration\n   - Start: 2026-03-15T14:00:00\n   - End: 2026-03-15T17:00:00\n   - Location: Adventure Zone\n   - Description: Join us for Emily's 7th birthday! Pizza, cake, games.\n\n2. Event ID: event-002\n   - Title: Team Standup\n   - Start: 2026-03-15T09:00:00\n   - End: 2026-03-15T09:30:00\n   - Location: Office\n   - Description: Daily standup meeting\n\n3. Event ID: event-003\n   - Title: Dentist Appointment\n   - Start: 2026-03-14T10:00:00\n   - End: 2026-03-14T11:00:00\n   - Location: Bright Smiles Dental\n   - Description: Regular checkup\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": null,
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"Both events are for Emily's 7th birthday party on the same date (2026-03-15) at the same time (14:00-17:00), same location (Adventure Zone), and mention the same activities (pizza, cake). The new event includes the full address and RSVP details, but these refer to the same real-world event with slight wording differences.\"\n}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "8676eb5b081f4993b3622b17cb7b5ffb",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same birthday party with slightly different wording - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "birthday"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2",
+  "code_provenance": {
+    "git_commit": "d0d6356f181c365c1668ecdd708281efc3876f42",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 1,
+    "operation": "compare",
+    "provider": "qwen",
+    "model": "qwen3.7-plus",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "qwen/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "qwen3.7-plus",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "3e7b7c77c4a51060feface2f0cb96557a12e9e8c351d7d5d415ac60da1561125",
+    "adapter_contract_hash": "ca72602ea37eced027677b9a7d6155ce8b30c2f665c495dc52c83af8f5e9c935",
+    "fixture_input_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2"
+  },
+  "inference_key": "79f19ca38de697fe32736681828683a4fc0faa0b6cbad78e6131be13cff78e7a",
+  "stored_at": "2026-07-23T06:36:35.016875+00:00"
+}
