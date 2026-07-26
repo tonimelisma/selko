@@ -306,11 +306,11 @@ class TestGmailAttachmentStaging:
     """Test Gmail attachment download with real Gmail API."""
 
     def test_gmail_attachment_full_pipeline(
-        self, authenticated_client, config
+        self, authenticated_client, admin_client, test_user_id, config
     ):
         """Complete pipeline: Gmail fetch → download → storage → metadata."""
         # 1. Get Gmail credentials
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
             pytest.fail("No Gmail credentials - run cli_auth_gmail first")
 
