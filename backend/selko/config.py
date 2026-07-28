@@ -258,7 +258,9 @@ def load_config(env_override: Optional[str] = None) -> Config:
     # Load from .env file if it exists (local development)
     # Skip if running in CI/CD where env vars are set directly
     if env_path.exists():
-        load_dotenv(env_path, override=True)
+        # Platform environment variables are authoritative. Local files only
+        # fill values that the process environment does not already define.
+        load_dotenv(env_path, override=False)
         logger.info(f"Loaded config from {env_file} ({environment})")
     elif os.getenv("SUPABASE_URL"):
         # Env vars already set (CI/CD mode)
