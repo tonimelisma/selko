@@ -10,7 +10,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 
-from selko.api.deps import get_authenticated_client
+from selko.api.deps import (
+    CurrentUser,
+    get_current_user,
+    get_service_role_client,
+)
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.events import CalendarListResponse
 from selko.services import calendars
@@ -22,7 +26,8 @@ router = APIRouter(prefix="/calendars", tags=["calendars"])
 
 @router.get("", response_model=list[CalendarListResponse])
 async def list_calendars(
-    client: Annotated[Client, Depends(get_authenticated_client)],
+    service_client: Annotated[Client, Depends(get_service_role_client)],
+    user: CurrentUser = Depends(get_current_user),
 ) -> list[CalendarListResponse]:
     """List all user's Google Calendars.
 
@@ -36,8 +41,7 @@ async def list_calendars(
         500: Failed to fetch calendars.
     """
     try:
-        user_id = client.auth.get_user().user.id
-        calendars_data = calendars.list_calendars(client, user_id)
+        calendars_data = calendars.list_calendars(service_client, user.id)
 
         return [
             CalendarListResponse(

@@ -264,6 +264,30 @@ class TestOutlookWorkerDispatch:
         client.table().update.assert_called_with({"sync_cursor": "cursor-2"})
 
     @pytest.mark.asyncio
+    async def test_graph_401_marks_outlook_expired(self, mock_config):
+        client = MagicMock()
+        integration = {"id": "integration-1"}
+
+        with (
+            patch("selko.workers.email_fetch._get_integration", return_value=integration),
+            patch(
+                "selko.workers.email_fetch._process_outlook_reliable",
+                side_effect=GraphHttpError(401, "invalid token"),
+            ),
+            patch("selko.workers.email_fetch.update_integration_status") as update_status,
+            pytest.raises(GraphHttpError),
+        ):
+            await process_email_fetch_task(
+                client,
+                mock_config,
+                {"user_id": "user-1", "provider": "outlook"},
+            )
+
+        update_status.assert_called_once_with(
+            client, "outlook", "expired", user_id="user-1"
+        )
+
+    @pytest.mark.asyncio
     async def test_scheduler_enqueues_gmail_and_outlook(self):
         client = MagicMock()
         integrations_result = MagicMock(data=[

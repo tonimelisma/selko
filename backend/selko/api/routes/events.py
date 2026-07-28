@@ -11,7 +11,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from supabase import Client
 
-from selko.api.deps import CurrentUser, get_authenticated_client, get_current_user, get_quota_service
+from selko.api.deps import (
+    CurrentUser,
+    get_authenticated_client,
+    get_current_user,
+    get_quota_service,
+    get_service_role_client,
+)
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.events import (
     CalendarSyncResponse,
@@ -44,6 +50,7 @@ async def sync_event(
     event_id: UUID,
     response: Response,
     client: Annotated[Client, Depends(get_authenticated_client)],
+    service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
 ) -> CalendarSyncResponse:
@@ -112,7 +119,7 @@ async def sync_event(
             )
 
         # Sync to calendar
-        google_event_id = sync_event_to_calendar(client, user.id, str(event_id))
+        google_event_id = sync_event_to_calendar(service_client, user.id, str(event_id))
 
         # Fetch updated event to get synced_at
         updated_event = client.table("events").select("synced_at").eq(
@@ -151,6 +158,7 @@ async def sync_event(
 async def unsync_event(
     event_id: UUID,
     client: Annotated[Client, Depends(get_authenticated_client)],
+    service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventUnsyncResponse:
     """Remove a synced event from Google Calendar and revert to pending_review.
@@ -200,7 +208,7 @@ async def unsync_event(
             )
 
         # Delete from Google Calendar and revert status
-        delete_calendar_event(client, user.id, str(event_id))
+        delete_calendar_event(service_client, user.id, str(event_id))
 
         return EventUnsyncResponse(
             event_id=str(event_id),
