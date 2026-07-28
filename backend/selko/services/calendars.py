@@ -10,7 +10,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from supabase import Client
 
-from selko.services.integrations import get_credentials
+from selko.services.integrations import get_credentials, update_integration_status
 
 logger = logging.getLogger(__name__)
 
@@ -500,6 +500,13 @@ def sync_event_to_calendar(
         return google_event_id
 
     except Exception as e:
+        if isinstance(e, HttpError) and getattr(e.resp, "status", None) == 401:
+            update_integration_status(
+                supabase_client,
+                "google_calendar",
+                "expired",
+                user_id=user_id,
+            )
         # Mark as sync_failed
         try:
             supabase_client.table("events").update({
