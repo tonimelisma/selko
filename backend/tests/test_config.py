@@ -258,6 +258,23 @@ class TestBackgroundProcessingDefaults:
 
         assert config.enable_background_processing is False
 
+    def test_platform_env_overrides_dotenv_file(self, monkeypatch, tmp_path):
+        """A Render setting must not be replaced by a checked-out env file."""
+        from selko import config as config_module
+
+        (tmp_path / ".env.production").write_text(
+            "ENABLE_BACKGROUND_PROCESSING=false\n"
+        )
+        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "true")
+
+        config = config_module.load_config()
+
+        assert config.enable_background_processing is True
+
 
 class TestAttachmentLimitsDefaults:
     """Test per-type attachment size limit defaults."""

@@ -77,9 +77,9 @@ async def lifespan(app: FastAPI):
     This implements the Async Monolith pattern where the API server,
     background workers, and cron jobs all run in the same process.
 
-    Background processing (workers + scheduler) is OFF by default and requires
-    ENABLE_BACKGROUND_PROCESSING=true to enable. This allows running the API
-    without background workers for development, testing, or lightweight deployments.
+    Background processing (workers + scheduler) defaults ON in production and
+    OFF elsewhere. ENABLE_BACKGROUND_PROCESSING can explicitly override that
+    default for development, testing, or lightweight deployments.
 
     - Worker pool: Continuously processes pending emails and events from data tables
     - APScheduler: Runs periodic tasks (e.g., email fetch scheduling)
