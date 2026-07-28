@@ -24,7 +24,9 @@
 			];
 		}
 		return integrations
-			.filter((item) => item.status !== 'active')
+			.filter(
+				(item) => item.provider !== 'google_photos' && item.status !== 'active'
+			)
 			.map((item) => item.provider);
 	});
 

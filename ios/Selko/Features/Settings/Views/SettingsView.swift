@@ -8,7 +8,8 @@ import SwiftUI
 struct SettingsView: View {
     let email: String
     @State private var viewModel = SettingsViewModel()
-    @State private var showAuthError = false
+    @State private var authorizer = OAuthAuthorizer()
+    @Environment(\.openURL) private var openURL
 
     init(email: String = "") {
         self.email = email
@@ -55,17 +56,18 @@ struct SettingsView: View {
                 Text(error)
             }
         }
-        .alert("Connection Error", isPresented: $showAuthError) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(String(localized: "settings.authErrorMessage"))
-        }
     }
 
     // MARK: - Connected Accounts
 
     private var connectedAccountsSection: some View {
         Section("Connected Accounts") {
+            if let error = authorizer.errorMessage {
+                Text(error)
+                    .font(SelkoTypography.body)
+                    .foregroundStyle(Color.selkoError)
+                    .accessibilityIdentifier("settingsOAuthError")
+            }
             integrationRow(provider: .gmail)
             integrationRow(provider: .outlook)
             integrationRow(provider: .googleCalendar)
@@ -120,9 +122,10 @@ struct SettingsView: View {
                 }
                 Spacer()
                 Button("Connect") {
-                    connectProvider(provider)
+                    Task { await connectProvider(provider) }
                 }
                 .buttonStyle(.selko(.primary))
+                .disabled(authorizer.connectingProvider != nil)
                 .accessibilityLabel("Connect \(viewModel.providerDisplayName(provider))")
             }
         }
@@ -350,25 +353,11 @@ struct SettingsView: View {
 
     // MARK: - Actions
 
-    private func connectProvider(_ provider: IntegrationProvider) {
-        let backendAPI = DependencyContainer.shared.backendAPI
-        let urlString: String
-
-        switch provider {
-        case .gmail:
-            urlString = backendAPI.getGmailAuthUrl(redirectUri: nil)
-        case .outlook:
-            urlString = backendAPI.getOutlookAuthUrl(redirectUri: nil)
-        case .googleCalendar:
-            urlString = backendAPI.getCalendarAuthUrl(redirectUri: nil)
-        case .googlePhotos:
-            return
-        }
-
-        if let url = URL(string: urlString) {
-            UIApplication.shared.open(url) { success in
-                if !success {
-                    showAuthError = true
+    private func connectProvider(_ provider: IntegrationProvider) async {
+        if let url = await authorizer.authorizationURL(for: provider) {
+            openURL(url) { accepted in
+                if !accepted {
+                    authorizer.reportOpenFailure()
                 }
             }
         }

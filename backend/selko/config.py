@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ def get_environment(override: Optional[str] = None) -> str:
     return env
 
 
-def _parse_allowed_origins() -> list[str]:
+def _parse_allowed_origins(getenv=os.getenv) -> list[str]:
     """Parse ALLOWED_ORIGINS from env, fall back to localhost defaults."""
     defaults = [
         "http://localhost:3000",
@@ -138,7 +138,7 @@ def _parse_allowed_origins() -> list[str]:
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ]
-    origins_str = os.getenv("ALLOWED_ORIGINS", "")
+    origins_str = getenv("ALLOWED_ORIGINS", "")
     if origins_str:
         return [o.strip() for o in origins_str.split(",") if o.strip()]
     return defaults
@@ -172,7 +172,7 @@ def _resolve_provisional_fallback(
     )
 
 
-def _fallback_key_present(provider_name: Optional[str]) -> bool:
+def _fallback_key_present(provider_name: Optional[str], getenv=os.getenv) -> bool:
     """Return True when the env has an API key for the fallback provider."""
     if not provider_name:
         return False
@@ -193,22 +193,23 @@ def _fallback_key_present(provider_name: Optional[str]) -> bool:
         return False
     if provider_name == "meta":
         return bool(
-            os.getenv("META_API_KEY")
-            or os.getenv("META_MODEL_API_KEY")
-            or os.getenv("MODEL_API_KEY")
+            getenv("META_API_KEY")
+            or getenv("META_MODEL_API_KEY")
+            or getenv("MODEL_API_KEY")
         )
     if provider_name == "zai":
-        return bool(os.getenv("ZAI_API_KEY") or os.getenv("ZHIPU_API_KEY"))
-    return bool(os.getenv(key_env))
+        return bool(getenv("ZAI_API_KEY") or getenv("ZHIPU_API_KEY"))
+    return bool(getenv(key_env))
 
 
 def _warn_if_fallback_unavailable(
     environment: str,
     fallback_provider: Optional[str],
     fallback_model: Optional[str],
+    getenv=os.getenv,
 ) -> None:
     """Loud warning when fallback cannot be used outside test runs."""
-    if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
+    if "pytest" in sys.modules or getenv("PYTEST_CURRENT_TEST"):
         return
     # Treat explicit test-ish environments quietly; staging/prod/dev warn.
     missing_bits = []
@@ -216,7 +217,7 @@ def _warn_if_fallback_unavailable(
         missing_bits.append("LLM_FALLBACK_PROVIDER")
     if not fallback_model:
         missing_bits.append("LLM_FALLBACK_MODEL")
-    if fallback_provider and not _fallback_key_present(fallback_provider):
+    if fallback_provider and not _fallback_key_present(fallback_provider, getenv):
         missing_bits.append(f"API key for fallback provider '{fallback_provider}'")
     if not missing_bits:
         return
@@ -255,14 +256,16 @@ def load_config(env_override: Optional[str] = None) -> Config:
     env_file = ENV_FILES.get(environment)
     env_path = PROJECT_ROOT / env_file
 
-    # Load from .env file if it exists (local development)
-    # Skip if running in CI/CD where env vars are set directly
+    # Build an isolated view of the selected file plus the real process
+    # environment. Platform variables stay authoritative without mutating
+    # os.environ, so one explicit load cannot contaminate a later load.
+    values = dict(os.environ)
     if env_path.exists():
-        # Platform environment variables are authoritative. Local files only
-        # fill values that the process environment does not already define.
-        load_dotenv(env_path, override=False)
+        for key, value in dotenv_values(env_path).items():
+            if value is not None:
+                values.setdefault(key, value)
         logger.info(f"Loaded config from {env_file} ({environment})")
-    elif os.getenv("SUPABASE_URL"):
+    elif values.get("SUPABASE_URL"):
         # Env vars already set (CI/CD mode)
         logger.info(f"Using environment variables ({environment})")
     else:
@@ -270,10 +273,11 @@ def load_config(env_override: Optional[str] = None) -> Config:
         logger.error(f"Copy .env.example to {env_file} and fill in values.")
         logger.error("Or set environment variables directly (for CI/CD).")
         sys.exit(1)
+    getenv = values.get
 
     # Get required variables
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_PUBLISHABLE_KEY")
+    supabase_url = getenv("SUPABASE_URL")
+    supabase_key = getenv("SUPABASE_PUBLISHABLE_KEY")
 
     # Validate required variables
     missing = []
@@ -287,72 +291,72 @@ def load_config(env_override: Optional[str] = None) -> Config:
         logger.error(f"Check your {env_file} file.")
         sys.exit(1)
 
-    llm_provider = os.getenv("LLM_PROVIDER", "gemini")
-    llm_fallback_provider = os.getenv("LLM_FALLBACK_PROVIDER") or None
-    llm_fallback_model = os.getenv("LLM_FALLBACK_MODEL") or None
+    llm_provider = getenv("LLM_PROVIDER", "gemini")
+    llm_fallback_provider = getenv("LLM_FALLBACK_PROVIDER") or None
+    llm_fallback_model = getenv("LLM_FALLBACK_MODEL") or None
     llm_fallback_provider, llm_fallback_model = _resolve_provisional_fallback(
         llm_provider, llm_fallback_provider, llm_fallback_model
     )
     _warn_if_fallback_unavailable(
-        environment, llm_fallback_provider, llm_fallback_model
+        environment, llm_fallback_provider, llm_fallback_model, getenv
     )
 
     return Config(
         environment=environment,
         supabase_url=supabase_url,
         supabase_key=supabase_key,
-        supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
-        supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
-        google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
-        google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-        microsoft_client_id=os.getenv("MICROSOFT_CLIENT_ID"),
-        microsoft_client_secret=os.getenv("MICROSOFT_CLIENT_SECRET"),
+        supabase_service_role_key=getenv("SUPABASE_SERVICE_ROLE_KEY"),
+        supabase_jwt_secret=getenv("SUPABASE_JWT_SECRET"),
+        google_client_id=getenv("GOOGLE_CLIENT_ID"),
+        google_client_secret=getenv("GOOGLE_CLIENT_SECRET"),
+        microsoft_client_id=getenv("MICROSOFT_CLIENT_ID"),
+        microsoft_client_secret=getenv("MICROSOFT_CLIENT_SECRET"),
         llm_provider=llm_provider,
-        llm_model=os.getenv("LLM_MODEL") or None,
-        llm_thinking=os.getenv("LLM_THINKING", "minimal") or "minimal",
+        llm_model=getenv("LLM_MODEL") or None,
+        llm_thinking=getenv("LLM_THINKING", "minimal") or "minimal",
         llm_fallback_provider=llm_fallback_provider,
         llm_fallback_model=llm_fallback_model,
-        llm_fallback_thinking=os.getenv("LLM_FALLBACK_THINKING", "low") or "low",
-        llm_primary_max_attempts=int(os.getenv("LLM_PRIMARY_MAX_ATTEMPTS", "3")),
-        llm_fallback_max_attempts=int(os.getenv("LLM_FALLBACK_MAX_ATTEMPTS", "2")),
-        gemini_api_key=os.getenv("GEMINI_API_KEY"),
-        moonshot_api_key=os.getenv("MOONSHOT_API_KEY"),
+        llm_fallback_thinking=getenv("LLM_FALLBACK_THINKING", "low") or "low",
+        llm_primary_max_attempts=int(getenv("LLM_PRIMARY_MAX_ATTEMPTS", "3")),
+        llm_fallback_max_attempts=int(getenv("LLM_FALLBACK_MAX_ATTEMPTS", "2")),
+        gemini_api_key=getenv("GEMINI_API_KEY"),
+        moonshot_api_key=getenv("MOONSHOT_API_KEY"),
         # Local .env may use Zhipu's ZHIPU_API_KEY; Z.AI console uses ZAI_API_KEY.
-        zai_api_key=os.getenv("ZAI_API_KEY") or os.getenv("ZHIPU_API_KEY"),
-        deepseek_api_key=os.getenv("DEEPSEEK_API_KEY"),
-        alibaba_api_key=os.getenv("ALIBABA_API_KEY"),
-        minimax_api_key=os.getenv("MINIMAX_API_KEY"),
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
-        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-        xai_api_key=os.getenv("XAI_API_KEY"),
+        zai_api_key=getenv("ZAI_API_KEY") or getenv("ZHIPU_API_KEY"),
+        deepseek_api_key=getenv("DEEPSEEK_API_KEY"),
+        alibaba_api_key=getenv("ALIBABA_API_KEY"),
+        minimax_api_key=getenv("MINIMAX_API_KEY"),
+        openai_api_key=getenv("OPENAI_API_KEY"),
+        anthropic_api_key=getenv("ANTHROPIC_API_KEY"),
+        xai_api_key=getenv("XAI_API_KEY"),
         # Meta docs use MODEL_API_KEY; local .env may use META_MODEL_API_KEY.
         meta_api_key=(
-            os.getenv("META_API_KEY")
-            or os.getenv("META_MODEL_API_KEY")
-            or os.getenv("MODEL_API_KEY")
+            getenv("META_API_KEY")
+            or getenv("META_MODEL_API_KEY")
+            or getenv("MODEL_API_KEY")
         ),
-        tinker_api_key=os.getenv("TINKER_API_KEY"),
-        test_user_email=os.getenv("TEST_USER_EMAIL"),
-        test_user_password=os.getenv("TEST_USER_PASSWORD"),
-        worker_pool_size=int(os.getenv("WORKER_POOL_SIZE", "3")),
-        worker_idle_sleep_seconds=float(os.getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
-        worker_error_backoff_seconds=float(os.getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
-        email_processing_timeout=int(os.getenv("EMAIL_PROCESSING_TIMEOUT", "120")),
-        photo_processing_timeout=int(os.getenv("PHOTO_PROCESSING_TIMEOUT", "120")),
-        event_sync_timeout=int(os.getenv("EVENT_SYNC_TIMEOUT", "60")),
+        tinker_api_key=getenv("TINKER_API_KEY"),
+        test_user_email=getenv("TEST_USER_EMAIL"),
+        test_user_password=getenv("TEST_USER_PASSWORD"),
+        worker_pool_size=int(getenv("WORKER_POOL_SIZE", "3")),
+        worker_idle_sleep_seconds=float(getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
+        worker_error_backoff_seconds=float(getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
+        email_processing_timeout=int(getenv("EMAIL_PROCESSING_TIMEOUT", "120")),
+        photo_processing_timeout=int(getenv("PHOTO_PROCESSING_TIMEOUT", "120")),
+        event_sync_timeout=int(getenv("EVENT_SYNC_TIMEOUT", "60")),
         enable_background_processing=(
-            os.getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true"
-            if "ENABLE_BACKGROUND_PROCESSING" in os.environ
+            getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true"
+            if "ENABLE_BACKGROUND_PROCESSING" in values
             else environment == "production"
         ),
-        memory_log_interval_seconds=float(os.getenv("MEMORY_LOG_INTERVAL_SECONDS", "60")),
-        memory_tracemalloc=os.getenv("MEMORY_TRACEMALLOC", "").lower() == "true",
-        allowed_origins=_parse_allowed_origins(),
-        api_public_url=os.getenv("API_PUBLIC_URL", "http://localhost:8000").rstrip("/"),
-        frontend_url=os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/"),
-        max_pdf_pages_for_llm=int(os.getenv("MAX_PDF_PAGES_FOR_LLM", "10")),
-        max_image_size_for_llm=int(os.getenv("MAX_IMAGE_SIZE_FOR_LLM", str(10 * 1024 * 1024))),
-        max_other_size_for_llm=int(os.getenv("MAX_OTHER_SIZE_FOR_LLM", str(20 * 1024 * 1024))),
+        memory_log_interval_seconds=float(getenv("MEMORY_LOG_INTERVAL_SECONDS", "60")),
+        memory_tracemalloc=getenv("MEMORY_TRACEMALLOC", "").lower() == "true",
+        allowed_origins=_parse_allowed_origins(getenv),
+        api_public_url=getenv("API_PUBLIC_URL", "http://localhost:8000").rstrip("/"),
+        frontend_url=getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/"),
+        max_pdf_pages_for_llm=int(getenv("MAX_PDF_PAGES_FOR_LLM", "10")),
+        max_image_size_for_llm=int(getenv("MAX_IMAGE_SIZE_FOR_LLM", str(10 * 1024 * 1024))),
+        max_other_size_for_llm=int(getenv("MAX_OTHER_SIZE_FOR_LLM", str(20 * 1024 * 1024))),
     )
 
 

@@ -9,7 +9,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.performScrollTo
 import io.mockk.coEvery
-import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.melisma.selko.data.api.BackendApiClient
@@ -49,9 +48,6 @@ class SettingsScreenTest {
     private fun setupMocks() {
         coEvery { authRepository.getCurrentUserEmail() } returns "test@example.com"
         coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(emptyList())
-        every { backendApiClient.getGmailAuthUrl() } returns "https://example.com/auth"
-        every { backendApiClient.getOutlookAuthUrl() } returns "https://example.com/outlook-auth"
-        every { backendApiClient.getCalendarAuthUrl() } returns "https://example.com/calendar-auth"
         coEvery { calendarSettingsRepository.getSettings() } returns RepositoryResult.Success(null)
         coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
         coEvery { backendApiClient.listCalendars() } returns Result.success(emptyList())

@@ -3,7 +3,7 @@ import SwiftUI
 struct ConnectionRecoveryView: View {
     let integrations: [Integration]
 
-    private let backendAPI: BackendAPIProtocol = DependencyContainer.shared.backendAPI
+    @State private var authorizer = OAuthAuthorizer()
     @Environment(\.openURL) private var openURL
 
     private var emailConnected: Bool {
@@ -55,6 +55,13 @@ struct ConnectionRecoveryView: View {
     var body: some View {
         if !recoveryProviders.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
+                if let error = authorizer.errorMessage {
+                    Text(error)
+                        .font(SelkoTypography.body)
+                        .foregroundStyle(Color.selkoError)
+                        .accessibilityIdentifier("connectionRecoveryError")
+                }
+
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(Color.selkoWarningText)
@@ -71,10 +78,11 @@ struct ConnectionRecoveryView: View {
 
                 ForEach(Array(recoveryProviders.enumerated()), id: \.element.rawValue) { index, provider in
                     Button(buttonLabel(for: provider)) {
-                        openAuth(for: provider)
+                        Task { await openAuth(for: provider) }
                     }
                     .buttonStyle(.selko(index == 0 ? .primary : .secondary))
                     .frame(maxWidth: .infinity)
+                    .disabled(authorizer.connectingProvider != nil)
                 }
 
                 Text("You can also manage connections in Settings.")
@@ -106,20 +114,13 @@ struct ConnectionRecoveryView: View {
         }
     }
 
-    private func openAuth(for provider: IntegrationProvider) {
-        let urlString: String
-        switch provider {
-        case .gmail:
-            urlString = backendAPI.getGmailAuthUrl(redirectUri: nil)
-        case .outlook:
-            urlString = backendAPI.getOutlookAuthUrl(redirectUri: nil)
-        case .googleCalendar:
-            urlString = backendAPI.getCalendarAuthUrl(redirectUri: nil)
-        case .googlePhotos:
-            return
-        }
-        if let url = URL(string: urlString) {
-            openURL(url)
+    private func openAuth(for provider: IntegrationProvider) async {
+        if let url = await authorizer.authorizationURL(for: provider) {
+            openURL(url) { accepted in
+                if !accepted {
+                    authorizer.reportOpenFailure()
+                }
+            }
         }
     }
 }

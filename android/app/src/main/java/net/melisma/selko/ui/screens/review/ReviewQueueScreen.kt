@@ -75,7 +75,7 @@ fun ReviewQueueScreen(
                 IntegrationSetupContent(
                     isGmailConnected = false,
                     isCalendarConnected = false,
-                    gmailAuthUrl = viewModel.getGmailAuthUrl()
+                    onAuthorize = viewModel::startOAuth
                 )
             }
 
@@ -99,9 +99,7 @@ fun ReviewQueueScreen(
                         item {
                             ConnectionRecoveryContent(
                                 integrations = uiState.integrations,
-                                gmailAuthUrl = viewModel.getGmailAuthUrl(),
-                                outlookAuthUrl = viewModel.getOutlookAuthUrl(),
-                                calendarAuthUrl = viewModel.getCalendarAuthUrl(),
+                                onAuthorize = viewModel::startOAuth,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }

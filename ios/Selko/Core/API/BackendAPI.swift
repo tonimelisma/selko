@@ -92,6 +92,14 @@ struct HealthResponse: Codable {
     let status: String
 }
 
+private struct OAuthStartResponse: Codable {
+    let authURL: String
+
+    enum CodingKeys: String, CodingKey {
+        case authURL = "auth_url"
+    }
+}
+
 struct EventChangeResponse: Codable {
     let eventId: String
     let status: String
@@ -120,9 +128,7 @@ protocol BackendAPIProtocol: Sendable {
     func undoHistoryEvent(eventId: UUID, force: Bool) async throws -> EventChangeResponse
     func listEmailFolders(provider: String) async throws -> [EmailFolderPreference]
     func updateEmailFolder(provider: String, folderId: String, isIncluded: Bool) async throws -> EmailFolderPreference
-    func getGmailAuthUrl(redirectUri: String?) -> String
-    func getOutlookAuthUrl(redirectUri: String?) -> String
-    func getCalendarAuthUrl(redirectUri: String?) -> String
+    func startOAuth(provider: IntegrationProvider) async throws -> URL
     func checkHealth() async throws -> HealthResponse
 }
 
@@ -151,7 +157,8 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
     private func makeRequest(
         path: String,
         method: String,
-        body: Data? = nil
+        body: Data? = nil,
+        accept: String? = nil
     ) async throws -> Data {
         let token = try await getAccessToken()
 
@@ -162,6 +169,9 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let accept {
+            request.setValue(accept, forHTTPHeaderField: "Accept")
+        }
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.httpBody = body
 
@@ -304,37 +314,29 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
 
     // MARK: - OAuth
 
-    func getGmailAuthUrl(redirectUri: String? = nil) -> String {
-        var urlString = "\(baseURL)/integrations/gmail/auth"
-        if let redirectUri = redirectUri {
-            guard let encodedRedirect = redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-                return urlString
-            }
-            urlString += "?redirect_uri=\(encodedRedirect)"
+    static func oauthPath(provider: IntegrationProvider) -> String? {
+        switch provider {
+        case .gmail: "/integrations/gmail/auth"
+        case .outlook: "/integrations/outlook/auth"
+        case .googleCalendar: "/integrations/calendar/auth"
+        case .googlePhotos: nil
         }
-        return urlString
     }
 
-    func getOutlookAuthUrl(redirectUri: String? = nil) -> String {
-        var urlString = "\(baseURL)/integrations/outlook/auth"
-        if let redirectUri = redirectUri {
-            guard let encodedRedirect = redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-                return urlString
-            }
-            urlString += "?redirect_uri=\(encodedRedirect)"
+    func startOAuth(provider: IntegrationProvider) async throws -> URL {
+        guard let path = Self.oauthPath(provider: provider) else {
+            throw BackendAPIError.invalidResponse
         }
-        return urlString
-    }
-
-    func getCalendarAuthUrl(redirectUri: String? = nil) -> String {
-        var urlString = "\(baseURL)/integrations/calendar/auth"
-        if let redirectUri = redirectUri {
-            guard let encodedRedirect = redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-                return urlString
-            }
-            urlString += "?redirect_uri=\(encodedRedirect)"
+        let data = try await makeRequest(
+            path: path,
+            method: "GET",
+            accept: "application/json"
+        )
+        let response = try decoder.decode(OAuthStartResponse.self, from: data)
+        guard let url = URL(string: response.authURL) else {
+            throw BackendAPIError.invalidResponse
         }
-        return urlString
+        return url
     }
 
     // MARK: - Health Check

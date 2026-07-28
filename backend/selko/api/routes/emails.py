@@ -128,6 +128,7 @@ async def sync_emails(
             config=config,
             max_results=request.max_results,
             fetch_attachments=request.fetch_attachments,
+            user_id=user.id,
         )
 
         return EmailSyncResponse(

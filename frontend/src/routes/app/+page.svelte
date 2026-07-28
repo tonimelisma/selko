@@ -391,6 +391,13 @@
 	</div>
 {/if}
 
+{#if actionError}
+	<div class="alert alert-error mb-4" role="alert">
+		<span>{actionError}</span>
+		<button class="btn action-tertiary" onclick={() => (actionError = '')}>{$_('common.dismiss')}</button>
+	</div>
+{/if}
+
 {#if isLoadingIntegrations}
 	<LoadingSpinner />
 {:else if integrationLoadFailed}
@@ -418,12 +425,6 @@
 	<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
 {:else}
 	<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
-	{#if actionError}
-		<div class="alert alert-error mb-4" role="alert">
-			<span>{actionError}</span>
-			<button class="btn action-tertiary" onclick={() => (actionError = '')}>{$_('common.dismiss')}</button>
-		</div>
-	{/if}
 	<PageHeader title={$_('nav.review')} subtitle={$_('home.subtitle')}>
 		{#snippet children()}
 			<button class="btn btn-primary rounded-[14px] shadow-brand" disabled={!calendarConnected} onclick={() => (acceptAllConfirmOpen = true)}>

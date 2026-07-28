@@ -19,6 +19,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -26,16 +31,42 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
+import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.ui.components.SelkoLogoMark
 import net.melisma.selko.ui.components.SelkoButton
+import kotlinx.coroutines.launch
 
 @Composable
 fun IntegrationSetupContent(
     isGmailConnected: Boolean,
     isCalendarConnected: Boolean,
-    gmailAuthUrl: String
+    onAuthorize: suspend (IntegrationProvider) -> Result<String>
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isConnecting by remember { mutableStateOf(false) }
+    var connectError by remember { mutableStateOf<String?>(null) }
+
+    fun authorize(provider: IntegrationProvider) {
+        if (isConnecting) return
+        scope.launch {
+            isConnecting = true
+            connectError = null
+            onAuthorize(provider)
+                .onSuccess { url ->
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        connectError = context.getString(R.string.recovery_connect_failed)
+                    }
+                }
+                .onFailure { error ->
+                    connectError = error.message
+                        ?: context.getString(R.string.recovery_connect_failed)
+                }
+            isConnecting = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -73,14 +104,23 @@ fun IntegrationSetupContent(
             shape = MaterialTheme.shapes.large
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
+                connectError?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 if (!isGmailConnected) {
                     SelkoButton(
                         text = stringResource(R.string.integration_connect_google),
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
-                            context.startActivity(intent)
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = { authorize(IntegrationProvider.GMAIL) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isConnecting,
+                        loading = isConnecting
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -103,11 +143,10 @@ fun IntegrationSetupContent(
 
                     SelkoButton(
                         text = stringResource(R.string.integration_connect_calendar),
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
-                            context.startActivity(intent)
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = { authorize(IntegrationProvider.GOOGLE_CALENDAR) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isConnecting,
+                        loading = isConnecting
                     )
                 }
             }
