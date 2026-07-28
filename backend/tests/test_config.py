@@ -217,6 +217,48 @@ class TestLoadConfigAllowedOrigins:
         assert "http://localhost:5173" in config.allowed_origins
 
 
+class TestBackgroundProcessingDefaults:
+    """Test safe environment-specific worker defaults."""
+
+    @pytest.mark.parametrize(
+        ("environment", "expected"),
+        [
+            ("development", False),
+            ("staging", False),
+            ("production", True),
+        ],
+    )
+    def test_defaults_by_environment(
+        self, monkeypatch, tmp_path, environment, expected
+    ):
+        """Production processes work unless explicitly disabled."""
+        from selko import config as config_module
+
+        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
+        monkeypatch.setenv("ENVIRONMENT", environment)
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.delenv("ENABLE_BACKGROUND_PROCESSING", raising=False)
+
+        config = config_module.load_config()
+
+        assert config.enable_background_processing is expected
+
+    def test_explicit_false_disables_production_workers(self, monkeypatch, tmp_path):
+        """The environment flag remains an emergency production kill switch."""
+        from selko import config as config_module
+
+        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "false")
+
+        config = config_module.load_config()
+
+        assert config.enable_background_processing is False
+
+
 class TestAttachmentLimitsDefaults:
     """Test per-type attachment size limit defaults."""
 
