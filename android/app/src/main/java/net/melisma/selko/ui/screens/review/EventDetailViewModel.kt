@@ -14,12 +14,18 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import net.melisma.selko.R
+import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.Email
 import net.melisma.selko.data.model.EventSource
 import net.melisma.selko.data.model.SourceOrigin
+import net.melisma.selko.data.model.Integration
+import net.melisma.selko.data.model.IntegrationProvider
+import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
+import net.melisma.selko.data.repository.IntegrationRepository
+import net.melisma.selko.data.repository.IntegrationResult
 import kotlin.time.Instant
 
 data class EventDetailUiState(
@@ -39,12 +45,21 @@ data class EventDetailUiState(
     val isRejecting: Boolean = false,
     val errorMessage: String? = null,
     val isDone: Boolean = false,
-    val hasUnsavedChanges: Boolean = false
-)
+    val hasUnsavedChanges: Boolean = false,
+    val integrations: List<Integration> = emptyList()
+) {
+    val isCalendarConnected: Boolean
+        get() = integrations.any {
+            it.provider == IntegrationProvider.GOOGLE_CALENDAR &&
+                it.status == IntegrationStatus.ACTIVE
+        }
+}
 
 class EventDetailViewModel(
     application: Application,
     private val eventRepository: EventRepository,
+    private val integrationRepository: IntegrationRepository,
+    private val backendApiClient: BackendApiClient,
     private val eventId: String
 ) : AndroidViewModel(application) {
 
@@ -60,6 +75,15 @@ class EventDetailViewModel(
     private fun loadEvent() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            when (val result = integrationRepository.fetchIntegrations()) {
+                is IntegrationResult.Success -> {
+                    _uiState.update { it.copy(integrations = result.data) }
+                }
+                is IntegrationResult.Error -> {
+                    _uiState.update { it.copy(errorMessage = result.message) }
+                }
+            }
 
             when (val result = eventRepository.getEventWithSources(eventId)) {
                 is EventResult.Success -> {
@@ -188,6 +212,12 @@ class EventDetailViewModel(
     }
 
     fun approveEvent() {
+        if (!_uiState.value.isCalendarConnected) {
+            _uiState.update {
+                it.copy(errorMessage = getString(R.string.review_calendar_reconnect_required))
+            }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isApproving = true) }
 
@@ -264,4 +294,8 @@ class EventDetailViewModel(
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
+
+    fun getGmailAuthUrl(): String = backendApiClient.getGmailAuthUrl()
+    fun getOutlookAuthUrl(): String = backendApiClient.getOutlookAuthUrl()
+    fun getCalendarAuthUrl(): String = backendApiClient.getCalendarAuthUrl()
 }

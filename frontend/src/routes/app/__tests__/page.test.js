@@ -27,11 +27,13 @@ vi.mock('$lib/services/sender-rules.js', () => ({
 
 const mockSyncEventToCalendar = vi.fn();
 const mockInitiateGmailAuth = vi.fn();
+const mockInitiateOutlookAuth = vi.fn();
 const mockInitiateCalendarAuth = vi.fn();
 
 vi.mock('$lib/api/backend.js', () => ({
 	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
 	initiateGmailAuth: (...args) => mockInitiateGmailAuth(...args),
+	initiateOutlookAuth: (...args) => mockInitiateOutlookAuth(...args),
 	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args),
 	applyEventChange: vi.fn().mockResolvedValue({ data: { status: 'approved' }, error: null }),
 	rejectEventChange: vi.fn().mockResolvedValue({ data: { status: 'deleted' }, error: null })
@@ -44,6 +46,7 @@ describe('Review Queue (App Page)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockSyncEventToCalendar.mockResolvedValue({ data: null, error: null });
+		mockFetchPendingEventsWithSources.mockResolvedValue({ data: [], error: null });
 		mockUpdateEventStatus.mockResolvedValue({ data: null, error: null });
 		mockCreateSenderRule.mockResolvedValue({ data: { id: 'rule-1' }, error: null });
 		mockIgnoreSenderRetroactive.mockResolvedValue({
@@ -73,7 +76,7 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
-	it('shows setup mode when only gmail is connected', async () => {
+	it('keeps the review surface and requests calendar recovery when only gmail is connected', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [
 				{ id: '1', provider: 'gmail', status: 'active', provider_email: 'test@gmail.com' }
@@ -84,8 +87,64 @@ describe('Review Queue (App Page)', () => {
 		render(AppPage);
 
 		await waitFor(() => {
-			expect(screen.getByText('Connect your accounts')).toBeInTheDocument();
+			expect(
+				screen.getByRole('heading', { name: 'Reconnect Google Calendar' })
+			).toBeInTheDocument();
+			expect(screen.getByText('All caught up!')).toBeInTheDocument();
 		});
+	});
+
+	it('treats active Outlook as a connected email provider', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'expired' },
+				{ id: '2', provider: 'outlook', status: 'active' },
+				{ id: '3', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({ data: [], error: null });
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('All caught up!')).toBeInTheDocument();
+			expect(screen.getByText('Connection needs attention')).toBeInTheDocument();
+			expect(screen.queryByText('Reconnect an email account')).not.toBeInTheDocument();
+		});
+	});
+
+	it('keeps suggestions readable and disables acceptance when calendar OAuth is expired', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'outlook', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'expired' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-expired-calendar',
+					title: 'Readable suggestion',
+					start_datetime: '2026-07-29T14:00:00',
+					status: 'pending_review',
+					event_sources: []
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => expect(screen.getByText('Readable suggestion')).toBeInTheDocument());
+		expect(
+			screen.getByRole('button', {
+				name: 'Reconnect Google Calendar to accept suggestions.'
+			})
+		).toBeDisabled();
+		expect(screen.getByRole('button', { name: /reject event/i })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Reconnect Google Calendar' })).toBeEnabled();
 	});
 
 	it('shows empty state when fully connected with no events', async () => {
@@ -155,11 +214,9 @@ describe('Review Queue (App Page)', () => {
 
 		render(AppPage);
 
-		// When integrations fail to load but data is empty, it shows setup mode
-		// The error message goes to the error state variable
 		await waitFor(() => {
-			// With empty integrations it should show setup mode
-			expect(screen.getByText('Welcome to Selko')).toBeInTheDocument();
+			expect(screen.getByText('Network error')).toBeInTheDocument();
+			expect(screen.queryByText('Welcome to Selko')).not.toBeInTheDocument();
 		});
 	});
 
@@ -254,7 +311,9 @@ describe('Review Queue (App Page)', () => {
 
 		await waitFor(() => {
 			expect(mockFetchIntegrations).toHaveBeenCalledTimes(2);
-			expect(screen.getByRole('button', { name: /reconnect/i })).toBeInTheDocument();
+			expect(
+				screen.getByRole('button', { name: 'Reconnect Google Calendar' })
+			).toBeInTheDocument();
 		});
 	});
 

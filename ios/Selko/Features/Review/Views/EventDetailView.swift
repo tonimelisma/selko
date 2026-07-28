@@ -11,7 +11,10 @@ struct EventDetailView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     init(eventId: UUID) {
-        _viewModel = State(initialValue: EventDetailViewModel(eventId: eventId))
+        _viewModel = State(initialValue: EventDetailViewModel(
+            eventId: eventId,
+            integrationService: DependencyContainer.shared.integrationService
+        ))
     }
 
     var body: some View {
@@ -21,16 +24,21 @@ struct EventDetailView: View {
             } else if let _ = viewModel.event {
                 if horizontalSizeClass == .regular {
                     // iPad: side-by-side layout
-                    HStack(alignment: .top, spacing: 0) {
-                        sourcePanel
-                            .frame(maxWidth: .infinity)
-                        Divider()
-                        formPanel
-                            .frame(maxWidth: .infinity)
+                    VStack(spacing: 12) {
+                        ConnectionRecoveryView(integrations: viewModel.integrations)
+                            .padding(.horizontal)
+                        HStack(alignment: .top, spacing: 0) {
+                            sourcePanel
+                                .frame(maxWidth: .infinity)
+                            Divider()
+                            formPanel
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                 } else {
                     // iPhone: Form as root scrollable container
                     Form {
+                        ConnectionRecoveryView(integrations: viewModel.integrations)
                         formSections
                         sourceDisclosureSection
                     }
@@ -79,7 +87,12 @@ struct EventDetailView: View {
                         }
                     }
                     .buttonStyle(.selko(.success))
-                    .disabled(viewModel.isActing)
+                    .disabled(viewModel.isActing || !viewModel.calendarConnected)
+                    .accessibilityHint(
+                        viewModel.calendarConnected
+                            ? ""
+                            : "Reconnect Google Calendar to accept suggestions."
+                    )
                     .accessibilityIdentifier("approveButton")
                 }
                 .padding()

@@ -14,6 +14,8 @@ final class EventDetailViewModel {
     var isActing = false
     var errorMessage: String?
     var didComplete = false
+    var integrations: [Integration] = []
+    var calendarConnected = true
 
     // Editable fields
     var title: String = ""
@@ -25,19 +27,34 @@ final class EventDetailViewModel {
 
     private let eventId: UUID
     private let eventService: EventServiceProtocol
+    private let integrationService: IntegrationServiceProtocol?
     private var saveTask: Task<Void, Never>?
 
     init(
         eventId: UUID,
-        eventService: EventServiceProtocol? = nil
+        eventService: EventServiceProtocol? = nil,
+        integrationService: IntegrationServiceProtocol? = nil
     ) {
         self.eventId = eventId
         self.eventService = eventService ?? DependencyContainer.shared.eventService
+        self.integrationService = integrationService
     }
 
     func load() async {
         isLoading = true
         errorMessage = nil
+
+        if let integrationService {
+            do {
+                integrations = try await integrationService.fetchIntegrations()
+                calendarConnected = integrations.contains {
+                    $0.provider == .googleCalendar && $0.isActive
+                }
+            } catch {
+                calendarConnected = false
+                errorMessage = error.localizedDescription
+            }
+        }
 
         do {
             let loaded = try await eventService.getEventWithSources(id: eventId)
@@ -52,6 +69,10 @@ final class EventDetailViewModel {
 
     func approve() async {
         guard !isActing else { return }
+        guard calendarConnected else {
+            errorMessage = String(localized: "Reconnect Google Calendar to accept suggestions.")
+            return
+        }
         isActing = true
         errorMessage = nil
         defer { isActing = false }

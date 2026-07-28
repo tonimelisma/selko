@@ -7,6 +7,7 @@
 		senderEmail = '',
 		eventCount = 0,
 		isPhotoSource = false,
+		canApprove = true,
 		onapproveAll,
 		onrejectAll,
 		onignoreSender,
@@ -55,14 +56,14 @@
 			<div class="flex items-center justify-between gap-3 px-2 py-2">
 				<span class="text-xs font-semibold text-base-content/65">{$_('senderActions.bulkActions')}</span>
 				<div class="flex gap-1">
-					<button class="btn action-tertiary" onclick={() => runAndClose(onapproveAll)}>{$_('senderActions.approveAll')}</button>
+					<button class="btn action-tertiary" disabled={!canApprove} onclick={() => runAndClose(onapproveAll)}>{$_('senderActions.approveAll')}</button>
 					<button class="btn action-tertiary text-error" onclick={() => runAndClose(onrejectAll)}>{$_('senderActions.rejectAll')}</button>
 				</div>
 			</div>
 			<div class="my-1 border-t border-base-300"></div>
 		{/if}
 		{#if !isPhotoSource}
-			<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-base-200" onclick={() => runAndClose(onautoApproveSender)}>{$_('senderActions.autoApproveSender')}</button>
+			<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-base-200 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canApprove} onclick={() => runAndClose(onautoApproveSender)}>{$_('senderActions.autoApproveSender')}</button>
 			<div class="my-1 border-t border-base-300"></div>
 			<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-error hover:bg-base-200" onclick={() => runAndClose(onignoreSender)}>{$_('senderActions.ignoreSender')}</button>
 		{/if}

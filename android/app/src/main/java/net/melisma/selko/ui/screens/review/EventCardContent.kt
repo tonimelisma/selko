@@ -67,6 +67,7 @@ import kotlin.time.Instant
 fun SwipeableEventItem(
     event: CalendarEvent,
     isProcessing: Boolean,
+    canApprove: Boolean = true,
     onApprove: () -> Unit,
     onReject: () -> Unit,
     onEdit: () -> Unit
@@ -74,14 +75,14 @@ fun SwipeableEventItem(
     val coroutineScope = rememberCoroutineScope()
     val dismissState = rememberSwipeToDismissBoxState()
 
-    LaunchedEffect(dismissState.settledValue, isProcessing) {
+    LaunchedEffect(dismissState.settledValue, isProcessing, canApprove) {
         if (isProcessing) {
             return@LaunchedEffect
         }
 
         when (dismissState.settledValue) {
             SwipeToDismissBoxValue.StartToEnd -> {
-                onApprove()
+                if (canApprove) onApprove()
                 dismissState.snapTo(SwipeToDismissBoxValue.Settled)
             }
             SwipeToDismissBoxValue.EndToStart -> {
@@ -94,13 +95,14 @@ fun SwipeableEventItem(
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = !isProcessing,
+        enableDismissFromStartToEnd = canApprove && !isProcessing,
         enableDismissFromEndToStart = !isProcessing,
         backgroundContent = { SwipeBackground(dismissState = dismissState) }
     ) {
         EventListItem(
             event = event,
             isProcessing = isProcessing,
+            canApprove = canApprove,
             onApprove = {
                 coroutineScope.launch {
                     dismissState.dismiss(SwipeToDismissBoxValue.StartToEnd)
@@ -120,6 +122,7 @@ fun SwipeableEventItem(
 fun EventListItem(
     event: CalendarEvent,
     isProcessing: Boolean,
+    canApprove: Boolean = true,
     onApprove: () -> Unit,
     onReject: () -> Unit,
     onEdit: () -> Unit
@@ -257,6 +260,7 @@ fun EventListItem(
                         onClick = onApprove,
                         modifier = Modifier.weight(1f),
                         role = SelkoActionRole.Success,
+                        enabled = canApprove,
                         icon = Icons.Filled.Check
                     )
 

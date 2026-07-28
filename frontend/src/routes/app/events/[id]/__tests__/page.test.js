@@ -51,15 +51,23 @@ vi.mock('$lib/services/emails.js', () => ({
 }));
 
 const mockFetchAttachments = vi.fn();
+const mockFetchIntegrations = vi.fn();
 
 vi.mock('$lib/services/attachments.js', () => ({
 	fetchAttachments: (...args) => mockFetchAttachments(...args)
 }));
 
+vi.mock('$lib/services/integrations.js', () => ({
+	fetchIntegrations: (...args) => mockFetchIntegrations(...args)
+}));
+
 const mockSyncEventToCalendar = vi.fn();
 
 vi.mock('$lib/api/backend.js', () => ({
-	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args)
+	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
+	initiateGmailAuth: vi.fn(),
+	initiateOutlookAuth: vi.fn(),
+	initiateCalendarAuth: vi.fn()
 }));
 
 const { default: EventDetailPage } = await import('../+page.svelte');
@@ -102,6 +110,13 @@ describe('Event Detail Page', () => {
 			error: null
 		});
 		mockFetchAttachments.mockResolvedValue({ data: [], error: null });
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: 'gmail', provider: 'gmail', status: 'active' },
+				{ id: 'calendar', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
 		mockUpdateEvent.mockResolvedValue({ data: mockEvent, error: null });
 		mockUpdateEventStatus.mockResolvedValue({
 			data: { ...mockEvent, status: 'approved' },
@@ -171,5 +186,28 @@ describe('Event Detail Page', () => {
 			expect(acceptButtons.length).toBeGreaterThan(0);
 			expect(rejectButtons.length).toBeGreaterThan(0);
 		});
+	});
+
+	it('keeps editing and rejection available but disables acceptance when calendar expired', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: 'outlook', provider: 'outlook', status: 'active' },
+				{ id: 'calendar', provider: 'google_calendar', status: 'expired' }
+			],
+			error: null
+		});
+
+		render(EventDetailPage);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Reconnect Google Calendar' })).toBeEnabled();
+		});
+		for (const button of screen.getAllByRole('button', { name: /accept/i })) {
+			expect(button).toBeDisabled();
+		}
+		for (const button of screen.getAllByRole('button', { name: /reject/i })) {
+			expect(button).toBeEnabled();
+		}
+		expect(screen.getByLabelText(/title/i)).toBeEnabled();
 	});
 });

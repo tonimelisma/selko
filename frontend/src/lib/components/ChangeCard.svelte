@@ -3,7 +3,7 @@
 	import { formatChangeValue } from '$lib/format-change-value.js';
 	import StateTag from './StateTag.svelte';
 
-	let { event, isProcessing = false, onapprove, onreject } = $props();
+	let { event, isProcessing = false, canApprove = true, onapprove, onreject } = $props();
 
 	/** @param {any} item */
 	function getChangeSet(item) {
@@ -64,7 +64,7 @@
 			<p class="mt-1 text-[13px] text-base-content/60">{$_('home.changesSectionDescription')}</p>
 		{/if}
 		<div class="mt-3 flex items-center gap-2">
-			<button class="btn btn-success flex-1" disabled={isProcessing} onclick={() => onapprove?.(event)} aria-label={$_('events.acceptChange')} aria-busy={isProcessing}>
+			<button class="btn btn-success flex-1" disabled={isProcessing || !canApprove} onclick={() => onapprove?.(event)} aria-label={canApprove ? $_('events.acceptChange') : $_('integrations.calendarRequiredToAccept')} aria-busy={isProcessing}>
 				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>{/if}
 				<span>{$_('events.accept')}</span>
 			</button>
