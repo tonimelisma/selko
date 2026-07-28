@@ -130,6 +130,13 @@ def list_calendars(
         return calendars
 
     except Exception as e:
+        if isinstance(e, HttpError) and getattr(e.resp, "status", None) == 401:
+            update_integration_status(
+                supabase_client,
+                "google_calendar",
+                "expired",
+                user_id=user_id,
+            )
         raise CalendarsError(f"Failed to list calendars: {e}") from e
 
 

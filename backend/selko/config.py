@@ -338,7 +338,11 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_processing_timeout=int(os.getenv("EMAIL_PROCESSING_TIMEOUT", "120")),
         photo_processing_timeout=int(os.getenv("PHOTO_PROCESSING_TIMEOUT", "120")),
         event_sync_timeout=int(os.getenv("EVENT_SYNC_TIMEOUT", "60")),
-        enable_background_processing=os.getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true",
+        enable_background_processing=(
+            os.getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true"
+            if "ENABLE_BACKGROUND_PROCESSING" in os.environ
+            else environment == "production"
+        ),
         memory_log_interval_seconds=float(os.getenv("MEMORY_LOG_INTERVAL_SECONDS", "60")),
         memory_tracemalloc=os.getenv("MEMORY_TRACEMALLOC", "").lower() == "true",
         allowed_origins=_parse_allowed_origins(),

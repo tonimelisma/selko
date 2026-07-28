@@ -720,7 +720,7 @@ def _process_email_fetch_sync(
     if provider == "gmail":
         try:
             _process_gmail_fetch_sync(client, config, payload)
-        except GmailError as exc:
+        except Exception as exc:
             if _has_http_status(exc, 401):
                 update_integration_status(
                     client,

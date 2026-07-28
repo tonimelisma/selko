@@ -13,6 +13,7 @@ from supabase import Client, PostgrestAPIError
 from selko.api.deps import (
     CurrentUser,
     get_authenticated_client,
+    get_config,
     get_current_user,
     get_llm_gateway,
     get_quota_service,
@@ -26,7 +27,7 @@ from selko.api.schemas.emails import (
     EmailSyncRequest,
     EmailSyncResponse,
 )
-from selko.config import load_config
+from selko.config import Config
 from selko.services.emails import (
     EmailError,
     ExpiredCredentialsError,
@@ -83,6 +84,7 @@ async def sync_emails(
     request: EmailSyncRequest,
     response: Response,
     service_client: Client = Depends(get_service_role_client),
+    config: Config = Depends(get_config),
     user: CurrentUser = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
 ) -> EmailSyncResponse:
@@ -119,8 +121,6 @@ async def sync_emails(
     response.headers["X-RateLimit-Limit"] = str(quota_result.limit)
     response.headers["X-RateLimit-Remaining"] = str(quota_result.remaining)
     response.headers["X-RateLimit-Reset"] = quota_result.resets_at
-
-    config = load_config()
 
     try:
         result = fetch_emails_for_user(

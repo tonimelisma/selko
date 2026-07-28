@@ -270,6 +270,40 @@ class TestEmailFetchWorker:
             mock_client, "gmail", "expired", user_id="u1"
         )
 
+    @pytest.mark.asyncio
+    async def test_wrapped_attachment_401_marks_integration_expired(
+        self, mock_config
+    ):
+        """Attachment download failures retain provider-auth semantics."""
+        from selko.services.attachments import AttachmentError
+        from selko.workers.email_fetch import process_email_fetch_task
+
+        mock_client = MagicMock()
+        provider_error = Exception("unauthorized")
+        provider_error.resp = MagicMock(status=401)
+        attachment_error = AttachmentError("Attachment download failed")
+        attachment_error.__cause__ = provider_error
+
+        with (
+            patch(
+                "selko.workers.email_fetch._process_gmail_fetch_sync",
+                side_effect=attachment_error,
+            ),
+            patch(
+                "selko.workers.email_fetch.update_integration_status"
+            ) as update_status,
+            pytest.raises(AttachmentError),
+        ):
+            await process_email_fetch_task(
+                mock_client,
+                mock_config,
+                {"user_id": "u1", "provider": "gmail"},
+            )
+
+        update_status.assert_called_once_with(
+            mock_client, "gmail", "expired", user_id="u1"
+        )
+
 
 # ===========================================================================
 # Schedule email fetches
