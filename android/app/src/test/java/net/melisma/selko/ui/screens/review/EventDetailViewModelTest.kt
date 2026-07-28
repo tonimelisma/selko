@@ -13,14 +13,20 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import net.melisma.selko.R
+import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.Email
 import net.melisma.selko.data.model.EventSource
 import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.data.model.SourceType
+import net.melisma.selko.data.model.Integration
+import net.melisma.selko.data.model.IntegrationProvider
+import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
+import net.melisma.selko.data.repository.IntegrationRepository
+import net.melisma.selko.data.repository.IntegrationResult
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,6 +39,8 @@ class EventDetailViewModelTest {
 
     private lateinit var application: Application
     private lateinit var eventRepository: EventRepository
+    private lateinit var integrationRepository: IntegrationRepository
+    private lateinit var backendApiClient: BackendApiClient
     private val testDispatcher = StandardTestDispatcher()
 
     private val testEmail = Email(
@@ -50,7 +58,22 @@ class EventDetailViewModelTest {
         every { application.getString(R.string.event_detail_error_approve) } returns "Failed to approve event"
         every { application.getString(R.string.event_detail_error_reject) } returns "Failed to reject event"
         every { application.getString(R.string.event_detail_error_save) } returns "Failed to save changes. Please try again."
+        every {
+            application.getString(R.string.review_calendar_reconnect_required)
+        } returns "Reconnect Google Calendar to accept suggestions."
         eventRepository = mockk(relaxed = true)
+        integrationRepository = mockk(relaxed = true)
+        backendApiClient = mockk(relaxed = true)
+        coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(
+            listOf(
+                Integration(
+                    id = "calendar",
+                    userId = "user-1",
+                    provider = IntegrationProvider.GOOGLE_CALENDAR,
+                    status = IntegrationStatus.ACTIVE
+                )
+            )
+        )
     }
 
     @After
@@ -59,7 +82,13 @@ class EventDetailViewModelTest {
     }
 
     private fun createViewModel(eventId: String): EventDetailViewModel {
-        return EventDetailViewModel(application, eventRepository, eventId)
+        return EventDetailViewModel(
+            application,
+            eventRepository,
+            integrationRepository,
+            backendApiClient,
+            eventId
+        )
     }
 
     @Test
@@ -208,6 +237,42 @@ class EventDetailViewModelTest {
         }
 
         // Verify approveEvent was never called on the repository
+        coVerify(exactly = 0) { eventRepository.approveEvent(any()) }
+    }
+
+    @Test
+    fun `expired calendar keeps event editable but blocks approval`() = runTest {
+        val event = CalendarEvent(
+            id = "event-expired",
+            userId = "user-1",
+            title = "Review me",
+            status = EventStatus.PENDING_REVIEW,
+            eventSources = emptyList()
+        )
+        coEvery { eventRepository.getEventWithSources("event-expired") } returns
+            EventResult.Success(event)
+        coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(
+            listOf(
+                Integration(
+                    id = "calendar",
+                    userId = "user-1",
+                    provider = IntegrationProvider.GOOGLE_CALENDAR,
+                    status = IntegrationStatus.EXPIRED
+                )
+            )
+        )
+
+        val viewModel = createViewModel("event-expired")
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onTitleChange("Still editable")
+        viewModel.approveEvent()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Still editable", viewModel.uiState.value.title)
+        assertEquals(
+            "Reconnect Google Calendar to accept suggestions.",
+            viewModel.uiState.value.errorMessage
+        )
         coVerify(exactly = 0) { eventRepository.approveEvent(any()) }
     }
 }

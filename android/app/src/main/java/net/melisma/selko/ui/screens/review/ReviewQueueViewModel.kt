@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import net.melisma.selko.R
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
+import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.SourceOrigin
@@ -29,8 +30,7 @@ data class SenderGroup(
 
 data class ReviewQueueUiState(
     val isLoading: Boolean = true,
-    val isGmailConnected: Boolean = false,
-    val isCalendarConnected: Boolean = false,
+    val integrations: List<Integration> = emptyList(),
     val events: List<CalendarEvent> = emptyList(),
     val senderGroups: List<SenderGroup> = emptyList(),
     val newSenderGroups: List<SenderGroup> = emptyList(),
@@ -38,7 +38,22 @@ data class ReviewQueueUiState(
     val errorMessage: String? = null,
     val isRefreshing: Boolean = false,
     val processingEventIds: Set<String> = emptySet()
-)
+) {
+    val isFirstRun: Boolean
+        get() = integrations.isEmpty()
+
+    val isEmailConnected: Boolean
+        get() = integrations.any {
+            it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
+                it.status == IntegrationStatus.ACTIVE
+        }
+
+    val isCalendarConnected: Boolean
+        get() = integrations.any {
+            it.provider == IntegrationProvider.GOOGLE_CALENDAR &&
+                it.status == IntegrationStatus.ACTIVE
+        }
+}
 
 class ReviewQueueViewModel(
     application: Application,
@@ -77,20 +92,9 @@ class ReviewQueueViewModel(
         when (integrationsResult) {
             is IntegrationResult.Success -> {
                 val integrations = integrationsResult.data
-                val gmailConnected = integrations.any {
-                    it.provider == IntegrationProvider.GMAIL && it.status == IntegrationStatus.ACTIVE
-                }
-                val calendarConnected = integrations.any {
-                    it.provider == IntegrationProvider.GOOGLE_CALENDAR && it.status == IntegrationStatus.ACTIVE
-                }
-                _uiState.update {
-                    it.copy(
-                        isGmailConnected = gmailConnected,
-                        isCalendarConnected = calendarConnected
-                    )
-                }
+                _uiState.update { it.copy(integrations = integrations) }
 
-                if (gmailConnected && calendarConnected) {
+                if (integrations.isNotEmpty()) {
                     fetchPendingEvents()
                 } else {
                     _uiState.update { it.copy(isLoading = false) }
@@ -176,6 +180,7 @@ class ReviewQueueViewModel(
     }
 
     fun approveEvent(eventId: String) {
+        if (!ensureCalendarConnected()) return
         viewModelScope.launch {
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
             val event = _uiState.value.events.find { it.id == eventId }
@@ -232,6 +237,7 @@ class ReviewQueueViewModel(
     }
 
     fun approveGroup(senderEmail: String) {
+        if (!ensureCalendarConnected()) return
         viewModelScope.launch {
             val eventsToApprove = _uiState.value.senderGroups
                 .find { it.senderEmail == senderEmail }
@@ -375,6 +381,7 @@ class ReviewQueueViewModel(
     }
 
     fun autoApproveSender(senderEmail: String) {
+        if (!ensureCalendarConnected()) return
         viewModelScope.launch {
             when (senderRuleRepository.createRule(
                 senderEmail = senderEmail,
@@ -411,6 +418,16 @@ class ReviewQueueViewModel(
     }
 
     fun getGmailAuthUrl(): String = backendApiClient.getGmailAuthUrl()
+    fun getOutlookAuthUrl(): String = backendApiClient.getOutlookAuthUrl()
+    fun getCalendarAuthUrl(): String = backendApiClient.getCalendarAuthUrl()
+
+    private fun ensureCalendarConnected(): Boolean {
+        if (_uiState.value.isCalendarConnected) return true
+        _uiState.update {
+            it.copy(errorMessage = getString(R.string.review_calendar_reconnect_required))
+        }
+        return false
+    }
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }

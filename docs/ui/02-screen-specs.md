@@ -24,7 +24,9 @@ Home screen of the app. Two review lanes grouped by sender:
 1. **New** — events to add to the calendar (`pending_review`)
 2. **Changes** — proposed updates to events already on the calendar (`pending_change`), showing field-level before → after diffs from `event_sources.change_set`
 
-When required integrations are not Connected, this screen is entirely replaced by an integration setup view.
+Only a true first run (zero integration records) replaces this screen with
+onboarding. Returning-user connection failures appear in a contextual recovery
+card without hiding existing suggestions.
 
 After a calendar match, the LLM proposes a structured changeset; code gates equivalent/no-op diffs. Pure rediscoveries (RSVP replies with no real change) never appear here.
 
@@ -89,9 +91,9 @@ Same sender-grouped structure as stacked cards:
 - **Events**: full-width cards stacked below each sender
 - Action buttons: text labels with icons — Accept (green), Edit (outlined), Reject (outlined red)
 
-### Integration Setup State
+### Integration and Recovery States
 
-When integrations are not fully Connected, the entire queue is replaced:
+With zero integration records, the entire queue is replaced by first-run setup:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -104,27 +106,28 @@ When integrations are not fully Connected, the entire queue is replaced:
 │                                                                    │
 │  [Connect Google Account]                                         │
 │                                                                    │
-│  ── OR, if partially connected: ──                                │
-│                                                                    │
-│  Gmail: ✓ Connected                                               │
-│  Google Calendar: ✗ Not connected         [Connect]               │
-│                                                                    │
-│  ── OR, if token expired: ──                                      │
-│                                                                    │
-│  Gmail: ✗ Connection expired              [Reconnect]             │
-│  Google Calendar: ✓ Connected                                     │
-│                                                                    │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-This same layout handles: first-time setup, partial OAuth scopes, token expiry, and revoked access.
+Returning users see a compact recovery card above the queue:
+
+- No active Gmail or Outlook connection: explain that new ingestion is paused;
+  preserve existing suggestions and History.
+- Google Calendar inactive: keep Edit, Reject, sender-ignore, and navigation
+  enabled; disable Accept, Approve all, approval swipe actions, and
+  auto-approve until reconnection.
+- One email provider inactive while another is active: show a nonblocking
+  attention card.
+- Use provider-specific Connect/Reconnect labels. OAuth errors remain inline
+  with the recovery surface, and Settings stays accessible.
 
 ### States
 
 | State | Behavior |
 |-------|----------|
 | **Loading** | Gray box skeleton placeholders matching card layout |
-| **Integration setup** | Setup screen replaces queue entirely (see above) |
+| **First-run setup** | Setup replaces queue only when no integration records exist |
+| **Connection recovery** | Provider-specific card appears above readable queue content |
 | **Empty (all caught up)** | Centered: "All caught up!" message |
 | **Populated** | Sender-grouped event list as described |
 | **Error (load failure)** | `alert alert-error` with automatic retry |
@@ -138,15 +141,21 @@ import { fetchEventSources } from '$lib/services/event-sources'
 
 // 1. Check integrations
 const { data: integrations } = await fetchIntegrations()
-const gmail = integrations?.find(i => i.provider === 'gmail')
+const emailOk = integrations?.some(
+  i => ['gmail', 'outlook'].includes(i.provider) && i.status === 'active'
+)
 const gcal = integrations?.find(i => i.provider === 'google_calendar')
-const bothOk = gmail?.status === 'active' && gcal?.status === 'active'
+const calendarOk = gcal?.status === 'active'
 
-// 2. If both OK, load pending events
-if (bothOk) {
+// 2. Returning users load pending events regardless of provider health.
+const firstRun = integrations.length === 0
+if (!firstRun) {
   const { data: events } = await fetchPendingEvents()
-  // Group by sender
 }
+
+// 3. Recovery is capability-specific.
+if (!emailOk) pauseNewIngestion()
+if (!calendarOk) disableApprovalActions()
 
 // Actions (no confirmation, immediate)
 await updateEventStatus(eventId, 'approved')   // Approve — event animates out
@@ -571,7 +580,7 @@ window.location.href = authUrl
 - **Disconnect**: shows `ConfirmModal` ("Disconnect Google account? Your existing data will be preserved."). Revokes OAuth tokens.
 - **Connect (missing scope)**: triggers OAuth flow for just the missing permission. On return, status updates.
 - **Change default calendar**: dropdown saves via `updateCalendarSettings()`.
-- **OAuth error**: shown as toast (same pattern as initial setup OAuth errors).
+- **OAuth error**: shown persistently inline beside the affected connection.
 
 ### States
 

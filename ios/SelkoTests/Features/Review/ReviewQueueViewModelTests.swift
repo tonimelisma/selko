@@ -9,6 +9,23 @@ import Testing
 
 @MainActor
 struct ReviewQueueViewModelTests {
+    private func integration(
+        _ provider: IntegrationProvider,
+        status: IntegrationStatus = .active
+    ) -> Integration {
+        Integration(
+            id: UUID(),
+            userId: UUID(),
+            provider: provider,
+            status: status,
+            providerEmail: nil,
+            scopes: [],
+            lastSyncAt: nil,
+            createdAt: nil,
+            updatedAt: nil
+        )
+    }
+
     // MARK: - Ignore Sender
 
     @Test
@@ -26,6 +43,7 @@ struct ReviewQueueViewModelTests {
             integrationService: mockIntegrationService,
             senderRuleService: mockSenderRuleService
         )
+        viewModel.integrations = [integration(.googleCalendar)]
 
         let group = SenderGroup(
             id: "sender@example.com",
@@ -61,6 +79,7 @@ struct ReviewQueueViewModelTests {
             integrationService: mockIntegrationService,
             senderRuleService: mockSenderRuleService
         )
+        viewModel.integrations = [integration(.googleCalendar)]
 
         let group = SenderGroup(
             id: "sender@example.com",
@@ -95,6 +114,7 @@ struct ReviewQueueViewModelTests {
             integrationService: mockIntegrationService,
             senderRuleService: mockSenderRuleService
         )
+        viewModel.integrations = [integration(.googleCalendar)]
 
         let group = SenderGroup(
             id: "sender@example.com",
@@ -130,6 +150,7 @@ struct ReviewQueueViewModelTests {
             integrationService: mockIntegrationService,
             senderRuleService: mockSenderRuleService
         )
+        viewModel.integrations = [integration(.googleCalendar)]
 
         let group = SenderGroup(
             id: "sender@example.com",
@@ -148,6 +169,50 @@ struct ReviewQueueViewModelTests {
     }
 
     // MARK: - Sender resolution
+
+    @Test
+    func loadTreatsOutlookAsConnectedEmailAndKeepsSuggestionsVisible() async {
+        let eventService = MockEventService()
+        eventService.fetchPendingEventsWithSourcesResult = .success([.mock])
+        let integrationService = MockIntegrationService()
+        integrationService.fetchIntegrationsResult = .success([
+            integration(.gmail, status: .expired),
+            integration(.outlook),
+            integration(.googleCalendar)
+        ])
+        let viewModel = ReviewQueueViewModel(
+            eventService: eventService,
+            integrationService: integrationService
+        )
+
+        await viewModel.load()
+
+        #expect(viewModel.emailConnected)
+        #expect(viewModel.isConnected)
+        #expect(!viewModel.senderGroups.isEmpty)
+    }
+
+    @Test
+    func expiredCalendarKeepsSuggestionsVisibleAndBlocksApproval() async {
+        let eventService = MockEventService()
+        eventService.fetchPendingEventsWithSourcesResult = .success([.mock])
+        let integrationService = MockIntegrationService()
+        integrationService.fetchIntegrationsResult = .success([
+            integration(.outlook),
+            integration(.googleCalendar, status: .expired)
+        ])
+        let viewModel = ReviewQueueViewModel(
+            eventService: eventService,
+            integrationService: integrationService
+        )
+
+        await viewModel.load()
+        await viewModel.approveEvent(.mock)
+
+        #expect(!viewModel.senderGroups.isEmpty)
+        #expect(eventService.approveEventCallCount == 0)
+        #expect(viewModel.errorMessage == "Reconnect Google Calendar to accept suggestions.")
+    }
 
     @Test
     func resolveSenderPrefersEmailOverGoogleCalendar() {

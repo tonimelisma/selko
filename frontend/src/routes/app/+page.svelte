@@ -16,6 +16,7 @@
 		initiateCalendarAuth
 	} from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
+	import ConnectionRecovery from '$lib/components/ConnectionRecovery.svelte';
 	import SenderHeader from '$lib/components/SenderHeader.svelte';
 	import EventCard from '$lib/components/EventCard.svelte';
 	import ChangeCard from '$lib/components/ChangeCard.svelte';
@@ -35,21 +36,19 @@
 	let error = $state('');
 	/** Action-level error that does not hide the review list */
 	let actionError = $state('');
+	let oauthError = $state('');
+	let integrationLoadFailed = $state(false);
 	let notification = $state('');
 	let processingEvents = $state(new Set());
 	/** Preserve sender-group positions while rows are removed during this review session. */
 	let newSenderOrder = $state(new Map());
 	let changeSenderOrder = $state(new Map());
 
-	let gmailIntegration = $derived(integrationsList.find((i) => i.provider === 'gmail'));
-	let outlookIntegration = $derived(integrationsList.find((i) => i.provider === 'outlook'));
 	let gcalIntegration = $derived(
 		integrationsList.find((i) => i.provider === 'google_calendar')
 	);
-	let emailConnected = $derived(
-		gmailIntegration?.status === 'active' || outlookIntegration?.status === 'active'
-	);
-	let fullyConnected = $derived(emailConnected && gcalIntegration?.status === 'active');
+	let calendarConnected = $derived(gcalIntegration?.status === 'active');
+	let firstRun = $derived(integrationsList.length === 0);
 
 	let newEvents = $derived(events.filter((e) => e.status === 'pending_review'));
 	let changeEvents = $derived(events.filter((e) => e.status === 'pending_change'));
@@ -111,7 +110,7 @@
 			}, 4000);
 			window.history.replaceState({}, '', '/app');
 		} else if (oauth === 'error') {
-			error = params.get('message') || $_('integrations.connectFailed');
+			oauthError = params.get('message') || $_('integrations.connectFailed');
 			window.history.replaceState({}, '', '/app');
 		}
 		await loadIntegrations();
@@ -119,21 +118,19 @@
 
 	async function loadIntegrations() {
 		isLoadingIntegrations = true;
+		integrationLoadFailed = false;
 		const result = await fetchIntegrations();
 		if (result.error) {
 			error = result.error.message;
+			integrationLoadFailed = true;
+			isLoadingIntegrations = false;
+			return;
 		} else {
 			integrationsList = result.data;
 		}
 		isLoadingIntegrations = false;
 
-		if (
-			(integrationsList.find((i) => i.provider === 'gmail')?.status === 'active' ||
-				integrationsList.find((i) => i.provider === 'outlook')?.status === 'active') &&
-			integrationsList.find((i) => i.provider === 'google_calendar')?.status === 'active'
-		) {
-			await loadEvents();
-		}
+		await loadEvents();
 	}
 
 	async function loadEvents() {
@@ -157,6 +154,10 @@
 
 	/** @param {any} event */
 	async function handleApproveNew(event) {
+		if (!calendarConnected) {
+			actionError = $_('integrations.calendarRequiredToAccept');
+			return;
+		}
 		if (processingEvents.has(event.id)) return;
 		actionError = '';
 		processingEvents = new Set([...processingEvents, event.id]);
@@ -213,6 +214,10 @@
 
 	/** @param {any} event */
 	async function handleApproveChange(event) {
+		if (!calendarConnected) {
+			actionError = $_('integrations.calendarRequiredToAccept');
+			return;
+		}
 		if (processingEvents.has(event.id)) return;
 		actionError = '';
 		processingEvents = new Set([...processingEvents, event.id]);
@@ -268,6 +273,10 @@
 
 	/** @param {any[]} eventsList */
 	async function handleApproveAllNew(eventsList) {
+		if (!calendarConnected) {
+			actionError = $_('integrations.calendarRequiredToAccept');
+			return;
+		}
 		for (const event of eventsList) {
 			await handleApproveNew(event);
 		}
@@ -276,6 +285,10 @@
 	let acceptAllConfirmOpen = $state(false);
 
 	async function handleApproveAll() {
+		if (!calendarConnected) {
+			actionError = $_('integrations.calendarRequiredToAccept');
+			return;
+		}
 		acceptAllConfirmOpen = false;
 		await handleApproveAllNew(newEvents);
 		for (const event of changeEvents) {
@@ -318,6 +331,10 @@
 	 * @param {any[]} eventsList
 	 */
 	async function handleAutoApproveSender(senderEmail, eventsList) {
+		if (!calendarConnected) {
+			actionError = $_('integrations.calendarRequiredToAccept');
+			return;
+		}
 		actionError = '';
 		const { error: ruleError } = await createSenderRule({
 			sender_email: senderEmail,
@@ -368,9 +385,17 @@
 	</div>
 {/if}
 
+{#if oauthError}
+	<div class="mb-4">
+		<ErrorAlert message={oauthError} />
+	</div>
+{/if}
+
 {#if isLoadingIntegrations}
 	<LoadingSpinner />
-{:else if !fullyConnected}
+{:else if integrationLoadFailed}
+	<ErrorAlert message={error} onretry={loadIntegrations} />
+{:else if firstRun}
 	<IntegrationStatus
 		integrations={integrationsList}
 		setupMode={true}
@@ -386,10 +411,13 @@
 		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
 	</div>
 {:else if error}
+	<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
 	<ErrorAlert message={error} onretry={loadEvents} />
 {:else if events.length === 0}
+	<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
 	<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
 {:else}
+	<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
 	{#if actionError}
 		<div class="alert alert-error mb-4" role="alert">
 			<span>{actionError}</span>
@@ -398,7 +426,7 @@
 	{/if}
 	<PageHeader title={$_('nav.review')} subtitle={$_('home.subtitle')}>
 		{#snippet children()}
-			<button class="btn btn-primary rounded-[14px] shadow-brand" onclick={() => (acceptAllConfirmOpen = true)}>
+			<button class="btn btn-primary rounded-[14px] shadow-brand" disabled={!calendarConnected} onclick={() => (acceptAllConfirmOpen = true)}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
 				{$_('home.acceptAll')}
 			</button>
@@ -419,6 +447,7 @@
 								senderEmail={senderKey}
 								eventCount={senderGroup.events.length}
 								isPhotoSource={senderKey === 'google_photos'}
+								canApprove={calendarConnected}
 								onapproveAll={() => handleApproveAllNew(senderGroup.events)}
 								onrejectAll={() => handleRejectAllNew(senderGroup.events)}
 								onignoreSender={() => handleIgnoreSender(senderKey)}
@@ -429,6 +458,7 @@
 								<EventCard
 									{event}
 									isProcessing={processingEvents.has(event.id)}
+									canApprove={calendarConnected}
 									onapprove={handleApproveNew}
 									onreject={handleRejectNew}
 								/>
@@ -453,6 +483,7 @@
 								senderEmail={senderKey}
 								eventCount={senderGroup.events.length}
 								isPhotoSource={senderKey === 'google_photos'}
+								canApprove={calendarConnected}
 								onapproveAll={() => {
 									for (const event of senderGroup.events) handleApproveChange(event);
 								}}
@@ -467,6 +498,7 @@
 								<ChangeCard
 									{event}
 									isProcessing={processingEvents.has(event.id)}
+									canApprove={calendarConnected}
 									onapprove={handleApproveChange}
 									onreject={handleRejectChange}
 								/>
@@ -477,7 +509,7 @@
 			</section>
 		{/if}
 		<div class="flex gap-2 pt-1 sm:hidden">
-			<button class="btn btn-primary min-h-12 flex-1 rounded-[14px] shadow-brand" onclick={() => (acceptAllConfirmOpen = true)}>
+			<button class="btn btn-primary min-h-12 flex-1 rounded-[14px] shadow-brand" disabled={!calendarConnected} onclick={() => (acceptAllConfirmOpen = true)}>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
 				{$_('home.acceptAll')}
 			</button>

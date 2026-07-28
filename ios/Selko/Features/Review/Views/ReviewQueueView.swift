@@ -22,14 +22,21 @@ struct ReviewQueueView: View {
                     ProgressView("Loading events...")
                         .tint(Color.accentColor)
                         .accessibilityIdentifier("reviewQueueLoading")
-                } else if !viewModel.isConnected {
+                } else if viewModel.isFirstRun {
                     IntegrationSetupView(
-                        gmailConnected: viewModel.gmailConnected,
-                        calendarConnected: viewModel.calendarConnected
+                        gmailConnected: false,
+                        calendarConnected: false
                     )
                     .accessibilityIdentifier("integrationSetupView")
                 } else if viewModel.newSenderGroups.isEmpty && viewModel.changeSenderGroups.isEmpty {
-                    emptyState
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            ConnectionRecoveryView(integrations: viewModel.integrations)
+                            emptyState
+                                .frame(minHeight: 320)
+                        }
+                        .padding(16)
+                    }
                 } else {
                     eventList
                 }
@@ -80,6 +87,12 @@ struct ReviewQueueView: View {
 
     private var eventList: some View {
         List {
+            if viewModel.hasConnectionIssue {
+                ConnectionRecoveryView(integrations: viewModel.integrations)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowBackground(Color.clear)
+            }
+
             if !viewModel.newSenderGroups.isEmpty {
                 Section {
                     ForEach(viewModel.newSenderGroups) { group in
@@ -112,6 +125,12 @@ struct ReviewQueueView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.selko(.primary))
+            .disabled(!viewModel.calendarConnected)
+            .accessibilityHint(
+                viewModel.calendarConnected
+                    ? ""
+                    : "Reconnect Google Calendar to accept suggestions."
+            )
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(Color.selkoPaper.opacity(0.96))
@@ -154,13 +173,15 @@ struct ReviewQueueView: View {
             },
             onAutoApproveSender: {
                 Task { await viewModel.autoApproveSender(group) }
-            }
+            },
+            canApprove: viewModel.calendarConnected
         )
         ForEach(group.events) { event in
             NavigationLink(value: event.id) {
                 EventCardView(
                     event: event,
                     isProcessing: viewModel.processingEventIds.contains(event.id),
+                    canApprove: viewModel.calendarConnected,
                     onApprove: { Task { await viewModel.approveEvent(event) } },
                     onEdit: { /* Navigation handled by NavigationLink */ },
                     onReject: { Task { await viewModel.rejectEvent(event) } }
@@ -168,13 +189,15 @@ struct ReviewQueueView: View {
             }
             .disabled(viewModel.processingEventIds.contains(event.id))
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                Button {
-                    Task { await viewModel.approveEvent(event) }
-                } label: {
-                    Label("Approve", systemImage: "checkmark")
+                if viewModel.calendarConnected {
+                    Button {
+                        Task { await viewModel.approveEvent(event) }
+                    } label: {
+                        Label("Approve", systemImage: "checkmark")
+                    }
+                    .tint(.selkoSuccess)
+                    .accessibilityLabel("Approve event")
                 }
-                .tint(.selkoSuccess)
-                .accessibilityLabel("Approve event")
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {

@@ -104,6 +104,9 @@ class ReviewQueueViewModelTest {
         every { application.getString(R.string.review_error_reject) } returns "Failed to reject event"
         every { application.getString(R.string.review_error_ignore_rule) } returns "Failed to create ignore rule"
         every { application.getString(R.string.review_error_auto_approve_rule) } returns "Failed to create auto-approve rule"
+        every {
+            application.getString(R.string.review_calendar_reconnect_required)
+        } returns "Reconnect Google Calendar to accept suggestions."
         eventRepository = mockk(relaxed = true)
         integrationRepository = mockk(relaxed = true)
         backendApiClient = mockk(relaxed = true)
@@ -115,9 +118,11 @@ class ReviewQueueViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun createViewModel(): ReviewQueueViewModel {
+    private fun createViewModel(
+        integrations: List<Integration> = testIntegrations
+    ): ReviewQueueViewModel {
         coEvery { integrationRepository.fetchIntegrations() } returns
-                IntegrationResult.Success(testIntegrations)
+                IntegrationResult.Success(integrations)
         coEvery { eventRepository.fetchPendingEventsWithSources() } returns
                 EventResult.Success(testEvents)
 
@@ -128,6 +133,45 @@ class ReviewQueueViewModelTest {
             backendApiClient,
             senderRuleRepository
         )
+    }
+
+    @Test
+    fun `active Outlook satisfies the email requirement and loads suggestions`() = runTest {
+        val integrations = listOf(
+            testIntegrations[0].copy(status = IntegrationStatus.EXPIRED),
+            testIntegrations[0].copy(
+                id = "int-outlook",
+                provider = IntegrationProvider.OUTLOOK,
+                status = IntegrationStatus.ACTIVE
+            ),
+            testIntegrations[1]
+        )
+
+        viewModel = createViewModel(integrations)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isEmailConnected)
+        assertEquals(2, viewModel.uiState.value.events.size)
+    }
+
+    @Test
+    fun `expired calendar keeps suggestions visible and blocks approval`() = runTest {
+        val integrations = listOf(
+            testIntegrations[0].copy(provider = IntegrationProvider.OUTLOOK),
+            testIntegrations[1].copy(status = IntegrationStatus.EXPIRED)
+        )
+        viewModel = createViewModel(integrations)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.approveEvent("event-1")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.events.size)
+        assertEquals(
+            "Reconnect Google Calendar to accept suggestions.",
+            viewModel.uiState.value.errorMessage
+        )
+        coVerify(exactly = 0) { eventRepository.approveEvent(any()) }
     }
 
     @Test

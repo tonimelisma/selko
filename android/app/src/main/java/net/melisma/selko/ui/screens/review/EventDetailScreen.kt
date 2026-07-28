@@ -129,7 +129,8 @@ fun EventDetailScreen(
                         SelkoButton(
                             text = stringResource(R.string.event_detail_accept),
                             onClick = viewModel::approveEvent,
-                            enabled = !uiState.isApproving && !uiState.isRejecting,
+                            enabled = uiState.isCalendarConnected &&
+                                !uiState.isApproving && !uiState.isRejecting,
                             loading = uiState.isApproving,
                             role = SelkoActionRole.Success,
                             icon = Icons.Filled.Check
@@ -164,17 +165,26 @@ fun EventDetailScreen(
                 }
 
                 else -> {
-                    EventDetailContent(
-                        uiState = uiState,
-                        onTitleChange = viewModel::onTitleChange,
-                        onStartDateChange = viewModel::onStartDateChange,
-                        onStartTimeChange = viewModel::onStartTimeChange,
-                        onEndDateChange = viewModel::onEndDateChange,
-                        onEndTimeChange = viewModel::onEndTimeChange,
-                        onLocationChange = viewModel::onLocationChange,
-                        onDescriptionChange = viewModel::onDescriptionChange,
-                        onAllDayChange = viewModel::onAllDayChange
-                    )
+                    Column {
+                        ConnectionRecoveryContent(
+                            integrations = uiState.integrations,
+                            gmailAuthUrl = viewModel.getGmailAuthUrl(),
+                            outlookAuthUrl = viewModel.getOutlookAuthUrl(),
+                            calendarAuthUrl = viewModel.getCalendarAuthUrl(),
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        EventDetailContent(
+                            uiState = uiState,
+                            onTitleChange = viewModel::onTitleChange,
+                            onStartDateChange = viewModel::onStartDateChange,
+                            onStartTimeChange = viewModel::onStartTimeChange,
+                            onEndDateChange = viewModel::onEndDateChange,
+                            onEndTimeChange = viewModel::onEndTimeChange,
+                            onLocationChange = viewModel::onLocationChange,
+                            onDescriptionChange = viewModel::onDescriptionChange,
+                            onAllDayChange = viewModel::onAllDayChange
+                        )
+                    }
                 }
             }
 

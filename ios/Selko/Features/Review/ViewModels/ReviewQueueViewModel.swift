@@ -21,10 +21,27 @@ final class ReviewQueueViewModel {
     var newSenderGroups: [SenderGroup] = []
     var changeSenderGroups: [SenderGroup] = []
     var errorMessage: String?
-    var isConnected = false
-    var gmailConnected = false
-    var calendarConnected = false
+    var integrations: [Integration] = []
     var processingEventIds: Set<UUID> = []
+
+    var isFirstRun: Bool { integrations.isEmpty }
+    var emailConnected: Bool {
+        integrations.contains {
+            ($0.provider == .gmail || $0.provider == .outlook) && $0.isActive
+        }
+    }
+    var gmailConnected: Bool {
+        integrations.contains { $0.provider == .gmail && $0.isActive }
+    }
+    var calendarConnected: Bool {
+        integrations.contains { $0.provider == .googleCalendar && $0.isActive }
+    }
+    var isConnected: Bool { emailConnected && calendarConnected }
+    var hasConnectionIssue: Bool {
+        !emailConnected || !calendarConnected || integrations.contains {
+            !$0.isActive && $0.provider != .googlePhotos
+        }
+    }
 
     private let eventService: EventServiceProtocol
     private let integrationService: IntegrationServiceProtocol
@@ -49,12 +66,9 @@ final class ReviewQueueViewModel {
 
         do {
             // Check integration status
-            let integrations = try await integrationService.fetchIntegrations()
-            gmailConnected = integrations.contains { $0.provider == .gmail && $0.isActive }
-            calendarConnected = integrations.contains { $0.provider == .googleCalendar && $0.isActive }
-            isConnected = gmailConnected && calendarConnected
+            integrations = try await integrationService.fetchIntegrations()
 
-            if isConnected {
+            if !integrations.isEmpty {
                 let events = try await eventService.fetchPendingEventsWithSources()
                 senderGroups = groupEventsBySender(events)
                 newSenderGroups = groupEventsBySender(events.filter { !$0.isPendingChange })
@@ -68,6 +82,7 @@ final class ReviewQueueViewModel {
     }
 
     func approveEvent(_ event: CalendarEvent) async {
+        guard ensureCalendarConnected() else { return }
         guard !processingEventIds.contains(event.id) else { return }
         processingEventIds.insert(event.id)
         errorMessage = nil
@@ -105,6 +120,7 @@ final class ReviewQueueViewModel {
     }
 
     func approveAllInGroup(_ group: SenderGroup) async {
+        guard ensureCalendarConnected() else { return }
         let eventIds = Set(group.events.map(\.id))
         processingEventIds.formUnion(eventIds)
         errorMessage = nil
@@ -173,6 +189,7 @@ final class ReviewQueueViewModel {
     }
 
     func autoApproveSender(_ group: SenderGroup) async {
+        guard ensureCalendarConnected() else { return }
         let eventIds = Set(group.events.map(\.id))
         processingEventIds.formUnion(eventIds)
         errorMessage = nil
@@ -199,6 +216,15 @@ final class ReviewQueueViewModel {
     }
 
     // MARK: - Private
+
+    @discardableResult
+    private func ensureCalendarConnected() -> Bool {
+        guard calendarConnected else {
+            errorMessage = String(localized: "Reconnect Google Calendar to accept suggestions.")
+            return false
+        }
+        return true
+    }
 
     private func groupEventsBySender(_ events: [CalendarEvent]) -> [SenderGroup] {
         var grouped: [String: (name: String, email: String, events: [CalendarEvent])] = [:]

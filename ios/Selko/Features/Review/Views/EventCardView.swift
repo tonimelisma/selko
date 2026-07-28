@@ -3,6 +3,7 @@ import SwiftUI
 struct EventCardView: View {
     let event: CalendarEvent
     var isProcessing: Bool = false
+    var canApprove: Bool = true
     var onApprove: (() -> Void)? = nil
     var onEdit: (() -> Void)? = nil
     var onReject: (() -> Void)? = nil
@@ -79,6 +80,10 @@ struct EventCardView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.selko(.success))
+                            .disabled(!canApprove)
+                            .accessibilityHint(
+                                canApprove ? "" : "Reconnect Google Calendar to accept suggestions."
+                            )
                         }
                         if let onEdit {
                             Button(action: onEdit) {

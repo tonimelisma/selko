@@ -6,6 +6,7 @@ struct SenderGroupView: View {
     let onRejectAll: () -> Void
     let onIgnoreSender: () -> Void
     let onAutoApproveSender: () -> Void
+    var canApprove: Bool = true
 
     @State private var menuOpen = false
 
@@ -80,6 +81,7 @@ struct SenderGroupView: View {
                             }
                             .buttonStyle(.selko(.tertiary))
                             .foregroundStyle(Color.selkoSuccessText)
+                            .disabled(!canApprove)
                             Button("Reject all") {
                                 withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
                                 onRejectAll()
@@ -104,6 +106,7 @@ struct SenderGroupView: View {
                         }
                     }
                     .buttonStyle(.selko(.tertiary))
+                    .disabled(!canApprove)
                     Divider().overlay(Color.selkoDivider)
                     Button {
                         withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }

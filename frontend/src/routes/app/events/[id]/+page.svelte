@@ -8,8 +8,15 @@
 	import { fetchEventSources } from '$lib/services/event-sources.js';
 	import { getEmail } from '$lib/services/emails.js';
 	import { fetchAttachments } from '$lib/services/attachments.js';
-	import { syncEventToCalendar } from '$lib/api/backend.js';
-	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import { fetchIntegrations } from '$lib/services/integrations.js';
+	import {
+		initiateCalendarAuth,
+		initiateGmailAuth,
+		initiateOutlookAuth,
+		syncEventToCalendar
+	} from '$lib/api/backend.js';
+import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import ConnectionRecovery from '$lib/components/ConnectionRecovery.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -30,6 +37,14 @@
 	let isActing = $state(false);
 	let error = $state('');
 	let sourceExpanded = $state(false);
+	/** @type {any[]} */
+	let integrations = $state([]);
+	let calendarConnected = $derived(
+		integrations.some(
+			(integration) =>
+				integration.provider === 'google_calendar' && integration.status === 'active'
+		)
+	);
 
 	// Form fields
 	let title = $state('');
@@ -51,9 +66,10 @@
 		isLoading = true;
 		error = '';
 
-		const [eventResult, sourcesResult] = await Promise.all([
+		const [eventResult, sourcesResult, integrationsResult] = await Promise.all([
 			getEvent(eventId),
-			fetchEventSources(eventId)
+			fetchEventSources(eventId),
+			fetchIntegrations()
 		]);
 
 		if (eventResult.error) {
@@ -64,6 +80,10 @@
 
 		event = eventResult.data;
 		sources = sourcesResult.data || [];
+		integrations = integrationsResult.data || [];
+		if (integrationsResult.error) {
+			error = integrationsResult.error.message;
+		}
 
 		// Populate form fields
 		if (event) {
@@ -141,6 +161,10 @@
 
 	async function handleApprove() {
 		if (!event || !title || isActing) return;
+		if (!calendarConnected) {
+			error = $_('integrations.calendarRequiredToAccept');
+			return;
+		}
 		isActing = true;
 		error = '';
 		try {
@@ -161,6 +185,13 @@
 		} finally {
 			isActing = false;
 		}
+	}
+
+	/** @param {string} provider */
+	async function handleAuthorize(provider) {
+		if (provider === 'gmail') await initiateGmailAuth();
+		if (provider === 'outlook') await initiateOutlookAuth();
+		if (provider === 'google_calendar') await initiateCalendarAuth();
 	}
 
 	async function handleReject() {
@@ -194,6 +225,7 @@
 	{#if error}
 		<ErrorAlert message={error} />
 	{/if}
+	<ConnectionRecovery {integrations} onauthorize={handleAuthorize} />
 
 	<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 		<!-- Source sidebar -->
@@ -418,7 +450,7 @@
 							{$_('events.reject')}
 						{/if}
 					</button>
-					<button class="btn btn-success" onclick={handleApprove} disabled={!title || isActing}>
+					<button class="btn btn-success" onclick={handleApprove} disabled={!title || isActing || !calendarConnected}>
 						{#if isActing}
 							<span class="loading loading-spinner loading-sm"></span>
 						{:else}
@@ -441,7 +473,7 @@
 						{$_('events.reject')}
 					{/if}
 				</button>
-				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title || isActing}>
+				<button class="btn btn-success flex-1" onclick={handleApprove} disabled={!title || isActing || !calendarConnected}>
 					{#if isActing}
 						<span class="loading loading-spinner loading-sm"></span>
 					{:else}

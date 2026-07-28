@@ -105,6 +105,39 @@ struct EventDetailViewModelTests {
     }
 
     @Test
+    func expiredCalendarBlocksApprovalButKeepsEventLoaded() async {
+        let eventService = MockEventService()
+        eventService.getEventWithSourcesResult = .success(.mock)
+        let integrationService = MockIntegrationService()
+        integrationService.fetchIntegrationsResult = .success([
+            Integration(
+                id: UUID(),
+                userId: UUID(),
+                provider: .googleCalendar,
+                status: .expired,
+                providerEmail: nil,
+                scopes: [],
+                lastSyncAt: nil,
+                createdAt: nil,
+                updatedAt: nil
+            )
+        ])
+        let viewModel = EventDetailViewModel(
+            eventId: CalendarEvent.mock.id,
+            eventService: eventService,
+            integrationService: integrationService
+        )
+
+        await viewModel.load()
+        await viewModel.approve()
+
+        #expect(viewModel.event != nil)
+        #expect(!viewModel.calendarConnected)
+        #expect(eventService.approveEventCallCount == 0)
+        #expect(viewModel.errorMessage == "Reconnect Google Calendar to accept suggestions.")
+    }
+
+    @Test
     func rejectSuccessSetsDidComplete() async throws {
         // Given
         let mockEventService = MockEventService()

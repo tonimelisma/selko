@@ -81,8 +81,8 @@ chips under Auto-accepted senders and Auto-ignored senders.
 
 Empty states center a 60px subtle tile with a success check, a short heading,
 and one calm sentence. Full-page loading uses the Warmth spinner. Inline errors
-use `alert-error`; OAuth failures may use a persistent toast because the user
-needs to see the redirect result.
+use `alert-error`; OAuth start and callback failures stay persistently visible
+beside the relevant reconnect control after the redirect.
 
 ### Confirmation and destructive actions
 
