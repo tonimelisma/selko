@@ -6,7 +6,9 @@ All operations use the publishable key with RLS enforcement.
 
 import logging
 
+import httpx
 from supabase import AuthApiError, Client, create_client
+from supabase.lib.client_options import SyncClientOptions
 
 from selko.config import Config
 
@@ -97,10 +99,15 @@ def get_service_client(config: Config) -> Client:
             "SUPABASE_SERVICE_ROLE_KEY must be configured for background workers"
         )
 
-    # Service role client bypasses RLS and doesn't need session management
+    # postgrest-py enables HTTP/2 by default. The synchronous HTTP/2 transport
+    # fails under concurrent production worker threads with EAGAIN reads and
+    # terminated streams. HTTP/1.1 uses independent pooled connections and is
+    # the stable transport for this shared, thread-safe service client.
+    http_client = httpx.Client(http2=False, timeout=120)
     client = create_client(
         config.supabase_url,
         config.supabase_service_role_key,
+        options=SyncClientOptions(httpx_client=http_client),
     )
 
     logger.debug("Created service role client (bypasses RLS)")
