@@ -42,6 +42,18 @@
     <string name="review_error_reject">Failed to reject event</string>
     <string name="review_error_ignore_rule">Failed to create ignore rule</string>
     <string name="review_error_auto_approve_rule">Failed to create auto-approve rule</string>
+    <string name="review_calendar_reconnect_required">Reconnect Google Calendar to accept suggestions.</string>
+
+    <!-- Connection Recovery -->
+    <string name="recovery_email_title">Reconnect an email account</string>
+    <string name="recovery_email_description">New email suggestions are paused. Your existing suggestions and history are still available.</string>
+    <string name="recovery_calendar_title">Reconnect Google Calendar</string>
+    <string name="recovery_calendar_description">You can keep reviewing, editing, and rejecting suggestions. Reconnect before accepting one.</string>
+    <string name="recovery_attention_title">A connection needs attention</string>
+    <string name="recovery_attention_description">Selko is still working through another connected account. Reconnect this provider when convenient.</string>
+    <string name="recovery_connect_provider">Connect %1$s</string>
+    <string name="recovery_reconnect_provider">Reconnect %1$s</string>
+    <string name="recovery_settings_note">You can also manage connections in Settings.</string>
 
     <!-- Event Card -->
     <string name="event_card_accept">Accept</string>

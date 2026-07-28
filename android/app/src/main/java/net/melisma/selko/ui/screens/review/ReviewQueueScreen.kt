@@ -71,22 +71,12 @@ fun ReviewQueueScreen(
                 )
             }
 
-            !uiState.isGmailConnected || !uiState.isCalendarConnected -> {
+            uiState.isFirstRun -> {
                 IntegrationSetupContent(
-                    isGmailConnected = uiState.isGmailConnected,
-                    isCalendarConnected = uiState.isCalendarConnected,
+                    isGmailConnected = false,
+                    isCalendarConnected = false,
                     gmailAuthUrl = viewModel.getGmailAuthUrl()
                 )
-            }
-
-            uiState.events.isEmpty() -> {
-                PullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = { viewModel.refresh() },
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    EmptyReviewContent()
-                }
             }
 
             else -> {
@@ -106,6 +96,22 @@ fun ReviewQueueScreen(
                             )
                         }
 
+                        item {
+                            ConnectionRecoveryContent(
+                                integrations = uiState.integrations,
+                                gmailAuthUrl = viewModel.getGmailAuthUrl(),
+                                outlookAuthUrl = viewModel.getOutlookAuthUrl(),
+                                calendarAuthUrl = viewModel.getCalendarAuthUrl(),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+
+                        if (uiState.events.isEmpty()) {
+                            item {
+                                EmptyReviewContent()
+                            }
+                        }
+
                         if (uiState.newSenderGroups.isNotEmpty()) {
                             item {
                                 Text(
@@ -122,7 +128,8 @@ fun ReviewQueueScreen(
                                         onApproveAll = { viewModel.approveGroup(group.senderEmail) },
                                         onRejectAll = { viewModel.rejectGroup(group.senderEmail) },
                                         onIgnoreSender = { viewModel.ignoreSender(group.senderEmail) },
-                                        onAutoApproveSender = { viewModel.autoApproveSender(group.senderEmail) }
+                                        onAutoApproveSender = { viewModel.autoApproveSender(group.senderEmail) },
+                                        canApprove = uiState.isCalendarConnected
                                     )
                                 }
                                 items(group.events, key = { it.id }) { event ->
@@ -130,6 +137,7 @@ fun ReviewQueueScreen(
                                         SwipeableEventItem(
                                             event = event,
                                             isProcessing = event.id in uiState.processingEventIds,
+                                            canApprove = uiState.isCalendarConnected,
                                             onApprove = { viewModel.approveEvent(event.id) },
                                             onReject = { viewModel.rejectEvent(event.id) },
                                             onEdit = { onNavigateToEventDetail(event.id) }
@@ -155,7 +163,8 @@ fun ReviewQueueScreen(
                                         onApproveAll = { viewModel.approveGroup(group.senderEmail) },
                                         onRejectAll = { viewModel.rejectGroup(group.senderEmail) },
                                         onIgnoreSender = { viewModel.ignoreSender(group.senderEmail) },
-                                        onAutoApproveSender = { viewModel.autoApproveSender(group.senderEmail) }
+                                        onAutoApproveSender = { viewModel.autoApproveSender(group.senderEmail) },
+                                        canApprove = uiState.isCalendarConnected
                                     )
                                 }
                                 items(group.events, key = { "c-${it.id}" }) { event ->
@@ -163,6 +172,7 @@ fun ReviewQueueScreen(
                                         SwipeableEventItem(
                                             event = event,
                                             isProcessing = event.id in uiState.processingEventIds,
+                                            canApprove = uiState.isCalendarConnected,
                                             onApprove = { viewModel.approveEvent(event.id) },
                                             onReject = { viewModel.rejectEvent(event.id) },
                                             onEdit = { onNavigateToEventDetail(event.id) }
@@ -202,7 +212,8 @@ private fun SenderGroupHeader(
     onApproveAll: () -> Unit,
     onRejectAll: () -> Unit,
     onIgnoreSender: () -> Unit,
-    onAutoApproveSender: () -> Unit
+    onAutoApproveSender: () -> Unit,
+    canApprove: Boolean
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -252,6 +263,7 @@ private fun SenderGroupHeader(
                 if (group.events.size > 1) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.review_approve_all)) },
+                        enabled = canApprove,
                         onClick = {
                             showMenu = false
                             onApproveAll()
@@ -283,6 +295,7 @@ private fun SenderGroupHeader(
                 }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.review_auto_approve_sender)) },
+                    enabled = canApprove,
                     onClick = {
                         showMenu = false
                         onAutoApproveSender()
@@ -310,7 +323,7 @@ private fun SenderGroupHeader(
 private fun EmptyReviewContent() {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

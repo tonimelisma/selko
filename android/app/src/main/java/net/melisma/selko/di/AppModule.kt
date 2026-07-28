@@ -37,7 +37,9 @@ val appModule = module {
     // ViewModels
     viewModel { AuthViewModel(androidApplication(), get()) }
     viewModel { ReviewQueueViewModel(androidApplication(), get(), get(), get(), get()) }
-    viewModel { (eventId: String) -> EventDetailViewModel(androidApplication(), get(), eventId) }
+    viewModel { (eventId: String) ->
+        EventDetailViewModel(androidApplication(), get(), get(), get(), eventId)
+    }
     viewModel { HistoryViewModel(androidApplication(), get(), get(), get()) }
     viewModel { SettingsViewModel(androidApplication(), get(), get(), get(), get(), get(), get()) }
 }

@@ -8,7 +8,7 @@ This document defines the user journeys for Selko's web application. For screen-
 
 | Screen | Route | Description |
 |--------|-------|-------------|
-| Review Queue | `/app` | Home screen. Two lanes: **New** (add to calendar) and **Changes** (field diffs for existing events). Replaced by integration setup when not connected. |
+| Review Queue | `/app` | Home screen. Two lanes: **New** (add to calendar) and **Changes** (field diffs for existing events). First-run setup is full-screen; returning-user connection failures are shown in context. |
 | Event Detail | `/app/events/[id]` | Edit/review a single event. Click-through from queue, not a nav tab. |
 | Activity History | `/app/history` | Timeline of approvals and applied changes (with field diffs). Undo returns items to New or Changes. |
 | Settings | `/app/settings` | Integration management, account, calendar config, timezone. |
@@ -52,11 +52,11 @@ Register → Login → Review Queue shows integration setup (not connected)
 
 ### Partial OAuth Scopes
 
-The user may grant only some scopes (e.g., Gmail but not Calendar). In this case:
-- The integration setup screen remains, showing which services are Connected and which still need connection.
-- Per-service status is visible: "Gmail: Connected", "Google Calendar: Not connected [Connect]".
-- The "Connect" button triggers a scoped OAuth request for just the missing permission.
-- Both Gmail and Calendar must be Connected before the Review Queue appears.
+The user may grant only some scopes (e.g., Gmail but not Calendar). First-run
+onboarding remains until at least one integration record exists. After that,
+the Review Queue stays visible and shows a provider-specific recovery card.
+Missing Calendar access disables Accept/Approve actions but leaves Edit and
+Reject available.
 
 ---
 
@@ -104,15 +104,17 @@ Login → Review Queue shows pending events
 ### Scenario A: Token Expiry / Integration Failure
 
 ```
-User logs in → Review Queue is replaced by integration setup screen
-  → Shows which service lost authorization
-  → "Gmail: Connected" / "Google Calendar: Connection expired [Reconnect]"
+User logs in → Review Queue remains visible with a recovery card
+  → Shows which service lost authorization and what is paused
+  → "Google Calendar expired [Reconnect Google Calendar]"
   → User clicks Reconnect → OAuth flow → back to queue
 ```
 
-- The integration setup screen takes over the entire Review Queue whenever integrations are not fully working.
-- Same screen whether it's initial setup, token expiry, or revoked access.
-- Existing events remain in the database. When reconnected, everything continues as before.
+- Only a user with zero integration records sees full first-run onboarding.
+- Any active email provider (Gmail or Outlook) keeps ingestion available.
+- With no active email provider, new ingestion pauses; existing suggestions and History remain readable.
+- With Calendar unavailable, review, edit, and reject remain available; Accept/Approve and auto-approve are disabled until reconnection.
+- An expired optional email provider is nonblocking when another email provider is active.
 
 ### Scenario B: Calendar Sync Failure
 
@@ -130,12 +132,13 @@ User approves event → sync fails
 
 ```
 User clicks Connect → Google OAuth → denies or error
-  → Redirected back to app → error toast shown
-  → Integration setup screen still showing, user can try again
+  → Redirected back to app → persistent inline error shown
+  → Existing context remains visible and user can try again
 ```
 
-- OAuth errors are shown as a toast notification — the one case where toasts are used.
-- Same toast behavior whether the OAuth was initiated from the Review Queue setup screen or from Settings (for adding a second account).
+- OAuth start and callback errors use a persistent inline alert next to the
+  relevant connection control. They are never conveyed only by a transient
+  toast.
 
 ### Scenario D: Network Loss
 
@@ -154,7 +157,8 @@ User is reviewing events → network drops
 
 ## Review Queue State Diagram
 
-The Review Queue at `/app` has two top-level states: integration setup or event queue.
+The Review Queue at `/app` uses full-screen setup only for first run. Returning
+users always retain the queue and receive capability-specific recovery.
 
 ```
                     ┌──────────────────┐
@@ -170,12 +174,9 @@ The Review Queue at `/app` has two top-level states: integration setup or event 
      ┌────────▼───────────┐       ┌─────────▼──────────┐
      │ INTEGRATION SETUP   │       │ QUEUE               │
      │                     │       │                      │
-     │ Shown when:         │       │ Shown when both      │
-     │ - No account linked │       │ Gmail + Calendar     │
-     │ - Gmail not connected│      │ are Connected        │
-     │ - Calendar not connected│   │                      │
-     │ - Token expired     │       │                      │
-     │ - Token revoked     │       │                      │
+     │ Shown only when:    │       │ Shown to returning   │
+     │ - No integration    │       │ users, with recovery │
+     │   records exist     │       │ card when needed     │
      │                     │       │                      │
      │ Shows connect/      │       │  ┌────────────────┐  │
      │ connect/reconnect   │       │  │ Has pending     │  │
@@ -201,19 +202,20 @@ import { fetchPendingEvents } from '$lib/services/events'
 
 // 1. Check integration status
 const { data: integrations } = await fetchIntegrations()
-const gmail = integrations?.find(i => i.provider === 'gmail')
+const emailOk = integrations?.some(
+  i => ['gmail', 'outlook'].includes(i.provider) && i.status === 'active'
+)
 const gcal = integrations?.find(i => i.provider === 'google_calendar')
 
-const gmailOk = gmail?.status === 'active'
 const gcalOk = gcal?.status === 'active'
 
-// 2. If both OK, show queue. Otherwise, show integration setup.
-if (gmailOk && gcalOk) {
-  const { data: pendingEvents } = await fetchPendingEvents()
-  // Show queue (or "All caught up" if empty)
-} else {
-  // Show integration setup screen with per-service status
-}
+// 2. Full-screen onboarding is reserved for a true first run.
+if (integrations.length === 0) showFirstRunSetup()
+
+// 3. Returning users always load the queue.
+const { data: pendingEvents } = await fetchPendingEvents()
+if (!emailOk) showRecovery('email') // New ingestion is paused.
+if (!gcalOk) showRecovery('calendar') // Disable accept/approve only.
 ```
 
 ---
