@@ -1,0 +1,29 @@
+{
+  "name": "informed_delivery_digest_19",
+  "category": "no_events",
+  "description": "Daily postal delivery digest containing only mail previews",
+  "difficulty": "medium",
+  "tags": ["production-regression", "postal", "daily-digest", "negative-test"],
+  "provenance": {
+    "failure_class": "invalid_email_date_structured_output",
+    "anonymization_notes": "Postal service branding, address, tracking data, and links were replaced."
+  },
+  "input": {
+    "provider_message_id": "eval-prod-failure-019",
+    "thread_id": "thread-prod-failure-019",
+    "subject": "Your Daily Mail Delivery Digest",
+    "from_email": "digest@postal-preview.example",
+    "from_name": "Postal Preview",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-07-22T12:10:00Z",
+    "snippet": "3 pieces of mail are arriving soon.",
+    "body_text": "Your Daily Mail Delivery Digest\n\nYou have 3 pieces of letter mail arriving soon at your saved address. Sign in to view scanned previews or report missing mail.\n\nThere are no packages with a scheduled delivery date in today's digest.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Hand-written expected: a mail-preview digest without a package delivery date is not a calendar event."
+}

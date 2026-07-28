@@ -1,0 +1,29 @@
+{
+  "name": "early_direct_deposit_notice_20",
+  "category": "no_events",
+  "description": "Bank notification that an expected direct deposit arrived early",
+  "difficulty": "medium",
+  "tags": ["production-regression", "banking", "direct-deposit", "negative-test"],
+  "provenance": {
+    "failure_class": "empty_or_invalid_json",
+    "anonymization_notes": "Bank, employer, amount, account suffix, and links were replaced."
+  },
+  "input": {
+    "provider_message_id": "eval-prod-failure-020",
+    "thread_id": "thread-prod-failure-020",
+    "subject": "You just got paid early!",
+    "from_email": "alerts@sample-bank.example",
+    "from_name": "Sample Bank",
+    "to_emails": ["recipient@example.com"],
+    "date_sent": "2026-07-24T14:42:00Z",
+    "snippet": "Your direct deposit arrived ahead of schedule.",
+    "body_text": "Good news — your direct deposit from Example Employer arrived early and is now available in checking account ending 0042.\n\nDeposit amount: $1,234.56\nPosted: July 24, 2026\n\nNo action is required.",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "notes": "Hand-written expected: a completed financial transaction is not a future calendar event."
+}

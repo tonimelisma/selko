@@ -55,6 +55,12 @@ def mock_client():
 
 
 @pytest.fixture
+def mock_service_client():
+    """Mock service-role Supabase client."""
+    return MagicMock()
+
+
+@pytest.fixture
 def mock_quota():
     """Mock QuotaService that always allows."""
     qs = MagicMock()
@@ -71,14 +77,21 @@ def mock_gateway():
 
 
 @pytest.fixture
-def test_client(mock_config, mock_user, mock_client, mock_quota, mock_gateway):
+def test_client(
+    mock_config,
+    mock_user,
+    mock_client,
+    mock_service_client,
+    mock_quota,
+    mock_gateway,
+):
     """Fully-overridden TestClient — all deps mocked."""
     app = create_app()
     app.dependency_overrides[get_config] = lambda: mock_config
     app.dependency_overrides[get_current_user] = lambda: mock_user
     app.dependency_overrides[get_authenticated_client] = lambda: mock_client
     app.dependency_overrides[get_quota_service] = lambda: mock_quota
-    app.dependency_overrides[get_service_role_client] = lambda: mock_client
+    app.dependency_overrides[get_service_role_client] = lambda: mock_service_client
     app.dependency_overrides[get_llm_gateway] = lambda: mock_gateway
     yield TestClient(app, raise_server_exceptions=False)
     app.dependency_overrides.clear()
@@ -257,6 +270,54 @@ class TestNotFoundResponses:
 
         resp = test_client.post("/emails/some-fake-id/process")
         assert resp.status_code == 404
+
+
+class TestServiceRoleOAuthRoutes:
+    """OAuth-backed service calls use service role after user-scoped checks."""
+
+    def test_event_sync_uses_service_role_client(
+        self, test_client, mock_client, mock_service_client
+    ):
+        event_id = "00000000-0000-0000-0000-000000000001"
+        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
+            data={"user_id": "test-user-id", "status": "approved", "synced_at": None}
+        )
+        mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
+            data={"synced_at": "2026-07-28T00:00:00Z"}
+        )
+
+        with patch(
+            "selko.api.routes.events.sync_event_to_calendar",
+            return_value="google-event-1",
+        ) as sync:
+            response = test_client.post(f"/events/{event_id}/sync")
+
+        assert response.status_code == 200
+        sync.assert_called_once_with(mock_service_client, "test-user-id", event_id)
+
+    def test_email_sync_uses_service_role_client(
+        self, test_client, mock_service_client
+    ):
+        with patch(
+            "selko.api.routes.emails.fetch_emails_for_user",
+            return_value={"fetched": 1, "saved": 1, "attachments_downloaded": 0},
+        ) as fetch:
+            response = test_client.post("/emails/sync", json={})
+
+        assert response.status_code == 200
+        assert fetch.call_args.kwargs["client"] is mock_service_client
+
+    def test_calendar_list_uses_service_role_client(
+        self, test_client, mock_service_client
+    ):
+        with patch(
+            "selko.api.routes.calendars.calendars.list_calendars",
+            return_value=[],
+        ) as list_calendars:
+            response = test_client.get("/calendars")
+
+        assert response.status_code == 200
+        list_calendars.assert_called_once_with(mock_service_client, "test-user-id")
 
     def test_event_sync_not_found(self, test_client, mock_client):
         """Syncing a non-existent event returns 404."""

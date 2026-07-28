@@ -40,6 +40,22 @@ class TestScheduleEmailFetches:
             mock_enqueue.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_reuses_supplied_service_client(self):
+        """The periodic scheduler does not create a new HTTP client each run."""
+        mock_client = MagicMock()
+        integrations_result = MagicMock()
+        integrations_result.data = []
+        mock_client.table.return_value.select.return_value.in_.return_value.eq.return_value.execute.return_value = integrations_result
+
+        with (
+            patch("selko.config.load_config"),
+            patch("selko.services.auth.get_service_client") as get_service_client,
+        ):
+            await schedule_email_fetches(mock_client)
+
+        get_service_client.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_enqueues_for_users_without_existing_task(self):
         """Users without an existing task get a new one enqueued."""
         mock_client = MagicMock()

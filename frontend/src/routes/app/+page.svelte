@@ -171,7 +171,14 @@
 				return;
 			}
 			try {
-				await syncEventToCalendar(event.id);
+				const { error: syncError } = await syncEventToCalendar(event.id);
+				if (syncError) {
+					console.error('Calendar sync failed after approval:', syncError);
+					actionError = syncError.message || $_('home.syncFailedAfterApprove');
+					if (syncError.status === 401 || syncError.status === 404) {
+						await loadIntegrations();
+					}
+				}
 			} catch (syncError) {
 				console.error('Calendar sync failed after approval:', syncError);
 				actionError = $_('home.syncFailedAfterApprove');
@@ -219,7 +226,14 @@
 				return;
 			}
 			try {
-				await syncEventToCalendar(event.id);
+				const { error: syncError } = await syncEventToCalendar(event.id);
+				if (syncError) {
+					console.error('Calendar sync failed after change apply:', syncError);
+					actionError = syncError.message || $_('home.syncFailedAfterApprove');
+					if (syncError.status === 401 || syncError.status === 404) {
+						await loadIntegrations();
+					}
+				}
 			} catch (syncError) {
 				console.error('Calendar sync failed after change apply:', syncError);
 				actionError = $_('home.syncFailedAfterApprove');
