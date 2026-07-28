@@ -6,7 +6,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.coEvery
-import io.mockk.every
 import io.mockk.mockk
 import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
@@ -41,7 +40,6 @@ class ReviewQueueScreenTest {
     private fun setupMocks(events: List<CalendarEvent> = emptyList()) {
         coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(emptyList())
         coEvery { eventRepository.fetchPendingEventsWithSources() } returns EventResult.Success(events)
-        every { backendApiClient.getGmailAuthUrl() } returns "https://example.com/auth"
     }
 
     @Test
@@ -87,7 +85,6 @@ class ReviewQueueScreenTest {
     fun reviewQueueScreen_showsIntegrationSetup_whenNotConnected() {
         coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(emptyList())
         coEvery { eventRepository.fetchPendingEventsWithSources() } returns EventResult.Success(emptyList())
-        every { backendApiClient.getGmailAuthUrl() } returns "https://example.com/auth"
 
         composeTestRule.setContent {
             SelkoTheme {

@@ -408,11 +408,8 @@ class SettingsViewModel(
         }
     }
 
-    fun getGmailAuthUrl(): String = backendApiClient.getGmailAuthUrl()
-
-    fun getOutlookAuthUrl(): String = backendApiClient.getOutlookAuthUrl()
-
-    fun getCalendarAuthUrl(): String = backendApiClient.getCalendarAuthUrl()
+    suspend fun startOAuth(provider: IntegrationProvider): Result<String> =
+        backendApiClient.startOAuth(provider)
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }

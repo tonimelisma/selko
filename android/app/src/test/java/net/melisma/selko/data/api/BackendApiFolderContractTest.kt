@@ -2,11 +2,29 @@ package net.melisma.selko.data.api
 
 import kotlinx.serialization.json.Json
 import net.melisma.selko.data.model.EmailFolderPreference
+import net.melisma.selko.data.model.IntegrationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class BackendApiFolderContractTest {
+    @Test
+    fun `oauth paths support active providers but not parked photos`() {
+        assertEquals(
+            "/integrations/gmail/auth",
+            BackendApiClient.oauthPath(IntegrationProvider.GMAIL)
+        )
+        assertEquals(
+            "/integrations/outlook/auth",
+            BackendApiClient.oauthPath(IntegrationProvider.OUTLOOK)
+        )
+        assertEquals(
+            "/integrations/calendar/auth",
+            BackendApiClient.oauthPath(IntegrationProvider.GOOGLE_CALENDAR)
+        )
+        assertNull(BackendApiClient.oauthPath(IntegrationProvider.GOOGLE_PHOTOS))
+    }
+
     @Test
     fun `folder paths restrict providers and encode opaque ids`() {
         assertEquals("/integrations/gmail/folders", BackendApiClient.emailFolderPath("gmail"))

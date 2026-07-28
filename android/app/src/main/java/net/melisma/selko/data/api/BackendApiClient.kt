@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.melisma.selko.BuildConfig
 import net.melisma.selko.data.model.EmailFolderPreference
+import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.repository.AuthRepository
 
 /**
@@ -53,6 +54,13 @@ class BackendApiClient(
     }
 
     companion object {
+        fun oauthPath(provider: IntegrationProvider): String? = when (provider) {
+            IntegrationProvider.GMAIL -> "/integrations/gmail/auth"
+            IntegrationProvider.OUTLOOK -> "/integrations/outlook/auth"
+            IntegrationProvider.GOOGLE_CALENDAR -> "/integrations/calendar/auth"
+            IntegrationProvider.GOOGLE_PHOTOS -> null
+        }
+
         fun emailFolderPath(provider: String, folderId: String? = null): String? {
             if (provider !in setOf("gmail", "outlook")) return null
             val base = "/integrations/$provider/folders"
@@ -381,30 +389,20 @@ class BackendApiClient(
     // OAuth Operations
     // ============================================================================
 
-    /**
-     * Get the Gmail OAuth authorization URL.
-     * User should be redirected to this URL in a web browser.
-     */
-    fun getGmailAuthUrl(redirectUri: String? = null): String {
-        val params = redirectUri?.let { "?redirect_uri=$it" } ?: ""
-        return "$baseUrl/integrations/gmail/auth$params"
-    }
+    @Serializable
+    data class OAuthStartResponse(
+        @kotlinx.serialization.SerialName("auth_url") val authUrl: String
+    )
 
-    /**
-     * Get the Microsoft Graph / Outlook OAuth authorization URL.
-     */
-    fun getOutlookAuthUrl(redirectUri: String? = null): String {
-        val params = redirectUri?.let { "?redirect_uri=$it" } ?: ""
-        return "$baseUrl/integrations/outlook/auth$params"
-    }
-
-    /**
-     * Get the Google Calendar OAuth authorization URL.
-     * User should be redirected to this URL in a web browser.
-     */
-    fun getCalendarAuthUrl(redirectUri: String? = null): String {
-        val params = redirectUri?.let { "?redirect_uri=$it" } ?: ""
-        return "$baseUrl/integrations/calendar/auth$params"
+    suspend fun startOAuth(provider: IntegrationProvider): Result<String> {
+        val path = oauthPath(provider)
+            ?: return Result.failure(IllegalArgumentException("Unsupported OAuth provider"))
+        return authenticatedRequest { authHeader ->
+            httpClient.get("$baseUrl$path") {
+                header(HttpHeaders.Authorization, authHeader)
+                accept(ContentType.Application.Json)
+            }.body<OAuthStartResponse>().authUrl
+        }
     }
 
     // ============================================================================

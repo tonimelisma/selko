@@ -306,6 +306,7 @@ class TestServiceRoleOAuthRoutes:
 
         assert response.status_code == 200
         assert fetch.call_args.kwargs["client"] is mock_service_client
+        assert fetch.call_args.kwargs["user_id"] == "test-user-id"
 
     def test_calendar_list_uses_service_role_client(
         self, test_client, mock_service_client

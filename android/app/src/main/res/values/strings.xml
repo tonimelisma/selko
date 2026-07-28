@@ -54,6 +54,7 @@
     <string name="recovery_connect_provider">Connect %1$s</string>
     <string name="recovery_reconnect_provider">Reconnect %1$s</string>
     <string name="recovery_settings_note">You can also manage connections in Settings.</string>
+    <string name="recovery_connect_failed">Couldn’t start authorization. Please try again.</string>
 
     <!-- Event Card -->
     <string name="event_card_accept">Accept</string>

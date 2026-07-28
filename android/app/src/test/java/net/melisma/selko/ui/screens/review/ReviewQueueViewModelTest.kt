@@ -61,6 +61,18 @@ class ReviewQueueViewModelTest {
         )
     )
 
+    @Test
+    fun `parked Google Photos does not create a recovery action`() {
+        val integrations = testIntegrations + Integration(
+            id = "int-photo",
+            userId = "user-1",
+            provider = IntegrationProvider.GOOGLE_PHOTOS,
+            status = IntegrationStatus.EXPIRED
+        )
+
+        assertEquals(emptyList<IntegrationProvider>(), recoveryProvidersFor(integrations))
+    }
+
     private val testEmail = Email(
         id = "email-1",
         userId = "user-1",
@@ -133,6 +145,21 @@ class ReviewQueueViewModelTest {
             backendApiClient,
             senderRuleRepository
         )
+    }
+
+    @Test
+    fun `OAuth start delegates to the authenticated backend client`() = runTest {
+        coEvery {
+            backendApiClient.startOAuth(IntegrationProvider.GMAIL)
+        } returns Result.success("https://accounts.example/authorize")
+        viewModel = createViewModel()
+
+        val result = viewModel.startOAuth(IntegrationProvider.GMAIL)
+
+        assertEquals("https://accounts.example/authorize", result.getOrThrow())
+        coVerify(exactly = 1) {
+            backendApiClient.startOAuth(IntegrationProvider.GMAIL)
+        }
     }
 
     @Test

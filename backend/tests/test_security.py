@@ -56,6 +56,29 @@ class TestEmailExceptionSubclasses:
             with pytest.raises(NoGmailIntegrationError, match="No Gmail integration"):
                 fetch_emails_for_user(mock_client, mock_config)
 
+    def test_fetch_emails_threads_user_id_to_service_role_credentials(self):
+        """Service-role manual sync scopes credential lookup to its owner."""
+        from selko.services.emails import fetch_emails_for_user
+
+        mock_client = MagicMock()
+        mock_config = MagicMock()
+
+        with patch(
+            "selko.services.emails.get_credentials", return_value=None
+        ) as get_credentials:
+            with pytest.raises(NoGmailIntegrationError):
+                fetch_emails_for_user(
+                    mock_client,
+                    mock_config,
+                    user_id="user-123",
+                )
+
+        get_credentials.assert_called_once_with(
+            mock_client,
+            mock_config,
+            user_id="user-123",
+        )
+
 
 class TestQuotaAlarmedFailOpen:
     """Test quota service alarmed fail-open behavior."""
