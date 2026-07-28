@@ -152,7 +152,11 @@
 				error = statusError.message;
 				return;
 			}
-			syncEventToCalendar(event.id);
+			const { error: syncError } = await syncEventToCalendar(event.id);
+			if (syncError) {
+				error = syncError.message;
+				return;
+			}
 			goto('/app');
 		} finally {
 			isActing = false;

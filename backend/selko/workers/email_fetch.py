@@ -37,6 +37,7 @@ from selko.services.gmail import (
     list_labels,
     list_message_ids,
 )
+from selko.services.integrations import update_integration_status
 from selko.services.outlook import (
     GraphHttpError,
     OUTLOOK_HIDDEN_SYSTEM_ALIASES,
@@ -683,11 +684,19 @@ def _process_outlook_fetch_sync(
     config: Config,
     payload: dict[str, Any],
 ) -> None:
-    integration = _get_integration(client, payload.get("user_id", ""), "outlook")
-    if isinstance(integration, dict) and integration.get("id"):
-        _process_outlook_reliable(client, config, payload, integration)
-        return
-    _process_outlook_fetch_legacy(client, config, payload)
+    user_id = payload.get("user_id", "")
+    try:
+        integration = _get_integration(client, user_id, "outlook")
+        if isinstance(integration, dict) and integration.get("id"):
+            _process_outlook_reliable(client, config, payload, integration)
+            return
+        _process_outlook_fetch_legacy(client, config, payload)
+    except GraphHttpError as exc:
+        if exc.status_code == 401:
+            update_integration_status(
+                client, "outlook", "expired", user_id=user_id
+            )
+        raise
 
 
 def _process_email_fetch_sync(
@@ -723,13 +732,13 @@ async def process_email_fetch_job(
     await process_email_fetch_task(client, config, payload)
 
 
-async def schedule_email_fetches() -> None:
+async def schedule_email_fetches(client: Client | None = None) -> None:
     """Enqueue one deduplicated email fetch task per active provider account."""
     from selko.config import load_config
     from selko.services.auth import get_service_client
 
     config = load_config()
-    client = get_service_client(config)
+    client = client or get_service_client(config)
 
     try:
         result = client.table("integrations").select(

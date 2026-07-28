@@ -135,6 +135,7 @@ async def lifespan(app: FastAPI):
             schedule_email_fetches,
             "interval",
             minutes=15,
+            args=[service_client],
             id="email_fetch_scheduler",
             name="Email Fetch Scheduler",
             max_instances=1,
@@ -147,7 +148,7 @@ async def lifespan(app: FastAPI):
         # an open port while Gmail/Photos scheduling ran.
         async def _run_initial_fetches() -> None:
             try:
-                await schedule_email_fetches()
+                await schedule_email_fetches(service_client)
             except Exception:
                 logger.exception("Initial fetch scheduling failed")
 

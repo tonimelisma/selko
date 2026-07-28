@@ -483,6 +483,7 @@ def sync_event_to_calendar(
             "google_calendar_event_id": google_event_id,
             "status": "synced",
             "synced_at": datetime.now(timezone.utc).isoformat(),
+            "sync_error": None,
         }).eq("id", event_id).execute()
 
         # Log the sync operation
@@ -502,7 +503,8 @@ def sync_event_to_calendar(
         # Mark as sync_failed
         try:
             supabase_client.table("events").update({
-                "status": "sync_failed"
+                "status": "sync_failed",
+                "sync_error": str(e),
             }).eq("id", event_id).execute()
         except Exception as update_error:
             logger.warning(f"Failed to update event status to sync_failed: {update_error}")

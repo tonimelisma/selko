@@ -527,15 +527,10 @@ class TestSyncEventToCalendar:
             with pytest.raises(CalendarsError):
                 sync_event_to_calendar(mock_client, "user-456", "event-123")
 
-            # Verify status was updated to sync_failed
-            update_calls = mock_table.update.call_args_list
-            # One of the updates should set status to sync_failed
-            found_sync_failed = False
-            for call in update_calls:
-                if "sync_failed" in str(call):
-                    found_sync_failed = True
-                    break
-            assert found_sync_failed or len(update_calls) > 0
+            mock_table.update.assert_called_with({
+                "status": "sync_failed",
+                "sync_error": "API Error",
+            })
 
 
 class TestCancelCalendarEvent:

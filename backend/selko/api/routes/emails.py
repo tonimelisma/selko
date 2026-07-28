@@ -16,6 +16,7 @@ from selko.api.deps import (
     get_current_user,
     get_llm_gateway,
     get_quota_service,
+    get_service_role_client,
 )
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.emails import (
@@ -81,7 +82,7 @@ async def reprocess_email(
 async def sync_emails(
     request: EmailSyncRequest,
     response: Response,
-    client: Client = Depends(get_authenticated_client),
+    service_client: Client = Depends(get_service_role_client),
     user: CurrentUser = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
 ) -> EmailSyncResponse:
@@ -123,7 +124,7 @@ async def sync_emails(
 
     try:
         result = fetch_emails_for_user(
-            client=client,
+            client=service_client,
             config=config,
             max_results=request.max_results,
             fetch_attachments=request.fetch_attachments,

@@ -211,6 +211,53 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	it('shows reconnect when calendar OAuth expires during approval', async () => {
+		const user = userEvent.setup();
+		mockFetchIntegrations
+			.mockResolvedValueOnce({
+				data: [
+					{ id: '1', provider: 'gmail', status: 'active' },
+					{ id: '2', provider: 'google_calendar', status: 'active' }
+				],
+				error: null
+			})
+			.mockResolvedValueOnce({
+				data: [
+					{ id: '1', provider: 'gmail', status: 'active' },
+					{ id: '2', provider: 'google_calendar', status: 'expired' }
+				],
+				error: null
+			});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Team Meeting',
+					start_datetime: '2026-07-29T14:00:00',
+					status: 'pending_review',
+					event_sources: []
+				}
+			],
+			error: null
+		});
+		mockSyncEventToCalendar.mockResolvedValue({
+			data: null,
+			error: {
+				message: 'Google Calendar credentials expired. Please reconnect.',
+				status: 404
+			}
+		});
+
+		render(AppPage);
+		await waitFor(() => expect(screen.getByText('Team Meeting')).toBeInTheDocument());
+		await user.click(screen.getByRole('button', { name: /accept event/i }));
+
+		await waitFor(() => {
+			expect(mockFetchIntegrations).toHaveBeenCalledTimes(2);
+			expect(screen.getByRole('button', { name: /reconnect/i })).toBeInTheDocument();
+		});
+	});
+
 	it('removes event from list on reject', async () => {
 		const user = userEvent.setup();
 
