@@ -285,6 +285,33 @@ class TestListCalendars:
 
             assert "No Google Calendar credentials found" in str(exc_info.value)
 
+    def test_provider_401_marks_calendar_integration_expired(self):
+        """Calendar-list token rejection must trigger reconnect UI state."""
+        from googleapiclient.errors import HttpError
+
+        mock_client = MagicMock()
+        mock_response = MagicMock(status=401, reason="Unauthorized")
+
+        with (
+            patch("selko.services.calendars.get_credentials", return_value=MagicMock()),
+            patch("selko.services.calendars.build") as build,
+            patch(
+                "selko.services.calendars.update_integration_status"
+            ) as update_status,
+            pytest.raises(CalendarsError),
+        ):
+            build.return_value.calendarList.return_value.list.return_value.execute.side_effect = HttpError(
+                mock_response, b"Unauthorized"
+            )
+            list_calendars(mock_client, "user-123")
+
+        update_status.assert_called_once_with(
+            mock_client,
+            "google_calendar",
+            "expired",
+            user_id="user-123",
+        )
+
 
 class TestSyncEventToCalendar:
     """Tests for syncing events to Google Calendar."""
