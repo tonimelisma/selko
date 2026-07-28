@@ -63,6 +63,18 @@ logger = logging.getLogger(__name__)
 EMAIL_PROVIDERS = ("gmail", "outlook")
 
 
+def _has_http_status(exc: BaseException, status_code: int) -> bool:
+    """Return whether an exception or its causal chain has an HTTP status."""
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if getattr(getattr(current, "resp", None), "status", None) == status_code:
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def _process_gmail_fetch_legacy(
     client: Client,
     config: Config,
@@ -706,7 +718,17 @@ def _process_email_fetch_sync(
 ) -> None:
     provider = payload.get("provider", "gmail")
     if provider == "gmail":
-        _process_gmail_fetch_sync(client, config, payload)
+        try:
+            _process_gmail_fetch_sync(client, config, payload)
+        except GmailError as exc:
+            if _has_http_status(exc, 401):
+                update_integration_status(
+                    client,
+                    "gmail",
+                    "expired",
+                    user_id=payload.get("user_id", ""),
+                )
+            raise
     elif provider == "outlook":
         _process_outlook_fetch_sync(client, config, payload)
     else:

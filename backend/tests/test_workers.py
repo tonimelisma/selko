@@ -238,6 +238,38 @@ class TestEmailFetchWorker:
                 mock_client, mock_config, {"user_id": "u1"}
             )
 
+    @pytest.mark.asyncio
+    async def test_gmail_http_401_marks_integration_expired(self, mock_config):
+        """A provider-side token rejection must surface as reconnect-required."""
+        from selko.services.gmail import GmailError
+        from selko.workers.email_fetch import process_email_fetch_task
+
+        mock_client = MagicMock()
+        provider_error = Exception("unauthorized")
+        provider_error.resp = MagicMock(status=401)
+        gmail_error = GmailError("Gmail API error")
+        gmail_error.__cause__ = provider_error
+
+        with (
+            patch(
+                "selko.workers.email_fetch._process_gmail_fetch_sync",
+                side_effect=gmail_error,
+            ),
+            patch(
+                "selko.workers.email_fetch.update_integration_status"
+            ) as update_status,
+            pytest.raises(GmailError),
+        ):
+            await process_email_fetch_task(
+                mock_client,
+                mock_config,
+                {"user_id": "u1", "provider": "gmail"},
+            )
+
+        update_status.assert_called_once_with(
+            mock_client, "gmail", "expired", user_id="u1"
+        )
+
 
 # ===========================================================================
 # Schedule email fetches

@@ -532,6 +532,52 @@ class TestSyncEventToCalendar:
                 "sync_error": "API Error",
             })
 
+    def test_provider_401_marks_calendar_integration_expired(self):
+        """A direct Google API token rejection must trigger reconnect UI state."""
+        from googleapiclient.errors import HttpError
+
+        mock_client = MagicMock()
+        mock_event_result = MagicMock(data={
+            "id": "event-123",
+            "user_id": "user-456",
+            "title": "Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": None,
+            "description": None,
+            "source_attribution": None,
+            "google_calendar_event_id": None,
+        })
+        mock_table = MagicMock()
+        mock_client.table.return_value = mock_table
+        mock_table.select.return_value.eq.return_value.single.return_value.execute.return_value = mock_event_result
+        mock_response = MagicMock(status=401, reason="Unauthorized")
+
+        with (
+            patch("selko.services.calendars.get_credentials", return_value=MagicMock()),
+            patch(
+                "selko.services.calendars.get_calendar_settings",
+                return_value={"target_calendar_id": "primary"},
+            ),
+            patch("selko.services.calendars.build") as build,
+            patch(
+                "selko.services.calendars.update_integration_status"
+            ) as update_status,
+            pytest.raises(CalendarsError),
+        ):
+            build.return_value.events.return_value.insert.return_value.execute.side_effect = HttpError(
+                mock_response, b"Unauthorized"
+            )
+            sync_event_to_calendar(mock_client, "user-456", "event-123")
+
+        update_status.assert_called_once_with(
+            mock_client,
+            "google_calendar",
+            "expired",
+            user_id="user-456",
+        )
+
 
 class TestCancelCalendarEvent:
     """Tests for cancelling calendar events."""
