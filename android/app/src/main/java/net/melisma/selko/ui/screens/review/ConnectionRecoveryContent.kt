@@ -18,6 +18,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,16 +35,11 @@ import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.ui.components.SelkoActionRole
 import net.melisma.selko.ui.components.SelkoButton
 import net.melisma.selko.ui.theme.SelkoTheme
+import kotlinx.coroutines.launch
 
-@Composable
-fun ConnectionRecoveryContent(
-    integrations: List<Integration>,
-    gmailAuthUrl: String,
-    outlookAuthUrl: String,
-    calendarAuthUrl: String,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
+internal fun recoveryProvidersFor(
+    integrations: List<Integration>
+): List<IntegrationProvider> {
     val emailConnected = integrations.any {
         it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
             it.status == IntegrationStatus.ACTIVE
@@ -48,7 +48,7 @@ fun ConnectionRecoveryContent(
         it.provider == IntegrationProvider.GOOGLE_CALENDAR &&
             it.status == IntegrationStatus.ACTIVE
     }
-    val recoveryProviders = when {
+    return when {
         !emailConnected -> buildList {
             add(IntegrationProvider.GMAIL)
             add(IntegrationProvider.OUTLOOK)
@@ -64,9 +64,33 @@ fun ConnectionRecoveryContent(
                 .mapTo(this) { it.provider }
         }
         else -> integrations
-            .filter { it.status != IntegrationStatus.ACTIVE }
+            .filter {
+                it.provider != IntegrationProvider.GOOGLE_PHOTOS &&
+                    it.status != IntegrationStatus.ACTIVE
+            }
             .map { it.provider }
     }.distinct()
+}
+
+@Composable
+fun ConnectionRecoveryContent(
+    integrations: List<Integration>,
+    onAuthorize: suspend (IntegrationProvider) -> Result<String>,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var connectingProvider by remember { mutableStateOf<IntegrationProvider?>(null) }
+    var connectError by remember { mutableStateOf<String?>(null) }
+    val emailConnected = integrations.any {
+        it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
+            it.status == IntegrationStatus.ACTIVE
+    }
+    val calendarConnected = integrations.any {
+        it.provider == IntegrationProvider.GOOGLE_CALENDAR &&
+            it.status == IntegrationStatus.ACTIVE
+    }
+    val recoveryProviders = recoveryProvidersFor(integrations)
 
     if (recoveryProviders.isEmpty()) return
 
@@ -90,6 +114,15 @@ fun ConnectionRecoveryContent(
         shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            connectError?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top
@@ -128,20 +161,35 @@ fun ConnectionRecoveryContent(
                 } else {
                     stringResource(R.string.recovery_connect_provider, providerName)
                 }
-                val url = when (provider) {
-                    IntegrationProvider.GMAIL -> gmailAuthUrl
-                    IntegrationProvider.OUTLOOK -> outlookAuthUrl
-                    IntegrationProvider.GOOGLE_CALENDAR -> calendarAuthUrl
-                    IntegrationProvider.GOOGLE_PHOTOS -> return@forEachIndexed
-                }
-
                 SelkoButton(
                     text = label,
                     onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        scope.launch {
+                            connectingProvider = provider
+                            connectError = null
+                            onAuthorize(provider)
+                                .onSuccess { url ->
+                                    try {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        )
+                                    } catch (_: android.content.ActivityNotFoundException) {
+                                        connectError = context.getString(
+                                            R.string.recovery_connect_failed
+                                        )
+                                    }
+                                }
+                                .onFailure { error ->
+                                    connectError = error.message
+                                        ?: context.getString(R.string.recovery_connect_failed)
+                                }
+                            connectingProvider = null
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    role = if (index == 0) SelkoActionRole.Primary else SelkoActionRole.Secondary
+                    role = if (index == 0) SelkoActionRole.Primary else SelkoActionRole.Secondary,
+                    enabled = connectingProvider == null,
+                    loading = connectingProvider == provider
                 )
                 if (index != recoveryProviders.lastIndex) {
                     Spacer(modifier = Modifier.height(8.dp))

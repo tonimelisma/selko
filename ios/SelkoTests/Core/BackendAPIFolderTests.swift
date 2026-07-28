@@ -4,6 +4,14 @@ import Testing
 
 struct BackendAPIFolderTests {
     @Test
+    func oauthPathsRequireSupportedProviders() {
+        #expect(BackendAPI.oauthPath(provider: .gmail) == "/integrations/gmail/auth")
+        #expect(BackendAPI.oauthPath(provider: .outlook) == "/integrations/outlook/auth")
+        #expect(BackendAPI.oauthPath(provider: .googleCalendar) == "/integrations/calendar/auth")
+        #expect(BackendAPI.oauthPath(provider: .googlePhotos) == nil)
+    }
+
+    @Test
     func folderPathsRestrictProvidersAndEncodeOpaqueIds() {
         #expect(BackendAPI.emailFolderPath(provider: "gmail") == "/integrations/gmail/folders")
         #expect(

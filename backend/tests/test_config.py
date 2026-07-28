@@ -1,5 +1,7 @@
 """Tests for configuration loading."""
 
+import os
+
 import pytest
 
 from selko.config import get_environment, _parse_allowed_origins, Config
@@ -275,6 +277,31 @@ class TestBackgroundProcessingDefaults:
 
         assert config.enable_background_processing is True
 
+    def test_selected_dotenv_does_not_contaminate_later_load(
+        self, monkeypatch, tmp_path
+    ):
+        """Sequential explicit loads use their own file values."""
+        from selko import config as config_module
+
+        (tmp_path / ".env.test").write_text(
+            "SUPABASE_URL=https://staging.example\n"
+            "SUPABASE_PUBLISHABLE_KEY=staging-key\n"
+        )
+        (tmp_path / ".env").write_text(
+            "SUPABASE_URL=http://localhost:54321\n"
+            "SUPABASE_PUBLISHABLE_KEY=development-key\n"
+        )
+        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_PUBLISHABLE_KEY", raising=False)
+
+        staging = config_module.load_config(env_override="staging")
+        development = config_module.load_config(env_override="development")
+
+        assert staging.supabase_url == "https://staging.example"
+        assert development.supabase_url == "http://localhost:54321"
+        assert "SUPABASE_URL" not in os.environ
+
 
 class TestAttachmentLimitsDefaults:
     """Test per-type attachment size limit defaults."""
@@ -408,7 +435,7 @@ class TestLlmDefaultsAndFallback:
     def test_load_config_default_pairing(self, monkeypatch):
         from selko.config import load_config
 
-        monkeypatch.setattr("selko.config.load_dotenv", lambda *a, **k: None)
+        monkeypatch.setattr("selko.config.dotenv_values", lambda *a, **k: {})
         monkeypatch.setenv("ENVIRONMENT", "development")
         monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
         monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")

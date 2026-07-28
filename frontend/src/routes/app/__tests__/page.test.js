@@ -317,6 +317,42 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	it('keeps a final-card sync error visible after optimistic removal', async () => {
+		const user = userEvent.setup();
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-final',
+					title: 'Final suggestion',
+					start_datetime: '2026-07-29T14:00:00',
+					status: 'pending_review',
+					event_sources: []
+				}
+			],
+			error: null
+		});
+		mockSyncEventToCalendar.mockResolvedValue({
+			data: null,
+			error: { message: 'Calendar provider unavailable', status: 503 }
+		});
+
+		render(AppPage);
+		await waitFor(() => expect(screen.getByText('Final suggestion')).toBeInTheDocument());
+		await user.click(screen.getByRole('button', { name: /accept event/i }));
+
+		await waitFor(() => {
+			expect(screen.getByText('Calendar provider unavailable')).toBeInTheDocument();
+			expect(screen.getByText('All caught up!')).toBeInTheDocument();
+		});
+	});
+
 	it('removes event from list on reject', async () => {
 		const user = userEvent.setup();
 

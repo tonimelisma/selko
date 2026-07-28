@@ -411,6 +411,7 @@ def fetch_emails_for_user(
     config: Config,
     max_results: int = 10,
     fetch_attachments: bool = True,
+    user_id: str | None = None,
 ) -> dict[str, int]:
     """Fetch emails from Gmail and store in Supabase.
 
@@ -421,6 +422,7 @@ def fetch_emails_for_user(
         config: Configuration object with Google OAuth credentials.
         max_results: Maximum number of emails to fetch.
         fetch_attachments: Whether to download and store attachments.
+        user_id: Integration owner. Required when ``client`` is service-role.
 
     Returns:
         Dict with counts: {fetched, saved, attachments_downloaded}.
@@ -430,7 +432,7 @@ def fetch_emails_for_user(
     """
     # Get Gmail credentials from database
     try:
-        creds = get_credentials(client, config)
+        creds = get_credentials(client, config, user_id=user_id)
         if not creds:
             raise NoGmailIntegrationError("No Gmail integration found. Please authenticate with Gmail first.")
     except (NoGmailIntegrationError, ExpiredCredentialsError):
@@ -442,12 +444,11 @@ def fetch_emails_for_user(
     # Keep this import local because the worker imports parsing/storage helpers
     # from this module.
     try:
+        integration_query = client.table("integrations").select("id")
+        if user_id is not None:
+            integration_query = integration_query.eq("user_id", user_id)
         integration_result = (
-            client.table("integrations")
-            .select("id")
-            .eq("provider", "gmail")
-            .maybe_single()
-            .execute()
+            integration_query.eq("provider", "gmail").maybe_single().execute()
         )
         if integration_result and integration_result.data and integration_result.data.get("id"):
             from selko.workers.email_fetch import _process_gmail_fetch_sync

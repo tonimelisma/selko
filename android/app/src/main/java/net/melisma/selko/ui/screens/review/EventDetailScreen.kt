@@ -168,9 +168,7 @@ fun EventDetailScreen(
                     Column {
                         ConnectionRecoveryContent(
                             integrations = uiState.integrations,
-                            gmailAuthUrl = viewModel.getGmailAuthUrl(),
-                            outlookAuthUrl = viewModel.getOutlookAuthUrl(),
-                            calendarAuthUrl = viewModel.getCalendarAuthUrl(),
+                            onAuthorize = viewModel::startOAuth,
                             modifier = Modifier.padding(16.dp)
                         )
                         EventDetailContent(

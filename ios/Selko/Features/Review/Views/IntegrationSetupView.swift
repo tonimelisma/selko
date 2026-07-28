@@ -9,7 +9,7 @@ struct IntegrationSetupView: View {
     let gmailConnected: Bool
     let calendarConnected: Bool
 
-    private let backendAPI: BackendAPIProtocol = DependencyContainer.shared.backendAPI
+    @State private var authorizer = OAuthAuthorizer()
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -28,6 +28,14 @@ struct IntegrationSetupView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
+            if let error = authorizer.errorMessage {
+                Text(error)
+                    .font(SelkoTypography.body)
+                    .foregroundStyle(Color.selkoError)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier("integrationSetupOAuthError")
+            }
+
             VStack(spacing: 16) {
                 integrationRow(
                     title: "Gmail",
@@ -35,7 +43,7 @@ struct IntegrationSetupView: View {
                     systemImage: "envelope.fill",
                     isConnected: gmailConnected
                 ) {
-                    openGmailAuth()
+                    Task { await openAuth(for: .gmail) }
                 }
 
                 integrationRow(
@@ -44,7 +52,7 @@ struct IntegrationSetupView: View {
                     systemImage: "calendar",
                     isConnected: calendarConnected
                 ) {
-                    openCalendarAuth()
+                    Task { await openAuth(for: .googleCalendar) }
                 }
             }
             .padding(.horizontal)
@@ -88,6 +96,7 @@ struct IntegrationSetupView: View {
                     action()
                 }
                 .buttonStyle(.selko(.primary))
+                .disabled(authorizer.connectingProvider != nil)
             }
         }
         .padding()
@@ -95,17 +104,13 @@ struct IntegrationSetupView: View {
         .selkoCard()
     }
 
-    private func openGmailAuth() {
-        let urlString = backendAPI.getGmailAuthUrl(redirectUri: nil)
-        if let url = URL(string: urlString) {
-            openURL(url)
-        }
-    }
-
-    private func openCalendarAuth() {
-        let urlString = backendAPI.getCalendarAuthUrl(redirectUri: nil)
-        if let url = URL(string: urlString) {
-            openURL(url)
+    private func openAuth(for provider: IntegrationProvider) async {
+        if let url = await authorizer.authorizationURL(for: provider) {
+            openURL(url) { accepted in
+                if !accepted {
+                    authorizer.reportOpenFailure()
+                }
+            }
         }
     }
 }

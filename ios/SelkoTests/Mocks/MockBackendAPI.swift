@@ -21,6 +21,10 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
     var undoHistoryEventResult: Result<EventChangeResponse, Error> = .success(
         EventChangeResponse(eventId: UUID().uuidString, status: "pending_review")
     )
+    var oauthStartResult: Result<URL, Error> = .success(
+        URL(string: "https://example.com/authorize")!
+    )
+    var oauthStartCalls: [IntegrationProvider] = []
 
     func syncEmails(maxResults: Int, fetchAttachments: Bool) async throws -> EmailSyncResponse {
         return EmailSyncResponse(fetched: 0, saved: 0, attachmentsDownloaded: nil)
@@ -83,16 +87,9 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
         return try result.get()
     }
 
-    func getGmailAuthUrl(redirectUri: String?) -> String {
-        return "https://example.com/auth"
-    }
-
-    func getOutlookAuthUrl(redirectUri: String?) -> String {
-        return "https://example.com/outlook-auth"
-    }
-
-    func getCalendarAuthUrl(redirectUri: String?) -> String {
-        return "https://example.com/calendar-auth"
+    func startOAuth(provider: IntegrationProvider) async throws -> URL {
+        oauthStartCalls.append(provider)
+        return try oauthStartResult.get()
     }
 
     func checkHealth() async throws -> HealthResponse {

@@ -52,6 +52,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +73,7 @@ import net.melisma.selko.ui.components.SelkoLabeledSwitch
 import net.melisma.selko.ui.components.SelkoStatusIndicator
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -113,9 +115,7 @@ fun SettingsScreen(
                     ConnectedAccountsSection(
                         uiState = uiState,
                         onDisconnect = { viewModel.disconnectIntegration(it) },
-                        gmailAuthUrl = viewModel.getGmailAuthUrl(),
-                        outlookAuthUrl = viewModel.getOutlookAuthUrl(),
-                        calendarAuthUrl = viewModel.getCalendarAuthUrl()
+                        onAuthorize = viewModel::startOAuth
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -201,14 +201,36 @@ private fun SectionHeader(title: String) {
 private fun ConnectedAccountsSection(
     uiState: SettingsUiState,
     onDisconnect: (IntegrationProvider) -> Unit,
-    gmailAuthUrl: String,
-    outlookAuthUrl: String,
-    calendarAuthUrl: String
+    onAuthorize: suspend (IntegrationProvider) -> Result<String>
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var connectingProvider by remember { mutableStateOf<IntegrationProvider?>(null) }
+    var connectError by remember { mutableStateOf<String?>(null) }
     val gmailIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GMAIL }
     val outlookIntegration = uiState.integrations.find { it.provider == IntegrationProvider.OUTLOOK }
     val calendarIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GOOGLE_CALENDAR }
+
+    fun authorize(provider: IntegrationProvider) {
+        if (connectingProvider != null) return
+        scope.launch {
+            connectingProvider = provider
+            connectError = null
+            onAuthorize(provider)
+                .onSuccess { url ->
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        connectError = context.getString(R.string.recovery_connect_failed)
+                    }
+                }
+                .onFailure { error ->
+                    connectError = error.message
+                        ?: context.getString(R.string.recovery_connect_failed)
+                }
+            connectingProvider = null
+        }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -217,6 +239,15 @@ private fun ConnectedAccountsSection(
         shape = MaterialTheme.shapes.large
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            connectError?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             // Gmail
             IntegrationRow(
                 icon = Icons.Filled.Email,
@@ -224,14 +255,7 @@ private fun ConnectedAccountsSection(
                 email = gmailIntegration?.providerEmail,
                 isConnected = gmailIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
-                onConnect = {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(gmailAuthUrl))
-                        context.startActivity(intent)
-                    } catch (_: android.content.ActivityNotFoundException) {
-                        // No browser available
-                    }
-                },
+                onConnect = { authorize(IntegrationProvider.GMAIL) },
                 onDisconnect = { onDisconnect(IntegrationProvider.GMAIL) }
             )
 
@@ -244,14 +268,7 @@ private fun ConnectedAccountsSection(
                 email = outlookIntegration?.providerEmail,
                 isConnected = outlookIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
-                onConnect = {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(outlookAuthUrl))
-                        context.startActivity(intent)
-                    } catch (_: android.content.ActivityNotFoundException) {
-                        // No browser available
-                    }
-                },
+                onConnect = { authorize(IntegrationProvider.OUTLOOK) },
                 onDisconnect = { onDisconnect(IntegrationProvider.OUTLOOK) }
             )
 
@@ -264,14 +281,7 @@ private fun ConnectedAccountsSection(
                 email = calendarIntegration?.providerEmail,
                 isConnected = calendarIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
-                onConnect = {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(calendarAuthUrl))
-                        context.startActivity(intent)
-                    } catch (_: android.content.ActivityNotFoundException) {
-                        // No browser available
-                    }
-                },
+                onConnect = { authorize(IntegrationProvider.GOOGLE_CALENDAR) },
                 onDisconnect = { onDisconnect(IntegrationProvider.GOOGLE_CALENDAR) }
             )
         }
