@@ -295,6 +295,31 @@ class TestServiceRoleOAuthRoutes:
         assert response.status_code == 200
         sync.assert_called_once_with(mock_service_client, "test-user-id", event_id)
 
+    def test_event_sync_retries_sync_failed_event(
+        self, test_client, mock_client, mock_service_client
+    ):
+        """A failed approved action remains eligible for an explicit retry."""
+        event_id = "00000000-0000-0000-0000-000000000001"
+        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
+            data={
+                "user_id": "test-user-id",
+                "status": "sync_failed",
+                "synced_at": None,
+            }
+        )
+        mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
+            data={"synced_at": "2026-07-28T00:00:00Z"}
+        )
+
+        with patch(
+            "selko.api.routes.events.sync_event_to_calendar",
+            return_value="google-event-1",
+        ) as sync:
+            response = test_client.post(f"/events/{event_id}/sync")
+
+        assert response.status_code == 200
+        sync.assert_called_once_with(mock_service_client, "test-user-id", event_id)
+
     def test_email_sync_uses_service_role_client(
         self, test_client, mock_service_client
     ):
@@ -501,6 +526,26 @@ class TestRedirectURIValidation:
             )
         assert resp.status_code == 200
         assert resp.json()["auth_url"] == "https://accounts.google.com/o/oauth2"
+
+    def test_default_redirect_uses_configured_api_host(
+        self, test_client, mock_config
+    ):
+        """A dotenv-loaded API URL must authorize its own default callback."""
+        mock_config.api_public_url = "https://custom-api.example.com"
+        with patch(
+            "selko.api.routes.integrations.initiate_oauth_flow",
+            return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
+        ) as initiate:
+            resp = test_client.get(
+                "/integrations/gmail/auth",
+                headers={"Accept": "application/json"},
+                follow_redirects=False,
+            )
+
+        assert resp.status_code == 200
+        assert initiate.call_args.kwargs["redirect_uri"] == (
+            "https://custom-api.example.com/integrations/google/callback"
+        )
 
     def test_production_redirect_host_allowed(self, test_client):
         """Render production API host is an allowed OAuth callback."""
