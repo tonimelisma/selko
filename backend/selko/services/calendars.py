@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -31,10 +32,16 @@ class CalendarDivergedError(CalendarsError):
     """
 
     def __init__(
-        self, message: str, changed_fields: list[str] | None = None
+        self,
+        message: str,
+        changed_fields: list[str] | None = None,
+        differences: list[dict[str, Any]] | None = None,
+        google_event_url: str | None = None,
     ) -> None:
         super().__init__(message)
         self.changed_fields = changed_fields or []
+        self.differences = differences or []
+        self.google_event_url = google_event_url
 
 
 def fetch_calendar_events_for_date_range(
@@ -813,13 +820,48 @@ def _normalize_gcal_bound(bound: Any) -> tuple[str, str] | None:
     date_time = bound.get("dateTime")
     if not date_time:
         return None
-    # Compare on the wall-clock string before any offset when both sides
-    # use dateTime+timeZone; fall back to the raw string.
     value = str(date_time)
-    # Normalize trailing Z vs +00:00 for equality
-    if value.endswith("Z"):
-        value = value[:-1] + "+00:00"
-    return ("dateTime", value)
+    try:
+        parsed = datetime.fromisoformat(
+            value[:-1] + "+00:00" if value.endswith("Z") else value
+        )
+    except ValueError:
+        return ("dateTime", value)
+
+    if parsed.tzinfo is None:
+        timezone_name = bound.get("timeZone")
+        if not timezone_name:
+            return ("dateTime", value)
+        try:
+            parsed = parsed.replace(tzinfo=ZoneInfo(str(timezone_name)))
+        except (ZoneInfoNotFoundError, ValueError):
+            return ("dateTime", f"{value}|{timezone_name}")
+
+    return ("dateTime", parsed.astimezone(timezone.utc).isoformat())
+
+
+def _calendar_event_differences(
+    live_gcal: dict[str, Any],
+    snapshot_synced: dict[str, Any],
+    changed_fields: list[str],
+) -> list[dict[str, Any]]:
+    """Return safe structured values for a calendar drift decision."""
+    field_keys = {
+        "title": "summary",
+        "location": "location",
+        "start": "start",
+        "end": "end",
+        "description": "description",
+    }
+    return [
+        {
+            "field": field,
+            "selko": snapshot_synced.get(field_keys[field]),
+            "google": live_gcal.get(field_keys[field]),
+        }
+        for field in changed_fields
+        if field in field_keys
+    ]
 
 
 def calendar_event_diverged(
@@ -939,6 +981,7 @@ def assert_calendar_not_diverged(
             "This calendar event may have changed since Selko synced it. "
             "Use Force Undo to revert anyway.",
             changed_fields=["unknown"],
+            google_event_url=live.get("htmlLink"),
         )
 
     diverged, fields = calendar_event_diverged(live, snapshot)
@@ -948,6 +991,8 @@ def assert_calendar_not_diverged(
             f"This event was edited in Google Calendar after Selko synced it "
             f"({field_list}). Use Force Undo to revert to the pre-Selko state.",
             changed_fields=fields,
+            differences=_calendar_event_differences(live, snapshot, fields),
+            google_event_url=live.get("htmlLink"),
         )
 
 

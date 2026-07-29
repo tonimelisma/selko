@@ -98,7 +98,7 @@ describe('Backend API Client', () => {
 			expect(result.error.status).toBe(400);
 		});
 
-		it('sends force flag and returns CALENDAR_DIVERGED code', async () => {
+		it('sends force flag and preserves structured CALENDAR_DIVERGED details', async () => {
 			mockFetch.mockResolvedValue({
 				ok: false,
 				status: 409,
@@ -106,7 +106,12 @@ describe('Backend API Client', () => {
 					Promise.resolve({
 						detail: {
 							error: 'CALENDAR_DIVERGED',
-							detail: 'This event was edited in Google Calendar after Selko synced it (title).'
+							detail: 'This event was edited in Google Calendar after Selko synced it (title).',
+							conflict: {
+								changed_fields: ['title'],
+								differences: [{ field: 'title', selko: 'Before', google: 'After' }],
+								google_event_url: 'https://calendar.google.com/event?eid=abc'
+							}
 						}
 					})
 			});
@@ -124,6 +129,11 @@ describe('Backend API Client', () => {
 			expect(result.data).toBeNull();
 			expect(result.error.code).toBe('CALENDAR_DIVERGED');
 			expect(result.error.status).toBe(409);
+			expect(result.error.conflict).toEqual({
+				changed_fields: ['title'],
+				differences: [{ field: 'title', selko: 'Before', google: 'After' }],
+				google_event_url: 'https://calendar.google.com/event?eid=abc'
+			});
 		});
 
 		it('returns error when not authenticated', async () => {

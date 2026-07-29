@@ -583,7 +583,18 @@ class TestEventUndo:
 
         with patch(
             "selko.api.routes.events.undo_history_event",
-            side_effect=CalendarDivergedError("edited in Google Calendar", ["title"]),
+            side_effect=CalendarDivergedError(
+                "edited in Google Calendar",
+                ["title"],
+                differences=[
+                    {
+                        "field": "title",
+                        "selko": "Original title",
+                        "google": "Edited title",
+                    }
+                ],
+                google_event_url="https://calendar.google.com/event?eid=test",
+            ),
         ):
             resp = test_client.post(
                 "/events/00000000-0000-0000-0000-000000000001/undo",
@@ -594,6 +605,17 @@ class TestEventUndo:
         detail = resp.json()["detail"]
         assert detail["error"] == "CALENDAR_DIVERGED"
         assert "Google Calendar" in detail["detail"]
+        assert detail["conflict"] == {
+            "changed_fields": ["title"],
+            "differences": [
+                {
+                    "field": "title",
+                    "selko": "Original title",
+                    "google": "Edited title",
+                }
+            ],
+            "google_event_url": "https://calendar.google.com/event?eid=test",
+        }
 
     def test_undo_force_succeeds(
         self, test_client, mock_client, mock_service_client

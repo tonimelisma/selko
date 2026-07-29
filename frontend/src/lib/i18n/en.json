@@ -138,7 +138,12 @@
 		"emailEventMatched": "Existing event matched",
 		"emailCalendarInvite": "Calendar invitation (handled by your calendar)",
 		"emailReprocessTimeout": "Reprocessing is taking longer than expected. You can try again shortly.",
-		"reprocess": "Reprocess"
+		"reprocess": "Reprocess",
+		"undoConflictTitle": "Review changes before force undo",
+		"undoConflictDescription": "\"{title}\" differs from the version Selko synced. Review the exact changes before replacing the Google Calendar event.",
+		"selkoValue": "Selko synced",
+		"googleValue": "Google Calendar now",
+		"openInGoogleCalendar": "Open in Google Calendar"
 	},
 	"settings": {
 		"title": "Settings",

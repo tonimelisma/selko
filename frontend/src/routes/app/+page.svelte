@@ -25,6 +25,7 @@
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
+	import InlineActionError from '$lib/components/InlineActionError.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
 
 	/** @type {any[]} */
@@ -34,9 +35,14 @@
 	let isLoadingIntegrations = $state(true);
 	let isLoadingEvents = $state(false);
 	let error = $state('');
-	/** Action-level error that does not hide the review list */
-	let actionError = $state('');
 	let oauthError = $state('');
+	let bulkError = $state('');
+	/** @type {Map<string, string>} */
+	let eventErrors = $state(new Map());
+	/** @type {Map<string, string>} */
+	let senderErrors = $state(new Map());
+	/** @type {{ title: string, message: string } | null} */
+	let actionNotice = $state(null);
 	let integrationLoadFailed = $state(false);
 	let notification = $state('');
 	let processingEvents = $state(new Set());
@@ -100,6 +106,27 @@
 	let groupedNew = $derived(groupBySender(newEvents, newSenderOrder));
 	let groupedChanges = $derived(groupBySender(changeEvents, changeSenderOrder));
 
+	/** @param {string} eventId @param {string} message */
+	function setEventError(eventId, message) {
+		const next = new Map(eventErrors);
+		if (message) next.set(eventId, message);
+		else next.delete(eventId);
+		eventErrors = next;
+	}
+
+	/** @param {string} sender @param {string} message */
+	function setSenderError(sender, message) {
+		const next = new Map(senderErrors);
+		if (message) next.set(sender, message);
+		else next.delete(sender);
+		senderErrors = next;
+	}
+
+	/** @param {any} event @param {string} message */
+	function showSyncFailure(event, message) {
+		actionNotice = { title: event.title, message };
+	}
+
 	onMount(async () => {
 		const params = new URLSearchParams(window.location.search);
 		const oauth = params.get('oauth');
@@ -155,11 +182,11 @@
 	/** @param {any} event */
 	async function handleApproveNew(event) {
 		if (!calendarConnected) {
-			actionError = $_('integrations.calendarRequiredToAccept');
+			setEventError(event.id, $_('integrations.calendarRequiredToAccept'));
 			return;
 		}
 		if (processingEvents.has(event.id)) return;
-		actionError = '';
+		setEventError(event.id, '');
 		processingEvents = new Set([...processingEvents, event.id]);
 		const previous = events;
 		// Optimistic remove so the card does not linger while the request is in flight
@@ -168,21 +195,21 @@
 			const { error: updateError } = await updateEventStatus(event.id, 'approved');
 			if (updateError) {
 				events = previous;
-				actionError = updateError.message;
+				setEventError(event.id, updateError.message);
 				return;
 			}
 			try {
 				const { error: syncError } = await syncEventToCalendar(event.id);
 				if (syncError) {
 					console.error('Calendar sync failed after approval:', syncError);
-					actionError = syncError.message || $_('home.syncFailedAfterApprove');
+					showSyncFailure(event, syncError.message || $_('home.syncFailedAfterApprove'));
 					if (syncError.status === 401 || syncError.status === 404) {
 						await loadIntegrations();
 					}
 				}
 			} catch (syncError) {
 				console.error('Calendar sync failed after approval:', syncError);
-				actionError = $_('home.syncFailedAfterApprove');
+				showSyncFailure(event, $_('home.syncFailedAfterApprove'));
 			}
 		} finally {
 			const next = new Set(processingEvents);
@@ -194,7 +221,7 @@
 	/** @param {any} event */
 	async function handleRejectNew(event) {
 		if (processingEvents.has(event.id)) return;
-		actionError = '';
+		setEventError(event.id, '');
 		processingEvents = new Set([...processingEvents, event.id]);
 		const previous = events;
 		events = events.filter((e) => e.id !== event.id);
@@ -202,7 +229,7 @@
 			const { error: updateError } = await updateEventStatus(event.id, 'rejected');
 			if (updateError) {
 				events = previous;
-				actionError = updateError.message;
+				setEventError(event.id, updateError.message);
 				return;
 			}
 		} finally {
@@ -215,11 +242,11 @@
 	/** @param {any} event */
 	async function handleApproveChange(event) {
 		if (!calendarConnected) {
-			actionError = $_('integrations.calendarRequiredToAccept');
+			setEventError(event.id, $_('integrations.calendarRequiredToAccept'));
 			return;
 		}
 		if (processingEvents.has(event.id)) return;
-		actionError = '';
+		setEventError(event.id, '');
 		processingEvents = new Set([...processingEvents, event.id]);
 		const previous = events;
 		events = events.filter((e) => e.id !== event.id);
@@ -227,21 +254,21 @@
 			const { error: applyError } = await applyEventChange(event.id);
 			if (applyError) {
 				events = previous;
-				actionError = applyError.message;
+				setEventError(event.id, applyError.message);
 				return;
 			}
 			try {
 				const { error: syncError } = await syncEventToCalendar(event.id);
 				if (syncError) {
 					console.error('Calendar sync failed after change apply:', syncError);
-					actionError = syncError.message || $_('home.syncFailedAfterApprove');
+					showSyncFailure(event, syncError.message || $_('home.syncFailedAfterApprove'));
 					if (syncError.status === 401 || syncError.status === 404) {
 						await loadIntegrations();
 					}
 				}
 			} catch (syncError) {
 				console.error('Calendar sync failed after change apply:', syncError);
-				actionError = $_('home.syncFailedAfterApprove');
+				showSyncFailure(event, $_('home.syncFailedAfterApprove'));
 			}
 		} finally {
 			const next = new Set(processingEvents);
@@ -253,7 +280,7 @@
 	/** @param {any} event */
 	async function handleRejectChange(event) {
 		if (processingEvents.has(event.id)) return;
-		actionError = '';
+		setEventError(event.id, '');
 		processingEvents = new Set([...processingEvents, event.id]);
 		const previous = events;
 		events = events.filter((e) => e.id !== event.id);
@@ -261,7 +288,7 @@
 			const { error: rejectError } = await rejectEventChange(event.id);
 			if (rejectError) {
 				events = previous;
-				actionError = rejectError.message;
+				setEventError(event.id, rejectError.message);
 				return;
 			}
 		} finally {
@@ -274,7 +301,7 @@
 	/** @param {any[]} eventsList */
 	async function handleApproveAllNew(eventsList) {
 		if (!calendarConnected) {
-			actionError = $_('integrations.calendarRequiredToAccept');
+			bulkError = $_('integrations.calendarRequiredToAccept');
 			return;
 		}
 		for (const event of eventsList) {
@@ -286,7 +313,7 @@
 
 	async function handleApproveAll() {
 		if (!calendarConnected) {
-			actionError = $_('integrations.calendarRequiredToAccept');
+			bulkError = $_('integrations.calendarRequiredToAccept');
 			return;
 		}
 		acceptAllConfirmOpen = false;
@@ -309,14 +336,14 @@
 	 * @param {string} senderEmail
 	 */
 	async function handleIgnoreSender(senderEmail) {
-		actionError = '';
+		setSenderError(senderEmail, '');
 		if (!senderEmail.includes('@')) {
-			actionError = $_('home.senderIgnoreInvalidSender');
+			setSenderError(senderEmail, $_('home.senderIgnoreInvalidSender'));
 			return;
 		}
 		const { error: rpcError } = await ignoreSenderRetroactive(senderEmail);
 		if (rpcError) {
-			actionError = rpcError.message;
+			setSenderError(senderEmail, rpcError.message);
 			return;
 		}
 		await loadEvents();
@@ -332,16 +359,16 @@
 	 */
 	async function handleAutoApproveSender(senderEmail, eventsList) {
 		if (!calendarConnected) {
-			actionError = $_('integrations.calendarRequiredToAccept');
+			setSenderError(senderEmail, $_('integrations.calendarRequiredToAccept'));
 			return;
 		}
-		actionError = '';
+		setSenderError(senderEmail, '');
 		const { error: ruleError } = await createSenderRule({
 			sender_email: senderEmail,
 			action: 'auto_approve'
 		});
 		if (ruleError) {
-			actionError = ruleError.message;
+			setSenderError(senderEmail, ruleError.message);
 			return;
 		}
 		for (const event of eventsList) {
@@ -385,16 +412,24 @@
 	</div>
 {/if}
 
-{#if oauthError}
-	<div class="mb-4">
-		<ErrorAlert message={oauthError} />
-	</div>
-{/if}
-
-{#if actionError}
-	<div class="alert alert-error mb-4" role="alert">
-		<span>{actionError}</span>
-		<button class="btn action-tertiary" onclick={() => (actionError = '')}>{$_('common.dismiss')}</button>
+{#if oauthError || actionNotice}
+	<div class="toast toast-end z-50">
+		<div class="alert alert-error max-w-md items-start" role="alert">
+			<div>
+				{#if actionNotice}<p class="font-bold">{actionNotice.title}</p>{/if}
+				<p>{oauthError || actionNotice?.message}</p>
+			</div>
+			{#if actionNotice}
+				<a class="btn action-tertiary" href="/app/history">{$_('nav.history')}</a>
+			{/if}
+			<button
+				class="btn action-tertiary"
+				onclick={() => {
+					oauthError = '';
+					actionNotice = null;
+				}}
+			>{$_('common.dismiss')}</button>
+		</div>
 	</div>
 {/if}
 
@@ -433,6 +468,7 @@
 			</button>
 		{/snippet}
 	</PageHeader>
+	<InlineActionError message={bulkError} ondismiss={() => (bulkError = '')} />
 	<div class="space-y-10">
 		{#if newEvents.length > 0}
 			<section>
@@ -449,6 +485,7 @@
 								eventCount={senderGroup.events.length}
 								isPhotoSource={senderKey === 'google_photos'}
 								canApprove={calendarConnected}
+								error={senderErrors.get(senderKey) || ''}
 								onapproveAll={() => handleApproveAllNew(senderGroup.events)}
 								onrejectAll={() => handleRejectAllNew(senderGroup.events)}
 								onignoreSender={() => handleIgnoreSender(senderKey)}
@@ -458,6 +495,7 @@
 							{#each senderGroup.events as event (event.id)}
 								<EventCard
 									{event}
+									error={eventErrors.get(event.id) || ''}
 									isProcessing={processingEvents.has(event.id)}
 									canApprove={calendarConnected}
 									onapprove={handleApproveNew}
@@ -485,6 +523,7 @@
 								eventCount={senderGroup.events.length}
 								isPhotoSource={senderKey === 'google_photos'}
 								canApprove={calendarConnected}
+								error={senderErrors.get(senderKey) || ''}
 								onapproveAll={() => {
 									for (const event of senderGroup.events) handleApproveChange(event);
 								}}
@@ -498,6 +537,7 @@
 							{#each senderGroup.events as event (event.id)}
 								<ChangeCard
 									{event}
+									error={eventErrors.get(event.id) || ''}
 									isProcessing={processingEvents.has(event.id)}
 									canApprove={calendarConnected}
 									onapprove={handleApproveChange}

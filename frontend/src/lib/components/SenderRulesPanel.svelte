@@ -4,12 +4,15 @@
 	import { fetchSenderRules, createSenderRule, deleteSenderRule } from '$lib/services/sender-rules.js';
 	import ConfirmModal from './ConfirmModal.svelte';
 	import ErrorAlert from './ErrorAlert.svelte';
+	import InlineActionError from './InlineActionError.svelte';
 	import RemovableChip from './RemovableChip.svelte';
 
 	/** @type {import('$lib/services/sender-rules.js').SenderRule[]} */
 	let rules = $state([]);
 	let isLoading = $state(true);
-	let error = $state('');
+	let loadError = $state('');
+	let formError = $state('');
+	let deleteError = $state('');
 
 	// Add rule form
 	let newSenderInput = $state('');
@@ -29,10 +32,10 @@
 
 	async function loadRules() {
 		isLoading = true;
-		error = '';
+		loadError = '';
 		const result = await fetchSenderRules();
 		if (result.error) {
-			error = result.error.message;
+			loadError = result.error.message;
 		} else {
 			rules = result.data;
 		}
@@ -43,7 +46,7 @@
 		if (!newSenderInput.trim()) return;
 
 		isAdding = true;
-		error = '';
+		formError = '';
 
 		const input = newSenderInput.trim();
 		/** @type {{ sender_email?: string, sender_domain?: string, action: import('$lib/services/sender-rules.js').SenderRuleAction }} */
@@ -53,7 +56,7 @@
 
 		const result = await createSenderRule(rule);
 		if (result.error) {
-			error = result.error.message;
+			formError = result.error.message;
 		} else if (result.data) {
 			rules = [result.data, ...rules];
 			newSenderInput = '';
@@ -71,9 +74,9 @@
 
 	async function handleDeleteConfirm() {
 		showDeleteModal = false;
-		const { error: deleteError } = await deleteSenderRule(deleteTargetId);
-		if (deleteError) {
-			error = deleteError.message;
+		const { error: ruleDeleteError } = await deleteSenderRule(deleteTargetId);
+		if (ruleDeleteError) {
+			deleteError = ruleDeleteError.message;
 			return;
 		}
 		rules = rules.filter((r) => r.id !== deleteTargetId);
@@ -91,8 +94,8 @@
 {#if isLoading}
 	<div class="h-12 rounded-[14px] bg-base-200 animate-pulse"></div>
 {:else}
-	{#if error}
-		<ErrorAlert message={error} />
+	{#if loadError}
+		<ErrorAlert message={loadError} onretry={loadRules} />
 	{/if}
 
 	{#if rules.length === 0}
@@ -112,6 +115,7 @@
 				</div></div>
 			{/if}
 		</div>
+		<InlineActionError message={deleteError} />
 	{/if}
 
 	<!-- Add rule form -->
@@ -144,6 +148,7 @@
 			{$_('senderRules.addRule')}
 		</button>
 	</div>
+	<InlineActionError message={formError} onretry={handleAddRule} />
 {/if}
 
 <ConfirmModal

@@ -304,7 +304,12 @@ describe('History Page', () => {
 			error: {
 				message: 'This event was edited in Google Calendar after Selko synced it (title).',
 				status: 409,
-				code: 'CALENDAR_DIVERGED'
+				code: 'CALENDAR_DIVERGED',
+				conflict: {
+					changed_fields: ['title'],
+					differences: [{ field: 'title', selko: 'Bike Fest', google: 'Bike Fest Updated' }],
+					google_event_url: 'https://calendar.google.com/event?eid=abc'
+				}
 			}
 		});
 
@@ -317,9 +322,16 @@ describe('History Page', () => {
 		await user.click(screen.getByText('Undo'));
 
 		await waitFor(() => {
-			expect(screen.getByText(/edited in Google Calendar/i)).toBeInTheDocument();
+			expect(screen.getByText('Review changes before force undo')).toBeInTheDocument();
+			expect(screen.getByText('Selko synced')).toBeInTheDocument();
+			expect(screen.getByText('Google Calendar now')).toBeInTheDocument();
+			expect(screen.getByText('Bike Fest Updated')).toBeInTheDocument();
+			expect(screen.getByText('Open in Google Calendar').closest('a')).toHaveAttribute(
+				'href',
+				'https://calendar.google.com/event?eid=abc'
+			);
 			expect(screen.getByText('Force Undo')).toBeInTheDocument();
-			expect(screen.getByText('Bike Fest')).toBeInTheDocument();
+			expect(screen.getAllByText('Bike Fest').length).toBeGreaterThan(0);
 		});
 
 		mockUndoHistoryEvent.mockResolvedValueOnce({
