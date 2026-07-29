@@ -5,7 +5,6 @@ For direct integration queries, use Supabase client from frontend.
 """
 
 import logging
-import os
 import time
 from collections import defaultdict
 from typing import Annotated, Any
@@ -154,10 +153,10 @@ _CALLBACK_RATE_LIMIT = 10  # max requests
 _CALLBACK_RATE_WINDOW = 60  # per 60 seconds
 
 
-def _allowed_redirect_hosts() -> set[str]:
+def _allowed_redirect_hosts(config: Config) -> set[str]:
     """Build redirect-host allowlist from static hosts + API_PUBLIC_URL."""
     hosts = set(_STATIC_REDIRECT_HOSTS)
-    api_url = os.getenv("API_PUBLIC_URL", "").rstrip("/")
+    api_url = config.api_public_url.rstrip("/")
     if api_url:
         hostname = urlparse(api_url).hostname
         if hostname:
@@ -204,7 +203,7 @@ def _check_callback_rate_limit(request: Request) -> None:
     _callback_request_log[client_ip].append(now)
 
 
-def _validate_redirect_uri(redirect_uri: str) -> bool:
+def _validate_redirect_uri(redirect_uri: str, config: Config) -> bool:
     """Validate redirect URI against allowlist to prevent open redirect attacks.
 
     Args:
@@ -220,7 +219,7 @@ def _validate_redirect_uri(redirect_uri: str) -> bool:
             return False
         # Check host is in allowlist
         host = parsed.hostname
-        if host not in _allowed_redirect_hosts():
+        if host not in _allowed_redirect_hosts(config):
             return False
         # Check path is a valid callback path
         if parsed.path not in ALLOWED_REDIRECT_PATHS:
@@ -248,7 +247,7 @@ def _oauth_initiate_response(
     """Shared OAuth initiation for Gmail / Calendar."""
     resolved_uri = redirect_uri or _default_oauth_callback_uri(config, provider)
 
-    if not _validate_redirect_uri(resolved_uri):
+    if not _validate_redirect_uri(resolved_uri, config):
         logger.warning(f"Invalid redirect_uri attempted: {resolved_uri}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
