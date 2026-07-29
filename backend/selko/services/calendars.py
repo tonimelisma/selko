@@ -423,6 +423,30 @@ def _log_sync(
         logger.warning(f"Failed to log sync operation: {e}")
 
 
+def _find_calendar_event_by_selko_id(
+    service: Any,
+    calendar_id: str,
+    event_id: str,
+) -> str | None:
+    """Find a previously created event after an ambiguous insert failure."""
+    result = service.events().list(
+        calendarId=calendar_id,
+        privateExtendedProperty=f"selko_event_id={event_id}",
+        showDeleted=False,
+        maxResults=2,
+    ).execute()
+    items = result.get("items", []) if isinstance(result, dict) else []
+    if len(items) > 1:
+        logger.warning(
+            "Found multiple Google Calendar events for Selko event %s", event_id
+        )
+    for item in items:
+        google_event_id = item.get("id")
+        if google_event_id:
+            return google_event_id
+    return None
+
+
 def sync_event_to_calendar(
     supabase_client: Client, user_id: str, event_id: str
 ) -> str:
@@ -477,13 +501,23 @@ def sync_event_to_calendar(
                 service, calendar_id, existing_google_id, calendar_event
             )
         else:
-            # First time sync - create new event
-            created_event = service.events().insert(
-                calendarId=calendar_id,
-                body=calendar_event
-            ).execute()
-            google_event_id = created_event["id"]
-            action = "created"
+            # Reconcile an ambiguous earlier insert before creating. Google may
+            # have accepted the original insert even when its response timed
+            # out or the subsequent database update failed.
+            recovered_google_id = _find_calendar_event_by_selko_id(
+                service, calendar_id, event_id
+            )
+            if recovered_google_id:
+                google_event_id, action = _update_or_recreate_calendar_event(
+                    service, calendar_id, recovered_google_id, calendar_event
+                )
+            else:
+                created_event = service.events().insert(
+                    calendarId=calendar_id,
+                    body=calendar_event
+                ).execute()
+                google_event_id = created_event["id"]
+                action = "created"
 
         # Update event record in database
         supabase_client.table("events").update({

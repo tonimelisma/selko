@@ -375,6 +375,73 @@ class TestSyncEventToCalendar:
             assert result == "google-event-abc123"
             mock_service.events.return_value.insert.assert_called_once()
 
+    def test_recovers_existing_event_before_retry_insert(self):
+        """An ambiguous earlier insert must not create a duplicate on retry."""
+        mock_client = MagicMock()
+        mock_event_result = MagicMock()
+        mock_event_result.data = {
+            "id": "event-123",
+            "user_id": "user-456",
+            "title": "Test Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": None,
+            "description": None,
+            "source_attribution": None,
+            "google_calendar_event_id": None,
+        }
+
+        with (
+            patch(
+                "selko.services.calendars.get_credentials",
+                return_value=MagicMock(),
+            ),
+            patch("selko.services.calendars.build") as mock_build,
+            patch(
+                "selko.services.calendars.get_calendar_settings",
+                return_value={
+                    "target_calendar_id": "primary",
+                    "default_invitees": None,
+                },
+            ),
+        ):
+            mock_service = MagicMock()
+            mock_build.return_value = mock_service
+            mock_service.events.return_value.list.return_value.execute.return_value = {
+                "items": [{"id": "google-recovered-123"}]
+            }
+            mock_service.events.return_value.get.return_value.execute.return_value = {
+                "id": "google-recovered-123"
+            }
+            mock_service.events.return_value.update.return_value.execute.return_value = {
+                "id": "google-recovered-123"
+            }
+
+            mock_table = MagicMock()
+            mock_client.table.return_value = mock_table
+            mock_table.select.return_value.eq.return_value.single.return_value.execute.return_value = (
+                mock_event_result
+            )
+            mock_table.update.return_value.eq.return_value.execute.return_value = (
+                MagicMock()
+            )
+            mock_table.insert.return_value.execute.return_value = MagicMock()
+
+            result = sync_event_to_calendar(
+                mock_client, "user-456", "event-123"
+            )
+
+        assert result == "google-recovered-123"
+        mock_service.events.return_value.list.assert_called_once_with(
+            calendarId="primary",
+            privateExtendedProperty="selko_event_id=event-123",
+            showDeleted=False,
+            maxResults=2,
+        )
+        mock_service.events.return_value.insert.assert_not_called()
+        mock_service.events.return_value.update.assert_called_once()
+
     def test_updates_existing_calendar_event(self):
         """Test updating an existing calendar event."""
         mock_client = MagicMock()
