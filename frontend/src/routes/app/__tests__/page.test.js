@@ -784,7 +784,9 @@ describe('Review Queue (App Page)', () => {
 		// Event should still be approved and removed from list despite sync failure
 		await waitFor(() => {
 			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-1', 'approved');
-			expect(screen.queryByText('Sync Fail Event')).not.toBeInTheDocument();
+			expect(screen.queryByRole('link', { name: 'Sync Fail Event' })).not.toBeInTheDocument();
+			expect(screen.getByText('Saved, but calendar sync failed. You can retry from History.')).toBeInTheDocument();
+			expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute('href', '/app/history');
 		});
 
 		// Calendar sync was attempted

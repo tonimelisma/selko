@@ -48,6 +48,34 @@ class TestCalendarEventDiverged:
         assert diverged is True
         assert "start" in fields
 
+    def test_equivalent_offset_and_named_timezone_not_diverged(self):
+        """Google's explicit UTC offset is equivalent to Selko's IANA zone."""
+        snap = self._snapshot(
+            start={
+                "dateTime": "2026-08-30T11:00:00",
+                "timeZone": "America/Los_Angeles",
+            },
+            end={
+                "dateTime": "2026-08-30T13:00:00",
+                "timeZone": "America/Los_Angeles",
+            },
+        )
+        live = self._snapshot(
+            start={
+                "dateTime": "2026-08-30T11:00:00-07:00",
+                "timeZone": "America/Los_Angeles",
+            },
+            end={
+                "dateTime": "2026-08-30T13:00:00-07:00",
+                "timeZone": "America/Los_Angeles",
+            },
+        )
+
+        diverged, fields = calendar_event_diverged(live, snap)
+
+        assert diverged is False
+        assert fields == []
+
     def test_footer_only_description_not_diverged(self):
         snap = self._snapshot(description=f"Fun day{SELKO_FOOTER}")
         # Live GCal sometimes reorders whitespace around footer
@@ -115,6 +143,51 @@ class TestAssertCalendarNotDiverged:
             assert_calendar_not_diverged(
                 mock_client, "user-1", "event-1", "gcal-1", force=False
             )
+
+    def test_divergence_includes_structured_values(self):
+        snap = {
+            "summary": "Meeting",
+            "location": "",
+            "description": "",
+            "start": {
+                "dateTime": "2026-01-01T10:00:00",
+                "timeZone": "America/Los_Angeles",
+            },
+            "end": {
+                "dateTime": "2026-01-01T11:00:00",
+                "timeZone": "America/Los_Angeles",
+            },
+        }
+        live = {
+            **snap,
+            "start": {
+                "dateTime": "2026-01-01T12:00:00-08:00",
+                "timeZone": "America/Los_Angeles",
+            },
+            "htmlLink": "https://calendar.google.com/event?eid=test",
+        }
+        mock_client = MagicMock()
+        with patch(
+            "selko.services.calendars.get_calendar_event",
+            return_value=live,
+        ), patch(
+            "selko.services.calendars.get_latest_sync_snapshot",
+            return_value=snap,
+        ):
+            with pytest.raises(CalendarDivergedError) as exc:
+                assert_calendar_not_diverged(
+                    mock_client, "user-1", "event-1", "gcal-1", force=False
+                )
+
+        assert exc.value.changed_fields == ["start"]
+        assert exc.value.differences == [
+            {
+                "field": "start",
+                "selko": snap["start"],
+                "google": live["start"],
+            }
+        ]
+        assert exc.value.google_event_url == live["htmlLink"]
 
 
 class TestDeleteCalendarEventOnly:

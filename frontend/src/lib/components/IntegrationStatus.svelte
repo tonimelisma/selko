@@ -1,7 +1,7 @@
 <script>
 	import { _ } from 'svelte-i18n';
 	import StatusBadge from './StatusBadge.svelte';
-	import ErrorAlert from './ErrorAlert.svelte';
+	import InlineActionError from './InlineActionError.svelte';
 
 	let {
 		integrations = [],
@@ -13,7 +13,8 @@
 
 	/** @type {string | null} */
 	let connectingKey = $state(null);
-	let connectError = $state('');
+	/** @type {Map<string, string>} */
+	let connectErrors = $state(new Map());
 
 	let gmailIntegration = $derived(integrations.find((i) => i.provider === 'gmail'));
 	let outlookIntegration = $derived(integrations.find((i) => i.provider === 'outlook'));
@@ -48,14 +49,17 @@
 	async function startConnect(key, action) {
 		if (connectingKey || !action) return;
 		connectingKey = key;
-		connectError = '';
+		const cleared = new Map(connectErrors);
+		cleared.delete(key);
+		connectErrors = cleared;
 		try {
 			await action();
 		} catch (err) {
-			connectError =
+			const message =
 				err instanceof Error && err.message
 					? err.message
 					: $_('integrations.connectFailed');
+			connectErrors = new Map(connectErrors).set(key, message);
 			connectingKey = null;
 		}
 		// On success, page navigates away to Google — leave spinner until unload
@@ -68,10 +72,6 @@
 		});
 	}
 </script>
-
-{#if connectError}
-	<ErrorAlert message={connectError} />
-{/if}
 
 {#if setupMode && !partiallyConnected}
 	<div class="warm-card flex flex-col items-center justify-center px-4 py-16 text-center">
@@ -95,6 +95,10 @@
 				{$_('integrations.connectGoogle')}
 			{/if}
 		</button>
+		<InlineActionError
+			message={connectErrors.get('welcome') || ''}
+			onretry={() => startConnect('welcome', onconnect)}
+		/>
 	</div>
 {:else}
 	<div class="space-y-4">
@@ -104,8 +108,9 @@
 		{#each services as service}
 			{@const integration = getIntegrationForService(service.key)}
 			{@const isConnecting = connectingKey === service.key}
-			<div class="warm-card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-				<div class="flex min-w-0 items-center gap-3">
+			<div class="warm-card p-4">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div class="flex min-w-0 items-center gap-3">
 					<div class="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-base-200 text-sm font-extrabold text-primary">{service.label.slice(0, 1)}</div>
 					<div class="min-w-0">
 					<h3 class="font-bold">{service.label}</h3>
@@ -114,8 +119,8 @@
 						<p class="mt-1 text-sm text-base-content/50">{integration.provider_email}</p>
 					{/if}
 				</div>
-				</div>
-				<div class="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+					</div>
+					<div class="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
 					{#if integration}
 						<StatusBadge status={integration.status} type="integration" />
 						{#if !setupMode}
@@ -158,7 +163,12 @@
 							{/if}
 						</button>
 					{/if}
+					</div>
 				</div>
+				<InlineActionError
+					message={connectErrors.get(service.key) || ''}
+					onretry={() => authorizeProvider(service.key)}
+				/>
 			</div>
 		{/each}
 	</div>

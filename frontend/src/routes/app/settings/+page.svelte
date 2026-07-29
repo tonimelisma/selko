@@ -20,6 +20,7 @@
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import LabeledSwitch from '$lib/components/LabeledSwitch.svelte';
+	import InlineActionError from '$lib/components/InlineActionError.svelte';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
@@ -35,7 +36,12 @@
 	let currentUserEmail = $state('');
 	let isLoading = $state(true);
 	let isLoadingCalendars = $state(false);
-	let error = $state('');
+	let loadError = $state('');
+	let integrationError = $state('');
+	let calendarError = $state('');
+	let calendarListError = $state('');
+	let allDaySaveError = $state('');
+	let folderLoadError = $state('');
 	/** @type {{gmail: any[], outlook: any[]}} */
 	let emailFolders = $state({ gmail: [], outlook: [] });
 	let updatingFolderIds = $state(new Set());
@@ -82,7 +88,8 @@
 
 	async function loadData() {
 		isLoading = true;
-		error = '';
+		loadError = '';
+		calendarError = '';
 
 		const [intResult, settingsResult] = await Promise.all([
 			fetchIntegrations(),
@@ -90,13 +97,16 @@
 		]);
 
 		if (intResult.error) {
-			error = intResult.error.message;
+			loadError = intResult.error.message;
 		} else {
 			integrationsList = intResult.data;
 		}
 
 		if (settingsResult.data?.target_calendar_id) {
 			selectedCalendar = settingsResult.data.target_calendar_id;
+		}
+		if (settingsResult.error) {
+			calendarError = settingsResult.error.message;
 		}
 		if (settingsResult.data?.all_day_display_mode) {
 			allDayDisplayMode = settingsResult.data.all_day_display_mode;
@@ -121,6 +131,7 @@
 	}
 
 	async function loadEmailFolders() {
+		folderLoadError = '';
 		/** @type {Array<'gmail' | 'outlook'>} */
 		const providers = /** @type {Array<'gmail' | 'outlook'>} */ (['gmail', 'outlook'].filter((provider) =>
 			integrationsList.some((integration) => integration.provider === provider && integration.status === 'active')
@@ -132,6 +143,8 @@
 			const folderResult = results[index];
 			if (!folderResult.error && folderResult.data) {
 				next[providers[index]] = folderResult.data;
+			} else if (folderResult.error) {
+				folderLoadError = folderResult.error.message;
 			}
 		}
 		emailFolders = next;
@@ -170,6 +183,7 @@
 
 	async function loadCalendars() {
 		isLoadingCalendars = true;
+		calendarListError = '';
 		const result = await listCalendars();
 		if (result.data) {
 			calendars = result.data;
@@ -178,6 +192,8 @@
 				const primary = calendars.find((c) => c.is_primary);
 				if (primary) selectedCalendar = primary.id;
 			}
+		} else if (result.error) {
+			calendarListError = result.error.message;
 		}
 		isLoadingCalendars = false;
 	}
@@ -186,9 +202,10 @@
 	async function handleCalendarChange(event) {
 		const calendarId = event.target.value;
 		selectedCalendar = calendarId;
+		calendarError = '';
 		const result = await updateCalendarSettings({ target_calendar_id: calendarId });
 		if (result.error) {
-			error = result.error.message;
+			calendarError = result.error.message;
 		}
 	}
 
@@ -219,6 +236,7 @@
 
 	async function saveAllDayPreference() {
 		isSavingAllDay = true;
+		allDaySaveError = '';
 		/** @type {Record<string, string>} */
 		const payload = { all_day_display_mode: allDayDisplayMode };
 		// Preserve custom times when switching presets by only sending them for custom
@@ -229,7 +247,7 @@
 		}
 		const result = await updateCalendarSettings(payload);
 		if (result.error) {
-			error = result.error.message;
+			allDaySaveError = result.error.message;
 		}
 		isSavingAllDay = false;
 	}
@@ -250,9 +268,10 @@
 
 	async function handleDisconnectConfirm() {
 		showDisconnectModal = false;
+		integrationError = '';
 		const { error: disconnectError } = await disconnectIntegration(disconnectTargetId);
 		if (disconnectError) {
-			error = disconnectError.message;
+			integrationError = disconnectError.message;
 			return;
 		}
 		integrationsList = integrationsList.filter((i) => i.id !== disconnectTargetId);
@@ -286,8 +305,8 @@
 {#if isLoading}
 	<LoadingSpinner />
 {:else}
-	{#if error}
-		<ErrorAlert message={error} />
+	{#if loadError}
+		<ErrorAlert message={loadError} onretry={loadData} />
 	{/if}
 
 	<div class="space-y-10">
@@ -301,12 +320,14 @@
 				ondisconnect={handleDisconnectRequest}
 				onauthorize={handleAuthorize}
 			/>
+			<InlineActionError message={integrationError} />
 		</section>
 
 		<!-- Section 2: Email folders -->
 		<section>
 			<h2 class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.emailFolders')}</h2>
 			<p class="mb-4 text-sm text-base-content/60">{$_('settings.emailFoldersHint')}</p>
+			<InlineActionError message={folderLoadError} onretry={loadEmailFolders} />
 			{#if emailFolders.gmail.length === 0 && emailFolders.outlook.length === 0}
 				<p class="text-sm text-base-content/60">{$_('settings.noEmailFolders')}</p>
 			{:else}
@@ -382,6 +403,8 @@
 						{$_('settings.connectCalendarPrompt')}
 					</p>
 				{/if}
+				<InlineActionError message={calendarListError} onretry={loadCalendars} />
+				<InlineActionError message={calendarError} />
 
 				<div class="warm-card p-4">
 					<label class="label" for="all-day-display-mode">
@@ -444,6 +467,7 @@
 					<p class="mt-3 text-sm text-base-content/60">
 						{$_('settings.dateOnlyPreview', { values: { window: allDayPreviewWindow() } })}
 					</p>
+					<InlineActionError message={allDaySaveError} onretry={saveAllDayPreference} />
 				</div>
 			</div>
 		</section>

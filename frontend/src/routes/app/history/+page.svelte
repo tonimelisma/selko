@@ -13,6 +13,8 @@
 	import StateTag from '$lib/components/StateTag.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+	import InlineActionError from '$lib/components/InlineActionError.svelte';
+	import UndoConflictDialog from '$lib/components/UndoConflictDialog.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
 	import { formatChangeValue } from '$lib/format-change-value.js';
 
@@ -26,15 +28,19 @@
 	let isLoadingMore = $state(false);
 	/** Load/fetch errors that replace the list */
 	let loadError = $state('');
-	/** Per-action errors shown as a banner above the list */
-	let actionError = $state('');
+	let paginationError = $state('');
+	let emailPaginationError = $state('');
+	/** @type {Map<string, string>} */
+	let eventErrors = $state(new Map());
+	/** @type {Map<string, string>} */
+	let emailErrors = $state(new Map());
 	let emailLoadError = $state('');
 	let emailLoadingMore = $state(false);
 	let emailOffset = $state(0);
 	/** @type {Set<string>} */
 	let emailTimedOut = $state(new Set());
-	/** @type {any | null} Event that can be force-undone after CALENDAR_DIVERGED */
-	let forceUndoEvent = $state(null);
+	/** @type {{ event: any, conflict: any } | null} */
+	let undoConflict = $state(null);
 	/** @type {Set<string>} */
 	let processingEvents = $state(new Set());
 	/** @type {Set<string>} */
@@ -97,7 +103,7 @@
 	async function loadEvents() {
 		isLoading = true;
 		loadError = '';
-		actionError = '';
+		paginationError = '';
 		const result = await fetchActivityEvents({ limit, offset: 0 });
 		if (result.error) {
 			loadError = result.error.message;
@@ -111,10 +117,10 @@
 
 	async function loadMore() {
 		isLoadingMore = true;
-		actionError = '';
+		paginationError = '';
 		const result = await fetchActivityEvents({ limit, offset });
 		if (result.error) {
-			actionError = result.error.message;
+			paginationError = result.error.message;
 		} else {
 			events = [...events, ...result.data];
 			offset += result.data.length;
@@ -138,10 +144,10 @@
 	async function loadMoreEmailHistory() {
 		if (emailLoadingMore || !emailHasMore) return;
 		emailLoadingMore = true;
-		emailLoadError = '';
+		emailPaginationError = '';
 		const result = await fetchEmailHistory({ limit: 20, offset: emailOffset });
 		if (result.error) {
-			emailLoadError = result.error.message;
+			emailPaginationError = result.error.message;
 		} else {
 			const knownIds = new Set(emailHistory.map((email) => email.id));
 			const additions = result.data.filter((email) => !knownIds.has(email.id));
@@ -189,7 +195,15 @@
 	function startEmailProcessing(emailId) {
 		processingEmails = new Set([...processingEmails, emailId]);
 		emailTimedOut = new Set([...emailTimedOut].filter((id) => id !== emailId));
-		actionError = '';
+		setEmailError(emailId, '');
+	}
+
+	/** @param {string} emailId @param {string} message */
+	function setEmailError(emailId, message) {
+		const next = new Map(emailErrors);
+		if (message) next.set(emailId, message);
+		else next.delete(emailId);
+		emailErrors = next;
 	}
 
 	/** @param {string} emailId */
@@ -225,7 +239,7 @@
 			const result = await fetchEmailProcessingState(emailId);
 			if (!emailPolling.has(emailId)) return;
 			if (result.error) {
-				actionError = result.error.message;
+				setEmailError(emailId, result.error.message);
 				emailTimedOut = new Set([...emailTimedOut, emailId]);
 				stopEmailPolling(emailId);
 				stopEmailProcessing(emailId);
@@ -244,7 +258,7 @@
 			}
 			attempts += 1;
 			if (attempts >= emailPollMaxAttempts) {
-				actionError = $_('history.emailReprocessTimeout');
+				setEmailError(emailId, $_('history.emailReprocessTimeout'));
 				emailTimedOut = new Set([...emailTimedOut, emailId]);
 				stopEmailPolling(emailId);
 				stopEmailProcessing(emailId);
@@ -263,7 +277,7 @@
 		try {
 			const result = await queueEmailReprocess(email.id);
 			if (result.error) {
-				actionError = result.error.message;
+				setEmailError(email.id, result.error.message);
 				stopEmailProcessing(email.id);
 				return;
 			}
@@ -279,7 +293,7 @@
 			);
 			pollEmailUntilTerminal(email.id);
 		} catch (error) {
-			actionError = error instanceof Error ? error.message : String(error);
+			setEmailError(email.id, error instanceof Error ? error.message : String(error));
 			stopEmailProcessing(email.id);
 		} finally {
 			// The processing set is intentionally retained while polling. It is
@@ -399,8 +413,15 @@
 	/** @param {string} eventId */
 	function startProcessing(eventId) {
 		processingEvents = new Set([...processingEvents, eventId]);
-		actionError = '';
-		forceUndoEvent = null;
+		setEventError(eventId, '');
+	}
+
+	/** @param {string} eventId @param {string} message */
+	function setEventError(eventId, message) {
+		const next = new Map(eventErrors);
+		if (message) next.set(eventId, message);
+		else next.delete(eventId);
+		eventErrors = next;
 	}
 
 	/** @param {string} eventId */
@@ -420,23 +441,31 @@
 		try {
 			const { error: undoError } = await undoHistoryEvent(event.id, options);
 			if (undoError) {
-				actionError = undoError.message;
 				if (undoError.code === 'CALENDAR_DIVERGED' || undoError.status === 409) {
-					forceUndoEvent = event;
+					undoConflict = {
+						event,
+						conflict: undoError.conflict || {
+							changed_fields: [],
+							differences: [],
+							google_event_url: null
+						}
+					};
+				} else {
+					setEventError(event.id, undoError.message);
 				}
 				return;
 			}
 			events = events.filter((e) => e.id !== event.id);
 			totalCount--;
-			forceUndoEvent = null;
+			undoConflict = null;
 		} finally {
 			stopProcessing(event.id);
 		}
 	}
 
 	async function handleForceUndo() {
-		if (!forceUndoEvent) return;
-		await handleUndo(forceUndoEvent, { force: true });
+		if (!undoConflict) return;
+		await handleUndo(undoConflict.event, { force: true });
 	}
 
 	/** @param {any} event */
@@ -446,7 +475,7 @@
 		try {
 			const result = await syncEventToCalendar(event.id);
 			if (result.error) {
-				actionError = result.error.message;
+				setEventError(event.id, result.error.message);
 				return;
 			}
 			events = events.map((e) => (e.id === event.id ? { ...e, status: 'synced' } : e));
@@ -473,17 +502,6 @@
 		description={$_('history.noActivityDescription')}
 	/>
 {:else}
-	{#if actionError}
-		{#if forceUndoEvent}
-			<ErrorAlert
-				message={actionError}
-				onaction={handleForceUndo}
-				actionLabel={$_('history.forceUndo')}
-			/>
-		{:else}
-			<ErrorAlert message={actionError} />
-		{/if}
-	{/if}
 	<div class="space-y-8">
 		{#each [...groupedByDate().entries()] as [dateLabel, dateEvents]}
 			<div>
@@ -491,8 +509,9 @@
 				<div class="warm-card overflow-hidden">
 					{#each dateEvents as event (event.id)}
 						{@const isProcessing = processingEvents.has(event.id)}
-						<div class="flex items-start justify-between gap-3 border-b border-base-300 p-4 last:border-b-0">
-							<div class="min-w-0 flex-1">
+						<div class="border-b border-base-300 p-4 last:border-b-0">
+							<div class="flex items-start justify-between gap-3">
+								<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2 flex-wrap">
 									<span class="font-medium text-sm">{event.title}</span>
 									<StatusBadge status={event.status} />
@@ -514,27 +533,32 @@
 										{$_('history.changeSummary', { values: { summary: getChangeSummary(event) } })}
 									</p>
 								{/if}
+								</div>
+								<div class="flex items-center gap-1 flex-shrink-0 ml-2">
+									{#if isProcessing}
+										<span
+											class="loading loading-spinner loading-sm"
+											aria-label={$_('common.loading')}
+											aria-live="polite"
+										></span>
+									{:else if event.status === 'sync_failed'}
+										<button
+											class="btn action-tertiary status-warning"
+											onclick={() => handleRetry(event)}
+										>
+											{$_('history.retrySync')}
+										</button>
+									{:else if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
+										<button class="btn action-tertiary" onclick={() => handleUndo(event)}>
+											{$_('history.undo')}
+										</button>
+									{/if}
+								</div>
 							</div>
-							<div class="flex items-center gap-1 flex-shrink-0 ml-2">
-								{#if isProcessing}
-									<span
-										class="loading loading-spinner loading-sm"
-										aria-label={$_('common.loading')}
-										aria-live="polite"
-									></span>
-								{:else if event.status === 'sync_failed'}
-									<button
-									class="btn action-tertiary status-warning"
-										onclick={() => handleRetry(event)}
-									>
-										{$_('history.retrySync')}
-									</button>
-								{:else if ['approved', 'synced', 'rejected', 'cancelled'].includes(event.status)}
-								<button class="btn action-tertiary" onclick={() => handleUndo(event)}>
-										{$_('history.undo')}
-									</button>
-								{/if}
-							</div>
+							<InlineActionError
+								message={eventErrors.get(event.id) || ''}
+								onretry={event.status === 'sync_failed' ? () => handleRetry(event) : undefined}
+							/>
 						</div>
 					{/each}
 				</div>
@@ -543,6 +567,7 @@
 
 		{#if hasMore}
 			<div class="text-center py-4">
+				<InlineActionError message={paginationError} onretry={loadMore} />
 				<button class="btn btn-ghost" onclick={loadMore} disabled={isLoadingMore}>
 					{#if isLoadingMore}
 						<span class="loading loading-spinner loading-sm"></span>
@@ -569,8 +594,9 @@
 			<div class="space-y-3">
 				{#each emailHistory as email (email.id)}
 					{@const emailBusy = processingEmails.has(email.id) || (['pending', 'processing'].includes(email.processing_status) && !emailTimedOut.has(email.id))}
-					<div class="warm-card flex items-start justify-between gap-3 p-4">
-						<div class="min-w-0 flex-1">
+					<div class="warm-card p-4">
+						<div class="flex items-start justify-between gap-3">
+							<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-2 flex-wrap">
 								<span class="font-medium text-sm truncate">{email.subject || $_('eventSource.noSubject')}</span>
 								<span class="badge badge-sm badge-outline">{email.email_provider === 'outlook' ? $_('integrations.outlook') : $_('integrations.gmail')}</span>
@@ -584,23 +610,29 @@
 							{#if email.processing_explanation}
 								<p class="text-xs text-base-content/70 mt-1">{email.processing_explanation}</p>
 							{/if}
+							</div>
+							<button
+								class="btn action-tertiary flex-shrink-0"
+								disabled={emailBusy}
+								onclick={() => handleReprocessEmail(email)}
+							>
+								{#if emailBusy}
+									<span class="loading loading-spinner loading-xs"></span>
+								{:else}
+									{$_('history.reprocess')}
+								{/if}
+							</button>
 						</div>
-						<button
-							class="btn action-tertiary flex-shrink-0"
-							disabled={emailBusy}
-							onclick={() => handleReprocessEmail(email)}
-						>
-							{#if emailBusy}
-								<span class="loading loading-spinner loading-xs"></span>
-							{:else}
-								{$_('history.reprocess')}
-							{/if}
-						</button>
+						<InlineActionError
+							message={emailErrors.get(email.id) || ''}
+							onretry={() => handleReprocessEmail(email)}
+						/>
 					</div>
 				{/each}
 			</div>
 			{#if emailHasMore}
 				<div class="text-center py-4">
+					<InlineActionError message={emailPaginationError} onretry={loadMoreEmailHistory} />
 					<button class="btn btn-ghost" onclick={loadMoreEmailHistory} disabled={emailLoadingMore}>
 						{#if emailLoadingMore}
 							<span class="loading loading-spinner loading-sm"></span>
@@ -613,3 +645,12 @@
 		{/if}
 	</section>
 {/if}
+
+<UndoConflictDialog
+	open={Boolean(undoConflict)}
+	event={undoConflict?.event}
+	conflict={undoConflict?.conflict}
+	isProcessing={undoConflict ? processingEvents.has(undoConflict.event.id) : false}
+	onconfirm={handleForceUndo}
+	oncancel={() => (undoConflict = null)}
+/>
