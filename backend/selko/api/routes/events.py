@@ -54,10 +54,10 @@ async def sync_event(
     user: CurrentUser = Depends(get_current_user),
     quota_service: QuotaService = Depends(get_quota_service),
 ) -> CalendarSyncResponse:
-    """Sync approved event to Google Calendar.
+    """Sync an approved or previously failed event to Google Calendar.
 
     Writes the event to the user's configured Google Calendar. The event must
-    be in 'approved' status before syncing.
+    be approved, already synced, or in the retryable ``sync_failed`` state.
 
     Args:
         event_id: UUID of the event to sync.
@@ -108,8 +108,9 @@ async def sync_event(
                 detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
             )
 
-        # Validate event is approved
-        if event_result.data["status"] not in ("approved", "synced"):
+        # sync_failed is only reached after an approved event's sync attempt
+        # fails, so it remains eligible for an explicit user retry.
+        if event_result.data["status"] not in ("approved", "synced", "sync_failed"):
             raise HTTPException(
                 status_code=400,
                 detail=error_detail(
