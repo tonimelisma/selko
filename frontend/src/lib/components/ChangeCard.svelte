@@ -2,8 +2,9 @@
 	import { _ } from 'svelte-i18n';
 	import { formatChangeValue } from '$lib/format-change-value.js';
 	import StateTag from './StateTag.svelte';
+	import InlineActionError from './InlineActionError.svelte';
 
-	let { event, isProcessing = false, canApprove = true, onapprove, onreject } = $props();
+	let { event, error = '', isProcessing = false, canApprove = true, onapprove, onreject } = $props();
 
 	/** @param {any} item */
 	function getChangeSet(item) {
@@ -63,6 +64,7 @@
 		{:else}
 			<p class="mt-1 text-[13px] text-base-content/60">{$_('home.changesSectionDescription')}</p>
 		{/if}
+		<InlineActionError message={error} />
 		<div class="mt-3 flex items-center gap-2">
 			<button class="btn btn-success flex-1" disabled={isProcessing || !canApprove} onclick={() => onapprove?.(event)} aria-label={canApprove ? $_('events.acceptChange') : $_('integrations.calendarRequiredToAccept')} aria-busy={isProcessing}>
 				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>{/if}

@@ -330,7 +330,14 @@ async def undo_event(
     except CalendarDivergedError as e:
         raise HTTPException(
             status_code=409,
-            detail=error_detail(ErrorCode.CALENDAR_DIVERGED, str(e)),
+            detail={
+                **error_detail(ErrorCode.CALENDAR_DIVERGED, str(e)),
+                "conflict": {
+                    "changed_fields": e.changed_fields,
+                    "differences": e.differences,
+                    "google_event_url": e.google_event_url,
+                },
+            },
         ) from e
     except (EventsError, CalendarsError) as e:
         raise HTTPException(

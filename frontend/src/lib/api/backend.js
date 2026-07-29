@@ -72,6 +72,7 @@ async function apiRequest(endpoint, options = {}) {
  * @property {number} status
  * @property {string} [detail]
  * @property {string} [code]
+ * @property {{ changed_fields?: string[], differences?: Array<{ field: string, selko: unknown, google: unknown }>, google_event_url?: string | null }} [conflict]
  */
 
 /**
@@ -132,7 +133,11 @@ async function parseApiError(response) {
 			message,
 			status: response.status,
 			detail: typeof data.detail === 'string' ? data.detail : message,
-			code: extractErrorCode(data) || undefined
+			code: extractErrorCode(data) || undefined,
+			conflict:
+				data.detail && typeof data.detail === 'object' && data.detail.conflict
+					? data.detail.conflict
+					: undefined
 		};
 	} catch {
 		return {

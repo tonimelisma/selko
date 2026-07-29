@@ -3,8 +3,9 @@
 	import { _ } from 'svelte-i18n';
 	import { formatEventDateTime } from '$lib/format-event-datetime.js';
 	import StateTag from './StateTag.svelte';
+	import InlineActionError from './InlineActionError.svelte';
 
-	let { event, isProcessing = false, canApprove = true, onapprove, onreject } = $props();
+	let { event, error = '', isProcessing = false, canApprove = true, onapprove, onreject } = $props();
 
 	let sourceOrigin = $derived(() => {
 		const sources = event.event_sources || [];
@@ -141,6 +142,7 @@
 				{/if}
 			</div>
 		{/if}
+		<InlineActionError message={error} />
 		<div class="mt-3 flex items-center gap-2">
 			<button class="btn btn-success flex-1" disabled={isProcessing || !canApprove} onclick={() => onapprove?.(event)} aria-label={canApprove ? $_('events.acceptEvent') : $_('integrations.calendarRequiredToAccept')} aria-busy={isProcessing}>
 				{#if isProcessing}<span class="loading loading-spinner loading-xs"></span>{:else}<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>{/if}

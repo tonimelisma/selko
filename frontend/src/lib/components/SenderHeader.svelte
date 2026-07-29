@@ -1,11 +1,13 @@
 <script>
 	import { _ } from 'svelte-i18n';
 	import { initialsFromEmail, senderAvatarTone } from '$lib/user-display.js';
+	import InlineActionError from './InlineActionError.svelte';
 
 	let {
 		sender,
 		senderEmail = '',
 		eventCount = 0,
+		error = '',
 		isPhotoSource = false,
 		canApprove = true,
 		onapproveAll,
@@ -69,3 +71,7 @@
 		{/if}
 	</div>
 {/if}
+
+<div class="px-4">
+	<InlineActionError message={error} />
+</div>
