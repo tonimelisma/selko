@@ -595,7 +595,9 @@ class TestEventUndo:
         assert detail["error"] == "CALENDAR_DIVERGED"
         assert "Google Calendar" in detail["detail"]
 
-    def test_undo_force_succeeds(self, test_client, mock_client):
+    def test_undo_force_succeeds(
+        self, test_client, mock_client, mock_service_client
+    ):
         mock_owned = MagicMock()
         mock_owned.data = {"id": "00000000-0000-0000-0000-000000000001", "user_id": "test-user-id"}
         mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_owned
@@ -611,4 +613,9 @@ class TestEventUndo:
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "pending_review"
+        assert mock_undo.call_args.args[:3] == (
+            mock_service_client,
+            "00000000-0000-0000-0000-000000000001",
+            "test-user-id",
+        )
         assert mock_undo.call_args.kwargs.get("force") is True

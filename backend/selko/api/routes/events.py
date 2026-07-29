@@ -310,6 +310,7 @@ async def reject_change(
 async def undo_event(
     event_id: UUID,
     client: Annotated[Client, Depends(get_authenticated_client)],
+    service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
     body: EventUndoRequest = EventUndoRequest(),
 ) -> EventUndoResponse:
@@ -323,7 +324,7 @@ async def undo_event(
     _get_owned_event(client, user.id, event_id)
     try:
         status = undo_history_event(
-            client, str(event_id), str(user.id), force=body.force
+            service_client, str(event_id), str(user.id), force=body.force
         )
         return EventUndoResponse(event_id=str(event_id), status=status)  # type: ignore[arg-type]
     except CalendarDivergedError as e:
