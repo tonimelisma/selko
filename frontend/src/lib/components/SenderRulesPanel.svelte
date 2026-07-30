@@ -74,6 +74,7 @@
 
 	async function handleDeleteConfirm() {
 		showDeleteModal = false;
+		deleteError = '';
 		const { error: ruleDeleteError } = await deleteSenderRule(deleteTargetId);
 		if (ruleDeleteError) {
 			deleteError = ruleDeleteError.message;
@@ -82,6 +83,7 @@
 		rules = rules.filter((r) => r.id !== deleteTargetId);
 		deleteTargetId = '';
 		deleteTargetLabel = '';
+		deleteError = '';
 	}
 
 	function handleDeleteCancel() {

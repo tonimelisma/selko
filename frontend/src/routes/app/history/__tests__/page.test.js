@@ -347,6 +347,55 @@ describe('History Page', () => {
 		});
 	});
 
+	it('closes the conflict dialog and shows a force-undo failure beside the event', async () => {
+		const user = userEvent.setup();
+		const now = new Date();
+		mockFetchActivityEvents.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Bike Fest',
+					status: 'synced',
+					updated_at: now.toISOString(),
+					event_sources: []
+				}
+			],
+			count: 1,
+			error: null
+		});
+		mockUndoHistoryEvent
+			.mockResolvedValueOnce({
+				data: null,
+				error: {
+					message: 'This event changed in Google Calendar.',
+					status: 409,
+					code: 'CALENDAR_DIVERGED',
+					conflict: {
+						changed_fields: ['title'],
+						differences: [],
+						google_event_url: null
+					}
+				}
+			})
+			.mockResolvedValueOnce({
+				data: null,
+				error: { message: 'Google Calendar is temporarily unavailable.', status: 503 }
+			});
+
+		render(HistoryPage);
+
+		await user.click(await screen.findByText('Undo'));
+		await user.click(await screen.findByText('Force Undo'));
+
+		await waitFor(() => {
+			expect(
+				screen.getByText('Review changes before force undo').closest('dialog')
+			).not.toHaveAttribute('open');
+			expect(screen.getByText('Google Calendar is temporarily unavailable.')).toBeInTheDocument();
+			expect(screen.getByText('Bike Fest')).toBeInTheDocument();
+		});
+	});
+
 	it('shows email rows for processed, failed, matched, and pending outcomes', async () => {
 		mockFetchEmailHistory.mockResolvedValue({
 			data: [

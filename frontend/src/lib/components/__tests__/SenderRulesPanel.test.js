@@ -217,6 +217,34 @@ describe('SenderRulesPanel', () => {
 		});
 	});
 
+	it('clears a stale deletion error when a later deletion succeeds', async () => {
+		const user = userEvent.setup();
+		mockFetchSenderRules.mockResolvedValue({ data: [...mockRules], error: null });
+		mockDeleteSenderRule
+			.mockResolvedValueOnce({ error: { message: 'Delete failed' } })
+			.mockResolvedValueOnce({ error: null });
+
+		render(SenderRulesPanel);
+
+		await user.click(await screen.findByRole('button', { name: 'Delete rule for spam@example.com' }));
+		let confirmBtn = /** @type {HTMLElement} */ (
+			document.querySelector('.modal-action')?.querySelector('.btn-error')
+		);
+		await user.click(confirmBtn);
+		expect(await screen.findByText('Delete failed')).toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: 'Delete rule for trusted.com' }));
+		confirmBtn = /** @type {HTMLElement} */ (
+			document.querySelector('.modal-action')?.querySelector('.btn-error')
+		);
+		await user.click(confirmBtn);
+
+		await waitFor(() => {
+			expect(screen.queryByText('Delete failed')).not.toBeInTheDocument();
+			expect(screen.queryByText('trusted.com')).not.toBeInTheDocument();
+		});
+	});
+
 	it('shows error when fetch fails', async () => {
 		mockFetchSenderRules.mockResolvedValue({
 			data: [],
