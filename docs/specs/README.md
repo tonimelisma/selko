@@ -2,6 +2,13 @@
 
 Implementation specifications for planned or in-progress features.
 
+## Active plans
+
+- [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) — durably resume
+  missed email ingestion and OAuth-blocked calendar work after reauthorization.
+- [Live UI updates](live-ui-updates.md) — private per-user Broadcast
+  invalidations with lifecycle-safe catch-up across web, iOS, and Android.
+
 ## What belongs here
 
 - **Specs / implementation plans** — a detailed, step-by-step design for a feature
