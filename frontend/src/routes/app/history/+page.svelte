@@ -451,6 +451,7 @@
 						}
 					};
 				} else {
+					undoConflict = null;
 					setEventError(event.id, undoError.message);
 				}
 				return;
