@@ -115,24 +115,24 @@ class TestParseAllowedOrigins:
 
         assert origins == ["https://selko-web-staging.onrender.com"]
 
-    def test_render_production_url(self, monkeypatch):
-        """Correctly parses Render production URL."""
-        monkeypatch.setenv("ALLOWED_ORIGINS", "https://selko-web.onrender.com")
+    def test_custom_production_url(self, monkeypatch):
+        """Correctly parses the custom production URL."""
+        monkeypatch.setenv("ALLOWED_ORIGINS", "https://selkoapp.com")
         origins = _parse_allowed_origins()
 
-        assert origins == ["https://selko-web.onrender.com"]
+        assert origins == ["https://selkoapp.com"]
 
     def test_mixed_localhost_and_production(self, monkeypatch):
         """Parses mix of localhost and production origins."""
         monkeypatch.setenv(
             "ALLOWED_ORIGINS",
-            "http://localhost:3000,https://selko-web.onrender.com"
+            "http://localhost:3000,https://selkoapp.com"
         )
         origins = _parse_allowed_origins()
 
         assert len(origins) == 2
         assert "http://localhost:3000" in origins
-        assert "https://selko-web.onrender.com" in origins
+        assert "https://selkoapp.com" in origins
 
 
 class TestConfigAllowedOrigins:
@@ -194,14 +194,14 @@ class TestLoadConfigAllowedOrigins:
         monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
         monkeypatch.setenv(
             "ALLOWED_ORIGINS",
-            "https://selko-web-staging.onrender.com,https://selko-web.onrender.com"
+            "https://selko-web-staging.onrender.com,https://selkoapp.com"
         )
 
         config = load_config()
 
         assert len(config.allowed_origins) == 2
         assert "https://selko-web-staging.onrender.com" in config.allowed_origins
-        assert "https://selko-web.onrender.com" in config.allowed_origins
+        assert "https://selkoapp.com" in config.allowed_origins
 
     def test_load_config_defaults_without_env_var(self, monkeypatch):
         """load_config() uses defaults when ALLOWED_ORIGINS not set."""

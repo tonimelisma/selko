@@ -548,7 +548,7 @@ class TestRedirectURIValidation:
         )
 
     def test_production_redirect_host_allowed(self, test_client):
-        """Render production API host is an allowed OAuth callback."""
+        """Custom production API host is an allowed OAuth callback."""
         with patch(
             "selko.api.routes.integrations.initiate_oauth_flow",
             return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
@@ -557,7 +557,7 @@ class TestRedirectURIValidation:
                 "/integrations/gmail/auth",
                 params={
                     "redirect_uri": (
-                        "https://selko-production.onrender.com/integrations/google/callback"
+                        "https://api.selkoapp.com/integrations/google/callback"
                     )
                 },
                 follow_redirects=False,

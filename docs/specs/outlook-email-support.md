@@ -85,7 +85,7 @@ az ad app create \
   --sign-in-audience AzureADandPersonalMicrosoftAccount \
   --web-redirect-uris \
       "http://localhost:8000/integrations/microsoft/callback" \
-      "https://api.selko.app/integrations/microsoft/callback" \
+      "https://api.selkoapp.com/integrations/microsoft/callback" \
       "http://localhost:8080"
 # note the returned "appId"
 

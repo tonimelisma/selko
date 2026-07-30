@@ -46,9 +46,7 @@ from supabase import Client
 _STATIC_REDIRECT_HOSTS = {
     "localhost",
     "127.0.0.1",
-    "api.selko.app",
-    "selko-production.onrender.com",
-    "selko.onrender.com",
+    "api.selkoapp.com",
 }
 
 ALLOWED_REDIRECT_PATHS = {
