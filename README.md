@@ -1,259 +1,206 @@
 # Selko
 
-**Your inbox, quietly turned into an organized life.** Selko is an AI-powered personal assistant that reads your emails, understands what actually matters, and keeps your calendar, to-do lists, and digital filing in order — so you don't have to.
+### Your inbox already knows what is happening. Selko turns it into a calendar you can trust.
 
-## Project Status
+School reminders, appointments, reservations, community events, tickets, and
+schedule changes arrive scattered across email threads and attachments. Selko
+reads that information, understands the details, and turns it into clear
+calendar suggestions—without asking you to copy dates, decipher PDFs, or hunt
+through your inbox again.
 
-**Live in production.** Selko is running today for real users across web, iOS, and Android — turning everyday email into calendar events, with you always in the loop. Powered by [Anthropic's Claude](https://www.anthropic.com/claude).
+**Selko is live in production on web, iOS, and Android.**
 
-## The AI behind Selko
+## From email overload to a calm review queue
 
-Selko's intelligence runs on **Claude (Sonnet 5)**, a state-of-the-art multimodal LLM. Instead of brittle rules and keyword matching, Selko reasons over the *whole* message the way a sharp personal assistant would:
+Selko connects to Gmail or Outlook, extracts the events that matter, and shows
+you exactly what it found. You can edit, approve, or reject each suggestion
+before it reaches Google Calendar. Trusted-sender rules are opt-in for the
+things you genuinely want automated.
 
-- **Reads everything** — full email threads plus attachments: PDFs, images, itineraries, invitations, tickets. Multimodal understanding means the details buried in a scanned flyer are just as usable as plain text.
-- **Understands intent** — resolves dates, times, time zones, locations, and recurrence, and knows the difference between "let's grab lunch sometime" and a confirmed 2 PM booking.
-- **Stays accurate** — extractions are continuously benchmarked against a curated evaluation suite, so quality is measured, not assumed.
-- **Provider-flexible** — six LLM providers are supported under the hood, with Claude as the default engine.
+It also recognizes updates to events you already have. Instead of creating a
+duplicate, Selko presents the proposed changes and lets you review the
+before-and-after details.
 
-## Features
+<table>
+  <tr>
+    <td width="58%" align="center">
+      <a href="docs/screenshots/web-review-queue-desktop-light.png">
+        <img src="docs/screenshots/web-review-queue-desktop-light.png" alt="Selko review queue on the web">
+      </a>
+      <br><sub>Web review queue</sub>
+    </td>
+    <td width="21%" align="center">
+      <a href="docs/screenshots/ios-event-detail-light.png">
+        <img src="docs/screenshots/ios-event-detail-light.png" alt="Editing a Selko event suggestion on iOS">
+      </a>
+      <br><sub>iOS event review</sub>
+    </td>
+    <td width="21%" align="center">
+      <a href="docs/screenshots/android-history-dark.png">
+        <img src="docs/screenshots/android-history-dark.png" alt="Selko activity history on Android">
+      </a>
+      <br><sub>Android activity history</sub>
+    </td>
+  </tr>
+</table>
 
-- **Smart email understanding** — Gmail inbox monitoring with AI-powered event extraction
-- **Multimodal attachment processing** — pulls events out of PDFs and images, not just text
-- **Google Calendar sync** — creates and updates events automatically
-- **Human-in-the-loop review** — you approve or edit before anything is committed; you're always in control
-- **Cross-platform apps** — native web, iOS, and Android clients
-- **Secure by design** — per-user Row-Level Security, OAuth token storage, content deduplication, and isolated dev/staging/production environments
+## What Selko does
 
-### On the roadmap
-- Undo/Redo with compensating transactions
-- Automation rules for trusted sources
+- **Understands real email** — reads Gmail and Outlook messages plus PDFs,
+  images, and other supported attachments.
+- **Finds the useful details** — resolves dates, times, time zones, locations,
+  all-day events, and recurrence from natural language.
+- **Creates suggestions, not surprises** — new events enter a human review
+  queue by default.
+- **Handles changes intelligently** — matches related calendar events and
+  presents field-level updates instead of creating duplicates.
+- **Syncs safely with Google Calendar** — approved events are inserted or
+  updated idempotently.
+- **Keeps an activity record** — History shows what happened, exposes failed
+  syncs, supports retry, and lets you undo changes.
+- **Learns your explicit preferences** — ignore noisy senders or opt trusted
+  senders into automatic approval.
+- **Works wherever you are** — responsive web app plus native SwiftUI and
+  Jetpack Compose clients.
+
+## Designed around control
+
+Selko's goal is not maximum automation. It is dependable assistance.
+
+- Your inbox is read through provider OAuth.
+- OAuth tokens stay server-side.
+- Per-user Row-Level Security protects application data.
+- Calendar writes are traceable and recoverable.
+- Existing Google Calendar changes are compared before undo; if something
+  differs, Selko shows the exact conflict before offering Force Undo.
+- Extraction quality is measured against a curated regression eval suite, and
+  production parsing failures become new eval cases.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["Gmail or Outlook"] --> B["Reliable cursor-based ingestion"]
+    B --> C["Multimodal AI extraction"]
+    C --> D["New and changed event suggestions"]
+    D --> E["Review, edit, or apply a trusted-sender rule"]
+    E --> F["Google Calendar"]
+    E --> G["Activity History and Undo"]
+```
+
+Selko uses an eval-backed primary/fallback model route rather than depending on
+one model or one provider. The current default pair is Gemini
+`gemini-3.5-flash-lite` with Qwen `qwen3.7-flash` fallback; the provider
+registry also supports Anthropic and OpenAI models.
+
+## Product status
+
+The end-to-end Email → Review → Google Calendar journey is in production.
+Current work is focused on recovery and immediacy: automatically catching up
+after an OAuth reconnection and delivering live cross-client updates without a
+manual refresh. See the implementation plans for
+[OAuth reconnect catch-up](docs/specs/oauth-reconnect-catch-up.md) and
+[live UI updates](docs/specs/live-ui-updates.md).
 
 ## Architecture
 
-**Direct Supabase Access** - All frontends query Supabase directly for data operations. The Python API only handles server-side operations requiring secrets (OAuth, Gmail sync, LLM processing, Calendar sync).
+Frontends query Supabase directly for RLS-protected application data. FastAPI
+handles operations that require secrets: OAuth, provider ingestion, LLM
+processing, and Google Calendar writes. PostgreSQL rows are also the durable
+work queues; workers claim them with locks and bounded retries.
 
+```text
+Web / iOS / Android
+        │
+        ├── RLS-protected data ──────────────→ Supabase
+        │                                      PostgreSQL + Auth + Storage
+        │
+        └── secret-bearing operations ───────→ FastAPI
+                                               OAuth + providers + AI
+                                                        │
+                                                        └── background workers
 ```
-Frontend (Web/Android/iOS)
-    │
-    ├─── Data queries ──→ Supabase (direct, RLS-protected)
-    │
-    └─── Server-side ops ──→ Python API (9 endpoints)
-                              └── OAuth, Gmail, LLM, Calendar
-```
 
-## Tech Stack
+### Stack
 
-- **Data Layer**: Supabase (PostgreSQL + Auth + Storage + RLS)
-- **Server-Side API**: Python, FastAPI (only for operations requiring secrets)
-- **AI**: Anthropic Claude — Sonnet 5 (multimodal LLM); 6 providers supported, Claude default
-- **Frontends**: Svelte (Web), Kotlin (Android), Swift (iOS)
-- **Package Manager**: [uv](https://github.com/astral-sh/uv)
+- **Web:** SvelteKit 2, Svelte 5, DaisyUI
+- **iOS:** SwiftUI
+- **Android:** Kotlin, Jetpack Compose, Koin
+- **Backend:** Python, FastAPI, Pydantic
+- **Data:** Supabase PostgreSQL, Auth, Storage, RLS
+- **AI:** multimodal, multi-provider LLM gateway with validated fallback
+- **Tooling:** `uv`, npm, Gradle, Xcode
 
-See [PRD_ARCH.md](PRD_ARCH.md) for complete architecture details.
+See [PRD_ARCH.md](PRD_ARCH.md) for product requirements and architecture.
 
-## Setup
+## Local development
 
 ### Prerequisites
 
 - Python 3.14+
-- [uv](https://github.com/astral-sh/uv) package manager
+- [uv](https://github.com/astral-sh/uv)
 - [Supabase CLI](https://supabase.com/docs/guides/cli)
-- Docker Desktop (for local Supabase)
+- Docker Desktop
+- Node.js for the web client
+- Xcode or Android Studio for native clients
 
-### Installation
+### Setup
 
 ```bash
-# Clone the repository
 git clone https://github.com/tonimelisma/selko.git
 cd selko
-
-# Install Python dependencies
 uv sync
-
-# Copy environment template
 cp .env.example .env
-# Edit .env with your local credentials
-```
-
-### Local Development
-
-```bash
-# Start local Supabase (requires Docker)
 supabase start
-
-# Apply migrations
 supabase db reset
-
-# Create a test user (one-time setup)
-uv run python -m cli.cli_user create --email test@selko.local --password testpass123
-
-# Add credentials to .env
-# TEST_USER_EMAIL=test@selko.local
-# TEST_USER_PASSWORD=testpass123
-
-# Authenticate with Gmail (stores token in database)
-uv run python -m cli.cli_auth_gmail
-
-# Fetch emails
-uv run python -m cli.cli_fetch_emails --max 10
-
-# Set up git pre-commit hook (enforces test requirements)
-cp scripts/pre-commit.hook .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
 ```
 
-### Multi-Environment Support
-
-| Environment | Config File | Supabase |
-|-------------|-------------|----------|
-| `development` | `.env` | Local (Docker) |
-| `staging` | `.env.test` | Cloud staging |
-| `production` | `.env.production` | Cloud production |
+Run the backend:
 
 ```bash
-# Use staging environment
-ENVIRONMENT=staging uv run python -m cli.cli_fetch_emails
-```
-
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `ENVIRONMENT` | Environment name: `development`, `staging`, or `production` |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
-| `SUPABASE_JWT_SECRET` | JWT secret for API auth |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `TEST_USER_EMAIL` | Test user email for CLI authentication |
-| `TEST_USER_PASSWORD` | Test user password |
-
-## Project Structure
-
-```
-selko/
-├── backend/                    # Python backend
-│   ├── selko/
-│   │   ├── config.py          # Configuration
-│   │   ├── api/               # FastAPI application
-│   │   ├── services/          # Business logic
-│   │   └── workers/           # Background job workers
-│   └── tests/                 # Test suite
-│
-├── cli/                       # CLI tools
-│   ├── cli_user.py           # User management
-│   ├── cli_auth_gmail.py     # Gmail OAuth
-│   ├── cli_fetch_emails.py   # Email fetching
-│   └── cli_seed_tokens.py    # Token seeding
-│
-├── docs/                      # Documentation
-│   ├── api-workflow.md       # Manual API workflow examples
-│   ├── job-queue.md          # Job queue architecture
-│   ├── ci-cd.md              # CI/CD pipeline
-│   ├── gmail-integration.md  # Gmail API guide
-│   └── llm-integration.md    # LLM integration guide
-│
-├── supabase/                  # Database migrations
-├── frontend/                  # Web app (SvelteKit)
-├── ios/                       # iOS app (SwiftUI)
-├── android/                   # Android app (Jetpack Compose)
-│
-├── CLAUDE.md                  # Development guidelines
-├── PRD_ARCH.md               # Product requirements & architecture
-└── CHANGELOG.md              # Change history
-```
-
-## API Server
-
-The Python API handles **server-side operations only** (OAuth, Gmail sync, LLM processing, Calendar sync). Data queries go directly to Supabase.
-
-```bash
-# Start development server
 uv run python -m selko.api
-
-# Server: http://localhost:8000
-# API docs: http://localhost:8000/docs (Swagger UI)
 ```
 
-### Available Endpoints (9 total)
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /health` | Health check |
-| `GET /integrations/gmail/auth` | Initiate Gmail OAuth |
-| `POST /emails/sync` | Sync emails from Gmail |
-| `POST /emails/{id}/process` | Extract events with LLM |
-| `GET /calendars` | List Google Calendars |
-| `POST /events/{id}/sync` | Sync event to Calendar |
-
-### Data Access
-
-All data queries (emails, events, integrations) go **directly to Supabase** from frontends:
+Run the web client:
 
 ```bash
-# Login via Supabase Auth
-TOKEN=$(curl -s "$SUPABASE_URL/auth/v1/token?grant_type=password" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"testpass123"}' \
-  | jq -r '.access_token')
-
-# Query Supabase directly (not the Python API)
-curl "$SUPABASE_URL/rest/v1/emails?select=id,subject,from_email&limit=10" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $TOKEN"
+cd frontend
+npm install
+npm run dev
 ```
 
-See [docs/supabase-frontend-queries.md](docs/supabase-frontend-queries.md) for query patterns and [docs/api-workflow.md](docs/api-workflow.md) for server-side API usage.
+The repository supports isolated development, staging, and production
+configuration through `.env`, `.env.test`, and `.env.production`.
 
-## CLI Commands
+## Testing
 
 ```bash
-# User management
-uv run python -m cli.cli_user create --email user@example.com --password secret
-uv run python -m cli.cli_user list
+# Backend unit tests
+uv run pytest backend/tests/ -m "not integration"
 
-# Gmail integration
-uv run python -m cli.cli_auth_gmail
-uv run python -m cli.cli_fetch_emails --max 20 --fetch-attachments
-
-# Token seeding (for local testing with real Gmail)
-uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+# Frontend
+cd frontend
+npm run test:unit
+npm run check
 ```
 
-## Running Tests
-
-```bash
-# Install test dependencies
-uv sync --extra test
-
-# Run all tests (required before commits)
-uv run pytest backend/tests/ -v
-
-# Run unit tests only
-uv run pytest backend/tests/ -m "not integration" -v
-
-# Run integration tests (requires local Supabase)
-supabase start
-uv run pytest backend/tests/integration/ -m "development" -v
-```
-
-See [CLAUDE.md](CLAUDE.md) for detailed test configuration and markers.
+Platform-specific commands and required visual verification are documented in
+[AGENTS.md](AGENTS.md) and [docs/testing-guide.md](docs/testing-guide.md).
 
 ## Documentation
 
 | Document | Purpose |
-|----------|---------|
-| [CLAUDE.md](CLAUDE.md) | Development guidelines, database schema, test configuration |
-| [PRD_ARCH.md](PRD_ARCH.md) | Product requirements and architecture specification |
-| [docs/supabase-frontend-queries.md](docs/supabase-frontend-queries.md) | **Canonical query patterns for all frontends** |
-| [docs/api-workflow.md](docs/api-workflow.md) | Server-side API workflow (OAuth, sync, LLM) |
-| [docs/job-queue.md](docs/job-queue.md) | Job queue architecture |
-| [docs/ci-cd.md](docs/ci-cd.md) | CI/CD pipeline details |
-| [docs/gmail-integration.md](docs/gmail-integration.md) | Gmail API integration |
-| [docs/llm-integration.md](docs/llm-integration.md) | LLM integration patterns |
+|---|---|
+| [PRD_ARCH.md](PRD_ARCH.md) | Product requirements and architecture |
+| [docs/manual-email-to-calendar-walkthrough.md](docs/manual-email-to-calendar-walkthrough.md) | End-to-end product walkthrough |
+| [docs/database-schema.md](docs/database-schema.md) | Database reference |
+| [docs/job-queue.md](docs/job-queue.md) | Background-worker architecture |
+| [docs/gmail-integration.md](docs/gmail-integration.md) | Gmail ingestion |
+| [docs/llm-integration.md](docs/llm-integration.md) | Model routing and extraction |
+| [docs/evals-process.md](docs/evals-process.md) | Regression eval workflow |
+| [docs/specs/README.md](docs/specs/README.md) | Planned and in-progress implementation specs |
 
 ## License
 
-Proprietary, commercially copyrighted software. Copyright (c) 2026 Toni Melisma. All rights reserved.
+Proprietary, commercially copyrighted software. Copyright © 2026 Toni Melisma.
+All rights reserved.
