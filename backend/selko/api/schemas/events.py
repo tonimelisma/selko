@@ -100,12 +100,12 @@ class CalendarSettingsResponse(BaseModel):
 
 
 class CalendarSyncResponse(BaseModel):
-    """Calendar sync result."""
+    """Current state after an idempotent calendar sync request."""
 
     event_id: str
-    google_calendar_event_id: str
-    synced_at: datetime
-    status: Literal["synced"]
+    google_calendar_event_id: Optional[str] = None
+    synced_at: Optional[datetime] = None
+    status: Literal["approved", "syncing", "synced"]
 
 
 class EventUnsyncResponse(BaseModel):

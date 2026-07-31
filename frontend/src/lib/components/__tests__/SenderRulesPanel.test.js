@@ -245,6 +245,39 @@ describe('SenderRulesPanel', () => {
 		});
 	});
 
+	it('serializes deletions so an earlier completion cannot clear a later error', async () => {
+		const user = userEvent.setup();
+		let resolveDelete;
+		mockFetchSenderRules.mockResolvedValue({ data: [...mockRules], error: null });
+		mockDeleteSenderRule.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveDelete = resolve;
+			})
+		);
+
+		render(SenderRulesPanel);
+
+		await user.click(await screen.findByRole('button', { name: 'Delete rule for spam@example.com' }));
+		const confirmBtn = /** @type {HTMLElement} */ (
+			document.querySelector('.modal-action')?.querySelector('.btn-error')
+		);
+		await user.click(confirmBtn);
+
+		await waitFor(() => {
+			expect(mockDeleteSenderRule).toHaveBeenCalledTimes(1);
+			expect(screen.getByRole('button', { name: 'Delete rule for trusted.com' })).toBeDisabled();
+		});
+
+		await user.click(screen.getByRole('button', { name: 'Delete rule for trusted.com' }));
+		expect(mockDeleteSenderRule).toHaveBeenCalledTimes(1);
+
+		resolveDelete({ error: null });
+		await waitFor(() => {
+			expect(screen.queryByText('spam@example.com')).not.toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Delete rule for trusted.com' })).not.toBeDisabled();
+		});
+	});
+
 	it('shows error when fetch fails', async () => {
 		mockFetchSenderRules.mockResolvedValue({
 			data: [],

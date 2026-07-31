@@ -249,6 +249,7 @@ class ReviewQueueViewModelTest {
 
         coVerify { senderRuleRepository.createRule("sender@example.com", null, "auto_approve") }
         coVerify(atLeast = 1) { eventRepository.approveEvent(any()) }
+        coVerify(exactly = 0) { backendApiClient.syncEventToCalendar(any()) }
     }
 
     @Test

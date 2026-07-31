@@ -142,6 +142,37 @@ describe('History Page', () => {
 		});
 	});
 
+	it('shows a retried sync as queued instead of prematurely synced', async () => {
+		const user = userEvent.setup();
+		const now = new Date();
+		mockFetchActivityEvents.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Failed Event',
+					status: 'sync_failed',
+					updated_at: now.toISOString(),
+					event_sources: []
+				}
+			],
+			count: 1,
+			error: null
+		});
+		mockSyncEventToCalendar.mockResolvedValue({
+			data: { event_id: 'evt-1', status: 'approved' },
+			error: null
+		});
+
+		render(HistoryPage);
+		await user.click(await screen.findByText('Retry'));
+
+		await waitFor(() => {
+			expect(mockSyncEventToCalendar).toHaveBeenCalledWith('evt-1');
+			expect(screen.queryByText('Retry')).not.toBeInTheDocument();
+			expect(screen.getByText('Undo')).toBeInTheDocument();
+		});
+	});
+
 	it('calls undoHistoryEvent on undo', async () => {
 		const user = userEvent.setup();
 		const now = new Date();

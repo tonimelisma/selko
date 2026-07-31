@@ -34,6 +34,7 @@ from selko.services.events import (
     EventsError,
     claim_approved_event_for_sync,
     complete_event_sync,
+    defer_event_sync_for_quota,
     fail_event_sync,
 )
 from selko.services.photos import (
@@ -42,6 +43,7 @@ from selko.services.photos import (
     complete_photo_processing,
     fail_photo_processing,
 )
+from selko.services.quotas import QuotaService
 
 logger = logging.getLogger(__name__)
 
@@ -426,6 +428,18 @@ class WorkerPool:
         logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
 
         try:
+            quota_result = QuotaService(client).check_and_increment(
+                event["user_id"], "calendar_syncs"
+            )
+            if not quota_result.allowed:
+                defer_event_sync_for_quota(
+                    client,
+                    event_id,
+                    event["sync_attempts"],
+                    quota_result.resets_at,
+                )
+                return
+
             google_event_id = await asyncio.wait_for(
                 sync_event(client, self.config, event),
                 timeout=self.config.event_sync_timeout,

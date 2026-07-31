@@ -159,6 +159,26 @@ class TestExponentialBackoffEvents:
         retry_at = datetime.fromisoformat(update_call["next_retry_at"])
         assert retry_at == FROZEN_NOW + timedelta(seconds=3600)
 
+    def test_calendar_quota_deferral_releases_claim_without_spending_attempt(self):
+        """Quota deferral returns the claimed event to its pre-claim budget."""
+        from selko.services.events import defer_event_sync_for_quota
+
+        client = MagicMock()
+        reset_at = "2026-04-10T00:00:00+00:00"
+
+        defer_event_sync_for_quota(client, "event-1", 2, reset_at)
+
+        client.table.return_value.update.assert_called_once_with(
+            {
+                "status": "approved",
+                "sync_attempts": 1,
+                "sync_error": "Daily calendar sync quota exceeded",
+                "locked_by": None,
+                "locked_until": None,
+                "next_retry_at": reset_at,
+            }
+        )
+
 
 # ===========================================================================
 # Dead Letter Pattern Tests

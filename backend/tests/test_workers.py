@@ -8,9 +8,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from selko.workers.pool import WorkerPool
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -24,6 +22,7 @@ def mock_config():
     cfg.supabase_url = "http://localhost:54321"
     cfg.supabase_key = "test-key"
     cfg.supabase_service_role_key = "test-service-key"
+    cfg.event_sync_timeout = 120
     return cfg
 
 
@@ -539,3 +538,76 @@ class TestCalendarSyncWorker:
         ):
             with pytest.raises(CalendarsError):
                 await sync_event(mock_client, mock_config, event)
+
+    @pytest.mark.asyncio
+    async def test_worker_is_single_calendar_writer(self, mock_config):
+        """A claimed event is quota-checked and written exactly once by its worker."""
+        pool = WorkerPool(num_workers=1)
+        pool.config = mock_config
+        mock_client = MagicMock()
+        event = {
+            "id": "ev1",
+            "user_id": "u1",
+            "title": "Meeting",
+            "sync_attempts": 1,
+        }
+        quota_result = MagicMock(allowed=True)
+
+        with (
+            patch("selko.workers.pool.QuotaService") as quota_service,
+            patch(
+                "selko.workers.calendar_sync.sync_event",
+                new_callable=AsyncMock,
+                return_value="google-1",
+            ) as sync,
+            patch("selko.workers.pool.complete_event_sync") as complete,
+            patch("selko.workers.pool.circuit_breaker"),
+        ):
+            quota_service.return_value.check_and_increment.return_value = quota_result
+            await pool._process_event_sync(mock_client, "worker-1", event)
+
+        quota_service.return_value.check_and_increment.assert_called_once_with(
+            "u1", "calendar_syncs"
+        )
+        sync.assert_awaited_once_with(mock_client, mock_config, event)
+        complete.assert_called_once_with(mock_client, "ev1", "google-1")
+
+    @pytest.mark.asyncio
+    async def test_worker_defers_without_writing_when_calendar_quota_is_exhausted(
+        self, mock_config
+    ):
+        """Quota denial releases the claim without consuming an attempt."""
+        pool = WorkerPool(num_workers=1)
+        pool.config = mock_config
+        mock_client = MagicMock()
+        event = {
+            "id": "ev1",
+            "user_id": "u1",
+            "title": "Meeting",
+            "sync_attempts": 2,
+        }
+        quota_result = MagicMock(
+            allowed=False,
+            resets_at="2026-08-01T00:00:00+00:00",
+        )
+
+        with (
+            patch("selko.workers.pool.QuotaService") as quota_service,
+            patch(
+                "selko.workers.calendar_sync.sync_event",
+                new_callable=AsyncMock,
+            ) as sync,
+            patch("selko.workers.pool.defer_event_sync_for_quota") as defer,
+            patch("selko.workers.pool.complete_event_sync") as complete,
+        ):
+            quota_service.return_value.check_and_increment.return_value = quota_result
+            await pool._process_event_sync(mock_client, "worker-1", event)
+
+        defer.assert_called_once_with(
+            mock_client,
+            "ev1",
+            2,
+            "2026-08-01T00:00:00+00:00",
+        )
+        sync.assert_not_awaited()
+        complete.assert_not_called()

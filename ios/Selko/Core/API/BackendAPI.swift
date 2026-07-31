@@ -76,8 +76,8 @@ struct CalendarInfo: Codable, Identifiable {
 
 struct CalendarSyncResponse: Codable {
     let eventId: String
-    let googleCalendarEventId: String
-    let syncedAt: String
+    let googleCalendarEventId: String?
+    let syncedAt: String?
     let status: String
 
     enum CodingKeys: String, CodingKey {
