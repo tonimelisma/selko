@@ -371,14 +371,13 @@ export async function listCalendars() {
 /**
  * @typedef {Object} CalendarSyncResult
  * @property {string} event_id - Selko event UUID
- * @property {string} google_calendar_event_id - Google Calendar event ID
- * @property {string} synced_at - ISO timestamp
- * @property {string} status - "synced"
+ * @property {string | null} google_calendar_event_id - Google Calendar event ID when synced
+ * @property {string | null} synced_at - ISO timestamp when synced
+ * @property {'approved' | 'syncing' | 'synced'} status - Worker-owned queue/sync state
  */
 
 /**
- * Sync an approved event to Google Calendar
- * Requires server-side Google Calendar API credentials
+ * Idempotently observe or retry worker-owned calendar sync.
  * @param {string} eventId - The event UUID to sync
  * @returns {Promise<{data: CalendarSyncResult | null, error: ApiError | null}>}
  */

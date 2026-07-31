@@ -1705,6 +1705,38 @@ def complete_event_sync(client: Client, event_id: str, google_event_id: str) -> 
         raise EventsError(f"Failed to complete event sync: {e}") from e
 
 
+def defer_event_sync_for_quota(
+    client: Client,
+    event_id: str,
+    sync_attempts: int,
+    next_retry_at: str,
+) -> None:
+    """Release a claimed event until the daily calendar quota resets.
+
+    Quota checks happen after the worker's atomic claim. A quota deferral is
+    not a Google sync attempt, so restore the attempt budget while releasing
+    the lock and schedule the next claim for the quota reset.
+    """
+    try:
+        client.table("events").update(
+            {
+                "status": "approved",
+                "sync_attempts": max(0, sync_attempts - 1),
+                "sync_error": "Daily calendar sync quota exceeded",
+                "locked_by": None,
+                "locked_until": None,
+                "next_retry_at": next_retry_at,
+            }
+        ).eq("id", event_id).execute()
+        logger.warning(
+            "Deferred event %s until calendar quota resets at %s",
+            event_id,
+            next_retry_at,
+        )
+    except Exception as e:
+        raise EventsError(f"Failed to defer event sync for quota: {e}") from e
+
+
 def fail_event_sync(
     client: Client,
     event_id: str,

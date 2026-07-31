@@ -252,8 +252,8 @@ class BackendApiClient(
     @Serializable
     data class CalendarSyncResponse(
         val event_id: String,
-        val google_calendar_event_id: String,
-        val synced_at: String,
+        val google_calendar_event_id: String? = null,
+        val synced_at: String? = null,
         val status: String
     )
 

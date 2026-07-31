@@ -12,8 +12,7 @@
 	import {
 		initiateCalendarAuth,
 		initiateGmailAuth,
-		initiateOutlookAuth,
-		syncEventToCalendar
+		initiateOutlookAuth
 	} from '$lib/api/backend.js';
 import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import ConnectionRecovery from '$lib/components/ConnectionRecovery.svelte';
@@ -174,11 +173,6 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 			const { error: statusError } = await updateEventStatus(event.id, 'approved');
 			if (statusError) {
 				error = statusError.message;
-				return;
-			}
-			const { error: syncError } = await syncEventToCalendar(event.id);
-			if (syncError) {
-				error = syncError.message;
 				return;
 			}
 			goto('/app');

@@ -191,9 +191,7 @@ class ReviewQueueViewModel(
             } else {
                 eventRepository.approveEvent(eventId) is EventResult.Success
             }
-            if (ok) {
-                backendApiClient.syncEventToCalendar(eventId)
-            } else {
+            if (!ok) {
                 // Restore event into state on failure
                 if (event != null) {
                     _uiState.update { state ->
@@ -253,9 +251,7 @@ class ReviewQueueViewModel(
                 } else {
                     eventRepository.approveEvent(event.id) is EventResult.Success
                 }
-                if (ok) {
-                    backendApiClient.syncEventToCalendar(event.id)
-                } else {
+                if (!ok) {
                     allSucceeded = false
                 }
             }
