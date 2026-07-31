@@ -25,6 +25,7 @@
 	let showDeleteModal = $state(false);
 	let deleteTargetId = $state('');
 	let deleteTargetLabel = $state('');
+	let isDeleting = $state(false);
 
 	onMount(async () => {
 		await loadRules();
@@ -67,23 +68,31 @@
 
 	/** @param {import('$lib/services/sender-rules.js').SenderRule} rule */
 	function handleDeleteRequest(rule) {
+		if (isDeleting) return;
 		deleteTargetId = rule.id;
 		deleteTargetLabel = rule.sender_email || rule.sender_domain || '';
 		showDeleteModal = true;
 	}
 
 	async function handleDeleteConfirm() {
+		if (isDeleting || !deleteTargetId) return;
+		const targetId = deleteTargetId;
 		showDeleteModal = false;
+		isDeleting = true;
 		deleteError = '';
-		const { error: ruleDeleteError } = await deleteSenderRule(deleteTargetId);
-		if (ruleDeleteError) {
-			deleteError = ruleDeleteError.message;
-			return;
+		try {
+			const { error: ruleDeleteError } = await deleteSenderRule(targetId);
+			if (ruleDeleteError) {
+				deleteError = ruleDeleteError.message;
+				return;
+			}
+			rules = rules.filter((r) => r.id !== targetId);
+			deleteTargetId = '';
+			deleteTargetLabel = '';
+			deleteError = '';
+		} finally {
+			isDeleting = false;
 		}
-		rules = rules.filter((r) => r.id !== deleteTargetId);
-		deleteTargetId = '';
-		deleteTargetLabel = '';
-		deleteError = '';
 	}
 
 	function handleDeleteCancel() {
@@ -108,12 +117,12 @@
 		<div class="mb-5 space-y-4">
 			{#if approvedRules.length > 0}
 				<div><p class="mb-2 text-xs font-bold uppercase tracking-[0.08em] semantic-status-success">{$_('senderRules.autoApprove')}</p><div class="flex flex-wrap gap-2">
-					{#each approvedRules as rule (rule.id)}<RemovableChip tone="success" category={$_('senderRules.autoApprove')} label={rule.sender_email || rule.sender_domain || ''} removeLabel={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain || '' } })} onremove={() => handleDeleteRequest(rule)} />{/each}
+					{#each approvedRules as rule (rule.id)}<RemovableChip tone="success" category={$_('senderRules.autoApprove')} label={rule.sender_email || rule.sender_domain || ''} removeLabel={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain || '' } })} disabled={isDeleting} onremove={() => handleDeleteRequest(rule)} />{/each}
 				</div></div>
 			{/if}
 			{#if ignoredRules.length > 0}
 				<div><p class="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-error">{$_('senderRules.ignore')}</p><div class="flex flex-wrap gap-2">
-					{#each ignoredRules as rule (rule.id)}<RemovableChip tone="error" category={$_('senderRules.ignore')} label={rule.sender_email || rule.sender_domain || ''} removeLabel={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain || '' } })} onremove={() => handleDeleteRequest(rule)} />{/each}
+					{#each ignoredRules as rule (rule.id)}<RemovableChip tone="error" category={$_('senderRules.ignore')} label={rule.sender_email || rule.sender_domain || ''} removeLabel={$_('senderRules.deleteRuleLabel', { values: { label: rule.sender_email || rule.sender_domain || '' } })} disabled={isDeleting} onremove={() => handleDeleteRequest(rule)} />{/each}
 				</div></div>
 			{/if}
 		</div>

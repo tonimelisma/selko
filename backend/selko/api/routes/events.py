@@ -8,14 +8,13 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 
 from selko.api.deps import (
     CurrentUser,
     get_authenticated_client,
     get_current_user,
-    get_quota_service,
     get_service_role_client,
 )
 from selko.api.schemas.common import ErrorCode, error_detail
@@ -30,7 +29,6 @@ from selko.services.calendars import (
     CalendarDivergedError,
     CalendarsError,
     delete_calendar_event,
-    sync_event_to_calendar,
 )
 from selko.services.events import (
     EventsError,
@@ -38,7 +36,6 @@ from selko.services.events import (
     reject_pending_change,
     undo_history_event,
 )
-from selko.services.quotas import QuotaService
 
 logger = logging.getLogger(__name__)
 
@@ -48,52 +45,39 @@ router = APIRouter(prefix="/events", tags=["events"])
 @router.post("/{event_id}/sync", response_model=CalendarSyncResponse)
 async def sync_event(
     event_id: UUID,
-    response: Response,
     client: Annotated[Client, Depends(get_authenticated_client)],
-    service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
-    quota_service: QuotaService = Depends(get_quota_service),
 ) -> CalendarSyncResponse:
-    """Sync an approved or previously failed event to Google Calendar.
+    """Queue an approved or previously failed event for calendar sync.
 
-    Writes the event to the user's configured Google Calendar. The event must
-    be approved, already synced, or in the retryable ``sync_failed`` state.
+    Background workers are the sole owners of Google Calendar writes. This
+    endpoint is idempotent for approved, syncing, and synced events. An
+    explicit retry resets an exhausted ``sync_failed`` event to ``approved``
+    so a worker can claim it with a fresh attempt budget.
 
     Args:
         event_id: UUID of the event to sync.
 
     Returns:
-        Sync result with Google Calendar event ID.
+        Current queue/sync state.
 
     Raises:
         403: Not authorized to sync this event.
-        404: Event not found or no calendar integration.
-        429: Calendar sync quota exceeded.
-        500: Calendar sync failed.
+        404: Event not found.
+        500: Queueing the retry failed.
     """
-    # Check calendar sync quota BEFORE any expensive operations
-    quota_result = quota_service.check_and_increment(user.id, "calendar_syncs")
-    if not quota_result.allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=error_detail(ErrorCode.QUOTA_EXCEEDED, "Daily calendar sync quota exceeded"),
-            headers={
-                "X-RateLimit-Limit": str(quota_result.limit),
-                "X-RateLimit-Remaining": "0",
-                "X-RateLimit-Reset": quota_result.resets_at,
-            },
-        )
-
-    # Add quota headers to response
-    response.headers["X-RateLimit-Limit"] = str(quota_result.limit)
-    response.headers["X-RateLimit-Remaining"] = str(quota_result.remaining)
-    response.headers["X-RateLimit-Reset"] = quota_result.resets_at
-
     try:
         # Verify ownership and status - use maybe_single for graceful 404
-        event_result = client.table("events").select("user_id, status, synced_at").eq(
-            "id", str(event_id)
-        ).maybe_single().execute()
+        response_fields = (
+            "user_id, status, synced_at, google_calendar_event_id"
+        )
+        event_result = (
+            client.table("events")
+            .select(response_fields)
+            .eq("id", str(event_id))
+            .maybe_single()
+            .execute()
+        )
 
         # maybe_single() returns result where .data is None when no rows found
         if event_result is None or event_result.data is None:
@@ -108,50 +92,64 @@ async def sync_event(
                 detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
             )
 
-        # sync_failed is only reached after an approved event's sync attempt
-        # fails, so it remains eligible for an explicit user retry.
-        if event_result.data["status"] not in ("approved", "synced", "sync_failed"):
+        current_status = event_result.data["status"]
+        if current_status not in ("approved", "syncing", "synced", "sync_failed"):
             raise HTTPException(
                 status_code=400,
                 detail=error_detail(
                     ErrorCode.INVALID_REQUEST,
-                    f"Event must be approved before syncing (current status: {event_result.data['status']})",
+                    f"Event must be approved before syncing (current status: {current_status})",
                 ),
             )
 
-        # Sync to calendar
-        google_event_id = sync_event_to_calendar(service_client, user.id, str(event_id))
+        if current_status == "sync_failed":
+            # A dead-lettered event has exhausted its worker attempt budget.
+            # Explicit user retry grants a fresh budget and lets the worker
+            # reconcile any ambiguous prior Google insert before creating.
+            (
+                client.table("events")
+                .update(
+                    {
+                        "status": "approved",
+                        "sync_attempts": 0,
+                        "sync_error": None,
+                        "locked_by": None,
+                        "locked_until": None,
+                        "next_retry_at": None,
+                        "dead_letter_reason": None,
+                        "dead_letter_at": None,
+                    }
+                )
+                .eq("id", str(event_id))
+                .eq("status", "sync_failed")
+                .execute()
+            )
 
-        # Fetch updated event to get synced_at
-        updated_event = client.table("events").select("synced_at").eq(
-            "id", str(event_id)
-        ).single().execute()
-
+        # Re-read so a worker claim that wins immediately is reported as
+        # ``syncing`` rather than treated as an approval error.
+        updated_event = (
+            client.table("events")
+            .select(response_fields)
+            .eq("id", str(event_id))
+            .single()
+            .execute()
+        )
         return CalendarSyncResponse(
             event_id=str(event_id),
-            google_calendar_event_id=google_event_id,
-            synced_at=updated_event.data["synced_at"],
-            status="synced"
+            google_calendar_event_id=updated_event.data.get(
+                "google_calendar_event_id"
+            ),
+            synced_at=updated_event.data.get("synced_at"),
+            status=updated_event.data["status"],
         )
 
     except HTTPException:
         raise
-    except CalendarsError as e:
-        logger.error(f"Calendar sync failed: {e}")
-        if "No Google Calendar credentials" in str(e):
-            raise HTTPException(
-                status_code=404,
-                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Google Calendar integration found. Connect Calendar first."),
-            )
-        raise HTTPException(
-            status_code=500,
-            detail=error_detail(ErrorCode.SYNC_FAILED, "Calendar sync failed"),
-        )
     except Exception as e:
-        logger.error(f"Failed to sync event: {e}")
+        logger.error(f"Failed to queue event sync: {e}")
         raise HTTPException(
             status_code=500,
-            detail=error_detail(ErrorCode.SYNC_FAILED, "Event sync failed"),
+            detail=error_detail(ErrorCode.SYNC_FAILED, "Failed to queue event sync"),
         )
 
 

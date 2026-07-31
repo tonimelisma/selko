@@ -479,7 +479,9 @@
 				setEventError(event.id, result.error.message);
 				return;
 			}
-			events = events.map((e) => (e.id === event.id ? { ...e, status: 'synced' } : e));
+			events = events.map((e) =>
+				e.id === event.id ? { ...e, status: result.data?.status || 'approved' } : e
+			);
 		} finally {
 			stopProcessing(event.id);
 		}

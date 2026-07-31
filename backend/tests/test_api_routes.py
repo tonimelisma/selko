@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-
 from selko.api.app import create_app
 from selko.api.deps import (
     CurrentUser,
@@ -20,7 +19,6 @@ from selko.api.deps import (
     get_service_role_client,
 )
 from selko.config import Config
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -275,50 +273,100 @@ class TestNotFoundResponses:
 class TestServiceRoleOAuthRoutes:
     """OAuth-backed service calls use service role after user-scoped checks."""
 
-    def test_event_sync_uses_service_role_client(
-        self, test_client, mock_client, mock_service_client
+    def test_event_sync_leaves_approved_event_for_worker(
+        self, test_client, mock_client
     ):
         event_id = "00000000-0000-0000-0000-000000000001"
         mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
-            data={"user_id": "test-user-id", "status": "approved", "synced_at": None}
+            data={
+                "user_id": "test-user-id",
+                "status": "approved",
+                "synced_at": None,
+                "google_calendar_event_id": None,
+            }
         )
         mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
-            data={"synced_at": "2026-07-28T00:00:00Z"}
+            data={
+                "user_id": "test-user-id",
+                "status": "approved",
+                "synced_at": None,
+                "google_calendar_event_id": None,
+            }
         )
 
-        with patch(
-            "selko.api.routes.events.sync_event_to_calendar",
-            return_value="google-event-1",
-        ) as sync:
-            response = test_client.post(f"/events/{event_id}/sync")
+        response = test_client.post(f"/events/{event_id}/sync")
 
         assert response.status_code == 200
-        sync.assert_called_once_with(mock_service_client, "test-user-id", event_id)
+        assert response.json() == {
+            "event_id": event_id,
+            "google_calendar_event_id": None,
+            "synced_at": None,
+            "status": "approved",
+        }
+        mock_client.table.return_value.update.assert_not_called()
 
-    def test_event_sync_retries_sync_failed_event(
-        self, test_client, mock_client, mock_service_client
+    def test_event_sync_accepts_worker_owned_syncing_state(
+        self, test_client, mock_client
     ):
-        """A failed approved action remains eligible for an explicit retry."""
+        """A worker winning the approval race is success-in-progress."""
+        event_id = "00000000-0000-0000-0000-000000000001"
+        syncing = {
+            "user_id": "test-user-id",
+            "status": "syncing",
+            "synced_at": None,
+            "google_calendar_event_id": None,
+        }
+        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
+            data=syncing
+        )
+        mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
+            data=syncing
+        )
+
+        response = test_client.post(f"/events/{event_id}/sync")
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "syncing"
+        mock_client.table.return_value.update.assert_not_called()
+
+    def test_event_sync_requeues_sync_failed_event_for_worker(
+        self, test_client, mock_client
+    ):
+        """Explicit retry restores a fresh worker attempt budget."""
         event_id = "00000000-0000-0000-0000-000000000001"
         mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
             data={
                 "user_id": "test-user-id",
                 "status": "sync_failed",
                 "synced_at": None,
+                "google_calendar_event_id": None,
             }
         )
         mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
-            data={"synced_at": "2026-07-28T00:00:00Z"}
+            data={
+                "user_id": "test-user-id",
+                "status": "approved",
+                "synced_at": None,
+                "google_calendar_event_id": None,
+            }
         )
 
-        with patch(
-            "selko.api.routes.events.sync_event_to_calendar",
-            return_value="google-event-1",
-        ) as sync:
-            response = test_client.post(f"/events/{event_id}/sync")
+        response = test_client.post(f"/events/{event_id}/sync")
 
         assert response.status_code == 200
-        sync.assert_called_once_with(mock_service_client, "test-user-id", event_id)
+        assert response.json()["status"] == "approved"
+        mock_client.table.return_value.update.assert_called_once_with(
+            {
+                "status": "approved",
+                "sync_attempts": 0,
+                "sync_error": None,
+                "locked_by": None,
+                "locked_until": None,
+                "next_retry_at": None,
+                "dead_letter_reason": None,
+                "dead_letter_at": None,
+            }
+        )
 
     def test_email_sync_uses_service_role_client(
         self, test_client, mock_service_client

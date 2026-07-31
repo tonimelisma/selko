@@ -10,7 +10,6 @@
 	import {
 		applyEventChange,
 		rejectEventChange,
-		syncEventToCalendar,
 		initiateGmailAuth,
 		initiateOutlookAuth,
 		initiateCalendarAuth
@@ -41,8 +40,6 @@
 	let eventErrors = $state(new Map());
 	/** @type {Map<string, string>} */
 	let senderErrors = $state(new Map());
-	/** @type {{ title: string, message: string } | null} */
-	let actionNotice = $state(null);
 	let integrationLoadFailed = $state(false);
 	let notification = $state('');
 	let processingEvents = $state(new Set());
@@ -122,11 +119,6 @@
 		senderErrors = next;
 	}
 
-	/** @param {any} event @param {string} message */
-	function showSyncFailure(event, message) {
-		actionNotice = { title: event.title, message };
-	}
-
 	onMount(async () => {
 		const params = new URLSearchParams(window.location.search);
 		const oauth = params.get('oauth');
@@ -198,19 +190,6 @@
 				setEventError(event.id, updateError.message);
 				return;
 			}
-			try {
-				const { error: syncError } = await syncEventToCalendar(event.id);
-				if (syncError) {
-					console.error('Calendar sync failed after approval:', syncError);
-					showSyncFailure(event, syncError.message || $_('home.syncFailedAfterApprove'));
-					if (syncError.status === 401 || syncError.status === 404) {
-						await loadIntegrations();
-					}
-				}
-			} catch (syncError) {
-				console.error('Calendar sync failed after approval:', syncError);
-				showSyncFailure(event, $_('home.syncFailedAfterApprove'));
-			}
 		} finally {
 			const next = new Set(processingEvents);
 			next.delete(event.id);
@@ -256,19 +235,6 @@
 				events = previous;
 				setEventError(event.id, applyError.message);
 				return;
-			}
-			try {
-				const { error: syncError } = await syncEventToCalendar(event.id);
-				if (syncError) {
-					console.error('Calendar sync failed after change apply:', syncError);
-					showSyncFailure(event, syncError.message || $_('home.syncFailedAfterApprove'));
-					if (syncError.status === 401 || syncError.status === 404) {
-						await loadIntegrations();
-					}
-				}
-			} catch (syncError) {
-				console.error('Calendar sync failed after change apply:', syncError);
-				showSyncFailure(event, $_('home.syncFailedAfterApprove'));
 			}
 		} finally {
 			const next = new Set(processingEvents);
@@ -412,21 +378,14 @@
 	</div>
 {/if}
 
-{#if oauthError || actionNotice}
+{#if oauthError}
 	<div class="toast toast-end z-50">
 		<div class="alert alert-error max-w-md items-start" role="alert">
-			<div>
-				{#if actionNotice}<p class="font-bold">{actionNotice.title}</p>{/if}
-				<p>{oauthError || actionNotice?.message}</p>
-			</div>
-			{#if actionNotice}
-				<a class="btn action-tertiary" href="/app/history">{$_('nav.history')}</a>
-			{/if}
+			<p>{oauthError}</p>
 			<button
 				class="btn action-tertiary"
 				onclick={() => {
 					oauthError = '';
-					actionNotice = null;
 				}}
 			>{$_('common.dismiss')}</button>
 		</div>

@@ -91,7 +91,6 @@ final class ReviewQueueViewModel {
         do {
             if event.isPendingChange {
                 _ = try await backendAPI.applyEventChange(eventId: event.id)
-                _ = try? await backendAPI.syncEventToCalendar(eventId: event.id)
             } else {
                 _ = try await eventService.approveEvent(id: event.id)
             }
@@ -130,7 +129,6 @@ final class ReviewQueueViewModel {
             do {
                 if event.isPendingChange {
                     _ = try await backendAPI.applyEventChange(eventId: event.id)
-                    _ = try? await backendAPI.syncEventToCalendar(eventId: event.id)
                 } else {
                     _ = try await eventService.approveEvent(id: event.id)
                 }
@@ -204,7 +202,6 @@ final class ReviewQueueViewModel {
             for event in group.events {
                 if event.isPendingChange {
                     _ = try await backendAPI.applyEventChange(eventId: event.id)
-                    _ = try? await backendAPI.syncEventToCalendar(eventId: event.id)
                 } else {
                     _ = try await eventService.approveEvent(id: event.id)
                 }

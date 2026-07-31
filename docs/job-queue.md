@@ -25,6 +25,12 @@ Cron (5 min) -> scheduled_tasks -> Gmail API -> emails table (status=pending)
 User approves event -> status='approved' -> Worker claims event -> Google Calendar API -> status='synced'
 ```
 
+Clients do not write to Google Calendar after approval. The worker pool is the
+single owner of calendar writes. `POST /events/{id}/sync` is an idempotent
+queue/retry endpoint: it accepts `approved`, `syncing`, and `synced` as current
+states, and resets an exhausted `sync_failed` event to `approved` with a fresh
+attempt budget. It never performs the Google write inline.
+
 ## How It Works
 
 ### 1. Email Processing (status-based)
@@ -53,6 +59,11 @@ Events with `status='approved'` are automatically synced. Workers claim them dir
 event = await claim_approved_event_for_sync(worker_id)  # Uses FOR UPDATE SKIP LOCKED
 
 # Worker syncs to Google Calendar
+quota = QuotaService(client).check_and_increment(event["user_id"], "calendar_syncs")
+if not quota.allowed:
+    defer_event_sync_for_quota(event, quota.resets_at)
+    return
+
 google_event_id = await sync_event(event)
 
 # Worker updates status
@@ -60,6 +71,10 @@ complete_event_sync(event_id, google_event_id)  # Sets status='synced'
 ```
 
 **Event statuses**: `pending_review` → `approved` → `syncing` → `synced` / `sync_failed`
+
+The calendar quota is enforced by the worker that owns the external write. A
+quota deferral releases the lock, restores the claim's attempt budget, and sets
+`next_retry_at` to the daily reset rather than consuming a failed sync attempt.
 
 ### 3. Scheduled Tasks (email_fetch only)
 
