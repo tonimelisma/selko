@@ -35,8 +35,10 @@ files, claiming review comments, or making other implementation writes.
 - Simple, low-risk changes with an obvious cause may proceed after a brief
   confirmation in the existing code. Use judgment; the goal is understanding
   before mutation, not process for its own sake.
-- Run the late-review audit in Definition of Done step 0 only when an
-  implementation increment actually begins, not during discovery.
+- Run the late-review audit in Definition of Done step 0 only when a **source
+  code increment** actually begins, not during discovery or a docs/config-only
+  increment. Never claim or absorb PR review comments into a docs/config-only
+  increment; leave them unclaimed for the next source code increment.
 
 ---
 
@@ -82,9 +84,13 @@ BLOCKED: Cannot edit source code in the main repository.
 
 **The DoD scales to what you changed. Run only what your change actually touches — nothing more.** A backend-only change never runs web, iOS, or Android tests or screenshots.
 
-### 0. Check for unaddressed PR review comments
+### 0. Check for unaddressed PR review comments (source code increments only)
 
 Review comments often land **after** a PR has already been squash-merged (async reviewers, bots, ultrareview). At the start of each work increment:
+
+**Skip this entire step for docs/config-only increments.** Do not inspect,
+claim, or fix unrelated PR comments while doing documentation or configuration
+work. Run it only when the current increment will edit source code.
 
 1. `gh pr list --state merged --limit 10` — check the last 10 merged PRs.
 2. For each, check for review comments that haven't been addressed yet (`gh pr view <number> --comments` or `gh api repos/<owner>/<repo>/pulls/<number>/comments`). Skip comments already marked fixed/claimed by a prior increment.
@@ -282,6 +288,8 @@ from a Microsoft Entra app registration.
 | **Job queue** | `docs/job-queue.md` | When working with background jobs |
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
 | **Reliable email ingestion fix-forward** | `docs/specs/reliable-email-ingestion-fix-forward.md` | When fixing email cursors, folder inclusion, processing state, or email History after PR #183 |
+| **Polling email ingestion v2** | `docs/specs/polling-email-ingestion-v2.md` | When replacing email poll orchestration, adding durable discovery/reconciliation, isolating attachment failures, or adding sync-health alerts |
+| **Microsoft Graph failure ledger** | `docs/microsoft-graph-failure-ledger.md` | Before changing Graph request/retry/resync behavior or after any production Graph failure |
 | **OAuth reconnect catch-up** | `docs/specs/oauth-reconnect-catch-up.md` | When implementing automatic email/calendar recovery after OAuth reauthorization |
 | **Live UI updates** | `docs/specs/live-ui-updates.md` | When implementing cross-platform Realtime invalidation, lifecycle catch-up, or refresh behavior |
 | **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |
