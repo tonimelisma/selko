@@ -73,7 +73,7 @@ class HistoryScreenTest {
     }
 
     @Test
-    fun historyScreen_usesPlainStatusTagAnd44DpTertiaryUndo() {
+    fun historyScreen_usesPlainStatusTagAnd48DpTertiaryUndo() {
         coEvery { eventRepository.fetchActivityEvents(any(), any()) } returns EventResult.Success(listOf(
             CalendarEvent(
                 id = "event-1", userId = "user-1", title = "Project review",
@@ -92,6 +92,6 @@ class HistoryScreenTest {
         composeTestRule.onNodeWithText("NEW").assertIsDisplayed()
         val undo = composeTestRule.onNodeWithText("Undo").assertHasClickAction()
         val bounds = undo.getUnclippedBoundsInRoot()
-        assert(bounds.bottom - bounds.top >= 44.dp)
+        assert(bounds.bottom - bounds.top >= 48.dp)
     }
 }

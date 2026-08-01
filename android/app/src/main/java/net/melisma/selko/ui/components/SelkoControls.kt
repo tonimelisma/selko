@@ -6,11 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,18 +49,21 @@ import androidx.compose.ui.unit.dp
 import net.melisma.selko.ui.theme.SelkoTheme
 
 object SelkoControlMetrics {
-    val minimumTarget = 44.dp
+    val minimumTarget = 48.dp
     val inputHeight = 46.dp
     val horizontalPadding = 16.dp
+    val compactHorizontalPadding = 10.dp
     val contentGap = 8.dp
     val icon = 20.dp
+    val reviewMaxWidth = 720.dp
+    val screenGutter = 16.dp
     val navigationRadius = 12.dp
     val controlRadius = 14.dp
     val cardRadius = 20.dp
     val pillRadius = 999.dp
 }
 
-enum class SelkoActionRole { Primary, Secondary, Success, DestructiveOutline, Tertiary }
+enum class SelkoActionRole { Primary, Secondary, Success, DestructiveFilled, DestructiveOutline, Tertiary }
 
 @Composable
 fun SelkoButton(
@@ -68,21 +73,27 @@ fun SelkoButton(
     role: SelkoActionRole = SelkoActionRole.Primary,
     enabled: Boolean = true,
     loading: Boolean = false,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    accessibleLabel: String? = null
 ) {
     val shape = RoundedCornerShape(SelkoControlMetrics.controlRadius)
     val content: @Composable () -> Unit = {
         if (loading) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-        } else {
-            icon?.let {
-                Icon(it, contentDescription = null, modifier = Modifier.size(SelkoControlMetrics.icon))
-                Spacer(Modifier.width(SelkoControlMetrics.contentGap))
-            }
-            Text(text, style = MaterialTheme.typography.labelLarge)
         }
+        icon?.let {
+            Icon(it, contentDescription = null, modifier = Modifier.size(SelkoControlMetrics.icon))
+            Spacer(Modifier.width(SelkoControlMetrics.contentGap))
+        }
+        Text(text, style = MaterialTheme.typography.labelLarge)
     }
-    val sized = modifier.defaultMinSize(minHeight = SelkoControlMetrics.minimumTarget)
+    val sized = modifier
+        .defaultMinSize(minHeight = SelkoControlMetrics.minimumTarget)
+        .then(
+            if (accessibleLabel == null) Modifier else Modifier.semantics {
+                contentDescription = accessibleLabel
+            }
+        )
     val active = enabled && !loading
     when (role) {
         SelkoActionRole.Primary -> Button(
@@ -112,6 +123,15 @@ fun SelkoButton(
             contentPadding = PaddingValues(horizontal = SelkoControlMetrics.horizontalPadding),
             content = { content() }
         )
+        SelkoActionRole.DestructiveFilled -> Button(
+            onClick = onClick, modifier = sized, enabled = active, shape = shape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError
+            ),
+            contentPadding = PaddingValues(horizontal = SelkoControlMetrics.horizontalPadding),
+            content = { content() }
+        )
         SelkoActionRole.DestructiveOutline -> OutlinedButton(
             onClick = onClick, modifier = sized, enabled = active, shape = shape,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -125,6 +145,64 @@ fun SelkoButton(
             contentPadding = PaddingValues(horizontal = SelkoControlMetrics.horizontalPadding),
             content = { content() }
         )
+    }
+}
+
+@Immutable
+data class SelkoPeerAction(
+    val text: String,
+    val onClick: () -> Unit,
+    val role: SelkoActionRole,
+    val icon: ImageVector? = null,
+    val accessibleLabel: String? = null,
+    val enabled: Boolean = true,
+    val loading: Boolean = false
+)
+
+@Composable
+fun SelkoPeerActionGroup(
+    actions: List<SelkoPeerAction>,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val stacked = maxWidth < 520.dp
+        if (stacked) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(SelkoControlMetrics.contentGap)
+            ) {
+                actions.forEach { action ->
+                    SelkoButton(
+                        text = action.text,
+                        onClick = action.onClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        role = action.role,
+                        enabled = action.enabled,
+                        loading = action.loading,
+                        icon = action.icon,
+                        accessibleLabel = action.accessibleLabel
+                    )
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(SelkoControlMetrics.contentGap)
+            ) {
+                actions.forEach { action ->
+                    SelkoButton(
+                        text = action.text,
+                        onClick = action.onClick,
+                        modifier = Modifier.weight(1f),
+                        role = action.role,
+                        enabled = action.enabled,
+                        loading = action.loading,
+                        icon = action.icon,
+                        accessibleLabel = action.accessibleLabel
+                    )
+                }
+            }
+        }
     }
 }
 

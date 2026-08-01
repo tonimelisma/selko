@@ -29,7 +29,7 @@ The design doc contains four turn sections; use them as the reference mocks:
 | 4a | Native History screen |
 | 4b | Native Settings screen |
 | 4c | Mobile web Review (top header + pill tabs, no bottom bar) |
-| 4d | Desktop web Review (left sidebar shell, 2-column card masonry) |
+| 4d | Desktop web Review (left sidebar shell, bounded single-column queue) |
 
 Key identity points:
 
@@ -127,7 +127,7 @@ Button labels: 14 / 700, sentence case.
 | `card` | 20 | Cards, sheets, empty states |
 | `pill` | 999 | State tags and removable chips only |
 
-All action buttons and icon buttons have 44 minimum targets and r14 containers;
+All action buttons and icon buttons have 48 minimum targets and r14 containers;
 inputs are 46 high; date and avatar tiles use r12, inline sender menus use r14,
 and navigation rows use r12.
 
@@ -147,11 +147,13 @@ Build these to match section 05 of mock 3a:
 
 1. **Buttons** — Primary (coral fill, ink/on-primary label, brand shadow),
    Secondary (`subtle` fill, ink label), destructive outline (transparent,
-   1.5px berry border and label), tertiary text, and Accept (success fill with
-   dark-ink content + check icon). Every icon-only target is 44×44.
+   1.5px berry border and label) for standalone utilities, tertiary text, and
+   filled peer decisions: Accept (success + check), Edit (neutral + pencil),
+   and Reject (error + X). Peer decisions are equal-width, visibly labeled,
+   and at least 48×48; they stack when labels do not fit.
 2. **Inputs** — 46 h, r14, `paper` bg + 1.5px `border` at rest; focus = white bg,
    1.5px coral border, 3px ring `rgba(232,111,82,0.14)`.
-3. **Labeled switch** — minimum 44-high hit container; on = coral track with
+3. **Labeled switch** — minimum 48-high hit container; on = coral track with
    position/check/shape in addition to color, off = `border-strong` track.
    Native platforms use their platform switch tinted coral.
 4. **State tags** — NEW / CHANGED / neutral pill tags (10–11 / 700, pill), coral
@@ -164,7 +166,8 @@ Build these to match section 05 of mock 3a:
    bg deterministically picked from [coral, amber, success] by sender-name hash.
    User account avatar is a coral **circle** with initials.
 8. **Event card row** — date chip · (badge line) · title · meta line ·
-   action row [Accept (flex) · edit 44sq · reject 44sq]. CHANGED rows show
+   action row [Accept · Edit · Reject] as equal-width filled peer controls.
+   CHANGED rows show
    `old (strikethrough, disabled color) → new (600 weight, ink)`.
 9. **Sender group card** — surface card r20; header row = avatar tile,
    name (15/700) + count line (12, faint), chevron icon-button; event rows
@@ -175,7 +178,7 @@ Build these to match section 05 of mock 3a:
     "All caught up" (18/800), one-line explainer (14, muted).
 11. **Accept-all bar** — full-width coral CTA (46–48 h, r14–15, brand shadow)
     plus 48sq `subtle` "⋯" overflow button (native/mobile web); on desktop it
-    lives in the page header (44 h, r14).
+    lives in the page header (48 h, r14).
 
 ---
 
@@ -185,7 +188,7 @@ Build these to match section 05 of mock 3a:
 |---------|-------|
 | Native iOS/Android | Bottom tab bar, 3 tabs: Review · History · Settings. Active = coral icon+label, inactive = `faint`. White/`surface` bar, top hairline `border`. Screen header = large title (26/800) + subtitle (13.5, muted) + 40sq coral circle avatar right. **Logout moves to the foot of Settings** (ghost destructive button) — remove it from any nav/header if present. |
 | Mobile web (<1024px) | Top header: logo mark + wordmark left, coral avatar circle right. Below: navigation rows/tabs (Review / History / Settings), active = subtle surface with coral icon and ink label; hairline under the row. No bottom bar. |
-| Desktop web (≥1024px) | Fixed left sidebar 236px, `surface` bg, right hairline: logo+wordmark top; nav list (icon + label, r12 rows, active = `subtle` bg + `primary-deep` text); footer pinned bottom = avatar, name/email, square logout icon-button. Content area on `paper`, 26–30px padding, max-width ~1120 with 2-column masonry for sender cards. |
+| Desktop web (≥1024px) | Fixed left sidebar 236px, `surface` bg, right hairline: logo+wordmark top; nav list (icon + label, r12 rows, active = `subtle` bg + `primary-deep` text); footer pinned bottom = avatar, name/email, square logout icon-button. Content area on `paper`, 26–30px padding, max-width ~1120; Review itself uses a centered 720px single-column reading axis. |
 
 Tab icons (stroke style, 1.6–1.8 weight): Review = 3-line list; History =
 clock; Settings = two sliders. Reproduce the inline SVGs from the design doc.
@@ -273,14 +276,14 @@ Restyle in place — do not rename data props:
 
 | File | Changes |
 |------|---------|
-| `EventCard.svelte` | New row anatomy: date chip, NEW/CHANGED badge, title 15/700, meta 12.5 faint, action row (Accept success button + ✎ + ✕ icon buttons). CHANGED diff line with strikethrough → new. |
+| `EventCard.svelte` | New row anatomy: date chip, NEW/CHANGED badge, title 15/700, meta 12.5 faint, equal-width labeled peer action row (Accept success + Edit neutral + Reject error). CHANGED diff line with strikethrough → new. |
 | `SenderHeader.svelte` | Avatar tile (initials + hash color), name + count, chevron icon-button; expanded inline menu = auto-accept toggle + "Ignore this sender". |
 | `SenderRulesPanel.svelte` | Removable chips (§2.6.5) under "Auto-accepted senders" / "Auto-ignored senders" overline labels. |
 | `StatusIndicator.svelte` | Plain semantic icon and text; never button-like. |
 | `EmptyState.svelte` | §2.6.10 anatomy. |
 | `PageHeader.svelte` | Desktop: H1 30/800 + subtitle; actions slot right (Accept all + ⋯). |
 | `ConfirmModal.svelte`, `ErrorAlert.svelte`, `LoadingSpinner.svelte`, `IntegrationStatus.svelte` | Recolor to theme tokens only. |
-| `routes/app/+page.svelte` (Review) | Desktop: 2-col `columns-2` masonry of sender cards + header CTA. Mobile: single column + full-width Accept-all bar at list end. |
+| `routes/app/+page.svelte` (Review) | Centered 720px single-column sender queue at every width + header CTA. Mobile: same single column + full-width Accept-all bar at list end. |
 | `routes/app/history/+page.svelte` | Semantic icon + plain status text, one NEW/CHANGED state tag, title, quiet source/time metadata, and always-visible tertiary **Undo**, **Retry**, or **Reprocess** actions. Static statuses never use capsules. |
 | `routes/app/settings/+page.svelte` | Connected-account cards use a green icon plus plain **Connected** text and a destructive-outline Disconnect action. Email folders use labeled Included/Excluded switches, sender rules use removable chips, the account email is read-only, and Log out appears only on mobile because the desktop sidebar owns it. |
 | `routes/login`, `routes/register` | Recolor to tokens; coral primary CTA; paper bg; centered surface card r20. |

@@ -404,38 +404,45 @@
 		onauthorize={handleAuthorize}
 	/>
 {:else if isLoadingEvents}
-	<div class="space-y-4" aria-busy="true" aria-live="polite">
-		<span class="sr-only">{$_('common.loadingEvents')}</span>
-		<div class="h-8 bg-base-200 rounded animate-pulse w-48"></div>
-		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
-		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
-		<div class="h-24 bg-base-200 rounded animate-pulse"></div>
+	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]">
+		<div class="space-y-4" aria-busy="true" aria-live="polite">
+			<span class="sr-only">{$_('common.loadingEvents')}</span>
+			<div class="h-8 bg-base-200 rounded animate-pulse w-48"></div>
+			<div class="h-24 bg-base-200 rounded animate-pulse"></div>
+			<div class="h-24 bg-base-200 rounded animate-pulse"></div>
+			<div class="h-24 bg-base-200 rounded animate-pulse"></div>
+		</div>
 	</div>
 {:else if error}
-	<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
-	<ErrorAlert message={error} onretry={loadEvents} />
+	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]">
+		<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
+		<ErrorAlert message={error} onretry={loadEvents} />
+	</div>
 {:else if events.length === 0}
-	<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
-	<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
+	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]">
+		<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
+		<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
+	</div>
 {:else}
-	<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
-	<PageHeader title={$_('nav.review')} subtitle={$_('home.subtitle')}>
-		{#snippet children()}
-			<button class="btn btn-primary rounded-[14px] shadow-brand" disabled={!calendarConnected} onclick={() => (acceptAllConfirmOpen = true)}>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
-				{$_('home.acceptAll')}
-			</button>
-		{/snippet}
-	</PageHeader>
-	<InlineActionError message={bulkError} ondismiss={() => (bulkError = '')} />
-	<div class="space-y-10">
+	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]">
+		<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
+		<PageHeader title={$_('nav.review')} subtitle={$_('home.subtitle')}>
+			{#snippet children()}
+				<button class="btn btn-primary rounded-[14px] shadow-brand" disabled={!calendarConnected} onclick={() => (acceptAllConfirmOpen = true)}>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+					{$_('home.acceptAll')}
+				</button>
+			{/snippet}
+		</PageHeader>
+		<InlineActionError message={bulkError} ondismiss={() => (bulkError = '')} />
+		<div class="space-y-10">
 		{#if newEvents.length > 0}
 			<section>
 				<div class="mb-4 flex items-end justify-between gap-3">
 					<div><h2 class="text-xl font-extrabold">{$_('home.newSection')}</h2><p class="mt-1 text-sm text-base-content/60">{$_('home.newSectionDescription')}</p></div>
 					<span class="badge badge-new badge-sm">{newEvents.length}</span>
 				</div>
-				<div class="grid gap-5 lg:grid-cols-2">
+				<div class="review-sender-groups grid gap-5">
 					{#each [...groupedNew.entries()] as [senderKey, senderGroup] (senderKey)}
 						<div class="warm-card overflow-hidden">
 							<SenderHeader
@@ -473,7 +480,7 @@
 					<div><h2 class="text-xl font-extrabold">{$_('home.changesSection')}</h2><p class="mt-1 text-sm text-base-content/60">{$_('home.changesSectionDescription')}</p></div>
 					<span class="badge badge-changed badge-sm">{changeEvents.length}</span>
 				</div>
-				<div class="grid gap-5 lg:grid-cols-2">
+				<div class="review-sender-groups grid gap-5">
 					{#each [...groupedChanges.entries()] as [senderKey, senderGroup] (senderKey)}
 						<div class="warm-card overflow-hidden">
 							<SenderHeader
@@ -513,6 +520,7 @@
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
 				{$_('home.acceptAll')}
 			</button>
+		</div>
 		</div>
 	</div>
 	<ConfirmModal

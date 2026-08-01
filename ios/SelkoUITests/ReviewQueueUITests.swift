@@ -75,4 +75,41 @@ final class ReviewQueueUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Review"].waitForExistence(timeout: 5) ||
                        app.navigationBars["Review"].waitForExistence(timeout: 5))
     }
+
+    @MainActor
+    func testReviewCardExposesLabeledEventActionsWhenPopulated() throws {
+        app.launch()
+
+        if app.textFields["emailField"].waitForExistence(timeout: 3) {
+            app.textFields["emailField"].tap()
+            app.textFields["emailField"].typeText("test@selko.local")
+            app.secureTextFields["passwordField"].tap()
+            app.secureTextFields["passwordField"].typeText("testpass123")
+            app.buttons["signInButton"].tap()
+        }
+
+        guard app.tabBars.firstMatch.waitForExistence(timeout: 5) else {
+            return
+        }
+
+        let eventCard = app.buttons["eventCard"].firstMatch
+        guard eventCard.waitForExistence(timeout: 10) else {
+            return
+        }
+
+        let title = eventCard.label
+        let accept = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Accept ")).firstMatch
+        let edit = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Edit ")).firstMatch
+        let reject = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reject ")).firstMatch
+
+        XCTAssertTrue(accept.exists)
+        XCTAssertTrue(edit.exists)
+        XCTAssertTrue(reject.exists)
+        XCTAssertTrue(accept.label.contains(title))
+        XCTAssertTrue(edit.label.contains(title))
+        XCTAssertTrue(reject.label.contains(title))
+        XCTAssertGreaterThanOrEqual(accept.frame.height, 48)
+        XCTAssertGreaterThanOrEqual(edit.frame.height, 48)
+        XCTAssertGreaterThanOrEqual(reject.frame.height, 48)
+    }
 }

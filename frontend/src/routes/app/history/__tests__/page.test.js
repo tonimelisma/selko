@@ -177,6 +177,48 @@ describe('History Page', () => {
 		});
 	});
 
+	it('keeps observing a retried sync through the worker backoff window', async () => {
+		vi.useFakeTimers();
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const now = new Date();
+		mockFetchActivityEvents.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Slow Retry',
+					status: 'sync_failed',
+					updated_at: now.toISOString(),
+					event_sources: []
+				}
+			],
+			count: 1,
+			error: null
+		});
+		mockSyncEventToCalendar.mockResolvedValue({
+			data: { event_id: 'evt-1', status: 'approved' },
+			error: null
+		});
+		mockGetEvent.mockImplementation(async () => ({
+			data: {
+				id: 'evt-1',
+				status: mockGetEvent.mock.calls.length > 85 ? 'synced' : 'syncing'
+			},
+			error: null
+		}));
+
+		render(HistoryPage);
+		await vi.waitFor(() => expect(screen.getByText('Slow Retry')).toBeInTheDocument());
+		await user.click(screen.getByText('Retry'));
+		await vi.waitFor(() => expect(mockSyncEventToCalendar).toHaveBeenCalledWith('evt-1'));
+
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(screen.queryByText(/Retry timed out|taking longer/)).not.toBeInTheDocument();
+		expect(screen.queryByText('Retry')).not.toBeInTheDocument();
+
+		await vi.advanceTimersByTimeAsync(6_000);
+		await vi.waitFor(() => expect(screen.getByText('Undo')).toBeInTheDocument());
+	});
+
 	it('restores Retry when the worker-owned retry fails again', async () => {
 		vi.useFakeTimers();
 		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });

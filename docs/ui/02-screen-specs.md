@@ -37,7 +37,11 @@ After a calendar match, the LLM proposes a structured changeset; code gates equi
 
 ### Desktop Layout (lg:)
 
-Full-width list grouped by sender. Page container: `max-w-7xl mx-auto`.
+The Review reading axis is one centered column capped at 720px with 16px
+minimum side gutters. New and Changes remain separate vertical sections; sender
+groups never form a responsive grid or masonry layout. The surrounding shell
+may remain wide, but the header, recovery state, section controls, sender
+groups, empty state, and Accept-all action share the bounded Review axis.
 
 ```
 ┌─ Sender Group ──────────────────────────────────────────────────┐
@@ -67,7 +71,7 @@ Full-width list grouped by sender. Page container: `max-w-7xl mx-auto`.
 ```
 
 The three-dot menu [⋯] on the sender header contains:
-- "Approve all" — approves all events from this sender
+- "Accept all" — accepts all events from this sender
 - "Reject all" — rejects all events from this sender
 - "Ignore sender" — (disabled, future feature)
 
@@ -75,7 +79,10 @@ Each event card shows:
 - Title
 - Date/time (or "All Day")
 - Location (if any)
-- Action buttons: Accept (green/success), Edit (outlined primary), Reject (outlined red/error)
+- Action buttons are one filled peer group with three equal-width controls:
+  Accept (success fill and check), Edit (neutral fill and pencil), and Reject
+  (error fill and X). Every action has a visible icon-plus-text label and a
+  minimum 48px target.
 
 Events are grouped by sender only (no email sub-grouping). All events from a sender appear directly under that sender's header.
 
@@ -89,7 +96,8 @@ Same sender-grouped structure as stacked cards:
 
 - **Sender**: section header with sender name, email, and three-dot menu (right-aligned)
 - **Events**: full-width cards stacked below each sender
-- Action buttons: text labels with icons — Accept (green), Edit (outlined), Reject (outlined red)
+- Action buttons: the same labeled, equal-width filled peer group. At narrow
+  widths or large text sizes the group stacks vertically without truncation.
 
 ### Integration and Recovery States
 
@@ -114,7 +122,7 @@ Returning users see a compact recovery card above the queue:
 - No active Gmail or Outlook connection: explain that new ingestion is paused;
   preserve existing suggestions and History.
 - Google Calendar inactive: keep Edit, Reject, sender-ignore, and navigation
-  enabled; disable Accept, Approve all, approval swipe actions, and
+  enabled; disable Accept, Accept all, acceptance swipe actions, and
   auto-approve until reconnection.
 - One email provider inactive while another is active: show a nonblocking
   attention card.
@@ -158,10 +166,10 @@ if (!emailOk) pauseNewIngestion()
 if (!calendarOk) disableApprovalActions()
 
 // Actions (no confirmation, immediate)
-await updateEventStatus(eventId, 'approved')   // Approve — event animates out
+await updateEventStatus(eventId, 'approved')   // Accept — event animates out
 await updateEventStatus(eventId, 'rejected')   // Reject — event animates out
 
-// Group approve — loop through all events in the group
+// Group accept — loop through all events in the group
 for (const event of groupEvents) {
   await updateEventStatus(event.id, 'approved')
 }
@@ -170,7 +178,7 @@ for (const event of groupEvents) {
 ### Key Interactions
 
 - **Accept (individual)**: calls `updateEventStatus(id, 'approved')`, triggers calendar sync. Event animates out of the list. No toast, no modal.
-- **Approve all (sender menu)**: approves all events from that sender. Entire group animates out.
+- **Accept all (sender menu)**: accepts all events from that sender. Entire group animates out.
 - **Reject all (sender menu)**: rejects all events from that sender. Entire group animates out.
 - **Reject**: calls `updateEventStatus(id, 'rejected')`. Event animates out. No confirmation modal.
 - **Edit**: navigates to `/app/events/[id]`.
@@ -189,7 +197,7 @@ Side-by-side review screen for a single event. The core human-in-the-loop interf
 Navigation (sticky top navbar) stays visible — this is a drill-down within Review, not a modal.
 
 ### Primary Actions
-- Approve event
+- Accept event
 - Reject event
 
 ### Secondary Actions
@@ -201,7 +209,7 @@ Side-by-side: `grid grid-cols-5 gap-6`.
 
 ```
 ┌─ Page Header ───────────────────────────────────────────────────┐
-│ [← Back to Queue]  Edit Event                [Reject] [Approve] │
+│ [← Back to Queue]  Edit Event                 [Reject] [Accept] │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─ Left Panel (col-span-2) ────────┐  ┌─ Right Panel (col-span-3) ────────┐
@@ -244,7 +252,7 @@ Stacked. Source email on top (collapsible, starts expanded). Form below. Action 
 
 ```
 ┌─ Header (sticky) ─────────────────────────────────┐
-│ [← Back]  Edit Event               [Reject] [Approve] │
+│ [← Back]  Edit Event                [Reject] [Accept] │
 └─────────────────────────────────────────────────────┘
 
 ┌─ Source (collapsible, starts expanded) ────────────┐
@@ -299,7 +307,7 @@ Form-first. Source email behind a "View Source" collapse at top, closed by defau
 └─────────────────────────────────────────────────────┘
 
 ┌─ Fixed Bottom Bar ─────────────────────────────────┐
-│         [Reject]                  [Approve]          │
+│         [Reject]                   [Accept]          │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -342,7 +350,7 @@ const { data: attachments } = await fetchAttachments(sourceEmailId)
 // Auto-save edits (on blur or debounced)
 await updateEvent(eventId, { title, start_datetime, end_datetime, all_day, location, description })
 
-// Approve — event disappears from queue
+// Accept — event disappears from queue
 await updateEventStatus(eventId, 'approved')
 await syncEventToCalendar(eventId)
 // Navigate back to Review Queue
@@ -355,7 +363,7 @@ await updateEventStatus(eventId, 'rejected')
 ### Key Interactions
 
 - **Edit fields**: edits auto-save on blur or with debouncing. No "Save" button. The event stays in the queue with the user's changes until approved/rejected.
-- **Approve**: validates required fields (title, date), saves any pending edits, sets status to `approved`, triggers `syncEventToCalendar()`, navigates back to Review Queue. Event is gone from queue.
+- **Accept**: validates required fields (title, date), saves any pending edits, sets status to `approved`, triggers `syncEventToCalendar()`, navigates back to Review Queue. Event is gone from queue.
 - **Reject**: sets status to `rejected`, navigates back to Review Queue. No confirmation modal. Event is gone from queue.
 - **Back button**: navigates back to Review Queue. Edits are already saved.
 - **All-day checkbox**: when checked, Start Time and End Time fields are hidden (not just disabled — hidden). Standard calendar app pattern.

@@ -61,7 +61,7 @@ describe('SenderHeader', () => {
 			props: { sender: 'John Doe', senderEmail: 'john@example.com', eventCount: 3 }
 		});
 
-		expect(screen.queryByText('Approve all')).not.toBeInTheDocument();
+		 expect(screen.queryByText('Accept all')).not.toBeInTheDocument();
 		expect(screen.queryByText('Ignore sender')).not.toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /actions for/i })).toHaveAttribute(
 			'aria-expanded',
@@ -76,7 +76,7 @@ describe('SenderHeader', () => {
 		});
 
 		await openMenu(user);
-		expect(screen.getByText('Approve all')).toBeInTheDocument();
+		 expect(screen.getByText('Accept all')).toBeInTheDocument();
 		expect(screen.getByText('Reject all')).toBeInTheDocument();
 	});
 
@@ -87,7 +87,7 @@ describe('SenderHeader', () => {
 		});
 
 		await openMenu(user);
-		expect(screen.queryByText('Approve all')).not.toBeInTheDocument();
+		 expect(screen.queryByText('Accept all')).not.toBeInTheDocument();
 		expect(screen.queryByText('Reject all')).not.toBeInTheDocument();
 	});
 
@@ -150,7 +150,7 @@ describe('SenderHeader', () => {
 		});
 
 		await openMenu(user);
-		await user.click(screen.getByText('Approve all'));
+		 await user.click(screen.getByText('Accept all'));
 		expect(mockApproveAll).toHaveBeenCalled();
 	});
 

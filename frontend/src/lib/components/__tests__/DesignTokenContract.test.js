@@ -28,6 +28,13 @@ describe('canonical design token contract', () => {
 		expect(css).toContain(`--control-height: ${tokens.control.minimumTarget}px`);
 		expect(css).toContain(`--input-height: ${tokens.control.inputHeight}px`);
 		expect(css).toContain(`--control-radius: ${tokens.shape.control}px`);
+		expect(css).toContain(`--control-content-gap: ${tokens.control.contentGap}px`);
+		expect(css).toContain(`--review-max-width: ${tokens.layout.reviewMaxWidth}px`);
+		expect(css).toContain(`--screen-gutter: ${tokens.layout.screenGutter}px`);
+		expect(css).toContain(`--compact-horizontal-padding: ${tokens.control.compactHorizontalPadding}px`);
+		expect(css).toContain('.peer-action-group');
+		expect(css).toContain('@media (max-width: 520px)');
+		expect(css).toContain('grid-template-columns: minmax(0, 1fr)');
 	});
 
 	it.each([

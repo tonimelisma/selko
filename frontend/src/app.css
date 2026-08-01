@@ -110,9 +110,13 @@ body {
 	--color-faint: #786e65;
 	--color-success-text: #3f7d5f;
 	--color-warning-text: #9a5c1d;
-	--control-height: 44px;
+	--control-height: 48px;
 	--input-height: 46px;
 	--control-radius: 14px;
+	--control-content-gap: 8px;
+	--review-max-width: 720px;
+	--screen-gutter: 16px;
+	--compact-horizontal-padding: 10px;
 }
 
 [data-theme='selko-dark'] {
@@ -134,7 +138,7 @@ body {
 /* One interaction grammar: all controls share target, radius, padding and focus. */
 :where(.btn) {
 	min-height: var(--control-height) !important;
-	height: var(--control-height) !important;
+	height: auto !important;
 	padding-inline: 16px;
 	border-radius: var(--control-radius) !important;
 	gap: 8px;
@@ -150,7 +154,61 @@ body {
 .btn.btn-square, .btn.btn-circle {
 	width: var(--control-height) !important;
 	min-width: var(--control-height) !important;
+	height: var(--control-height) !important;
 	padding-inline: 0;
+}
+
+/* Peer decision groups share their treatment, width, and constrained reflow. */
+.peer-action-group {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--control-content-gap, 8px);
+	container-type: inline-size;
+}
+
+.peer-action-group[data-peer-count='2'] {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.peer-action-group[data-peer-count='1'] {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.peer-action-group > :is(.btn, a.btn) {
+	width: 100%;
+	min-width: 0;
+	min-height: var(--control-height);
+	height: auto !important;
+	justify-content: center;
+	white-space: normal;
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+
+.peer-action-secondary {
+	border-color: var(--color-base-300) !important;
+	background: var(--color-base-200) !important;
+	color: var(--color-base-content) !important;
+}
+
+.peer-action-destructive {
+	border-color: var(--color-error) !important;
+	background: var(--color-error) !important;
+	color: var(--color-error-content) !important;
+}
+
+@container (max-width: 520px) {
+	.peer-action-group,
+	.peer-action-group[data-peer-count='2'] {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (max-width: 520px) {
+	.peer-action-group,
+	.peer-action-group[data-peer-count='2'] {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 :where(.input, .select, .textarea) {

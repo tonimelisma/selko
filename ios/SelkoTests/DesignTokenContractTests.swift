@@ -19,6 +19,7 @@ struct DesignTokenContractTests {
     func geometryMatchesCanonicalManifest() throws {
         let root = try manifest()
         let shape = try #require(root["shape"] as? [String: NSNumber])
+        let layout = try #require(root["layout"] as? [String: NSNumber])
         let control = try #require(root["control"] as? [String: NSNumber])
 
         #expect(SelkoShape.navigationRadius == CGFloat(truncating: shape["navigation"]!))
@@ -27,8 +28,11 @@ struct DesignTokenContractTests {
         #expect(SelkoMetrics.minimumTarget == CGFloat(truncating: control["minimumTarget"]!))
         #expect(SelkoMetrics.inputHeight == CGFloat(truncating: control["inputHeight"]!))
         #expect(SelkoMetrics.horizontalPadding == CGFloat(truncating: control["horizontalPadding"]!))
+        #expect(SelkoMetrics.compactHorizontalPadding == CGFloat(truncating: control["compactHorizontalPadding"]!))
         #expect(SelkoMetrics.contentGap == CGFloat(truncating: control["contentGap"]!))
         #expect(SelkoMetrics.iconSize == CGFloat(truncating: control["icon"]!))
+        #expect(SelkoMetrics.reviewMaxWidth == CGFloat(truncating: layout["reviewMaxWidth"]!))
+        #expect(SelkoMetrics.screenGutter == CGFloat(truncating: layout["screenGutter"]!))
     }
 
     @Test
@@ -44,6 +48,7 @@ struct DesignTokenContractTests {
             ("SelkoWarning", "warning"),
             ("SelkoWarningText", "warningText"),
             ("SelkoError", "error"),
+            ("SelkoOnError", "onError"),
             ("SelkoMuted", "muted"),
             ("SelkoFaint", "faint"),
             ("SelkoBadgeNewBg", "newBackground"),

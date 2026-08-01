@@ -7,11 +7,13 @@ import SwiftUI
 
 struct ReviewQueueView: View {
     let email: String
+    let onNavigateToEvent: (UUID) -> Void
     @State private var viewModel = ReviewQueueViewModel()
     @State private var showAcceptAllConfirm = false
 
-    init(email: String = "") {
+    init(email: String = "", onNavigateToEvent: @escaping (UUID) -> Void = { _ in }) {
         self.email = email
+        self.onNavigateToEvent = onNavigateToEvent
     }
 
     var body: some View {
@@ -35,7 +37,7 @@ struct ReviewQueueView: View {
                             emptyState
                                 .frame(minHeight: 320)
                         }
-                        .padding(16)
+                        .padding(SelkoMetrics.screenGutter)
                     }
                 } else {
                     eventList
@@ -43,6 +45,8 @@ struct ReviewQueueView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: SelkoMetrics.reviewMaxWidth)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.selkoPaper.ignoresSafeArea())
         .navigationTitle("Review")
         .navigationBarTitleDisplayMode(.inline)
@@ -131,7 +135,7 @@ struct ReviewQueueView: View {
                     ? ""
                     : "Reconnect Google Calendar to accept suggestions."
             )
-            .padding(.horizontal, 16)
+            .padding(.horizontal, SelkoMetrics.screenGutter)
             .padding(.vertical, 8)
             .background(Color.selkoPaper.opacity(0.96))
         }
@@ -147,6 +151,7 @@ struct ReviewQueueView: View {
         } message: {
             Text("New events are added to your calendar and changes are applied.")
         }
+        .frame(maxWidth: SelkoMetrics.reviewMaxWidth)
         .accessibilityIdentifier("eventList")
     }
 
@@ -177,26 +182,23 @@ struct ReviewQueueView: View {
             canApprove: viewModel.calendarConnected
         )
         ForEach(group.events) { event in
-            NavigationLink(value: event.id) {
-                EventCardView(
-                    event: event,
-                    isProcessing: viewModel.processingEventIds.contains(event.id),
-                    canApprove: viewModel.calendarConnected,
-                    onApprove: { Task { await viewModel.approveEvent(event) } },
-                    onEdit: { /* Navigation handled by NavigationLink */ },
-                    onReject: { Task { await viewModel.rejectEvent(event) } }
-                )
-            }
-            .disabled(viewModel.processingEventIds.contains(event.id))
+            EventCardView(
+                event: event,
+                isProcessing: viewModel.processingEventIds.contains(event.id),
+                canApprove: viewModel.calendarConnected,
+                onApprove: { Task { await viewModel.approveEvent(event) } },
+                onEdit: { onNavigateToEvent(event.id) },
+                onReject: { Task { await viewModel.rejectEvent(event) } }
+            )
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if viewModel.calendarConnected {
                     Button {
                         Task { await viewModel.approveEvent(event) }
                     } label: {
-                        Label("Approve", systemImage: "checkmark")
+                        Label("Accept", systemImage: "checkmark")
                     }
                     .tint(.selkoSuccess)
-                    .accessibilityLabel("Approve event")
+                    .accessibilityLabel("Accept \(event.title)")
                 }
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {

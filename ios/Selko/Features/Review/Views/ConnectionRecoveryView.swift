@@ -76,13 +76,15 @@ struct ConnectionRecoveryView: View {
                     }
                 }
 
-                ForEach(Array(recoveryProviders.enumerated()), id: \.element.rawValue) { index, provider in
-                    Button(buttonLabel(for: provider)) {
-                        Task { await openAuth(for: provider) }
+                SelkoPeerActionGroup {
+                    ForEach(recoveryProviders, id: \.rawValue) { provider in
+                        Button(buttonLabel(for: provider)) {
+                            Task { await openAuth(for: provider) }
+                        }
+                        .buttonStyle(.selko(.primary))
+                        .frame(maxWidth: .infinity)
+                        .disabled(authorizer.connectingProvider != nil)
                     }
-                    .buttonStyle(.selko(index == 0 ? .primary : .secondary))
-                    .frame(maxWidth: .infinity)
-                    .disabled(authorizer.connectingProvider != nil)
                 }
 
                 Text("You can also manage connections in Settings.")

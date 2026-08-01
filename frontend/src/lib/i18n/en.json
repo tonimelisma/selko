@@ -219,7 +219,7 @@
 	"senderActions": {
 		"actionsFor": "Actions for {sender}",
 		"bulkActions": "Bulk actions",
-		"approveAll": "Approve all",
+		"approveAll": "Accept all",
 		"rejectAll": "Reject all",
 		"autoApproveSender": "Auto-approve sender",
 		"ignoreSender": "Ignore sender"

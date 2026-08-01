@@ -123,29 +123,33 @@
 					<div class="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
 					{#if integration}
 						<StatusBadge status={integration.status} type="integration" />
-						{#if !setupMode}
-							<button
-								class="btn btn-outline btn-error"
-								disabled={connectingKey !== null}
-								onclick={() => ondisconnect?.(integration.id)}
-							>
-								{$_('integrations.disconnect')}
-							</button>
-						{/if}
-						{#if integration.status !== 'active'}
-							<button
-								class="btn btn-primary shadow-brand"
-								disabled={connectingKey !== null}
-								aria-busy={isConnecting}
-								onclick={() => authorizeProvider(service.key)}
-							>
-								{#if isConnecting}
-									<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-									{$_('integrations.connecting')}
-								{:else}
-									{$_('integrations.reconnect')}
+						{#if !setupMode || integration.status !== 'active'}
+							<div class="peer-action-group min-w-56" data-peer-count={!setupMode && integration.status !== 'active' ? '2' : '1'}>
+								{#if !setupMode}
+									<button
+										class="btn peer-action peer-action-destructive"
+										disabled={connectingKey !== null}
+										onclick={() => ondisconnect?.(integration.id)}
+									>
+										{$_('integrations.disconnect')}
+									</button>
 								{/if}
-							</button>
+								{#if integration.status !== 'active'}
+									<button
+										class="btn btn-primary peer-action shadow-brand"
+										disabled={connectingKey !== null}
+										aria-busy={isConnecting}
+										onclick={() => authorizeProvider(service.key)}
+									>
+										{#if isConnecting}
+											<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+											{$_('integrations.connecting')}
+										{:else}
+											{$_('integrations.reconnect')}
+										{/if}
+									</button>
+								{/if}
+							</div>
 						{/if}
 					{:else}
 						<StatusBadge status="not_connected" type="integration" />

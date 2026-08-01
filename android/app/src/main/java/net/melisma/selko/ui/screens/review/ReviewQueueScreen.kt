@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -47,6 +48,7 @@ import net.melisma.selko.R
 import net.melisma.selko.ui.components.SelkoScreenHeader
 import net.melisma.selko.ui.components.SelkoActionRole
 import net.melisma.selko.ui.components.SelkoButton
+import net.melisma.selko.ui.components.SelkoControlMetrics
 import net.melisma.selko.ui.components.SelkoIconButton
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.koin.androidx.compose.koinViewModel
@@ -85,10 +87,16 @@ fun ReviewQueueScreen(
                     onRefresh = { viewModel.refresh() },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    LazyColumn(
+                    Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
+                        contentAlignment = Alignment.TopCenter
                     ) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = SelkoControlMetrics.reviewMaxWidth),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
+                        ) {
                         item {
                             SelkoScreenHeader(
                                 title = stringResource(R.string.review_queue_title),
@@ -182,6 +190,7 @@ fun ReviewQueueScreen(
 
                         item {
                             Spacer(modifier = Modifier.height(16.dp))
+                        }
                         }
                     }
                 }

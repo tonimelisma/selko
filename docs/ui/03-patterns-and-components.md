@@ -29,7 +29,8 @@ the accessibility tree.
 ## Page layout and headers
 
 Desktop app content uses a paper background, 26–30px gutters, and a max width
-near 1120px. `PageHeader` provides a 30px/800 Figtree title, a muted subtitle,
+near 1120px. The Review reading axis is a centered 720px maximum with 16px
+minimum side gutters. `PageHeader` provides a 30px/800 Figtree title, a muted subtitle,
 and an optional actions slot. Review places Accept all and overflow actions in
 the header on desktop; mobile places the same actions in a full-width bottom
 bar at the end of the list.
@@ -41,10 +42,12 @@ bar at the end of the list.
 - Primary: coral fill with ink label, brand shadow
   in light mode.
 - Secondary: subtle fill with ink label.
-- Destructive outline: transparent with a berry border and label.
+- Destructive outline: transparent with a berry border and label for standalone
+  destructive utilities.
 - Tertiary: borderless text action with a visible hover/focus surface.
 - Accept: success fill with a check icon.
-- Reject/destructive: rust/error outline or fill as appropriate.
+- Reject/destructive: filled error treatment inside a peer decision group;
+  standalone destructive utilities may remain outlined.
 - Inputs: 46px tall, 14px radius, paper fill and warm border; focus uses coral
   border and a restrained coral ring.
 
@@ -57,7 +60,7 @@ color names.
 State tags are pill-shaped, uppercase, and use the
 Warmth NEW, CHANGED, or neutral palettes. NEW is neutral, never green. Static
 statuses are plain icon-and-text indicators and never capsules. Category chips
-use a dot and label on subtle. Sender chips contain a separate 44px remove
+use a dot and label on subtle. Sender chips contain a separate 48px remove
 affordance. Included/Excluded is always a labeled switch.
 
 All custom controls expose hover, pressed, visible keyboard focus, loading, and
@@ -65,9 +68,21 @@ disabled states. Disabled controls have no brand shadow or action-colored glow.
 
 ### EventCard
 
-An event card has a date chip, state tag, title, faint metadata, and an action
-row: flexible Accept, square edit, and square Reject. Changed events show the
-old value struck through in disabled text and the new value in ink.
+An event card has a date chip, state tag, title, faint metadata, and a peer
+action group: three equal-width filled controls labeled Accept, Edit, and
+Reject with check, pencil, and X icons. The group stacks when labels would not
+fit. Changed events show the old value struck through in disabled text and the
+new value in ink.
+
+### Peer action groups
+
+Adjacent custom choices for the same item use one filled visual family and
+equal-width controls. Review cards use Accept → Edit → Reject; Event Detail
+uses Reject → Accept. Each target is at least 48px high, has a visible label
+and icon, and exposes an event-specific accessible name beginning with that
+visible label. Labels reflow to a full-width vertical stack rather than
+truncating or becoming icon-only controls. Native dialogs, menus, pickers,
+swipe actions, and navigation retain their platform-owned presentation.
 
 ### SenderHeader and sender rules
 
@@ -86,7 +101,7 @@ beside the relevant reconnect control after the redirect.
 
 ### Confirmation and destructive actions
 
-Approve and Reject are immediate and reversible from History. Disconnecting an
+Accept and Reject are immediate and reversible from History. Disconnecting an
 account uses `ConfirmModal`. Log out is a ghost-destructive control at the foot
 of Settings or in the desktop sidebar footer.
 

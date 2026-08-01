@@ -29,7 +29,7 @@
     <string name="review_badge_changed">CHANGED</string>
     <string name="review_dismiss">Dismiss</string>
     <string name="review_actions">Actions</string>
-    <string name="review_approve_all">Approve all</string>
+    <string name="review_approve_all">Accept all</string>
     <string name="review_reject_all">Reject all</string>
     <string name="review_auto_approve_sender">Auto-approve sender</string>
     <string name="review_ignore_sender">Ignore sender</string>

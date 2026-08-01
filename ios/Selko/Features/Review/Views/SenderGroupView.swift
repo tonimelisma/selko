@@ -75,7 +75,7 @@ struct SenderGroupView: View {
                                 .font(SelkoTypography.caption)
                                 .foregroundStyle(Color.selkoMuted)
                             Spacer()
-                            Button("Approve all") {
+                            Button("Accept all") {
                                 withAnimation(.easeInOut(duration: 0.18)) { menuOpen = false }
                                 onApproveAll()
                             }
