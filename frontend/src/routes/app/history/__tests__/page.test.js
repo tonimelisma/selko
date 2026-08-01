@@ -4,10 +4,12 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 
 const mockFetchActivityEvents = vi.fn();
+const mockGetEvent = vi.fn();
 const mockUpdateEventStatus = vi.fn();
 
 vi.mock('$lib/services/events.js', () => ({
 	fetchActivityEvents: (...args) => mockFetchActivityEvents(...args),
+	getEvent: (...args) => mockGetEvent(...args),
 	updateEventStatus: (...args) => mockUpdateEventStatus(...args)
 }));
 
@@ -43,6 +45,7 @@ describe('History Page', () => {
 			error: null
 		});
 		mockUpdateEventStatus.mockResolvedValue({ data: null, error: null });
+		mockGetEvent.mockResolvedValue({ data: { id: 'evt-1', status: 'synced' }, error: null });
 		mockSyncEventToCalendar.mockResolvedValue({ data: null, error: null });
 		mockUndoHistoryEvent.mockResolvedValue({ data: { event_id: 'evt-1', status: 'pending_review' }, error: null });
 	});
@@ -142,7 +145,7 @@ describe('History Page', () => {
 		});
 	});
 
-	it('shows a retried sync as queued instead of prematurely synced', async () => {
+	it('polls a retried sync until the worker reports synced', async () => {
 		const user = userEvent.setup();
 		const now = new Date();
 		mockFetchActivityEvents.mockResolvedValue({
@@ -168,8 +171,47 @@ describe('History Page', () => {
 
 		await waitFor(() => {
 			expect(mockSyncEventToCalendar).toHaveBeenCalledWith('evt-1');
+			expect(mockGetEvent).toHaveBeenCalledWith('evt-1');
 			expect(screen.queryByText('Retry')).not.toBeInTheDocument();
 			expect(screen.getByText('Undo')).toBeInTheDocument();
+		});
+	});
+
+	it('restores Retry when the worker-owned retry fails again', async () => {
+		vi.useFakeTimers();
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const now = new Date();
+		mockFetchActivityEvents.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-1',
+					title: 'Failed Event',
+					status: 'sync_failed',
+					updated_at: now.toISOString(),
+					event_sources: []
+				}
+			],
+			count: 1,
+			error: null
+		});
+		mockSyncEventToCalendar.mockResolvedValue({
+			data: { event_id: 'evt-1', status: 'approved' },
+			error: null
+		});
+		mockGetEvent
+			.mockResolvedValueOnce({ data: { id: 'evt-1', status: 'syncing' }, error: null })
+			.mockResolvedValueOnce({ data: { id: 'evt-1', status: 'sync_failed' }, error: null });
+
+		render(HistoryPage);
+		await user.click(await screen.findByText('Retry'));
+		await vi.waitFor(() => expect(mockGetEvent).toHaveBeenCalledTimes(1));
+		expect(screen.queryByText('Retry')).not.toBeInTheDocument();
+
+		await vi.advanceTimersByTimeAsync(750);
+
+		await vi.waitFor(() => {
+			expect(mockGetEvent).toHaveBeenCalledTimes(2);
+			expect(screen.getByText('Retry')).toBeInTheDocument();
 		});
 	});
 
