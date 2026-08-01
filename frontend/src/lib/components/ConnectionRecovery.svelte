@@ -94,7 +94,7 @@
 				</div>
 			</div>
 			<div class="flex shrink-0 flex-wrap gap-2 sm:justify-end">
-				<div class="peer-action-group" data-peer-count={Math.min(recoveryProviders.length, 3)}>
+				<div class="peer-action-group peer-action-group--intrinsic" data-peer-count={Math.min(recoveryProviders.length, 3)}>
 					{#each recoveryProviders as provider}
 						<button
 							class="btn btn-primary peer-action shadow-brand"

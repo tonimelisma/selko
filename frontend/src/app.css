@@ -166,6 +166,12 @@ body {
 	container-type: inline-size;
 }
 
+/* Recovery actions are an intrinsic flex child; inline-size containment would
+   remove the buttons from its shrink-to-fit measurement. */
+.peer-action-group--intrinsic {
+	container-type: normal;
+}
+
 .peer-action-group[data-peer-count='2'] {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 }

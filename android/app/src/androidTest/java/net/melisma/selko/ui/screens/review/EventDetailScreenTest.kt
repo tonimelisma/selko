@@ -12,7 +12,9 @@ import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
+import net.melisma.selko.data.repository.IntegrationResult
 import net.melisma.selko.ui.theme.SelkoTheme
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -25,6 +27,11 @@ class EventDetailScreenTest {
     private val eventRepository = mockk<EventRepository>(relaxed = true)
     private val integrationRepository = mockk<IntegrationRepository>(relaxed = true)
     private val backendApiClient = mockk<BackendApiClient>(relaxed = true)
+
+    @Before
+    fun setUp() {
+        coEvery { integrationRepository.fetchIntegrations() } returns IntegrationResult.Success(emptyList())
+    }
 
     private fun viewModel(eventId: String) = EventDetailViewModel(
         application,

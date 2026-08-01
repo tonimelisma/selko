@@ -38,25 +38,11 @@ struct EventCardView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    if let onEdit {
-                        Button(action: onEdit) {
-                            Text(event.title)
-                                .font(SelkoTypography.title)
-                                .foregroundStyle(Color.selkoInk)
-                                .lineLimit(2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .accessibilityIdentifier("eventTitle")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("eventCard")
-                        .accessibilityLabel(event.title)
-                    } else {
-                        Text(event.title)
-                            .font(SelkoTypography.title)
-                            .foregroundStyle(Color.selkoInk)
-                            .lineLimit(2)
-                            .accessibilityIdentifier("eventTitle")
-                    }
+                    Text(event.title)
+                        .font(SelkoTypography.title)
+                        .foregroundStyle(Color.selkoInk)
+                        .lineLimit(2)
+                        .accessibilityIdentifier("eventTitle")
                     SelkoStateTag(kind: event.status == .pendingChange ? .changed : .new)
                 }
 

@@ -93,8 +93,8 @@ fun ReviewQueueScreen(
                     ) {
                         LazyColumn(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .widthIn(max = SelkoControlMetrics.reviewMaxWidth),
+                                .widthIn(max = SelkoControlMetrics.reviewMaxWidth)
+                                .fillMaxWidth(),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                         ) {
                         item {

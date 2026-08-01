@@ -1,12 +1,14 @@
 package net.melisma.selko.ui.screens.review
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.test.assertTrue
+import kotlin.test.assertEquals
 import kotlin.time.Instant
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.ui.theme.SelkoTheme
@@ -48,6 +50,12 @@ class EventCardContentTest {
         composeTestRule.onNodeWithContentDescription("Accept Team Meeting").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Edit Team Meeting").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Reject Team Meeting").assertIsDisplayed()
+
+        val acceptBounds = composeTestRule.onNodeWithText("Accept").getUnclippedBoundsInRoot()
+        val editBounds = composeTestRule.onNodeWithText("Edit").getUnclippedBoundsInRoot()
+        val rejectBounds = composeTestRule.onNodeWithText("Reject").getUnclippedBoundsInRoot()
+        assertEquals(acceptBounds.top, editBounds.top)
+        assertEquals(acceptBounds.top, rejectBounds.top)
 
         composeTestRule.onNodeWithText("Edit").performClick()
         assertTrue(clicked == listOf("edit"))

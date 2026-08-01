@@ -44,8 +44,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import net.melisma.selko.ui.theme.SelkoTheme
 
 object SelkoControlMetrics {
@@ -164,8 +167,27 @@ fun SelkoPeerActionGroup(
     actions: List<SelkoPeerAction>,
     modifier: Modifier = Modifier
 ) {
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val stacked = maxWidth < 520.dp
+        val gap = SelkoControlMetrics.contentGap
+        val slotWidth = (maxWidth - gap * (actions.size - 1)) / actions.size.coerceAtLeast(1)
+        val widestAction = actions.maxOfOrNull { action ->
+            val textWidth = with(density) {
+                textMeasurer.measure(
+                    text = AnnotatedString(action.text),
+                    style = MaterialTheme.typography.labelLarge
+                ).size.width.toDp()
+            }
+            val iconWidth = if (action.icon != null || action.loading) {
+                SelkoControlMetrics.icon + gap
+            } else {
+                0.dp
+            }
+            textWidth + iconWidth + (SelkoControlMetrics.horizontalPadding * 2)
+        } ?: 0.dp
+        val stacked = slotWidth < widestAction
         if (stacked) {
             Column(
                 modifier = Modifier.fillMaxWidth(),

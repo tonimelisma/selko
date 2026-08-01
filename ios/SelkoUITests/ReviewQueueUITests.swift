@@ -92,12 +92,13 @@ final class ReviewQueueUITests: XCTestCase {
             return
         }
 
-        let eventCard = app.buttons["eventCard"].firstMatch
-        guard eventCard.waitForExistence(timeout: 10) else {
+        let eventTitle = app.staticTexts["eventTitle"].firstMatch
+        guard eventTitle.waitForExistence(timeout: 10) else {
             return
         }
 
-        let title = eventCard.label
+        XCTAssertFalse(app.buttons["eventCard"].exists)
+        let title = eventTitle.label
         let accept = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Accept ")).firstMatch
         let edit = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Edit ")).firstMatch
         let reject = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reject ")).firstMatch
