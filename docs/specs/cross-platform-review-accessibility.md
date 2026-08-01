@@ -1,6 +1,7 @@
 # Cross-Platform Review Layout and Action Accessibility
 
-**Status:** Planned
+**Status:** Implemented; Android canonical screenshot capture is blocked by a
+repeatable Pixel_8 emulator process crash after APK installation.
 
 **Date:** 2026-07-31
 
@@ -533,6 +534,13 @@ Required evidence:
 
 All checked-in screenshots must remain at or below 2000 px in each dimension.
 
+Implementation note: web (24/24) and iOS (12/12) captures completed and were
+visually reviewed. The Android unit gate passed and source-level Compose
+accessibility coverage was added, but connected Android instrumentation could
+not complete: three capture attempts ended with the emulator or
+instrumentation process crashing before the first device screenshot could be
+pulled; the checked-in Android gallery remains unchanged.
+
 ## Delivery sequence
 
 Implement as one atomic cross-platform source increment in a dedicated
@@ -594,31 +602,32 @@ Screenshots:
 
 ## Acceptance criteria
 
-- [ ] Web New and Changes sender groups never use multiple columns.
-- [ ] Web, iOS, and Android Review content is centered and capped at 720 units.
-- [ ] Mobile widths retain 16-unit gutters and no horizontal scroll.
-- [ ] Review cards visibly show icon-plus-text Accept, Edit, and Reject on every
+- [x] Web New and Changes sender groups never use multiple columns.
+- [x] Web, iOS, and Android Review content is centered and capped at 720 units.
+- [x] Mobile widths retain 16-unit gutters and no horizontal scroll.
+- [x] Review cards visibly show icon-plus-text Accept, Edit, and Reject on every
       platform.
-- [ ] Card peer actions use equal widths and filled success/neutral/error roles.
-- [ ] Event Detail uses equal-width filled Reject and Accept actions everywhere.
-- [ ] Visible product copy consistently says Accept.
-- [ ] Every custom action target is at least 48 px/pt/dp.
-- [ ] Labels remain complete at 200% web text/zoom, iOS accessibility Dynamic
+- [x] Card peer actions use equal widths and filled success/neutral/error roles.
+- [x] Event Detail uses equal-width filled Reject and Accept actions everywhere.
+- [x] Visible product copy consistently says Accept.
+- [x] Every custom action target is at least 48 px/pt/dp.
+- [x] Labels remain complete at 200% web text/zoom, iOS accessibility Dynamic
       Type, Android 2.0 font scale, and localization expansion.
-- [ ] Constrained action groups stack instead of truncating or becoming icons.
-- [ ] Accessible names start with the visible label and include event context.
-- [ ] Icons are not the sole names and do not create duplicate announcements.
-- [ ] iOS Edit navigation no longer relies on Buttons nested inside a
+- [x] Constrained action groups stack instead of truncating or becoming icons.
+- [x] Accessible names start with the visible label and include event context.
+- [x] Icons are not the sole names and do not create duplicate announcements.
+- [x] iOS Edit navigation no longer relies on Buttons nested inside a
       `NavigationLink`.
-- [ ] Color is not the only semantic cue.
-- [ ] Native dialogs, menus, pickers, and navigation retain platform behavior.
-- [ ] Shared token-contract tests pass with 48 and 720.
-- [ ] Web unit tests and `npm run check` pass.
-- [ ] iOS tests pass on iPhone 17 Pro.
-- [ ] Android unit and Compose UI accessibility tests pass.
+- [x] Color is not the only semantic cue.
+- [x] Native dialogs, menus, pickers, and navigation retain platform behavior.
+- [x] Shared token-contract tests pass with 48 and 720.
+- [x] Web unit tests and `npm run check` pass.
+- [x] iOS tests pass on iPhone 17 Pro.
+- [ ] Android unit and Compose UI accessibility tests pass (unit tests pass;
+      connected instrumentation is blocked by the emulator crash above).
 - [ ] All-platform screenshots are captured and visually reviewed in light and
       dark mode, including multiple same-lane sender groups.
-- [ ] Durable UI docs no longer prescribe two-column Review or icon-only peer
+- [x] Durable UI docs no longer prescribe two-column Review or icon-only peer
       actions.
 
 ## Non-goals

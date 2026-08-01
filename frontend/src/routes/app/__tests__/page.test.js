@@ -140,10 +140,10 @@ describe('Review Queue (App Page)', () => {
 		await waitFor(() => expect(screen.getByText('Readable suggestion')).toBeInTheDocument());
 		expect(
 			screen.getByRole('button', {
-				name: 'Reconnect Google Calendar to accept suggestions.'
+				name: /^Accept Readable suggestion\./
 			})
 		).toBeDisabled();
-		expect(screen.getByRole('button', { name: /reject event/i })).toBeEnabled();
+		expect(screen.getByRole('button', { name: /reject readable suggestion/i })).toBeEnabled();
 		expect(screen.getByRole('button', { name: 'Reconnect Google Calendar' })).toBeEnabled();
 	});
 
@@ -259,7 +259,7 @@ describe('Review Queue (App Page)', () => {
 			expect(screen.getByText('Team Meeting')).toBeInTheDocument();
 		});
 
-		const approveBtn = screen.getByRole('button', { name: /accept event/i });
+		const approveBtn = screen.getByRole('button', { name: /accept team meeting/i });
 		await user.click(approveBtn);
 
 		await waitFor(() => {
@@ -308,7 +308,7 @@ describe('Review Queue (App Page)', () => {
 			expect(screen.getByText('Team Meeting')).toBeInTheDocument();
 		});
 
-		const rejectBtn = screen.getByRole('button', { name: /reject event/i });
+		const rejectBtn = screen.getByRole('button', { name: /reject team meeting/i });
 		await user.click(rejectBtn);
 
 		await waitFor(() => {
@@ -367,8 +367,15 @@ describe('Review Queue (App Page)', () => {
 		render(AppPage);
 		await waitFor(() => expect(screen.getByText('Grantmaking.ai')).toBeInTheDocument());
 
+		const reviewSurface = document.querySelector('.review-surface');
+		expect(reviewSurface).toHaveClass('max-w-[var(--review-max-width)]');
+		const senderGroups = document.querySelectorAll('.review-sender-groups');
+		expect(senderGroups).toHaveLength(1);
+		expect(senderGroups[0]).toHaveClass('grid');
+		expect(senderGroups[0]).not.toHaveClass('lg:grid-cols-2');
+
 		const grantmakingCard = screen.getByText('Grantmaking.ai').closest('div.border-b');
-		const rejectButton = grantmakingCard.querySelector('button.text-error');
+		const rejectButton = grantmakingCard.querySelector('button.peer-action-destructive');
 		await user.click(rejectButton);
 
 		await waitFor(() => {
@@ -641,7 +648,7 @@ describe('Review Queue (App Page)', () => {
 			expect(screen.getByText('Processing Test')).toBeInTheDocument();
 		});
 
-		const approveBtn = screen.getByRole('button', { name: /accept event/i });
+		const approveBtn = screen.getByRole('button', { name: /accept processing test/i });
 		expect(approveBtn).not.toBeDisabled();
 
 		await user.click(approveBtn);

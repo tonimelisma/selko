@@ -63,8 +63,11 @@ import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.ui.theme.SelkoTheme
 import net.melisma.selko.ui.components.SelkoActionRole
 import net.melisma.selko.ui.components.SelkoButton
+import net.melisma.selko.ui.components.SelkoControlMetrics
 import net.melisma.selko.ui.components.SelkoIconButton
 import net.melisma.selko.ui.components.SelkoLabeledSwitch
+import net.melisma.selko.ui.components.SelkoPeerAction
+import net.melisma.selko.ui.components.SelkoPeerActionGroup
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.time.Instant
@@ -111,31 +114,30 @@ fun EventDetailScreen(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 0.dp
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        SelkoButton(
-                            text = stringResource(R.string.event_detail_reject),
-                            onClick = viewModel::rejectEvent,
-                            enabled = !uiState.isRejecting && !uiState.isApproving,
-                            loading = uiState.isRejecting,
-                            role = SelkoActionRole.DestructiveOutline,
-                            icon = Icons.Filled.Close
+                    SelkoPeerActionGroup(
+                        modifier = Modifier.padding(horizontal = SelkoControlMetrics.screenGutter),
+                        actions = listOf(
+                            SelkoPeerAction(
+                                text = stringResource(R.string.event_detail_reject),
+                                onClick = viewModel::rejectEvent,
+                                role = SelkoActionRole.DestructiveFilled,
+                                icon = Icons.Filled.Close,
+                                accessibleLabel = "${stringResource(R.string.event_detail_reject)} ${uiState.event?.title.orEmpty()}",
+                                enabled = !uiState.isRejecting && !uiState.isApproving,
+                                loading = uiState.isRejecting
+                            ),
+                            SelkoPeerAction(
+                                text = stringResource(R.string.event_detail_accept),
+                                onClick = viewModel::approveEvent,
+                                role = SelkoActionRole.Success,
+                                icon = Icons.Filled.Check,
+                                accessibleLabel = "${stringResource(R.string.event_detail_accept)} ${uiState.event?.title.orEmpty()}",
+                                enabled = uiState.isCalendarConnected &&
+                                    !uiState.isApproving && !uiState.isRejecting,
+                                loading = uiState.isApproving
+                            )
                         )
-
-                        SelkoButton(
-                            text = stringResource(R.string.event_detail_accept),
-                            onClick = viewModel::approveEvent,
-                            enabled = uiState.isCalendarConnected &&
-                                !uiState.isApproving && !uiState.isRejecting,
-                            loading = uiState.isApproving,
-                            role = SelkoActionRole.Success,
-                            icon = Icons.Filled.Check
-                        )
-                    }
+                    )
                 }
             }
         }

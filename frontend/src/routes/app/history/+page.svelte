@@ -48,7 +48,9 @@
 	let offset = $state(0);
 	const limit = 20;
 	const eventPollIntervalMs = 750;
-	const eventPollMaxAttempts = 40;
+	// The worker retries with a 60-second backoff; observe beyond that before
+	// presenting a client-side timeout so the normal retry path can settle.
+	const eventPollMaxAttempts = Math.ceil(120_000 / eventPollIntervalMs);
 	const emailPollIntervalMs = 750;
 	const emailPollMaxAttempts = 40;
 	/** @type {Map<string, ReturnType<typeof setTimeout>>} */

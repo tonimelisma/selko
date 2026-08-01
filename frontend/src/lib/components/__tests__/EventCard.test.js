@@ -70,8 +70,10 @@ describe('EventCard', () => {
 
 	it('has accept and reject buttons', () => {
 		render(EventCard, { props: { event: mockEvent } });
-		expect(screen.getByRole('button', { name: /accept event/i })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /reject event/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /accept team meeting/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /reject team meeting/i })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: /edit team meeting/i })).toBeInTheDocument();
+		expect(document.querySelector('.peer-action-group')).toHaveAttribute('data-peer-count', '3');
 	});
 
 	it('calls onapprove when accept button is clicked', async () => {
@@ -81,7 +83,7 @@ describe('EventCard', () => {
 			props: { event: mockEvent, onapprove: mockApprove }
 		});
 
-		await user.click(screen.getByRole('button', { name: /accept event/i }));
+		await user.click(screen.getByRole('button', { name: /accept team meeting/i }));
 		expect(mockApprove).toHaveBeenCalledWith(mockEvent);
 	});
 
@@ -92,7 +94,7 @@ describe('EventCard', () => {
 			props: { event: mockEvent, onreject: mockReject }
 		});
 
-		await user.click(screen.getByRole('button', { name: /reject event/i }));
+		await user.click(screen.getByRole('button', { name: /reject team meeting/i }));
 		expect(mockReject).toHaveBeenCalledWith(mockEvent);
 	});
 
@@ -235,7 +237,7 @@ describe('EventCard', () => {
 	it('shows spinner inside action buttons while processing', () => {
 		render(EventCard, { props: { event: mockEvent, isProcessing: true } });
 		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
-		expect(screen.getByRole('button', { name: /accept event/i })).toBeDisabled();
-		expect(screen.getByRole('button', { name: /reject event/i })).toBeDisabled();
+		expect(screen.getByRole('button', { name: /accept team meeting/i })).toBeDisabled();
+		expect(screen.getByRole('button', { name: /reject team meeting/i })).toBeDisabled();
 	});
 });
