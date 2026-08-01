@@ -285,6 +285,7 @@ from a Microsoft Entra app registration.
 | **OAuth reconnect catch-up** | `docs/specs/oauth-reconnect-catch-up.md` | When implementing automatic email/calendar recovery after OAuth reauthorization |
 | **Live UI updates** | `docs/specs/live-ui-updates.md` | When implementing cross-platform Realtime invalidation, lifecycle catch-up, or refresh behavior |
 | **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |
+| **Cross-platform Review accessibility** | `docs/specs/cross-platform-review-accessibility.md` | When changing Review width/columns, grouped action styling, button labels/targets, or Review/Event Detail accessibility on web, iOS, or Android |
 | **Calendar policy + LLM fallback** | `docs/specs/calendar-policy-llm-fallback-and-incremental-evals.md` | When changing all-day materialization, primary/fallback LLM routing, or incremental eval identity |
 | **Warmth design system rollout** | `docs/specs/warmth-design-system.md` | When implementing the new coral/Figtree "Warmth" visual identity on any platform |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |

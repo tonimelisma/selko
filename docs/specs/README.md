@@ -4,6 +4,9 @@ Implementation specifications for planned or in-progress features.
 
 ## Active plans
 
+- [Cross-platform Review layout and action accessibility](cross-platform-review-accessibility.md)
+  — keep Review single-column and width-bounded while unifying labeled,
+  48-unit peer actions across web, iOS, and Android.
 - [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) — durably resume
   missed email ingestion and OAuth-blocked calendar work after reauthorization.
 - [Live UI updates](live-ui-updates.md) — private per-user Broadcast
