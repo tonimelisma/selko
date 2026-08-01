@@ -77,9 +77,9 @@ async def lifespan(app: FastAPI):
     This implements the Async Monolith pattern where the API server,
     background workers, and cron jobs all run in the same process.
 
-    Background processing (workers + scheduler) defaults ON in production and
-    OFF elsewhere. ENABLE_BACKGROUND_PROCESSING can explicitly override that
-    default for development, testing, or lightweight deployments.
+    Legacy background processing defaults ON in production and OFF elsewhere.
+    When durable ingestion v2 is enabled, the API is deliberately stateless:
+    the dedicated worker owns polling and all background claims.
 
     - Worker pool: Continuously processes pending emails and events from data tables
     - APScheduler: Runs periodic tasks (e.g., email fetch scheduling)
@@ -97,7 +97,11 @@ async def lifespan(app: FastAPI):
         config.memory_tracemalloc,
     )
 
-    if config.enable_background_processing:
+    if config.enable_email_ingestion_v2:
+        logger.info(
+            "Durable email ingestion v2 enabled; API will not start workers or APScheduler"
+        )
+    elif config.enable_background_processing:
         # Start worker pool for job processing
         logger.info("Starting worker pool for background job processing")
         worker_pool = WorkerPool(
@@ -173,7 +177,7 @@ async def lifespan(app: FastAPI):
         memory_monitor_task.cancel()
 
     # Only stop background workers if they were started
-    if config.enable_background_processing:
+    if config.enable_background_processing and not config.enable_email_ingestion_v2:
         # Stop worker pool first (workers complete current work)
         if worker_pool:
             await worker_pool.stop()

@@ -1,5 +1,23 @@
 # Status-Based Worker System
 
+## Durable email polling v2
+
+Email discovery is owned by the dedicated worker entry point
+`uv run python -m selko.worker_app` when `ENABLE_EMAIL_INGESTION_V2=true`.
+The API process does not start APScheduler or a worker pool in that mode.
+
+The v2 path uses `email_sync_state` leases for one active integration, records
+each run in `email_sync_runs`, and writes immutable provider identities to
+`email_ingestion_items` before acquiring bodies or attachments. Claims reclaim
+expired leases during ordinary `FOR UPDATE SKIP LOCKED` claims; there is no
+startup-only unlock step. Provider cursor commits occur after each durable
+page, while message acquisition, attachment storage, and downstream LLM work
+retry independently.
+
+The old `scheduled_tasks` email-fetch path below remains only as an explicit
+rollback compatibility path while v2 is disabled. It must not be enabled at
+the same time as v2.
+
 **Architecture**: Status-based workers using PostgreSQL atomic claiming with continuous worker pool (no Redis required) following the Async Monolith pattern.
 
 ## Overview
