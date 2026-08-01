@@ -189,22 +189,17 @@ class ScreenshotCaptureTest {
         tapAndAwaitScreen("Settings", "Settings screen") { waitForSettingsScreen() }
         saveScreenshot("android-settings-dark")
 
-        var logout = waitForObject(By.text("Log out"), 1_000)
-        repeat(5) {
-            if (logout == null) {
-                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4, device.displayWidth / 2, device.displayHeight / 4, 500)
-                device.waitForIdle()
-                logout = waitForObject(By.text("Log out"), 1_000)
-            }
+        // Clear the authenticated app state before capturing the unauthenticated
+        // dark screens. Going through the network-backed sign-out flow makes
+        // this fixture depend on Supabase auth response timing and can leave
+        // the instrumentation process waiting after all authenticated captures
+        // have already succeeded.
+        device.executeShellCommand("pm clear $PACKAGE")
+        device.executeShellCommand("am force-stop $PACKAGE")
+        device.executeShellCommand("monkey -p $PACKAGE 1")
+        require(waitForAnyObject(TIMEOUT, By.text("Sign in"))) {
+            "Login screen did not appear after clearing authenticated state"
         }
-        requireNotNull(logout) { "Could not find Settings Log out action" }
-        // The text node is a child of the semantic button; click its clickable
-        // parent so the action is dispatched consistently by UIAutomator.
-        (logout.parent ?: logout).click()
-        require(device.wait(Until.gone(By.text("Settings")), TIMEOUT)) {
-            "Authenticated navigation did not disappear after logout"
-        }
-        require(waitForAnyObject(TIMEOUT, By.text("Sign in"))) { "Login screen did not appear after logout" }
         SystemClock.sleep(500)
         device.waitForIdle()
         saveScreenshot("android-login-dark")

@@ -12,7 +12,9 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $router.selectedTab) {
             NavigationStack(path: $reviewPath) {
-                ReviewQueueView(email: router.userEmail)
+                ReviewQueueView(email: router.userEmail) { eventId in
+                    reviewPath.append(eventId)
+                }
                     .navigationDestination(for: UUID.self) { eventId in
                         EventDetailView(eventId: eventId)
                     }

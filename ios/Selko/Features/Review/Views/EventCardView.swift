@@ -38,11 +38,25 @@ struct EventCardView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(event.title)
-                        .font(SelkoTypography.title)
-                        .foregroundStyle(Color.selkoInk)
-                        .lineLimit(2)
-                        .accessibilityIdentifier("eventTitle")
+                    if let onEdit {
+                        Button(action: onEdit) {
+                            Text(event.title)
+                                .font(SelkoTypography.title)
+                                .foregroundStyle(Color.selkoInk)
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityIdentifier("eventTitle")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("eventCard")
+                        .accessibilityLabel(event.title)
+                    } else {
+                        Text(event.title)
+                            .font(SelkoTypography.title)
+                            .foregroundStyle(Color.selkoInk)
+                            .lineLimit(2)
+                            .accessibilityIdentifier("eventTitle")
+                    }
                     SelkoStateTag(kind: event.status == .pendingChange ? .changed : .new)
                 }
 
@@ -67,48 +81,51 @@ struct EventCardView: View {
                     descriptionSection(description)
                 }
 
-                HStack(spacing: 8) {
-                    if isProcessing {
-                        ProgressView()
-                            .tint(Color.accentColor)
+                SelkoPeerActionGroup {
+                    if let onApprove {
+                        Button(action: onApprove) {
+                            HStack(spacing: 6) {
+                                if isProcessing {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .tint(Color.selkoOnSuccess)
+                                        .accessibilityIdentifier("eventCardProcessing")
+                                }
+                                SelkoActionLabel(title: "Accept", systemImage: "checkmark")
+                            }
                             .frame(maxWidth: .infinity)
-                            .accessibilityIdentifier("eventCardProcessing")
-                    } else {
-                        if let onApprove {
-                            Button(action: onApprove) {
-                                Label("Accept", systemImage: "checkmark")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.selko(.success))
-                            .disabled(!canApprove)
-                            .accessibilityHint(
-                                canApprove ? "" : "Reconnect Google Calendar to accept suggestions."
-                            )
                         }
-                        if let onEdit {
-                            Button(action: onEdit) {
-                                Image(systemName: "pencil")
-                                    .frame(width: 20, height: 20)
-                            }
-                            .buttonStyle(.selko(.secondary))
-                            .accessibilityLabel("Edit")
+                        .buttonStyle(.selko(.success))
+                        .disabled(isProcessing || !canApprove)
+                        .accessibilityLabel("Accept \(event.title)")
+                        .accessibilityHint(
+                            canApprove ? "" : "Reconnect Google Calendar to accept suggestions."
+                        )
+                    }
+                    if let onEdit {
+                        Button(action: onEdit) {
+                            SelkoActionLabel(title: "Edit", systemImage: "pencil")
+                                .frame(maxWidth: .infinity)
                         }
-                        if let onReject {
-                            Button(role: .destructive, action: onReject) {
-                                Image(systemName: "xmark")
-                                    .frame(width: 20, height: 20)
-                            }
-                            .buttonStyle(.selko(.destructiveOutline))
-                            .accessibilityLabel("Reject")
+                        .buttonStyle(.selko(.secondary))
+                        .disabled(isProcessing)
+                        .accessibilityLabel("Edit \(event.title)")
+                    }
+                    if let onReject {
+                        Button(role: .destructive, action: onReject) {
+                            SelkoActionLabel(title: "Reject", systemImage: "xmark")
+                                .frame(maxWidth: .infinity)
                         }
+                        .buttonStyle(.selko(.destructiveFilled))
+                        .disabled(isProcessing)
+                        .accessibilityLabel("Reject \(event.title)")
                     }
                 }
                 .padding(.top, 4)
             }
         }
         .padding(.vertical, 8)
-        .accessibilityHint("Double tap to view details")
-        .accessibilityIdentifier("eventCard")
+        .accessibilityIdentifier("eventCardContainer")
         .listRowBackground(Color.clear)
         .onChange(of: event.id) { _, _ in
             resetDescriptionExpansion()
@@ -148,7 +165,7 @@ struct EventCardView: View {
                     )
                     .font(SelkoTypography.caption)
                     .fontWeight(.semibold)
-                    .frame(minHeight: 44, alignment: .leading)
+                    .frame(minHeight: SelkoMetrics.minimumTarget, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)

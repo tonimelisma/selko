@@ -55,7 +55,7 @@ Register → Login → Review Queue shows integration setup (not connected)
 The user may grant only some scopes (e.g., Gmail but not Calendar). First-run
 onboarding remains until at least one integration record exists. After that,
 the Review Queue stays visible and shows a provider-specific recovery card.
-Missing Calendar access disables Accept/Approve actions but leaves Edit and
+Missing Calendar access disables Accept actions but leaves Edit and
 Reject available.
 
 ---
@@ -67,7 +67,7 @@ Reject available.
 ```
 Login → Review Queue shows pending events
   → Browse events grouped by sender → email → events
-  → Approve individual events, or approve all from a sender/email
+  → Accept individual events, or accept all from a sender/email
   → Tap "Edit" on events needing changes → Event Detail → edit → approve
   → Check Activity History for recent actions
   → Undo if needed
@@ -77,13 +77,13 @@ Login → Review Queue shows pending events
 
 1. **Login** → **Review Queue** (`/app`): Shows pending events in hierarchical list.
 2. **Review Queue**: User sees events grouped by sender → email → events:
-   - **Sender group** (e.g., "school@district.edu") — [Approve All] button
-     - **Email** ("Party Invitation", Oct 1) — [Approve All] button
-       - **Event**: "Birthday Party" — Oct 5, 2:00 PM — [Approve] [Edit] [Reject]
-       - **Event**: "RSVP Reminder" — Oct 3 — [Approve] [Edit] [Reject]
-3. **Quick Approve**: For straightforward events, user clicks "Approve" directly. Event animates out of the list. No toast, no modal.
-4. **Group Approve**: User clicks "Approve All" on a sender header or email header. All events in that group are approved at once. The group animates out.
-5. **Edit Before Approve**: User clicks "Edit" → Event Detail screen. Edits are auto-saved. User approves or rejects. Returns to queue.
+   - **Sender group** (e.g., "school@district.edu") — [Accept All] button
+     - **Email** ("Party Invitation", Oct 1) — [Accept All] button
+       - **Event**: "Birthday Party" — Oct 5, 2:00 PM — [Accept] [Edit] [Reject]
+       - **Event**: "RSVP Reminder" — Oct 3 — [Accept] [Edit] [Reject]
+3. **Quick Accept**: For straightforward events, user clicks "Accept" directly. Event animates out of the list. No toast, no modal.
+4. **Group Accept**: User clicks "Accept All" on a sender header or email header. All events in that group are accepted at once. The group animates out.
+5. **Edit Before Accept**: User clicks "Edit" → Event Detail screen. Edits are auto-saved. User accepts or rejects. Returns to queue.
 6. **Reject**: User clicks "Reject". Event animates out. No confirmation modal.
 7. **Activity History** (`/app/history`): User checks recent actions. Sees "Birthday Party approved and synced." Clicks "Undo" → event removed from Google Calendar and returned to Review Queue (reverted to AI-extracted original, not user-edited version). If the user had edited the event in Google Calendar after Selko synced it, Undo blocks until they confirm **Force Undo**.
 
@@ -92,7 +92,7 @@ Login → Review Queue shows pending events
 - All approve/reject actions are immediate. No confirmation modals. No toasts.
 - Events animate out of the queue (slide out if smooth animation is achievable, otherwise just disappear).
 - Everything goes to Activity History where the user can undo.
-- UPDATE events (time changes, cancellations from follow-up emails) appear in the **Changes** lane with a field-level diff. Approve applies the change and syncs; Reject discards it. No-op rediscoveries (e.g. RSVP replies that restate an existing event) are skipped silently.
+- UPDATE events (time changes, cancellations from follow-up emails) appear in the **Changes** lane with a field-level diff. Accept applies the change and syncs; Reject discards it. No-op rediscoveries (e.g. RSVP replies that restate an existing event) are skipped silently.
 - Activity History distinguishes **New** vs **Changes**, shows what changed for updates, and Undo returns the item to the matching Review lane.
 
 ---
@@ -113,7 +113,7 @@ User logs in → Review Queue remains visible with a recovery card
 - Only a user with zero integration records sees full first-run onboarding.
 - Any active email provider (Gmail or Outlook) keeps ingestion available.
 - With no active email provider, new ingestion pauses; existing suggestions and History remain readable.
-- With Calendar unavailable, review, edit, and reject remain available; Accept/Approve and auto-approve are disabled until reconnection.
+- With Calendar unavailable, review, edit, and reject remain available; Accept and auto-accept are disabled until reconnection.
 - An expired optional email provider is nonblocking when another email provider is active.
 
 ### Scenario B: Calendar Sync Failure

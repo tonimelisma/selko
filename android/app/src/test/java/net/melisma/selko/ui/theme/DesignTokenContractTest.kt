@@ -16,14 +16,19 @@ class DesignTokenContractTest {
     @Test
     fun `android colors and geometry match canonical manifest`() {
         val light = manifest.getValue("color").jsonObject.getValue("light").jsonObject
+        val layout = manifest.getValue("layout").jsonObject
+        val control = manifest.getValue("control").jsonObject
         assertEquals(color(light, "primary"), SelkoPrimary)
         assertEquals(color(light, "onPrimary"), SelkoOnPrimary)
         assertEquals(color(light, "success"), SelkoSuccess)
         assertEquals(color(light, "onSuccess"), SelkoOnSuccess)
         assertEquals(color(light, "muted"), SelkoOnSurfaceVariant)
         assertEquals(color(light, "faint"), SelkoFaint)
-        assertEquals(44f, SelkoControlMetrics.minimumTarget.value)
-        assertEquals(46f, SelkoControlMetrics.inputHeight.value)
+        assertEquals(control.getValue("minimumTarget").jsonPrimitive.content.toFloat(), SelkoControlMetrics.minimumTarget.value)
+        assertEquals(control.getValue("inputHeight").jsonPrimitive.content.toFloat(), SelkoControlMetrics.inputHeight.value)
+        assertEquals(control.getValue("compactHorizontalPadding").jsonPrimitive.content.toFloat(), SelkoControlMetrics.compactHorizontalPadding.value)
+        assertEquals(layout.getValue("reviewMaxWidth").jsonPrimitive.content.toFloat(), SelkoControlMetrics.reviewMaxWidth.value)
+        assertEquals(layout.getValue("screenGutter").jsonPrimitive.content.toFloat(), SelkoControlMetrics.screenGutter.value)
         assertEquals(14f, SelkoControlMetrics.controlRadius.value)
         assertEquals(20f, SelkoControlMetrics.cardRadius.value)
     }

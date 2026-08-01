@@ -54,9 +54,9 @@ ink labels on bright Warmth fills where the contrast requires it.
    the brand color at night.
 3. **Dark mode adjusts lightness, never hue.** Each token has a light/dark
    pair within its own hue family; do not remap one hue onto another.
-4. **Destructive controls are ghost/outline by default.** The only filled
-   berry button is the confirm button inside a confirmation dialog, so brand
-   CTAs (filled coral) and danger stay distinguishable by shape alone.
+4. **Destructive controls use the berry/error semantic.** Peer decision groups
+   use a filled berry Reject action so the decision remains legible beside
+   Accept and Edit; confirmation dialogs may use the same filled treatment.
 5. **Filled action content is semantic.** Light coral uses ink `#2B2622`, green
    uses `#12100E`, and berry uses white. Small successful status text uses
    `#3F7D5F`; warning text uses `#9A5C1D`.
@@ -85,9 +85,10 @@ smaller, quieter, and never competes with the decision.
 - Buttons, inputs, selects, switch hit containers, and dialogs: 14px radius.
 - Cards and sheets on every platform: 20px radius.
 - State tags and removable chips only: full pill radius.
-- Use the 4px spacing grid. Standard controls are at least 44px/pt/dp high,
+- Use the 4px spacing grid. Standard controls are at least 48px/pt/dp high,
   with 16px horizontal padding, 8px content gaps, 20px icons, and 14/700 labels.
-  Inputs are 46px high. Every icon-only action has a 44×44 target.
+  Inputs are 46px high. Icon-only actions are reserved for clearly labeled
+  secondary controls and still have a 48×48 target.
 - Light cards use a soft brown-tinted shadow; dark cards use a 1px border and no
   shadow.
 - Buttons are sentence case. The interface has no emoji or decorative noise.

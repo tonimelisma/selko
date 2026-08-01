@@ -54,23 +54,26 @@ struct EventDetailView: View {
         .navigationTitle("Event Detail")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            if viewModel.event?.status == .pendingReview {
-                HStack(spacing: 12) {
+            if let event = viewModel.event, event.status == .pendingReview {
+                SelkoPeerActionGroup {
                     Button(role: .destructive) {
                         Task {
                             await viewModel.reject()
                         }
                     } label: {
-                        if viewModel.isActing {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text("Reject")
-                                .frame(maxWidth: .infinity)
+                        HStack(spacing: 6) {
+                            if viewModel.isActing {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(Color.selkoOnError)
+                            }
+                            SelkoActionLabel(title: "Reject", systemImage: "xmark")
                         }
+                        .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.selko(.destructiveOutline))
+                    .buttonStyle(.selko(.destructiveFilled))
                     .disabled(viewModel.isActing)
+                    .accessibilityLabel("Reject \(event.title)")
                     .accessibilityIdentifier("rejectButton")
 
                     Button {
@@ -78,16 +81,19 @@ struct EventDetailView: View {
                             await viewModel.approve()
                         }
                     } label: {
-                        if viewModel.isActing {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text("Approve")
-                                .frame(maxWidth: .infinity)
+                        HStack(spacing: 6) {
+                            if viewModel.isActing {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(Color.selkoOnSuccess)
+                            }
+                            SelkoActionLabel(title: "Accept", systemImage: "checkmark")
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.selko(.success))
                     .disabled(viewModel.isActing || !viewModel.calendarConnected)
+                    .accessibilityLabel("Accept \(event.title)")
                     .accessibilityHint(
                         viewModel.calendarConnected
                             ? ""

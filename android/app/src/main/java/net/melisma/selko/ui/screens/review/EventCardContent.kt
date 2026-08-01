@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,8 +55,8 @@ import net.melisma.selko.R
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.ui.theme.SelkoTheme
 import net.melisma.selko.ui.components.SelkoActionRole
-import net.melisma.selko.ui.components.SelkoButton
-import net.melisma.selko.ui.components.SelkoIconButton
+import net.melisma.selko.ui.components.SelkoPeerAction
+import net.melisma.selko.ui.components.SelkoPeerActionGroup
 import net.melisma.selko.ui.components.SelkoStateTag
 import net.melisma.selko.ui.components.SelkoTagRole
 import kotlin.time.Instant
@@ -231,7 +230,7 @@ fun EventListItem(
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .padding(top = 2.dp)
-                                .heightIn(min = 44.dp)
+                                .heightIn(min = net.melisma.selko.ui.components.SelkoControlMetrics.minimumTarget)
                                 .semantics {
                                     role = Role.Button
                                     stateDescription = expandedState
@@ -244,42 +243,35 @@ fun EventListItem(
 
             // Action buttons row
             Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
-            ) {
-                if (isProcessing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    // Accept button (icon-only)
-                    SelkoButton(
+            SelkoPeerActionGroup(
+                actions = listOf(
+                    SelkoPeerAction(
                         text = stringResource(R.string.event_card_accept),
                         onClick = onApprove,
-                        modifier = Modifier.weight(1f),
                         role = SelkoActionRole.Success,
-                        enabled = canApprove,
-                        icon = Icons.Filled.Check
-                    )
-
-                    // Edit button (icon + text)
-                    SelkoIconButton(
+                        icon = Icons.Filled.Check,
+                        accessibleLabel = "${stringResource(R.string.event_card_accept)} ${event.title}",
+                        enabled = !isProcessing && canApprove,
+                        loading = isProcessing
+                    ),
+                    SelkoPeerAction(
+                        text = stringResource(R.string.event_card_edit),
+                        onClick = onEdit,
+                        role = SelkoActionRole.Secondary,
                         icon = Icons.Filled.Edit,
-                        contentDescription = stringResource(R.string.event_card_edit),
-                        onClick = onEdit
-                    )
-
-                    // Reject button (icon-only)
-                    SelkoIconButton(
-                        icon = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.event_card_reject),
+                        accessibleLabel = "${stringResource(R.string.event_card_edit)} ${event.title}",
+                        enabled = !isProcessing
+                    ),
+                    SelkoPeerAction(
+                        text = stringResource(R.string.event_card_reject),
                         onClick = onReject,
-                        destructive = true
+                        role = SelkoActionRole.DestructiveFilled,
+                        icon = Icons.Filled.Close,
+                        accessibleLabel = "${stringResource(R.string.event_card_reject)} ${event.title}",
+                        enabled = !isProcessing
                     )
-                }
-            }
+                )
+            )
         }
     }
 }

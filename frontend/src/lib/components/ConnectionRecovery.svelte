@@ -94,21 +94,23 @@
 				</div>
 			</div>
 			<div class="flex shrink-0 flex-wrap gap-2 sm:justify-end">
-				{#each recoveryProviders as provider}
-					<button
-						class="btn btn-primary shadow-brand"
-						disabled={connectingProvider !== ''}
-						aria-busy={connectingProvider === provider}
-						onclick={() => reconnect(provider)}
-					>
-						{#if connectingProvider === provider}
-							<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-							{$_('integrations.connecting')}
-						{:else}
-							{actionLabel(provider)}
-						{/if}
-					</button>
-				{/each}
+				<div class="peer-action-group" data-peer-count={Math.min(recoveryProviders.length, 3)}>
+					{#each recoveryProviders as provider}
+						<button
+							class="btn btn-primary peer-action shadow-brand"
+							disabled={connectingProvider !== ''}
+							aria-busy={connectingProvider === provider}
+							onclick={() => reconnect(provider)}
+						>
+							{#if connectingProvider === provider}
+								<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+								{$_('integrations.connecting')}
+							{:else}
+								{actionLabel(provider)}
+							{/if}
+						</button>
+					{/each}
+				</div>
 				<a class="btn action-secondary" href="/app/settings">{$_('integrations.manageConnections')}</a>
 			</div>
 		</div>
