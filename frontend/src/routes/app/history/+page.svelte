@@ -1,7 +1,7 @@
 <script>
 	import { onDestroy, onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
-	import { fetchActivityEvents } from '$lib/services/events.js';
+	import { fetchActivityEvents, getEvent } from '$lib/services/events.js';
 	import {
 		fetchEmailHistory,
 		fetchEmailProcessingState,
@@ -47,8 +47,14 @@
 	let processingEmails = $state(new Set());
 	let offset = $state(0);
 	const limit = 20;
+	const eventPollIntervalMs = 750;
+	const eventPollMaxAttempts = 40;
 	const emailPollIntervalMs = 750;
 	const emailPollMaxAttempts = 40;
+	/** @type {Map<string, ReturnType<typeof setTimeout>>} */
+	const eventPollingTimers = new Map();
+	/** @type {Set<string>} */
+	const eventPolling = new Set();
 	/** @type {Map<string, ReturnType<typeof setTimeout>>} */
 	const emailPollingTimers = new Map();
 	/** @type {Set<string>} */
@@ -95,6 +101,9 @@
 	});
 
 	onDestroy(() => {
+		for (const timer of eventPollingTimers.values()) clearTimeout(timer);
+		eventPollingTimers.clear();
+		eventPolling.clear();
 		for (const timer of emailPollingTimers.values()) clearTimeout(timer);
 		emailPollingTimers.clear();
 		emailPolling.clear();
@@ -431,6 +440,57 @@
 		processingEvents = next;
 	}
 
+	/** @param {string} eventId */
+	function stopEventPolling(eventId) {
+		const timer = eventPollingTimers.get(eventId);
+		if (timer) clearTimeout(timer);
+		eventPollingTimers.delete(eventId);
+		eventPolling.delete(eventId);
+	}
+
+	/** @param {string} eventId @param {any} state */
+	function applyEventSyncState(eventId, state) {
+		events = events.map((item) =>
+			item.id === eventId ? { ...item, ...state } : item
+		);
+	}
+
+	/** @param {string} eventId */
+	function pollEventUntilTerminal(eventId) {
+		stopEventPolling(eventId);
+		eventPolling.add(eventId);
+		let attempts = 0;
+
+		const poll = async () => {
+			if (!eventPolling.has(eventId)) return;
+			const result = await getEvent(eventId);
+			if (!eventPolling.has(eventId)) return;
+			if (result.error) {
+				setEventError(eventId, result.error.message);
+				stopEventPolling(eventId);
+				stopProcessing(eventId);
+				return;
+			}
+			const state = result.data;
+			if (state) applyEventSyncState(eventId, state);
+			if (state && ['synced', 'sync_failed'].includes(state.status)) {
+				stopEventPolling(eventId);
+				stopProcessing(eventId);
+				return;
+			}
+			attempts += 1;
+			if (attempts >= eventPollMaxAttempts) {
+				setEventError(eventId, $_('history.eventSyncRetryTimeout'));
+				stopEventPolling(eventId);
+				stopProcessing(eventId);
+				return;
+			}
+			eventPollingTimers.set(eventId, setTimeout(poll, eventPollIntervalMs));
+		};
+
+		void poll();
+	}
+
 	/**
 	 * @param {any} event
 	 * @param {{ force?: boolean }} [options]
@@ -471,18 +531,20 @@
 
 	/** @param {any} event */
 	async function handleRetry(event) {
-		if (processingEvents.has(event.id)) return;
+		if (processingEvents.has(event.id) || eventPolling.has(event.id)) return;
 		startProcessing(event.id);
+		setEventError(event.id, '');
 		try {
 			const result = await syncEventToCalendar(event.id);
 			if (result.error) {
 				setEventError(event.id, result.error.message);
+				stopProcessing(event.id);
 				return;
 			}
-			events = events.map((e) =>
-				e.id === event.id ? { ...e, status: result.data?.status || 'approved' } : e
-			);
-		} finally {
+			applyEventSyncState(event.id, { status: result.data?.status || 'approved' });
+			pollEventUntilTerminal(event.id);
+		} catch (error) {
+			setEventError(event.id, error instanceof Error ? error.message : String(error));
 			stopProcessing(event.id);
 		}
 	}
