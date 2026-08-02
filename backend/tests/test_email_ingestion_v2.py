@@ -10,7 +10,11 @@ from selko.services.email_ingestion import (
     safe_error_code,
     safe_error_detail,
 )
-from selko.services.email_sync_health import EmailSyncHealthEvaluator, SafeIncident
+from selko.services.email_sync_health import (
+    EmailSyncHealthEvaluator,
+    ResendOperationalNotifier,
+    SafeIncident,
+)
 from selko.services.msgraph import request_json, safe_url_template
 from selko.workers.email_ingestion import EmailIngestionWorker
 
@@ -246,6 +250,43 @@ def test_graph_ledger_url_template_drops_item_ids_and_delta_tokens():
         "https://graph.microsoft.com/v1.0/me/mailFolders/{folder-id}/messages/"
         "{message-id}/attachments"
     )
+
+
+def test_notifier_reports_unconfigured_so_the_worker_can_skip_it(mock_config):
+    """Without credentials the worker must not construct a notifier that fails
+    on every cycle; incidents still land in operational_incidents."""
+    assert ResendOperationalNotifier.is_configured(mock_config) is False
+
+    mock_config.operational_notification_api_key = "key"
+    mock_config.operational_notification_sender = "alerts@example.com"
+    mock_config.operational_notification_recipient = "ops@example.com"
+
+    assert ResendOperationalNotifier.is_configured(mock_config) is True
+
+
+def test_health_evaluation_records_incidents_without_a_notifier(mock_config):
+    """A missing notifier must not stop incident bookkeeping."""
+    client = MagicMock()
+    inserted: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "email_sync_state":
+            state = _health_state()
+            state["consecutive_failures"] = 3
+            handle.select.return_value.execute.return_value.data = [state]
+        elif name in {"attachments", "email_ingestion_items"}:
+            handle.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(count=0)
+        elif name == "operational_incidents":
+            handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.execute.return_value.data = []
+            handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
+        return handle
+
+    client.table.side_effect = table
+    asyncio.run(EmailSyncHealthEvaluator(client, mock_config, None).evaluate_once())
+
+    assert any(row["incident_type"] == "repeated_failures" for row in inserted)
 
 
 def test_safe_incident_defaults_keep_user_scope_optional():

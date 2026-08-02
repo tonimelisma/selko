@@ -49,7 +49,17 @@ async def main() -> None:
         worker = EmailIngestionWorker(client, config, f"poller-{process_id}-attachment-{index}")
         ingestion_workers.append(worker)
         ingestion_tasks.append(asyncio.create_task(worker.attachment_loop(), name=f"email-attachment-{index}"))
-    notifier = ResendOperationalNotifier(config)
+    # Email delivery is optional. Without credentials the evaluator still
+    # records incidents in operational_incidents; constructing a notifier
+    # anyway would fail and log a traceback on every cycle.
+    if ResendOperationalNotifier.is_configured(config):
+        notifier = ResendOperationalNotifier(config)
+    else:
+        notifier = None
+        logger.warning(
+            "Operational notifier is not configured; email sync incidents will be "
+            "recorded in operational_incidents but not emailed"
+        )
     health = EmailSyncHealthEvaluator(client, config, notifier)
     health_task = asyncio.create_task(health.run(stop_event), name="email-sync-health")
     try:

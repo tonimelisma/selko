@@ -118,20 +118,23 @@ class TestHealthEndpoints:
         assert resp.json()["status"] == "ok"
 
     def test_health_db_connected(self, test_client, mock_config):
-        """Mock create_client so health/db succeeds."""
+        """The probe uses the service role; `anon` has no table privileges."""
         mock_sb = MagicMock()
         mock_sb.table.return_value.select.return_value.limit.return_value.execute.return_value = (
             MagicMock(data=[{"id": "x"}])
         )
-        with patch("selko.api.routes.health.create_client", return_value=mock_sb):
+        with patch(
+            "selko.api.routes.health.get_service_client", return_value=mock_sb
+        ) as service_client:
             resp = test_client.get("/health/db")
         assert resp.status_code == 200
         assert resp.json()["database"] == "connected"
+        service_client.assert_called_once()
 
     def test_health_db_failure(self, test_client, mock_config):
         """Database connectivity failure returns 503."""
         with patch(
-            "selko.api.routes.health.create_client",
+            "selko.api.routes.health.get_service_client",
             side_effect=Exception("connection refused"),
         ):
             resp = test_client.get("/health/db")

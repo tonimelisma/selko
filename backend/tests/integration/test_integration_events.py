@@ -95,7 +95,7 @@ class TestEventProcessingMocked:
         assert email_result.data["processing_status"] == "processed"
 
     def test_process_email_sender_ignored_mocked(
-        self, authenticated_client, test_user_id, mock_llm_gateway
+        self, authenticated_client, test_user_id, mock_llm_gateway, clean_sender_rules
     ):
         """Test that ignored senders are skipped (mocked LLM)."""
         # Create ignore rule
@@ -270,7 +270,9 @@ class TestEventProcessing:
 class TestSenderRules:
     """Test sender rule automation."""
 
-    def test_check_sender_rules_exact_email(self, authenticated_client, test_user_id):
+    def test_check_sender_rules_exact_email(
+        self, authenticated_client, test_user_id, clean_sender_rules
+    ):
         """Test checking sender rules with exact email match."""
         # Create rule
         authenticated_client.table("sender_rules").insert({
@@ -289,7 +291,9 @@ class TestSenderRules:
         assert rule is not None
         assert rule["action"] == "auto_approve"
 
-    def test_check_sender_rules_domain_match(self, authenticated_client, test_user_id):
+    def test_check_sender_rules_domain_match(
+        self, authenticated_client, test_user_id, clean_sender_rules
+    ):
         """Test checking sender rules with domain wildcard."""
         # Create domain rule
         authenticated_client.table("sender_rules").insert({

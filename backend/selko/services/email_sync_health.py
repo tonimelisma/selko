@@ -39,12 +39,22 @@ class ResendOperationalNotifier:
     def __init__(self, config: Config):
         self.config = config
 
+    @classmethod
+    def is_configured(cls, config: Config) -> bool:
+        """Whether every credential this adapter needs is present.
+
+        Email delivery is optional: incidents are always recorded in
+        `operational_incidents`. Callers should skip constructing a notifier
+        rather than let every evaluation cycle fail and log a traceback.
+        """
+        return bool(
+            config.operational_notification_api_key
+            and config.operational_notification_sender
+            and config.operational_notification_recipient
+        )
+
     async def _send(self, incident: SafeIncident, *, resolved: bool) -> None:
-        if not (
-            self.config.operational_notification_api_key
-            and self.config.operational_notification_sender
-            and self.config.operational_notification_recipient
-        ):
+        if not self.is_configured(self.config):
             raise RuntimeError("Operational notifier is not configured")
         state = "resolved" if resolved else "opened"
         body = (
