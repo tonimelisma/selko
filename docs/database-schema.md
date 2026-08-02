@@ -196,13 +196,16 @@ Calendar events with status-based worker claiming for sync.
 
 ### `scheduled_tasks`
 
-Scheduled/periodic background tasks (currently only `email_fetch`).
+Scheduled/periodic background tasks (currently only `photo_fetch`).
+Email discovery does not use this table — it is owned by `email_sync_state`
+leases, because a timer row stuck in `processing` could otherwise suppress a
+provider indefinitely.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | uuid, PK | Task ID |
 | `user_id` | uuid, FK | References `users.id` |
-| `task_type` | text | Currently only `email_fetch` |
+| `task_type` | text | Currently only `photo_fetch` |
 | `payload` | jsonb | Task-specific data |
 | `status` | text | `pending`, `processing`, `completed`, `failed` |
 | `scheduled_at` | timestamptz | When to process task |
