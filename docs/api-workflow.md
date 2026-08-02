@@ -33,6 +33,31 @@ This document demonstrates the Python API endpoints for server-side operations t
 
 ## Prerequisites
 
+### Dedicated worker process
+
+Polling Email Ingestion v2 runs in a separate Render worker process, using the
+same service-role configuration as the API:
+
+```bash
+ENABLE_EMAIL_INGESTION_V2=true uv run python -m selko.worker_app
+```
+
+The worker owns provider discovery, durable identity acquisition, independent
+attachment work, existing email/event workers, and health notifications. The
+FastAPI lifespan does not start APScheduler or `WorkerPool` when v2 is enabled.
+Set `EMAIL_INGESTION_SHADOW_MODE=true` for a read-only staging comparison;
+shadow mode does not commit cursors or enqueue acquisition.
+
+Provision a separate Render Background Worker named `selko-worker-production`
+with the repository root as its working directory and start command
+`uv run python -m selko.worker_app`. Copy the API service's Supabase and OAuth
+secrets, then set `ENABLE_EMAIL_INGESTION_V2=true` only during the approved
+cutover. Run the idempotent state backfill first:
+
+```bash
+uv run python -m cli_backfill_email_ingestion_v2
+```
+
 ```bash
 # Start local Supabase
 supabase start

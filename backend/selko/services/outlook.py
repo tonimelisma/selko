@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import msal
-import requests
+import requests  # Backwards-compatible patch point for existing tests.
 from supabase import Client
 
 from selko.config import Config
@@ -23,6 +23,7 @@ from selko.services.integrations import (
     update_integration_status,
     update_provider_tokens,
 )
+from selko.services.msgraph import GraphRequestError, request_json
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +84,11 @@ class OutlookError(Exception):
 class GraphHttpError(OutlookError):
     """Microsoft Graph error that preserves the HTTP status code."""
 
-    def __init__(self, status_code: int, message: str):
+    def __init__(self, status_code: int, message: str, **metadata: Any):
         super().__init__(message)
         self.status_code = status_code
+        for key, value in metadata.items():
+            setattr(self, key, value)
 
 
 def _require_config(config: Config) -> None:
@@ -153,6 +156,8 @@ def get_access_token(
     client: Client,
     config: Config,
     user_id: str | None = None,
+    *,
+    force_refresh: bool = False,
 ) -> str | None:
     """Load an Outlook token and refresh it when it has expired."""
     if user_id is None:
@@ -167,7 +172,7 @@ def get_access_token(
         return None
 
     expiry = _parse_expiry(row.get("token_expiry"))
-    if row.get("access_token") and expiry and expiry > datetime.now(timezone.utc):
+    if not force_refresh and row.get("access_token") and expiry and expiry > datetime.now(timezone.utc):
         return row["access_token"]
 
     refresh_token = row.get("refresh_token")
@@ -190,7 +195,7 @@ def get_access_token(
         raise OutlookError(f"Outlook token refresh failed: {description or 'unknown error'}")
 
     access_token = refreshed.get("access_token")
-    if not access_token:
+    if not isinstance(access_token, str) or not access_token.strip():
         raise OutlookError("Outlook token refresh returned no access token")
 
     expires_in = int(refreshed.get("expires_in", 3600))
@@ -213,30 +218,20 @@ def _graph_get(
     params: dict[str, Any] | None = None,
     prefer: str | None = None,
 ) -> dict[str, Any]:
-    """GET a Microsoft Graph JSON resource."""
-    headers = {"Authorization": f"Bearer {access_token}"}
-    if prefer:
-        headers["Prefer"] = prefer
-
+    """GET a Microsoft Graph JSON resource through shared transport."""
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=30)
-    except requests.RequestException as exc:
-        raise OutlookError(f"Microsoft Graph request failed: {exc}") from exc
-
-    if response.status_code >= 400:
-        try:
-            detail = response.json().get("error", {}).get("message")
-        except (TypeError, ValueError):
-            detail = None
+        return request_json(access_token, url, params=params, prefer=prefer)
+    except GraphRequestError as exc:
         raise GraphHttpError(
-            response.status_code,
-            f"Microsoft Graph returned HTTP {response.status_code}: {detail or response.text}",
-        )
-
-    try:
-        return response.json()
-    except ValueError as exc:
-        raise OutlookError("Microsoft Graph returned invalid JSON") from exc
+            exc.status_code or 0,
+            str(exc),
+            graph_error_code=getattr(exc, "graph_error_code", None),
+            request_id=getattr(exc, "request_id", None),
+            client_request_id=getattr(exc, "client_request_id", None),
+            retry_after_seconds=getattr(exc, "retry_after_seconds", None),
+            failure_class=getattr(exc, "failure_class", "transport"),
+            safe_url_template=getattr(exc, "safe_url_template", None),
+        ) from exc
 
 
 def _graph_prefer(*values: str) -> str:
@@ -473,6 +468,7 @@ def list_attachments(access_token: str, message_id: str) -> list[dict[str, Any]]
     result = _graph_get(
         access_token,
         f"{GRAPH}/me/messages/{message_id}/attachments",
+        prefer=_graph_prefer('IdType="ImmutableId"'),
     )
     return result.get("value", [])
 

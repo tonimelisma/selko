@@ -208,7 +208,7 @@ class WorkerPool:
 
         # 1. Try scheduled tasks first (email_fetch, photo_fetch)
         task_types = []
-        if (
+        if not self.config.enable_email_ingestion_v2 and (
             circuit_breaker.is_available("email:gmail")
             or circuit_breaker.is_available("email:outlook")
         ):
