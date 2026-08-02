@@ -33,7 +33,7 @@ class TestEnqueueScheduledTask:
         task_id = enqueue_scheduled_task(
             mock_client,
             user_id="user-123",
-            task_type="email_fetch",
+            task_type="photo_fetch",
             payload={"max_emails": 50},
         )
 
@@ -42,7 +42,7 @@ class TestEnqueueScheduledTask:
         # Verify insert was called with correct data (no scheduled_at)
         insert_call = mock_client.table.return_value.insert.call_args[0][0]
         assert insert_call["user_id"] == "user-123"
-        assert insert_call["task_type"] == "email_fetch"
+        assert insert_call["task_type"] == "photo_fetch"
         assert insert_call["payload"] == {"max_emails": 50}
         assert "scheduled_at" not in insert_call
 
@@ -58,7 +58,7 @@ class TestEnqueueScheduledTask:
         task_id = enqueue_scheduled_task(
             mock_client,
             user_id="user-123",
-            task_type="email_fetch",
+            task_type="photo_fetch",
             payload={"max_emails": 100},
             scheduled_at=scheduled_time,
         )
@@ -81,7 +81,7 @@ class TestEnqueueScheduledTask:
         result = enqueue_scheduled_task(
             mock_client,
             user_id="user-abc",
-            task_type="email_fetch",
+            task_type="photo_fetch",
             payload={},
         )
 
@@ -98,7 +98,7 @@ class TestEnqueueScheduledTask:
         enqueue_scheduled_task(
             mock_client,
             user_id="user-123",
-            task_type="email_fetch",
+            task_type="photo_fetch",
             payload={},
         )
 
@@ -115,7 +115,7 @@ class TestEnqueueScheduledTask:
             enqueue_scheduled_task(
                 mock_client,
                 user_id="user-123",
-                task_type="email_fetch",
+                task_type="photo_fetch",
                 payload={},
             )
 
@@ -132,7 +132,7 @@ class TestClaimScheduledTask:
 
         task_data = {
             "id": "task-123",
-            "task_type": "email_fetch",
+            "task_type": "photo_fetch",
             "user_id": "user-456",
             "payload": {"max_emails": 50},
         }
@@ -142,13 +142,13 @@ class TestClaimScheduledTask:
 
         result = claim_scheduled_task(
             mock_client,
-            task_types=["email_fetch"],
+            task_types=["photo_fetch"],
             worker_id="worker-1",
         )
 
         assert result == task_data
         assert result["id"] == "task-123"
-        assert result["task_type"] == "email_fetch"
+        assert result["task_type"] == "photo_fetch"
 
     def test_claim_returns_none_when_no_tasks(self):
         """Test claiming returns None when no tasks are available."""
@@ -160,7 +160,7 @@ class TestClaimScheduledTask:
 
         result = claim_scheduled_task(
             mock_client,
-            task_types=["email_fetch"],
+            task_types=["photo_fetch"],
             worker_id="worker-1",
         )
 
@@ -176,7 +176,7 @@ class TestClaimScheduledTask:
 
         claim_scheduled_task(
             mock_client,
-            task_types=["email_fetch", "other_task"],
+            task_types=["photo_fetch", "other_task"],
             worker_id="worker-abc",
             lock_duration_seconds=600,
         )
@@ -184,7 +184,7 @@ class TestClaimScheduledTask:
         mock_client.rpc.assert_called_once_with(
             "claim_next_scheduled_task",
             {
-                "p_task_types": ["email_fetch", "other_task"],
+                "p_task_types": ["photo_fetch", "other_task"],
                 "p_worker_id": "worker-abc",
                 "p_lock_duration_seconds": 600,
             },
@@ -198,7 +198,7 @@ class TestClaimScheduledTask:
         with pytest.raises(ScheduledTasksError) as exc_info:
             claim_scheduled_task(
                 mock_client,
-                task_types=["email_fetch"],
+                task_types=["photo_fetch"],
                 worker_id="worker-1",
             )
 

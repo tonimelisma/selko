@@ -6,15 +6,18 @@ from unittest.mock import MagicMock, patch
 
 from selko.services.email_ingestion import (
     EmailIngestionRepository,
+    ProviderAuthenticationError,
     ProviderMessageMissingError,
     safe_error_code,
     safe_error_detail,
+    SyncClaim,
 )
 from selko.services.email_sync_health import (
     EmailSyncHealthEvaluator,
     ResendOperationalNotifier,
     SafeIncident,
 )
+from selko.services.gmail import GmailHistoryExpiredError
 from selko.services.msgraph import request_json, safe_url_template
 from selko.workers.email_ingestion import EmailIngestionWorker
 
@@ -294,3 +297,163 @@ def test_safe_incident_defaults_keep_user_scope_optional():
 
     assert incident.user_id is None
     assert incident.last_success_at is None
+
+
+# --- Behaviours inherited from the removed legacy poller -------------------
+# These were regression tests against selko.workers.email_fetch. That module is
+# gone, but the production lessons behind them are not, so they are re-asserted
+# against the durable v2 implementation that replaced it.
+
+
+def _sync_claim():
+    return SyncClaim(
+        integration_id="integration-1",
+        user_id="user-1",
+        provider="outlook",
+        run_id="run-1",
+        run_kind="incremental",
+    )
+
+
+def test_outlook_deleted_folder_is_removed_without_blocking_later_folders(mock_config):
+    """One folder's 404 must not abort the pass or lose other folders' cursors."""
+    deleted = {"id": "row-deleted", "provider_folder_id": "deleted", "is_included": True, "is_scannable": True}
+    current = {"id": "row-current", "provider_folder_id": "current", "is_included": True, "is_scannable": True}
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[deleted, current]
+    )
+    worker = EmailIngestionWorker(client, mock_config, "worker-1")
+
+    from selko.services.outlook import GraphHttpError
+
+    with patch("selko.workers.email_ingestion.get_access_token", return_value="token"), \
+         patch("selko.workers.email_ingestion.resolve_well_known_folder_ids", return_value={}), \
+         patch("selko.workers.email_ingestion.fetch_mail_folders", return_value=[]), \
+         patch("selko.workers.email_ingestion.normalize_mail_folders", return_value=[]), \
+         patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
+         patch("selko.workers.email_ingestion.record_graph_failure"), \
+         patch("selko.workers.email_ingestion.fetch_message_changes",
+               side_effect=[GraphHttpError(404, "folder missing"), ([], "cursor-current")]) as changes, \
+         patch.object(worker.repository, "require_heartbeat"), \
+         patch.object(worker.repository, "upsert_discovered") as upsert:
+        worker._discover_outlook(_sync_claim())
+
+    assert changes.call_count == 2, "the second folder must still be polled"
+    client.table.return_value.delete.return_value.eq.assert_any_call("id", "row-deleted")
+    assert upsert.call_args.kwargs["folder_id"] == "row-current"
+    assert upsert.call_args.kwargs["cursor"] == "cursor-current"
+
+
+def test_gmail_history_expiry_captures_replacement_cursor_before_listing(mock_config):
+    """The replacement historyId must be read before the bounded listing.
+
+    Reading it afterwards loses any message that arrives during the listing.
+    """
+    order: list[str] = []
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
+        data={"sync_cursor": "expired-cursor"}
+    )
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+    worker = EmailIngestionWorker(client, mock_config, "worker-1")
+
+    def expired(*_args):
+        order.append("history")
+        raise GmailHistoryExpiredError("expired")
+
+    def profile(*_args):
+        order.append("profile")
+        return {"historyId": "replacement-cursor"}
+
+    def listing(*_args, **_kwargs):
+        order.append("search")
+        return []
+
+    claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
+    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
+         patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
+         patch("selko.workers.email_ingestion.fetch_history_message_ids", side_effect=expired), \
+         patch("selko.workers.email_ingestion.get_user_profile", side_effect=profile), \
+         patch("selko.workers.email_ingestion.list_message_ids", side_effect=listing), \
+         patch.object(worker.repository, "require_heartbeat"), \
+         patch.object(worker.repository, "upsert_discovered") as upsert:
+        worker._discover_gmail(claim)
+
+    assert order == ["profile", "history", "profile", "search"]
+    assert upsert.call_args.kwargs["cursor"] == "replacement-cursor"
+
+
+def test_attachment_failure_cannot_touch_provider_cursors(mock_config):
+    """Attachment work is a separate claim, so it can never rewind discovery.
+
+    The legacy poller fetched attachments inline and had to be careful not to
+    commit a cursor afterwards; v2 removes the hazard structurally.
+    """
+    client = MagicMock()
+    worker = EmailIngestionWorker(client, mock_config, "attachment-worker")
+    attachment = {"id": "attachment-1", "email_id": "email-1", "attempts": 1, "max_attempts": 8,
+                  "provider_attachment_id": "att-1", "mime_type": "image/png", "filename": "x.png"}
+
+    with patch.object(worker.repository, "claim_attachment", return_value=attachment), \
+         patch.object(worker, "acquire_attachment", side_effect=RuntimeError("download failed")), \
+         patch.object(worker.repository, "finish_attachment", return_value=True) as finish, \
+         patch.object(worker.repository, "upsert_discovered") as upsert:
+        assert asyncio.run(worker.run_attachment_once()) is True
+
+    assert finish.call_args[0][2] == "retry"
+    upsert.assert_not_called()
+    touched = {call.args[0] for call in client.table.call_args_list if call.args}
+    assert "integrations" not in touched
+    assert "email_sync_state" not in touched
+
+
+def test_outlook_attachment_decodes_base64_and_skips_item_attachments(mock_config):
+    """Only fileAttachment carries contentBytes; itemAttachment must not store."""
+    import base64 as _b64
+
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+        "user_id": "user-1", "email_provider": "outlook",
+        "provider_message_id": "message-1", "integration_id": "integration-1",
+    }
+    worker = EmailIngestionWorker(client, mock_config, "attachment-worker")
+    encoded = _b64.b64encode(b"outlook bytes").decode("ascii")
+    listing = [
+        {"@odata.type": "#microsoft.graph.itemAttachment", "id": "item-1"},
+        {"@odata.type": "#microsoft.graph.fileAttachment", "id": "file-1",
+         "name": "document.txt", "contentType": "text/plain", "contentBytes": encoded},
+    ]
+
+    with patch("selko.workers.email_ingestion.get_access_token", return_value="token"), \
+         patch("selko.workers.email_ingestion.list_attachments", return_value=listing), \
+         patch("selko.workers.email_ingestion.calculate_content_hash", return_value="hash"), \
+         patch("selko.workers.email_ingestion.upload_to_storage", return_value="path") as upload:
+        stored = worker.acquire_attachment({**{"id": "a", "email_id": "email-1"},
+                                            "provider_attachment_id": "file-1",
+                                            "mime_type": "text/plain", "filename": "document.txt"})
+        unsupported = worker.acquire_attachment({**{"id": "b", "email_id": "email-1"},
+                                                 "provider_attachment_id": "item-1",
+                                                 "mime_type": "text/plain", "filename": "item"})
+
+    assert stored == "stored"
+    assert unsupported == "unsupported"
+    assert upload.call_args[0][3] == b"outlook bytes"
+
+
+def test_missing_credentials_are_classified_as_auth_and_expire_the_integration(mock_config):
+    """A missing credential must mark the integration expired, not look like a
+    deleted message — otherwise it retries forever and never prompts reconnect."""
+    exc = ProviderAuthenticationError("Gmail credentials are unavailable")
+    assert safe_error_code(exc) == "provider_auth_expired"
+
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value = MagicMock(data=True)
+    repository = EmailIngestionRepository(client, mock_config)
+    repository.fail_sync(_sync_claim(), "worker-1", exc)
+
+    payload = client.rpc.call_args[0][1]
+    assert payload["p_error_code"] == "provider_auth_expired"
+    assert payload["p_auth_failure"] is True

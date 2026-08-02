@@ -56,27 +56,25 @@ class TestEmailExceptionSubclasses:
             with pytest.raises(NoGmailIntegrationError, match="No Gmail integration"):
                 fetch_emails_for_user(mock_client, mock_config)
 
-    def test_fetch_emails_threads_user_id_to_service_role_credentials(self):
-        """Service-role manual sync scopes credential lookup to its owner."""
+    def test_fetch_emails_scopes_the_sync_request_to_its_owner(self):
+        """Service-role manual sync must only ever touch its own integrations.
+
+        Manual sync now asks the ingestion coordinator to poll sooner rather
+        than running its own fetch, but the ownership scoping still matters:
+        a service-role client bypasses RLS.
+        """
         from selko.services.emails import fetch_emails_for_user
 
         mock_client = MagicMock()
         mock_config = MagicMock()
+        query = mock_client.table.return_value.select.return_value.eq.return_value
+        query.in_.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
 
-        with patch(
-            "selko.services.emails.get_credentials", return_value=None
-        ) as get_credentials:
-            with pytest.raises(NoGmailIntegrationError):
-                fetch_emails_for_user(
-                    mock_client,
-                    mock_config,
-                    user_id="user-123",
-                )
+        with pytest.raises(NoGmailIntegrationError):
+            fetch_emails_for_user(mock_client, mock_config, user_id="user-123")
 
-        get_credentials.assert_called_once_with(
-            mock_client,
-            mock_config,
-            user_id="user-123",
+        mock_client.table.return_value.select.return_value.eq.assert_called_once_with(
+            "user_id", "user-123"
         )
 
 

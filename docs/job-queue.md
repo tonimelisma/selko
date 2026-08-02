@@ -2,9 +2,11 @@
 
 ## Durable email polling v2
 
-Email discovery runs inside the API process when `ENABLE_EMAIL_INGESTION_V2=true`,
-started from the FastAPI lifespan via `IngestionRuntime` alongside the existing
-`WorkerPool`. APScheduler stays off in that mode. The standalone
+Email discovery runs inside the API process whenever
+`ENABLE_BACKGROUND_PROCESSING` is on, started from the FastAPI lifespan via
+`IngestionRuntime` alongside the `WorkerPool`. It is the only ingestion path —
+the `email_fetch` scheduled task and its APScheduler job were removed, so
+`scheduled_tasks` now carries `photo_fetch` only. The standalone
 `uv run python -m selko.worker_app` entry point runs the same task set for local
 drills or a future dedicated service.
 

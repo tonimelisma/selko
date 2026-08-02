@@ -448,6 +448,13 @@ Reconciliation passes a NULL cursor, so `upsert_discovered_email_items` leaves
 `integrations.sync_cursor` and per-folder cursors untouched during a
 reconciliation pass; only a cursor-bearing discovery page advances them.
 
+`email_sync_state` is provisioned by the `integrations_ensure_email_sync_state`
+trigger whenever a Gmail or Outlook integration becomes active, so a newly
+connected account is pollable immediately; reconnecting after an expiry also
+clears accumulated backoff without disturbing a live lease.
+`request_email_sync_now(integration_id)` brings the next poll forward for a
+caller-owned integration and is a no-op while a worker holds the lease.
+
 RLS policies are not sufficient on their own here. Supabase does not grant Data
 API privileges on new public tables, so the migration also grants the five v2
 tables to `service_role` and grants `authenticated` read-only access to

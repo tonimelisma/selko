@@ -89,13 +89,11 @@ class Config:
     photo_processing_timeout: int = 120
     event_sync_timeout: int = 60
 
-    # Background processing (workers + scheduler)
+    # Whether this process performs background work at all. Off outside
+    # production so local servers, tests and CI never poll providers or spend
+    # LLM quota. It does not select an ingestion implementation — there is
+    # only one.
     enable_background_processing: bool = False
-    # Durable polling v2 is intentionally opt-in until a deployment has been
-    # explicitly cut over. The dedicated worker can be run in shadow mode
-    # without claiming or advancing provider state.
-    enable_email_ingestion_v2: bool = False
-    email_ingestion_shadow_mode: bool = False
     email_poll_interval_seconds: int = 300
     email_coordinator_tick_seconds: int = 60
     email_retry_base_seconds: int = 60
@@ -106,7 +104,6 @@ class Config:
     email_health_critical_seconds: int = 3600
     email_lease_seconds: int = 900
     email_sync_max_run_seconds: int = 900
-    email_provider_discovery_concurrency: int = 2
     # Each claim worker holds an idle poll loop, so concurrency multiplies the
     # deployment's baseline request rate. Two apiece saturates a single-mailbox
     # workload; raise only when acquisition is measurably the bottleneck.
@@ -377,8 +374,6 @@ def load_config(env_override: Optional[str] = None) -> Config:
             if "ENABLE_BACKGROUND_PROCESSING" in values
             else environment == "production"
         ),
-        enable_email_ingestion_v2=getenv("ENABLE_EMAIL_INGESTION_V2", "false").lower() == "true",
-        email_ingestion_shadow_mode=getenv("EMAIL_INGESTION_SHADOW_MODE", "false").lower() == "true",
         email_poll_interval_seconds=int(getenv("EMAIL_POLL_INTERVAL_SECONDS", "300")),
         email_coordinator_tick_seconds=int(getenv("EMAIL_COORDINATOR_TICK_SECONDS", "60")),
         email_retry_base_seconds=int(getenv("EMAIL_RETRY_BASE_SECONDS", "60")),
@@ -389,7 +384,6 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_health_critical_seconds=int(getenv("EMAIL_HEALTH_CRITICAL_SECONDS", "3600")),
         email_lease_seconds=int(getenv("EMAIL_LEASE_SECONDS", "900")),
         email_sync_max_run_seconds=int(getenv("EMAIL_SYNC_MAX_RUN_SECONDS", "900")),
-        email_provider_discovery_concurrency=int(getenv("EMAIL_PROVIDER_DISCOVERY_CONCURRENCY", "2")),
         email_acquisition_concurrency=int(getenv("EMAIL_ACQUISITION_CONCURRENCY", "2")),
         email_attachment_concurrency=int(getenv("EMAIL_ATTACHMENT_CONCURRENCY", "2")),
         email_worker_idle_base_seconds=float(getenv("EMAIL_WORKER_IDLE_BASE_SECONDS", "1")),

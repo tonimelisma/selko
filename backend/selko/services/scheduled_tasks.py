@@ -1,8 +1,9 @@
 """Scheduled tasks service for periodic background operations.
 
-This service handles only periodic/scheduled tasks (like email_fetch).
+This service handles only periodic/scheduled tasks (currently photo_fetch).
 Data processing tasks (email_process, calendar_sync) use status-based
-claiming directly from their respective data tables.
+claiming directly from their respective data tables, and email discovery is
+owned by the ingestion coordinator's own leases rather than scheduled tasks.
 """
 
 import logging
@@ -32,7 +33,7 @@ def enqueue_scheduled_task(
     Args:
         client: Authenticated Supabase client (should use service role).
         user_id: UUID of user who owns this task.
-        task_type: Type of task (currently only 'email_fetch').
+        task_type: Type of task (currently only 'photo_fetch').
         payload: Task-specific data (e.g., {max_emails: 50}).
         scheduled_at: When to process task (default: now).
 
