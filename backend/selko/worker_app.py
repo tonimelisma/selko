@@ -1,4 +1,10 @@
-"""Entry point for the dedicated Render worker process."""
+"""Standalone entry point for a dedicated ingestion worker process.
+
+The deployed topology runs ingestion inside the API process (see
+`selko.api.app`), which is why this module is not required in production. It
+stays supported for local staging drills and for splitting ingestion onto its
+own service later; both paths share `IngestionRuntime`, so they cannot drift.
+"""
 
 from __future__ import annotations
 
@@ -8,8 +14,7 @@ import signal
 
 from selko.config import load_config
 from selko.services.auth import get_service_client
-from selko.services.email_sync_health import EmailSyncHealthEvaluator, ResendOperationalNotifier
-from selko.workers.email_ingestion import EmailIngestionWorker
+from selko.workers.ingestion_runtime import IngestionRuntime
 from selko.workers.pool import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -37,41 +42,12 @@ async def main() -> None:
         error_backoff_seconds=config.worker_error_backoff_seconds,
     )
     await downstream_pool.start()
-    process_id = __import__("os").getpid()
-    coordinator = EmailIngestionWorker(client, config, f"poller-{process_id}-coordinator")
-    ingestion_workers = [coordinator]
-    ingestion_tasks = [asyncio.create_task(coordinator.coordinator_loop(), name="email-sync-coordinator")]
-    for index in range(max(config.email_acquisition_concurrency, 1)):
-        worker = EmailIngestionWorker(client, config, f"poller-{process_id}-acquisition-{index}")
-        ingestion_workers.append(worker)
-        ingestion_tasks.append(asyncio.create_task(worker.acquisition_loop(), name=f"email-acquisition-{index}"))
-    for index in range(max(config.email_attachment_concurrency, 1)):
-        worker = EmailIngestionWorker(client, config, f"poller-{process_id}-attachment-{index}")
-        ingestion_workers.append(worker)
-        ingestion_tasks.append(asyncio.create_task(worker.attachment_loop(), name=f"email-attachment-{index}"))
-    # Email delivery is optional. Without credentials the evaluator still
-    # records incidents in operational_incidents; constructing a notifier
-    # anyway would fail and log a traceback on every cycle.
-    if ResendOperationalNotifier.is_configured(config):
-        notifier = ResendOperationalNotifier(config)
-    else:
-        notifier = None
-        logger.warning(
-            "Operational notifier is not configured; email sync incidents will be "
-            "recorded in operational_incidents but not emailed"
-        )
-    health = EmailSyncHealthEvaluator(client, config, notifier)
-    health_task = asyncio.create_task(health.run(stop_event), name="email-sync-health")
+    runtime = IngestionRuntime(client, config)
+    await runtime.start()
     try:
         await stop_event.wait()
     finally:
-        for worker in ingestion_workers:
-            worker.stop()
-        for task in ingestion_tasks:
-            task.cancel()
-        health_task.cancel()
-        await asyncio.gather(*ingestion_tasks, return_exceptions=True)
-        await asyncio.gather(health_task, return_exceptions=True)
+        await runtime.stop()
         await downstream_pool.stop()
         logger.info("Dedicated worker stopped; unfinished leases remain reclaimable")
 

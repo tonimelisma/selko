@@ -452,21 +452,37 @@ class EmailIngestionWorker:
                 except asyncio.TimeoutError:
                     pass
 
-    async def acquisition_loop(self) -> None:
+    def idle_backoff(self, consecutive_idle: int) -> float:
+        """Seconds to wait after `consecutive_idle` empty claims in a row.
+
+        A flat one-second retry means every claim loop issues a request per
+        second forever, which is the dominant cost of an otherwise idle
+        deployment. Backing off geometrically keeps a busy queue responsive
+        while an idle one settles to one request per worker per max interval.
+        """
+        base = max(self.config.email_worker_idle_base_seconds, 0.1)
+        ceiling = max(self.config.email_worker_idle_max_seconds, base)
+        return min(ceiling, base * (2 ** max(consecutive_idle - 1, 0)))
+
+    async def _claim_loop(self, run_once) -> None:
+        consecutive_idle = 0
         while not self.stop_event.is_set():
-            if not await self.run_acquisition_once():
-                try:
-                    await asyncio.wait_for(self.stop_event.wait(), timeout=1)
-                except asyncio.TimeoutError:
-                    pass
+            if await run_once():
+                consecutive_idle = 0
+                continue
+            consecutive_idle += 1
+            try:
+                await asyncio.wait_for(
+                    self.stop_event.wait(), timeout=self.idle_backoff(consecutive_idle)
+                )
+            except asyncio.TimeoutError:
+                pass
+
+    async def acquisition_loop(self) -> None:
+        await self._claim_loop(self.run_acquisition_once)
 
     async def attachment_loop(self) -> None:
-        while not self.stop_event.is_set():
-            if not await self.run_attachment_once():
-                try:
-                    await asyncio.wait_for(self.stop_event.wait(), timeout=1)
-                except asyncio.TimeoutError:
-                    pass
+        await self._claim_loop(self.run_attachment_once)
 
     async def run(self) -> None:
         await asyncio.gather(self.coordinator_loop(), self.acquisition_loop(), self.attachment_loop())

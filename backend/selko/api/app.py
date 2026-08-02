@@ -41,6 +41,9 @@ scheduler = AsyncIOScheduler()
 # Global worker pool instance
 worker_pool: WorkerPool = None
 
+# Global durable email ingestion v2 runtime (async monolith mode)
+ingestion_runtime = None
+
 
 def get_user_id_or_ip(request: Request) -> str:
     """Rate limit key function: by user_id if authenticated, else by IP.
@@ -77,14 +80,18 @@ async def lifespan(app: FastAPI):
     This implements the Async Monolith pattern where the API server,
     background workers, and cron jobs all run in the same process.
 
-    Legacy background processing defaults ON in production and OFF elsewhere.
-    When durable ingestion v2 is enabled, the API is deliberately stateless:
-    the dedicated worker owns polling and all background claims.
+    Exactly one of two background modes runs:
+
+    - Durable ingestion v2 (`ENABLE_EMAIL_INGESTION_V2=true`): the worker pool
+      plus the v2 ingestion runtime run here. APScheduler stays off; v2 owns its
+      own polling cadence and the legacy `email_fetch` path is rollback-only.
+    - Legacy (default ON in production, OFF elsewhere): worker pool plus
+      APScheduler-driven `email_fetch` scheduling.
 
     - Worker pool: Continuously processes pending emails and events from data tables
     - APScheduler: Runs periodic tasks (e.g., email fetch scheduling)
     """
-    global worker_pool
+    global worker_pool, ingestion_runtime
 
     # Startup
     logger.info("Starting Selko API")
@@ -98,9 +105,26 @@ async def lifespan(app: FastAPI):
     )
 
     if config.enable_email_ingestion_v2:
-        logger.info(
-            "Durable email ingestion v2 enabled; API will not start workers or APScheduler"
+        # Async monolith: ingestion runs in this process alongside the API.
+        # Ownership is enforced by database leases rather than by running a
+        # separate service, so no extra deployment is required. APScheduler
+        # stays off — v2 owns its own polling cadence and the legacy
+        # email_fetch path is rollback-only.
+        from selko.services.auth import get_service_client
+        from selko.workers.ingestion_runtime import IngestionRuntime
+
+        logger.info("Starting durable email ingestion v2 in the API process")
+        service_client = get_service_client(config)
+
+        worker_pool = WorkerPool(
+            num_workers=config.worker_pool_size,
+            idle_sleep_seconds=config.worker_idle_sleep_seconds,
+            error_backoff_seconds=config.worker_error_backoff_seconds,
         )
+        await worker_pool.start()
+
+        ingestion_runtime = IngestionRuntime(service_client, config)
+        await ingestion_runtime.start()
     elif config.enable_background_processing:
         # Start worker pool for job processing
         logger.info("Starting worker pool for background job processing")
@@ -176,8 +200,14 @@ async def lifespan(app: FastAPI):
     if memory_monitor_task:
         memory_monitor_task.cancel()
 
-    # Only stop background workers if they were started
-    if config.enable_background_processing and not config.enable_email_ingestion_v2:
+    # Only stop what was actually started.
+    if config.enable_email_ingestion_v2:
+        if ingestion_runtime:
+            await ingestion_runtime.stop()
+        if worker_pool:
+            await worker_pool.stop()
+        logger.info("Email ingestion v2 shutdown complete")
+    elif config.enable_background_processing:
         # Stop worker pool first (workers complete current work)
         if worker_pool:
             await worker_pool.stop()

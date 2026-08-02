@@ -33,26 +33,36 @@ This document demonstrates the Python API endpoints for server-side operations t
 
 ## Prerequisites
 
-### Dedicated worker process
+### Ingestion runs inside the API process
 
-Polling Email Ingestion v2 runs in a separate Render worker process, using the
-same service-role configuration as the API:
+Polling Email Ingestion v2 runs in the same process as the API — the async
+monolith pattern this deployment already uses for the legacy worker pool. No
+separate Render service is required. Setting `ENABLE_EMAIL_INGESTION_V2=true`
+on `selko-app-production` starts the coordinator, acquisition, attachment and
+health tasks from the FastAPI lifespan, alongside the existing `WorkerPool`
+for downstream email/event processing. APScheduler stays off in this mode; v2
+owns its own polling cadence and the legacy `email_fetch` path is
+rollback-only.
+
+This is safe because ownership is enforced by database leases, not by process
+topology: `claim_due_email_sync` selects `FOR UPDATE SKIP LOCKED` and refuses
+any integration whose lease is still live, so additional instances contend
+harmlessly rather than double-writing.
+
+`backend/selko/worker_app.py` still runs the identical task set as a standalone
+process, sharing `IngestionRuntime` with the API so the two cannot drift. Use
+it for local staging drills, or to split ingestion onto its own service later:
 
 ```bash
-ENABLE_EMAIL_INGESTION_V2=true uv run python -m selko.worker_app
+ENVIRONMENT=staging ENABLE_EMAIL_INGESTION_V2=true uv run python -m selko.worker_app
 ```
 
-The worker owns provider discovery, durable identity acquisition, independent
-attachment work, existing email/event workers, and health notifications. The
-FastAPI lifespan does not start APScheduler or `WorkerPool` when v2 is enabled.
+Never run it while another writer is active for the same environment.
+
 Set `EMAIL_INGESTION_SHADOW_MODE=true` for a read-only staging comparison;
 shadow mode does not commit cursors or enqueue acquisition.
 
-Provision a separate Render Background Worker named `selko-worker-production`
-with the repository root as its working directory and start command
-`uv run python -m selko.worker_app`. Copy the API service's Supabase and OAuth
-secrets, then set `ENABLE_EMAIL_INGESTION_V2=true` only during the approved
-cutover. Run the idempotent state backfill first:
+Before the approved production cutover, run the idempotent state backfill:
 
 ```bash
 uv run python -m cli_backfill_email_ingestion_v2
