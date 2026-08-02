@@ -90,7 +90,7 @@ async def update_email_folder(
     client: Client = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
 ) -> EmailFolderPreferenceResponse:
-    """Persist a folder override and queue a 14-day sync when enabling it."""
+    """Persist a folder override and request a prompt sync when enabling it."""
 
     existing = (
         client.table("email_folders")
@@ -115,30 +115,18 @@ async def update_email_folder(
         raise HTTPException(status_code=404, detail="Email folder not found")
 
     if request.is_included:
+        # Ask the ingestion coordinator to pick this integration up on its next
+        # tick rather than queueing a separate fetch job. The RPC is a no-op
+        # while a worker holds the lease, so it cannot interrupt a run in
+        # progress, and it is naturally idempotent under repeated toggling.
         try:
-            from selko.services.scheduled_tasks import enqueue_scheduled_task
-
-            existing_tasks = (
-                client.table("scheduled_tasks")
-                .select("id,payload")
-                .eq("user_id", user.id)
-                .eq("task_type", "email_fetch")
-                .in_("status", ["pending", "processing"])
-                .execute()
-            )
-            already_queued = any(
-                (row.get("payload") or {}).get("provider") == provider
-                for row in (existing_tasks.data or [])
-            )
-            if not already_queued:
-                enqueue_scheduled_task(
-                    client,
-                    user_id=user.id,
-                    task_type="email_fetch",
-                    payload={"user_id": user.id, "provider": provider},
-                )
+            integration_id = existing.data.get("integration_id")
+            if integration_id:
+                client.rpc(
+                    "request_email_sync_now", {"p_integration_id": integration_id}
+                ).execute()
         except Exception as exc:
-            logger.warning("Folder preference saved but sync could not be queued: %s", exc)
+            logger.warning("Folder preference saved but sync could not be requested: %s", exc)
 
     return EmailFolderPreferenceResponse(**folder)
 

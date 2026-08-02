@@ -19,6 +19,7 @@ from selko.services.attachments import (
 from selko.services.email_folders import upsert_discovered_folders
 from selko.services.email_ingestion import (
     EmailIngestionRepository,
+    ProviderAuthenticationError,
     ProviderMessageMissingError,
     SyncClaim,
     safe_error_code,
@@ -106,10 +107,7 @@ class EmailIngestionWorker:
         if not claim:
             return await self.run_reconciliation_once()
         try:
-            if self.config.email_ingestion_shadow_mode:
-                logger.info("Email ingestion v2 shadow run provider=%s", claim.provider)
-            else:
-                await asyncio.to_thread(self.discover, claim)
+            await asyncio.to_thread(self.discover, claim)
             if not await asyncio.to_thread(self.repository.complete_sync, claim, self.worker_id):
                 logger.warning("Email sync completion lost lease provider=%s", claim.provider)
         except Exception as exc:
@@ -133,8 +131,7 @@ class EmailIngestionWorker:
             return False
         try:
             days = self.config.email_reconcile_weekly_days if claim.run_kind == "weekly_reconcile" else self.config.email_reconcile_daily_days
-            if not self.config.email_ingestion_shadow_mode:
-                await asyncio.to_thread(self.reconcile, claim, days)
+            await asyncio.to_thread(self.reconcile, claim, days)
             await asyncio.to_thread(self.repository.complete_sync, claim, self.worker_id, reconciled=True)
         except Exception as exc:
             await asyncio.to_thread(self.repository.fail_sync, claim, self.worker_id, exc)
@@ -156,7 +153,7 @@ class EmailIngestionWorker:
         integration = self._integration(claim.integration_id)
         credentials = get_credentials(self.client, self.config, user_id=claim.user_id)
         if not credentials:
-            raise ProviderMessageMissingError("Gmail credentials are unavailable")
+            raise ProviderAuthenticationError("Gmail credentials are unavailable")
         service = build_service(credentials)
         labels = list_labels(service)
         excluded_result = (
@@ -226,7 +223,7 @@ class EmailIngestionWorker:
     def _discover_outlook(self, claim: SyncClaim, *, lookback_days: int | None = None) -> None:
         token = get_access_token(self.client, self.config, claim.user_id)
         if not token:
-            raise ProviderMessageMissingError("Outlook credentials are unavailable")
+            raise ProviderAuthenticationError("Outlook credentials are unavailable")
         try:
             resolved = resolve_well_known_folder_ids(token)
             discovered = normalize_mail_folders(fetch_mail_folders(token, resolved_well_known_ids=resolved))
@@ -348,7 +345,7 @@ class EmailIngestionWorker:
         if provider == "gmail":
             credentials = get_credentials(self.client, self.config, user_id=item["user_id"])
             if not credentials:
-                raise ProviderMessageMissingError("Gmail credentials are unavailable")
+                raise ProviderAuthenticationError("Gmail credentials are unavailable")
             message = __import__("selko.services.gmail", fromlist=["get_full_message"]).get_full_message(
                 build_service(credentials), item["provider_message_id"]
             )
@@ -370,7 +367,7 @@ class EmailIngestionWorker:
         elif provider == "outlook":
             token = get_access_token(self.client, self.config, item["user_id"])
             if not token:
-                raise ProviderMessageMissingError("Outlook credentials are unavailable")
+                raise ProviderAuthenticationError("Outlook credentials are unavailable")
             message = get_outlook_full_message(token, item["provider_message_id"])
             parsed = parse_outlook_message(message)
             parsed["integration_id"] = item["integration_id"]
@@ -416,7 +413,7 @@ class EmailIngestionWorker:
         if email["email_provider"] == "gmail":
             credentials = get_credentials(self.client, self.config, user_id=email["user_id"])
             if not credentials:
-                raise ProviderMessageMissingError("Gmail credentials are unavailable")
+                raise ProviderAuthenticationError("Gmail credentials are unavailable")
             message = __import__("selko.services.gmail", fromlist=["get_full_message"]).get_full_message(build_service(credentials), email["provider_message_id"])
             # Inline images are registered as descriptors during acquisition but
             # are skipped by extract_attachments(), so both sources must be
@@ -429,7 +426,7 @@ class EmailIngestionWorker:
         else:
             token = get_access_token(self.client, self.config, email["user_id"])
             if not token:
-                raise ProviderMessageMissingError("Outlook credentials are unavailable")
+                raise ProviderAuthenticationError("Outlook credentials are unavailable")
             descriptor = next((d for d in list_attachments(token, email["provider_message_id"]) if d.get("id") == attachment["provider_attachment_id"]), None)
             if not descriptor or descriptor.get("@odata.type") != "#microsoft.graph.fileAttachment":
                 return "unsupported"

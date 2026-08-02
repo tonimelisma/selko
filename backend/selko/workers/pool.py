@@ -2,7 +2,7 @@
 
 This module implements a pool of long-running asyncio tasks that continuously
 poll for work from four sources:
-1. Scheduled tasks (e.g., email_fetch, photo_fetch)
+1. Scheduled tasks (photo_fetch)
 2. Pending emails (status-based claiming)
 3. Pending photos (status-based claiming)
 4. Approved events (status-based claiming)
@@ -143,7 +143,7 @@ class WorkerPool:
         """Main worker loop - continuously find and process work.
 
         This loop runs until self.running becomes False. It polls four sources:
-        1. Scheduled tasks (email_fetch, photo_fetch)
+        1. Scheduled tasks (photo_fetch)
         2. Pending emails (for LLM processing)
         3. Pending photos (for LLM processing)
         4. Approved events (for calendar sync)
@@ -190,7 +190,7 @@ class WorkerPool:
         """Try to find and process work from any source.
 
         Polls in priority order:
-        1. Scheduled tasks (periodic operations like email_fetch, photo_fetch)
+        1. Scheduled tasks (periodic operations like photo_fetch)
         2. Pending emails (need LLM processing)
         3. Pending photos (need LLM processing)
         4. Approved events (need calendar sync)
@@ -206,13 +206,9 @@ class WorkerPool:
 
         client = self._get_client()
 
-        # 1. Try scheduled tasks first (email_fetch, photo_fetch)
+        # 1. Try scheduled tasks first. Email discovery is not among them:
+        # it is owned by the ingestion coordinator's own leases.
         task_types = []
-        if not self.config.enable_email_ingestion_v2 and (
-            circuit_breaker.is_available("email:gmail")
-            or circuit_breaker.is_available("email:outlook")
-        ):
-            task_types.append("email_fetch")
         if circuit_breaker.is_available("google_photos"):
             task_types.append("photo_fetch")
 
@@ -269,14 +265,13 @@ class WorkerPool:
         worker_id: str,
         task: dict[str, Any],
     ) -> None:
-        """Process a scheduled task (e.g., email_fetch, photo_fetch).
+        """Process a scheduled task (currently photo_fetch only).
 
         Args:
             client: Supabase client.
             worker_id: Unique identifier for this worker.
             task: The claimed scheduled task.
         """
-        from selko.workers.email_fetch import process_email_fetch_task
         from selko.workers.photo_fetch import process_photo_fetch_task
 
         task_id = task["id"]
@@ -285,15 +280,10 @@ class WorkerPool:
 
         logger.info(f"{worker_id}: Processing scheduled task {task_id}: {task_type}")
 
-        if task_type == "email_fetch":
-            service_name = f"email:{payload.get('provider', 'gmail')}"
-        else:
-            service_name = "google_photos" if task_type == "photo_fetch" else task_type
+        service_name = "google_photos" if task_type == "photo_fetch" else task_type
 
         try:
-            if task_type == "email_fetch":
-                await process_email_fetch_task(client, self.config, payload)
-            elif task_type == "photo_fetch":
+            if task_type == "photo_fetch":
                 await process_photo_fetch_task(client, self.config, payload)
             else:
                 raise ValueError(f"Unknown scheduled task type: {task_type}")

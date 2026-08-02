@@ -26,11 +26,6 @@ from selko.services.outlook import (
     fetch_mail_folders,
     normalize_mail_folders,
 )
-from selko.workers.email_fetch import (
-    _process_gmail_reliable,
-    _process_outlook_reliable,
-    _reconcile_missing_outlook_folders,
-)
 
 
 def test_initial_gmail_query_is_bounded_and_excludes_arbitrary_user_labels():
@@ -217,69 +212,6 @@ def test_upsert_normalizes_stale_system_folder_exclusion():
     assert row["user_override"] is False
 
 
-def test_reconcile_missing_outlook_folders_removes_only_stale_configuration():
-    client = MagicMock()
-    rows = [
-        {"id": "row-current", "provider_folder_id": "current"},
-        {"id": "row-deleted", "provider_folder_id": "deleted"},
-    ]
-
-    with patch("selko.workers.email_fetch._outlook_folder_rows", return_value=rows):
-        _reconcile_missing_outlook_folders(client, "integration-1", {"current"})
-
-    client.table.assert_called_once_with("email_folders")
-    client.table.return_value.delete.return_value.eq.assert_called_once_with(
-        "id", "row-deleted"
-    )
-    client.table.return_value.delete.return_value.eq.return_value.execute.assert_called_once()
-
-
-def test_outlook_deleted_folder_does_not_block_later_folder_sync():
-    client = MagicMock()
-    deleted = {
-        "id": "row-deleted",
-        "provider_folder_id": "deleted",
-        "full_path": "Deleted custom folder",
-        "is_included": True,
-        "is_scannable": True,
-    }
-    current = {
-        "id": "row-current",
-        "provider_folder_id": "current",
-        "full_path": "Current folder",
-        "is_included": True,
-        "is_scannable": True,
-    }
-
-    with (
-        patch("selko.workers.email_fetch.get_access_token", return_value="token"),
-        patch("selko.workers.email_fetch.resolve_well_known_folder_ids", return_value={}),
-        patch("selko.workers.email_fetch.fetch_mail_folders", return_value=[]),
-        patch("selko.workers.email_fetch.normalize_mail_folders", return_value=[]),
-        patch("selko.workers.email_fetch._reconcile_outlook_forbidden_folders"),
-        patch("selko.workers.email_fetch.upsert_discovered_folders"),
-        patch("selko.workers.email_fetch._reconcile_missing_outlook_folders"),
-        patch("selko.workers.email_fetch._folder_classifier_gateway", return_value=None),
-        patch("selko.workers.email_fetch._outlook_folder_rows", return_value=[deleted, current]),
-        patch(
-            "selko.workers.email_fetch.fetch_message_changes",
-            side_effect=[GraphHttpError(404, "folder missing"), ([], "cursor-current")],
-        ) as fetch_changes,
-        patch("selko.workers.email_fetch._remove_outlook_folder_row") as remove_folder,
-        patch("selko.workers.email_fetch._save_folder_cursor") as save_cursor,
-    ):
-        _process_outlook_reliable(
-            client,
-            MagicMock(),
-            {"user_id": "user-1"},
-            {"id": "integration-1"},
-        )
-
-    assert fetch_changes.call_count == 2
-    remove_folder.assert_called_once_with(client, deleted)
-    save_cursor.assert_called_once_with(client, current, "cursor-current")
-
-
 def test_folder_preference_uses_restricted_rpc_instead_of_table_update():
     client = MagicMock()
     client.rpc.return_value.execute.return_value = MagicMock(data=[{"id": "folder-1", "is_included": False}])
@@ -333,75 +265,3 @@ def test_successful_completion_clears_stale_processing_error_atomically():
     assert update["locked_until"] is None
 
 
-def test_gmail_expired_cursor_is_replaced_before_overlap_search():
-    client = MagicMock()
-    order = []
-
-    def replacement_profile(_service):
-        order.append("profile")
-        return {"historyId": "replacement-cursor"}
-
-    def overlap_search(_service, **_kwargs):
-        order.append("search")
-        return []
-
-    with (
-        patch("selko.workers.email_fetch.get_credentials", return_value=MagicMock()),
-        patch("selko.workers.email_fetch.build_service", return_value=MagicMock()),
-        patch("selko.workers.email_fetch.list_labels", return_value=[]),
-        patch("selko.workers.email_fetch.upsert_discovered_folders"),
-        patch("selko.workers.email_fetch._folder_classifier_gateway", return_value=None),
-        patch("selko.workers.email_fetch._gmail_excluded_user_labels", return_value=(set(), [])),
-        patch("selko.workers.email_fetch.fetch_history_message_ids", side_effect=lambda *_args: (order.append("history") or (_ for _ in ()).throw(GmailHistoryExpiredError("expired")))),
-        patch("selko.workers.email_fetch.get_user_profile", side_effect=replacement_profile),
-        patch("selko.workers.email_fetch.list_message_ids", side_effect=overlap_search),
-        patch("selko.workers.email_fetch._save_sync_cursor") as save_cursor,
-    ):
-        _process_gmail_reliable(
-            client,
-            MagicMock(),
-            {"user_id": "user-1"},
-            {"id": "integration-1", "sync_cursor": "expired-cursor"},
-        )
-
-    assert order == ["history", "profile", "search"]
-    save_cursor.assert_called_once_with(
-        client,
-        "user-1",
-        "gmail",
-        "replacement-cursor",
-        include_last_sync=True,
-    )
-
-
-def test_gmail_attachment_failure_leaves_previous_cursor_unchanged():
-    client = MagicMock()
-    message = {"id": "message-1", "labelIds": ["INBOX"]}
-
-    with (
-        patch("selko.workers.email_fetch.get_credentials", return_value=MagicMock()),
-        patch("selko.workers.email_fetch.build_service", return_value=MagicMock()),
-        patch("selko.workers.email_fetch.list_labels", return_value=[]),
-        patch("selko.workers.email_fetch.upsert_discovered_folders"),
-        patch("selko.workers.email_fetch._folder_classifier_gateway", return_value=None),
-        patch("selko.workers.email_fetch._gmail_excluded_user_labels", return_value=(set(), [])),
-        patch("selko.workers.email_fetch.fetch_history_message_ids", return_value=(["message-1"], "next-cursor")),
-        patch("selko.workers.email_fetch.get_message_metadata", return_value=message),
-        patch("selko.workers.email_fetch.get_gmail_full_message", return_value=message),
-        patch("selko.workers.email_fetch.parse_gmail_message", return_value={
-            "email_provider": "gmail",
-            "provider_message_id": "message-1",
-        }),
-        patch("selko.workers.email_fetch._store_email_record", return_value=[{"id": "email-1"}]),
-        patch("selko.workers.email_fetch.store_gmail_message_attachments", side_effect=AttachmentError("download failed")),
-        patch("selko.workers.email_fetch._save_sync_cursor") as save_cursor,
-    ):
-        with pytest.raises(AttachmentError, match="download failed"):
-            _process_gmail_reliable(
-                client,
-                MagicMock(),
-                {"user_id": "user-1"},
-                {"id": "integration-1", "sync_cursor": "cursor-1"},
-            )
-
-    save_cursor.assert_not_called()

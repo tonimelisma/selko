@@ -1,10 +1,8 @@
 """FastAPI application factory."""
 
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -30,18 +28,14 @@ from selko.services.photos import PhotosError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.services.memory_monitor import start_memory_monitor
-from selko.workers.email_fetch import schedule_email_fetches
 from selko.workers.pool import WorkerPool
 
 logger = logging.getLogger(__name__)
 
-# Global scheduler instance (for cron jobs only)
-scheduler = AsyncIOScheduler()
-
 # Global worker pool instance
 worker_pool: WorkerPool = None
 
-# Global durable email ingestion v2 runtime (async monolith mode)
+# Global email ingestion runtime (async monolith mode)
 ingestion_runtime = None
 
 
@@ -77,19 +71,14 @@ limiter = Limiter(key_func=get_user_id_or_ip, default_limits=["60/minute"])
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events.
 
-    This implements the Async Monolith pattern where the API server,
-    background workers, and cron jobs all run in the same process.
+    This implements the Async Monolith pattern where the API server and
+    background workers run in the same process.
 
-    Exactly one of two background modes runs:
-
-    - Durable ingestion v2 (`ENABLE_EMAIL_INGESTION_V2=true`): the worker pool
-      plus the v2 ingestion runtime run here. APScheduler stays off; v2 owns its
-      own polling cadence and the legacy `email_fetch` path is rollback-only.
-    - Legacy (default ON in production, OFF elsewhere): worker pool plus
-      APScheduler-driven `email_fetch` scheduling.
-
-    - Worker pool: Continuously processes pending emails and events from data tables
-    - APScheduler: Runs periodic tasks (e.g., email fetch scheduling)
+    `ENABLE_BACKGROUND_PROCESSING` decides whether this process does background
+    work at all — off outside production so local servers, tests and CI never
+    poll providers or spend LLM quota. It does not select an implementation:
+    email ingestion is the durable polling runtime and nothing else. There is
+    no APScheduler; the ingestion coordinator owns its own polling cadence.
     """
     global worker_pool, ingestion_runtime
 
@@ -104,45 +93,26 @@ async def lifespan(app: FastAPI):
         config.memory_tracemalloc,
     )
 
-    if config.enable_email_ingestion_v2:
-        # Async monolith: ingestion runs in this process alongside the API.
-        # Ownership is enforced by database leases rather than by running a
-        # separate service, so no extra deployment is required. APScheduler
-        # stays off — v2 owns its own polling cadence and the legacy
-        # email_fetch path is rollback-only.
-        from selko.services.auth import get_service_client
-        from selko.workers.ingestion_runtime import IngestionRuntime
-
-        logger.info("Starting durable email ingestion v2 in the API process")
-        service_client = get_service_client(config)
-
-        worker_pool = WorkerPool(
-            num_workers=config.worker_pool_size,
-            idle_sleep_seconds=config.worker_idle_sleep_seconds,
-            error_backoff_seconds=config.worker_error_backoff_seconds,
-        )
-        await worker_pool.start()
-
-        ingestion_runtime = IngestionRuntime(service_client, config)
-        await ingestion_runtime.start()
-    elif config.enable_background_processing:
-        # Start worker pool for job processing
-        logger.info("Starting worker pool for background job processing")
-        worker_pool = WorkerPool(
-            num_workers=config.worker_pool_size,
-            idle_sleep_seconds=config.worker_idle_sleep_seconds,
-            error_backoff_seconds=config.worker_error_backoff_seconds,
-        )
-        await worker_pool.start()
-
-        # Recover any stale jobs from previous instance crash
+    if config.enable_background_processing:
         from selko.services.auth import get_service_client
         from selko.services.emails import unlock_expired_email_locks
         from selko.services.events import unlock_expired_event_locks
         from selko.services.photos import unlock_expired_photo_locks
         from selko.services.scheduled_tasks import unlock_expired_scheduled_tasks
+        from selko.workers.ingestion_runtime import IngestionRuntime
 
+        logger.info("Starting background processing (worker pool + email ingestion)")
         service_client = get_service_client(config)
+
+        worker_pool = WorkerPool(
+            num_workers=config.worker_pool_size,
+            idle_sleep_seconds=config.worker_idle_sleep_seconds,
+            error_backoff_seconds=config.worker_error_backoff_seconds,
+        )
+        await worker_pool.start()
+
+        # Recover any stale jobs from a previous instance crash. Email sync
+        # leases need no equivalent step: claims reclaim expired leases.
         emails_unlocked = unlock_expired_email_locks(service_client)
         events_unlocked = unlock_expired_event_locks(service_client)
         photos_unlocked = unlock_expired_photo_locks(service_client)
@@ -155,35 +125,8 @@ async def lifespan(app: FastAPI):
                 f"{photos_unlocked} photos, {tasks_unlocked} tasks"
             )
 
-        # Start APScheduler for cron-like periodic tasks
-        logger.info("Starting APScheduler for periodic tasks")
-
-        # Email fetch scheduler - every 15 minutes after startup
-        scheduler.add_job(
-            schedule_email_fetches,
-            "interval",
-            minutes=15,
-            args=[service_client],
-            id="email_fetch_scheduler",
-            name="Email Fetch Scheduler",
-            max_instances=1,
-        )
-
-        scheduler.start()
-
-        # Kick off first fetches without blocking HTTP bind. Awaiting them
-        # here delayed "Application startup complete" and left Render without
-        # an open port while Gmail/Photos scheduling ran.
-        async def _run_initial_fetches() -> None:
-            try:
-                await schedule_email_fetches(service_client)
-            except Exception:
-                logger.exception("Initial fetch scheduling failed")
-
-        asyncio.create_task(
-            _run_initial_fetches(),
-            name="initial-fetch-scheduling",
-        )
+        ingestion_runtime = IngestionRuntime(service_client, config)
+        await ingestion_runtime.start()
 
         logger.info("Background workers started successfully")
     else:
@@ -200,20 +143,14 @@ async def lifespan(app: FastAPI):
     if memory_monitor_task:
         memory_monitor_task.cancel()
 
-    # Only stop what was actually started.
-    if config.enable_email_ingestion_v2:
+    # Only stop what was actually started. Ingestion stops first so no new
+    # provider work is claimed while the pool drains; unfinished leases expire
+    # and are reclaimed by whichever instance comes up next.
+    if config.enable_background_processing:
         if ingestion_runtime:
             await ingestion_runtime.stop()
         if worker_pool:
             await worker_pool.stop()
-        logger.info("Email ingestion v2 shutdown complete")
-    elif config.enable_background_processing:
-        # Stop worker pool first (workers complete current work)
-        if worker_pool:
-            await worker_pool.stop()
-
-        # Then stop scheduler
-        scheduler.shutdown(wait=True)
 
         logger.info("Background workers shutdown complete")
 

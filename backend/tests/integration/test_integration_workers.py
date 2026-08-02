@@ -362,7 +362,7 @@ class TestEventStatusBasedClaiming:
 @pytest.mark.integration
 @pytest.mark.development
 class TestScheduledTasks:
-    """Tests for scheduled tasks (email_fetch only)."""
+    """Tests for scheduled tasks (photo_fetch only)."""
 
     def test_enqueue_and_claim_scheduled_task(
         self, service_client, test_user_id
@@ -372,7 +372,7 @@ class TestScheduledTasks:
         task_id = enqueue_scheduled_task(
             service_client,
             user_id=test_user_id,
-            task_type="email_fetch",
+            task_type="photo_fetch",
             payload={"max_emails": 50},
         )
 
@@ -381,7 +381,7 @@ class TestScheduledTasks:
         # Claim the task
         claimed = claim_scheduled_task(
             service_client,
-            task_types=["email_fetch"],
+            task_types=["photo_fetch"],
             worker_id="test-worker-1",
         )
 
@@ -398,11 +398,11 @@ class TestScheduledTasks:
         task_id = enqueue_scheduled_task(
             service_client,
             user_id=test_user_id,
-            task_type="email_fetch",
+            task_type="photo_fetch",
             payload={},
         )
 
-        claim_scheduled_task(service_client, ["email_fetch"], "test-worker")
+        claim_scheduled_task(service_client, ["photo_fetch"], "test-worker")
 
         # Complete
         complete_scheduled_task(service_client, task_id)
@@ -424,11 +424,11 @@ class TestScheduledTasks:
         task_id = enqueue_scheduled_task(
             service_client,
             user_id=test_user_id,
-            task_type="email_fetch",
+            task_type="photo_fetch",
             payload={},
         )
 
-        claim_scheduled_task(service_client, ["email_fetch"], "test-worker")
+        claim_scheduled_task(service_client, ["photo_fetch"], "test-worker")
 
         # Fail
         fail_scheduled_task(service_client, task_id, "Test error")

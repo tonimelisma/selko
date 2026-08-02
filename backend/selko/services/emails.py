@@ -413,220 +413,65 @@ def fetch_emails_for_user(
     fetch_attachments: bool = True,
     user_id: str | None = None,
 ) -> dict[str, int]:
-    """Fetch emails from Gmail and store in Supabase.
+    """Request a prompt provider poll for this user's email integrations.
 
-    Adapts the logic from cli_fetch_emails.py for API usage.
+    Manual sync used to run its own Gmail fetch, which bypassed the durable
+    cursors and made the API a second writer alongside the poller. Discovery is
+    now owned exclusively by the ingestion coordinator, so this just brings the
+    next poll forward; the coordinator picks it up on its next tick and results
+    surface through the normal History flow.
+
+    `max_results` and `fetch_attachments` are accepted for API compatibility
+    and ignored: scan breadth is governed by the poll and reconciliation
+    windows, and attachments are fetched by their own workers.
 
     Args:
-        client: Authenticated Supabase client (user session).
-        config: Configuration object with Google OAuth credentials.
-        max_results: Maximum number of emails to fetch.
-        fetch_attachments: Whether to download and store attachments.
+        client: Service-role Supabase client.
+        config: Configuration object.
+        max_results: Ignored; retained for API compatibility.
+        fetch_attachments: Ignored; retained for API compatibility.
         user_id: Integration owner. Required when ``client`` is service-role.
 
     Returns:
-        Dict with counts: {fetched, saved, attachments_downloaded}.
+        Dict with zeroed counts: ingestion is asynchronous, so nothing is
+        fetched inline.
 
     Raises:
-        EmailError: If fetching or saving fails.
+        NoGmailIntegrationError: If the user has no Gmail integration.
+        EmailError: If the sync request could not be recorded.
     """
-    # Get Gmail credentials from database
-    try:
-        creds = get_credentials(client, config, user_id=user_id)
-        if not creds:
-            raise NoGmailIntegrationError("No Gmail integration found. Please authenticate with Gmail first.")
-    except (NoGmailIntegrationError, ExpiredCredentialsError):
-        raise
-    except Exception as e:
-        raise EmailError(f"Error getting credentials: {e}") from e
+    if user_id is None:
+        user_id = get_current_user_id(client)
 
-    # Manual and scheduled syncs share the same cursor-based implementation.
-    # Keep this import local because the worker imports parsing/storage helpers
-    # from this module.
     try:
-        integration_query = client.table("integrations").select("id")
-        if user_id is not None:
-            integration_query = integration_query.eq("user_id", user_id)
-        integration_result = (
-            integration_query.eq("provider", "gmail").maybe_single().execute()
+        integrations = (
+            client.table("integrations")
+            .select("id,provider")
+            .eq("user_id", user_id)
+            .in_("provider", ["gmail", "outlook"])
+            .eq("status", "active")
+            .execute()
+        ).data or []
+    except Exception as e:
+        raise EmailError(f"Error loading email integrations: {e}") from e
+
+    if not any(row.get("provider") == "gmail" for row in integrations):
+        raise NoGmailIntegrationError(
+            "No Gmail integration found. Please authenticate with Gmail first."
         )
-        if integration_result and integration_result.data and integration_result.data.get("id"):
-            from selko.workers.email_fetch import _process_gmail_fetch_sync
 
-            return _process_gmail_fetch_sync(
-                client,
-                config,
-                {
-                    "user_id": get_current_user_id(client),
-                    "provider": "gmail",
-                    "fetch_attachments": fetch_attachments,
-                },
-            )
-    except EmailError:
-        raise
+    try:
+        for row in integrations:
+            # A live lease means a run is already under way; leave it alone.
+            client.table("email_sync_state").update(
+                {"next_poll_at": datetime.now(timezone.utc).isoformat()}
+            ).eq("integration_id", row["id"]).is_("lease_owner", None).execute()
     except Exception as e:
-        raise EmailError(f"Error preparing reliable Gmail sync: {e}") from e
+        raise EmailError(f"Error requesting email sync: {e}") from e
 
-    # Build Gmail service and fetch emails
-    try:
-        service = build_service(creds)
-        logger.info(f"Fetching {max_results} most recent emails from inbox...")
-        messages = fetch_messages(service, max_results=max_results)
-    except GmailError as e:
-        raise EmailError(f"Error fetching emails: {e}") from e
+    logger.info("Requested prompt email poll for %d integration(s)", len(integrations))
+    return {"fetched": 0, "saved": 0, "attachments_downloaded": 0}
 
-    if not messages:
-        logger.info("No emails found")
-        return {"fetched": 0, "saved": 0, "attachments_downloaded": 0}
-
-    # Parse and save emails
-    try:
-        parsed = [parse_gmail_message(msg) for msg in messages]
-        saved_records = save_emails(client, parsed)
-        logger.info(f"Saved {len(saved_records)} emails")
-    except EmailError as e:
-        raise EmailError(f"Error saving emails: {e}") from e
-
-    attachments_downloaded = 0
-
-    # Process attachments and images if requested
-    if fetch_attachments:
-        logger.info("Fetching attachments and images for saved emails...")
-
-        # Map provider message IDs to saved records and parsed data for lookup
-        provider_message_id_to_record = {
-            r["provider_message_id"]: r for r in saved_records
-        }
-        provider_message_id_to_parsed = {
-            p["provider_message_id"]: p for p in parsed
-        }
-
-        for msg in messages:
-            provider_message_id = msg["id"]
-            email_record = provider_message_id_to_record.get(provider_message_id)
-
-            if not email_record:
-                logger.warning(f"No saved record for message {provider_message_id}")
-                continue
-
-            email_id = email_record["id"]
-            images_stored = 0
-
-            # 1. Regular file attachments (existing logic)
-            attachments = extract_attachments(msg)
-            if attachments:
-                logger.info(
-                    f"Processing {len(attachments)} attachments for: "
-                    f"{email_record.get('subject', '(no subject)')[:50]}"
-                )
-
-                for att_part in attachments:
-                    try:
-                        result = process_attachment(
-                            client=client,
-                            gmail_service=service,
-                            email_id=email_id,
-                            message_id=provider_message_id,
-                            attachment_part=att_part,
-                            config=config,
-                        )
-                        if result:
-                            attachments_downloaded += 1
-                    except AttachmentError as e:
-                        logger.error(f"Failed to process attachment: {e}")
-                        continue
-
-            # 2. Inline/CID images (MIME parts without filenames)
-            inline_images = extract_inline_images(msg)
-            for inline_part in inline_images:
-                try:
-                    result = process_attachment(
-                        client=client,
-                        gmail_service=service,
-                        email_id=email_id,
-                        message_id=provider_message_id,
-                        attachment_part=inline_part,
-                        config=config,
-                    )
-                    if result:
-                        images_stored += 1
-                except AttachmentError as e:
-                    logger.error(f"Failed to process inline image: {e}")
-                    continue
-
-            # Get HTML body for linked and data URI extraction
-            parsed_email = provider_message_id_to_parsed.get(provider_message_id, {})
-            body_html = parsed_email.get("body_html")
-
-            if body_html:
-                # 3. Linked images (http/https URLs in HTML)
-                try:
-                    linked_images = extract_linked_images(body_html)
-                    for idx, img in enumerate(linked_images):
-                        ext = img.mime_type.split("/")[-1]
-                        filename = f"linked_{idx}.{ext}"
-                        try:
-                            result = store_image_content(
-                                client=client,
-                                email_id=email_id,
-                                image_data=img.data,
-                                mime_type=img.mime_type,
-                                filename=filename,
-                                config=config,
-                            )
-                            if result:
-                                images_stored += 1
-                        except AttachmentError as e:
-                            logger.error(f"Failed to store linked image: {e}")
-                            continue
-                except Exception as e:
-                    logger.warning(f"Failed to extract linked images: {e}")
-
-                # 4. Data URI images (base64-encoded in HTML)
-                try:
-                    data_uri_images = extract_data_uri_images(body_html)
-                    for idx, img in enumerate(data_uri_images):
-                        ext = img.mime_type.split("/")[-1]
-                        filename = f"data_uri_{idx}.{ext}"
-                        try:
-                            result = store_image_content(
-                                client=client,
-                                email_id=email_id,
-                                image_data=img.data,
-                                mime_type=img.mime_type,
-                                filename=filename,
-                                config=config,
-                            )
-                            if result:
-                                images_stored += 1
-                        except AttachmentError as e:
-                            logger.error(f"Failed to store data URI image: {e}")
-                            continue
-                except Exception as e:
-                    logger.warning(f"Failed to extract data URI images: {e}")
-
-            # Update has_attachments if we stored images for an email that
-            # didn't originally report having attachments
-            if images_stored > 0 and not email_record.get("has_attachments"):
-                try:
-                    client.table("emails").update(
-                        {"has_attachments": True}
-                    ).eq("id", email_id).execute()
-                    logger.debug(f"Updated has_attachments=True for email {email_id}")
-                except Exception as e:
-                    logger.warning(f"Failed to update has_attachments: {e}")
-
-            if images_stored > 0:
-                attachments_downloaded += images_stored
-                logger.info(f"Stored {images_stored} images for email {email_id}")
-
-        logger.info(f"Downloaded {attachments_downloaded} attachments/images")
-
-    return {
-        "fetched": len(messages),
-        "saved": len(saved_records),
-        "attachments_downloaded": attachments_downloaded,
-    }
 
 
 # --- Status-based worker claiming functions ---
