@@ -34,13 +34,13 @@ The background processing system uses status-based polling where data tables ARE
 Components:
 - **PostgreSQL** for queue storage via data tables (Supabase)
 - **Worker Pool** with long-running asyncio tasks for processing
-- **APScheduler** for periodic scheduling (cron-like tasks)
+- **Ingestion coordinator** owning its own polling cadence via database leases
 - **Atomic claiming** via `FOR UPDATE SKIP LOCKED`
 
 ## Data Flow
 
 ```
-Cron (5 min) -> scheduled_tasks -> Gmail API -> emails table (status=pending)
+Coordinator (60s tick) -> provider discovery -> emails table (status=pending)
                                                  |
                                Worker claims email -> Gemini LLM -> events table (status=pending_review)
                                                                      |
@@ -98,17 +98,18 @@ The calendar quota is enforced by the worker that owns the external write. A
 quota deferral releases the lock, restores the claim's attempt budget, and sets
 `next_retry_at` to the daily reset rather than consuming a failed sync attempt.
 
-### 3. Scheduled Tasks (email_fetch only)
+### 3. Scheduled Tasks (photo_fetch only)
 
-Periodic tasks like email fetching use the `scheduled_tasks` table. APScheduler creates tasks every 5 minutes:
+`scheduled_tasks` now carries only photo work. Email discovery deliberately does
+**not** use this table: a timer row stuck in `processing` used to suppress a
+provider indefinitely, which is why email ingestion moved to `email_sync_state`
+leases that expire and are reclaimed during ordinary claims.
 
 ```python
-# Scheduler creates task
-enqueue_scheduled_task(user_id, "email_fetch", {"max_emails": 50})
+enqueue_scheduled_task(user_id, "photo_fetch", {...})
 
-# Worker claims and processes
-task = await claim_scheduled_task(["email_fetch"], worker_id)
-await process_email_fetch_task(task)
+task = await claim_scheduled_task(["photo_fetch"], worker_id)
+await process_photo_fetch_task(task)
 complete_scheduled_task(task_id)
 ```
 
@@ -137,13 +138,13 @@ complete_scheduled_task(task_id)
 
 ### Scheduled Tasks Table
 
-Only for periodic tasks (currently just `email_fetch`):
+Only for periodic tasks (currently just `photo_fetch`):
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | uuid | Task ID |
 | `user_id` | uuid | Owner user |
-| `task_type` | text | Only `email_fetch` currently |
+| `task_type` | text | Only `photo_fetch` currently |
 | `payload` | jsonb | Task-specific data |
 | `status` | text | `pending`, `processing`, `completed`, `failed` |
 | `scheduled_at` | timestamptz | When to run |
@@ -156,8 +157,8 @@ The worker pool polls three sources in priority order:
 
 ```python
 async def _process_any_work(self, worker_id: str) -> bool:
-    # 1. Scheduled tasks (email_fetch)
-    task = await claim_scheduled_task(["email_fetch"], worker_id)
+    # 1. Scheduled tasks (photo_fetch)
+    task = await claim_scheduled_task(["photo_fetch"], worker_id)
     if task: return await self._process_scheduled_task(task)
 
     # 2. Pending emails
