@@ -1,6 +1,23 @@
 # OAuth Reconnect Catch-Up
 
-**Status:** Planned
+**Status:** Partially delivered by polling email ingestion v2; Calendar scope
+still planned.
+
+The **email half is done**. The `integrations_ensure_email_sync_state` trigger
+(migration `20260802000002`) fires whenever an integration becomes active, so a
+reconnect immediately sets `next_poll_at = now()` and clears the accumulated
+`consecutive_failures` backoff. The coordinator then picks the integration up on
+its next tick and resumes from the durable provider cursors, which is precisely
+the "fresh cursor-driven fetch, not a task replay" unit of recovery this
+document argues for. No OAuth callback work is needed.
+
+The **Calendar half is still outstanding**: distinguishing expired OAuth from
+validation, quota or provider failures in `sync_error`/`dead_letter_reason`, and
+making provider circuit breakers per-user instead of global.
+
+Note the current-state diagnosis below is now out of date where it describes
+`schedule_email_fetches()` and deduplicated `email_fetch` tasks — that path was
+removed in PR #234. Read it as the historical motivation, not the present code.
 
 ## Outcome
 

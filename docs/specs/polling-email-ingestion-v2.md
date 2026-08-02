@@ -1,6 +1,28 @@
 # Polling Email Ingestion v2
 
-**Status:** Proposed
+**Status:** Built and merged (PRs #231–#235); awaiting production cutover and
+acceptance. Steps 1–16 and step 20 are done: the legacy `email_fetch` poller,
+its APScheduler job and the `ENABLE_EMAIL_INGESTION_V2` flag are all removed, so
+durable polling is the only ingestion path. Ingestion runs inside the API
+process rather than a dedicated Render worker — see the deviation note below.
+
+Outstanding: steps 17–19 (staging failure drills, production cutover, and
+`toni@melisma.net` acceptance). Mark **Implemented** once acceptance passes.
+
+**Deviation from this plan:** the "Target runtime topology" section below
+specifies a separate `selko-worker-production` Render service. That was
+rejected on cost — ingestion runs in the existing paid API service via
+`IngestionRuntime`, which is safe because single ownership comes from database
+leases rather than process topology. `selko.worker_app` still runs the same
+task set standalone for local drills.
+
+**Validated against production (read-only, 2026-08-02):** the Outlook discovery
+path traverses all five included folders cleanly, and a 30-day reconcile finds
+456 messages present in the mailbox but absent from the database — the legacy
+poller's Outlook scheduling has been suppressed since 2026-07-31 by a single
+`scheduled_tasks` row stuck in `processing`, which is exactly the
+"no timer-row deduplication can permanently suppress an integration" failure
+this spec set out to eliminate.
 
 ## Purpose
 
