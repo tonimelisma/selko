@@ -312,7 +312,7 @@ class TestGmailAttachmentStaging:
         # 1. Get Gmail credentials
         creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials - run cli_auth_gmail first")
 
         # 2. Build service and fetch emails with attachments
         service = build_service(creds)
@@ -329,7 +329,7 @@ class TestGmailAttachmentStaging:
                 break
 
         if not email_with_attachment:
-            pytest.fail("No emails with attachments found in staging Gmail")
+            pytest.skip("No emails with attachments found in staging Gmail")
 
         # 4. Save email to DB first (required for attachment FK)
         parsed = parse_gmail_message(email_with_attachment)

@@ -512,10 +512,13 @@ class TestEmailProcessWorker:
         result = authenticated_client.table("emails").insert(email_data).execute()
         email = result.data[0]
 
-        # Process with mocked LLM Gateway
-        with patch("selko.workers.email_process.LLMGateway") as mock_gateway_class:
-            mock_gateway_class.return_value = mock_llm_gateway
-
+        # Process with mocked LLM Gateway. The worker builds its gateway via
+        # create_llm_gateway(); patching the old LLMGateway symbol silently
+        # stopped matching when that factory was introduced.
+        with patch(
+            "selko.workers.email_process.create_llm_gateway",
+            return_value=mock_llm_gateway,
+        ):
             await process_email(service_client, config, email)
 
         # Note: The worker doesn't update status directly - that's done by pool.py

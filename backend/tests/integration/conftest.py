@@ -200,6 +200,29 @@ def cleanup_emails(authenticated_client, test_user_id):
 
 
 @pytest.fixture(scope="function")
+def clean_sender_rules(authenticated_client, test_user_id):
+    """Guarantee the test user starts and ends with no sender rules.
+
+    `sender_rules` has unique constraints on (user_id, sender_email) and
+    (user_id, sender_domain), so a test that inserts a rule and leaves it
+    behind makes itself and its neighbours fail on the next run. Clearing on
+    both sides keeps the suite re-runnable.
+    """
+
+    def _clear():
+        try:
+            authenticated_client.table("sender_rules").delete().eq(
+                "user_id", test_user_id
+            ).execute()
+        except Exception:
+            pass
+
+    _clear()
+    yield
+    _clear()
+
+
+@pytest.fixture(scope="function")
 def cleanup_integrations(authenticated_client, test_user_id):
     """Delete test integrations after test completes."""
     created_providers = []

@@ -1,13 +1,19 @@
 """Integration tests for OAuth integration storage.
 
-Tests storing and retrieving OAuth credentials from the database.
+Token columns on `integrations` are service-role-only: migration
+`20260714000004_restrict_integration_token_columns.sql` revoked INSERT/UPDATE
+and table-wide SELECT from `authenticated`, leaving column-level SELECT on
+metadata plus DELETE for disconnect. Production writes credentials through the
+service-role client (`api/routes/integrations.py` builds one for the OAuth
+callback), so these tests do the same, and separately assert that an
+authenticated session cannot reach the token columns.
 """
 
 import pytest
+from postgrest.exceptions import APIError
 
-from selko.services.auth import get_current_user_id
 from selko.services.integrations import (
-    IntegrationError,
+    delete_integration,
     get_oauth_credentials,
     save_oauth_credentials,
     update_integration_status,
@@ -15,156 +21,138 @@ from selko.services.integrations import (
 )
 
 
+def _credentials(token: str, sample, **overrides):
+    """Build a Credentials object that differs from `sample` only by token."""
+    from google.oauth2.credentials import Credentials
+
+    fields = {
+        "token": token,
+        "refresh_token": sample.refresh_token,
+        "token_uri": sample.token_uri,
+        "client_id": sample.client_id,
+        "client_secret": sample.client_secret,
+        "scopes": sample.scopes,
+    }
+    fields.update(overrides)
+    return Credentials(**fields)
+
+
 @pytest.mark.integration
 @pytest.mark.development
 class TestOAuthIntegrations:
-    """Test OAuth credential storage with real Supabase.
-    
-    These tests create temporary test data and should clean up after themselves.
-    They use temp_user to avoid interfering with seeded Gmail credentials.
+    """Service-role credential storage against real Supabase.
+
+    `temp_user` is deleted after each test, cascading its integrations, so no
+    explicit integration cleanup is needed.
     """
 
     def test_save_oauth_credentials(
-        self,
-        config,
-        sample_oauth_credentials,
-        temp_user_client,
+        self, config, sample_oauth_credentials, admin_client, temp_user
     ):
         """Can save OAuth credentials to database."""
-        user_id = get_current_user_id(temp_user_client)
+        user_id, _, _ = temp_user
         save_oauth_credentials(
-            temp_user_client,
+            admin_client,
             user_id,
             "gmail",
             sample_oauth_credentials,
             provider_email="test@gmail.com",
         )
 
-        # Verify saved by retrieving
-        creds = get_oauth_credentials(temp_user_client, config, "gmail")
+        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
         assert creds is not None
         assert creds.token == sample_oauth_credentials.token
         assert creds.refresh_token == sample_oauth_credentials.refresh_token
 
-    def test_get_oauth_credentials_not_found(self, config, temp_user_client):
-        """Returns None when no credentials exist."""
-        # Use a provider that shouldn't exist
+    def test_get_oauth_credentials_not_found(self, config, admin_client, temp_user):
+        """Returns None when the user has no integration for that provider."""
+        user_id, _, _ = temp_user
+
         creds = get_oauth_credentials(
-            temp_user_client, config, "nonexistent_provider"
+            admin_client, config, "google_calendar", user_id=user_id
         )
+
         assert creds is None
 
     def test_save_credentials_upsert(
-        self,
-        config,
-        sample_oauth_credentials,
-        temp_user_client,
+        self, config, sample_oauth_credentials, admin_client, temp_user
     ):
-        """Saving credentials again updates existing record."""
-        user_id = get_current_user_id(temp_user_client)
-        # First save
-        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
-
-        # Second save with different token
-        from google.oauth2.credentials import Credentials
-
-        updated_creds = Credentials(
-            token="updated_token_xyz",
-            refresh_token=sample_oauth_credentials.refresh_token,
-            token_uri=sample_oauth_credentials.token_uri,
-            client_id=sample_oauth_credentials.client_id,
-            client_secret=sample_oauth_credentials.client_secret,
-            scopes=sample_oauth_credentials.scopes,
+        """Saving credentials again updates the existing record."""
+        user_id, _, _ = temp_user
+        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
+        save_oauth_credentials(
+            admin_client,
+            user_id,
+            "gmail",
+            _credentials("updated_token_xyz", sample_oauth_credentials),
         )
-        save_oauth_credentials(temp_user_client, user_id, "gmail", updated_creds)
 
-        # Verify update
-        creds = get_oauth_credentials(temp_user_client, config, "gmail")
+        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
         assert creds.token == "updated_token_xyz"
 
+        rows = (
+            admin_client.table("integrations")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("provider", "gmail")
+            .execute()
+        )
+        assert len(rows.data) == 1, "upsert must not create a second row"
+
     def test_update_integration_status(
-        self,
-        config,
-        sample_oauth_credentials,
-        temp_user_client,
+        self, config, sample_oauth_credentials, admin_client, temp_user
     ):
-        """Can update integration status."""
-        user_id = get_current_user_id(temp_user_client)
-        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
+        """A non-active status hides credentials from callers."""
+        user_id, _, _ = temp_user
+        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
 
-        # Update status to expired
-        update_integration_status(temp_user_client, "gmail", "expired")
+        update_integration_status(admin_client, "gmail", "expired", user_id=user_id)
 
-        # Credentials should return None for expired status
-        creds = get_oauth_credentials(temp_user_client, config, "gmail")
+        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
         assert creds is None
 
     def test_update_oauth_credentials(
-        self,
-        config,
-        sample_oauth_credentials,
-        temp_user_client,
+        self, config, sample_oauth_credentials, admin_client, temp_user
     ):
-        """Can update OAuth tokens after refresh."""
-        user_id = get_current_user_id(temp_user_client)
-        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
+        """Can update OAuth tokens after a refresh."""
+        user_id, _, _ = temp_user
+        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
 
-        # Simulate token refresh
-        from datetime import datetime, timedelta, timezone
-
-        from google.oauth2.credentials import Credentials
-
-        refreshed_creds = Credentials(
-            token="refreshed_token_abc",
-            refresh_token=sample_oauth_credentials.refresh_token,
-            token_uri=sample_oauth_credentials.token_uri,
-            client_id=sample_oauth_credentials.client_id,
-            client_secret=sample_oauth_credentials.client_secret,
-            scopes=sample_oauth_credentials.scopes,
+        update_oauth_credentials(
+            admin_client,
+            "gmail",
+            _credentials("refreshed_token_abc", sample_oauth_credentials),
+            user_id=user_id,
         )
-        # Note: expiry is normally set by Google auth library
-        # We can't easily set it on Credentials, but the update should work
 
-        update_oauth_credentials(temp_user_client, "gmail", refreshed_creds)
-
-        # Verify update
-        creds = get_oauth_credentials(temp_user_client, config, "gmail")
+        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
         assert creds.token == "refreshed_token_abc"
 
     def test_scopes_stored_as_array(
-        self,
-        config,
-        sample_oauth_credentials,
-        temp_user_client,
+        self, config, sample_oauth_credentials, admin_client, temp_user
     ):
-        """Scopes are stored and retrieved as array."""
-        user_id = get_current_user_id(temp_user_client)
-        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
+        """Scopes round-trip as an array."""
+        user_id, _, _ = temp_user
+        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
 
-        creds = get_oauth_credentials(temp_user_client, config, "gmail")
+        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
         assert creds.scopes == list(sample_oauth_credentials.scopes)
 
     def test_provider_email_stored(
-        self,
-        config,
-        sample_oauth_credentials,
-        temp_user,
-        temp_user_client,
+        self, sample_oauth_credentials, admin_client, temp_user
     ):
-        """Provider email is stored with credentials."""
-        user_id, email, password = temp_user
-
+        """Provider email is stored alongside credentials."""
+        user_id, _, _ = temp_user
         save_oauth_credentials(
-            temp_user_client,
+            admin_client,
             user_id,
             "gmail",
             sample_oauth_credentials,
             provider_email="myemail@gmail.com",
         )
 
-        # Verify by direct query (provider_email not in Credentials object)
         result = (
-            temp_user_client.table("integrations")
+            admin_client.table("integrations")
             .select("provider_email")
             .eq("user_id", user_id)
             .eq("provider", "gmail")
@@ -174,34 +162,27 @@ class TestOAuthIntegrations:
         assert result.data["provider_email"] == "myemail@gmail.com"
 
     def test_multiple_providers(
-        self,
-        config,
-        sample_oauth_credentials,
-        temp_user_client,
+        self, config, sample_oauth_credentials, admin_client, temp_user
     ):
-        """Can store credentials for multiple providers."""
-        user_id = get_current_user_id(temp_user_client)
-        # Save Gmail
-        save_oauth_credentials(temp_user_client, user_id, "gmail", sample_oauth_credentials)
-
-        # Save Calendar with different token
-        from google.oauth2.credentials import Credentials
-
-        calendar_creds = Credentials(
-            token="calendar_token",
-            refresh_token="calendar_refresh",
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id="test_client",
-            client_secret="test_secret",
-            scopes=["https://www.googleapis.com/auth/calendar"],
-        )
+        """Credentials for different providers stay independent."""
+        user_id, _, _ = temp_user
+        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
         save_oauth_credentials(
-            temp_user_client, user_id, "google_calendar", calendar_creds
+            admin_client,
+            user_id,
+            "google_calendar",
+            _credentials(
+                "calendar_token",
+                sample_oauth_credentials,
+                refresh_token="calendar_refresh",
+                scopes=["https://www.googleapis.com/auth/calendar"],
+            ),
         )
 
-        # Verify both exist
-        gmail = get_oauth_credentials(temp_user_client, config, "gmail")
-        calendar = get_oauth_credentials(temp_user_client, config, "google_calendar")
+        gmail = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
+        calendar = get_oauth_credentials(
+            admin_client, config, "google_calendar", user_id=user_id
+        )
 
         assert gmail is not None
         assert calendar is not None
@@ -209,28 +190,105 @@ class TestOAuthIntegrations:
 
 
 @pytest.mark.integration
+@pytest.mark.development
+class TestOAuthTokensAreServiceRoleOnly:
+    """The privilege boundary from 20260714000004 is the point of that migration.
+
+    These replace the older tests that wrote tokens as `authenticated` — a path
+    production never takes and the database no longer permits.
+    """
+
+    def test_authenticated_session_cannot_read_token_columns(
+        self, sample_oauth_credentials, admin_client, temp_user, temp_user_client
+    ):
+        """Owning the row must not grant access to its OAuth tokens."""
+        user_id, _, _ = temp_user
+        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
+
+        with pytest.raises(APIError) as exc_info:
+            temp_user_client.table("integrations").select("access_token").eq(
+                "user_id", user_id
+            ).execute()
+
+        assert exc_info.value.code == "42501"
+
+    def test_authenticated_session_can_read_its_own_metadata(
+        self, sample_oauth_credentials, admin_client, temp_user, temp_user_client
+    ):
+        """Frontends still list integrations; only token columns are withheld."""
+        user_id, _, _ = temp_user
+        save_oauth_credentials(
+            admin_client,
+            user_id,
+            "gmail",
+            sample_oauth_credentials,
+            provider_email="visible@gmail.com",
+        )
+
+        result = (
+            temp_user_client.table("integrations")
+            .select("id,provider,status,provider_email")
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
+
+        assert result.data["provider"] == "gmail"
+        assert result.data["provider_email"] == "visible@gmail.com"
+
+    def test_authenticated_session_cannot_write_tokens(
+        self, sample_oauth_credentials, admin_client, temp_user, temp_user_client
+    ):
+        """INSERT/UPDATE on integrations is service-role-only."""
+        user_id, _, _ = temp_user
+        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
+
+        with pytest.raises(APIError) as exc_info:
+            temp_user_client.table("integrations").update(
+                {"access_token": "stolen"}
+            ).eq("user_id", user_id).execute()
+
+        assert exc_info.value.code == "42501"
+
+    def test_authenticated_session_can_still_disconnect(
+        self, sample_oauth_credentials, admin_client, temp_user, temp_user_client
+    ):
+        """DELETE is deliberately retained so users can disconnect.
+
+        Regression: postgrest-py requests `return=representation` by default,
+        which needs SELECT on every column and is therefore denied under the
+        column-level grant. Disconnect must not echo the deleted row.
+        """
+        user_id, _, _ = temp_user
+        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
+
+        delete_integration(temp_user_client, "gmail")
+
+        remaining = (
+            admin_client.table("integrations")
+            .select("id")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        assert remaining.data == []
+
+
+@pytest.mark.integration
 @pytest.mark.staging
 class TestOAuthIntegrationsStaging:
     """Test OAuth storage in staging environment."""
 
-    def test_read_existing_credentials_staging(
-        self,
-        admin_client,
-        test_user_id,
-        config,
-    ):
+    def test_read_existing_credentials_staging(self, admin_client, test_user_id, config):
         """Can retrieve existing credentials from staging DB."""
-        # Do NOT use cleanup_integrations - we're reading, not creating
-        # This test expects real Gmail OAuth tokens from cli_auth_gmail
         creds = get_oauth_credentials(
-            admin_client,
-            config,
-            "gmail",
-            user_id=test_user_id,
+            admin_client, config, "gmail", user_id=test_user_id
         )
-        
+
         if creds is None:
-            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
-        
+            pytest.skip(
+                "No Gmail credentials in staging; run "
+                "'ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail' to populate them"
+            )
+
         assert creds.token is not None
         assert creds.refresh_token is not None
