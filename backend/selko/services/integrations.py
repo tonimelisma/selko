@@ -13,6 +13,7 @@ from typing import Any, Optional
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from postgrest.exceptions import APIError
+from postgrest.types import ReturnMethod
 from supabase import Client, PostgrestAPIError
 
 from selko.config import Config
@@ -755,7 +756,13 @@ def delete_integration(
     user_id = get_current_user_id(client)
 
     try:
-        client.table("integrations").delete().eq("user_id", user_id).eq("provider", provider).execute()
+        # postgrest-py defaults to Prefer: return=representation, which needs
+        # SELECT on every column. 20260714000004 reduced authenticated to
+        # column-level SELECT, so echoing the deleted row is denied even though
+        # DELETE itself is granted. Request no representation.
+        client.table("integrations").delete(returning=ReturnMethod.minimal).eq(
+            "user_id", user_id
+        ).eq("provider", provider).execute()
         logger.info(f"Deleted {provider} integration for user {user_id}")
     except PostgrestAPIError as e:
         raise IntegrationError(f"Failed to delete integration: {e.message}") from e

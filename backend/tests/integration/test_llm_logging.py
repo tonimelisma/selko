@@ -171,7 +171,6 @@ class TestLLMLoggingService:
             )
             assert log_id is not None
 
-    @pytest.mark.skip(reason="SQL function has column name ambiguity bug - fix in follow-up PR")
     def test_get_user_usage_summary(self, logging_service, test_user_id):
         """Test getting usage summary for a user."""
         # Create a few test logs

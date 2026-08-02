@@ -48,7 +48,7 @@ class TestGmailStaging:
 
         # If no credentials, fail the test
         if creds is None:
-            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials in staging - run cli_auth_gmail first")
 
         assert creds.token is not None
         # Real credentials should have refresh token
@@ -58,7 +58,7 @@ class TestGmailStaging:
         """Can build service with real credentials."""
         creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials in staging - run cli_auth_gmail first")
 
         service = build_service(creds)
         assert service is not None
@@ -68,7 +68,7 @@ class TestGmailStaging:
         """Can get real user profile from Gmail."""
         creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials in staging - run cli_auth_gmail first")
 
         service = build_service(creds)
         profile = get_user_profile(service)
@@ -81,7 +81,7 @@ class TestGmailStaging:
         """Can fetch real messages from Gmail."""
         creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials in staging - run cli_auth_gmail first")
 
         service = build_service(creds)
         messages = fetch_messages(service, max_results=5)
@@ -102,7 +102,7 @@ class TestGmailStaging:
         # The get_credentials function handles refresh automatically
         creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials in staging - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials in staging - run cli_auth_gmail first")
 
         # Credentials should be valid (refreshed if needed)
         # If they were expired, get_credentials would have refreshed them
@@ -117,18 +117,22 @@ class TestGmailDevelopment:
     These tests use local Supabase (Docker) and call the real Gmail API.
     OAuth tokens must be seeded from staging using cli_seed_tokens.
 
+    Credentials are loaded with the service-role client, matching how workers
+    call `get_credentials` in production; `authenticated` has no access to the
+    token columns since 20260714000004.
+
     Prerequisites:
     1. Local Supabase running: supabase start
     2. Test user created locally
     3. Tokens seeded: uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
     """
 
-    def test_get_credentials_real(self, authenticated_client, config):
+    def test_get_credentials_real(self, admin_client, test_user_id, config):
         """Can retrieve real Gmail credentials from local DB."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
 
         if creds is None:
-            pytest.fail(
+            pytest.skip(
                 "No Gmail credentials found.\n"
                 "Seed tokens: uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail"
             )
@@ -136,21 +140,21 @@ class TestGmailDevelopment:
         assert creds.token is not None
         assert creds.refresh_token is not None
 
-    def test_build_service_real(self, authenticated_client, config):
+    def test_build_service_real(self, admin_client, test_user_id, config):
         """Can build service with real credentials."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials - run cli_seed_tokens first")
+            pytest.skip("No Gmail credentials - run cli_seed_tokens first")
 
         service = build_service(creds)
         assert service is not None
 
     @skip_if_token_expired
-    def test_get_user_profile_real(self, authenticated_client, config):
+    def test_get_user_profile_real(self, admin_client, test_user_id, config):
         """Can get real user profile from Gmail."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials - run cli_seed_tokens first")
+            pytest.skip("No Gmail credentials - run cli_seed_tokens first")
 
         service = build_service(creds)
         profile = get_user_profile(service)
@@ -159,11 +163,11 @@ class TestGmailDevelopment:
         assert "@" in profile["emailAddress"]
 
     @skip_if_token_expired
-    def test_fetch_messages_real(self, authenticated_client, config):
+    def test_fetch_messages_real(self, admin_client, test_user_id, config):
         """Can fetch real messages from Gmail."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials - run cli_seed_tokens first")
+            pytest.skip("No Gmail credentials - run cli_seed_tokens first")
 
         service = build_service(creds)
         messages = fetch_messages(service, max_results=5)
@@ -176,11 +180,11 @@ class TestGmailDevelopment:
             assert "threadId" in msg
             assert "labelIds" in msg
 
-    def test_token_refresh_if_expired(self, authenticated_client, config):
+    def test_token_refresh_if_expired(self, admin_client, test_user_id, config):
         """Expired tokens are automatically refreshed."""
-        creds = get_credentials(authenticated_client, config)
+        creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.fail("No Gmail credentials - run cli_seed_tokens first")
+            pytest.skip("No Gmail credentials - run cli_seed_tokens first")
 
         # Credentials should be valid (refreshed if needed)
         assert creds.token is not None

@@ -3,11 +3,11 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from supabase import create_client
 
 from selko.api.deps import get_config
 from selko.api.schemas.common import ErrorCode, HealthDbResponse, HealthResponse, error_detail
 from selko.config import Config
+from selko.services.auth import get_service_client
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +32,14 @@ async def health_db_check(
     Tests connection to Supabase and returns status.
     """
     try:
-        # Create client for health check
-        client = create_client(config.supabase_url, config.supabase_key)
+        # Must use the service role: 20260714000003 deliberately leaves `anon`
+        # with no table privileges, so an anon probe reports the database as
+        # down even when it is perfectly healthy. The key stays server-side and
+        # only a status string is returned.
+        client = get_service_client(config)
 
-        # Simple query to test connectivity
-        # Using a table that exists but returns minimal data
-        result = client.table("users").select("id").limit(1).execute()
+        # Simple query to test connectivity, returning minimal data.
+        client.table("users").select("id").limit(1).execute()
 
         return HealthDbResponse(status="ok", database="connected")
 
