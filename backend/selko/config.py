@@ -107,8 +107,13 @@ class Config:
     email_lease_seconds: int = 900
     email_sync_max_run_seconds: int = 900
     email_provider_discovery_concurrency: int = 2
-    email_acquisition_concurrency: int = 4
-    email_attachment_concurrency: int = 4
+    # Each claim worker holds an idle poll loop, so concurrency multiplies the
+    # deployment's baseline request rate. Two apiece saturates a single-mailbox
+    # workload; raise only when acquisition is measurably the bottleneck.
+    email_acquisition_concurrency: int = 2
+    email_attachment_concurrency: int = 2
+    email_worker_idle_base_seconds: float = 1.0
+    email_worker_idle_max_seconds: float = 30.0
     email_health_interval_seconds: int = 300
     operational_notification_sender: Optional[str] = None
     operational_notification_recipient: Optional[str] = None
@@ -385,8 +390,10 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_lease_seconds=int(getenv("EMAIL_LEASE_SECONDS", "900")),
         email_sync_max_run_seconds=int(getenv("EMAIL_SYNC_MAX_RUN_SECONDS", "900")),
         email_provider_discovery_concurrency=int(getenv("EMAIL_PROVIDER_DISCOVERY_CONCURRENCY", "2")),
-        email_acquisition_concurrency=int(getenv("EMAIL_ACQUISITION_CONCURRENCY", "4")),
-        email_attachment_concurrency=int(getenv("EMAIL_ATTACHMENT_CONCURRENCY", "4")),
+        email_acquisition_concurrency=int(getenv("EMAIL_ACQUISITION_CONCURRENCY", "2")),
+        email_attachment_concurrency=int(getenv("EMAIL_ATTACHMENT_CONCURRENCY", "2")),
+        email_worker_idle_base_seconds=float(getenv("EMAIL_WORKER_IDLE_BASE_SECONDS", "1")),
+        email_worker_idle_max_seconds=float(getenv("EMAIL_WORKER_IDLE_MAX_SECONDS", "30")),
         email_health_interval_seconds=int(getenv("EMAIL_HEALTH_INTERVAL_SECONDS", "300")),
         operational_notification_sender=getenv("OPERATIONAL_NOTIFICATION_SENDER"),
         operational_notification_recipient=getenv("OPERATIONAL_NOTIFICATION_RECIPIENT"),
