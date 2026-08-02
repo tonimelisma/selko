@@ -2,9 +2,11 @@
 
 ## Durable email polling v2
 
-Email discovery is owned by the dedicated worker entry point
-`uv run python -m selko.worker_app` when `ENABLE_EMAIL_INGESTION_V2=true`.
-The API process does not start APScheduler or a worker pool in that mode.
+Email discovery runs inside the API process when `ENABLE_EMAIL_INGESTION_V2=true`,
+started from the FastAPI lifespan via `IngestionRuntime` alongside the existing
+`WorkerPool`. APScheduler stays off in that mode. The standalone
+`uv run python -m selko.worker_app` entry point runs the same task set for local
+drills or a future dedicated service.
 
 The v2 path uses `email_sync_state` leases for one active integration, records
 each run in `email_sync_runs`, and writes immutable provider identities to
