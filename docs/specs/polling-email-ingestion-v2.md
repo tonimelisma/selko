@@ -943,3 +943,119 @@ platforms are changed to display synchronization health.
 - The `toni@melisma.net` reconciliation discrepancy is zero.
 - New eligible mail meets the polling SLO for at least two observed intervals.
 - Existing email history and downstream event behavior remain intact.
+
+---
+
+## Production cutover runbook
+
+Written 2026-08-02, after steps 1–16 and 20 landed in PRs #231–#235. This
+section supersedes the operational detail in "Migration and cutover" above,
+which was written before the topology and flag decisions changed.
+
+### Why this is now urgent, not optional
+
+Production Outlook ingestion has been dead since **2026-07-31 03:15**. Verified
+against production on 2026-08-02:
+
+- The last Outlook `scheduled_tasks` row was created `2026-07-31T02:39:33` and
+  is still `status = 'processing'` — stuck for two days.
+- 241 of 242 Outlook tasks are `failed`; the one survivor is the stuck row.
+- Every `email_fetch` task created since carries `provider = gmail`. No Outlook
+  task has been enqueued at all, because `schedule_email_fetches()` skipped
+  enqueueing while a pending/processing row existed for that provider.
+- A read-only 30-day reconcile using the v2 discovery path finds **456 messages
+  present in the mailbox but absent from `emails`** (1,178 discovered, 722
+  already stored). Gmail is unaffected and still syncing.
+
+This is the exact failure this spec exists to remove: *"No timer-row
+deduplication can permanently suppress an integration."* One stuck row silently
+suppressed a provider that carries roughly 85% of the user's mail, with no
+error surfaced anywhere.
+
+The 456 are genuinely missing, not an ID-format artifact: stored and newly
+discovered IDs share the same immutable shape (`len=68`, `AAkALg…` prefix), and
+sampled "missing" IDs resolve in Graph dated 2026-08-01 — the day after stored
+Outlook mail stops.
+
+### Deploy steps
+
+1. `gh workflow run test.yml` (see `docs/ci-cd.md`). Requires explicit approval
+   from Toni; never deploy production without it.
+2. Migrations `20260801000001`, `20260802000001` and `20260802000002` apply.
+   `20260802000002` deletes pending/processing `email_fetch` rows, which clears
+   the stuck row as a side effect — no manual intervention needed.
+3. `ENABLE_BACKGROUND_PROCESSING` already defaults on in production, and there
+   is no longer an ingestion implementation flag, so ingestion starts with the
+   deploy. There is no separate enable step.
+4. Confirm `GET /health/db` returns 200. It returned 503 before PR #232 because
+   it probed with the anon key.
+
+### Verification
+
+- `email_sync_state` has one row per active Gmail/Outlook integration (the
+  migration backfills, and the `integrations_ensure_email_sync_state` trigger
+  covers everything created afterwards).
+- `email_sync_runs` shows `initial` then `incremental` runs completing.
+- Outlook `emails` count climbs past its 2026-07-31 plateau toward the ~456
+  backlog. Re-running is safe: `email_ingestion_items` upserts on
+  `(integration_id, provider_message_id)` and never resets a completed item,
+  and `save_emails` upserts on `provider_message_id`. Verified on staging —
+  re-acquiring two known messages left the row count unchanged.
+- `operational_incidents` stays empty, or opens only expected entries.
+- Watch memory on `selko-app-production`: ingestion now shares the 512 MB
+  starter instance with the API. Baseline before cutover was ~230 MB used,
+  ~0.37 MB/hour growth, CPU ~3% of 0.5 vCPU.
+
+### Rollback
+
+`git revert` the ingestion commits and redeploy. No v2 state is destroyed by
+this: the tables, leases and discovered identities persist, so a later
+re-cutover resumes rather than restarts. Do **not** attempt to restore the old
+poller — it was removed in PR #234 and its stuck-timer failure mode is the
+reason for this work.
+
+## Open items after cutover
+
+### Not yet exercised
+
+- **Outlook write path.** Discovery was validated read-only against production;
+  the first real write-path Outlook run happens in production. This is the
+  largest residual risk. Staging has no Outlook integration to exercise it.
+- **Mid-run worker termination and lease recovery.** The lease-expiry reclaim is
+  covered by live integration tests in
+  `backend/tests/integration/test_integration_email_ingestion_v2.py`, but a
+  kill-the-process-mid-pass drill has not been run.
+- **Unsupported-attachment fixture.** Unit-covered (`video/mp4`, Outlook
+  `itemAttachment`), not exercised end to end against a real mailbox.
+
+Staging drills are currently blocked: the staging Gmail refresh token is dead
+(`invalid_grant`, last updated 2026-02-12). Recovery requires
+`ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`, which opens a browser
+and needs an interactive Google sign-in and consent. It cannot be worked around
+by copying tokens — see "Environment separation" in `CLAUDE.md`.
+
+### Known gaps, deliberately not fixed here
+
+- **Operational notifications are unconfigured.** No Resend account exists, so
+  `OPERATIONAL_NOTIFICATION_*` are unset. Incidents are still recorded in
+  `operational_incidents`; only email delivery is missing. The worker logs one
+  warning at startup and skips the notifier rather than failing every cycle.
+- **`cli_backfill_email_ingestion_v2` is now largely redundant.** The migration
+  backfill plus the autoprovision trigger cover the same ground. Candidate for
+  removal once production acceptance passes.
+- **`safe_error_code` granularity.** Missing credentials now classify as
+  `provider_auth_expired` (PR #234), but other provider errors still collapse
+  into coarse buckets.
+
+### Remaining spec steps
+
+- **Step 17** — staging cutover and failure drills (blocked as above).
+- **Step 18** — production deployment approval.
+- **Step 19** — `toni@melisma.net` acceptance: reconcile every included Outlook
+  folder for 30 days, confirm the discrepancy reaches zero from its measured
+  456, confirm Inbox and Archive read messages are included, confirm new mail
+  arrives within the polling SLO over two intervals, and trigger one synthetic
+  failure to confirm a single opened and single resolved notification (requires
+  the notifier to be configured first).
+
+Mark this spec **Implemented** only once step 19 passes.

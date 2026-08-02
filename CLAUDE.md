@@ -273,6 +273,23 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 Microsoft Outlook OAuth uses `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET`
 from a Microsoft Entra app registration.
 
+### MANDATORY: Environment separation
+
+**Never move production credentials or data into staging or development, and
+never seed burner tokens into production.** Production holds real users' OAuth
+refresh tokens; a lower-trust environment is a lower-trust environment.
+
+- `cli_seed_tokens` is **development ↔ staging only**. Production is rejected at
+  the argparse surface and inside `seed_tokens()` (CI imports the function
+  directly, so the CLI layer alone is not enough). Do not reintroduce it.
+- When a staging or development OAuth token dies, the fix is to re-run the OAuth
+  flow for that environment, e.g.
+  `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`. That needs an
+  interactive browser sign-in and consent, so it is the user's to run. Do not
+  route around it by copying credentials.
+- Reading production state for diagnosis is fine (status, expiry, row counts).
+  Print no tokens and copy nothing.
+
 ---
 
 ## Reference Index

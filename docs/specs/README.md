@@ -4,17 +4,28 @@ Implementation specifications for planned or in-progress features.
 
 ## Active plans
 
-- [Polling Email Ingestion v2](polling-email-ingestion-v2.md) — replace the
-  mailbox-wide scheduled-task loop with durable polling, per-message
-  acquisition, independent attachments, overlapping reconciliation, and
-  runtime incident notifications.
+Status as of 2026-08-02.
+
+- [Polling Email Ingestion v2](polling-email-ingestion-v2.md) — **built and
+  merged (#231–#235), awaiting production cutover.** Durable polling is now the
+  only ingestion path; the legacy `email_fetch` poller, APScheduler job and
+  implementation flag are gone. See its "Production cutover runbook" and "Open
+  items after cutover" sections — production Outlook has been suppressed by a
+  stuck timer row since 2026-07-31 with ~456 messages outstanding.
+- [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) — **email half
+  delivered** by the `integrations_ensure_email_sync_state` trigger; the
+  Calendar half (classifying expired OAuth distinctly, per-user circuit
+  breakers) is still planned.
+- [Live UI updates](live-ui-updates.md) — **planned, not started.** Private
+  per-user Broadcast invalidations with lifecycle-safe catch-up across web, iOS,
+  and Android.
+- [Photo surface removal](photo-surface-removal.md) — **ready to implement, not
+  started.** Deliberately deferred while photo ingestion is parked.
 - [Cross-platform Review layout and action accessibility](cross-platform-review-accessibility.md)
-  — keep Review single-column and width-bounded while unifying labeled,
-  48-unit peer actions across web, iOS, and Android.
-- [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) — durably resume
-  missed email ingestion and OAuth-blocked calendar work after reauthorization.
-- [Live UI updates](live-ui-updates.md) — private per-user Broadcast
-  invalidations with lifecycle-safe catch-up across web, iOS, and Android.
+  — **implemented**, except canonical Android screenshots, which are blocked by
+  a repeatable Pixel_8 emulator crash after APK install.
+- [OneDrive photo ingestion](onedrive-photo-ingestion.md) — **parked
+  (2026-07-13)** on cost/value. Do not re-propose without new information.
 
 ## What belongs here
 
