@@ -8,14 +8,11 @@ payloads out of logs and incident summaries.
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import random
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Iterable
 
-from postgrest.exceptions import APIError
 from supabase import Client
 
 from selko.config import Config
@@ -89,15 +86,6 @@ def safe_error_detail(exc: BaseException) -> str:
         if sensitive in text.lower():
             return "provider operation failed"
     return text[:MAX_ERROR_DETAIL]
-
-
-def retry_delay(attempt: int, config: Config, *, retry_after: int | None = None) -> float:
-    """Calculate bounded exponential backoff with jitter."""
-    if retry_after is not None:
-        return float(max(0, min(retry_after, config.email_retry_max_seconds)))
-    base = max(config.email_retry_base_seconds, 1)
-    capped = min(config.email_retry_max_seconds, base * (2 ** max(attempt - 1, 0)))
-    return capped * random.uniform(0.8, 1.2)
 
 
 class EmailIngestionRepository:
@@ -293,27 +281,6 @@ class EmailIngestionRepository:
         return created
 
     def attachment_readiness(self, email_id: str) -> bool:
+        """Mirror the SQL readiness gate for diagnostics and repair tooling."""
         result = self.client.table("attachments").select("ingestion_status").eq("email_id", email_id).execute()
         return all(row.get("ingestion_status") in {"stored", "unsupported", "dead_letter"} for row in (result.data or []))
-
-
-def mark_email_removed(client: Client, item: dict[str, Any]) -> None:
-    """Apply a provider removal without deleting the local email history."""
-    email_id = item.get("email_id")
-    if email_id:
-        client.table("emails").update({"provider_folder_ids": []}).eq("id", email_id).execute()
-
-
-async def heartbeat_periodically(
-    repository: EmailIngestionRepository,
-    integration_id: str,
-    worker_id: str,
-    interval_seconds: float,
-    stop_event: asyncio.Event,
-) -> None:
-    """Keep long provider operations leased without a startup unlock race."""
-    while not stop_event.is_set():
-        try:
-            await asyncio.wait_for(stop_event.wait(), timeout=max(interval_seconds, 1.0))
-        except asyncio.TimeoutError:
-            repository.require_heartbeat(integration_id, worker_id)

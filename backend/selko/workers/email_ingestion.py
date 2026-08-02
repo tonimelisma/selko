@@ -344,7 +344,6 @@ class EmailIngestionWorker:
         return True
 
     def acquire_item(self, item: dict[str, Any]) -> str:
-        integration = self._integration(item["integration_id"])
         provider = item["provider"]
         if provider == "gmail":
             credentials = get_credentials(self.client, self.config, user_id=item["user_id"])
@@ -414,13 +413,16 @@ class EmailIngestionWorker:
         if not (mime.startswith(SUPPORTED_ATTACHMENT_MIME_PREFIXES) or mime in SUPPORTED_ATTACHMENT_MIMES):
             return "unsupported"
         email = self.client.table("emails").select("user_id,email_provider,provider_message_id,integration_id").eq("id", attachment["email_id"]).single().execute().data
-        integration = self._integration(email["integration_id"])
         if email["email_provider"] == "gmail":
             credentials = get_credentials(self.client, self.config, user_id=email["user_id"])
             if not credentials:
                 raise ProviderMessageMissingError("Gmail credentials are unavailable")
             message = __import__("selko.services.gmail", fromlist=["get_full_message"]).get_full_message(build_service(credentials), email["provider_message_id"])
-            descriptor = next((d for d in extract_attachments(message) if d.get("attachment_id") == attachment["provider_attachment_id"]), None)
+            # Inline images are registered as descriptors during acquisition but
+            # are skipped by extract_attachments(), so both sources must be
+            # searched or every CID image would be marked unsupported.
+            candidates = extract_attachments(message) + extract_inline_images(message)
+            descriptor = next((d for d in candidates if d.get("attachment_id") == attachment["provider_attachment_id"]), None)
             if not descriptor:
                 return "unsupported"
             data = download_gmail_attachment(build_service(credentials), email["provider_message_id"], descriptor["attachment_id"])

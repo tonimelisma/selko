@@ -183,6 +183,31 @@ FROM public.email_sync_state s
 JOIN public.integrations i ON i.id = s.integration_id;
 GRANT SELECT ON public.email_sync_health TO authenticated;
 
+-- Supabase does not grant Data API privileges on new public tables by default.
+-- RLS above is the row-level authorization layer; these grants only make the
+-- operations those policies already allow reachable through PostgREST. Without
+-- them the worker's service-role reads and writes fail with "permission
+-- denied", and the security_invoker health view returns nothing.
+REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE
+    public.email_sync_state,
+    public.email_sync_runs,
+    public.email_ingestion_items,
+    public.operational_incidents,
+    public.graph_api_failures
+FROM anon, authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+    public.email_sync_state,
+    public.email_sync_runs,
+    public.email_ingestion_items,
+    public.operational_incidents,
+    public.graph_api_failures
+TO service_role;
+
+-- Users may read only their own polling health; operational state and
+-- service-only error details stay unreadable to them.
+GRANT SELECT ON TABLE public.email_sync_state TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.claim_due_email_sync(p_worker_id text, p_lease_seconds integer)
 RETURNS TABLE (integration_id uuid, user_id uuid, provider text, run_id uuid,
                run_kind text, lease_expires_at timestamptz)
@@ -307,10 +332,12 @@ BEGIN
         last_discovered_at = now(),
         acquisition_status = CASE WHEN public.email_ingestion_items.acquisition_status IN ('retry', 'pending') THEN 'pending' ELSE public.email_ingestion_items.acquisition_status END,
         updated_at = now();
-    UPDATE public.email_sync_runs SET provider_ids_seen = provider_ids_seen + v_seen,
-        ingestion_items_inserted = ingestion_items_inserted + greatest(v_seen - v_existing, 0),
-        ingestion_items_existing = ingestion_items_existing + least(v_seen, v_existing)
-    WHERE id = p_run_id AND status = 'running';
+    -- The RETURNS TABLE column provider_ids_seen shadows the run column of the
+    -- same name, so every read side of this UPDATE must be table-qualified.
+    UPDATE public.email_sync_runs r SET provider_ids_seen = r.provider_ids_seen + v_seen,
+        ingestion_items_inserted = r.ingestion_items_inserted + greatest(v_seen - v_existing, 0),
+        ingestion_items_existing = r.ingestion_items_existing + least(v_seen, v_existing)
+    WHERE r.id = p_run_id AND r.status = 'running';
     IF p_folder_id IS NULL AND p_cursor IS NOT NULL THEN
         UPDATE public.integrations SET sync_cursor = p_cursor, last_sync_at = now(), updated_at = now() WHERE id = p_integration_id;
     ELSIF p_folder_id IS NOT NULL AND p_cursor IS NOT NULL THEN

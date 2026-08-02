@@ -13,7 +13,6 @@ from supabase import Client
 from selko.config import Config
 
 _TOKEN_QUERY_RE = re.compile(r"([?&](?:token|%24skiptoken|deltatoken)=[^&]+)", re.I)
-_ID_SEGMENT_RE = re.compile(r"/[^/?]+(?=/messages(?:/|$))")
 
 
 class GraphRequestError(Exception):

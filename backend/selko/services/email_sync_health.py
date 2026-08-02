@@ -109,9 +109,11 @@ class EmailSyncHealthEvaluator:
             if last_success is None and last_started is None:
                 continue  # initial grace period before the first coordinator claim
             if age >= self.config.email_health_critical_seconds:
-                expected[self._incident(state, "stale_poll", "critical", "Normal email polling has been stale for over one hour").incident_key] = self._incident(state, "stale_poll", "critical", "Normal email polling has been stale for over one hour")
+                incident = self._incident(state, "stale_poll", "critical", "Normal email polling has been stale for over one hour")
+                expected[incident.incident_key] = incident
             elif age >= self.config.email_health_warning_seconds:
-                expected[self._incident(state, "stale_poll", "warning", "Normal email polling has been stale for over thirty minutes").incident_key] = self._incident(state, "stale_poll", "warning", "Normal email polling has been stale for over thirty minutes")
+                incident = self._incident(state, "stale_poll", "warning", "Normal email polling has been stale for over thirty minutes")
+                expected[incident.incident_key] = incident
             if (state.get("consecutive_failures") or 0) >= 3:
                 incident = self._incident(state, "repeated_failures", "critical", "Three consecutive email polling runs failed")
                 expected[incident.incident_key] = incident
@@ -121,7 +123,15 @@ class EmailSyncHealthEvaluator:
             if getattr(dead_items, "count", 0):
                 incident = self._incident(state, "acquisition_dead_letter", "warning", "One or more email acquisition items require repair")
                 expected[incident.incident_key] = incident
-            dead_attachments = self.client.table("attachments").select("id", count="exact").eq("ingestion_status", "dead_letter").execute()
+            # Scope to this integration's own mail. An unscoped count would
+            # raise the same incident on every integration in the deployment.
+            dead_attachments = (
+                self.client.table("attachments")
+                .select("id, emails!inner(integration_id)", count="exact")
+                .eq("emails.integration_id", state["integration_id"])
+                .eq("ingestion_status", "dead_letter")
+                .execute()
+            )
             if getattr(dead_attachments, "count", 0):
                 incident = self._incident(state, "attachment_dead_letter", "warning", "One or more supported attachments require repair")
                 expected[incident.incident_key] = incident
@@ -149,6 +159,9 @@ class EmailSyncHealthEvaluator:
                     "status": "open", "severity": incident.severity, "safe_summary": incident.safe_summary,
                     "last_seen_at": now.isoformat(), "resolved_at": None,
                     "opened_notification_sent_at": None if existing.get("status") == "resolved" else existing.get("opened_notification_sent_at"),
+                    # A re-opened incident must be able to send a second
+                    # recovery notification when it resolves again.
+                    "resolved_notification_sent_at": None if existing.get("status") == "resolved" else existing.get("resolved_notification_sent_at"),
                 }).eq("incident_key", incident.incident_key).execute()
                 if self.notifier and existing.get("status") == "resolved":
                     try:
