@@ -220,21 +220,40 @@ class EmailIngestionWorker:
             self.repository.require_heartbeat(claim.integration_id, self.worker_id)
             self.repository.upsert_discovered(claim, discovered, cursor=next_cursor)
 
-    def _discover_outlook(self, claim: SyncClaim, *, lookback_days: int | None = None) -> None:
-        token = get_access_token(self.client, self.config, claim.user_id)
+    def _outlook_token(self, user_id: str, *, force_refresh: bool = False) -> str:
+        token = get_access_token(self.client, self.config, user_id, force_refresh=force_refresh)
         if not token:
             raise ProviderAuthenticationError("Outlook credentials are unavailable")
+        self._outlook_access_token = token
+        return token
+
+    def _outlook_call(self, user_id: str, operation):
+        """Run one Graph call, refreshing once if the access token has expired.
+
+        Graph access tokens last about an hour while a mailbox pass over many
+        folders — especially a 90-day weekly reconciliation — can run longer.
+        Without this, a mid-pass 401 propagates as `provider_auth_expired`,
+        which marks the integration expired and stops ingestion entirely until
+        the user reconnects, even though the refresh token is perfectly valid.
+        """
         try:
-            resolved = resolve_well_known_folder_ids(token)
-            discovered = normalize_mail_folders(fetch_mail_folders(token, resolved_well_known_ids=resolved))
+            return operation(self._outlook_access_token)
         except GraphHttpError as exc:
             if exc.status_code != 401:
                 raise
-            # A single bounded refresh handles an expired access token without
-            # replaying an entire mailbox pass indefinitely.
-            token = get_access_token(self.client, self.config, claim.user_id, force_refresh=True)
+            logger.info("Outlook access token expired mid-run; refreshing once")
+            return operation(self._outlook_token(user_id, force_refresh=True))
+
+    def _discover_outlook(self, claim: SyncClaim, *, lookback_days: int | None = None) -> None:
+        self._outlook_token(claim.user_id)
+
+        def list_folders(token: str):
             resolved = resolve_well_known_folder_ids(token)
-            discovered = normalize_mail_folders(fetch_mail_folders(token, resolved_well_known_ids=resolved))
+            return normalize_mail_folders(
+                fetch_mail_folders(token, resolved_well_known_ids=resolved)
+            )
+
+        discovered = self._outlook_call(claim.user_id, list_folders)
         upsert_discovered_folders(
             self.client,
             user_id=claim.user_id,
@@ -256,20 +275,41 @@ class EmailIngestionWorker:
                 continue
             try:
                 if lookback_days is not None:
-                    changes = fetch_folder_messages(token, folder["provider_folder_id"], since=since)
+                    changes = self._outlook_call(
+                        claim.user_id,
+                        lambda tok: fetch_folder_messages(
+                            tok, folder["provider_folder_id"], since=since
+                        ),
+                    )
                     cursor = None
                 else:
-                    changes, cursor = fetch_message_changes(
-                        token,
-                        folder.get("sync_cursor"),
-                        folder_id=folder["provider_folder_id"],
-                        since=since if not folder.get("sync_cursor") else None,
-                        immutable_ids=True,
+                    changes, cursor = self._outlook_call(
+                        claim.user_id,
+                        lambda tok: fetch_message_changes(
+                            tok,
+                            folder.get("sync_cursor"),
+                            folder_id=folder["provider_folder_id"],
+                            since=since if not folder.get("sync_cursor") else None,
+                            immutable_ids=True,
+                        ),
                     )
                     if cursor == RESYNC_REQUIRED:
-                        changes, cursor = fetch_message_changes(
-                            token, None, folder_id=folder["provider_folder_id"], since=since, immutable_ids=True
+                        changes, cursor = self._outlook_call(
+                            claim.user_id,
+                            lambda tok: fetch_message_changes(
+                                tok,
+                                None,
+                                folder_id=folder["provider_folder_id"],
+                                since=since,
+                                immutable_ids=True,
+                            ),
                         )
+                    if cursor == RESYNC_REQUIRED:
+                        # A resync that itself needs a resync must not persist
+                        # the sentinel as the folder's delta link; that would
+                        # poison the cursor and every later run would send it
+                        # to Graph as a URL.
+                        raise GraphHttpError(410, "Outlook resync did not yield a delta link")
                 pages = list(_chunks(changes))
                 for page_index, page in enumerate(pages):
                     items = [

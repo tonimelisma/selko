@@ -37,18 +37,30 @@ def get_integration_by_provider(admin_client, provider: str) -> dict | None:
     Returns:
         Integration record dict or None if not found.
     """
+    # An unordered limit(1) silently picks an arbitrary row, and environments
+    # routinely hold several accounts per provider — seeding an expired one
+    # looks like a successful copy but leaves the target unusable. Take an
+    # active integration, and only fall back to a non-active row if that is
+    # genuinely all there is.
     result = (
         admin_client.table("integrations")
         .select("*")
         .eq("provider", provider)
-        .limit(1)
+        .order("updated_at", desc=True)
         .execute()
     )
-
-    if not result.data:
+    rows = result.data or []
+    if not rows:
         return None
 
-    return result.data[0]
+    active = [row for row in rows if row.get("status") == "active"]
+    if not active:
+        logger.warning(
+            "No active %s integration in source; seeding a %s one",
+            provider,
+            rows[0].get("status"),
+        )
+    return (active or rows)[0]
 
 
 def get_user_by_email(admin_client, email: str) -> dict | None:
@@ -149,6 +161,17 @@ def seed_tokens(
     Raises:
         TokenSeedError: If seeding fails.
     """
+    # Enforced here as well as in argparse: seed_tokens is importable and is
+    # called directly by CI, so the guarantee cannot live in the CLI surface
+    # alone. Production credentials belong to real users and must never reach a
+    # lower-trust environment, nor be overwritten by burner tokens.
+    for label, env in (("source", source_env), ("target", target_env)):
+        if env == "production":
+            raise TokenSeedError(
+                f"Refusing to use production as the {label} environment. "
+                "Reconnect production through the normal OAuth flow instead."
+            )
+
     logger.info(f"Seeding {provider} tokens from {source_env} to {target_env}")
 
     # Load configs for both environments
@@ -263,19 +286,24 @@ Note:
     )
     add_logging_arguments(parser)
 
+    # Production is deliberately not selectable at either end. This is a
+    # developer convenience for seeding burner test tokens; production holds
+    # real users' OAuth credentials, which must never be copied down into a
+    # lower-trust environment, and real integrations must never be overwritten
+    # with burner tokens. Reconnect production through the normal OAuth flow.
     parser.add_argument(
         "--from",
         dest="source_env",
         required=True,
-        choices=["development", "staging", "production"],
-        help="Source environment to copy tokens from",
+        choices=["development", "staging"],
+        help="Source environment to copy tokens from (never production)",
     )
     parser.add_argument(
         "--to",
         dest="target_env",
         required=True,
-        choices=["development", "staging", "production"],
-        help="Target environment to copy tokens to",
+        choices=["development", "staging"],
+        help="Target environment to copy tokens to (never production)",
     )
     parser.add_argument(
         "--provider",
@@ -291,14 +319,6 @@ Note:
     if args.source_env == args.target_env:
         logger.error("Source and target environments must be different")
         sys.exit(1)
-
-    # Warn about production
-    if args.target_env == "production":
-        logger.warning("WARNING: You are about to modify production data!")
-        response = input("Are you sure you want to continue? [y/N] ")
-        if response.lower() != "y":
-            logger.info("Aborted")
-            sys.exit(0)
 
     try:
         seed_tokens(args.source_env, args.target_env, args.provider)
