@@ -4,6 +4,8 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from selko.services.email_ingestion import (
     EmailIngestionRepository,
     ProviderAuthenticationError,
@@ -457,3 +459,79 @@ def test_missing_credentials_are_classified_as_auth_and_expire_the_integration(m
     payload = client.rpc.call_args[0][1]
     assert payload["p_error_code"] == "provider_auth_expired"
     assert payload["p_auth_failure"] is True
+
+
+def test_outlook_token_expiring_mid_pass_refreshes_instead_of_expiring_the_account(
+    mock_config,
+):
+    """A 401 partway through a multi-folder pass must not end the run.
+
+    Graph access tokens last about an hour; a 90-day reconciliation across
+    several folders can run longer. Propagating the 401 maps to
+    provider_auth_expired, which marks the integration expired and halts
+    ingestion until the user reconnects — even though the refresh token is fine.
+    """
+    from selko.services.outlook import GraphHttpError
+
+    folders = [
+        {"id": "row-1", "provider_folder_id": "f1", "is_included": True, "is_scannable": True},
+        {"id": "row-2", "provider_folder_id": "f2", "is_included": True, "is_scannable": True},
+    ]
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=folders
+    )
+    worker = EmailIngestionWorker(client, mock_config, "worker-1")
+
+    tokens_used: list[str] = []
+
+    def changes(tok, *_args, **_kwargs):
+        tokens_used.append(tok)
+        if tok == "stale-token":
+            raise GraphHttpError(401, "InvalidAuthenticationToken")
+        return ([], "cursor-new")
+
+    with patch("selko.workers.email_ingestion.get_access_token",
+               side_effect=["stale-token", "fresh-token"]), \
+         patch("selko.workers.email_ingestion.resolve_well_known_folder_ids", return_value={}), \
+         patch("selko.workers.email_ingestion.fetch_mail_folders", return_value=[]), \
+         patch("selko.workers.email_ingestion.normalize_mail_folders", return_value=[]), \
+         patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
+         patch("selko.workers.email_ingestion.record_graph_failure"), \
+         patch("selko.workers.email_ingestion.fetch_message_changes", side_effect=changes), \
+         patch.object(worker.repository, "require_heartbeat"), \
+         patch.object(worker.repository, "upsert_discovered") as upsert:
+        worker._discover_outlook(_sync_claim())
+
+    assert "fresh-token" in tokens_used, "expected one forced refresh"
+    # Both folders still commit their cursors; the run does not fail.
+    assert upsert.call_count == 2
+    assert {c.kwargs["folder_id"] for c in upsert.call_args_list} == {"row-1", "row-2"}
+
+
+def test_outlook_resync_sentinel_is_never_persisted_as_a_cursor(mock_config):
+    """Committing RESYNC_REQUIRED would be sent to Graph as a URL forever."""
+    from selko.services.outlook import GraphHttpError, RESYNC_REQUIRED
+
+    folder = {"id": "row-1", "provider_folder_id": "f1", "is_included": True, "is_scannable": True}
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[folder]
+    )
+    worker = EmailIngestionWorker(client, mock_config, "worker-1")
+
+    with patch("selko.workers.email_ingestion.get_access_token", return_value="token"), \
+         patch("selko.workers.email_ingestion.resolve_well_known_folder_ids", return_value={}), \
+         patch("selko.workers.email_ingestion.fetch_mail_folders", return_value=[]), \
+         patch("selko.workers.email_ingestion.normalize_mail_folders", return_value=[]), \
+         patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
+         patch("selko.workers.email_ingestion.record_graph_failure"), \
+         patch("selko.workers.email_ingestion.fetch_message_changes",
+               return_value=([], RESYNC_REQUIRED)), \
+         patch.object(worker.repository, "require_heartbeat"), \
+         patch.object(worker.repository, "upsert_discovered") as upsert:
+        with pytest.raises(GraphHttpError):
+            worker._discover_outlook(_sync_claim())
+
+    committed = [c.kwargs.get("cursor") for c in upsert.call_args_list]
+    assert RESYNC_REQUIRED not in committed
