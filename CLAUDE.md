@@ -243,6 +243,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 
 - **Direct Supabase Access:** Frontends query Supabase directly. Python API only for operations requiring secrets (OAuth, Gmail sync, LLM processing).
 - **Reliable email ingestion:** Gmail uses paginated initial scans plus History cursors; Outlook resolves immutable well-known folder IDs before traversing and uses one delta cursor per included folder. Eligible provider folders are scannable but hidden from Settings, permanent/hidden trees are excluded, and folder preferences use the restricted `set_email_folder_preference` RPC. Email outcomes/reprocessing are exposed through the paginated History workflow.
+- **Durable email polling v2:** when `ENABLE_EMAIL_INGESTION_V2=true`, the dedicated `selko.worker_app` owns leased provider discovery, durable identity acquisition, independent attachment retries, reconciliation, and safe health notifications. FastAPI does not start the legacy scheduler or worker pool in this mode; the old `email_fetch` path is rollback-only.
 - **Single-owner calendar sync:** Approval only queues an event by setting `status='approved'`. Background workers are the sole Google Calendar writers; explicit `/events/{id}/sync` requests idempotently observe or requeue worker-owned sync state.
 - **End-to-End First:** Complete full journeys before expanding scope. First journey: Email → Calendar Event.
 - **LLM-Centric AI:** All intelligence uses multimodal LLMs (multi-provider registry; default primary `gemini-3.5-flash-lite`, fallback `qwen3.7-flash`).

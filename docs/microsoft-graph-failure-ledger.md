@@ -87,7 +87,8 @@ with Microsoft support without storing private request data.
   preserve sanitized MSAL error codes in the runtime ledger.
 - **Regression test:** Simulate an MSAL response without `access_token` and
   prove no Graph request is issued.
-- **Status:** Open; must be fixed by Polling Email Ingestion v2.
+- **Status:** Implemented in `services/msgraph.py` and covered by the v2
+  transport tests; production acceptance remains pending cutover.
 
 ### GRAPH-002: Outlook request returned empty-detail 401
 
@@ -102,7 +103,8 @@ with Microsoft support without storing private request data.
   perform one bounded token refresh/retry; if the refreshed request is also
   401, atomically mark the integration expired, clear its lease, open an
   incident, and require reconnect.
-- **Status:** Open.
+- **Status:** Implemented in the v2 failure classification and integration
+  lease failure path; production acceptance remains pending cutover.
 
 ### GRAPH-003: Outlook delta cursor requires resynchronization
 
@@ -185,7 +187,8 @@ with Microsoft support without storing private request data.
   independent work. Mark unsupported MIME types terminal `unsupported`; never
   fail provider discovery or later messages. Record Graph attachment metadata
   separately from downstream storage failure ownership.
-- **Status:** Open; mandatory v2 acceptance blocker.
+- **Status:** Implemented by independent attachment claims and terminal MIME
+  classification; production acceptance remains pending cutover.
 
 ## Research conclusions for Selko
 
@@ -213,4 +216,3 @@ Primary sources:
 - [Microsoft Graph throttling](https://learn.microsoft.com/en-us/graph/throttling)
 - [OneDrive driveItem delta](https://learn.microsoft.com/en-us/graph/api/driveitem-delta?view=graph-rest-1.0)
 - [Get attachment](https://learn.microsoft.com/en-us/graph/api/attachment-get?view=graph-rest-1.0)
-

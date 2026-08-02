@@ -418,6 +418,42 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 
 **RLS Policies:** Users can only access files in their own folder (`{user_id}/`).
 
+## Durable email polling v2
+
+The v2 migration adds the following service-owned operational boundary:
+
+| Table | Purpose |
+|---|---|
+| `email_sync_state` | One lease, cursor timing, health timestamps, and bounded failure state per active Gmail/Outlook integration |
+| `email_sync_runs` | Append-only normal, initial, reconciliation, and repair run audit |
+| `email_ingestion_items` | Idempotent immutable provider identities queued for independent message acquisition |
+| `operational_incidents` | Deduplicated safe opened/resolved health notifications |
+| `graph_api_failures` | Redacted Microsoft Graph correlation and retry ledger |
+
+`attachments.ingestion_status`, attempts, retry, and lease columns make
+attachment storage independent from provider discovery. Existing stored
+attachments are marked `stored`; no existing rows are deleted. The safe
+`email_sync_health` view exposes only user-scoped health fields and excludes
+leases, tokens, raw error detail, and provider cursors.
+
+The coordination RPCs are `claim_due_email_sync`,
+`claim_due_email_reconciliation`, `heartbeat_email_sync`,
+`complete_email_sync`, `fail_email_sync`, `upsert_discovered_email_items`,
+`claim_email_ingestion_item`, `complete_email_ingestion_item`,
+`fail_email_ingestion_item`, `claim_email_attachment`, and
+`finish_email_attachment`. All are service-role functions with a fixed search
+path and expired-lease recovery during claims.
+
+Reconciliation passes a NULL cursor, so `upsert_discovered_email_items` leaves
+`integrations.sync_cursor` and per-folder cursors untouched during a
+reconciliation pass; only a cursor-bearing discovery page advances them.
+
+RLS policies are not sufficient on their own here. Supabase does not grant Data
+API privileges on new public tables, so the migration also grants the five v2
+tables to `service_role` and grants `authenticated` read-only access to
+`email_sync_state` (which the `security_invoker` health view needs). Without
+those grants PostgREST rejects the worker before RLS is evaluated.
+
 ## Migrations
 
 All schema changes are in `supabase/migrations/`. To apply:

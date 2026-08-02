@@ -91,6 +91,29 @@ class Config:
 
     # Background processing (workers + scheduler)
     enable_background_processing: bool = False
+    # Durable polling v2 is intentionally opt-in until a deployment has been
+    # explicitly cut over. The dedicated worker can be run in shadow mode
+    # without claiming or advancing provider state.
+    enable_email_ingestion_v2: bool = False
+    email_ingestion_shadow_mode: bool = False
+    email_poll_interval_seconds: int = 300
+    email_coordinator_tick_seconds: int = 60
+    email_retry_base_seconds: int = 60
+    email_retry_max_seconds: int = 1800
+    email_reconcile_daily_days: int = 30
+    email_reconcile_weekly_days: int = 90
+    email_health_warning_seconds: int = 1800
+    email_health_critical_seconds: int = 3600
+    email_lease_seconds: int = 900
+    email_sync_max_run_seconds: int = 900
+    email_provider_discovery_concurrency: int = 2
+    email_acquisition_concurrency: int = 4
+    email_attachment_concurrency: int = 4
+    email_health_interval_seconds: int = 300
+    operational_notification_sender: Optional[str] = None
+    operational_notification_recipient: Optional[str] = None
+    operational_notification_api_key: Optional[str] = None
+    operational_notification_webhook_url: Optional[str] = None
 
     # Memory instrumentation (leak diagnosis; see services/memory_monitor.py)
     memory_log_interval_seconds: float = 60.0  # <= 0 disables periodic logging
@@ -349,6 +372,26 @@ def load_config(env_override: Optional[str] = None) -> Config:
             if "ENABLE_BACKGROUND_PROCESSING" in values
             else environment == "production"
         ),
+        enable_email_ingestion_v2=getenv("ENABLE_EMAIL_INGESTION_V2", "false").lower() == "true",
+        email_ingestion_shadow_mode=getenv("EMAIL_INGESTION_SHADOW_MODE", "false").lower() == "true",
+        email_poll_interval_seconds=int(getenv("EMAIL_POLL_INTERVAL_SECONDS", "300")),
+        email_coordinator_tick_seconds=int(getenv("EMAIL_COORDINATOR_TICK_SECONDS", "60")),
+        email_retry_base_seconds=int(getenv("EMAIL_RETRY_BASE_SECONDS", "60")),
+        email_retry_max_seconds=int(getenv("EMAIL_RETRY_MAX_SECONDS", "1800")),
+        email_reconcile_daily_days=int(getenv("EMAIL_RECONCILE_DAILY_DAYS", "30")),
+        email_reconcile_weekly_days=int(getenv("EMAIL_RECONCILE_WEEKLY_DAYS", "90")),
+        email_health_warning_seconds=int(getenv("EMAIL_HEALTH_WARNING_SECONDS", "1800")),
+        email_health_critical_seconds=int(getenv("EMAIL_HEALTH_CRITICAL_SECONDS", "3600")),
+        email_lease_seconds=int(getenv("EMAIL_LEASE_SECONDS", "900")),
+        email_sync_max_run_seconds=int(getenv("EMAIL_SYNC_MAX_RUN_SECONDS", "900")),
+        email_provider_discovery_concurrency=int(getenv("EMAIL_PROVIDER_DISCOVERY_CONCURRENCY", "2")),
+        email_acquisition_concurrency=int(getenv("EMAIL_ACQUISITION_CONCURRENCY", "4")),
+        email_attachment_concurrency=int(getenv("EMAIL_ATTACHMENT_CONCURRENCY", "4")),
+        email_health_interval_seconds=int(getenv("EMAIL_HEALTH_INTERVAL_SECONDS", "300")),
+        operational_notification_sender=getenv("OPERATIONAL_NOTIFICATION_SENDER"),
+        operational_notification_recipient=getenv("OPERATIONAL_NOTIFICATION_RECIPIENT"),
+        operational_notification_api_key=getenv("OPERATIONAL_NOTIFICATION_API_KEY"),
+        operational_notification_webhook_url=getenv("OPERATIONAL_NOTIFICATION_WEBHOOK_URL"),
         memory_log_interval_seconds=float(getenv("MEMORY_LOG_INTERVAL_SECONDS", "60")),
         memory_tracemalloc=getenv("MEMORY_TRACEMALLOC", "").lower() == "true",
         allowed_origins=_parse_allowed_origins(getenv),
