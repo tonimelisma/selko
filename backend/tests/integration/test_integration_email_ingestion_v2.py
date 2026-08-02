@@ -17,7 +17,12 @@ def _iso(delta_seconds: int = 0) -> str:
 
 @pytest.fixture
 def synced_integration(admin_client, temp_user):
-    """An active Gmail integration with durable sync state due for a poll."""
+    """An active Gmail integration with durable sync state due for a poll.
+
+    Sync state is created by the `integrations_ensure_email_sync_state`
+    trigger, not by this fixture — a newly connected account must become
+    pollable on its own.
+    """
     user_id, _, _ = temp_user
     integration_id = str(uuid4())
     admin_client.table("integrations").insert({
@@ -27,13 +32,19 @@ def synced_integration(admin_client, temp_user):
         "status": "active",
         "access_token": "test-token",
     }).execute()
-    admin_client.table("email_sync_state").insert({
-        "integration_id": integration_id,
-        "user_id": user_id,
-        "provider": "gmail",
-        "initial_watermark_at": _iso(-14 * 86400),
-        "next_poll_at": _iso(-60),
-    }).execute()
+
+    state = (
+        admin_client.table("email_sync_state")
+        .select("integration_id")
+        .eq("integration_id", integration_id)
+        .maybe_single()
+        .execute()
+    )
+    assert state and state.data, "trigger must provision sync state for a new integration"
+
+    admin_client.table("email_sync_state").update(
+        {"next_poll_at": _iso(-60)}
+    ).eq("integration_id", integration_id).execute()
 
     yield integration_id
 
@@ -241,3 +252,85 @@ def test_cursor_advances_only_when_discovery_supplies_one(
         "id", synced_integration
     ).single().execute().data
     assert advanced["sync_cursor"] == "history-1000"
+
+
+@pytest.mark.integration
+@pytest.mark.development
+def test_newly_connected_integration_becomes_pollable(admin_client, temp_user):
+    """Regression: nothing created sync state after the one-time backfill, so a
+    newly connected account was never polled and ingested nothing at all."""
+    user_id, _, _ = temp_user
+    integration_id = str(uuid4())
+
+    admin_client.table("integrations").insert({
+        "id": integration_id, "user_id": user_id, "provider": "gmail",
+        "status": "active", "access_token": "test-token",
+    }).execute()
+
+    state = admin_client.table("email_sync_state").select("*").eq(
+        "integration_id", integration_id
+    ).single().execute().data
+    assert state["provider"] == "gmail"
+    assert datetime.fromisoformat(state["next_poll_at"]) <= datetime.now(timezone.utc)
+
+    claimed = _claim(admin_client, "worker-a")
+    assert any(row["integration_id"] == integration_id for row in claimed)
+
+    admin_client.table("integrations").delete().eq("id", integration_id).execute()
+
+
+@pytest.mark.integration
+@pytest.mark.development
+def test_non_email_providers_get_no_sync_state(admin_client, temp_user):
+    """Calendar and photo integrations must not enter the email poll rotation."""
+    user_id, _, _ = temp_user
+    integration_id = str(uuid4())
+
+    admin_client.table("integrations").insert({
+        "id": integration_id, "user_id": user_id, "provider": "google_calendar",
+        "status": "active", "access_token": "test-token",
+    }).execute()
+
+    state = admin_client.table("email_sync_state").select("integration_id").eq(
+        "integration_id", integration_id
+    ).execute()
+    assert state.data == []
+
+    admin_client.table("integrations").delete().eq("id", integration_id).execute()
+
+
+@pytest.mark.integration
+@pytest.mark.development
+def test_reconnecting_clears_backoff_but_respects_a_live_lease(
+    admin_client, synced_integration
+):
+    """Reconnecting should resume promptly, without yanking a running lease."""
+    admin_client.table("email_sync_state").update({
+        "consecutive_failures": 5, "next_poll_at": _iso(1800),
+    }).eq("integration_id", synced_integration).execute()
+
+    admin_client.table("integrations").update({"status": "expired"}).eq(
+        "id", synced_integration
+    ).execute()
+    admin_client.table("integrations").update({"status": "active"}).eq(
+        "id", synced_integration
+    ).execute()
+
+    state = admin_client.table("email_sync_state").select(
+        "consecutive_failures,next_poll_at"
+    ).eq("integration_id", synced_integration).single().execute().data
+    assert state["consecutive_failures"] == 0
+    assert datetime.fromisoformat(state["next_poll_at"]) <= datetime.now(timezone.utc)
+
+    # With a worker holding the lease, a reconnect must not rewind next_poll_at.
+    admin_client.table("email_sync_state").update({
+        "lease_owner": "worker-x", "lease_expires_at": _iso(600), "next_poll_at": _iso(600),
+    }).eq("integration_id", synced_integration).execute()
+    admin_client.table("integrations").update({"status": "active"}).eq(
+        "id", synced_integration
+    ).execute()
+
+    held = admin_client.table("email_sync_state").select("next_poll_at").eq(
+        "integration_id", synced_integration
+    ).single().execute().data
+    assert datetime.fromisoformat(held["next_poll_at"]) > datetime.now(timezone.utc)

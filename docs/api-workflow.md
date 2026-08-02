@@ -35,34 +35,42 @@ This document demonstrates the Python API endpoints for server-side operations t
 
 ### Ingestion runs inside the API process
 
-Polling Email Ingestion v2 runs in the same process as the API — the async
-monolith pattern this deployment already uses for the legacy worker pool. No
-separate Render service is required. Setting `ENABLE_EMAIL_INGESTION_V2=true`
-on `selko-app-production` starts the coordinator, acquisition, attachment and
-health tasks from the FastAPI lifespan, alongside the existing `WorkerPool`
-for downstream email/event processing. APScheduler stays off in this mode; v2
-owns its own polling cadence and the legacy `email_fetch` path is
-rollback-only.
+Email ingestion runs in the same process as the API — the async monolith
+pattern this deployment already uses for the worker pool. No separate Render
+service is required. When `ENABLE_BACKGROUND_PROCESSING` is on, the FastAPI
+lifespan starts the coordinator, acquisition, attachment and health tasks
+alongside the `WorkerPool` that handles downstream email/event processing.
 
-This is safe because ownership is enforced by database leases, not by process
-topology: `claim_due_email_sync` selects `FOR UPDATE SKIP LOCKED` and refuses
-any integration whose lease is still live, so additional instances contend
-harmlessly rather than double-writing.
+There is no implementation switch: durable polling is the only ingestion path,
+and the legacy `email_fetch` scheduled task and its APScheduler job are gone.
+`ENABLE_BACKGROUND_PROCESSING` answers a different question — whether this
+process does background work at all — and stays off outside production so
+local servers, tests and CI never poll providers or spend LLM quota.
 
-`backend/selko/worker_app.py` still runs the identical task set as a standalone
+Running in-process is safe because ownership is enforced by database leases,
+not by process topology: `claim_due_email_sync` selects `FOR UPDATE SKIP
+LOCKED` and refuses any integration whose lease is still live, so additional
+instances contend harmlessly rather than double-writing.
+
+Newly connected accounts become pollable automatically: the
+`integrations_ensure_email_sync_state` trigger creates `email_sync_state`
+whenever a Gmail or Outlook integration becomes active, and resets accumulated
+backoff on reconnect without disturbing a live lease. `request_email_sync_now`
+brings the next poll forward — used when a folder is newly included and by the
+manual `POST /emails/sync` endpoint, which now requests a poll rather than
+running its own fetch.
+
+`backend/selko/worker_app.py` runs the identical task set as a standalone
 process, sharing `IngestionRuntime` with the API so the two cannot drift. Use
 it for local staging drills, or to split ingestion onto its own service later:
 
 ```bash
-ENVIRONMENT=staging ENABLE_EMAIL_INGESTION_V2=true uv run python -m selko.worker_app
+ENVIRONMENT=staging ENABLE_BACKGROUND_PROCESSING=true uv run python -m selko.worker_app
 ```
 
 Never run it while another writer is active for the same environment.
 
-Set `EMAIL_INGESTION_SHADOW_MODE=true` for a read-only staging comparison;
-shadow mode does not commit cursors or enqueue acquisition.
-
-Before the approved production cutover, run the idempotent state backfill:
+To seed durable state for pre-existing integrations:
 
 ```bash
 uv run python -m cli_backfill_email_ingestion_v2
