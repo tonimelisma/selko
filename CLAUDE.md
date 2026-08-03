@@ -310,6 +310,7 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **Polling email ingestion v2** | `docs/specs/polling-email-ingestion-v2.md` | When replacing email poll orchestration, adding durable discovery/reconciliation, isolating attachment failures, or adding sync-health alerts |
 | **Microsoft Graph failure ledger** | `docs/microsoft-graph-failure-ledger.md` | Before changing Graph request/retry/resync behavior or after any production Graph failure |
 | **OAuth reconnect catch-up** | `docs/specs/oauth-reconnect-catch-up.md` | When implementing automatic email/calendar recovery after OAuth reauthorization |
+| **Ingestion & recovery hardening** | `docs/specs/ingestion-recovery-hardening.md` | Before the ingestion production cutover, and when touching provider error classification, ingestion loop supervision, the attachment readiness race, or ingestion observability |
 | **Live UI updates** | `docs/specs/live-ui-updates.md` | When implementing cross-platform Realtime invalidation, lifecycle catch-up, or refresh behavior |
 | **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |
 | **Cross-platform Review accessibility** | `docs/specs/cross-platform-review-accessibility.md` | When changing Review width/columns, grouped action styling, button labels/targets, or Review/Event Detail accessibility on web, iOS, or Android |
