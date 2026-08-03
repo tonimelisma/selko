@@ -248,6 +248,27 @@ class TestEmailStatusBasedClaiming:
 class TestEventStatusBasedClaiming:
     """Tests for event status-based claiming (replacing calendar_sync jobs)."""
 
+    @pytest.fixture(autouse=True)
+    def _active_google_calendar_integration(self, service_client, test_user_id):
+        """claim_approved_event requires an active google_calendar integration
+        for the event's user (oauth-reconnect-catch-up.md structured failure
+        classification: workers must not burn attempts on users who are
+        known to be disconnected).
+        """
+        service_client.table("integrations").upsert(
+            {
+                "user_id": test_user_id,
+                "provider": "google_calendar",
+                "status": "active",
+                "access_token": "test-access-token",
+            },
+            on_conflict="user_id,provider",
+        ).execute()
+        yield
+        service_client.table("integrations").delete().eq(
+            "user_id", test_user_id
+        ).eq("provider", "google_calendar").execute()
+
     def test_claim_approved_event_directly(
         self, service_client, authenticated_client, test_user_id
     ):
@@ -357,6 +378,29 @@ class TestEventStatusBasedClaiming:
         # Worker 2 tries to claim - should get None (only one event exists)
         claimed_2 = claim_approved_event_for_sync(service_client, "worker-2")
         assert claimed_2 is None
+
+    def test_claim_excludes_users_without_active_calendar_integration(
+        self, service_client, authenticated_client, test_user_id
+    ):
+        """An expired google_calendar integration must not be claimed for sync.
+
+        Otherwise workers keep burning sync_attempts toward dead-letter on a
+        user who is already known to need reauthorization.
+        """
+        service_client.table("integrations").update({"status": "expired"}).eq(
+            "user_id", test_user_id
+        ).eq("provider", "google_calendar").execute()
+
+        event_data = {
+            "user_id": test_user_id,
+            "title": "Blocked on expired calendar auth",
+            "start_datetime": "2026-05-01T14:00:00Z",
+            "status": "approved",
+        }
+        authenticated_client.table("events").insert(event_data).execute()
+
+        claimed = claim_approved_event_for_sync(service_client, "worker-1")
+        assert claimed is None
 
 
 @pytest.mark.integration

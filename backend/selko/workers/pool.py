@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 from selko.config import Config, load_config
 from selko.services.auth import get_service_client
+from selko.services.calendars import classify_calendar_error
 from selko.services.circuit_breaker import circuit_breaker
 from selko.services.scheduled_tasks import (
     ScheduledTasksError,
@@ -36,6 +37,7 @@ from selko.services.events import (
     complete_event_sync,
     defer_event_sync_for_quota,
     fail_event_sync,
+    park_event_for_oauth_reauth,
 )
 from selko.services.photos import (
     PhotosError,
@@ -448,9 +450,28 @@ class WorkerPool:
                 logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")
 
         except Exception as e:
-            circuit_breaker.record_failure("google_calendar")
-            logger.error(f"{worker_id}: Event {event_id} sync failed: {e}", exc_info=True)
+            classification = getattr(e, "classification", None) or classify_calendar_error(e)
+            if classification.counts_toward_circuit_breaker:
+                circuit_breaker.record_failure("google_calendar")
+            logger.error(
+                f"{worker_id}: Event {event_id} sync failed "
+                f"({classification.code}): {e}",
+                exc_info=True,
+            )
             try:
-                fail_event_sync(client, event_id, str(e))
+                if classification.code in ("oauth_required", "oauth_scope_required"):
+                    # Not a real sync attempt against the user's calendar:
+                    # park it so it resumes automatically once the user
+                    # reauthorizes, instead of burning retries toward
+                    # dead-letter.
+                    park_event_for_oauth_reauth(
+                        client,
+                        event_id,
+                        event["sync_attempts"],
+                        classification.code,
+                        classification.user_message,
+                    )
+                else:
+                    fail_event_sync(client, event_id, str(e))
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")

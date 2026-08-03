@@ -179,6 +179,40 @@ class TestExponentialBackoffEvents:
             }
         )
 
+    def test_oauth_park_releases_claim_without_spending_attempt_or_dead_lettering(self):
+        """An OAuth-blocked sync isn't a real attempt: no dead-letter, no backoff.
+
+        docs/specs/oauth-reconnect-catch-up.md item 1: expired/insufficient
+        OAuth "does not consume further automatic attempts" and must clear
+        any stale retry/dead-letter state so the event is a clean `approved`
+        row once the user reauthorizes.
+        """
+        from selko.services.events import park_event_for_oauth_reauth
+
+        client = MagicMock()
+
+        park_event_for_oauth_reauth(
+            client,
+            "event-1",
+            2,
+            "oauth_required",
+            "Google Calendar needs to be reconnected.",
+        )
+
+        client.table.return_value.update.assert_called_once_with(
+            {
+                "status": "approved",
+                "sync_attempts": 1,
+                "sync_error": "Google Calendar needs to be reconnected.",
+                "sync_failure_code": "oauth_required",
+                "locked_by": None,
+                "locked_until": None,
+                "next_retry_at": None,
+                "dead_letter_reason": None,
+                "dead_letter_at": None,
+            }
+        )
+
 
 # ===========================================================================
 # Dead Letter Pattern Tests
