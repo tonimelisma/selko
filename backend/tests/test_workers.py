@@ -150,8 +150,67 @@ class TestProcessAnyWork:
             patch("selko.workers.pool.claim_scheduled_task", return_value=None),
             patch("selko.workers.pool.claim_pending_email", return_value=None),
             patch("selko.workers.pool.claim_approved_event_for_sync", return_value=None),
+            patch("selko.workers.pool.claim_integration_recovery", return_value=None),
+            patch("selko.workers.pool.refresh_waiting_calendar_recoveries", return_value=0),
         ):
             result = await pool._process_any_work("w-0")
+
+        assert result is False
+
+
+class TestProcessIntegrationRecovery:
+    """Tests for the calendar OAuth reconnect recovery polling step."""
+
+    @pytest.mark.asyncio
+    async def test_claims_pending_recovery_and_tags_batch(self, pool, mock_config):
+        pool.config = mock_config
+        mock_client = MagicMock()
+
+        with (
+            patch(
+                "selko.workers.pool.claim_integration_recovery",
+                return_value={"id": "recovery-1"},
+            ) as claim,
+            patch(
+                "selko.workers.pool.requeue_calendar_recovery_batch", return_value=3
+            ) as requeue,
+            patch("selko.workers.pool.refresh_waiting_calendar_recoveries") as refresh,
+        ):
+            result = await pool._process_integration_recovery(mock_client, "worker-1")
+
+        assert result is True
+        claim.assert_called_once_with(mock_client, "worker-1", lock_seconds=120)
+        requeue.assert_called_once_with(mock_client, "recovery-1", "worker-1")
+        refresh.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_refreshing_waiting_recoveries(self, pool, mock_config):
+        pool.config = mock_config
+        mock_client = MagicMock()
+
+        with (
+            patch("selko.workers.pool.claim_integration_recovery", return_value=None),
+            patch(
+                "selko.workers.pool.refresh_waiting_calendar_recoveries", return_value=2
+            ) as refresh,
+        ):
+            result = await pool._process_integration_recovery(mock_client, "worker-1")
+
+        assert result is True
+        refresh.assert_called_once_with(mock_client)
+
+    @pytest.mark.asyncio
+    async def test_returns_false_when_nothing_to_do(self, pool, mock_config):
+        pool.config = mock_config
+        mock_client = MagicMock()
+
+        with (
+            patch("selko.workers.pool.claim_integration_recovery", return_value=None),
+            patch(
+                "selko.workers.pool.refresh_waiting_calendar_recoveries", return_value=0
+            ),
+        ):
+            result = await pool._process_integration_recovery(mock_client, "worker-1")
 
         assert result is False
 
