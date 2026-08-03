@@ -4,8 +4,16 @@ Implementation specifications for planned or in-progress features.
 
 ## Active plans
 
-Status as of 2026-08-02.
+Status as of 2026-08-03.
 
+- [Ingestion & recovery hardening](ingestion-recovery-hardening.md) — **planned,
+  not started.** Top-up plan from the review of #229–#240. Increments 1–4 are
+  P0 and gate the production cutover below: a substring error classifier that
+  permanently dead-letters Gmail mail, unsupervised ingestion loops that die
+  silently on one transient DB error, a race that lets the LLM claim an email
+  before its attachment rows exist, and a red `main`. Increments 5–10 cover
+  observability, provider-call efficiency, recovery-progress correctness,
+  cleanups and the durability drills that have never been run.
 - [Polling Email Ingestion v2](polling-email-ingestion-v2.md) — **built and
   merged (#231–#235), awaiting production cutover.** Durable polling is now the
   only ingestion path; the legacy `email_fetch` poller, APScheduler job and
