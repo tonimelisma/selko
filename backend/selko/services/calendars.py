@@ -2,6 +2,7 @@
 
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -18,10 +19,168 @@ logger = logging.getLogger(__name__)
 SELKO_FOOTER = "\n\n---\nThis event is managed by Selko."
 
 
+@dataclass(frozen=True)
+class CalendarFailureClassification:
+    """Typed outcome of classifying a calendar sync failure.
+
+    Attributes:
+        code: One of the ``events.sync_failure_code`` vocabulary values.
+        retryable: Whether the normal sync-attempt retry/backoff applies.
+        counts_toward_circuit_breaker: Whether this failure reflects provider
+            health (and should trip the shared ``google_calendar`` circuit)
+            versus a single user's auth state, which must not.
+        user_message: Safe to show to the affected user.
+        operator_detail: Full detail for logs/dead-letter, never shown to users.
+    """
+
+    code: str
+    retryable: bool
+    counts_toward_circuit_breaker: bool
+    user_message: str
+    operator_detail: str
+
+
 class CalendarsError(Exception):
     """Raised when calendar operations fail."""
 
+    def __init__(
+        self,
+        message: str,
+        classification: Optional[CalendarFailureClassification] = None,
+    ) -> None:
+        super().__init__(message)
+        self.classification = classification
+
+
+class CalendarAuthRequiredError(CalendarsError):
+    """Raised when a calendar operation cannot proceed without reauthorization.
+
+    Distinct from a generic ``CalendarsError`` so failure classification can
+    branch on exception type instead of matching the message text.
+    """
+
     pass
+
+
+_INSUFFICIENT_SCOPE_REASONS = {
+    "insufficientPermissions",
+    "insufficientScopes",
+    "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+}
+_RATE_LIMIT_REASONS = {
+    "rateLimitExceeded",
+    "userRateLimitExceeded",
+    "quotaExceeded",
+    "dailyLimitExceeded",
+}
+
+
+def _google_error_reason(exc: HttpError) -> Optional[str]:
+    """Best-effort extraction of Google's structured error reason.
+
+    Returns None if the response body isn't the expected JSON shape; callers
+    fall back to the HTTP status code in that case.
+    """
+    try:
+        content = exc.content
+        if isinstance(content, bytes):
+            content = content.decode("utf-8")
+        body = json.loads(content).get("error", {})
+    except Exception:
+        return None
+
+    sub_errors = body.get("errors")
+    if isinstance(sub_errors, list) and sub_errors:
+        reason = sub_errors[0].get("reason")
+        if reason:
+            return reason
+    return body.get("status")
+
+
+def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
+    """Classify a calendar sync exception into a typed, actionable outcome.
+
+    This is the single place that interprets provider error shapes. Callers
+    (worker orchestration, retry/dead-letter logic) must branch on the
+    returned ``code``/flags, never on ``str(exc)``.
+    """
+    if isinstance(exc, CalendarAuthRequiredError):
+        return CalendarFailureClassification(
+            code="oauth_required",
+            retryable=False,
+            counts_toward_circuit_breaker=False,
+            user_message="Google Calendar needs to be reconnected.",
+            operator_detail=str(exc),
+        )
+
+    if isinstance(exc, HttpError):
+        status = getattr(exc.resp, "status", None)
+        reason = _google_error_reason(exc)
+
+        if status == 401:
+            return CalendarFailureClassification(
+                code="oauth_required",
+                retryable=False,
+                counts_toward_circuit_breaker=False,
+                user_message="Google Calendar needs to be reconnected.",
+                operator_detail=str(exc),
+            )
+        if status == 403 and reason in _INSUFFICIENT_SCOPE_REASONS:
+            return CalendarFailureClassification(
+                code="oauth_scope_required",
+                retryable=False,
+                counts_toward_circuit_breaker=False,
+                user_message="Google Calendar needs additional permission.",
+                operator_detail=str(exc),
+            )
+        if status == 403 and reason in _RATE_LIMIT_REASONS:
+            return CalendarFailureClassification(
+                code="rate_limited",
+                retryable=True,
+                counts_toward_circuit_breaker=True,
+                user_message="Google Calendar is temporarily busy; retrying.",
+                operator_detail=str(exc),
+            )
+        if status == 429:
+            return CalendarFailureClassification(
+                code="rate_limited",
+                retryable=True,
+                counts_toward_circuit_breaker=True,
+                user_message="Google Calendar is temporarily busy; retrying.",
+                operator_detail=str(exc),
+            )
+        if status == 403:
+            return CalendarFailureClassification(
+                code="permission_denied",
+                retryable=True,
+                counts_toward_circuit_breaker=False,
+                user_message="Selko doesn't have permission to write to this calendar.",
+                operator_detail=str(exc),
+            )
+        if status in (500, 502, 503, 504):
+            return CalendarFailureClassification(
+                code="provider_transient",
+                retryable=True,
+                counts_toward_circuit_breaker=True,
+                user_message="Google Calendar is temporarily unavailable; retrying.",
+                operator_detail=str(exc),
+            )
+        if status == 400:
+            return CalendarFailureClassification(
+                code="invalid_event",
+                retryable=True,
+                counts_toward_circuit_breaker=False,
+                user_message="This event couldn't be synced to Google Calendar.",
+                operator_detail=str(exc),
+            )
+
+    return CalendarFailureClassification(
+        code="unknown",
+        retryable=True,
+        counts_toward_circuit_breaker=True,
+        user_message="This event couldn't be synced to Google Calendar.",
+        operator_detail=str(exc),
+    )
 
 
 class CalendarDivergedError(CalendarsError):
@@ -489,7 +648,7 @@ def sync_event_to_calendar(
         # Get credentials and settings
         creds = get_credentials(supabase_client, user_id, "google_calendar")
         if not creds:
-            raise CalendarsError("No Google Calendar credentials found")
+            raise CalendarAuthRequiredError("No Google Calendar credentials found")
 
         settings = get_calendar_settings(supabase_client, user_id)
         calendar_id = settings.get("target_calendar_id") or "primary"
@@ -548,22 +707,40 @@ def sync_event_to_calendar(
         return google_event_id
 
     except Exception as e:
-        if isinstance(e, HttpError) and getattr(e.resp, "status", None) == 401:
+        classification = classify_calendar_error(e)
+
+        if classification.code in ("oauth_required", "oauth_scope_required"):
             update_integration_status(
                 supabase_client,
                 "google_calendar",
                 "expired",
                 user_id=user_id,
             )
-        # Mark as sync_failed
-        try:
-            supabase_client.table("events").update({
+            # Leave status/attempt bookkeeping to the caller: an OAuth-blocked
+            # sync isn't a real attempt against the user's calendar, so it
+            # must not be dead-lettered or count toward the shared circuit
+            # breaker. Only tag the classification here for observability.
+            update_payload: dict[str, Any] = {
+                "sync_failure_code": classification.code,
+                "sync_error": classification.user_message,
+            }
+        else:
+            update_payload = {
                 "status": "sync_failed",
                 "sync_error": str(e),
-            }).eq("id", event_id).execute()
+                "sync_failure_code": classification.code,
+            }
+
+        try:
+            supabase_client.table("events").update(update_payload).eq(
+                "id", event_id
+            ).execute()
         except Exception as update_error:
-            logger.warning(f"Failed to update event status to sync_failed: {update_error}")
-        raise CalendarsError(f"Failed to sync event to calendar: {e}") from e
+            logger.warning(f"Failed to update event after sync failure: {update_error}")
+
+        raise CalendarsError(
+            f"Failed to sync event to calendar: {e}", classification=classification
+        ) from e
 
 
 def _update_or_recreate_calendar_event(

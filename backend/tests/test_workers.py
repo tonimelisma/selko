@@ -410,3 +410,88 @@ class TestCalendarSyncWorker:
         )
         sync.assert_not_awaited()
         complete.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_worker_parks_event_without_dead_lettering_on_oauth_failure(
+        self, mock_config
+    ):
+        """An OAuth-blocked sync must not dead-letter the event or trip the
+        shared google_calendar circuit breaker.
+
+        docs/specs/oauth-reconnect-catch-up.md item 1: user auth failures are
+        isolated per user, never counted against the shared provider circuit.
+        """
+        from selko.services.calendars import CalendarAuthRequiredError
+
+        pool = WorkerPool(num_workers=1)
+        pool.config = mock_config
+        mock_client = MagicMock()
+        event = {
+            "id": "ev1",
+            "user_id": "u1",
+            "title": "Meeting",
+            "sync_attempts": 1,
+        }
+        quota_result = MagicMock(allowed=True)
+
+        with (
+            patch("selko.workers.pool.QuotaService") as quota_service,
+            patch(
+                "selko.workers.calendar_sync.sync_event",
+                new_callable=AsyncMock,
+                side_effect=CalendarAuthRequiredError(
+                    "Google Calendar needs to be reconnected."
+                ),
+            ),
+            patch("selko.workers.pool.park_event_for_oauth_reauth") as park,
+            patch("selko.workers.pool.fail_event_sync") as fail,
+            patch("selko.workers.pool.circuit_breaker") as cb,
+        ):
+            quota_service.return_value.check_and_increment.return_value = quota_result
+            await pool._process_event_sync(mock_client, "worker-1", event)
+
+        park.assert_called_once_with(
+            mock_client,
+            "ev1",
+            1,
+            "oauth_required",
+            "Google Calendar needs to be reconnected.",
+        )
+        fail.assert_not_called()
+        cb.record_failure.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_worker_dead_letters_and_trips_circuit_on_provider_failure(
+        self, mock_config
+    ):
+        """A non-OAuth failure keeps today's behavior: fail_event_sync and
+        the shared circuit breaker both still fire.
+        """
+        pool = WorkerPool(num_workers=1)
+        pool.config = mock_config
+        mock_client = MagicMock()
+        event = {
+            "id": "ev1",
+            "user_id": "u1",
+            "title": "Meeting",
+            "sync_attempts": 1,
+        }
+        quota_result = MagicMock(allowed=True)
+
+        with (
+            patch("selko.workers.pool.QuotaService") as quota_service,
+            patch(
+                "selko.workers.calendar_sync.sync_event",
+                new_callable=AsyncMock,
+                side_effect=Exception("Calendar API down"),
+            ),
+            patch("selko.workers.pool.park_event_for_oauth_reauth") as park,
+            patch("selko.workers.pool.fail_event_sync") as fail,
+            patch("selko.workers.pool.circuit_breaker") as cb,
+        ):
+            quota_service.return_value.check_and_increment.return_value = quota_result
+            await pool._process_event_sync(mock_client, "worker-1", event)
+
+        fail.assert_called_once_with(mock_client, "ev1", "Calendar API down")
+        park.assert_not_called()
+        cb.record_failure.assert_called_once_with("google_calendar")
