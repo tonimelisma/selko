@@ -293,12 +293,24 @@ class WorkerPool:
                 tagged = requeue_calendar_recovery_batch(
                     client, recovery["id"], worker_id
                 )
-                logger.info(
-                    f"{worker_id}: Tagged {tagged} event(s) for "
-                    f"calendar recovery {recovery['id']}"
-                )
             except CalendarsError as e:
                 logger.error(f"{worker_id}: Error requeuing calendar recovery batch: {e}")
+                return False
+
+            if tagged < 0:
+                # The claim was lost (lock expired or another worker reclaimed
+                # it) before tagging ran. The recovery stays 'processing' with
+                # an expired lock and is picked back up by the next claim.
+                logger.warning(
+                    f"{worker_id}: Lost claim on calendar recovery "
+                    f"{recovery['id']} before tagging (will self-heal on next claim)"
+                )
+                return False
+
+            logger.info(
+                f"{worker_id}: Tagged {tagged} event(s) for "
+                f"calendar recovery {recovery['id']}"
+            )
             return True
 
         try:

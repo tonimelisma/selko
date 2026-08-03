@@ -200,6 +200,29 @@ class TestProcessIntegrationRecovery:
         refresh.assert_called_once_with(mock_client)
 
     @pytest.mark.asyncio
+    async def test_lost_claim_is_not_treated_as_processed(self, pool, mock_config):
+        """A requeue that returns -1 (claim lost) must not be logged as tagged
+        work or reported as processed."""
+        pool.config = mock_config
+        mock_client = MagicMock()
+
+        with (
+            patch(
+                "selko.workers.pool.claim_integration_recovery",
+                return_value={"id": "recovery-1"},
+            ) as claim,
+            patch(
+                "selko.workers.pool.requeue_calendar_recovery_batch", return_value=-1
+            ) as requeue,
+            patch("selko.workers.pool.refresh_waiting_calendar_recoveries") as refresh,
+        ):
+            result = await pool._process_integration_recovery(mock_client, "worker-1")
+
+        assert result is False
+        requeue.assert_called_once_with(mock_client, "recovery-1", "worker-1")
+        refresh.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_returns_false_when_nothing_to_do(self, pool, mock_config):
         pool.config = mock_config
         mock_client = MagicMock()
@@ -235,6 +258,10 @@ class TestServiceClientReuse:
             patch("selko.workers.pool.claim_pending_email", return_value=None),
             patch("selko.workers.pool.claim_pending_photo", return_value=None),
             patch("selko.workers.pool.claim_approved_event_for_sync", return_value=None),
+            patch("selko.workers.pool.claim_integration_recovery", return_value=None),
+            patch(
+                "selko.workers.pool.refresh_waiting_calendar_recoveries", return_value=0
+            ),
         ):
             for _ in range(5):
                 await pool._process_any_work("w-0")

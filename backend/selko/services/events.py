@@ -1695,6 +1695,7 @@ def complete_event_sync(client: Client, event_id: str, google_event_id: str) -> 
             "google_calendar_event_id": google_event_id,
             "synced_at": datetime.now(timezone.utc).isoformat(),
             "sync_error": None,
+            "sync_failure_code": None,
             "locked_by": None,
             "locked_until": None,
         }).eq("id", event_id).execute()
