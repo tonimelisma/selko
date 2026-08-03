@@ -121,6 +121,7 @@ def test_lifespan_runs_ingestion_in_process(mock_config):
              patch("selko.services.events.unlock_expired_event_locks", return_value=0), \
              patch("selko.services.photos.unlock_expired_photo_locks", return_value=0), \
              patch("selko.services.scheduled_tasks.unlock_expired_scheduled_tasks", return_value=0), \
+             patch("selko.services.integrations.unlock_expired_integration_recoveries", return_value=0), \
              patch("selko.api.app.WorkerPool") as pool_cls, \
              patch("selko.workers.ingestion_runtime.IngestionRuntime.start", new=AsyncMock()) as start, \
              patch("selko.workers.ingestion_runtime.IngestionRuntime.stop", new=AsyncMock()) as stop:
@@ -136,6 +137,39 @@ def test_lifespan_runs_ingestion_in_process(mock_config):
     start.assert_awaited_once()
     stop.assert_awaited_once()
     pool.stop.assert_awaited_once()
+
+
+def test_lifespan_recovers_stale_integration_recoveries_on_startup(mock_config):
+    """A prior instance crash must not leave a recovery generation stuck
+    `processing` forever — unlock_expired_integration_recoveries needs the
+    same startup wiring as the other stale-job recovery calls.
+    """
+    config = _lifespan_config(mock_config, enable_background_processing=True)
+
+    async def scenario():
+        with patch("selko.api.app.load_config", return_value=config), \
+             patch("selko.api.app.start_memory_monitor", return_value=None), \
+             patch("selko.services.auth.get_service_client", return_value=MagicMock()), \
+             patch("selko.services.emails.unlock_expired_email_locks", return_value=0), \
+             patch("selko.services.events.unlock_expired_event_locks", return_value=0), \
+             patch("selko.services.photos.unlock_expired_photo_locks", return_value=0), \
+             patch("selko.services.scheduled_tasks.unlock_expired_scheduled_tasks", return_value=0), \
+             patch(
+                 "selko.services.integrations.unlock_expired_integration_recoveries",
+                 return_value=2,
+             ) as unlock_recoveries, \
+             patch("selko.api.app.WorkerPool") as pool_cls, \
+             patch("selko.workers.ingestion_runtime.IngestionRuntime.start", new=AsyncMock()), \
+             patch("selko.workers.ingestion_runtime.IngestionRuntime.stop", new=AsyncMock()):
+            pool_cls.return_value.start = AsyncMock()
+            pool_cls.return_value.stop = AsyncMock()
+            async with lifespan(MagicMock()):
+                pass
+            return unlock_recoveries
+
+    unlock_recoveries = asyncio.run(scenario())
+
+    unlock_recoveries.assert_called_once()
 
 
 def test_lifespan_starts_nothing_when_background_processing_is_off(mock_config):
