@@ -55,6 +55,16 @@
     <string name="recovery_reconnect_provider">Reconnect %1$s</string>
     <string name="recovery_settings_note">You can also manage connections in Settings.</string>
     <string name="recovery_connect_failed">Couldn’t start authorization. Please try again.</string>
+    <string name="recovery_catch_up_starting_title">Starting catch-up…</string>
+    <string name="recovery_catch_up_starting_description">Selko is resuming calendar sync after your reconnect.</string>
+    <string name="recovery_catch_up_remaining_title">Catching up — %1$d remaining</string>
+    <string name="recovery_catch_up_remaining_description">Selko is resuming calendar sync after your reconnect. You can keep reviewing and editing.</string>
+    <string name="recovery_catch_up_completed_title">Caught up</string>
+    <string name="recovery_catch_up_completed_description">Calendar sync is back to normal.</string>
+    <string name="recovery_catch_up_errors_title">Caught up with %1$d items needing attention</string>
+    <string name="recovery_catch_up_errors_description">Most events synced, but %1$d didn’t make it. Review them from Settings.</string>
+    <string name="recovery_catch_up_failed_title">Catch-up didn’t finish</string>
+    <string name="recovery_catch_up_failed_description">Reconnect Google Calendar to try again.</string>
 
     <!-- Event Card -->
     <string name="event_card_accept">Accept</string>

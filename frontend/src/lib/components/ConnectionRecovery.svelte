@@ -1,10 +1,18 @@
 <script>
+	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
+	import { fetchCalendarRecovery } from '$lib/services/integrations.js';
 	import ErrorAlert from './ErrorAlert.svelte';
 
 	let { integrations = [], onauthorize } = $props();
 	let connectingProvider = $state('');
 	let connectError = $state('');
+
+	/** @type {import('$lib/types.js').IntegrationRecovery | null} */
+	let recovery = $state(null);
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let pollTimer = $state(undefined);
+	let justCaughtUp = $state(false);
 
 	let gmail = $derived(integrations.find((item) => item.provider === 'gmail'));
 	let outlook = $derived(integrations.find((item) => item.provider === 'outlook'));
@@ -45,6 +53,55 @@
 				: $_('integrations.connectionAttentionDescription')
 	);
 
+	/** @param {import('$lib/types.js').IntegrationRecovery} r */
+	function isTerminal(r) {
+		return ['completed', 'completed_with_errors', 'failed', 'superseded'].includes(r.status);
+	}
+
+	/**
+	 * @param {import('$lib/types.js').IntegrationRecovery | null} r
+	 * @returns {'none' | 'starting' | 'catchingUp' | 'caughtUp' | 'withErrors' | 'failed'}
+	 */
+	function recoveryState(r) {
+		if (!r) return 'none';
+		if (r.status === 'pending' || r.status === 'processing') return 'starting';
+		if (r.status === 'waiting') return 'catchingUp';
+		if (r.status === 'completed') return justCaughtUp ? 'caughtUp' : 'none';
+		if (r.status === 'completed_with_errors') return 'withErrors';
+		if (r.status === 'failed') return 'failed';
+		return 'none'; // superseded
+	}
+
+	let catchUpState = $derived(recoveryState(recovery));
+	let showCatchUp = $derived(['starting', 'catchingUp', 'caughtUp', 'withErrors', 'failed'].includes(catchUpState));
+	let catchUpNeedingAttention = $derived.by(() => {
+		const r = /** @type {import('$lib/types.js').IntegrationRecovery | null} */ (recovery);
+		if (!r) return 0;
+		return Math.max(0, (r.discovered_count ?? 0) - (r.completed_count ?? 0));
+	});
+
+	async function loadRecovery() {
+		const { data } = await fetchCalendarRecovery();
+		const previous = recovery;
+		recovery = data ?? null;
+		if (previous && previous.status !== 'completed' && data && data.status === 'completed') {
+			justCaughtUp = true;
+			setTimeout(() => {
+				justCaughtUp = false;
+			}, 4000);
+		}
+		if (data && !isTerminal(data)) {
+			pollTimer = setTimeout(loadRecovery, 5000);
+		}
+	}
+
+	onMount(() => {
+		loadRecovery();
+		return () => {
+			if (pollTimer) clearTimeout(pollTimer);
+		};
+	});
+
 	/** @param {string} provider */
 	function providerName(provider) {
 		if (provider === 'gmail') return $_('integrations.gmail');
@@ -75,6 +132,51 @@
 		}
 	}
 </script>
+
+{#if showCatchUp}
+	<section class="warm-card mb-6 border border-warning/30 bg-warning/5 p-5" aria-labelledby="catch-up-title">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div class="flex min-w-0 gap-3">
+				<div class="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-base-200 text-warning" aria-hidden="true">
+					{#if catchUpState === 'caughtUp'}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7" /></svg>
+					{:else}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 8a4 4 0 1 0-4 4 3 3 0 1 1-3 3" /></svg>
+					{/if}
+				</div>
+				<div>
+					<h2 id="catch-up-title" class="font-bold">
+						{#if catchUpState === 'starting'}
+							{$_('integrations.catchUpStarting')}
+						{:else if catchUpState === 'catchingUp'}
+							{$_('integrations.catchUpRemaining', { values: { count: recovery?.remaining_count ?? 0 } })}
+						{:else if catchUpState === 'caughtUp'}
+							{$_('integrations.catchUpCompleted')}
+						{:else if catchUpState === 'withErrors'}
+							{$_('integrations.catchUpCompletedWithErrors', { values: { count: catchUpNeedingAttention } })}
+						{:else}
+							{$_('integrations.catchUpFailed')}
+						{/if}
+					</h2>
+					<p class="mt-1 max-w-2xl text-sm text-base-content/65">
+						{#if catchUpState === 'starting'}
+							{$_('integrations.catchUpStartingDescription')}
+						{:else if catchUpState === 'catchingUp'}
+							{$_('integrations.catchUpRemainingDescription')}
+						{:else if catchUpState === 'caughtUp'}
+							{$_('integrations.catchUpCompletedDescription')}
+						{:else if catchUpState === 'withErrors'}
+							{$_('integrations.catchUpCompletedWithErrorsDescription', { values: { count: catchUpNeedingAttention } })}
+						{:else}
+							{$_('integrations.catchUpFailedDescription')}
+						{/if}
+					</p>
+				</div>
+			</div>
+			<a class="btn action-secondary shrink-0" href="/app/settings">{$_('integrations.manageConnections')}</a>
+		</div>
+	</section>
+{/if}
 
 {#if recoveryProviders.length > 0}
 	<section class="warm-card mb-6 border border-warning/30 bg-warning/5 p-5" aria-labelledby="connection-recovery-title">

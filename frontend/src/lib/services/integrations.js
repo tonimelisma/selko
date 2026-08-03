@@ -4,6 +4,7 @@ import { parseSupabaseError } from '$lib/errors.js';
 /**
  * @typedef {import('$lib/types.js').Integration} Integration
  * @typedef {import('$lib/types.js').IntegrationProvider} IntegrationProvider
+ * @typedef {import('$lib/types.js').IntegrationRecovery} IntegrationRecovery
  */
 
 /**
@@ -101,4 +102,38 @@ export async function isProviderConnected(provider) {
 	}
 
 	return data.status === 'active';
+}
+
+/**
+ * Fetch the latest Google Calendar reconnect recovery generation.
+ *
+ * RLS only exposes the current user's own recovery rows. Only
+ * google_calendar currently creates recoveries (email resumes from provider
+ * cursors with no recovery record). The catch-up UI polls this while the
+ * latest generation is in flight.
+ *
+ * @returns {Promise<{data: IntegrationRecovery | null, error: import('$lib/errors.js').SupabaseError | null}>}
+ */
+export async function fetchCalendarRecovery() {
+	try {
+		const { data, error } = await supabase
+			.from('integration_recoveries')
+			.select('id, integration_id, user_id, provider, status, discovered_count, completed_count, remaining_count, error_detail, requested_at')
+			.eq('provider', 'google_calendar')
+			.order('requested_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (error) {
+			// No recovery rows yet is not an error for this use case.
+			if (error.code === 'PGRST116') {
+				return { data: null, error: null };
+			}
+			throw error;
+		}
+
+		return { data: data ?? null, error: null };
+	} catch (error) {
+		return { data: null, error: parseSupabaseError(error) };
+	}
 }

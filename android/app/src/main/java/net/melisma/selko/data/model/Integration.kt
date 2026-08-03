@@ -21,6 +21,39 @@ enum class IntegrationStatus {
 }
 
 @Serializable
+enum class IntegrationRecoveryStatus {
+    @SerialName("pending") PENDING,
+    @SerialName("processing") PROCESSING,
+    @SerialName("waiting") WAITING,
+    @SerialName("completed") COMPLETED,
+    @SerialName("completed_with_errors") COMPLETED_WITH_ERRORS,
+    @SerialName("failed") FAILED,
+    @SerialName("superseded") SUPERSEDED
+}
+
+@Serializable
+data class IntegrationRecovery(
+    val id: String,
+    @SerialName("integration_id") val integrationId: String,
+    @SerialName("user_id") val userId: String,
+    val provider: IntegrationProvider,
+    val status: IntegrationRecoveryStatus,
+    @SerialName("discovered_count") val discoveredCount: Int? = null,
+    @SerialName("completed_count") val completedCount: Int? = null,
+    @SerialName("remaining_count") val remainingCount: Int? = null,
+    @SerialName("error_detail") val errorDetail: String? = null,
+    @SerialName("requested_at") val requestedAt: Instant? = null
+) {
+    val isActive: Boolean
+        get() = status == IntegrationRecoveryStatus.PENDING ||
+            status == IntegrationRecoveryStatus.PROCESSING ||
+            status == IntegrationRecoveryStatus.WAITING
+
+    val needingAttentionCount: Int
+        get() = maxOf(0, (discoveredCount ?: 0) - (completedCount ?: 0))
+}
+
+@Serializable
 data class Integration(
     val id: String,
     @SerialName("user_id") val userId: String,
