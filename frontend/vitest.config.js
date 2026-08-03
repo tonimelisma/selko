@@ -15,6 +15,13 @@ export default defineConfig({
 		exclude: ['tests/e2e/**'],
 		globals: true,
 		environment: 'jsdom',
+		// Pin test-time env so CI (which has no frontend/.env) matches local runs.
+		// Without this, $lib/supabase.js calls createClient(undefined, undefined) at
+		// module scope and every service importer throws on import in CI.
+		env: {
+			VITE_SUPABASE_URL: 'http://localhost:54321',
+			VITE_SUPABASE_ANON_KEY: 'test-anon-key'
+		},
 		setupFiles: ['./vitest.setup.js'],
 		coverage: {
 			provider: 'v8',
