@@ -19,6 +19,8 @@ from selko.services.calendars import (
     fetch_calendar_events_for_date_range,
     get_calendar_settings,
     list_calendars,
+    refresh_waiting_calendar_recoveries,
+    requeue_calendar_recovery_batch,
     sync_event_to_calendar,
     update_calendar_settings,
     cancel_calendar_event,
@@ -1266,3 +1268,55 @@ class TestSyncEventToCalendarOAuthScopeRequired:
         update_call = mock_table.update.call_args.args[0]
         assert "status" not in update_call
         assert update_call["sync_failure_code"] == "oauth_scope_required"
+
+
+class TestRequeueCalendarRecoveryBatch:
+    """RPC wrapper for the calendar recovery worker's tagging step."""
+
+    def test_returns_tagged_count_from_rpc(self):
+        mock_client = MagicMock()
+        mock_client.rpc.return_value.execute.return_value = MagicMock(data=42)
+
+        result = requeue_calendar_recovery_batch(
+            mock_client, "recovery-1", "worker-1", batch_size=50
+        )
+
+        assert result == 42
+        mock_client.rpc.assert_called_once_with(
+            "requeue_calendar_recovery_batch",
+            {
+                "p_recovery_id": "recovery-1",
+                "p_worker_id": "worker-1",
+                "p_batch_size": 50,
+            },
+        )
+
+    def test_wraps_rpc_failure(self):
+        from postgrest.exceptions import APIError
+
+        mock_client = MagicMock()
+        mock_client.rpc.return_value.execute.side_effect = APIError({"message": "boom"})
+
+        with pytest.raises(CalendarsError):
+            requeue_calendar_recovery_batch(mock_client, "recovery-1", "worker-1")
+
+
+class TestRefreshWaitingCalendarRecoveries:
+    """RPC wrapper for the calendar recovery worker's completion-check step."""
+
+    def test_returns_processed_count_from_rpc(self):
+        mock_client = MagicMock()
+        mock_client.rpc.return_value.execute.return_value = MagicMock(data=5)
+
+        result = refresh_waiting_calendar_recoveries(mock_client, batch_size=10)
+
+        assert result == 5
+        mock_client.rpc.assert_called_once_with(
+            "refresh_waiting_calendar_recoveries", {"p_batch_size": 10}
+        )
+
+    def test_defaults_to_zero_when_rpc_returns_none(self):
+        mock_client = MagicMock()
+        mock_client.rpc.return_value.execute.return_value = MagicMock(data=None)
+
+        assert refresh_waiting_calendar_recoveries(mock_client) == 0

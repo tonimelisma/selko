@@ -17,8 +17,14 @@ from typing import Any, Optional
 
 from selko.config import Config, load_config
 from selko.services.auth import get_service_client
-from selko.services.calendars import classify_calendar_error
+from selko.services.calendars import (
+    CalendarsError,
+    classify_calendar_error,
+    refresh_waiting_calendar_recoveries,
+    requeue_calendar_recovery_batch,
+)
 from selko.services.circuit_breaker import circuit_breaker
+from selko.services.integrations import IntegrationError, claim_integration_recovery
 from selko.services.scheduled_tasks import (
     ScheduledTasksError,
     claim_scheduled_task,
@@ -196,6 +202,7 @@ class WorkerPool:
         2. Pending emails (need LLM processing)
         3. Pending photos (need LLM processing)
         4. Approved events (need calendar sync)
+        5. Calendar OAuth reconnect recovery (tagging/progress bookkeeping)
 
         Args:
             worker_id: Unique identifier for this worker.
@@ -259,7 +266,47 @@ class WorkerPool:
             except EventsError as e:
                 logger.error(f"{worker_id}: Error claiming event: {e}")
 
+        # 5. Advance calendar OAuth reconnect recovery. Pure DB bookkeeping
+        # (no Calendar API calls), so it doesn't need the circuit breaker gate.
+        if await self._process_integration_recovery(client, worker_id):
+            return True
+
         return False
+
+    async def _process_integration_recovery(self, client: Any, worker_id: str) -> bool:
+        """Advance one pending/waiting google_calendar OAuth recovery generation.
+
+        The actual retry of a parked event happens for free through the
+        normal approved-event claim path once its integration is active
+        again (see `claim_approved_event`'s active-integration check). This
+        step only tags blocked events with `recovery_id` and tracks
+        completion, so the UI can show "Catching up" instead of "Connected".
+        """
+        try:
+            recovery = claim_integration_recovery(client, worker_id, lock_seconds=120)
+        except IntegrationError as e:
+            logger.error(f"{worker_id}: Error claiming integration recovery: {e}")
+            recovery = None
+
+        if recovery:
+            try:
+                tagged = requeue_calendar_recovery_batch(
+                    client, recovery["id"], worker_id
+                )
+                logger.info(
+                    f"{worker_id}: Tagged {tagged} event(s) for "
+                    f"calendar recovery {recovery['id']}"
+                )
+            except CalendarsError as e:
+                logger.error(f"{worker_id}: Error requeuing calendar recovery batch: {e}")
+            return True
+
+        try:
+            refreshed = refresh_waiting_calendar_recoveries(client)
+        except CalendarsError as e:
+            logger.error(f"{worker_id}: Error refreshing waiting calendar recoveries: {e}")
+            return False
+        return refreshed > 0
 
     async def _process_scheduled_task(
         self,

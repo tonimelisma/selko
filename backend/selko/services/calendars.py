@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from postgrest.exceptions import APIError as PostgrestAPIError
 from supabase import Client
 
 from selko.services.integrations import get_credentials, update_integration_status
@@ -181,6 +182,74 @@ def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
         user_message="This event couldn't be synced to Google Calendar.",
         operator_detail=str(exc),
     )
+
+
+def requeue_calendar_recovery_batch(
+    client: Client,
+    recovery_id: str,
+    worker_id: str,
+    batch_size: int = 100,
+) -> int:
+    """Tag one claimed recovery generation's OAuth-blocked events.
+
+    Pure bookkeeping (docs/specs/oauth-reconnect-catch-up.md section 3): the
+    tagged events are already ``approved`` with ``sync_attempts`` preserved,
+    so they become eligible for the normal calendar sync worker the moment
+    ``claim_approved_event`` sees the integration active again. Tagging only
+    exists to give the UI a recovery-scoped progress count.
+
+    Args:
+        client: Service-role Supabase client.
+        recovery_id: The recovery generation, previously claimed via
+            `claim_integration_recovery`.
+        worker_id: Must match the worker that holds the claim.
+        batch_size: Events tagged per internal pass (bounded server-side).
+
+    Returns:
+        Number of events tagged in this call, or -1 if the claim was lost
+        (expired or reclaimed by another worker) before this ran.
+
+    Raises:
+        CalendarsError: If the RPC call fails.
+    """
+    try:
+        result = client.rpc(
+            "requeue_calendar_recovery_batch",
+            {
+                "p_recovery_id": recovery_id,
+                "p_worker_id": worker_id,
+                "p_batch_size": batch_size,
+            },
+        ).execute()
+        return result.data
+    except PostgrestAPIError as e:
+        raise CalendarsError(
+            f"Failed to requeue calendar recovery batch: {e.message}"
+        ) from e
+
+
+def refresh_waiting_calendar_recoveries(client: Client, batch_size: int = 20) -> int:
+    """Recompute progress for `waiting` recoveries, finalizing drained ones.
+
+    No claim/lock needed: every step is a single atomic SQL pass over
+    already-tagged events, not an external call.
+
+    Returns:
+        Number of recovery generations processed this call.
+
+    Raises:
+        CalendarsError: If the RPC call fails.
+    """
+    try:
+        result = client.rpc(
+            "refresh_waiting_calendar_recoveries",
+            {"p_batch_size": batch_size},
+        ).execute()
+        return result.data or 0
+    except PostgrestAPIError as e:
+        raise CalendarsError(
+            f"Failed to refresh waiting calendar recoveries: {e.message}"
+        ) from e
 
 
 class CalendarDivergedError(CalendarsError):
