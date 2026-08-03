@@ -11,10 +11,14 @@ from selko.services.integrations import (
     OAuthStateError,
     _validate_and_consume_oauth_state,
     _save_oauth_state,
+    claim_integration_recovery,
+    complete_integration_reauthorization,
     complete_oauth_flow,
     get_oauth_credentials,
     initiate_oauth_flow,
     save_oauth_credentials,
+    save_provider_tokens,
+    unlock_expired_integration_recoveries,
 )
 
 
@@ -37,18 +41,20 @@ class TestSaveOAuthCredentials:
             provider_email="test@gmail.com",
         )
 
-        # Verify upsert was called
-        mock_supabase_client.table.assert_called_with("integrations")
-        upsert_call = mock_supabase_client.table().upsert.call_args
-        data = upsert_call[0][0]
-
-        assert data["access_token"] == "access-token"
-        assert data["refresh_token"] == "refresh-token"
-        assert data["provider"] == "gmail"
-        assert data["provider_email"] == "test@gmail.com"
-        assert data["user_id"] == "test-user-id"
-        assert data["status"] == "active"
-        assert "gmail.readonly" in data["scopes"]
+        # Credentials must go through the atomic reauthorization RPC, not a
+        # direct table upsert, so recovery scheduling can never be skipped.
+        mock_supabase_client.rpc.assert_called_once_with(
+            "complete_integration_reauthorization",
+            {
+                "p_user_id": "test-user-id",
+                "p_provider": "gmail",
+                "p_access_token": "access-token",
+                "p_refresh_token": "refresh-token",
+                "p_token_expiry": "2026-01-22T12:00:00+00:00",
+                "p_scopes": ["gmail.readonly"],
+                "p_provider_email": "test@gmail.com",
+            },
+        )
 
     def test_handles_none_expiry(self, mock_supabase_client):
         """Handle credentials with no expiry set."""
@@ -65,10 +71,10 @@ class TestSaveOAuthCredentials:
             credentials=creds,
         )
 
-        upsert_call = mock_supabase_client.table().upsert.call_args
-        data = upsert_call[0][0]
+        rpc_call = mock_supabase_client.rpc.call_args
+        params = rpc_call[0][1]
 
-        assert data["token_expiry"] is None
+        assert params["p_token_expiry"] is None
 
     def test_handles_none_scopes(self, mock_supabase_client):
         """Handle credentials with no scopes."""
@@ -85,10 +91,126 @@ class TestSaveOAuthCredentials:
             credentials=creds,
         )
 
-        upsert_call = mock_supabase_client.table().upsert.call_args
-        data = upsert_call[0][0]
+        rpc_call = mock_supabase_client.rpc.call_args
+        params = rpc_call[0][1]
 
-        assert data["scopes"] == []
+        assert params["p_scopes"] == []
+
+
+class TestSaveProviderTokens:
+    """Non-Google (Outlook) token storage also goes through the atomic RPC."""
+
+    def test_saves_via_reauthorization_rpc(self, mock_supabase_client):
+        save_provider_tokens(
+            mock_supabase_client,
+            "test-user-id",
+            provider="outlook",
+            token_result={
+                "access_token": "outlook-access",
+                "refresh_token": "outlook-refresh",
+                "expires_in": 3600,
+                "scope": "Mail.Read offline_access",
+            },
+            provider_email="test@outlook.com",
+        )
+
+        rpc_call = mock_supabase_client.rpc.call_args
+        assert rpc_call[0][0] == "complete_integration_reauthorization"
+        params = rpc_call[0][1]
+        assert params["p_provider"] == "outlook"
+        assert params["p_access_token"] == "outlook-access"
+        assert params["p_refresh_token"] == "outlook-refresh"
+        assert params["p_scopes"] == ["Mail.Read", "offline_access"]
+        assert params["p_provider_email"] == "test@outlook.com"
+
+    def test_requires_access_token(self, mock_supabase_client):
+        with pytest.raises(IntegrationError):
+            save_provider_tokens(
+                mock_supabase_client,
+                "test-user-id",
+                provider="outlook",
+                token_result={},
+            )
+
+
+class TestCompleteIntegrationReauthorization:
+    """Direct coverage of the RPC wrapper itself."""
+
+    def test_returns_integration_id_from_rpc(self, mock_supabase_client):
+        mock_supabase_client.rpc.return_value.execute.return_value = MagicMock(
+            data="integration-123"
+        )
+
+        result = complete_integration_reauthorization(
+            mock_supabase_client,
+            user_id="test-user-id",
+            provider="google_calendar",
+            access_token="access-token",
+            refresh_token="refresh-token",
+            token_expiry=None,
+            scopes=["calendar"],
+            provider_email=None,
+        )
+
+        assert result == "integration-123"
+        mock_supabase_client.rpc.assert_called_once_with(
+            "complete_integration_reauthorization",
+            {
+                "p_user_id": "test-user-id",
+                "p_provider": "google_calendar",
+                "p_access_token": "access-token",
+                "p_refresh_token": "refresh-token",
+                "p_token_expiry": None,
+                "p_scopes": ["calendar"],
+                "p_provider_email": None,
+            },
+        )
+
+    def test_wraps_rpc_failure(self, mock_supabase_client):
+        from postgrest.exceptions import APIError
+
+        mock_supabase_client.rpc.return_value.execute.side_effect = APIError(
+            {"message": "boom"}
+        )
+
+        with pytest.raises(IntegrationError):
+            complete_integration_reauthorization(
+                mock_supabase_client,
+                user_id="test-user-id",
+                provider="gmail",
+                access_token="access-token",
+                refresh_token=None,
+                token_expiry=None,
+                scopes=[],
+                provider_email=None,
+            )
+
+
+class TestIntegrationRecoveryClaiming:
+    """RPC wrappers for the recovery worker stage (claim/unlock)."""
+
+    def test_claim_returns_first_row(self, mock_supabase_client):
+        mock_supabase_client.rpc.return_value.execute.return_value = MagicMock(
+            data=[{"id": "recovery-1", "status": "processing"}]
+        )
+
+        claimed = claim_integration_recovery(mock_supabase_client, "worker-1")
+
+        assert claimed == {"id": "recovery-1", "status": "processing"}
+        mock_supabase_client.rpc.assert_called_once_with(
+            "claim_integration_recovery",
+            {"p_worker_id": "worker-1", "p_lock_seconds": 300},
+        )
+
+    def test_claim_returns_none_when_nothing_pending(self, mock_supabase_client):
+        mock_supabase_client.rpc.return_value.execute.return_value = MagicMock(data=[])
+
+        assert claim_integration_recovery(mock_supabase_client, "worker-1") is None
+
+    def test_unlock_returns_count(self, mock_supabase_client):
+        mock_supabase_client.rpc.return_value.execute.return_value = MagicMock(data=3)
+
+        assert unlock_expired_integration_recoveries(mock_supabase_client) == 3
 
 
 class TestGetOAuthCredentials:

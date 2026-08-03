@@ -110,6 +110,55 @@ def get_provider_integration(
         raise IntegrationError(f"Failed to get {provider} integration: {e.message}") from e
 
 
+def complete_integration_reauthorization(
+    client: Client,
+    user_id: str,
+    provider: str,
+    access_token: str,
+    refresh_token: Optional[str],
+    token_expiry: Optional[str],
+    scopes: list[str],
+    provider_email: Optional[str],
+) -> str:
+    """Atomically upsert credentials and schedule reconnect recovery.
+
+    A single service-role-only RPC so a reconnect can never save new
+    credentials without also, for ``google_calendar``, durably superseding
+    any in-flight recovery and scheduling a fresh one in the same
+    transaction (docs/specs/oauth-reconnect-catch-up.md). Gmail/Outlook need
+    no recovery record here: `integrations_ensure_email_sync_state` already
+    resumes them from durable provider cursors the moment this upsert makes
+    the integration active again.
+
+    Args:
+        client: Service-role Supabase client. The RPC is not granted to
+            `authenticated` — callers must not pass a user-scoped client.
+
+    Returns:
+        The integration's id.
+
+    Raises:
+        IntegrationError: If the RPC call fails.
+    """
+    try:
+        result = client.rpc(
+            "complete_integration_reauthorization",
+            {
+                "p_user_id": user_id,
+                "p_provider": provider,
+                "p_access_token": access_token,
+                "p_refresh_token": refresh_token,
+                "p_token_expiry": token_expiry,
+                "p_scopes": scopes,
+                "p_provider_email": provider_email,
+            },
+        ).execute()
+        logger.info(f"Saved {provider} integration for user {user_id}")
+        return result.data
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to save integration: {e.message}") from e
+
+
 def save_oauth_credentials(
     client: Client,
     user_id: str,
@@ -120,7 +169,7 @@ def save_oauth_credentials(
     """Save OAuth tokens to integrations table.
 
     Args:
-        client: Supabase client (authenticated or service role).
+        client: Service-role Supabase client (required by the underlying RPC).
         user_id: User ID to save credentials for.
         provider: Integration provider ('gmail', 'google_photos', 'google_calendar').
         credentials: Google OAuth credentials object.
@@ -129,30 +178,20 @@ def save_oauth_credentials(
     Raises:
         IntegrationError: If save fails.
     """
-
-    # Prepare token expiry
     token_expiry = None
     if credentials.expiry:
         token_expiry = credentials.expiry.isoformat()
 
-    data = {
-        "user_id": user_id,
-        "provider": provider,
-        "status": "active",
-        "access_token": credentials.token,
-        "refresh_token": credentials.refresh_token,
-        "token_expiry": token_expiry,
-        "scopes": list(credentials.scopes) if credentials.scopes else [],
-        "provider_email": provider_email,
-    }
-
-    try:
-        client.table("integrations").upsert(
-            data, on_conflict="user_id,provider"
-        ).execute()
-        logger.info(f"Saved {provider} integration for user {user_id}")
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to save integration: {e.message}") from e
+    complete_integration_reauthorization(
+        client,
+        user_id=user_id,
+        provider=provider,
+        access_token=credentials.token,
+        refresh_token=credentials.refresh_token,
+        token_expiry=token_expiry,
+        scopes=list(credentials.scopes) if credentials.scopes else [],
+        provider_email=provider_email,
+    )
 
 
 def save_provider_tokens(
@@ -180,24 +219,16 @@ def save_provider_tokens(
     else:
         scopes = list(token_result.get("scopes") or [])
 
-    data = {
-        "user_id": user_id,
-        "provider": provider,
-        "status": "active",
-        "access_token": access_token,
-        "refresh_token": token_result.get("refresh_token"),
-        "token_expiry": token_expiry,
-        "scopes": scopes,
-        "provider_email": provider_email,
-    }
-
-    try:
-        client.table("integrations").upsert(
-            data, on_conflict="user_id,provider"
-        ).execute()
-        logger.info("Saved %s integration for user %s", provider, user_id)
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to save integration: {e.message}") from e
+    complete_integration_reauthorization(
+        client,
+        user_id=user_id,
+        provider=provider,
+        access_token=access_token,
+        refresh_token=token_result.get("refresh_token"),
+        token_expiry=token_expiry,
+        scopes=scopes,
+        provider_email=provider_email,
+    )
 
 
 def get_oauth_credentials(
@@ -295,6 +326,54 @@ def update_integration_status(
         logger.debug(f"Updated {provider} integration status to {status}")
     except PostgrestAPIError as e:
         raise IntegrationError(f"Failed to update integration status: {e.message}") from e
+
+
+def claim_integration_recovery(
+    client: Client,
+    worker_id: str,
+    lock_seconds: int = 300,
+) -> Optional[dict[str, Any]]:
+    """Atomically claim the next pending integration recovery generation.
+
+    Args:
+        client: Service-role Supabase client.
+        worker_id: Unique identifier for this worker process.
+        lock_seconds: How long to hold the claim lock.
+
+    Returns:
+        The claimed recovery row, or None if nothing is pending.
+
+    Raises:
+        IntegrationError: If the claim RPC fails.
+    """
+    try:
+        result = client.rpc(
+            "claim_integration_recovery",
+            {"p_worker_id": worker_id, "p_lock_seconds": lock_seconds},
+        ).execute()
+        if result.data:
+            return result.data[0]
+        return None
+    except PostgrestAPIError as e:
+        raise IntegrationError(f"Failed to claim integration recovery: {e.message}") from e
+
+
+def unlock_expired_integration_recoveries(client: Client) -> int:
+    """Return crashed-worker recovery claims to pending.
+
+    Returns:
+        Number of recovery generations unlocked.
+
+    Raises:
+        IntegrationError: If the unlock RPC fails.
+    """
+    try:
+        result = client.rpc("unlock_expired_integration_recoveries").execute()
+        return result.data or 0
+    except PostgrestAPIError as e:
+        raise IntegrationError(
+            f"Failed to unlock expired integration recoveries: {e.message}"
+        ) from e
 
 
 def update_oauth_credentials(
