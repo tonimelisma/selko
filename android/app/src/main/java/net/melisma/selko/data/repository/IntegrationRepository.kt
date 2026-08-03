@@ -6,6 +6,7 @@ import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
+import net.melisma.selko.data.model.IntegrationRecovery
 
 sealed class IntegrationResult<out T> {
     data class Success<T>(val data: T) : IntegrationResult<T>()
@@ -93,6 +94,28 @@ class IntegrationRepository(
             IntegrationResult.Success(Unit)
         } catch (e: Exception) {
             IntegrationResult.Error(e.message ?: "Failed to delete integration")
+        }
+    }
+
+    suspend fun fetchCalendarRecovery(): IntegrationResult<IntegrationRecovery?> {
+        return try {
+            val recoveries = supabaseClient.from("integration_recoveries")
+                .select(Columns.list(
+                    "id", "integration_id", "user_id", "provider", "status",
+                    "discovered_count", "completed_count", "remaining_count",
+                    "error_detail", "requested_at"
+                )) {
+                    filter {
+                        eq("provider", "google_calendar")
+                    }
+                    order("requested_at", Order.DESCENDING)
+                    limit(1)
+                }
+                .decodeList<IntegrationRecovery>()
+
+            IntegrationResult.Success(recoveries.firstOrNull())
+        } catch (e: Exception) {
+            IntegrationResult.Error(e.message ?: "Failed to fetch calendar recovery")
         }
     }
 }

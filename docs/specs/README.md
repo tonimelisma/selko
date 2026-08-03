@@ -12,10 +12,11 @@ Status as of 2026-08-02.
   implementation flag are gone. See its "Production cutover runbook" and "Open
   items after cutover" sections — production Outlook has been suppressed by a
   stuck timer row since 2026-07-31 with ~456 messages outstanding.
-- [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) — **email half
-  delivered** by the `integrations_ensure_email_sync_state` trigger; the
-  Calendar half (classifying expired OAuth distinctly, per-user circuit
-  breakers) is still planned.
+- [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) — **backend delivered
+  (#236–#239 + review-fix migration) and UI projection delivered on web, iOS,
+  and Android.** Remaining: live invalidation wiring (via `live-ui-updates.md`),
+  reviewed legacy production repair, staging fault injection, and production
+  rollout.
 - [Live UI updates](live-ui-updates.md) — **planned, not started.** Private
   per-user Broadcast invalidations with lifecycle-safe catch-up across web, iOS,
   and Android.

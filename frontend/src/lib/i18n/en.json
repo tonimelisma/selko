@@ -203,7 +203,17 @@
 		"manageConnections": "Manage connections",
 		"disconnect": "Disconnect",
 		"connected": "Account connected successfully",
-		"connectFailed": "Failed to connect Google account. Please try again."
+		"connectFailed": "Failed to connect Google account. Please try again.",
+		"catchUpStarting": "Starting catch-up…",
+		"catchUpStartingDescription": "Selko is resuming calendar sync after your reconnect.",
+		"catchUpRemaining": "Catching up — {count} remaining",
+		"catchUpRemainingDescription": "Selko is resuming calendar sync after your reconnect. You can keep reviewing and editing.",
+		"catchUpCompleted": "Caught up",
+		"catchUpCompletedDescription": "Calendar sync is back to normal.",
+		"catchUpCompletedWithErrors": "Caught up with {count} items needing attention",
+		"catchUpCompletedWithErrorsDescription": "Most events synced, but {count} didn't make it. Review them from Settings.",
+		"catchUpFailed": "Catch-up didn't finish",
+		"catchUpFailedDescription": "Reconnect Google Calendar to try again."
 	},
 	"senderRules": {
 		"noRules": "No automation rules yet. Create rules from the review queue or add one below.",

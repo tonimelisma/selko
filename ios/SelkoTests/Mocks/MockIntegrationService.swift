@@ -41,4 +41,10 @@ final class MockIntegrationService: IntegrationServiceProtocol, @unchecked Senda
             throw error
         }
     }
+
+    var fetchCalendarRecoveryResult: IntegrationRecovery?
+
+    func fetchCalendarRecovery() async throws -> IntegrationRecovery? {
+        return fetchCalendarRecoveryResult
+    }
 }

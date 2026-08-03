@@ -57,9 +57,10 @@ vi.mock('$lib/services/attachments.js', () => ({
 	fetchAttachments: (...args) => mockFetchAttachments(...args)
 }));
 
-vi.mock('$lib/services/integrations.js', () => ({
-	fetchIntegrations: (...args) => mockFetchIntegrations(...args)
-}));
+ vi.mock('$lib/services/integrations.js', () => ({
+ 	fetchIntegrations: (...args) => mockFetchIntegrations(...args),
+ 	fetchCalendarRecovery: () => Promise.resolve({ data: null, error: null })
+ }));
 
 const mockSyncEventToCalendar = vi.fn();
 

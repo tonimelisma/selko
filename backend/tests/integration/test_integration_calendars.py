@@ -265,8 +265,16 @@ class TestCalendarSync:
 
         assert updated_event.data["google_calendar_event_id"] == "new-google-event-abc"
 
-    def test_sync_fails_without_credentials(self, authenticated_client, test_user_id):
-        """Test that sync fails gracefully when no credentials are available."""
+    def test_sync_fails_without_credentials(self, admin_client, test_user_id):
+        """Test that sync fails gracefully when no credentials are available.
+
+        Uses a service-role client like the calendar worker does (an
+        authenticated client can't mark the integration expired). Since #236
+        (structured failure classification) a missing credential is an
+        `oauth_required` failure: it parks the event back at `approved`
+        (resumed automatically after reauthorization) instead of consuming a
+        retry toward `sync_failed`/dead-letter.
+        """
         # Create an approved event
         event_data = {
             "user_id": test_user_id,
@@ -275,23 +283,24 @@ class TestCalendarSync:
             "status": "approved",
         }
 
-        result = authenticated_client.table("events").insert(event_data).execute()
+        result = admin_client.table("events").insert(event_data).execute()
         event_id = result.data[0]["id"]
 
         with patch("selko.services.calendars.get_credentials") as mock_creds:
             mock_creds.return_value = None  # No credentials
 
             with pytest.raises(CalendarsError) as exc_info:
-                sync_event_to_calendar(authenticated_client, test_user_id, event_id)
+                sync_event_to_calendar(admin_client, test_user_id, event_id)
 
             assert "No Google Calendar credentials found" in str(exc_info.value)
 
-        # Verify event was marked as sync_failed
-        updated_event = authenticated_client.table("events").select("*").eq(
+        # Verify event was parked for reauthorization, not dead-lettered
+        updated_event = admin_client.table("events").select("*").eq(
             "id", event_id
         ).single().execute()
 
-        assert updated_event.data["status"] == "sync_failed"
+        assert updated_event.data["status"] == "approved"
+        assert updated_event.data["sync_failure_code"] == "oauth_required"
 
 
 @pytest.mark.integration

@@ -303,6 +303,7 @@ class TestEventStatusBasedClaiming:
             "title": "Test Event",
             "start_datetime": "2026-05-01T14:00:00Z",
             "status": "approved",
+            "sync_failure_code": "oauth_required",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
@@ -322,6 +323,7 @@ class TestEventStatusBasedClaiming:
         assert event.data["google_calendar_event_id"] == "google-event-123"
         assert event.data["synced_at"] is not None
         assert event.data["locked_by"] is None
+        assert event.data["sync_failure_code"] is None
 
     def test_fail_event_sync_with_retry(
         self, service_client, authenticated_client, test_user_id
@@ -573,6 +575,27 @@ class TestEmailProcessWorker:
 @pytest.mark.development
 class TestWorkerConcurrency:
     """Tests for concurrent worker behavior."""
+
+    @pytest.fixture(autouse=True)
+    def _active_google_calendar_integration(self, service_client, test_user_id):
+        """claim_approved_event requires an active google_calendar integration
+        for the event's user (oauth-reconnect-catch-up.md structured failure
+        classification). TestEventStatusBasedClaiming got this fixture in #236;
+        the concurrency class missed it, so its event-claiming test only passed
+        when a seeded calendar integration happened to be active."""
+        service_client.table("integrations").upsert(
+            {
+                "user_id": test_user_id,
+                "provider": "google_calendar",
+                "status": "active",
+                "access_token": "test-access-token",
+            },
+            on_conflict="user_id,provider",
+        ).execute()
+        yield
+        service_client.table("integrations").delete().eq(
+            "user_id", test_user_id
+        ).eq("provider", "google_calendar").execute()
 
     def test_multiple_workers_get_different_emails(
         self, service_client, authenticated_client, test_user_id
