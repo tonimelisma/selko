@@ -97,6 +97,7 @@ async def lifespan(app: FastAPI):
         from selko.services.auth import get_service_client
         from selko.services.emails import unlock_expired_email_locks
         from selko.services.events import unlock_expired_event_locks
+        from selko.services.integrations import unlock_expired_integration_recoveries
         from selko.services.photos import unlock_expired_photo_locks
         from selko.services.scheduled_tasks import unlock_expired_scheduled_tasks
         from selko.workers.ingestion_runtime import IngestionRuntime
@@ -117,12 +118,17 @@ async def lifespan(app: FastAPI):
         events_unlocked = unlock_expired_event_locks(service_client)
         photos_unlocked = unlock_expired_photo_locks(service_client)
         tasks_unlocked = unlock_expired_scheduled_tasks(service_client)
+        recoveries_unlocked = unlock_expired_integration_recoveries(service_client)
 
-        if emails_unlocked or events_unlocked or photos_unlocked or tasks_unlocked:
+        if (
+            emails_unlocked or events_unlocked or photos_unlocked
+            or tasks_unlocked or recoveries_unlocked
+        ):
             logger.info(
                 f"Recovered stale jobs on startup: "
                 f"{emails_unlocked} emails, {events_unlocked} events, "
-                f"{photos_unlocked} photos, {tasks_unlocked} tasks"
+                f"{photos_unlocked} photos, {tasks_unlocked} tasks, "
+                f"{recoveries_unlocked} integration recoveries"
             )
 
         ingestion_runtime = IngestionRuntime(service_client, config)
