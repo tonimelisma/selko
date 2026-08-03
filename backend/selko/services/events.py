@@ -1737,6 +1737,44 @@ def defer_event_sync_for_quota(
         raise EventsError(f"Failed to defer event sync for quota: {e}") from e
 
 
+def park_event_for_oauth_reauth(
+    client: Client,
+    event_id: str,
+    sync_attempts: int,
+    sync_failure_code: str,
+    user_message: str,
+) -> None:
+    """Return a claimed event to approved after an OAuth-blocked sync.
+
+    Mirrors ``defer_event_sync_for_quota``: the worker's atomic claim already
+    incremented ``sync_attempts``, but a sync blocked on expired or
+    insufficient OAuth authorization isn't a real attempt against the user's
+    calendar. Clear retry/backoff and dead-letter fields too, so the event is
+    a clean `approved` row that resumes automatically (via
+    ``claim_approved_event``'s active-integration check, and later the
+    reconnect recovery flow) once the user reauthorizes.
+    """
+    try:
+        client.table("events").update(
+            {
+                "status": "approved",
+                "sync_attempts": max(0, sync_attempts - 1),
+                "sync_error": user_message,
+                "sync_failure_code": sync_failure_code,
+                "locked_by": None,
+                "locked_until": None,
+                "next_retry_at": None,
+                "dead_letter_reason": None,
+                "dead_letter_at": None,
+            }
+        ).eq("id", event_id).execute()
+        logger.warning(
+            "Parked event %s for %s reauthorization", event_id, sync_failure_code
+        )
+    except Exception as e:
+        raise EventsError(f"Failed to park event for oauth reauth: {e}") from e
+
+
 def fail_event_sync(
     client: Client,
     event_id: str,

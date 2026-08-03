@@ -3,15 +3,18 @@
 Tests the calendar sync and settings functions with mocked Google Calendar API.
 """
 
+import json
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from selko.services.calendars import (
+    CalendarAuthRequiredError,
     CalendarsError,
     SELKO_FOOTER,
     _build_calendar_event_body,
+    classify_calendar_error,
     delete_calendar_event,
     fetch_calendar_events_for_date_range,
     get_calendar_settings,
@@ -624,6 +627,7 @@ class TestSyncEventToCalendar:
             mock_table.update.assert_called_with({
                 "status": "sync_failed",
                 "sync_error": "API Error",
+                "sync_failure_code": "unknown",
             })
 
     def test_provider_401_marks_calendar_integration_expired(self):
@@ -1144,3 +1148,121 @@ class TestSelkoFooter:
         body = _build_calendar_event_body(event, settings)
 
         assert "This event is managed by Selko." in body["description"]
+
+
+def _http_error(status: int, reason: str | None = None, message: str = "error"):
+    """Build a googleapiclient HttpError shaped like a real Google API response."""
+    from googleapiclient.errors import HttpError
+
+    resp = MagicMock(status=status, reason=message)
+    error_body: dict = {"code": status, "message": message}
+    if reason:
+        error_body["errors"] = [{"reason": reason, "message": message}]
+    content = json.dumps({"error": error_body}).encode("utf-8")
+    return HttpError(resp, content)
+
+
+class TestClassifyCalendarError:
+    """Structured failure taxonomy (docs/specs/oauth-reconnect-catch-up.md, section 1).
+
+    Control flow must branch on ``classify_calendar_error(...).code``, never
+    on ``str(exc)`` — these tests pin the exact classification for each shape
+    of failure a calendar sync can hit.
+    """
+
+    def test_auth_required_error_is_oauth_required_and_isolated_from_circuit(self):
+        result = classify_calendar_error(CalendarAuthRequiredError("no creds"))
+        assert result.code == "oauth_required"
+        assert result.retryable is False
+        assert result.counts_toward_circuit_breaker is False
+
+    def test_http_401_is_oauth_required_and_isolated_from_circuit(self):
+        result = classify_calendar_error(_http_error(401))
+        assert result.code == "oauth_required"
+        assert result.counts_toward_circuit_breaker is False
+
+    def test_http_403_insufficient_scope_is_distinct_from_permission_denied(self):
+        result = classify_calendar_error(
+            _http_error(403, reason="insufficientPermissions")
+        )
+        assert result.code == "oauth_scope_required"
+        assert result.retryable is False
+        assert result.counts_toward_circuit_breaker is False
+
+    def test_http_403_unrelated_reason_is_terminal_permission_denied(self):
+        result = classify_calendar_error(_http_error(403, reason="forbidden"))
+        assert result.code == "permission_denied"
+        assert result.counts_toward_circuit_breaker is False
+
+    def test_http_429_is_rate_limited_and_counts_toward_circuit_breaker(self):
+        result = classify_calendar_error(_http_error(429))
+        assert result.code == "rate_limited"
+        assert result.retryable is True
+        assert result.counts_toward_circuit_breaker is True
+
+    def test_http_503_is_provider_transient_and_counts_toward_circuit_breaker(self):
+        result = classify_calendar_error(_http_error(503))
+        assert result.code == "provider_transient"
+        assert result.counts_toward_circuit_breaker is True
+
+    def test_http_400_is_invalid_event_and_not_a_circuit_signal(self):
+        result = classify_calendar_error(_http_error(400))
+        assert result.code == "invalid_event"
+        assert result.counts_toward_circuit_breaker is False
+
+    def test_unclassified_exception_defaults_to_unknown_and_counts(self):
+        result = classify_calendar_error(Exception("boom"))
+        assert result.code == "unknown"
+        assert result.counts_toward_circuit_breaker is True
+
+
+class TestSyncEventToCalendarOAuthScopeRequired:
+    """An insufficient-scope 403 must be tagged distinctly from a plain sync failure."""
+
+    def test_marks_integration_expired_and_tags_event_without_dead_lettering(self):
+        mock_client = MagicMock()
+        mock_event_result = MagicMock(data={
+            "id": "event-123",
+            "user_id": "user-456",
+            "title": "Meeting",
+            "start_datetime": "2026-03-15T14:00:00Z",
+            "end_datetime": "2026-03-15T15:00:00Z",
+            "all_day": False,
+            "location": None,
+            "description": None,
+            "source_attribution": None,
+            "google_calendar_event_id": None,
+        })
+        mock_table = MagicMock()
+        mock_client.table.return_value = mock_table
+        mock_table.select.return_value.eq.return_value.single.return_value.execute.return_value = mock_event_result
+
+        with (
+            patch("selko.services.calendars.get_credentials", return_value=MagicMock()),
+            patch(
+                "selko.services.calendars.get_calendar_settings",
+                return_value={"target_calendar_id": "primary"},
+            ),
+            patch("selko.services.calendars.build") as build,
+            patch(
+                "selko.services.calendars.update_integration_status"
+            ) as update_status,
+            pytest.raises(CalendarsError),
+        ):
+            build.return_value.events.return_value.insert.return_value.execute.side_effect = (
+                _http_error(403, reason="insufficientPermissions")
+            )
+            sync_event_to_calendar(mock_client, "user-456", "event-123")
+
+        update_status.assert_called_once_with(
+            mock_client,
+            "google_calendar",
+            "expired",
+            user_id="user-456",
+        )
+        # Unlike a generic failure, this must not set status=sync_failed:
+        # the caller (worker pool) returns the event to `approved` without
+        # spending a retry attempt.
+        update_call = mock_table.update.call_args.args[0]
+        assert "status" not in update_call
+        assert update_call["sync_failure_code"] == "oauth_scope_required"
