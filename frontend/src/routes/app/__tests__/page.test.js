@@ -9,7 +9,8 @@ const mockFetchPendingEventsWithSources = vi.fn();
 const mockUpdateEventStatus = vi.fn();
 
 vi.mock('$lib/services/integrations.js', () => ({
-	fetchIntegrations: (...args) => mockFetchIntegrations(...args)
+	fetchIntegrations: (...args) => mockFetchIntegrations(...args),
+	fetchCalendarRecovery: () => Promise.resolve({ data: null, error: null })
 }));
 
 vi.mock('$lib/services/events.js', () => ({

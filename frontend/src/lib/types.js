@@ -16,6 +16,24 @@
  */
 
 /**
+ * @typedef {'pending' | 'processing' | 'waiting' | 'completed' | 'completed_with_errors' | 'failed' | 'superseded'} IntegrationRecoveryStatus
+ */
+
+/**
+ * @typedef {Object} IntegrationRecovery
+ * @property {string} id - UUID
+ * @property {string} integration_id - UUID
+ * @property {string} user_id - UUID
+ * @property {IntegrationProvider} provider
+ * @property {IntegrationRecoveryStatus} status
+ * @property {number} [discovered_count]
+ * @property {number} [completed_count]
+ * @property {number} [remaining_count]
+ * @property {string} [error_detail]
+ * @property {string} requested_at
+ */
+
+/**
  * @typedef {Object} Integration
  * @property {string} id - UUID
  * @property {string} user_id - UUID

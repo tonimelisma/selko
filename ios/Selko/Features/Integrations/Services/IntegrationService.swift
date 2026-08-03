@@ -12,6 +12,7 @@ protocol IntegrationServiceProtocol: Sendable {
     func getIntegrationByProvider(_ provider: IntegrationProvider) async throws -> Integration?
     func isProviderConnected(_ provider: IntegrationProvider) async -> Bool
     func deleteIntegration(provider: IntegrationProvider) async throws
+    func fetchCalendarRecovery() async throws -> IntegrationRecovery?
 }
 
 final class IntegrationService: IntegrationServiceProtocol, @unchecked Sendable {
@@ -71,5 +72,16 @@ final class IntegrationService: IntegrationServiceProtocol, @unchecked Sendable 
             .delete()
             .eq("provider", value: provider.rawValue)
             .execute()
+    }
+
+    func fetchCalendarRecovery() async throws -> IntegrationRecovery? {
+        let recoveries: [IntegrationRecovery] = try await supabase.from("integration_recoveries")
+            .select("id, integration_id, user_id, provider, status, discovered_count, completed_count, remaining_count, error_detail, requested_at")
+            .eq("provider", value: IntegrationProvider.googleCalendar.rawValue)
+            .order("requested_at", ascending: false)
+            .limit(1)
+            .execute()
+            .value
+        return recoveries.first
     }
 }

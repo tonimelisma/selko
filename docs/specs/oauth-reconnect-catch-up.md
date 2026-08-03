@@ -1,7 +1,11 @@
 # OAuth Reconnect Catch-Up
 
-**Status:** Partially delivered by polling email ingestion v2; Calendar scope
-still planned.
+**Status:** Delivered. Backend (sections 1–3) shipped in #236–#239 plus the
+review-fix migration `20260802000006`; the recovery UI projection (section 4)
+shipped with it. Email half is delivered by the polling-ingestion-v2 trigger.
+Remaining from the delivery sequence: live invalidation wiring (step 6, built
+on `live-ui-updates.md`), reviewed legacy production repair (step 7), staging
+fault injection (step 8), and production rollout (step 9).
 
 The **email half is done**. The `integrations_ensure_email_sync_state` trigger
 (migration `20260802000002`) fires whenever an integration becomes active, so a
@@ -11,9 +15,24 @@ its next tick and resumes from the durable provider cursors, which is precisely
 the "fresh cursor-driven fetch, not a task replay" unit of recovery this
 document argues for. No OAuth callback work is needed.
 
-The **Calendar half is still outstanding**: distinguishing expired OAuth from
-validation, quota or provider failures in `sync_error`/`dead_letter_reason`, and
-making provider circuit breakers per-user instead of global.
+The **Calendar half is done**: expired OAuth is classified distinctly in
+`sync_failure_code` and isolated per user from the circuit breaker (#236); the
+`integration_recoveries` generation schema and atomic credential RPC (#237);
+the recovery worker stage that tags/requeues OAuth-blocked events and tracks
+progress (#238); and startup recovery of stale claims (#239). The review-fix
+migration `20260802000006` adds the missing Data API grants (both `service_role`
+and `authenticated` on `integration_recoveries`) and makes the claim self-heal
+crashed-worker locks at runtime instead of waiting for a restart.
+
+The **UI projection (section 4) is done** on web, iOS, and Android: the
+ConnectionRecovery card surfaces `pending`/`processing` as "Starting catch-up…",
+`waiting` as "Catching up — N remaining" (polled every 5s while in flight),
+`completed` as a transient "Caught up" confirmation, `completed_with_errors` as
+"Caught up with N items needing attention", and `failed` as a contextual error.
+One deliberate simplification: the worker currently never produces a `failed`
+generation and no retry RPC exists, so the failed state renders contextually
+and directs the user to reconnect (which starts a fresh generation) rather than
+offering a dead retry button.
 
 Note the current-state diagnosis below is now out of date where it describes
 `schedule_email_fetches()` and deduplicated `email_fetch` tasks — that path was

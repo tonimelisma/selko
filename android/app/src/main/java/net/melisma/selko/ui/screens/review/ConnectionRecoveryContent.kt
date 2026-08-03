@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -18,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,16 +28,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
+import net.melisma.selko.data.model.IntegrationRecovery
+import net.melisma.selko.data.model.IntegrationRecoveryStatus
 import net.melisma.selko.data.model.IntegrationStatus
+import net.melisma.selko.data.repository.IntegrationRepository
+import net.melisma.selko.data.repository.IntegrationResult
 import net.melisma.selko.ui.components.SelkoActionRole
 import net.melisma.selko.ui.components.SelkoButton
 import net.melisma.selko.ui.theme.SelkoTheme
+import org.koin.compose.koinInject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 internal fun recoveryProvidersFor(
@@ -72,6 +83,59 @@ internal fun recoveryProvidersFor(
     }.distinct()
 }
 
+internal data class CatchUpDisplay(
+    val icon: ImageVector,
+    val tint: Color,
+    val title: String,
+    val description: String
+)
+
+@Composable
+internal fun rememberCatchUpDisplay(
+    recovery: IntegrationRecovery?,
+    justCaughtUp: Boolean
+): CatchUpDisplay? {
+    if (recovery == null) return null
+    return when (recovery.status) {
+        IntegrationRecoveryStatus.PENDING,
+        IntegrationRecoveryStatus.PROCESSING -> CatchUpDisplay(
+            icon = Icons.Filled.Sync,
+            tint = SelkoTheme.colors.warning,
+            title = stringResource(R.string.recovery_catch_up_starting_title),
+            description = stringResource(R.string.recovery_catch_up_starting_description)
+        )
+        IntegrationRecoveryStatus.WAITING -> CatchUpDisplay(
+            icon = Icons.Filled.Sync,
+            tint = SelkoTheme.colors.warning,
+            title = stringResource(R.string.recovery_catch_up_remaining_title, recovery.remainingCount ?: 0),
+            description = stringResource(R.string.recovery_catch_up_remaining_description)
+        )
+        IntegrationRecoveryStatus.COMPLETED -> if (justCaughtUp) {
+            CatchUpDisplay(
+                icon = Icons.Filled.CheckCircle,
+                tint = SelkoTheme.colors.success,
+                title = stringResource(R.string.recovery_catch_up_completed_title),
+                description = stringResource(R.string.recovery_catch_up_completed_description)
+            )
+        } else {
+            null
+        }
+        IntegrationRecoveryStatus.COMPLETED_WITH_ERRORS -> CatchUpDisplay(
+            icon = Icons.Filled.WarningAmber,
+            tint = SelkoTheme.colors.warning,
+            title = stringResource(R.string.recovery_catch_up_errors_title, recovery.needingAttentionCount),
+            description = stringResource(R.string.recovery_catch_up_errors_description, recovery.needingAttentionCount)
+        )
+        IntegrationRecoveryStatus.FAILED -> CatchUpDisplay(
+            icon = Icons.Filled.WarningAmber,
+            tint = MaterialTheme.colorScheme.error,
+            title = stringResource(R.string.recovery_catch_up_failed_title),
+            description = stringResource(R.string.recovery_catch_up_failed_description)
+        )
+        IntegrationRecoveryStatus.SUPERSEDED -> null
+    }
+}
+
 @Composable
 fun ConnectionRecoveryContent(
     integrations: List<Integration>,
@@ -80,8 +144,39 @@ fun ConnectionRecoveryContent(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val integrationRepository = koinInject<IntegrationRepository>()
     var connectingProvider by remember { mutableStateOf<IntegrationProvider?>(null) }
     var connectError by remember { mutableStateOf<String?>(null) }
+    var recovery by remember { mutableStateOf<IntegrationRecovery?>(null) }
+    var justCaughtUp by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val previous = recovery
+            when (val result = integrationRepository.fetchCalendarRecovery()) {
+                is IntegrationResult.Success -> {
+                    recovery = result.data
+                    if (previous != null &&
+                        previous.status != IntegrationRecoveryStatus.COMPLETED &&
+                        recovery?.status == IntegrationRecoveryStatus.COMPLETED
+                    ) {
+                        justCaughtUp = true
+                        delay(4000)
+                        justCaughtUp = false
+                    }
+                }
+                is IntegrationResult.Error -> {
+                    // Keep the reconnect card authoritative on transient failures.
+                }
+            }
+            if (recovery?.isActive == true) {
+                delay(5000)
+            } else {
+                break
+            }
+        }
+    }
+
     val emailConnected = integrations.any {
         it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
             it.status == IntegrationStatus.ACTIVE
@@ -91,8 +186,9 @@ fun ConnectionRecoveryContent(
             it.status == IntegrationStatus.ACTIVE
     }
     val recoveryProviders = recoveryProvidersFor(integrations)
+    val catchUp = rememberCatchUpDisplay(recovery, justCaughtUp)
 
-    if (recoveryProviders.isEmpty()) return
+    if (catchUp == null && recoveryProviders.isEmpty()) return
 
     val title = when {
         !emailConnected -> stringResource(R.string.recovery_email_title)
@@ -105,103 +201,139 @@ fun ConnectionRecoveryContent(
         else -> stringResource(R.string.recovery_attention_description)
     }
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(1.dp, SelkoTheme.colors.warning),
-        shape = MaterialTheme.shapes.large
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            connectError?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top
+    Column(modifier = modifier.fillMaxWidth()) {
+        catchUp?.let {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(1.dp, it.tint),
+                shape = MaterialTheme.shapes.large
             ) {
-                Icon(
-                    imageVector = Icons.Filled.WarningAmber,
-                    contentDescription = null,
-                    tint = SelkoTheme.colors.warning
-                )
-                Column {
-                    Text(text = title, style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        imageVector = it.icon,
+                        contentDescription = null,
+                        tint = it.tint
+                    )
+                    Column {
+                        Text(text = it.title, style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = it.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        if (recoveryProviders.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(1.dp, SelkoTheme.colors.warning),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    connectError?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.WarningAmber,
+                            contentDescription = null,
+                            tint = SelkoTheme.colors.warning
+                        )
+                        Column {
+                            Text(text = title, style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    recoveryProviders.forEachIndexed { index, provider ->
+                        val integration = integrations.find { it.provider == provider }
+                        val reconnecting = integration != null &&
+                            integration.status != IntegrationStatus.ACTIVE
+                        val providerName = when (provider) {
+                            IntegrationProvider.GMAIL -> stringResource(R.string.settings_gmail)
+                            IntegrationProvider.OUTLOOK -> stringResource(R.string.settings_outlook)
+                            IntegrationProvider.GOOGLE_CALENDAR ->
+                                stringResource(R.string.settings_google_calendar)
+                            IntegrationProvider.GOOGLE_PHOTOS -> return@forEachIndexed
+                        }
+                        val label = if (reconnecting) {
+                            stringResource(R.string.recovery_reconnect_provider, providerName)
+                        } else {
+                            stringResource(R.string.recovery_connect_provider, providerName)
+                        }
+                        SelkoButton(
+                            text = label,
+                            onClick = {
+                                scope.launch {
+                                    connectingProvider = provider
+                                    connectError = null
+                                    onAuthorize(provider)
+                                        .onSuccess { url ->
+                                            try {
+                                                context.startActivity(
+                                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                )
+                                            } catch (_: android.content.ActivityNotFoundException) {
+                                                connectError = context.getString(
+                                                    R.string.recovery_connect_failed
+                                                )
+                                            }
+                                        }
+                                        .onFailure { error ->
+                                            connectError = error.message
+                                                ?: context.getString(R.string.recovery_connect_failed)
+                                        }
+                                    connectingProvider = null
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            role = if (index == 0) SelkoActionRole.Primary else SelkoActionRole.Secondary,
+                            enabled = connectingProvider == null,
+                            loading = connectingProvider == provider
+                        )
+                        if (index != recoveryProviders.lastIndex) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = stringResource(R.string.recovery_settings_note),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            recoveryProviders.forEachIndexed { index, provider ->
-                val integration = integrations.find { it.provider == provider }
-                val reconnecting = integration != null &&
-                    integration.status != IntegrationStatus.ACTIVE
-                val providerName = when (provider) {
-                    IntegrationProvider.GMAIL -> stringResource(R.string.settings_gmail)
-                    IntegrationProvider.OUTLOOK -> stringResource(R.string.settings_outlook)
-                    IntegrationProvider.GOOGLE_CALENDAR ->
-                        stringResource(R.string.settings_google_calendar)
-                    IntegrationProvider.GOOGLE_PHOTOS -> return@forEachIndexed
-                }
-                val label = if (reconnecting) {
-                    stringResource(R.string.recovery_reconnect_provider, providerName)
-                } else {
-                    stringResource(R.string.recovery_connect_provider, providerName)
-                }
-                SelkoButton(
-                    text = label,
-                    onClick = {
-                        scope.launch {
-                            connectingProvider = provider
-                            connectError = null
-                            onAuthorize(provider)
-                                .onSuccess { url ->
-                                    try {
-                                        context.startActivity(
-                                            Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                        )
-                                    } catch (_: android.content.ActivityNotFoundException) {
-                                        connectError = context.getString(
-                                            R.string.recovery_connect_failed
-                                        )
-                                    }
-                                }
-                                .onFailure { error ->
-                                    connectError = error.message
-                                        ?: context.getString(R.string.recovery_connect_failed)
-                                }
-                            connectingProvider = null
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    role = if (index == 0) SelkoActionRole.Primary else SelkoActionRole.Secondary,
-                    enabled = connectingProvider == null,
-                    loading = connectingProvider == provider
-                )
-                if (index != recoveryProviders.lastIndex) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.recovery_settings_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

@@ -21,9 +21,11 @@ from selko.services.integrations import (
 @pytest.fixture(autouse=True)
 def _cleanup(admin_client, test_user_id):
     def _clear():
-        admin_client.table("events").delete().eq("user_id", test_user_id).eq(
-            "title", "Recovery worker test event"
-        ).execute()
+        # Remove every event for the test user: other suites (e.g. the
+        # calendar sync tests, which have no cleanup of their own) can leave
+        # approved + oauth_required rows behind, and requeue_calendar_
+        # recovery_batch would tag them and skew this suite's counts.
+        admin_client.table("events").delete().eq("user_id", test_user_id).execute()
         admin_client.table("integration_recoveries").delete().eq(
             "user_id", test_user_id
         ).execute()
@@ -107,6 +109,30 @@ class TestRequeueCalendarRecoveryBatch:
         )
 
         assert result == -1
+
+    def test_reclaims_processing_recovery_with_expired_lock(
+        self, admin_client, test_user_id
+    ):
+        """A crashed worker's claim (processing + expired lock) must be reclaimed
+        on the next claim instead of waiting for an API restart (#239 was startup
+        only; the claim itself must self-heal)."""
+        recovery = _create_and_claim_recovery(admin_client, test_user_id)
+
+        admin_client.table("integration_recoveries").update(
+            {
+                "locked_until": "2020-01-01T00:00:00Z",
+            }
+        ).eq("id", recovery["id"]).execute()
+
+        reclaimed = claim_integration_recovery(
+            admin_client, "worker-2", lock_seconds=120
+        )
+
+        assert reclaimed is not None
+        assert reclaimed["id"] == recovery["id"]
+        assert reclaimed["status"] == "processing"
+        assert reclaimed["locked_by"] == "worker-2"
+        assert reclaimed["attempts"] == 2
 
     def test_finalizes_completed_once_tagged_events_synced(
         self, admin_client, test_user_id

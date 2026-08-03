@@ -7,6 +7,8 @@ callbacks, FOR UPDATE SKIP LOCKED claiming, expired-lock recovery, and RLS
 """
 
 import pytest
+from postgrest.exceptions import APIError
+from uuid import uuid4
 
 from selko.services.integrations import (
     claim_integration_recovery,
@@ -252,15 +254,25 @@ class TestIntegrationRecoveriesRLS:
         )
         assert len(visible.data) == 1
 
-        # RLS silently filters rather than raising: an authenticated user's
-        # update/insert against this table must affect zero rows.
-        result = (
-            authenticated_client.table("integration_recoveries")
-            .update({"status": "completed"})
-            .eq("user_id", test_user_id)
-            .execute()
-        )
-        assert result.data == []
+        # The table grants only SELECT to authenticated (20260802000006): the
+        # RLS policy added in #237 governs reads, and writes are refused at the
+        # privilege layer so a user can never mutate their own recovery row.
+        with pytest.raises(APIError):
+            (
+                authenticated_client.table("integration_recoveries")
+                .update({"status": "completed"})
+                .eq("user_id", test_user_id)
+                .execute()
+            )
+        with pytest.raises(APIError):
+            authenticated_client.table("integration_recoveries").insert(
+                {
+                    "integration_id": str(uuid4()),
+                    "user_id": test_user_id,
+                    "provider": "google_calendar",
+                    "reason": "reauthorization",
+                }
+            ).execute()
 
         row = (
             admin_client.table("integration_recoveries")

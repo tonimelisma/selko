@@ -59,7 +59,8 @@ vi.mock('$lib/supabase.js', () => ({
 
 vi.mock('$lib/services/integrations.js', () => ({
 	fetchIntegrations: (...args) => mockFetchIntegrations(...args),
-	disconnectIntegration: (...args) => mockDisconnectIntegration(...args)
+	disconnectIntegration: (...args) => mockDisconnectIntegration(...args),
+	fetchCalendarRecovery: () => Promise.resolve({ data: null, error: null })
 }));
 
 vi.mock('$lib/services/calendar-settings.js', () => ({
