@@ -184,15 +184,50 @@ Calendar events with status-based worker claiming for sync.
 | `sync_attempts` | integer | Number of sync attempts (default: 0) |
 | `max_sync_attempts` | integer | Maximum sync attempts (default: 3) |
 | `sync_error` | text | Last sync error message |
+| `sync_failure_code` | text, nullable | Typed classification of the last sync failure: `oauth_required`, `oauth_scope_required`, `provider_transient`, `rate_limited`, `invalid_event`, `permission_denied`, `unknown`. Control flow branches on this, never on `sync_error` text. Cleared on successful sync. |
 | `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry sync |
 | `dead_letter_reason` | text, nullable | Reason for permanent sync failure |
 | `dead_letter_at` | timestamptz, nullable | When the event sync was abandoned |
+| `recovery_id` | uuid, FK nullable | `integration_recoveries.id` of the generation that requeued this event (audit only; progress counting). `ON DELETE SET NULL`. |
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
 
 **RLS Policies:** Users manage own events only.
 
-**Indexes:** Partial index on `(status, updated_at) WHERE status = 'approved'` for efficient claiming.
+**Indexes:** Partial index on `(status, updated_at) WHERE status = 'approved'` for efficient claiming; partial index on `recovery_id WHERE recovery_id IS NOT NULL`.
+
+### `integration_recoveries`
+
+Durable recovery generations created when Google Calendar reauthorization
+unblocks OAuth-parked work. Only `google_calendar` produces rows (email resumes
+from provider cursors via `integrations_ensure_email_sync_state` with no
+recovery record). Never stores credentials.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Recovery generation |
+| `integration_id` | uuid, FK | `integrations.id` (`ON DELETE CASCADE`) |
+| `user_id` | uuid, FK | `users.id` — ownership + RLS scope |
+| `provider` | integration_provider | `google_calendar` in practice |
+| `reason` | text | `initial_connection` or `reauthorization` |
+| `status` | text | `pending`, `processing`, `waiting`, `completed`, `completed_with_errors`, `failed`, `superseded` |
+| `attempts` / `max_attempts` | integer | Bounded recovery retries (default max 5) |
+| `next_retry_at` | timestamptz, nullable | Backoff without blocking a worker |
+| `locked_by` / `locked_until` | text / timestamptz | Crash-safe worker claim |
+| `recovery_since` | timestamptz, nullable | Last successful sync boundary for expired-cursor recovery |
+| `checkpoint` | jsonb | Provider continuation state (unused for Calendar) |
+| `discovered_count` | integer | Candidate work found |
+| `requeued_count` | integer | Events returned to the normal queue |
+| `completed_count` | integer | Work that reached its expected terminal state (synced) |
+| `remaining_count` | integer | Current backlog for UI progress |
+| `error_code` / `error_detail` | text, nullable | Structured terminal recovery failure |
+| `requested_at` / `started_at` / `updated_at` / `completed_at` | timestamptz | Lifecycle timestamps |
+
+**RLS Policies:** `authenticated` SELECT on own rows (`auth.uid() = user_id`);
+`service_role` full access. Data API grants: `SELECT` to `authenticated`,
+`SELECT/INSERT/UPDATE/DELETE` to `service_role` (added in `20260802000006`).
+
+**Indexes:** partial unique on `(integration_id) WHERE status IN ('pending','processing','waiting')`; claim index on `(requested_at) WHERE status = 'pending'`.
 
 ### `scheduled_tasks`
 
@@ -385,8 +420,9 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 |----------|-------------|
 | `claim_unprocessed_email(worker_id, lock_duration)` | Atomically claim next pending email, oldest `date_sent` first (`NULLS LAST`, then `created_at`) — bulk scans ingest newest-first, so claiming oldest-sent-first avoids an older email "updating" an event already created from a newer one |
 | `claim_pending_photo(worker_id, lock_duration)` | Atomically claim next pending photo |
-| `claim_approved_event(worker_id, lock_duration)` | Atomically claim next approved event |
+| `claim_approved_event(worker_id, lock_duration)` | Atomically claim next approved event (requires an active `google_calendar` integration for the event's user; respects `next_retry_at`) |
 | `claim_next_scheduled_task(task_types, worker_id, lock_duration)` | Atomically claim next scheduled task |
+| `claim_integration_recovery(worker_id, lock_seconds)` | Atomically claim the next `pending` recovery generation (`FOR UPDATE SKIP LOCKED`), also reclaiming `processing` rows whose lock expired (crashed-worker self-heal) |
 
 ### Unlock Functions
 
@@ -396,6 +432,15 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 | `unlock_expired_photo_locks()` | Reset expired photo locks to pending |
 | `unlock_expired_event_locks()` | Reset expired event locks to approved |
 | `unlock_expired_scheduled_tasks()` | Reset expired scheduled task locks |
+| `unlock_expired_integration_recoveries()` | Return crashed-worker recovery claims to `pending` |
+
+### Recovery Functions
+
+| Function | Description |
+|----------|-------------|
+| `complete_integration_reauthorization(...)` | Service-role only. Atomically upserts OAuth credentials and (for `google_calendar`) supersedes any in-flight recovery generation and schedules a new `pending` one. Preserves an existing refresh token when the provider omits a replacement. |
+| `requeue_calendar_recovery_batch(recovery_id, worker_id, batch_size, max_batches)` | Service-role only. Tags a claimed recovery's OAuth-blocked `approved` events with `recovery_id` and advances its status. Events resync through the normal approved-event queue; returns -1 if the claim was lost. |
+| `refresh_waiting_calendar_recoveries(batch_size)` | Service-role only. Recomputes progress for `waiting` recoveries and finalizes ones whose tagged events all reached a terminal state. |
 
 ### Usage Summary
 
