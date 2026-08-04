@@ -13,14 +13,34 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
+from postgrest.exceptions import APIError as PostgrestAPIError
 from supabase import Client
 
 from selko.config import Config
+from selko.services.google_errors import (
+    INSUFFICIENT_SCOPE_REASONS,
+    RATE_LIMIT_REASONS,
+)
 
 logger = logging.getLogger(__name__)
 
 MAX_ERROR_DETAIL = 500
 MAX_PAGE_ITEMS = 100
+
+
+@dataclass(frozen=True)
+class EmailErrorClassification:
+    """Typed outcome of classifying an email ingestion failure.
+
+    Branch on ``code`` and ``retryable``/``auth_failure`` — never on
+    ``str(exc)``. ``retryable=False`` is reserved for genuinely permanent
+    failures (``ProviderPermanentError``); everything else retries and only
+    dead-letters by exhausting ``max_attempts`` server-side.
+    """
+
+    code: str
+    retryable: bool
+    auth_failure: bool
 
 
 class EmailIngestionError(Exception):
@@ -37,6 +57,131 @@ class ProviderAuthenticationError(EmailIngestionError):
 
 class ProviderMessageMissingError(EmailIngestionError):
     """Raised when a discovered provider message was deleted before acquire."""
+
+
+class ProviderPermanentError(EmailIngestionError):
+    """Raised when a payload is genuinely unparseable and must not retry.
+
+    This is the only path that dead-letters an item before ``max_attempts``.
+    Parsers raise it deliberately; nothing infers permanence from a message.
+    """
+
+
+# Microsoft Graph error codes that mean throttle (retry) rather than auth.
+_GRAPH_RATE_LIMIT_CODES = {"TooManyRequests", "Throttled"}
+# Microsoft Graph error codes that mean scope/permission missing (auth).
+_GRAPH_INSUFFICIENT_SCOPE_CODES = {
+    "AuthorizationRequestDenied",
+    "ErrorAccessDenied",
+    "InsufficientScope",
+}
+
+
+def _graph_reason(exc: BaseException) -> str | None:
+    """Best-effort extraction of a Graph structured reason (the ``code``)."""
+    code = getattr(exc, "graph_error_code", None)
+    return code if isinstance(code, str) and code else None
+
+
+def _is_transport_exception(exc: BaseException) -> bool:
+    """True for httpx/requests/postgrest transport-level failures.
+
+    These retry — a disconnect is not a provider auth problem and not a parse
+    problem. Kept structural (type-based), never substring-based.
+    """
+    if isinstance(exc, PostgrestAPIError):
+        return True
+    # GraphRequestError is created for transport failures with status_code None.
+    status = getattr(exc, "status_code", None)
+    failure_class = getattr(exc, "failure_class", None)
+    if status is None and failure_class == "transport":
+        return True
+    return False
+
+
+def classify_email_error(exc: BaseException) -> EmailErrorClassification:
+    """Map arbitrary provider/database exceptions to a typed, stable classifier.
+
+    This is the single place that interprets provider error shapes for the
+    durable email ingestion path. Callers (``fail_item``, ``fail_sync``, the
+    attachment loop) must branch on the returned ``code``/flags, never on
+    ``str(exc)``.
+    """
+    # Typed auth (Gmail refresh revoked, missing-credential path, Graph 401).
+    if isinstance(exc, ProviderAuthenticationError):
+        return EmailErrorClassification(
+            code="provider_auth_expired", retryable=True, auth_failure=True
+        )
+    # Import lazily to avoid a circular import (gmail imports from integrations;
+    # this module only type-checks the subclass at classification time).
+    try:
+        from selko.services.gmail import GmailAuthError
+    except Exception:  # pragma: no cover - defensive; gmail always importable
+        GmailAuthError = ()  # type: ignore[assignment]
+    if isinstance(exc, GmailAuthError):  # type: ignore[arg-type]
+        return EmailErrorClassification(
+            code="provider_auth_expired", retryable=True, auth_failure=True
+        )
+    if isinstance(exc, ProviderPermanentError):
+        return EmailErrorClassification(
+            code="provider_permanent", retryable=False, auth_failure=False
+        )
+    if isinstance(exc, ProviderMessageMissingError):
+        # Removed by the caller, not failed-and-retried; keep a stable code.
+        return EmailErrorClassification(
+            code="provider_message_missing", retryable=True, auth_failure=False
+        )
+
+    status = getattr(exc, "status_code", None)
+    if status is not None:
+        reason = getattr(exc, "reason", None) or _graph_reason(exc)
+        if status == 429 or (status == 403 and (
+            reason in RATE_LIMIT_REASONS or reason in _GRAPH_RATE_LIMIT_CODES
+        )):
+            return EmailErrorClassification(
+                code="provider_rate_limited", retryable=True, auth_failure=False
+            )
+        if status == 401 or (status == 403 and (
+            reason in INSUFFICIENT_SCOPE_REASONS
+            or reason in _GRAPH_INSUFFICIENT_SCOPE_CODES
+        )):
+            return EmailErrorClassification(
+                code="provider_auth_expired", retryable=True, auth_failure=True
+            )
+        if status == 403:
+            return EmailErrorClassification(
+                code="provider_forbidden", retryable=True, auth_failure=False
+            )
+        if status in (500, 502, 503, 504):
+            return EmailErrorClassification(
+                code="provider_transient", retryable=True, auth_failure=False
+            )
+        if status == 404:
+            return EmailErrorClassification(
+                code="provider_not_found", retryable=True, auth_failure=False
+            )
+
+    if _is_transport_exception(exc):
+        return EmailErrorClassification(
+            code="database_transient", retryable=True, auth_failure=False
+        )
+    return EmailErrorClassification(
+        code="unknown", retryable=True, auth_failure=False
+    )
+
+
+def safe_error_code(exc: BaseException) -> str:
+    """Stable safe code string for an exception (see ``classify_email_error``)."""
+    return classify_email_error(exc).code
+
+
+def safe_error_detail(exc: BaseException) -> str:
+    """Return a short redacted detail suitable for service-only diagnostics."""
+    text = " ".join(str(exc).split())
+    for sensitive in ("authorization", "bearer", "access_token", "refresh_token"):
+        if sensitive in text.lower():
+            return "provider operation failed"
+    return text[:MAX_ERROR_DETAIL]
 
 
 @dataclass(frozen=True)
@@ -140,18 +285,18 @@ class EmailIngestionRepository:
         return bool(getattr(result, "data", False))
 
     def fail_sync(self, claim: SyncClaim, worker_id: str, exc: BaseException) -> bool:
-        code = safe_error_code(exc)
+        classification = classify_email_error(exc)
         result = self.client.rpc(
             "fail_email_sync",
             {
                 "p_integration_id": claim.integration_id,
                 "p_run_id": claim.run_id,
                 "p_worker_id": worker_id,
-                "p_error_code": code,
+                "p_error_code": classification.code,
                 "p_error_detail": safe_error_detail(exc),
                 "p_retry_base_seconds": self.config.email_retry_base_seconds,
                 "p_retry_max_seconds": self.config.email_retry_max_seconds,
-                "p_auth_failure": code == "provider_auth_expired",
+                "p_auth_failure": classification.auth_failure,
             },
         ).execute()
         return bool(getattr(result, "data", False))
@@ -196,13 +341,24 @@ class EmailIngestionRepository:
         ).execute()
         return bool(getattr(result, "data", False))
 
-    def fail_item(self, item_id: str, worker_id: str, exc: BaseException, *, terminal: bool = False) -> bool:
+    def fail_item(self, item_id: str, worker_id: str, exc: BaseException, *, terminal: bool | None = None) -> bool:
+        """Record an acquisition failure.
+
+        ``terminal`` defaults to the classifier's ``retryable`` flag: only
+        genuinely permanent failures (``ProviderPermanentError``) are terminal
+        on the first attempt. Every other failure retries until ``max_attempts``
+        is exhausted server-side, so a transient blip — including a 401 that
+        will be resolved by reconnect — never dead-letters mail on attempt #1.
+        """
+        classification = classify_email_error(exc)
+        if terminal is None:
+            terminal = not classification.retryable
         result = self.client.rpc(
             "fail_email_ingestion_item",
             {
                 "p_item_id": item_id,
                 "p_worker_id": worker_id,
-                "p_error_code": safe_error_code(exc),
+                "p_error_code": classification.code,
                 "p_retry_base_seconds": self.config.email_retry_base_seconds,
                 "p_retry_max_seconds": self.config.email_retry_max_seconds,
                 "p_terminal": terminal,

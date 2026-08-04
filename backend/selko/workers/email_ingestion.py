@@ -377,7 +377,11 @@ class EmailIngestionWorker:
             else:
                 await asyncio.to_thread(self.repository.fail_item, item["id"], self.worker_id, exc)
         except Exception as exc:
-            await asyncio.to_thread(self.repository.fail_item, item["id"], self.worker_id, exc, terminal=safe_error_code(exc) == "parse_invalid")
+            # No failure is terminal on a code alone. The classifier inside
+            # fail_item marks only ProviderPermanentError as non-retryable; any
+            # other failure retries until max_attempts is exhausted server-side,
+            # so a 401 resolved by reconnect never dead-letters mail on attempt #1.
+            await asyncio.to_thread(self.repository.fail_item, item["id"], self.worker_id, exc)
         return True
 
     def acquire_item(self, item: dict[str, Any]) -> str:

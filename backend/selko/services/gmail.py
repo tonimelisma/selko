@@ -17,6 +17,7 @@ from googleapiclient.errors import HttpError
 from supabase import Client
 
 from selko.config import Config
+from selko.services.google_errors import google_error_reason
 from selko.services.integrations import (
     get_oauth_credentials,
     update_integration_status,
@@ -30,9 +31,32 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
 
 class GmailError(Exception):
-    """Raised when Gmail operations fail."""
+    """Raised when Gmail operations fail.
 
-    pass
+    Unlike the earlier bare ``Exception``, this preserves the structured HTTP
+    ``status_code`` and Google's structured ``reason`` so callers can branch on
+    type/structure instead of substring-matching the human-readable message.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        reason: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.reason = reason
+
+
+class GmailAuthError(GmailError):
+    """Raised when Gmail credentials cannot be used (expired/revoked).
+
+    Auth is a *type*, not a string: the ingestion classifier branches on this
+    subclass so an expired refresh token never dead-letters mail on the first
+    attempt and is reported as a provider auth failure instead.
+    """
 
 
 class GmailHistoryExpiredError(GmailError):
@@ -45,6 +69,20 @@ class GmailMessageNotFoundError(GmailError):
     """Raised when a history entry refers to a message deleted before fetch."""
 
     pass
+
+
+def _wrap_http_error(e: HttpError, *, prefix: str) -> GmailError:
+    """Re-raise an HttpError as a GmailError carrying its status/reason."""
+    return GmailError(
+        f"{prefix}: {e}",
+        status_code=getattr(e.resp, "status", None),
+        reason=google_error_reason(e),
+    )
+
+
+def _auth_error(e: RefreshError, *, prefix: str) -> GmailAuthError:
+    """Re-raise a RefreshError as a GmailAuthError (typed auth failure)."""
+    return GmailAuthError(f"{prefix}: {e}")
 
 
 def run_oauth_flow(config: Config) -> Credentials:
@@ -175,9 +213,9 @@ def get_user_profile(service) -> dict:
     try:
         return service.users().getProfile(userId="me").execute()
     except RefreshError as e:
-        raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+        raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
     except HttpError as e:
-        raise GmailError(f"Gmail API error: {e}") from e
+        raise _wrap_http_error(e, prefix="Gmail API error") from e
 
 
 def extract_attachments(email: dict) -> list[dict]:
@@ -347,9 +385,9 @@ def list_labels(service) -> list[dict]:
         try:
             page = service.users().labels().list(**kwargs).execute()
         except RefreshError as e:
-            raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+            raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
         except HttpError as e:
-            raise GmailError(f"Gmail API error listing labels: {e}") from e
+            raise _wrap_http_error(e, prefix="Gmail API error listing labels") from e
         labels.extend(page.get("labels", []))
         page_token = page.get("nextPageToken")
         if not page_token:
@@ -373,9 +411,9 @@ def list_message_ids(
         try:
             page = service.users().messages().list(**kwargs).execute()
         except RefreshError as e:
-            raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+            raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
         except HttpError as e:
-            raise GmailError(f"Gmail API error listing messages: {e}") from e
+            raise _wrap_http_error(e, prefix="Gmail API error listing messages") from e
         message_ids.extend(page.get("messages", []))
         page_token = page.get("nextPageToken")
         if not page_token:
@@ -397,13 +435,13 @@ def get_message_metadata(service, message_id: str) -> dict:
             .execute()
         )
     except RefreshError as e:
-        raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+        raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
     except HttpError as e:
         if getattr(e.resp, "status", None) == 404:
             raise GmailMessageNotFoundError(
                 f"Gmail message {message_id} no longer exists"
             ) from e
-        raise GmailError(f"Gmail API error fetching message metadata: {e}") from e
+        raise _wrap_http_error(e, prefix="Gmail API error fetching message metadata") from e
 
 
 def get_full_message(service, message_id: str) -> dict:
@@ -414,13 +452,13 @@ def get_full_message(service, message_id: str) -> dict:
             userId="me", id=message_id, format="full"
         ).execute()
     except RefreshError as e:
-        raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+        raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
     except HttpError as e:
         if getattr(e.resp, "status", None) == 404:
             raise GmailMessageNotFoundError(
                 f"Gmail message {message_id} no longer exists"
             ) from e
-        raise GmailError(f"Gmail API error fetching message: {e}") from e
+        raise _wrap_http_error(e, prefix="Gmail API error fetching message") from e
 
 
 def fetch_history_message_ids(
@@ -443,13 +481,13 @@ def fetch_history_message_ids(
         try:
             page = service.users().history().list(**kwargs).execute()
         except RefreshError as e:
-            raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+            raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
         except HttpError as e:
             if getattr(e.resp, "status", None) == 404:
                 raise GmailHistoryExpiredError(
                     f"Gmail history cursor {start_history_id} expired"
                 ) from e
-            raise GmailError(f"Gmail API error reading history: {e}") from e
+            raise _wrap_http_error(e, prefix="Gmail API error reading history") from e
 
         latest_history_id = page.get("historyId") or latest_history_id
         for entry in page.get("history", []):
@@ -514,9 +552,9 @@ def fetch_messages(
             .execute()
         )
     except RefreshError as e:
-        raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+        raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
     except HttpError as e:
-        raise GmailError(f"Gmail API error listing messages: {e}") from e
+        raise _wrap_http_error(e, prefix="Gmail API error listing messages") from e
 
     messages = results.get("messages", [])
     if not messages:
@@ -539,7 +577,7 @@ def fetch_messages(
                 full_messages.append(full_msg)
                 break
             except RefreshError as e:
-                raise GmailError(f"Gmail credentials expired or revoked: {e}") from e
+                raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
             except HttpError as e:
                 if e.resp.status == 429:  # Rate limited
                     wait_time = (2**attempt) + 1  # 1, 3, 5 seconds
@@ -549,7 +587,7 @@ def fetch_messages(
                     )
                     time.sleep(wait_time)
                 else:
-                    raise GmailError(f"Gmail API error fetching message: {e}") from e
+                    raise _wrap_http_error(e, prefix="Gmail API error fetching message") from e
 
         # Small delay between requests to avoid hitting rate limits
         if i < len(messages) - 1:

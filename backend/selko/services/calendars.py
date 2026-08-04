@@ -1,6 +1,5 @@
 """Calendars service for Google Calendar integration."""
 
-import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -13,6 +12,11 @@ from googleapiclient.errors import HttpError
 from postgrest.exceptions import APIError as PostgrestAPIError
 from supabase import Client
 
+from selko.services.google_errors import (
+    INSUFFICIENT_SCOPE_REASONS,
+    RATE_LIMIT_REASONS,
+    google_error_reason,
+)
 from selko.services.integrations import get_credentials, update_integration_status
 
 logger = logging.getLogger(__name__)
@@ -63,41 +67,6 @@ class CalendarAuthRequiredError(CalendarsError):
     pass
 
 
-_INSUFFICIENT_SCOPE_REASONS = {
-    "insufficientPermissions",
-    "insufficientScopes",
-    "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
-}
-_RATE_LIMIT_REASONS = {
-    "rateLimitExceeded",
-    "userRateLimitExceeded",
-    "quotaExceeded",
-    "dailyLimitExceeded",
-}
-
-
-def _google_error_reason(exc: HttpError) -> Optional[str]:
-    """Best-effort extraction of Google's structured error reason.
-
-    Returns None if the response body isn't the expected JSON shape; callers
-    fall back to the HTTP status code in that case.
-    """
-    try:
-        content = exc.content
-        if isinstance(content, bytes):
-            content = content.decode("utf-8")
-        body = json.loads(content).get("error", {})
-    except Exception:
-        return None
-
-    sub_errors = body.get("errors")
-    if isinstance(sub_errors, list) and sub_errors:
-        reason = sub_errors[0].get("reason")
-        if reason:
-            return reason
-    return body.get("status")
-
-
 def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
     """Classify a calendar sync exception into a typed, actionable outcome.
 
@@ -116,7 +85,7 @@ def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
 
     if isinstance(exc, HttpError):
         status = getattr(exc.resp, "status", None)
-        reason = _google_error_reason(exc)
+        reason = google_error_reason(exc)
 
         if status == 401:
             return CalendarFailureClassification(
@@ -126,7 +95,7 @@ def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
                 user_message="Google Calendar needs to be reconnected.",
                 operator_detail=str(exc),
             )
-        if status == 403 and reason in _INSUFFICIENT_SCOPE_REASONS:
+        if status == 403 and reason in INSUFFICIENT_SCOPE_REASONS:
             return CalendarFailureClassification(
                 code="oauth_scope_required",
                 retryable=False,
@@ -134,7 +103,7 @@ def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
                 user_message="Google Calendar needs additional permission.",
                 operator_detail=str(exc),
             )
-        if status == 403 and reason in _RATE_LIMIT_REASONS:
+        if status == 403 and reason in RATE_LIMIT_REASONS:
             return CalendarFailureClassification(
                 code="rate_limited",
                 retryable=True,
