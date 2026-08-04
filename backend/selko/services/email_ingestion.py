@@ -341,6 +341,41 @@ class EmailIngestionRepository:
         ).execute()
         return bool(getattr(result, "data", False))
 
+    def save_email_with_attachment_descriptors(
+        self,
+        user_id: str,
+        email_payload: dict[str, Any],
+        descriptors: Iterable[dict[str, Any]],
+    ) -> str:
+        """Atomically upsert the email row and its attachment descriptors.
+
+        One RPC commits both writes in a single transaction so the SQL
+        readiness gate (``claim_unprocessed_email``) never observes an email
+        row whose attachment descriptors have not been written yet — the race
+        that let an LLM worker claim an email before its attachment rows
+        existed, causing silent flaky extraction. Replaces the previous
+        ``save_emails`` + N×(SELECT+INSERT) sequence in ``acquire_item``.
+        """
+        result = self.client.rpc(
+            "save_email_with_attachment_descriptors",
+            {
+                "p_user_id": str(user_id),
+                "p_email": email_payload,
+                "p_descriptors": list(descriptors),
+            },
+        ).execute()
+        data = getattr(result, "data", None)
+        # PostgREST returns a scalar-RETURNS-uuid function call as the scalar
+        # directly; guard both that and a row-list shape.
+        if data is None:
+            raise RuntimeError("email upsert returned no row")
+        if isinstance(data, list):
+            if not data:
+                raise RuntimeError("email upsert returned no row")
+            row = data[0]
+            return row["id"] if isinstance(row, dict) else str(row)
+        return str(data)
+
     def fail_item(self, item_id: str, worker_id: str, exc: BaseException, *, terminal: bool | None = None) -> bool:
         """Record an acquisition failure.
 
