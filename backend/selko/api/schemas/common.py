@@ -95,3 +95,33 @@ class HealthDbResponse(BaseModel):
 
     status: str
     database: str
+
+
+class HealthIngestionTaskResponse(BaseModel):
+    """Per-task state inside ``/health/ingestion``."""
+
+    name: str
+    alive: bool
+    restarts: int
+    last_exception_code: str | None = None
+
+
+class HealthIngestionResponse(BaseModel):
+    """/health/ingestion response.
+
+    Safe codes only — never payloads, addresses, message ids or tokens. The
+    state machine already records ``consecutive_failures``, dead-letter counts
+    and run history; this surface finally reads them.
+    """
+
+    status: str  # "ok" | "degraded" | "down"
+    background_processing_enabled: bool
+    instance_id: str | None = None
+    tasks: list[HealthIngestionTaskResponse] = []
+    integrations_due: int | None = None
+    oldest_next_poll_seconds: int | None = None
+    leases_held: int | None = None
+    items_pending: int | None = None
+    items_dead_letter: int | None = None
+    attachments_dead_letter: int | None = None
+    open_incidents: int | None = None
