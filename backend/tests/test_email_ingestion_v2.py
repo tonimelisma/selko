@@ -159,12 +159,12 @@ def test_acquire_item_does_not_query_integrations_per_message(mock_config):
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
          patch("selko.services.gmail.get_full_message", return_value={"id": "msg-1", "payload": {}}), \
          patch("selko.workers.email_ingestion.parse_gmail_message", return_value={}), \
-         patch("selko.workers.email_ingestion.save_emails", return_value=[{"id": "email-1"}]), \
-         patch.object(worker.repository, "ensure_attachment_descriptors", return_value=0), \
+         patch.object(worker.repository, "save_email_with_attachment_descriptors", return_value="email-1") as atomic_save, \
          patch.object(worker, "_integration") as integration_lookup:
         assert worker.acquire_item(item) == "email-1"
 
     integration_lookup.assert_not_called()
+    atomic_save.assert_called_once()
 
 
 def _health_state() -> dict:

@@ -24,7 +24,7 @@ from selko.services.email_ingestion import (
     SyncClaim,
     safe_error_code,
 )
-from selko.services.emails import parse_gmail_message, save_emails
+from selko.services.emails import parse_gmail_message
 from selko.services.gmail import (
     GmailHistoryExpiredError,
     GmailMessageNotFoundError,
@@ -396,9 +396,6 @@ class EmailIngestionWorker:
             parsed = parse_gmail_message(message)
             parsed["integration_id"] = item["integration_id"]
             parsed["provider_folder_ids"] = item.get("provider_folder_ids") or parsed.get("provider_folder_ids") or []
-            saved = save_emails(self.client, [parsed], user_id=item["user_id"])
-            if not saved:
-                raise RuntimeError("email upsert returned no row")
             descriptors = [
                 {
                     "provider_attachment_id": d.get("attachment_id"),
@@ -416,9 +413,6 @@ class EmailIngestionWorker:
             parsed = parse_outlook_message(message)
             parsed["integration_id"] = item["integration_id"]
             parsed["provider_folder_ids"] = item.get("provider_folder_ids") or parsed.get("provider_folder_ids") or []
-            saved = save_emails(self.client, [parsed], user_id=item["user_id"])
-            if not saved:
-                raise RuntimeError("email upsert returned no row")
             descriptors = [
                 {
                     "provider_attachment_id": d.get("id"),
@@ -430,8 +424,17 @@ class EmailIngestionWorker:
             ]
         else:
             raise ValueError(f"Unsupported email provider: {provider}")
-        self.repository.ensure_attachment_descriptors(item["email_id"] if item.get("email_id") else saved[0]["id"], item["user_id"], descriptors)
-        return saved[0]["id"]
+
+        # Atomically commit the email upsert and its attachment descriptors in
+        # one transaction so the SQL readiness gate (claim_unprocessed_email)
+        # never observes an email row whose descriptors have not been written
+        # yet. The old sequence (save_emails then N×(SELECT+INSERT)) left a
+        # multi-round-trip window in which an LLM worker could claim the email
+        # with zero attachment rows, causing silent flaky extraction.
+        email_id = self.repository.save_email_with_attachment_descriptors(
+            item["user_id"], parsed, descriptors
+        )
+        return email_id
 
     async def run_attachment_once(self) -> bool:
         attachment = await asyncio.to_thread(self.repository.claim_attachment, self.worker_id)

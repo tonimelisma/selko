@@ -334,3 +334,174 @@ def test_reconnecting_clears_backoff_but_respects_a_live_lease(
         "integration_id", synced_integration
     ).single().execute().data
     assert datetime.fromisoformat(held["next_poll_at"]) > datetime.now(timezone.utc)
+
+
+@pytest.mark.integration
+@pytest.mark.development
+def test_atomic_save_blocks_llm_claim_until_attachment_descriptors_settle(
+    admin_client, temp_user
+):
+    """The race this is here to catch: an LLM worker claims an email whose
+    attachment rows do not yet exist; the LLM then processes the body with no
+    attachments, degrading extraction quality invisibly.
+
+    Pre-fix: save_emails + N×(SELECT+INSERT) left a multi-round-trip window in
+    which claim_unprocessed_email observed zero attachment rows and passed
+    the readiness gate. The atomic RPC commits both writes in one transaction,
+    so the gate can never see the gap. This test must run against a real
+    database because the bug is a transaction-boundary bug.
+    """
+    user_id, _, _ = temp_user
+    integration_id = str(uuid4())
+    admin_client.table("integrations").insert({
+        "id": integration_id,
+        "user_id": user_id,
+        "provider": "gmail",
+        "status": "active",
+        "access_token": "test-token",
+    }).execute()
+
+    message_id = f"race-msg-{uuid4()}"
+    email_payload = {
+        "email_provider": "gmail",
+        "provider_message_id": message_id,
+        "subject": "atomic descriptor race",
+        "from_email": "sender@selko.local",
+        # Oldest-first claim (date_sent ASC) keeps this test deterministic: the
+        # gate considers our email before any other pending rows.
+        "date_sent": "2000-01-01T00:00:00+00:00",
+        "provider_labels": ["INBOX"],
+        "has_attachments": True,
+        "integration_id": integration_id,
+    }
+    descriptors = [
+        {"provider_attachment_id": "att-1", "filename": "a.txt", "mime_type": "text/plain", "size_bytes": 10},
+        {"provider_attachment_id": "att-2", "filename": "b.pdf", "mime_type": "application/pdf", "size_bytes": 200},
+        {"provider_attachment_id": "att-3", "filename": "c.png", "mime_type": "image/png", "size_bytes": 1000},
+    ]
+
+    email_id = admin_client.rpc("save_email_with_attachment_descriptors", {
+        "p_user_id": user_id,
+        "p_email": email_payload,
+        "p_descriptors": descriptors,
+    }).execute().data
+
+    # The RPC's own data shape is a scalar uuid; tolerate the list shape too.
+    if isinstance(email_id, list):
+        email_id = email_id[0]
+    if isinstance(email_id, dict):
+        email_id = email_id["id"]
+    assert email_id
+
+    try:
+        # All three descriptors were written atomically with the email row.
+        atts = admin_client.table("attachments").select(
+            "provider_attachment_id,ingestion_status"
+        ).eq("email_id", email_id).execute().data or []
+        assert {a["provider_attachment_id"] for a in atts} == {"att-1", "att-2", "att-3"}
+        assert all(a["ingestion_status"] == "pending" for a in atts)
+
+        # The readiness gate must NOT claim the email while attachments are
+        # pending/processing/retry. date_sent makes ours oldest, so one call is
+        # enough to know the gate saw ours and decided not to claim it.
+        claimed = admin_client.rpc("claim_unprocessed_email", {
+            "p_worker_id": "race-worker", "p_lock_duration_seconds": 1,
+        }).execute().data or []
+        if claimed:
+            assert claimed[0]["id"] != email_id, "gate claimed an email whose attachments are still pending"
+
+        # Mark all attachments terminal, then the gate must claim our email.
+        admin_client.table("attachments").update(
+            {"ingestion_status": "stored"}
+        ).eq("email_id", email_id).execute()
+
+        found = False
+        for _ in range(50):
+            claimed = admin_client.rpc("claim_unprocessed_email", {
+                "p_worker_id": "race-worker", "p_lock_duration_seconds": 1,
+            }).execute().data or []
+            if not claimed:
+                break
+            if claimed[0]["id"] == email_id:
+                found = True
+                break
+        assert found, "gate did not claim the email once all attachments settled"
+    finally:
+        try:
+            admin_client.table("attachments").delete().eq("email_id", email_id).execute()
+            admin_client.table("emails").delete().eq("id", email_id).execute()
+            admin_client.table("integrations").delete().eq("id", integration_id).execute()
+        except Exception:
+            pass
+
+
+@pytest.mark.integration
+@pytest.mark.development
+def test_re_acquired_email_keeps_existing_attachment_rows_unreset(admin_client, temp_user):
+    """Re-acquisition must not duplicate descriptors, and must not reset a
+    'stored' attachment row back to 'pending' (which would re-block the gate
+    after a worker already paid the attach cost)."""
+    user_id, _, _ = temp_user
+    integration_id = str(uuid4())
+    admin_client.table("integrations").insert({
+        "id": integration_id,
+        "user_id": user_id,
+        "provider": "gmail",
+        "status": "active",
+        "access_token": "test-token",
+    }).execute()
+
+    message_id = f"reacq-msg-{uuid4()}"
+    base_payload = {
+        "email_provider": "gmail",
+        "provider_message_id": message_id,
+        "subject": "re-acquire",
+        "from_email": "sender@selko.local",
+        "date_sent": datetime.now(timezone.utc).isoformat(),
+        "provider_labels": ["INBOX"],
+        "has_attachments": True,
+        "integration_id": integration_id,
+    }
+    descriptors = [
+        {"provider_attachment_id": "att-1", "filename": "a.txt", "mime_type": "text/plain", "size_bytes": 10},
+        {"provider_attachment_id": "att-2", "filename": "b.pdf", "mime_type": "application/pdf", "size_bytes": 200},
+    ]
+
+    email_id = admin_client.rpc("save_email_with_attachment_descriptors", {
+        "p_user_id": user_id, "p_email": base_payload, "p_descriptors": descriptors,
+    }).execute().data
+    if isinstance(email_id, list):
+        email_id = email_id[0]
+    if isinstance(email_id, dict):
+        email_id = email_id["id"]
+
+    try:
+        # Simulate one attachment making it to 'stored' before re-acquisition.
+        admin_client.table("attachments").update(
+            {"ingestion_status": "stored", "storage_path": "path/a.txt",
+             "content_hash": "hash", "size_bytes": 10}
+        ).eq("email_id", email_id).eq("provider_attachment_id", "att-1").execute()
+
+        # Re-acquire: same descriptors. ON CONFLICT DO NOTHING must preserve both
+        # rows and leave the stored one stored.
+        second_id = admin_client.rpc("save_email_with_attachment_descriptors", {
+            "p_user_id": user_id, "p_email": base_payload, "p_descriptors": descriptors,
+        }).execute().data
+        if isinstance(second_id, list):
+            second_id = second_id[0]
+        if isinstance(second_id, dict):
+            second_id = second_id["id"]
+        assert second_id == email_id
+
+        atts = admin_client.table("attachments").select(
+            "provider_attachment_id,ingestion_status"
+        ).eq("email_id", email_id).execute().data or []
+        by_id = {a["provider_attachment_id"]: a["ingestion_status"] for a in atts}
+        assert by_id == {"att-1": "stored", "att-2": "pending"}, "stored row was reset / descriptors duplicated"
+    finally:
+        try:
+            admin_client.table("attachments").delete().eq("email_id", email_id).execute()
+            admin_client.table("emails").delete().eq("id", email_id).execute()
+            admin_client.table("integrations").delete().eq("id", integration_id).execute()
+        except Exception:
+            pass
