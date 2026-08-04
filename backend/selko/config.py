@@ -111,6 +111,8 @@ class Config:
     email_attachment_concurrency: int = 2
     email_worker_idle_base_seconds: float = 1.0
     email_worker_idle_max_seconds: float = 30.0
+    email_worker_error_backoff_seconds: float = 5.0
+    email_runtime_watchdog_seconds: int = 30
     email_health_interval_seconds: int = 300
     operational_notification_sender: Optional[str] = None
     operational_notification_recipient: Optional[str] = None
@@ -388,6 +390,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_attachment_concurrency=int(getenv("EMAIL_ATTACHMENT_CONCURRENCY", "2")),
         email_worker_idle_base_seconds=float(getenv("EMAIL_WORKER_IDLE_BASE_SECONDS", "1")),
         email_worker_idle_max_seconds=float(getenv("EMAIL_WORKER_IDLE_MAX_SECONDS", "30")),
+        email_worker_error_backoff_seconds=float(getenv("EMAIL_WORKER_ERROR_BACKOFF_SECONDS", "5")),
+        email_runtime_watchdog_seconds=int(getenv("EMAIL_RUNTIME_WATCHDOG_SECONDS", "30")),
         email_health_interval_seconds=int(getenv("EMAIL_HEALTH_INTERVAL_SECONDS", "300")),
         operational_notification_sender=getenv("OPERATIONAL_NOTIFICATION_SENDER"),
         operational_notification_recipient=getenv("OPERATIONAL_NOTIFICATION_RECIPIENT"),
