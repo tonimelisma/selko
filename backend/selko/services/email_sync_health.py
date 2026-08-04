@@ -195,8 +195,17 @@ class EmailSyncHealthEvaluator:
         return len(expected)
 
     async def run(self, stop_event: asyncio.Event) -> None:
+        # ``evaluate_once`` issues many DB calls; a single transient failure
+        # must not kill the health evaluator (it watches the ingestion loops
+        # and would die from the same blip). Wrap each cycle so the evaluator
+        # keeps ticking after a failed evaluation.
         while not stop_event.is_set():
-            await self.evaluate_once()
+            try:
+                await self.evaluate_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Email sync health evaluation failed; continuing")
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=max(self.config.email_health_interval_seconds, 1))
             except asyncio.TimeoutError:
