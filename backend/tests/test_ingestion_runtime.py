@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from selko.api.app import lifespan
+from selko.services.email_sync_health import EmailSyncHealthEvaluator
 from selko.workers.email_ingestion import EmailIngestionWorker
 from selko.workers.ingestion_runtime import IngestionRuntime, build_notifier
 
@@ -62,7 +63,11 @@ def test_idle_backoff_resets_after_work_is_found(mock_config):
 
 
 def test_runtime_spawns_configured_workers_and_stops_cleanly(mock_config):
-    """One coordinator plus the configured acquisition/attachment workers."""
+    """One coordinator plus the configured acquisition/attachment workers.
+
+    Plus one health evaluator, all managed by the watchdog so a task that
+    exits is respawned rather than dying silently.
+    """
     config = replace(
         mock_config, email_acquisition_concurrency=2, email_attachment_concurrency=3
     )
@@ -75,14 +80,14 @@ def test_runtime_spawns_configured_workers_and_stops_cleanly(mock_config):
              patch("selko.workers.ingestion_runtime.EmailSyncHealthEvaluator") as health:
             health.return_value.run = AsyncMock()
             await runtime.start()
-            spawned = len(runtime._tasks)
+            spawned = len(runtime._managed)
             names = [w.worker_id for w in runtime._workers]
             await runtime.stop()
-        return spawned, names, runtime._tasks
+        return spawned, names, runtime._managed
 
     spawned, names, remaining = asyncio.run(scenario())
 
-    assert spawned == 1 + 2 + 3
+    assert spawned == 1 + 2 + 3 + 1  # workers + health evaluator
     assert names[0] == "test-instance-coordinator"
     assert "test-instance-attachment-2" in names
     assert remaining == []
@@ -204,3 +209,140 @@ def test_no_apscheduler_remains_in_the_api_module():
     ]
     assert not [line for line in imports if "apscheduler" in line.lower()]
     assert not [line for line in imports if "email_fetch" in line]
+
+
+# --- Loop supervision (top-up increment 3) -----------------------------------
+#
+# Pre-fix: claim calls sat *outside* the inner ``try`` in the ``run_*_once``
+# bodies, ``coordinator_loop`` / ``_claim_loop`` caught nothing, and
+# ``IngestionRuntime.stop()`` gathered with ``return_exceptions=True`` — so one
+# transient Supabase error killed the loop forever, silently. The watchdog was
+# not present. The tests below assert the inverse.
+
+def _supervision_config(mock_config):
+    """Tight intervals so the watchdog/loopback tests run in bounded time."""
+    return replace(
+        mock_config,
+        email_runtime_watchdog_seconds=1,
+        email_worker_error_backoff_seconds=0,
+        email_worker_idle_base_seconds=0,
+        email_worker_idle_max_seconds=0,
+        email_coordinator_tick_seconds=0,
+        email_health_interval_seconds=0,
+    )
+
+
+def test_claim_that_raises_once_leaves_loop_running_and_second_claim_attempted(mock_config):
+    """The proof, inverted: one transient claim failure must not kill the loop.
+
+    Pre-fix this ended the task after exactly one attempt. With ``_guarded`` the
+    exception is logged, the loop backs off, and a second claim is attempted.
+    """
+    config = _supervision_config(mock_config)
+    client = MagicMock()
+    worker = EmailIngestionWorker(client, config, "worker-1")
+
+    attempts = {"count": 0}
+
+    def claim_due_sync(_worker_id):
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise RuntimeError("Server disconnected without sending a response")
+        worker.stop()  # let the loop exit after the successful second attempt
+        return None
+
+    async def run_under():
+        await asyncio.wait_for(worker.coordinator_loop(), timeout=5.0)
+
+    with patch.object(worker.repository, "claim_due_sync", side_effect=claim_due_sync), \
+         patch.object(worker.repository, "claim_due_reconciliation", return_value=None):
+        asyncio.run(run_under())
+
+    assert attempts["count"] >= 2, "loop died after the first failure; expected a second attempt"
+
+
+def test_killed_task_is_respawned_by_watchdog_within_one_tick(mock_config):
+    """A task that exits mid-flight (done before stop) must be respawned."""
+    config = _supervision_config(mock_config)
+    runtime = IngestionRuntime(MagicMock(), config, instance_id="test")
+
+    async def run_under():
+        await runtime.start()
+        try:
+            entry = next(e for e in runtime._managed if e["name"] == "email-sync-coordinator")
+            entry["task"].cancel()
+            try:
+                await entry["task"]
+            except asyncio.CancelledError:
+                pass
+            # The watchdog ticks every 1s; wait up to 3s for a respawn.
+            for _ in range(30):
+                await asyncio.sleep(0.1)
+                if not entry["task"].done():
+                    break
+            assert not entry["task"].done(), "watchdog did not respawn the killed task"
+            assert entry["restarts"] >= 1
+        finally:
+            await runtime.stop()
+
+    asyncio.run(asyncio.wait_for(run_under(), timeout=10.0))
+
+
+def test_stop_shuts_down_cleanly_and_does_not_respawn(mock_config):
+    """``stop()`` must not race the watchdog into respawning during shutdown."""
+    runtime = IngestionRuntime(MagicMock(), _supervision_config(mock_config), instance_id="test")
+
+    async def run_under():
+        await runtime.start()
+        await runtime.stop()
+        for entry in runtime._managed:
+            assert entry["task"].done()
+
+    asyncio.run(asyncio.wait_for(run_under(), timeout=10.0))
+
+
+def test_status_reports_alive_and_restart_counts(mock_config):
+    runtime = IngestionRuntime(
+        MagicMock(), _supervision_config(mock_config), instance_id="instance-1"
+    )
+
+    async def run_under():
+        await runtime.start()
+        try:
+            st = runtime.status()
+            assert st["instance_id"] == "instance-1"
+            names = {t["name"] for t in st["tasks"]}
+            assert "email-sync-coordinator" in names
+            assert "email-sync-health" in names
+            for t in st["tasks"]:
+                assert t["alive"] is True
+                assert t["restarts"] == 0
+                assert t["last_exception_code"] is None
+        finally:
+            await runtime.stop()
+
+    asyncio.run(asyncio.wait_for(run_under(), timeout=10.0))
+
+
+def test_health_evaluator_survives_an_evaluate_once_exception(mock_config):
+    """``EmailSyncHealthEvaluator.run`` must keep ticking after a failed cycle."""
+    config = _supervision_config(mock_config)
+    evaluator = EmailSyncHealthEvaluator(MagicMock(), config, None)
+    stop = asyncio.Event()
+
+    async def run_under():
+        call_count = {"n": 0}
+
+        async def flaky_evaluate():
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise RuntimeError("transient DB error during evaluation")
+            if call_count["n"] >= 2:
+                stop.set()
+
+        with patch.object(evaluator, "evaluate_once", side_effect=flaky_evaluate):
+            await asyncio.wait_for(evaluator.run(stop), timeout=5.0)
+
+        assert call_count["n"] >= 2, "evaluator died after the first exception"
+
+    asyncio.run(run_under())

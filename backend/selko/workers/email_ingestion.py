@@ -486,12 +486,41 @@ class EmailIngestionWorker:
 
     async def coordinator_loop(self) -> None:
         while not self.stop_event.is_set():
-            did_work = await self.run_sync_once()
+            did_work = await self._guarded(self.run_sync_once)
             if not did_work:
                 try:
                     await asyncio.wait_for(self.stop_event.wait(), timeout=max(self.config.email_coordinator_tick_seconds, 1))
                 except asyncio.TimeoutError:
                     pass
+
+    async def _guarded(self, run_once) -> bool:
+        """Run one loop iteration so the loop can never be killed by a blip.
+
+        ``claim_due_sync`` / ``claim_due_reconciliation`` / ``claim_item`` /
+        ``claim_attachment`` are all called at the top of the ``run_*_once``
+        bodies, *outside* their inner ``try``. Before this guard, a single
+        transient Supabase error (a "Server disconnected without sending a
+        response" mid-claim) propagated up through ``coordinator_loop`` /
+        ``_claim_loop``, the task ended ``done()`` with an exception, and
+        ``IngestionRuntime.stop()`` later gathered with ``return_exceptions=True``
+        — silently swallowing the traceback. One attempt, loop dead forever.
+
+        This mirrors ``WorkerPool._worker_loop``: catch every non-cancel
+        exception, log it with a traceback, back off briefly, and return
+        ``True`` so the iteration is treated as work (idle backoff does not
+        compound on top of the error backoff).
+        """
+        try:
+            return await run_once()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Ingestion loop iteration failed; backing off")
+            try:
+                await asyncio.sleep(max(self.config.email_worker_error_backoff_seconds, 0.0))
+            except asyncio.CancelledError:
+                raise
+            return True
 
     def idle_backoff(self, consecutive_idle: int) -> float:
         """Seconds to wait after `consecutive_idle` empty claims in a row.
@@ -508,7 +537,7 @@ class EmailIngestionWorker:
     async def _claim_loop(self, run_once) -> None:
         consecutive_idle = 0
         while not self.stop_event.is_set():
-            if await run_once():
+            if await self._guarded(run_once):
                 consecutive_idle = 0
                 continue
             consecutive_idle += 1
