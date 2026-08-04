@@ -210,6 +210,38 @@ GitHub sends automatic email notifications when:
 Ensure notifications are enabled in your personal GitHub settings:
 Settings → Notifications → Actions → "Send notifications for failed workflows only"
 
+### Ingestion health and alerting
+
+Point the Render health check at **`GET /health/ingestion`** (not `/health`). The
+base `/health` returns `ok` unconditionally, so it stays green while every
+ingestion loop is dead. `/health/ingestion` reports live per-task state plus
+due/lease/pending/dead-letter counts and open email-sync incidents; its
+`status` field is:
+
+- `ok` — every managed task alive, no dead letters, no open incidents, oldest
+  pending poll inside the warning SLO;
+- `degraded` — DB queries failed, OR any dead letters / open incidents, OR the
+  oldest pending poll is past `EMAIL_HEALTH_WARNING_SECONDS`;
+- `down` — any managed task is not alive (the watchdog respawned it within one
+  tick, but an outage continued past that would surface here).
+
+`/health/ingestion` is currently the **only alerting surface** for ingestion.
+`OPERATIONAL_NOTIFICATION_*` (Resend) is unset and no Resend account is
+provisioned, so `operational_incidents` rows are recorded but never emailed.
+Two paths to alert a human:
+
+1. Provision Resend and set `OPERATIONAL_NOTIFICATION_*` (the
+   `ResendOperationalNotifier` is already wired);
+2. Configure Sentry (`SENTRY_DSN`) so the watchdog's `capture_exception` on an
+   unexpectedly-exited task reaches an operator and `/health/ingestion` stays
+   the SLO probe.
+
+The structured `ingestion_sync_run` log line (`run_kind`, `provider`,
+`duration_ms`, `provider_ids_seen`, `items_inserted`, `items_existing`,
+`error_code`) is emitted once per completed sync run, so Render log search can
+answer "is ingestion moving" without a metrics backend. Never logs subjects,
+addresses, message ids or tokens.
+
 ### Parallel Agent Workflow
 
 When multiple agents work simultaneously, they use git worktrees for isolation. See `docs/parallel-agents.md` for the complete guide covering:

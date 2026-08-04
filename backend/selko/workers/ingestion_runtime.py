@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 from supabase import Client
@@ -142,6 +143,15 @@ class IngestionRuntime:
                         entry["name"],
                         exc_info=exc,
                     )
+                    # An unexpectedly exited task is exactly the event with no
+                    # other reporting path today. Capture to Sentry when the
+                    # DSN is configured; the import is local so a missing
+                    # sentry-sdk never breaks the watchdog.
+                    try:
+                        import sentry_sdk
+                        sentry_sdk.capture_exception(exc)
+                    except Exception:
+                        pass
                 else:
                     logger.warning(
                         "Ingestion task %s exited cleanly before stop; respawning",
@@ -187,6 +197,113 @@ class IngestionRuntime:
             ],
         }
 
+    def health_snapshot(self) -> dict[str, Any]:
+        """One-shot ingestion health for ``GET /health/ingestion``.
+
+        Combines the live task state from ``status()`` with a small set of
+        service-role DB aggregates: due/lease/pending/dead-letter/open-incident
+        counts plus the oldest scheduled poll. Computes a single ``status``
+        string:
+
+          * ``down``     — any managed task is not alive
+          * ``degraded`` — any dead letters, any open email-sync incidents, or
+            the oldest pending poll is past the warning SLO
+          * ``ok``       — otherwise
+
+        Safe codes only; never payloads, addresses, message ids or tokens. The
+        DB calls are best-effort: a transient failure degrades to ``unknown``
+        counts rather than failing the route.
+        """
+        snapshot = {
+            "status": "ok",
+            "background_processing_enabled": True,
+            "instance_id": self.instance_id,
+            "tasks": self.status()["tasks"],
+            "integrations_due": None,
+            "oldest_next_poll_seconds": None,
+            "leases_held": None,
+            "items_pending": None,
+            "items_dead_letter": None,
+            "attachments_dead_letter": None,
+            "open_incidents": None,
+        }
+        try:
+            now_dt = datetime.now(timezone.utc)
+            states = (
+                self.client.table("email_sync_state")
+                .select("next_poll_at,lease_expires_at")
+                .execute()
+            ).data or []
+            due = 0
+            leases = 0
+            oldest: datetime | None = None
+            for row in states:
+                npr = _parse_ts(row.get("next_poll_at"))
+                if npr is not None and npr <= now_dt and (row.get("lease_expires_at") is None or _parse_ts(row.get("lease_expires_at")) <= now_dt):
+                    due += 1
+                lex = _parse_ts(row.get("lease_expires_at"))
+                if lex is not None and lex > now_dt:
+                    leases += 1
+                if npr is not None and (oldest is None or npr < oldest):
+                    oldest = npr
+            snapshot["integrations_due"] = due
+            snapshot["leases_held"] = leases
+            snapshot["oldest_next_poll_seconds"] = (
+                None if oldest is None else max(0, int((now_dt - oldest).total_seconds()))
+            )
+
+            items = self.client.table("email_ingestion_items").select(
+                "id,acquisition_status", count="exact"
+            ).execute()
+            snapshot["items_pending"] = sum(
+                1 for r in (items.data or [])
+                if r.get("acquisition_status") in ("pending", "retry", "processing")
+            )
+            snapshot["items_dead_letter"] = sum(
+                1 for r in (items.data or [])
+                if r.get("acquisition_status") == "dead_letter"
+            )
+
+            atts = self.client.table("attachments").select(
+                "id,ingestion_status", count="exact"
+            ).execute()
+            snapshot["attachments_dead_letter"] = sum(
+                1 for r in (atts.data or [])
+                if r.get("ingestion_status") == "dead_letter"
+            )
+
+            incidents = (
+                self.client.table("operational_incidents")
+                .select("incident_key", count="exact")
+                .eq("status", "open")
+                .like("incident_key", "email-sync:%")
+                .execute()
+            )
+            snapshot["open_incidents"] = len(incidents.data or [])
+        except Exception:
+            logger.exception("Ingestion health snapshot DB queries failed")
+            snapshot["status"] = "degraded"
+            return snapshot
+
+        # Roll up. ``down`` beats ``degraded``.
+        alive = all(t["alive"] for t in snapshot["tasks"])
+        if not alive:
+            snapshot["status"] = "down"
+        else:
+            degraded = (
+                (snapshot["items_dead_letter"] or 0) > 0
+                or (snapshot["attachments_dead_letter"] or 0) > 0
+                or (snapshot["open_incidents"] or 0) > 0
+            )
+            if (
+                snapshot["oldest_next_poll_seconds"] is not None
+                and snapshot["oldest_next_poll_seconds"] > self.config.email_health_warning_seconds
+            ):
+                degraded = True
+            if degraded:
+                snapshot["status"] = "degraded"
+        return snapshot
+
 
 def _exception_code(exc: BaseException | None) -> str | None:
     """Stable safe code for the watchdog's restart counter; never raises."""
@@ -200,3 +317,12 @@ def _exception_code(exc: BaseException | None) -> str | None:
         return classify_email_error(exc).code
     except Exception:
         return "unknown"
+
+
+def _parse_ts(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        return None

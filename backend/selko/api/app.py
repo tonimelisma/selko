@@ -175,12 +175,34 @@ def create_app() -> FastAPI:
     except SystemExit:
         # Config not available (e.g., during test collection without env vars)
         # Use default localhost origins for CORS
+        config = None
         allowed_origins = [
             "http://localhost:3000",
             "http://localhost:5173",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:5173",
         ]
+
+    # Initialize Sentry when a DSN is configured. Unset => no-op, so local
+    # servers, tests and CI are unaffected. This is the only APM path; until
+    # someone is available to watch a metrics backend, structured log lines
+    # (increment 5c) plus Sentry is the right amount for a single-operator
+    # deployment.
+    if config is not None and getattr(config, "sentry_dsn", None):
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.fastapi import FastapiIntegration
+
+            sentry_sdk.init(
+                dsn=config.sentry_dsn,
+                environment=config.environment,
+                traces_sample_rate=0.0,
+                send_default_pii=False,
+                integrations=[FastapiIntegration()],
+            )
+            logger.info("Sentry initialized (environment=%s)", config.environment)
+        except Exception:
+            logger.exception("Sentry initialization failed; continuing without APM")
 
     app = FastAPI(
         title="Selko API",

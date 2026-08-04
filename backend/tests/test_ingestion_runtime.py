@@ -16,6 +16,7 @@ from selko.api.app import lifespan
 from selko.services.email_sync_health import EmailSyncHealthEvaluator
 from selko.workers.email_ingestion import EmailIngestionWorker
 from selko.workers.ingestion_runtime import IngestionRuntime, build_notifier
+from selko.services.email_ingestion import SyncClaim
 
 
 def test_idle_backoff_grows_geometrically_and_is_capped(mock_config):
@@ -346,3 +347,219 @@ def test_health_evaluator_survives_an_evaluate_once_exception(mock_config):
         assert call_count["n"] >= 2, "evaluator died after the first exception"
 
     asyncio.run(run_under())
+
+
+def _state_table_client(*, states, items=None, attachments=None, incidents=None):
+    """A MagicMock client whose email_sync_state / email_ingestion_items /
+    attachments / operational_incidents tables return the given rows. Used to
+    drive health_snapshot() without a real database.
+    """
+    client = MagicMock()
+
+    def table(name):
+        handle = MagicMock()
+        if name == "email_sync_state":
+            handle.select.return_value.execute.return_value = MagicMock(
+                data=[{"next_poll_at": s[0], "lease_expires_at": s[1]} for s in states]
+            )
+        elif name == "email_ingestion_items":
+            handle.select.return_value.execute.return_value = MagicMock(
+                data=[{"id": i, "acquisition_status": s} for i, s in (items or [])],
+                count=len(items or []),
+            )
+        elif name == "attachments":
+            handle.select.return_value.execute.return_value = MagicMock(
+                data=[{"id": i, "ingestion_status": s} for i, s in (attachments or [])],
+                count=len(attachments or []),
+            )
+        elif name == "operational_incidents":
+            chain = handle.select.return_value
+            chain = chain.eq.return_value
+            chain = chain.like.return_value
+            chain.execute.return_value = MagicMock(
+                data=[{"incident_key": k} for k in (incidents or [])],
+                count=len(incidents or []),
+            )
+        return handle
+
+    client.table.side_effect = table
+    return client
+
+
+def test_health_snapshot_marks_down_when_any_task_not_alive(mock_config):
+    """A dead task must produce status=down regardless of DB counts.
+
+    Seeds ``_managed`` directly so the assertion is timing-independent: the
+    watchdog's *respawn* behavior is exercised separately; here we only verify
+    the snapshot sees ``alive=False`` and rolls up to ``down``.
+    """
+    config = _supervision_config(mock_config)
+    client = _state_table_client(
+        states=[("2099-01-01T00:00:00+00:00", None)],
+        items=[],
+        attachments=[],
+        incidents=[],
+    )
+    runtime = IngestionRuntime(client, config, instance_id="instance-1")
+
+    async def run_under():
+        await runtime.start()
+        try:
+            # Avoid racing the watchdog: replace one task with an already-done
+            # one so health_snapshot() observes it as not alive right now.
+            entry = next(e for e in runtime._managed if e["name"] == "email-sync-coordinator")
+
+            async def _already_done():
+                return
+
+            done_task = asyncio.ensure_future(_already_done())
+            await done_task  # mark done() with no exception
+            entry["task"] = done_task
+            snapshot = runtime.health_snapshot()
+            assert snapshot["status"] == "down"
+            assert any(t["alive"] is False for t in snapshot["tasks"])
+        finally:
+            await runtime.stop()
+
+    asyncio.run(asyncio.wait_for(run_under(), timeout=15.0))
+
+
+def test_health_snapshot_ok_when_everything_is_alive_and_clear(mock_config):
+    """Healthy runtime + no dead letters + no open incidents + upcoming poll."""
+    config = _supervision_config(mock_config)
+    future = "2099-01-01T00:00:00+00:00"
+    client = _state_table_client(
+        states=[(future, None)],
+        items=[],
+        attachments=[],
+        incidents=[],
+    )
+    runtime = IngestionRuntime(client, config, instance_id="instance-1")
+
+    async def run_under():
+        await runtime.start()
+        try:
+            snap = runtime.health_snapshot()
+            assert snap["status"] == "ok"
+            assert snap["integrations_due"] == 0
+            assert snap["items_dead_letter"] == 0
+            assert snap["open_incidents"] == 0
+            # oldest_next_poll_seconds is 0 when there is no oldest past-due poll.
+        finally:
+            await runtime.stop()
+
+    asyncio.run(asyncio.wait_for(run_under(), timeout=10.0))
+
+
+def test_health_snapshot_degrades_on_dead_letters(mock_config):
+    config = _supervision_config(mock_config)
+    future = "2099-01-01T00:00:00+00:00"
+    client = _state_table_client(
+        states=[(future, None)],
+        items=[("i1", "dead_letter"), ("i2", "pending")],
+        attachments=[("a1", "dead_letter")],
+        incidents=["email-sync:integration-1:stale_poll"],
+    )
+    runtime = IngestionRuntime(client, config, instance_id="instance-1")
+
+    async def run_under():
+        await runtime.start()
+        try:
+            snap = runtime.health_snapshot()
+            assert snap["status"] == "degraded"
+            assert snap["items_dead_letter"] == 1
+            assert snap["attachments_dead_letter"] == 1
+            assert snap["open_incidents"] == 1
+        finally:
+            await runtime.stop()
+
+    asyncio.run(asyncio.wait_for(run_under(), timeout=10.0))
+
+
+def test_health_snapshot_degrades_when_no_db_available(mock_config):
+    """A transient DB failure must not crash the snapshot; it degrades."""
+    config = _supervision_config(mock_config)
+    client = MagicMock()
+    client.table.side_effect = RuntimeError("Server disconnected")
+
+    runtime = IngestionRuntime(client, config, instance_id="instance-1")
+
+    async def run_under():
+        await runtime.start()
+        try:
+            snap = runtime.health_snapshot()
+            assert snap["status"] == "degraded"
+            assert snap["integrations_due"] is None
+        finally:
+            await runtime.stop()
+
+    asyncio.run(asyncio.wait_for(run_under(), timeout=10.0))
+
+
+def test_sync_run_emits_one_structured_counter_line_per_run(mock_config, caplog):
+    """One ``ingestion_sync_run`` log line per completed sync run with the
+    stable key/value shape — Render log search answers 'is ingestion moving'
+    without a metrics backend."""
+    import logging as _logging
+    config = _supervision_config(mock_config)
+    worker = EmailIngestionWorker(MagicMock(), config, "worker-1")
+
+    claim = SyncClaim(
+        integration_id="integration-1", user_id="user-1", provider="gmail",
+        run_id="run-1", run_kind="incremental",
+    )
+
+    def claim_due_sync(_worker_id):
+        return claim
+
+    def discover(_claim):
+        return {"provider_ids_seen": 7, "items_inserted": 5, "items_existing": 2}
+
+    def complete_sync(_claim, _worker_id, **_kw):
+        return True
+
+    with patch.object(worker.repository, "claim_due_sync", side_effect=claim_due_sync), \
+         patch.object(worker.repository, "claim_due_reconciliation", return_value=None), \
+         patch.object(worker, "discover", side_effect=discover), \
+         patch.object(worker.repository, "complete_sync", side_effect=complete_sync):
+        caplog.set_level(_logging.INFO, logger="selko.workers.email_ingestion")
+        asyncio.run(asyncio.wait_for(worker.run_sync_once(), timeout=5.0))
+
+    matches = [r for r in caplog.records if r.getMessage().startswith("ingestion_sync_run")]
+    assert len(matches) == 1, "exactly one structured counter line per run"
+    msg = matches[0].getMessage()
+    assert "run_kind=incremental" in msg
+    assert "provider=gmail" in msg
+    assert "duration_ms=" in msg
+    assert "provider_ids_seen=7" in msg
+    assert "items_inserted=5" in msg
+    assert "items_existing=2" in msg
+    assert "error_code=" in msg
+
+
+def test_sync_run_log_line_records_error_code_on_failure(mock_config, caplog):
+    import logging as _logging
+    config = _supervision_config(mock_config)
+    worker = EmailIngestionWorker(MagicMock(), config, "worker-1")
+    claim = SyncClaim(
+        integration_id="integration-1", user_id="user-1", provider="gmail",
+        run_id="run-1", run_kind="incremental",
+    )
+
+    def discover(_claim):
+        from selko.services.gmail import GmailError
+        raise GmailError("Gmail API error", status_code=429, reason="rateLimitExceeded")
+
+    with patch.object(worker.repository, "claim_due_sync", return_value=claim), \
+         patch.object(worker.repository, "claim_due_reconciliation", return_value=None), \
+         patch.object(worker, "discover", side_effect=discover), \
+         patch.object(worker.repository, "fail_sync", return_value=True), \
+         patch.object(worker.repository, "complete_sync") as complete:
+        caplog.set_level(_logging.INFO, logger="selko.workers.email_ingestion")
+        asyncio.run(asyncio.wait_for(worker.run_sync_once(), timeout=5.0))
+
+    complete.assert_not_called()
+    matches = [r for r in caplog.records if r.getMessage().startswith("ingestion_sync_run")]
+    assert len(matches) == 1
+    msg = matches[0].getMessage()
+    assert "error_code=provider_rate_limited" in msg

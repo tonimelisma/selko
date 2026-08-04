@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
 
@@ -83,6 +84,14 @@ def _chunks(values: Iterable[Any], size: int = 100) -> Iterable[list[Any]]:
         yield chunk
 
 
+def _accumulate_page_totals(totals: dict[str, int], page: dict[str, int] | None) -> None:
+    """Merge one ``upsert_discovered`` page result into running totals."""
+    if not page:
+        return
+    for key in ("provider_ids_seen", "items_inserted", "items_existing"):
+        totals[key] = totals.get(key, 0) + int(page.get(key) or 0)
+
+
 def _eligible_gmail_metadata(metadata: dict[str, Any], excluded: set[str]) -> bool:
     labels = set(metadata.get("labelIds") or [])
     permanent = {"SPAM", "TRASH", "DRAFT", "SENT", "CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_FORUMS"}
@@ -106,10 +115,12 @@ class EmailIngestionWorker:
         claim = await asyncio.to_thread(self.repository.claim_due_sync, self.worker_id)
         if not claim:
             return await self.run_reconciliation_once()
+        started_at = time.monotonic()
         try:
-            await asyncio.to_thread(self.discover, claim)
+            totals = await asyncio.to_thread(self.discover, claim)
             if not await asyncio.to_thread(self.repository.complete_sync, claim, self.worker_id):
                 logger.warning("Email sync completion lost lease provider=%s", claim.provider)
+            self._log_sync_run(claim, started_at, totals=totals)
         except Exception as exc:
             if isinstance(exc, GraphHttpError):
                 record_graph_failure(
@@ -123,25 +134,60 @@ class EmailIngestionWorker:
                 )
             logger.warning("Email sync failed provider=%s code=%s", claim.provider, safe_error_code(exc))
             await asyncio.to_thread(self.repository.fail_sync, claim, self.worker_id, exc)
+            self._log_sync_run(claim, started_at, error_code=safe_error_code(exc))
         return True
 
     async def run_reconciliation_once(self) -> bool:
         claim = await asyncio.to_thread(self.repository.claim_due_reconciliation, self.worker_id)
         if not claim:
             return False
+        started_at = time.monotonic()
         try:
             days = self.config.email_reconcile_weekly_days if claim.run_kind == "weekly_reconcile" else self.config.email_reconcile_daily_days
-            await asyncio.to_thread(self.reconcile, claim, days)
+            totals = await asyncio.to_thread(self.reconcile, claim, days)
             await asyncio.to_thread(self.repository.complete_sync, claim, self.worker_id, reconciled=True)
+            self._log_sync_run(claim, started_at, totals=totals)
         except Exception as exc:
             await asyncio.to_thread(self.repository.fail_sync, claim, self.worker_id, exc)
+            self._log_sync_run(claim, started_at, error_code=safe_error_code(exc))
         return True
 
-    def discover(self, claim: SyncClaim) -> None:
+    def _log_sync_run(
+        self,
+        claim: SyncClaim,
+        started_at: float,
+        *,
+        totals: dict[str, int] | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        """Emit one structured log line per completed sync run.
+
+        Stable key/value shape so Render log search can answer "is ingestion
+        moving" without a metrics backend. Never logs subjects, addresses,
+        message ids or tokens — the existing safe-payload discipline in
+        email_sync_health.py is the standard.
+        """
+        duration_ms = int((time.monotonic() - started_at) * 1000)
+        totals = totals or {}
+        logger.info(
+            "ingestion_sync_run"
+            " run_kind=%s provider=%s duration_ms=%d"
+            " provider_ids_seen=%d items_inserted=%d items_existing=%d"
+            " error_code=%s",
+            claim.run_kind,
+            claim.provider,
+            duration_ms,
+            int(totals.get("provider_ids_seen") or 0),
+            int(totals.get("items_inserted") or 0),
+            int(totals.get("items_existing") or 0),
+            error_code or "",
+        )
+
+    def discover(self, claim: SyncClaim) -> dict[str, int]:
         if claim.provider == "gmail":
-            self._discover_gmail(claim)
+            return self._discover_gmail(claim)
         elif claim.provider == "outlook":
-            self._discover_outlook(claim)
+            return self._discover_outlook(claim)
         else:
             raise ValueError(f"Unsupported email provider: {claim.provider}")
 
@@ -149,7 +195,8 @@ class EmailIngestionWorker:
         result = self.client.table("integrations").select("*").eq("id", integration_id).single().execute()
         return result.data
 
-    def _discover_gmail(self, claim: SyncClaim, *, lookback_days: int | None = None) -> None:
+    def _discover_gmail(self, claim: SyncClaim, *, lookback_days: int | None = None) -> dict[str, int]:
+        totals = {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
         integration = self._integration(claim.integration_id)
         credentials = get_credentials(self.client, self.config, user_id=claim.user_id)
         if not credentials:
@@ -214,11 +261,14 @@ class EmailIngestionWorker:
             })
             if len(discovered) >= 100:
                 self.repository.require_heartbeat(claim.integration_id, self.worker_id)
-                self.repository.upsert_discovered(claim, discovered)
+                page = self.repository.upsert_discovered(claim, discovered)
+                _accumulate_page_totals(totals, page)
                 discovered = []
         if discovered or next_cursor or lookback_days is not None:
             self.repository.require_heartbeat(claim.integration_id, self.worker_id)
-            self.repository.upsert_discovered(claim, discovered, cursor=next_cursor)
+            page = self.repository.upsert_discovered(claim, discovered, cursor=next_cursor)
+            _accumulate_page_totals(totals, page)
+        return totals
 
     def _outlook_token(self, user_id: str, *, force_refresh: bool = False) -> str:
         token = get_access_token(self.client, self.config, user_id, force_refresh=force_refresh)
@@ -244,7 +294,8 @@ class EmailIngestionWorker:
             logger.info("Outlook access token expired mid-run; refreshing once")
             return operation(self._outlook_token(user_id, force_refresh=True))
 
-    def _discover_outlook(self, claim: SyncClaim, *, lookback_days: int | None = None) -> None:
+    def _discover_outlook(self, claim: SyncClaim, *, lookback_days: int | None = None) -> dict[str, int]:
+        totals = {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
         self._outlook_token(claim.user_id)
 
         def list_folders(token: str):
@@ -322,19 +373,21 @@ class EmailIngestionWorker:
                     ]
                     is_last = page_index == len(pages) - 1
                     self.repository.require_heartbeat(claim.integration_id, self.worker_id)
-                    self.repository.upsert_discovered(
+                    page_totals = self.repository.upsert_discovered(
                         claim,
                         items,
                         cursor=cursor if is_last else None,
                         folder_id=folder["id"] if cursor and is_last else None,
                     )
+                    _accumulate_page_totals(totals, page_totals)
                 if not pages and cursor:
                     # An empty delta page can still be the completed page that
                     # carries the new opaque delta link.
                     self.repository.require_heartbeat(claim.integration_id, self.worker_id)
-                    self.repository.upsert_discovered(
+                    page_totals = self.repository.upsert_discovered(
                         claim, [], cursor=cursor, folder_id=folder["id"]
                     )
+                    _accumulate_page_totals(totals, page_totals)
             except GraphHttpError as exc:
                 record_graph_failure(
                     self.client, self.config,
@@ -352,13 +405,15 @@ class EmailIngestionWorker:
                 failures.append(exc)
         if failures:
             raise failures[0]
+        return totals
 
-    def reconcile(self, claim: SyncClaim, lookback_days: int) -> None:
+    def reconcile(self, claim: SyncClaim, lookback_days: int) -> dict[str, int]:
         """Run cursorless reconciliation; normal cursor state is untouched."""
         if claim.provider == "gmail":
-            self._discover_gmail(claim, lookback_days=lookback_days)
+            return self._discover_gmail(claim, lookback_days=lookback_days)
         elif claim.provider == "outlook":
-            self._discover_outlook(claim, lookback_days=lookback_days)
+            return self._discover_outlook(claim, lookback_days=lookback_days)
+        return {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
 
     async def run_acquisition_once(self) -> bool:
         item = await asyncio.to_thread(self.repository.claim_item, self.worker_id)

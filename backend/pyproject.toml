@@ -24,6 +24,7 @@ dependencies = [
     "anthropic>=0.116.0",
     "msal>=1.37.0",
     "requests>=2.34.2",
+    "sentry-sdk[fastapi]>=2.20.0",
 ]
 
 [project.optional-dependencies]

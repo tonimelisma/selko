@@ -5,7 +5,14 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from selko.api.deps import get_config
-from selko.api.schemas.common import ErrorCode, HealthDbResponse, HealthResponse, error_detail
+from selko.api.schemas.common import (
+    ErrorCode,
+    HealthDbResponse,
+    HealthIngestionResponse,
+    HealthIngestionTaskResponse,
+    HealthResponse,
+    error_detail,
+)
 from selko.config import Config
 from selko.services.auth import get_service_client
 
@@ -49,3 +56,55 @@ async def health_db_check(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail(ErrorCode.DATABASE_ERROR, "Database health check failed"),
         )
+
+
+@router.get("/health/ingestion", response_model=HealthIngestionResponse)
+async def health_ingestion_check() -> HealthIngestionResponse:
+    """Live ingestion health — the surface Render's health check should watch.
+
+    ``/health`` returns ``ok`` unconditionally; this route reflects the actual
+    state of the durable polling runtime: per-task alive/restart state, due /
+    lease / pending / dead-letter counts, and open email-sync incidents.
+    ``down`` when any task is not alive; ``degraded`` on dead letters, open
+    incidents, or the oldest pending poll past the warning SLO; otherwise ``ok``.
+
+    Safe codes only — no payloads, addresses, message ids or tokens.
+    """
+    # Imported lazily to avoid importing FastAPI app state at module import
+    # time (the routes module is imported during app construction).
+    from selko.api.app import ingestion_runtime
+
+    if ingestion_runtime is None:
+        # Background processing disabled (local servers, tests, CI). Nothing
+        # is running, so the system cannot be "down"; report the disabled
+        # state instead of pretending ingestion is healthy.
+        return HealthIngestionResponse(
+            status="ok",
+            background_processing_enabled=False,
+        )
+
+    try:
+        snapshot = ingestion_runtime.health_snapshot()
+    except Exception:
+        logger.exception("Ingestion health snapshot failed")
+        return HealthIngestionResponse(
+            status="degraded",
+            background_processing_enabled=True,
+            instance_id=ingestion_runtime.instance_id,
+        )
+
+    return HealthIngestionResponse(
+        status=snapshot["status"],
+        background_processing_enabled=True,
+        instance_id=snapshot.get("instance_id"),
+        tasks=[
+            HealthIngestionTaskResponse(**task) for task in snapshot.get("tasks", [])
+        ],
+        integrations_due=snapshot.get("integrations_due"),
+        oldest_next_poll_seconds=snapshot.get("oldest_next_poll_seconds"),
+        leases_held=snapshot.get("leases_held"),
+        items_pending=snapshot.get("items_pending"),
+        items_dead_letter=snapshot.get("items_dead_letter"),
+        attachments_dead_letter=snapshot.get("attachments_dead_letter"),
+        open_incidents=snapshot.get("open_incidents"),
+    )

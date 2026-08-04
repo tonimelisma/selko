@@ -140,6 +140,70 @@ class TestHealthEndpoints:
             resp = test_client.get("/health/db")
         assert resp.status_code == 503
 
+    def test_health_ingestion_when_background_processing_is_off(self, test_client):
+        """When the runtime is None (ENABLE_BACKGROUND_PROCESSING off), the
+        route reports the disabled state — never "down" — and does not call
+        into the database."""
+        with patch("selko.api.app.ingestion_runtime", None):
+            resp = test_client.get("/health/ingestion")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "ok"
+        assert body["background_processing_enabled"] is False
+        assert body["tasks"] == []
+
+    def test_health_ingestion_reports_runtime_snapshot(self, test_client):
+        """The route surfaces IngestionRuntime.health_snapshot()."""
+        snapshot = {
+            "status": "ok",
+            "background_processing_enabled": True,
+            "instance_id": "instance-1",
+            "tasks": [
+                {"name": "email-sync-coordinator", "alive": True, "restarts": 0,
+                 "last_exception_code": None},
+                {"name": "email-sync-health", "alive": False, "restarts": 2,
+                 "last_exception_code": "database_transient"},
+            ],
+            "integrations_due": 2,
+            "oldest_next_poll_seconds": 41,
+            "leases_held": 1,
+            "items_pending": 17,
+            "items_dead_letter": 0,
+            "attachments_dead_letter": 0,
+            "open_incidents": 0,
+        }
+        runtime = MagicMock()
+        runtime.health_snapshot.return_value = snapshot
+        with patch("selko.api.app.ingestion_runtime", runtime):
+            resp = test_client.get("/health/ingestion")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "ok"
+        assert body["background_processing_enabled"] is True
+        assert body["instance_id"] == "instance-1"
+        assert {t["name"] for t in body["tasks"]} == {
+            "email-sync-coordinator", "email-sync-health"
+        }
+        dead = next(t for t in body["tasks"] if t["name"] == "email-sync-health")
+        assert dead["alive"] is False
+        assert dead["restarts"] == 2
+        assert dead["last_exception_code"] == "database_transient"
+        assert body["integrations_due"] == 2
+        assert body["oldest_next_poll_seconds"] == 41
+        assert body["items_pending"] == 17
+
+    def test_health_ingestion_degrades_when_snapshot_raises(self, test_client):
+        """A snapshot failure must not 500 — degrade to a safe payload."""
+        runtime = MagicMock()
+        runtime.health_snapshot.side_effect = RuntimeError("db down")
+        runtime.instance_id = "instance-1"
+        with patch("selko.api.app.ingestion_runtime", runtime):
+            resp = test_client.get("/health/ingestion")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "degraded"
+        assert body["background_processing_enabled"] is True
+
 
 # ===========================================================================
 # Auth validation
