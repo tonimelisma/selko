@@ -118,6 +118,7 @@ class Config:
     operational_notification_recipient: Optional[str] = None
     operational_notification_api_key: Optional[str] = None
     operational_notification_webhook_url: Optional[str] = None
+    sentry_dsn: Optional[str] = None
 
     # Memory instrumentation (leak diagnosis; see services/memory_monitor.py)
     memory_log_interval_seconds: float = 60.0  # <= 0 disables periodic logging
@@ -397,6 +398,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         operational_notification_recipient=getenv("OPERATIONAL_NOTIFICATION_RECIPIENT"),
         operational_notification_api_key=getenv("OPERATIONAL_NOTIFICATION_API_KEY"),
         operational_notification_webhook_url=getenv("OPERATIONAL_NOTIFICATION_WEBHOOK_URL"),
+        sentry_dsn=getenv("SENTRY_DSN"),
         memory_log_interval_seconds=float(getenv("MEMORY_LOG_INTERVAL_SECONDS", "60")),
         memory_tracemalloc=getenv("MEMORY_TRACEMALLOC", "").lower() == "true",
         allowed_origins=_parse_allowed_origins(getenv),
