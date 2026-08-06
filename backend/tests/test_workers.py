@@ -631,3 +631,47 @@ class TestCalendarSyncWorker:
         fail.assert_called_once_with(mock_client, "ev1", "Calendar API down")
         park.assert_not_called()
         cb.record_failure.assert_called_once_with("google_calendar")
+
+
+class TestIdlePollBackoff:
+    """The idle loop is what produced the production bandwidth alert.
+
+    A flat 1s tick meant each worker issued up to six no-op Supabase RPCs every
+    second indefinitely — ~1.5M round trips and ~28GB of egress per month on a
+    deployment with no users. These pin the backoff that stops that, and pin
+    that a busy pool is not slowed down.
+    """
+
+    def test_backoff_doubles_up_to_the_ceiling(self, pool, mock_config):
+        mock_config.worker_idle_max_seconds = 30.0
+        pool.config = mock_config
+        pool.idle_sleep_seconds = 1.0
+
+        assert pool._idle_backoff(1) == 1.0
+        assert pool._idle_backoff(2) == 2.0
+        assert pool._idle_backoff(3) == 4.0
+        assert pool._idle_backoff(6) == 30.0
+        # Must saturate rather than overflow on a long-idle deployment.
+        assert pool._idle_backoff(10_000) == 30.0
+
+    def test_first_idle_wait_is_unchanged(self, pool, mock_config):
+        """Work arriving right after a poll must not wait longer than before."""
+        pool.config = mock_config
+        pool.idle_sleep_seconds = 0.25
+
+        assert pool._idle_backoff(1) == 0.25
+
+    def test_backoff_never_drops_below_the_configured_idle_sleep(self, pool, mock_config):
+        """A misconfigured ceiling must not turn into a busy-wait."""
+        mock_config.worker_idle_max_seconds = 0.0
+        pool.config = mock_config
+        pool.idle_sleep_seconds = 1.0
+
+        assert pool._idle_backoff(5) == 1.0
+
+    def test_unconfigured_pool_falls_back_to_flat_sleep(self, pool):
+        """config is only populated by start(); direct construction must still work."""
+        pool.config = None
+        pool.idle_sleep_seconds = 0.01
+
+        assert pool._idle_backoff(5) == 0.01
