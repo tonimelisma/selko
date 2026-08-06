@@ -1,14 +1,13 @@
 """Worker pool for continuously processing background work.
 
 This module implements a pool of long-running asyncio tasks that continuously
-poll for work from two sources:
-1. Pending emails (status-based claiming) — deprecated, owned by IngestionRuntime
-2. Approved events (status-based claiming)
-3. Calendar OAuth recovery bookkeeping
+poll for work from one source:
+1. Approved events (status-based claiming)
+2. Calendar OAuth recovery bookkeeping
 
-Photo ingestion is parked; photo_fetch and pending-photo polling have been
-removed from the hot loop (egress fix inc 1). Email polling remains here only
-until inc 2 removes the duplicate owner.
+Photo ingestion is parked (egress inc 1). Email ingestion is owned solely by
+IngestionRuntime (egress inc 2) — WorkerPool no longer claims emails. The
+_process_email helper is retained for hardening inc 8 cleanup only.
 
 This replaces the job queue with direct status-based polling of data tables.
 """
@@ -233,11 +232,11 @@ class WorkerPool:
         """Try to find and process work from any source.
 
         Polls in priority order:
-        1. Pending emails (need LLM processing) — duplicate, removed in inc 2
-        2. Approved events (need calendar sync)
-        3. Calendar OAuth reconnect recovery (tagging/progress bookkeeping)
+        1. Approved events (need calendar sync)
+        2. Calendar OAuth reconnect recovery (tagging/progress bookkeeping)
 
-        Photo polling removed in egress inc 1 (parked feature).
+        Email polling removed in egress inc 2 (single owner: IngestionRuntime).
+        Photo polling removed in inc 1.
 
         Args:
             worker_id: Unique identifier for this worker.
@@ -250,20 +249,7 @@ class WorkerPool:
 
         client = self._get_client()
 
-        # 1. Try pending emails - requires LLM (duplicate owner; IngestionRuntime
-        # is the canonical owner — removed in egress inc 2).
-        if circuit_breaker.is_available("llm"):
-            try:
-                email = claim_pending_email(
-                    client, worker_id, lock_duration_seconds=600,
-                )
-                if email:
-                    await self._process_email(client, worker_id, email)
-                    return True
-            except EmailError as e:
-                logger.error(f"{worker_id}: Error claiming email: {e}")
-
-        # 2. Try approved events - requires Google Calendar (sole writer is worker)
+        # 1. Try approved events - requires Google Calendar (sole writer is worker)
         if circuit_breaker.is_available("google_calendar"):
             try:
                 event = claim_approved_event_for_sync(
@@ -275,7 +261,7 @@ class WorkerPool:
             except EventsError as e:
                 logger.error(f"{worker_id}: Error claiming event: {e}")
 
-        # 3. Advance calendar OAuth reconnect recovery. Pure DB bookkeeping
+        # 2. Advance calendar OAuth reconnect recovery. Pure DB bookkeeping
         # (no Calendar API calls), so it doesn't need the circuit breaker gate.
         if await self._process_integration_recovery(client, worker_id):
             return True
