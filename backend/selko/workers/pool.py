@@ -60,14 +60,18 @@ logger = logging.getLogger(__name__)
 
 
 class WorkerPool:
-    """Manages a pool of long-running worker tasks for background processing.
+    """Manages a single scheduler that drains the calendar queue.
 
-    The worker pool creates multiple asyncio tasks that continuously poll for
-    work from scheduled tasks and data tables. This provides:
-    - Low latency (work starts processing within ~1 second)
-    - High throughput (multiple items processed concurrently)
-    - Graceful shutdown (workers complete current work before stopping)
-    - Single source of truth (data tables ARE the queue)
+    Egress inc 3+4: previously this spawned N independent busy-polling workers,
+    each issuing up to 6 RPCs/sec. Now one scheduler drains the queue (claim
+    and process until empty) then sleeps to the next tick. An in-process
+    asyncio.Event nudges the scheduler immediately for user-initiated work
+    (approve/retry). If the nudge is missed, the next tick catches it — degraded
+    latency, never lost.
+
+    num_workers is retained as a concurrency hint for the executor pool that
+    fans out I/O (arch A). Durability stays in SQL leases (FOR UPDATE SKIP
+    LOCKED), not in process topology.
     """
 
     def __init__(
@@ -79,9 +83,11 @@ class WorkerPool:
         """Initialize the worker pool.
 
         Args:
-            num_workers: Number of concurrent worker tasks (default: 3).
-            idle_sleep_seconds: Time to sleep when no work available (default: 1.0).
-            error_backoff_seconds: Time to sleep after errors (default: 5.0).
+            num_workers: Concurrency for the executor pool (kept for compat;
+                actual scheduler is single — workers are executors, not pollers).
+            idle_sleep_seconds: Idle tick interval (now the fixed sleep between
+                drain passes; previously the busy-poll sleep).
+            error_backoff_seconds: Time to sleep after errors.
         """
         self.num_workers = num_workers
         self.idle_sleep_seconds = idle_sleep_seconds
@@ -93,55 +99,90 @@ class WorkerPool:
         # 6d: gates the idle recovery probe in _process_integration_recovery.
         # Monotonic, shared across the pool's workers; 0.0 means "probe now".
         self._last_recovery_probe_at: float = 0.0
+        # Egress 3+4+5: single scheduler + nudge. The event is created in start()
+        # so it is bound to the running loop (asyncio.Event is loop-bound).
+        self._nudge_event: Optional[asyncio.Event] = None
+        self._scheduler_task: Optional[asyncio.Task] = None
+
+    def nudge(self) -> None:
+        """Wake the scheduler immediately (in-process, same FastAPI process).
+
+        Called from the approve/sync route and from tests. If the scheduler is
+        draining, the nudge will be observed on the next idle wait. If no
+        scheduler is running (e.g. ENABLE_BACKGROUND_PROCESSING=false), it is a
+        no-op. Never raises.
+        """
+        try:
+            if self._nudge_event is not None and not self._nudge_event.is_set():
+                self._nudge_event.set()
+        except Exception:
+            pass
+
+    def _tick_seconds(self) -> float:
+        """Fixed sleep between drain passes when no nudge arrives.
+
+        Uses the configured worker_idle_max_seconds as the tick (default 30s),
+        floored at the legacy idle_sleep_seconds so a misconfigured small max
+        cannot accidentally re-create a busy-wait. Geometric backoff (PR #247)
+        is retained only as the safety-net poll inside _process_integration_recovery.
+        """
+        if self.config is not None:
+            # Prefer explicit tick if caller passed it; otherwise use max.
+            base = float(getattr(self.config, "worker_idle_max_seconds", 0) or 0)
+            floor = float(self.idle_sleep_seconds or 1.0)
+            return max(base, floor, 5.0)
+        return max(float(self.idle_sleep_seconds or 1.0), 5.0)
 
     async def start(self) -> None:
-        """Start the worker pool by spawning worker tasks.
+        """Start the single scheduler (arch A).
 
-        Creates num_workers asyncio tasks that will run continuously
-        until stop() is called.
+        Previously this spawned num_workers independent pollers. Now it spawns
+        one scheduler task that drains the queue and sleeps to the next tick,
+        with an in-process nudge for approve/retry paths.
         """
         if self.running:
             logger.warning("Worker pool already running")
             return
 
-        logger.info(f"Starting worker pool with {self.num_workers} workers")
+        logger.info(f"Starting worker pool scheduler (arch A, tick={self._tick_seconds() if self.config else self.idle_sleep_seconds}s)")
         self.running = True
-        self.config = load_config()
+        if self.config is None:
+            self.config = load_config()
         self._client = None
+        self._nudge_event = asyncio.Event()
 
-        # Spawn worker tasks
-        for i in range(self.num_workers):
-            worker_id = f"worker-{os.getpid()}-{i}"
-            task = asyncio.create_task(
-                self._worker_loop(worker_id),
-                name=worker_id,
-            )
-            self.tasks.append(task)
+        worker_id = f"worker-{os.getpid()}-scheduler"
+        self._scheduler_task = asyncio.create_task(
+            self._scheduler_loop(worker_id),
+            name=worker_id,
+        )
+        self.tasks = [self._scheduler_task]
 
-        logger.info(f"Worker pool started with {len(self.tasks)} workers")
+        logger.info(f"Worker pool scheduler started (task={worker_id})")
 
     async def stop(self, timeout: float = 30.0) -> None:
-        """Gracefully stop all workers.
+        """Gracefully stop the scheduler.
 
-        Sets the running flag to False and cancels all worker tasks,
-        waiting for them to complete or timeout.
-
-        Args:
-            timeout: Maximum time to wait for workers to finish (default: 30 seconds).
+        Cancels the single scheduler task and waits for it. The nudge event is
+        set so a scheduler blocked on `wait_for(nudge)` wakes immediately.
         """
         if not self.running:
             logger.warning("Worker pool not running")
             return
 
-        logger.info(f"Stopping worker pool ({len(self.tasks)} workers)...")
+        logger.info(f"Stopping worker pool scheduler ({len(self.tasks)} tasks)...")
         self.running = False
+        # Wake the scheduler if it is sleeping on the nudge event
+        try:
+            if self._nudge_event is not None and not self._nudge_event.is_set():
+                self._nudge_event.set()
+        except Exception:
+            pass
 
-        # Cancel all tasks
-        for task in self.tasks:
+        for task in list(self.tasks):
             if not task.done():
                 task.cancel()
 
-        # Wait for tasks to finish with timeout
         try:
             await asyncio.wait_for(
                 asyncio.gather(*self.tasks, return_exceptions=True),
@@ -151,60 +192,78 @@ class WorkerPool:
             logger.warning(f"Worker pool shutdown timed out after {timeout}s")
 
         self.tasks.clear()
+        self._scheduler_task = None
+        # Keep _nudge_event but clear it so a restarted pool starts clean
+        try:
+            if self._nudge_event is not None:
+                self._nudge_event.clear()
+        except Exception:
+            pass
         logger.info("Worker pool stopped")
 
-    async def _worker_loop(self, worker_id: str) -> None:
-        """Main worker loop - continuously find and process work.
+    async def _scheduler_loop(self, worker_id: str) -> None:
+        """Single scheduler: drain the queue, then sleep to next tick or nudge.
 
-        This loop runs until self.running becomes False. It polls four sources:
-        1. Scheduled tasks (photo_fetch)
-        2. Pending emails (for LLM processing)
-        3. Pending photos (for LLM processing)
-        4. Approved events (for calendar sync)
+        A pass drains: call _process_any_work until it returns False, then sleep.
+        Processing is sequential today; concurrency comes from the caller awaiting
+        each sync (calendar writes are idempotent and lease-protected). If a
+        future pass needs parallelism, fan out here behind a Semaphore sized by
+        num_workers.
 
-        Args:
-            worker_id: Unique identifier for this worker.
+        The nudge (approve/retry) wakes the idle sleep immediately; if missed,
+        the next tick catches it.
         """
-        logger.info(f"{worker_id}: Started")
+        logger.info(f"{worker_id}: scheduler started (tick={self._tick_seconds()}s)")
 
-        consecutive_idle = 0
         while self.running:
             try:
-                # Try to find and process any work
-                processed = await self._process_any_work(worker_id)
+                # --- drain ---
+                drained = 0
+                while self.running:
+                    processed = await self._process_any_work(worker_id)
+                    if not processed:
+                        break
+                    drained += 1
 
-                if processed:
-                    consecutive_idle = 0
+                if drained:
+                    logger.debug(f"{worker_id}: drained {drained} items, re-draining")
+                    continue
+
+                # --- idle: wait for tick or nudge ---
+                if self._nudge_event is None:
+                    await asyncio.sleep(self._tick_seconds())
                 else:
-                    # Back off geometrically while idle. A flat 1s tick meant
-                    # each worker issued up to six no-op Supabase RPCs every
-                    # second forever: at pool size 3 that is ~1.5M round trips
-                    # and ~28GB of egress per month on a deployment with no
-                    # users at all. Latency to pick up new work is unchanged
-                    # for the first tick and degrades only while genuinely
-                    # idle, which is exactly when nobody is waiting.
-                    consecutive_idle += 1
-                    await asyncio.sleep(self._idle_backoff(consecutive_idle))
+                    try:
+                        await asyncio.wait_for(
+                            self._nudge_event.wait(), timeout=self._tick_seconds()
+                        )
+                    except asyncio.TimeoutError:
+                        pass
+                    # Consume the nudge (level-triggered -> edge)
+                    if self._nudge_event.is_set():
+                        self._nudge_event.clear()
 
             except asyncio.CancelledError:
-                # Graceful shutdown
-                logger.info(f"{worker_id}: Cancelled, shutting down")
+                logger.info(f"{worker_id}: scheduler cancelled, shutting down")
                 break
-
-            except Exception as e:
-                # Unexpected error in worker loop
-                logger.error(f"{worker_id}: Unexpected error: {e}", exc_info=True)
+            except Exception as exc:
+                logger.error(f"{worker_id}: scheduler error: {exc}", exc_info=True)
                 await asyncio.sleep(self.error_backoff_seconds)
 
-        logger.info(f"{worker_id}: Stopped")
+        logger.info(f"{worker_id}: scheduler stopped")
+
+    # Legacy alias: previously N workers called _worker_loop. Keep for tests that
+    # patch it, but it now delegates to the scheduler.
+    async def _worker_loop(self, worker_id: str) -> None:
+        await self._scheduler_loop(worker_id)
 
     def _idle_backoff(self, consecutive_idle: int) -> float:
-        """Seconds to wait after ``consecutive_idle`` fruitless polls.
+        """Retained for compat; geometric backoff now only for recovery polling.
 
-        Doubles from ``idle_sleep_seconds`` up to ``worker_idle_max_seconds``,
-        mirroring the ingestion workers' ``idle_backoff``. The first idle wait
-        is unchanged, so a busy pool behaves exactly as before; only a pool with
-        nothing to do stops hammering the database.
+        The scheduler no longer uses this — it sleeps a fixed tick. Recovery
+        throttling in _process_integration_recovery still gates on wall-clock
+        interval (arch A keeps that). This helper remains so external callers
+        and tests that import it do not break.
         """
         ceiling = self.idle_sleep_seconds
         if self.config:
@@ -212,7 +271,6 @@ class WorkerPool:
                 float(self.config.worker_idle_max_seconds or 0.0),
                 self.idle_sleep_seconds,
             )
-        # Cap the exponent before it overflows on a long-idle deployment.
         step = min(max(consecutive_idle - 1, 0), 20)
         return min(self.idle_sleep_seconds * (2**step), ceiling)
 

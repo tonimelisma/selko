@@ -125,6 +125,18 @@ async def sync_event(
                 .execute()
             )
 
+        # Nudge the calendar scheduler immediately — user is waiting for sync.
+        # This is the in-process wake for egress inc 5 (arch A). If the pool is
+        # not running (ENABLE_BACKGROUND_PROCESSING=false) or the nudge is missed,
+        # the next tick (30s) catches it — degraded latency, never lost.
+        try:
+            from selko.api.app import worker_pool as _pool
+
+            if _pool is not None:
+                _pool.nudge()
+        except Exception:
+            pass
+
         # Re-read so a worker claim that wins immediately is reported as
         # ``syncing`` rather than treated as an approval error.
         updated_event = (
@@ -270,6 +282,14 @@ async def apply_change(
         )
     try:
         apply_pending_change(client, str(event_id))
+        # Nudge calendar scheduler for the newly approved event (egress inc 5).
+        try:
+            from selko.api.app import worker_pool as _pool
+
+            if _pool is not None:
+                _pool.nudge()
+        except Exception:
+            pass
         return EventChangeResponse(event_id=str(event_id), status="approved")
     except EventsError as e:
         raise HTTPException(
