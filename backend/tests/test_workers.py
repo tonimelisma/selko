@@ -90,30 +90,13 @@ class TestProcessAnyWork:
     """Tests for _process_any_work priority dispatch."""
 
     @pytest.mark.asyncio
-    async def test_scheduled_task_first(self, pool, mock_config):
-        """Scheduled tasks are tried before emails or events."""
-        pool.config = mock_config
-        task_data = {"id": "t1", "task_type": "photo_fetch", "payload": {}}
-
-        with (
-            patch("selko.workers.pool.get_service_client"),
-            patch("selko.workers.pool.claim_scheduled_task", return_value=task_data),
-            patch.object(pool, "_process_scheduled_task", new_callable=AsyncMock) as mock_proc,
-        ):
-            result = await pool._process_any_work("w-0")
-
-        assert result is True
-        mock_proc.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_falls_through_to_emails(self, pool, mock_config):
-        """When no scheduled tasks, pending emails are tried."""
+    async def test_pending_email_first(self, pool, mock_config):
+        """Pending emails are tried before events (photo polling removed in egress inc 1)."""
         pool.config = mock_config
         email_data = {"id": "e1", "user_id": "u1", "subject": "test"}
 
         with (
             patch("selko.workers.pool.get_service_client"),
-            patch("selko.workers.pool.claim_scheduled_task", return_value=None),
             patch("selko.workers.pool.claim_pending_email", return_value=email_data),
             patch.object(pool, "_process_email", new_callable=AsyncMock) as mock_proc,
         ):
@@ -124,13 +107,12 @@ class TestProcessAnyWork:
 
     @pytest.mark.asyncio
     async def test_falls_through_to_events(self, pool, mock_config):
-        """When no scheduled tasks or emails, approved events are tried."""
+        """When no emails, approved events are tried."""
         pool.config = mock_config
         event_data = {"id": "ev1", "user_id": "u1", "title": "meeting"}
 
         with (
             patch("selko.workers.pool.get_service_client"),
-            patch("selko.workers.pool.claim_scheduled_task", return_value=None),
             patch("selko.workers.pool.claim_pending_email", return_value=None),
             patch("selko.workers.pool.claim_approved_event_for_sync", return_value=event_data),
             patch.object(pool, "_process_event_sync", new_callable=AsyncMock) as mock_proc,
@@ -147,7 +129,6 @@ class TestProcessAnyWork:
 
         with (
             patch("selko.workers.pool.get_service_client"),
-            patch("selko.workers.pool.claim_scheduled_task", return_value=None),
             patch("selko.workers.pool.claim_pending_email", return_value=None),
             patch("selko.workers.pool.claim_approved_event_for_sync", return_value=None),
             patch("selko.workers.pool.claim_integration_recovery", return_value=None),
