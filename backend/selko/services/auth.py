@@ -11,6 +11,7 @@ from supabase import AuthApiError, Client, create_client
 from supabase.lib.client_options import SyncClientOptions
 
 from selko.config import Config
+from selko.services.egress import SUPABASE, operation_from_url, record_egress
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,44 @@ def get_current_user_id(client: Client) -> str:
     return session.user.id
 
 
+def _record_supabase_egress(response: "httpx.Response") -> None:
+    """Attribute one PostgREST/RPC round trip to the egress meter.
+
+    Attached as an httpx response hook rather than wrapped around individual
+    call sites: every query and RPC in the codebase shares this one client, so
+    the hook cannot be bypassed and cannot drift as new queries are added.
+
+    Must never raise — an accounting failure breaking a database call would be
+    a far worse bug than a missing counter.
+    """
+    try:
+        request = response.request
+        request_bytes = _header_bytes(request.headers) + int(
+            request.headers.get("content-length") or 0
+        )
+        response_bytes = _header_bytes(response.headers) + int(
+            response.headers.get("content-length") or 0
+        )
+        record_egress(
+            SUPABASE,
+            operation_from_url(request.method, str(request.url)),
+            request_bytes=request_bytes,
+            response_bytes=response_bytes,
+        )
+    except Exception:  # pragma: no cover - defensive
+        logger.debug("Egress accounting failed for a Supabase call", exc_info=True)
+
+
+def _header_bytes(headers) -> int:
+    """Approximate on-the-wire header size.
+
+    Headers are a real cost here, not a rounding error: the service-role JWT is
+    sent on every request, and the traffic this meter exists to explain is a
+    high-rate stream of small polling calls where headers dominate the body.
+    """
+    return sum(len(name) + len(value) + 4 for name, value in headers.items())
+
+
 def get_service_client(config: Config) -> Client:
     """Get a Supabase client with service role privileges.
 
@@ -103,7 +142,11 @@ def get_service_client(config: Config) -> Client:
     # fails under concurrent production worker threads with EAGAIN reads and
     # terminated streams. HTTP/1.1 uses independent pooled connections and is
     # the stable transport for this shared, thread-safe service client.
-    http_client = httpx.Client(http2=False, timeout=120)
+    http_client = httpx.Client(
+        http2=False,
+        timeout=120,
+        event_hooks={"response": [_record_supabase_egress]},
+    )
     client = create_client(
         config.supabase_url,
         config.supabase_service_role_key,

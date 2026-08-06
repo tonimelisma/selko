@@ -125,3 +125,38 @@ class HealthIngestionResponse(BaseModel):
     items_dead_letter: int | None = None
     attachments_dead_letter: int | None = None
     open_incidents: int | None = None
+
+
+class EgressOperationResponse(BaseModel):
+    """One (destination, operation) row of the outbound traffic meter."""
+
+    destination: str
+    operation: str
+    calls: int
+    bytes: int
+    calls_per_minute: float
+
+
+class HealthEgressResponse(BaseModel):
+    """/health/egress response — where this instance's outbound bytes went.
+
+    A platform bandwidth alert reports a total; it cannot say which destination
+    or operation produced it. This surface attributes the traffic, which is what
+    distinguishes constant coordination polling from real provider downloads.
+
+    Counters are process-local and reset on restart, so ``projected_bytes_per_30d``
+    is an extrapolation of the rate since start — useful for spotting a constant
+    background leak, not a billing figure.
+
+    Safe by construction: operation names are templates with query strings
+    stripped, so no message ids, addresses, or tokens appear here.
+    """
+
+    uptime_seconds: float
+    total_calls: int
+    total_bytes: int
+    calls_per_second: float
+    bytes_per_hour: int
+    projected_bytes_per_30d: int
+    by_destination: dict[str, dict[str, int]] = {}
+    top_operations: list[EgressOperationResponse] = []

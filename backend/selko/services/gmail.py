@@ -17,6 +17,7 @@ from googleapiclient.errors import HttpError
 from supabase import Client
 
 from selko.config import Config
+from selko.services.egress import GMAIL, record_egress
 from selko.services.google_errors import google_error_reason
 from selko.services.integrations import (
     get_oauth_credentials,
@@ -516,9 +517,19 @@ def get_full_message(service, message_id: str) -> dict:
     """Fetch full message content only after label eligibility was established."""
 
     try:
-        return service.users().messages().get(
+        message = service.users().messages().get(
             userId="me", id=message_id, format="full"
         ).execute()
+        # `sizeEstimate` is Gmail's own byte estimate for the message and is a
+        # far better proxy for what crossed the wire than the size of the parsed
+        # dict. This is the counter that answers "how much mail did we actually
+        # download", as opposed to how much polling chatter we generated.
+        record_egress(
+            GMAIL,
+            "GET /gmail/v1/users/me/messages/{id}?format=full",
+            response_bytes=int(message.get("sizeEstimate") or 0),
+        )
+        return message
     except RefreshError as e:
         raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
     except HttpError as e:

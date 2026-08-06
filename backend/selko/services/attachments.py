@@ -16,6 +16,7 @@ from supabase import Client, PostgrestAPIError
 
 from selko.config import Config
 from selko.services.auth import get_current_user_id
+from selko.services.egress import GMAIL, record_egress
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,15 @@ def download_gmail_attachment(
 
             # Gmail returns base64url encoded data
             data = result.get("data", "")
+            # Count the encoded length: that is what crossed the wire, and
+            # base64 inflates the payload by about a third versus the decoded
+            # bytes. Attachments are the single largest per-item download in the
+            # system, so under-counting them here would defeat the purpose.
+            record_egress(
+                GMAIL,
+                "GET /gmail/v1/users/me/messages/{id}/attachments/{id}",
+                response_bytes=len(data),
+            )
             return base64.urlsafe_b64decode(data)
 
         except HttpError as e:

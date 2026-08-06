@@ -82,6 +82,11 @@ class Config:
     # Worker pool configuration
     worker_pool_size: int = 3
     worker_idle_sleep_seconds: float = 1.0
+    # Ceiling for the pool's geometric idle backoff. The flat idle sleep above
+    # is the *first* wait after work runs out; consecutive idle ticks back off
+    # up to this value so an idle deployment stops polling at tick speed.
+    worker_idle_max_seconds: float = 30.0
+    egress_log_interval_seconds: float = 300.0
     worker_error_backoff_seconds: float = 5.0
 
     # Processing timeouts (seconds)
@@ -370,6 +375,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         test_user_password=getenv("TEST_USER_PASSWORD"),
         worker_pool_size=int(getenv("WORKER_POOL_SIZE", "3")),
         worker_idle_sleep_seconds=float(getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
+        worker_idle_max_seconds=float(getenv("WORKER_IDLE_MAX_SECONDS", "30")),
+        egress_log_interval_seconds=float(getenv("EGRESS_LOG_INTERVAL_SECONDS", "300")),
         worker_error_backoff_seconds=float(getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
         email_processing_timeout=int(getenv("EMAIL_PROCESSING_TIMEOUT", "120")),
         photo_processing_timeout=int(getenv("PHOTO_PROCESSING_TIMEOUT", "120")),

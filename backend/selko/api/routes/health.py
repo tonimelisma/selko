@@ -6,8 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from selko.api.deps import get_config
 from selko.api.schemas.common import (
+    EgressOperationResponse,
     ErrorCode,
     HealthDbResponse,
+    HealthEgressResponse,
     HealthIngestionResponse,
     HealthIngestionTaskResponse,
     HealthResponse,
@@ -15,6 +17,7 @@ from selko.api.schemas.common import (
 )
 from selko.config import Config
 from selko.services.auth import get_service_client
+from selko.services.egress import egress_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -107,4 +110,32 @@ async def health_ingestion_check() -> HealthIngestionResponse:
         items_dead_letter=snapshot.get("items_dead_letter"),
         attachments_dead_letter=snapshot.get("attachments_dead_letter"),
         open_incidents=snapshot.get("open_incidents"),
+    )
+
+
+@router.get("/health/egress", response_model=HealthEgressResponse)
+async def health_egress_check() -> HealthEgressResponse:
+    """Where this instance's outbound bytes are going.
+
+    The platform bandwidth graph reports a monthly total with no attribution,
+    which cannot distinguish a constant database polling loop from a genuine
+    provider download — the two look identical at that level, and the fix for
+    each is completely different. This route attributes the traffic per
+    destination and operation.
+
+    Counters are per-process and reset on restart. Read it against a
+    long-running instance; a freshly deployed one has nothing to say yet.
+    """
+    snapshot = egress_snapshot()
+    return HealthEgressResponse(
+        uptime_seconds=snapshot["uptime_seconds"],
+        total_calls=snapshot["total_calls"],
+        total_bytes=snapshot["total_bytes"],
+        calls_per_second=snapshot["calls_per_second"],
+        bytes_per_hour=snapshot["bytes_per_hour"],
+        projected_bytes_per_30d=snapshot["projected_bytes_per_30d"],
+        by_destination=snapshot["by_destination"],
+        top_operations=[
+            EgressOperationResponse(**row) for row in snapshot["top_operations"]
+        ],
     )
