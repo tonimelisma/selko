@@ -22,12 +22,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from typing import Any
 
 from supabase import Client
 
 from selko.config import Config
+from selko.services.egress import log_egress_summary
 from selko.services.email_sync_health import (
     EmailSyncHealthEvaluator,
     ResendOperationalNotifier,
@@ -123,6 +125,11 @@ class IngestionRuntime:
         returns before its loop), the loop still does not stay dead.
         """
         interval = max(self.config.email_runtime_watchdog_seconds, 1)
+        # The egress summary rides this already-supervised tick rather than
+        # spawning another task: one more loop to keep alive would be a worse
+        # trade than a throttled log line on an existing one.
+        egress_interval = max(float(self.config.egress_log_interval_seconds or 0.0), 0.0)
+        last_egress_log = time.monotonic()
         while not self._stop_event.is_set():
             try:
                 await asyncio.wait_for(self._stop_event.wait(), timeout=interval)
@@ -130,6 +137,12 @@ class IngestionRuntime:
                 pass
             if self._stop_event.is_set():
                 break
+            if egress_interval and (time.monotonic() - last_egress_log) >= egress_interval:
+                last_egress_log = time.monotonic()
+                try:
+                    log_egress_summary()
+                except Exception:  # pragma: no cover - never break the watchdog
+                    logger.debug("Egress summary logging failed", exc_info=True)
             for entry in self._managed:
                 task: asyncio.Task = entry["task"]
                 if not task.done():

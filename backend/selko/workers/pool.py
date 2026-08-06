@@ -165,14 +165,24 @@ class WorkerPool:
         """
         logger.info(f"{worker_id}: Started")
 
+        consecutive_idle = 0
         while self.running:
             try:
                 # Try to find and process any work
                 processed = await self._process_any_work(worker_id)
 
-                if not processed:
-                    # No work available, sleep briefly
-                    await asyncio.sleep(self.idle_sleep_seconds)
+                if processed:
+                    consecutive_idle = 0
+                else:
+                    # Back off geometrically while idle. A flat 1s tick meant
+                    # each worker issued up to six no-op Supabase RPCs every
+                    # second forever: at pool size 3 that is ~1.5M round trips
+                    # and ~28GB of egress per month on a deployment with no
+                    # users at all. Latency to pick up new work is unchanged
+                    # for the first tick and degrades only while genuinely
+                    # idle, which is exactly when nobody is waiting.
+                    consecutive_idle += 1
+                    await asyncio.sleep(self._idle_backoff(consecutive_idle))
 
             except asyncio.CancelledError:
                 # Graceful shutdown
@@ -185,6 +195,24 @@ class WorkerPool:
                 await asyncio.sleep(self.error_backoff_seconds)
 
         logger.info(f"{worker_id}: Stopped")
+
+    def _idle_backoff(self, consecutive_idle: int) -> float:
+        """Seconds to wait after ``consecutive_idle`` fruitless polls.
+
+        Doubles from ``idle_sleep_seconds`` up to ``worker_idle_max_seconds``,
+        mirroring the ingestion workers' ``idle_backoff``. The first idle wait
+        is unchanged, so a busy pool behaves exactly as before; only a pool with
+        nothing to do stops hammering the database.
+        """
+        ceiling = self.idle_sleep_seconds
+        if self.config:
+            ceiling = max(
+                float(self.config.worker_idle_max_seconds or 0.0),
+                self.idle_sleep_seconds,
+            )
+        # Cap the exponent before it overflows on a long-idle deployment.
+        step = min(max(consecutive_idle - 1, 0), 20)
+        return min(self.idle_sleep_seconds * (2**step), ceiling)
 
     def _get_client(self) -> Any:
         """Return the shared service client, creating it on first use.

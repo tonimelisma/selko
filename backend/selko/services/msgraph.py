@@ -11,6 +11,7 @@ import requests
 from supabase import Client
 
 from selko.config import Config
+from selko.services.egress import GRAPH, record_egress
 
 _TOKEN_QUERY_RE = re.compile(r"([?&](?:token|%24skiptoken|deltatoken)=[^&]+)", re.I)
 
@@ -123,6 +124,16 @@ def request_json(
                 sleep(min(30.0, 2 ** (attempt - 1)))
                 continue
             raise error from exc
+
+        # Count every Graph round trip, including failures — a retry storm is
+        # exactly the kind of traffic a bandwidth alert surfaces and a success
+        # counter would hide. `operation` is already a bounded template.
+        record_egress(
+            GRAPH,
+            operation,
+            request_bytes=len(url),
+            response_bytes=len(response.content or b""),
+        )
 
         if response.status_code < 400:
             try:
