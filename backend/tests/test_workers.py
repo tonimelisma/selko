@@ -90,30 +90,13 @@ class TestProcessAnyWork:
     """Tests for _process_any_work priority dispatch."""
 
     @pytest.mark.asyncio
-    async def test_pending_email_first(self, pool, mock_config):
-        """Pending emails are tried before events (photo polling removed in egress inc 1)."""
-        pool.config = mock_config
-        email_data = {"id": "e1", "user_id": "u1", "subject": "test"}
-
-        with (
-            patch("selko.workers.pool.get_service_client"),
-            patch("selko.workers.pool.claim_pending_email", return_value=email_data),
-            patch.object(pool, "_process_email", new_callable=AsyncMock) as mock_proc,
-        ):
-            result = await pool._process_any_work("w-0")
-
-        assert result is True
-        mock_proc.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_falls_through_to_events(self, pool, mock_config):
-        """When no emails, approved events are tried."""
+    async def test_event_claimed_when_available(self, pool, mock_config):
+        """Approved events are claimed (email owner is IngestionRuntime, inc 2)."""
         pool.config = mock_config
         event_data = {"id": "ev1", "user_id": "u1", "title": "meeting"}
 
         with (
             patch("selko.workers.pool.get_service_client"),
-            patch("selko.workers.pool.claim_pending_email", return_value=None),
             patch("selko.workers.pool.claim_approved_event_for_sync", return_value=event_data),
             patch.object(pool, "_process_event_sync", new_callable=AsyncMock) as mock_proc,
         ):
@@ -123,13 +106,27 @@ class TestProcessAnyWork:
         mock_proc.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_falls_through_to_recovery_when_no_events(self, pool, mock_config):
+        """When no events, recovery bookkeeping is tried."""
+        pool.config = mock_config
+
+        with (
+            patch("selko.workers.pool.get_service_client"),
+            patch("selko.workers.pool.claim_approved_event_for_sync", return_value=None),
+            patch("selko.workers.pool.claim_integration_recovery", return_value={"id": "r1"}),
+            patch("selko.workers.pool.requeue_calendar_recovery_batch", return_value=1),
+        ):
+            result = await pool._process_any_work("w-0")
+
+        assert result is True
+
+    @pytest.mark.asyncio
     async def test_returns_false_when_empty(self, pool, mock_config):
         """Returns False when nothing to process."""
         pool.config = mock_config
 
         with (
             patch("selko.workers.pool.get_service_client"),
-            patch("selko.workers.pool.claim_pending_email", return_value=None),
             patch("selko.workers.pool.claim_approved_event_for_sync", return_value=None),
             patch("selko.workers.pool.claim_integration_recovery", return_value=None),
             patch("selko.workers.pool.refresh_waiting_calendar_recoveries", return_value=0),
@@ -137,6 +134,23 @@ class TestProcessAnyWork:
             result = await pool._process_any_work("w-0")
 
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_does_not_claim_email_from_pool(self, pool, mock_config):
+        """Pool must not touch email ingestion — single owner is IngestionRuntime."""
+        pool.config = mock_config
+        event_data = {"id": "ev1", "user_id": "u1", "title": "meeting"}
+
+        with (
+            patch("selko.workers.pool.get_service_client"),
+            patch("selko.workers.pool.claim_pending_email") as email_claim,
+            patch("selko.workers.pool.claim_approved_event_for_sync", return_value=event_data),
+            patch.object(pool, "_process_event_sync", new_callable=AsyncMock),
+        ):
+            result = await pool._process_any_work("w-0")
+
+        email_claim.assert_not_called()
+        assert result is True
 
 
 class TestProcessIntegrationRecovery:
