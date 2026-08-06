@@ -42,21 +42,21 @@ class TestWorkerPoolLifecycle:
 
     @pytest.mark.asyncio
     async def test_start_sets_running(self, pool, mock_config):
-        """start() sets running=True and creates tasks."""
+        """start() sets running=True and creates one scheduler task (arch A)."""
         with patch("selko.workers.pool.load_config", return_value=mock_config):
-            # Replace _worker_loop to avoid real looping
-            pool._worker_loop = AsyncMock()
+            # Patch the scheduler to avoid real looping
+            pool._scheduler_loop = AsyncMock()
             await pool.start()
 
         assert pool.running is True
-        assert len(pool.tasks) == 2
+        assert len(pool.tasks) == 1
         await pool.stop()
 
     @pytest.mark.asyncio
     async def test_stop_clears_tasks(self, pool, mock_config):
         """stop() sets running=False and clears task list."""
         with patch("selko.workers.pool.load_config", return_value=mock_config):
-            pool._worker_loop = AsyncMock()
+            pool._scheduler_loop = AsyncMock()
             await pool.start()
             await pool.stop()
 
@@ -67,11 +67,11 @@ class TestWorkerPoolLifecycle:
     async def test_double_start_is_noop(self, pool, mock_config):
         """Calling start() twice doesn't create extra tasks."""
         with patch("selko.workers.pool.load_config", return_value=mock_config):
-            pool._worker_loop = AsyncMock()
+            pool._scheduler_loop = AsyncMock()
             await pool.start()
             await pool.start()  # second call — should warn and return
 
-        assert len(pool.tasks) == 2
+        assert len(pool.tasks) == 1
         await pool.stop()
 
     @pytest.mark.asyncio
@@ -79,6 +79,64 @@ class TestWorkerPoolLifecycle:
         """stop() on an already-stopped pool is safe."""
         await pool.stop()  # should not raise
         assert pool.running is False
+
+    @pytest.mark.asyncio
+    async def test_nudge_is_noop_when_not_running(self, pool):
+        """nudge() before start is safe and does not raise."""
+        pool.nudge()
+        assert pool._nudge_event is None
+
+    @pytest.mark.asyncio
+    async def test_nudge_wakes_scheduler(self, pool, mock_config):
+        """Egress inc 5: nudge wakes the scheduler's idle wait immediately."""
+        pool.config = mock_config
+        pool.config.worker_idle_max_seconds = 30
+        with patch("selko.workers.pool.load_config", return_value=mock_config):
+            pool._scheduler_loop = AsyncMock()
+            await pool.start()
+            # Scheduler is mocked, so verify nudge sets the event
+            pool.nudge()
+            assert pool._nudge_event.is_set() is True
+            await pool.stop()
+            # After stop, nudge event is cleared
+            assert pool._nudge_event.is_set() is False
+
+    @pytest.mark.asyncio
+    async def test_tick_is_fixed_not_geometric(self, pool, mock_config):
+        """Egress inc 4: tick is fixed, not geometric busy-wait."""
+        pool.config = mock_config
+        pool.config.worker_idle_max_seconds = 30
+        pool.idle_sleep_seconds = 1.0
+        assert pool._tick_seconds() == 30.0
+        pool.config.worker_idle_max_seconds = 2
+        # Floored at max(idle_sleep, 5)
+        assert pool._tick_seconds() == 5.0
+
+    @pytest.mark.asyncio
+    async def test_scheduler_drains_until_empty(self, pool, mock_config):
+        """Egress inc 4: scheduler drains — processes until no work, then sleeps."""
+        pool.config = mock_config
+        pool.config.worker_idle_max_seconds = 0.05
+        pool.idle_sleep_seconds = 0.05
+        pool.error_backoff_seconds = 0.01
+        call_count = 0
+
+        async def fake_process(_wid):
+            nonlocal call_count
+            call_count += 1
+            # First two calls succeed, third returns False to end drain
+            return call_count <= 2
+
+        pool._process_any_work = AsyncMock(side_effect=fake_process)
+        # Patch client to avoid real Supabase
+        with patch("selko.workers.pool.load_config", return_value=mock_config):
+            await pool.start()
+            # Let scheduler drain a couple cycles
+            await asyncio.sleep(0.2)
+            await pool.stop()
+
+        # Scheduler should have drained at least 2 items in first pass
+        assert call_count >= 2
 
 
 # ===========================================================================

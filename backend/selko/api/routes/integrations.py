@@ -125,6 +125,16 @@ async def update_email_folder(
                 client.rpc(
                     "request_email_sync_now", {"p_integration_id": integration_id}
                 ).execute()
+                # Egress inc 5: in-process nudge wakes the coordinator's 60s tick
+                # immediately. DB RPC remains the durability anchor; nudge is just
+                # latency. If missed, the 60s tick catches it.
+                try:
+                    from selko.api.app import ingestion_runtime as _runtime
+
+                    if _runtime is not None:
+                        _runtime.nudge()
+                except Exception:
+                    pass
         except Exception as exc:
             logger.warning("Folder preference saved but sync could not be requested: %s", exc)
 

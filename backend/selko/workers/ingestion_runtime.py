@@ -84,6 +84,27 @@ class IngestionRuntime:
             "last_exception_code": None,
         })
 
+    def nudge(self) -> None:
+        """Wake the coordinator and claim loops (email path).
+
+        Safe to call from the API process (same event loop as the runtime) or
+        from tests. If the runtime is not running, it is a no-op. Each worker's
+        own nudge is level-triggered and cleared on wake, so repeated nudges
+        while draining are coalesced, and a missed nudge degrades to the next
+        tick — never lost work.
+        """
+        for worker in list(self._workers):
+            try:
+                nudge_fn = getattr(worker, "nudge", None)
+                if callable(nudge_fn):
+                    nudge_fn()
+                # Acquisition/attachment workers use _claim_loop with idle_backoff;
+                # waking them is likewise useful when new items appear. Their nudge
+                # is not yet wired — the coordinator's discovery is the producer, so
+                # waking the coordinator is sufficient for now.
+            except Exception:
+                pass
+
     def _spawn_health(self) -> None:
         def factory() -> asyncio.Task:
             self._health_stop = asyncio.Event()

@@ -106,9 +106,31 @@ class EmailIngestionWorker:
         self.worker_id = worker_id
         self.repository = EmailIngestionRepository(client, config)
         self.stop_event = asyncio.Event()
+        # Egress 5: in-process nudge for user-initiated email sync (same loop-bound
+        # constraint as WorkerPool — created per runtime, cleared on wake).
+        self._nudge_event: asyncio.Event | None = None
+
+    def nudge(self) -> None:
+        """Wake the coordinator immediately (approve/request_email_sync_now path)."""
+        try:
+            if self._nudge_event is not None and not self._nudge_event.is_set():
+                self._nudge_event.set()
+        except Exception:
+            pass
+
+    def ensure_nudge(self) -> asyncio.Event:
+        if self._nudge_event is None:
+            self._nudge_event = asyncio.Event()
+        return self._nudge_event
 
     def stop(self) -> None:
         self.stop_event.set()
+        # Wake coordinator if it is sleeping on the nudge event
+        try:
+            if self._nudge_event is not None and not self._nudge_event.is_set():
+                self._nudge_event.set()
+        except Exception:
+            pass
 
     async def run_sync_once(self) -> bool:
         claim = await asyncio.to_thread(self.repository.claim_due_sync, self.worker_id)
@@ -613,13 +635,30 @@ class EmailIngestionWorker:
         return "stored"
 
     async def coordinator_loop(self) -> None:
+        # Ensure nudge event is bound to this loop
+        nudge = self.ensure_nudge()
         while not self.stop_event.is_set():
             did_work = await self._guarded(self.run_sync_once)
-            if not did_work:
-                try:
-                    await asyncio.wait_for(self.stop_event.wait(), timeout=max(self.config.email_coordinator_tick_seconds, 1))
-                except asyncio.TimeoutError:
-                    pass
+            if did_work:
+                continue
+            # Idle: wait for tick, stop, or nudge
+            tick = max(self.config.email_coordinator_tick_seconds, 1)
+            # Race stop and nudge together so an approve wake doesn't stall shutdown
+            try:
+                # Wait for nudge with timeout = tick; stop_event is checked via outer loop
+                await asyncio.wait_for(nudge.wait(), timeout=tick)
+            except asyncio.TimeoutError:
+                pass
+            # Consume nudge edge; also break early if stop was requested
+            if nudge.is_set():
+                nudge.clear()
+                if self.stop_event.is_set():
+                    break
+            # Also check stop_event without blocking (coordinator_loop previously
+            # did `wait_for(stop_event.wait(), timeout=tick)`; now nudge and tick
+            # share the timeout, and stop is handled by the outer while + explicit wake)
+            if self.stop_event.is_set():
+                break
 
     async def _guarded(self, run_once) -> bool:
         """Run one loop iteration so the loop can never be killed by a blip.
