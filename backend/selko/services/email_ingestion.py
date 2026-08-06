@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 
 MAX_ERROR_DETAIL = 500
 MAX_PAGE_ITEMS = 100
+# Provider message IDs per `in_` filter when testing which are already known.
+# Small enough that the generated PostgREST URL stays well inside the usual 8KB
+# request-line limit, and that each response stays under the default row cap.
+KNOWN_ID_QUERY_CHUNK = 200
 
 
 @dataclass(frozen=True)
@@ -203,36 +207,6 @@ def _rpc_data(result: Any) -> list[dict[str, Any]]:
     return list(data)
 
 
-def safe_error_code(exc: BaseException) -> str:
-    """Map arbitrary provider/database exceptions to stable safe codes."""
-    if isinstance(exc, ProviderAuthenticationError):
-        return "provider_auth_expired"
-    if isinstance(exc, ProviderMessageMissingError):
-        return "provider_message_missing"
-    status = getattr(exc, "status_code", None)
-    if status == 429:
-        return "provider_rate_limited"
-    if status in (401, 403):
-        return "provider_auth_expired"
-    text = str(exc).lower()
-    if "timeout" in text or "connection" in text or "temporarily" in text:
-        return "provider_transient"
-    if "parse" in text or "invalid" in text:
-        return "parse_invalid"
-    if "postgrest" in text or "supabase" in text or "database" in text:
-        return "database_transient"
-    return "unknown"
-
-
-def safe_error_detail(exc: BaseException) -> str:
-    """Return a short redacted detail suitable for service-only diagnostics."""
-    text = " ".join(str(exc).split())
-    for sensitive in ("authorization", "bearer", "access_token", "refresh_token"):
-        if sensitive in text.lower():
-            return "provider operation failed"
-    return text[:MAX_ERROR_DETAIL]
-
-
 class EmailIngestionRepository:
     """Small service-role repository around the v2 coordination RPCs."""
 
@@ -325,6 +299,32 @@ class EmailIngestionRepository:
         ).execute()
         row = _rpc_data(result)
         return row[0] if row else {"inserted_count": 0, "existing_count": 0, "provider_ids_seen": 0}
+
+    def known_provider_message_ids(
+        self, integration_id: str, provider_message_ids: Iterable[str]
+    ) -> set[str]:
+        """Subset of ``provider_message_ids`` already discovered for this integration.
+
+        Queried in chunks rather than one ``in_`` list: PostgREST sends the
+        filter in the URL, and a full reconcile window can hold tens of
+        thousands of IDs, which would blow past the request-line limit. The
+        chunk size also keeps each response under the PostgREST row cap.
+        """
+        known: set[str] = set()
+        ids = [pid for pid in provider_message_ids if pid]
+        for start in range(0, len(ids), KNOWN_ID_QUERY_CHUNK):
+            chunk = ids[start : start + KNOWN_ID_QUERY_CHUNK]
+            rows = (
+                self.client.table("email_ingestion_items")
+                .select("provider_message_id")
+                .eq("integration_id", integration_id)
+                .in_("provider_message_id", chunk)
+                .execute()
+            ).data or []
+            known.update(
+                row["provider_message_id"] for row in rows if row.get("provider_message_id")
+            )
+        return known
 
     def claim_item(self, worker_id: str) -> dict[str, Any] | None:
         result = self.client.rpc(

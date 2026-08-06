@@ -28,12 +28,11 @@ from selko.services.email_ingestion import (
 from selko.services.emails import parse_gmail_message
 from selko.services.gmail import (
     GmailHistoryExpiredError,
-    GmailMessageNotFoundError,
     build_initial_sync_query,
     build_service,
     fetch_history_message_ids,
     get_credentials,
-    get_message_metadata,
+    get_messages_metadata_batch,
     get_user_profile,
     extract_attachments,
     extract_inline_images,
@@ -231,8 +230,15 @@ class EmailIngestionWorker:
             ],
         )
         cursor = integration.get("sync_cursor")
-        replacement_cursor = get_user_profile(service).get("historyId")
+        # 6c: get_user_profile() was fetched unconditionally here, but
+        # replacement_cursor is only used when there is no cursor (initial sync)
+        # or when Gmail History expired and we must fall back to a bounded
+        # listing. Defer to those branches: a 5-minute incremental poll on a
+        # healthy cursor never needs the profile at all (one wasted Gmail call
+        # per integration per poll, forever).
+        replacement_cursor = None
         if lookback_days is not None or not cursor:
+            replacement_cursor = get_user_profile(service).get("historyId")
             query = build_initial_sync_query(days=lookback_days or 14)
             identities = [row.get("id") for row in list_message_ids(service, query=query) if row.get("id")]
             next_cursor = None if lookback_days is not None else replacement_cursor
@@ -246,11 +252,23 @@ class EmailIngestionWorker:
                 identities = [row.get("id") for row in list_message_ids(service, query=build_initial_sync_query()) if row.get("id")]
                 next_cursor = None if lookback_days is not None else replacement_cursor
 
+        # 6b: incremental polls are already O(delta) and are never bounded here.
+        if lookback_days is not None:
+            identities = self._bound_reconcile_identities(claim, identities)
+
+        # 6a: fetch metadata in Gmail batches (one HTTP request per 100
+        # messages) instead of one ``get_message_metadata`` call per message.
+        # Discovery already paid for one ``list_message_ids`` trip; this used
+        # to add a second round-trip per message with no batching and no
+        # concurrency — ~20k serial calls on a weekly reconciliation of a 20k
+        # mailbox. Per-message 404s (message deleted between list and fetch)
+        # are returned as {"_deleted": True} and become ``removed`` entries.
+        metadata_by_id = get_messages_metadata_batch(service, identities)
+
         discovered: list[dict[str, Any]] = []
         for identity in identities:
-            try:
-                metadata = get_message_metadata(service, identity)
-            except GmailMessageNotFoundError:
+            metadata = metadata_by_id.get(identity)
+            if metadata is None or metadata.get("_deleted"):
                 discovered.append({"provider_message_id": identity, "change_kind": "removed"})
                 continue
             folder_ids = sorted(set(metadata.get("labelIds") or []))
@@ -269,6 +287,47 @@ class EmailIngestionWorker:
             page = self.repository.upsert_discovered(claim, discovered, cursor=next_cursor)
             _accumulate_page_totals(totals, page)
         return totals
+
+    def _bound_reconcile_identities(
+        self, claim: SyncClaim, identities: list[str]
+    ) -> list[str]:
+        """Bound one Gmail reconcile pass by work, and make the bound resumable.
+
+        A 90-day weekly reconciliation on a 20k-message mailbox used to list and
+        fetch metadata for every message in the window inside a single 900s
+        lease — roughly 100k Gmail quota units. When that tripped the per-user
+        rate limit the entire pass failed and retried from the beginning, so a
+        mailbox above the limit could never finish a reconcile at all.
+
+        Two bounds fix that, in order:
+
+        1. Drop identities already in ``email_ingestion_items``. Reconciliation
+           exists to catch messages the incremental History path missed;
+           re-fetching metadata for mail already discovered buys nothing. On a
+           healthy mailbox this alone takes the pass to near-zero provider
+           calls.
+        2. Cap whatever remains at ``email_reconcile_max_identities``.
+
+        The cap resumes because of step 1: identities processed this pass are
+        committed by ``upsert_discovered`` before the lease ends, so the next
+        pass filters them out and continues from where this one stopped. A
+        plain ``identities[:max]`` would re-truncate the same prefix every pass
+        and never reach the tail of the window.
+        """
+        known = self.repository.known_provider_message_ids(
+            claim.integration_id, identities
+        )
+        remaining = [identity for identity in identities if identity not in known]
+        max_identities = self.config.email_reconcile_max_identities
+        if max_identities > 0 and len(remaining) > max_identities:
+            logger.info(
+                "Gmail reconcile bounded integration=%s undiscovered=%d cap=%d (resumes next pass)",
+                claim.integration_id,
+                len(remaining),
+                max_identities,
+            )
+            return remaining[:max_identities]
+        return remaining
 
     def _outlook_token(self, user_id: str, *, force_refresh: bool = False) -> str:
         token = get_access_token(self.client, self.config, user_id, force_refresh=force_refresh)
@@ -321,6 +380,17 @@ class EmailIngestionWorker:
         )
         failures: list[BaseException] = []
         since = datetime.now(timezone.utc) - timedelta(days=lookback_days or 14)
+        # 6b deliberately does not bound the Outlook pass. The quota cliff it
+        # addresses is Gmail-specific: Gmail discovery costs one extra metadata
+        # round-trip *per message*, while Graph returns message metadata inline
+        # with the folder listing, so an Outlook reconcile is O(folders), not
+        # O(messages). Capping here would mean breaking out of this loop with
+        # folders left unvisited — and `rows` has no ORDER BY, so which folders
+        # get skipped is whatever order Postgres returns. That risks a folder
+        # going unreconciled indefinitely to solve a cost problem Outlook does
+        # not have. Per-message identity filtering is also unavailable here: a
+        # message in two folders must be seen under both so upsert_discovered
+        # can union its provider_folder_ids.
         for folder in rows.data or []:
             if not folder.get("is_included") or not folder.get("is_scannable", True):
                 continue
