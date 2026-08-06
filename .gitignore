@@ -25,6 +25,7 @@ __pycache__/
 *.pyc
 *.egg-info/
 .venv/
+.pytest_cache/
 
 # Claude - track hooks and shared settings, ignore personal/local config
 .claude/settings.local.json

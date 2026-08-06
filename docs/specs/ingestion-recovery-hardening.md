@@ -530,6 +530,53 @@ serial path; `get_user_profile` is not called on the incremental happy path; the
 recovery refresh is throttled; the incident sweep does not resolve a foreign
 `incident_key`.
 
+### As built
+
+Landed in `perf/ingestion-provider-calls`. Three places where the
+implementation deviates from the sketch above, all deliberate:
+
+- **6b resumes by identity, not by offset.** A plain `identities[:cap]` is not
+  resumable: `list_message_ids` returns the same window every pass, so the same
+  prefix would be re-truncated forever and the tail of a large mailbox would
+  never reconcile at all. The pass instead first drops identities already in
+  `email_ingestion_items` (via `known_provider_message_ids`, chunked to keep the
+  PostgREST request line bounded), then caps what remains. Because the work
+  processed this pass is committed by `upsert_discovered`, the next pass sees a
+  smaller undiscovered set and continues from there. On a healthy mailbox this
+  also takes a reconcile to near-zero provider calls, which the window-only cap
+  never did.
+- **Outlook is deliberately not capped.** The quota cliff in 6b is Gmail-specific:
+  Gmail costs an extra metadata round-trip *per message*, while Graph returns
+  message metadata inline with the folder listing, so an Outlook reconcile is
+  O(folders) rather than O(messages). Capping there would mean breaking out of
+  the folder loop with folders unvisited, and the folder query has no `ORDER BY`,
+  so *which* folders got skipped would be arbitrary — risking a folder going
+  unreconciled indefinitely to solve a cost problem Outlook does not have.
+  Per-message identity filtering is also unavailable for Outlook: a message in
+  two folders must be seen under both so `upsert_discovered` can union its
+  `provider_folder_ids`.
+- **6d throttles both recovery RPCs, not just the refresh.** The Change above
+  named only `refresh_waiting_calendar_recoveries`, but the Problem attributes
+  the ~500k/day to that *plus* `claim_integration_recovery`, which also ran
+  unthrottled on every idle tick. Throttling only the refresh would leave half
+  the stated cost in place, so the gate covers the whole probe. It is released
+  as soon as a pass finds real work, so an active catch-up still advances at
+  full tick speed; the cost is up to one interval of latency before a new
+  recovery is first noticed, which is immaterial for a progress indicator whose
+  events retry through the normal claim path regardless.
+
+6e also pages the dead-letter scan rather than issuing one unbounded select.
+PostgREST caps a single response at 1000 rows, and a truncated dead-letter scan
+would silently stop raising incidents for every integration past the cap — a
+monitoring gap that reads exactly like a healthy deployment.
+
+Fixed here as well (late review comment on the already-merged PR #242):
+`safe_error_code` and `safe_error_detail` were each defined twice in
+`services/email_ingestion.py`, with the old substring-based pair *after* the
+classifier-backed pair. The later definitions won at import time, so
+increment 2's structural classification was inert for every caller. The stale
+pair is removed.
+
 ---
 
 ## Increment 7 — Recovery progress and UI correctness

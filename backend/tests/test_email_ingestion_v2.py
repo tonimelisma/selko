@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -178,34 +179,123 @@ def _health_state() -> dict:
     }
 
 
+def _dead_letter_scan(rows: list[dict]):
+    """Serve the paged dead-letter scan: .select(cols).eq(col, ...).range(a, b)."""
+
+    def _range(start: int, end: int):
+        return MagicMock(
+            execute=MagicMock(return_value=MagicMock(data=rows[start : end + 1]))
+        )
+
+    return _range
+
+
 def test_dead_letter_attachment_incident_is_scoped_to_its_own_integration(mock_config):
-    """An unscoped count would open the same incident on every integration."""
+    """A dead letter belonging to another integration must not raise an incident here.
+
+    6e replaced the per-integration `count="exact"` pair with one grouped scan
+    per table, so scoping moved from a SQL filter into the row->integration
+    mapping. This pins that the mapping still scopes: the only dead-letter
+    attachment in the deployment belongs to integration-2, so integration-1 —
+    the sole `email_sync_state` row — must come out clean.
+    """
     client = MagicMock()
-    filters: list[tuple[str, str]] = []
+    inserted: list[dict] = []
 
     def table(name):
         handle = MagicMock()
         if name == "email_sync_state":
             handle.select.return_value.execute.return_value.data = [_health_state()]
         elif name == "attachments":
-            select = handle.select.return_value
-
-            def eq(column, value):
-                filters.append((column, value))
-                return select
-
-            select.eq.side_effect = eq
-            select.execute.return_value = MagicMock(count=0)
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan(
+                [{"email_id": "email-9", "emails": {"integration_id": "integration-2"}}]
+            )
         elif name == "email_ingestion_items":
-            handle.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(count=0)
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
         elif name == "operational_incidents":
-            handle.select.return_value.eq.return_value.execute.return_value.data = []
+            handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.like.return_value.execute.return_value.data = []
+            handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
         return handle
 
     client.table.side_effect = table
     asyncio.run(EmailSyncHealthEvaluator(client, mock_config).evaluate_once())
 
-    assert ("emails.integration_id", "integration-1") in filters
+    assert not [row for row in inserted if row["incident_type"] == "attachment_dead_letter"]
+
+
+def test_dead_letter_scan_pages_past_the_postgrest_row_cap(mock_config):
+    """A deployment with more dead letters than one page must still be seen.
+
+    PostgREST caps a single response, so the grouped scan has to page. Without
+    paging, every integration whose dead letter sorts past the cap silently
+    stops raising incidents — a monitoring gap that reads as "all healthy".
+    """
+    from selko.services.email_sync_health import _DEAD_LETTER_PAGE_SIZE
+
+    # integration-1's only dead letter sits one row past the first page.
+    rows = [{"integration_id": f"filler-{i}"} for i in range(_DEAD_LETTER_PAGE_SIZE)]
+    rows.append({"integration_id": "integration-1"})
+    inserted: list[dict] = []
+
+    client = MagicMock()
+
+    def table(name):
+        handle = MagicMock()
+        if name == "email_sync_state":
+            handle.select.return_value.execute.return_value.data = [_health_state()]
+        elif name == "email_ingestion_items":
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan(rows)
+        elif name == "attachments":
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
+        elif name == "operational_incidents":
+            handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.like.return_value.execute.return_value.data = []
+            handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
+        return handle
+
+    client.table.side_effect = table
+    asyncio.run(EmailSyncHealthEvaluator(client, mock_config).evaluate_once())
+
+    assert [row["incident_type"] for row in inserted if row["incident_type"] == "acquisition_dead_letter"]
+
+
+def test_incident_sweep_does_not_resolve_a_foreign_incident_key(mock_config):
+    """The evaluator must only resolve incidents it owns.
+
+    `operational_incidents` is a generic table. Before 6e the sweep resolved
+    every open row absent from its own `expected` set, so the first non-email
+    subsystem to write there would have had its incidents silently closed.
+    """
+    client = MagicMock()
+    swept: list[str] = []
+    like_filters: list[tuple[str, str]] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "email_sync_state":
+            handle.select.return_value.execute.return_value.data = []
+        elif name in ("email_ingestion_items", "attachments"):
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
+        elif name == "operational_incidents":
+            def like(column, pattern):
+                like_filters.append((column, pattern))
+                # A correctly scoped query cannot return the billing incident.
+                return MagicMock(
+                    execute=MagicMock(return_value=MagicMock(data=[]))
+                )
+
+            handle.select.return_value.eq.return_value.like.side_effect = like
+            handle.update.return_value.eq.side_effect = lambda col, val: (
+                swept.append(val), MagicMock()
+            )[1]
+        return handle
+
+    client.table.side_effect = table
+    asyncio.run(EmailSyncHealthEvaluator(client, mock_config).evaluate_once())
+
+    assert ("incident_key", "email-sync:%") in like_filters
+    assert swept == []
 
 
 def test_reopened_incident_can_send_a_second_recovery_notification(mock_config):
@@ -219,10 +309,8 @@ def test_reopened_incident_can_send_a_second_recovery_notification(mock_config):
             state = _health_state()
             state["consecutive_failures"] = 3
             handle.select.return_value.execute.return_value.data = [state]
-        elif name == "attachments":
-            handle.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(count=0)
-        elif name == "email_ingestion_items":
-            handle.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(count=0)
+        elif name in ("attachments", "email_ingestion_items"):
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
         elif name == "operational_incidents":
             handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = {
                 "id": "incident-1",
@@ -285,10 +373,11 @@ def test_health_evaluation_records_incidents_without_a_notifier(mock_config):
             state["consecutive_failures"] = 3
             handle.select.return_value.execute.return_value.data = [state]
         elif name in {"attachments", "email_ingestion_items"}:
-            handle.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(count=0)
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
         elif name == "operational_incidents":
             handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
             handle.select.return_value.eq.return_value.execute.return_value.data = []
+            handle.select.return_value.eq.return_value.like.return_value.execute.return_value.data = []
             handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
         return handle
 
@@ -388,8 +477,162 @@ def test_gmail_history_expiry_captures_replacement_cursor_before_listing(mock_co
          patch.object(worker.repository, "upsert_discovered") as upsert:
         worker._discover_gmail(claim)
 
-    assert order == ["profile", "history", "profile", "search"]
+    assert order == ["history", "profile", "search"]
     assert upsert.call_args.kwargs["cursor"] == "replacement-cursor"
+
+
+def _gmail_discovery_client(cursor: str | None = "history-cursor"):
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
+        data={"sync_cursor": cursor}
+    )
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+    return client
+
+
+def test_gmail_incremental_poll_does_not_fetch_the_user_profile(mock_config):
+    """6c: the profile call is only needed where replacement_cursor is used.
+
+    `get_user_profile` used to run unconditionally on every discovery pass, but
+    its result is only consumed on initial sync and on History expiry. On the
+    healthy incremental path that was one wasted Gmail call per integration per
+    five-minute poll, forever.
+    """
+    worker = EmailIngestionWorker(_gmail_discovery_client(), mock_config, "worker-1")
+    claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
+
+    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
+         patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
+         patch("selko.workers.email_ingestion.fetch_history_message_ids", return_value=([], "next-cursor")), \
+         patch("selko.workers.email_ingestion.get_user_profile") as profile, \
+         patch.object(worker.repository, "require_heartbeat"), \
+         patch.object(worker.repository, "upsert_discovered"):
+        worker._discover_gmail(claim)
+
+    profile.assert_not_called()
+
+
+def test_gmail_discovery_batches_metadata_and_matches_the_serial_result(mock_config):
+    """6a: batching must not change what discovery decides, only what it costs.
+
+    The serial path issued one `get_message_metadata` call per message. The
+    batch path collapses those into one HTTP request per 100 IDs, so this pins
+    the two invariants that matter: every identity still gets classified, and a
+    message deleted between listing and metadata fetch still becomes `removed`
+    rather than failing the pass.
+    """
+    worker = EmailIngestionWorker(_gmail_discovery_client(), mock_config, "worker-1")
+    claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
+
+    batched = {
+        "message-eligible": {"id": "message-eligible", "labelIds": ["INBOX"]},
+        # 404 in the batch callback: deleted between listing and fetch.
+        "message-deleted": {"id": "message-deleted", "_deleted": True},
+        "message-excluded": {"id": "message-excluded", "labelIds": ["TRASH"]},
+    }
+
+    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
+         patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
+         patch("selko.workers.email_ingestion.fetch_history_message_ids",
+               return_value=(list(batched), "next-cursor")), \
+         patch("selko.workers.email_ingestion.get_messages_metadata_batch",
+               return_value=batched) as batch, \
+         patch.object(worker.repository, "require_heartbeat"), \
+         patch.object(worker.repository, "upsert_discovered") as upsert:
+        worker._discover_gmail(claim)
+
+    # One batched call for the whole page, not one call per message.
+    batch.assert_called_once()
+    assert list(batch.call_args.args[1]) == list(batched)
+
+    discovered = {item["provider_message_id"]: item for item in upsert.call_args.args[1]}
+    assert set(discovered) == set(batched)
+    assert discovered["message-eligible"]["change_kind"] == "upsert"
+    assert discovered["message-deleted"]["change_kind"] == "removed"
+    assert discovered["message-excluded"]["change_kind"] == "removed"
+
+
+def test_gmail_reconcile_skips_known_identities_and_resumes_next_pass(mock_config):
+    """6b: the reconcile bound must make forward progress, not re-truncate.
+
+    A plain `identities[:cap]` would hand the same prefix to every pass, so a
+    mailbox larger than the cap would never reconcile its tail. Filtering out
+    identities already in `email_ingestion_items` first is what makes the cap
+    resumable: this pass commits what it processed, so the next pass sees a
+    smaller undiscovered set and continues from there.
+    """
+    mock_config.email_reconcile_max_identities = 2
+    worker = EmailIngestionWorker(_gmail_discovery_client(cursor=None), mock_config, "worker-1")
+    claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "reconcile")
+
+    window = [f"message-{i}" for i in range(6)]
+    already_known = {"message-0", "message-1", "message-2"}
+
+    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
+         patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
+         patch("selko.workers.email_ingestion.get_user_profile", return_value={"historyId": "h"}), \
+         patch("selko.workers.email_ingestion.list_message_ids",
+               return_value=[{"id": mid} for mid in window]), \
+         patch.object(worker.repository, "known_provider_message_ids", return_value=already_known), \
+         patch("selko.workers.email_ingestion.get_messages_metadata_batch",
+               return_value={}) as batch, \
+         patch.object(worker.repository, "require_heartbeat"), \
+         patch.object(worker.repository, "upsert_discovered"):
+        worker._discover_gmail(claim, lookback_days=90)
+
+    requested = list(batch.call_args.args[1])
+    # Known identities are never re-fetched, and what remains honours the cap.
+    assert not already_known.intersection(requested)
+    assert requested == ["message-3", "message-4"]
+
+
+def test_gmail_reconcile_does_not_bound_the_incremental_path(mock_config):
+    """Only reconcile passes are bounded; an incremental delta is already O(delta)."""
+    mock_config.email_reconcile_max_identities = 1
+    worker = EmailIngestionWorker(_gmail_discovery_client(), mock_config, "worker-1")
+    claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
+
+    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
+         patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
+         patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
+         patch("selko.workers.email_ingestion.fetch_history_message_ids",
+               return_value=(["a", "b", "c"], "next-cursor")), \
+         patch.object(worker.repository, "known_provider_message_ids") as known, \
+         patch("selko.workers.email_ingestion.get_messages_metadata_batch", return_value={}) as batch, \
+         patch.object(worker.repository, "require_heartbeat"), \
+         patch.object(worker.repository, "upsert_discovered"):
+        worker._discover_gmail(claim)
+
+    known.assert_not_called()
+    assert list(batch.call_args.args[1]) == ["a", "b", "c"]
+
+
+def test_known_provider_message_ids_chunks_its_in_filter(mock_config):
+    """A full reconcile window would overflow the PostgREST request line."""
+    from selko.services.email_ingestion import KNOWN_ID_QUERY_CHUNK
+
+    client = MagicMock()
+    chunks: list[list[str]] = []
+
+    def in_(_column, values):
+        chunks.append(list(values))
+        return MagicMock(execute=MagicMock(return_value=MagicMock(data=[])))
+
+    client.table.return_value.select.return_value.eq.return_value.in_.side_effect = in_
+    ids = [f"message-{i}" for i in range(KNOWN_ID_QUERY_CHUNK * 2 + 5)]
+
+    EmailIngestionRepository(client, mock_config).known_provider_message_ids("integration-1", ids)
+
+    assert len(chunks) == 3
+    assert all(len(chunk) <= KNOWN_ID_QUERY_CHUNK for chunk in chunks)
+    assert [mid for chunk in chunks for mid in chunk] == ids
 
 
 def test_attachment_failure_cannot_touch_provider_cursors(mock_config):
@@ -549,6 +792,34 @@ def test_refresh_error_invalid_grant_no_longer_dead_letters():
     assert classification.code != "parse_invalid"
     assert classification.retryable is True
     assert classification.auth_failure is True
+
+
+def test_safe_error_code_is_the_classifier_not_a_shadowed_substring_matcher():
+    """Regression for the duplicate definition reported on PR #242.
+
+    `safe_error_code` and `safe_error_detail` were each defined twice in
+    `services/email_ingestion.py`, and the old substring-based pair came second,
+    so it won at import time. Every increment-2 regression test called
+    `classify_email_error` directly, so the suite stayed green while the workers
+    — which import `safe_error_code` — kept using the substring matcher and kept
+    dead-lettering `invalid_grant` as `parse_invalid`.
+
+    Assert through the exported name that production imports, not the classifier
+    it is supposed to delegate to.
+    """
+    from selko.services import email_ingestion as module
+
+    revoked = GmailAuthError("Gmail credentials expired or revoked: invalid_grant")
+    assert module.safe_error_code(revoked) == "provider_auth_expired"
+    assert module.safe_error_code(revoked) == classify_email_error(revoked).code
+
+    unauthorized = _gmail_error(401, message="Invalid Credentials")
+    assert module.safe_error_code(unauthorized) == "provider_auth_expired"
+
+    # And exactly one definition survives, so no later import can re-shadow it.
+    source = Path(module.__file__).read_text()
+    assert source.count("\ndef safe_error_code(") == 1
+    assert source.count("\ndef safe_error_detail(") == 1
 
 
 def test_no_acquisition_failure_is_terminal_on_first_attempt(mock_config):

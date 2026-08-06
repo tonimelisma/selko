@@ -15,6 +15,28 @@ from selko.config import Config
 
 logger = logging.getLogger(__name__)
 
+# PostgREST caps a single response (1000 rows by default). The dead-letter scan
+# pages explicitly rather than trusting one shot: a silent truncation would stop
+# opening incidents for every integration past the cap, and a monitoring system
+# that under-reports is indistinguishable from a healthy one.
+_DEAD_LETTER_PAGE_SIZE = 1000
+_DEAD_LETTER_MAX_PAGES = 100
+
+
+def _embedded_integration_id(row: dict) -> str | None:
+    """Read ``integration_id`` out of a PostgREST embedded ``emails`` resource.
+
+    PostgREST returns a many-to-one embed as an object, but some client and
+    schema-cache combinations surface it as a single-element list. Accept both:
+    guessing wrong silently drops every attachment dead-letter incident.
+    """
+    embedded = row.get("emails")
+    if isinstance(embedded, list):
+        embedded = embedded[0] if embedded else None
+    if not isinstance(embedded, dict):
+        return None
+    return embedded.get("integration_id")
+
 
 @dataclass(frozen=True)
 class SafeIncident:
@@ -108,6 +130,45 @@ class EmailSyncHealthEvaluator:
         return SafeIncident(key, state.get("provider", "email"), incident_type, severity, summary,
                             state.get("last_started_at"), state.get("last_success_at"), state.get("user_id"))
 
+    def _dead_letter_integration_ids(
+        self,
+        *,
+        table: str,
+        status_column: str,
+        columns: str,
+        extract,
+    ) -> set[str]:
+        """Integration IDs owning at least one dead-letter row in ``table``.
+
+        Replaces the per-integration ``count="exact"`` pair that made the
+        evaluator O(states) queries per cycle. Paged rather than single-shot
+        because PostgREST truncates at ``_DEAD_LETTER_PAGE_SIZE`` and a
+        truncated dead-letter scan silently stops raising incidents.
+        """
+        found: set[str] = set()
+        offset = 0
+        for _ in range(_DEAD_LETTER_MAX_PAGES):
+            rows = (
+                self.client.table(table)
+                .select(columns)
+                .eq(status_column, "dead_letter")
+                .range(offset, offset + _DEAD_LETTER_PAGE_SIZE - 1)
+                .execute()
+            ).data or []
+            for row in rows:
+                integration_id = extract(row)
+                if integration_id:
+                    found.add(integration_id)
+            if len(rows) < _DEAD_LETTER_PAGE_SIZE:
+                return found
+            offset += _DEAD_LETTER_PAGE_SIZE
+        logger.warning(
+            "Dead-letter scan of %s hit the %d-page ceiling; incident coverage may be partial",
+            table,
+            _DEAD_LETTER_MAX_PAGES,
+        )
+        return found
+
     async def evaluate_once(self) -> int:
         states = self.client.table("email_sync_state").select("*").execute().data or []
         now = datetime.now(timezone.utc)
@@ -128,21 +189,28 @@ class EmailSyncHealthEvaluator:
                 incident = self._incident(state, "repeated_failures", "critical", "Three consecutive email polling runs failed")
                 expected[incident.incident_key] = incident
 
+        # 6e: two grouped scans replace two count="exact" queries *per state*
+        # per cycle. At 1000 integrations the old shape issued >2000 queries
+        # every 300s; this is now a fixed small number regardless of scale.
+        dead_item_integrations = self._dead_letter_integration_ids(
+            table="email_ingestion_items",
+            status_column="acquisition_status",
+            columns="integration_id",
+            extract=lambda row: row.get("integration_id"),
+        )
+        dead_attachment_integrations = self._dead_letter_integration_ids(
+            table="attachments",
+            status_column="ingestion_status",
+            columns="email_id,emails!inner(integration_id)",
+            extract=_embedded_integration_id,
+        )
+
         for state in states:
-            dead_items = self.client.table("email_ingestion_items").select("id", count="exact").eq("integration_id", state["integration_id"]).eq("acquisition_status", "dead_letter").execute()
-            if getattr(dead_items, "count", 0):
+            integration_id = state["integration_id"]
+            if integration_id in dead_item_integrations:
                 incident = self._incident(state, "acquisition_dead_letter", "warning", "One or more email acquisition items require repair")
                 expected[incident.incident_key] = incident
-            # Scope to this integration's own mail. An unscoped count would
-            # raise the same incident on every integration in the deployment.
-            dead_attachments = (
-                self.client.table("attachments")
-                .select("id, emails!inner(integration_id)", count="exact")
-                .eq("emails.integration_id", state["integration_id"])
-                .eq("ingestion_status", "dead_letter")
-                .execute()
-            )
-            if getattr(dead_attachments, "count", 0):
+            if integration_id in dead_attachment_integrations:
                 incident = self._incident(state, "attachment_dead_letter", "warning", "One or more supported attachments require repair")
                 expected[incident.incident_key] = incident
 
@@ -180,7 +248,19 @@ class EmailSyncHealthEvaluator:
                     except Exception:
                         logger.exception("Operational incident re-open notification failed")
 
-        open_rows = self.client.table("operational_incidents").select("*").eq("status", "open").execute().data or []
+        # 6e: scope the resolution sweep to email-sync:* so the first non-email
+        # subsystem to write to operational_incidents does not have its incidents
+        # silently auto-resolved by this evaluator. The table name is generic;
+        # an unscoped sweep would resolve any open row not in this evaluator's
+        # `expected` set, including foreign subsystems'.
+        open_rows = (
+            self.client.table("operational_incidents")
+            .select("*")
+            .eq("status", "open")
+            .like("incident_key", "email-sync:%")
+            .execute()
+            .data or []
+        )
         for row in open_rows:
             if row.get("incident_key") in expected:
                 continue

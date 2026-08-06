@@ -6,7 +6,7 @@ Handles Gmail OAuth flow and API interactions.
 import logging
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Iterable, Optional
 
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
@@ -435,13 +435,81 @@ def get_message_metadata(service, message_id: str) -> dict:
             .execute()
         )
     except RefreshError as e:
-        raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
+        raise _auth_error(e, prefix="Gmail credentials expired or revoked") from e
     except HttpError as e:
         if getattr(e.resp, "status", None) == 404:
             raise GmailMessageNotFoundError(
                 f"Gmail message {message_id} no longer exists"
             ) from e
         raise _wrap_http_error(e, prefix="Gmail API error fetching message metadata") from e
+
+
+def get_messages_metadata_batch(service, message_ids: Iterable[str], *, batch_size: int = 100) -> dict[str, dict]:
+    """Fetch metadata for many messages in one batch per ``batch_size`` IDs.
+
+    Discovery used to call ``get_message_metadata`` once per message in a plain
+    ``for`` loop; acquisition later called ``get_full_message`` for the same
+    message, so discovery cost two API calls per message with no batching and
+    no concurrency. Gmail's ``BatchHttpRequest`` collapses N calls into
+    ceil(N/100) HTTP requests — one quota round-trip per 100 messages and a
+    material ~100x reduction on a 20k-message weekly reconciliation pass.
+
+    Returns ``{message_id: metadata_dict}``. Per-message failures (the most
+    common is 404 — ``GmailMessageNotFoundError`` — when a discovered message
+    was deleted before metadata fetch) are returned as ``{"id": id,
+    "_deleted": True}`` so the caller can decide whether to mark the message
+    ``removed`` rather than ``upsert``. The whole batch raises if the
+    underlying transport fails (e.g. auth or 5xx, which break the whole batch).
+    """
+    results: dict[str, dict] = {}
+    ids = [mid for mid in message_ids if mid]
+    if not ids:
+        return results
+
+    def _on_message(request_id, response, exception):  # noqa: ANN001
+        if exception is None:
+            results[request_id] = response
+            return
+        if isinstance(exception, RefreshError):
+            raise _auth_error(exception, prefix="Gmail credentials expired or revoked")
+        if isinstance(exception, HttpError):
+            if getattr(exception.resp, "status", None) == 404:
+                # The message was deleted between listing and metadata fetch.
+                # The serial path raised GmailMessageNotFoundError here and the
+                # caller mapped it to `removed`; keep that outcome per message
+                # instead of failing the whole batch.
+                results[request_id] = {"id": request_id, "_deleted": True}
+                return
+            raise _wrap_http_error(exception, prefix="Gmail API error batch metadata")
+        # Anything else (transport, parsing) is not per-message recoverable.
+        raise GmailError(f"Gmail API error batch metadata: {exception}")
+
+    for chunk in _chunks(ids, batch_size):
+        batch = service.new_batch_http_request()
+        for mid in chunk:
+            batch.add(
+                service.users().messages().get(userId="me", id=mid, format="metadata"),
+                callback=_on_message,
+                request_id=mid,
+            )
+        try:
+            batch.execute()
+        except RefreshError as e:
+            raise _auth_error(e, prefix="Gmail credentials expired or revoked") from e
+        except HttpError as e:
+            raise _wrap_http_error(e, prefix="Gmail API error batch metadata") from e
+    return results
+
+
+def _chunks(values: Iterable[Any], size: int = 100) -> Iterable[list[Any]]:
+    chunk: list[Any] = []
+    for value in values:
+        chunk.append(value)
+        if len(chunk) == size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
 
 
 def get_full_message(service, message_id: str) -> dict:

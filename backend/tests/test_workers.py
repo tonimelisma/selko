@@ -237,6 +237,56 @@ class TestProcessIntegrationRecovery:
 
         assert result is False
 
+    @pytest.mark.asyncio
+    async def test_idle_recovery_probe_is_throttled(self, pool, mock_config):
+        """6d: idle ticks must not issue recovery RPCs at tick speed.
+
+        This runs on every idle tick of every worker. Unthrottled, at
+        `worker_pool_size=3` and a 1s idle sleep, it was roughly 500k no-op
+        round-trips a day with nothing recovering.
+        """
+        pool.config = mock_config
+        mock_client = MagicMock()
+
+        with (
+            patch(
+                "selko.workers.pool.claim_integration_recovery", return_value=None
+            ) as claim,
+            patch(
+                "selko.workers.pool.refresh_waiting_calendar_recoveries", return_value=0
+            ) as refresh,
+        ):
+            for _ in range(50):
+                assert (
+                    await pool._process_integration_recovery(mock_client, "worker-1")
+                    is False
+                )
+
+        # 50 idle ticks inside one interval must cost exactly one probe.
+        assert claim.call_count == 1
+        assert refresh.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_active_recovery_releases_the_throttle(self, pool, mock_config):
+        """An in-flight catch-up must keep advancing at full tick speed."""
+        pool.config = mock_config
+        mock_client = MagicMock()
+
+        with (
+            patch(
+                "selko.workers.pool.claim_integration_recovery",
+                return_value={"id": "recovery-1"},
+            ) as claim,
+            patch(
+                "selko.workers.pool.requeue_calendar_recovery_batch", return_value=3
+            ),
+            patch("selko.workers.pool.refresh_waiting_calendar_recoveries"),
+        ):
+            await pool._process_integration_recovery(mock_client, "worker-1")
+            await pool._process_integration_recovery(mock_client, "worker-1")
+
+        assert claim.call_count == 2
+
 
 # ===========================================================================
 # Service client reuse (regression: per-poll client creation leaked memory

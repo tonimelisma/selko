@@ -13,6 +13,7 @@ This replaces the job queue with direct status-based polling of data tables.
 import asyncio
 import logging
 import os
+import time
 from typing import Any, Optional
 
 from selko.config import Config, load_config
@@ -87,6 +88,9 @@ class WorkerPool:
         self.running = False
         self.config: Optional[Config] = None
         self._client: Optional[Any] = None
+        # 6d: gates the idle recovery probe in _process_integration_recovery.
+        # Monotonic, shared across the pool's workers; 0.0 means "probe now".
+        self._last_recovery_probe_at: float = 0.0
 
     async def start(self) -> None:
         """Start the worker pool by spawning worker tasks.
@@ -281,7 +285,32 @@ class WorkerPool:
         again (see `claim_approved_event`'s active-integration check). This
         step only tags blocked events with `recovery_id` and tracks
         completion, so the UI can show "Catching up" instead of "Connected".
+
+        6d: this runs on every idle tick of every worker. At
+        `worker_pool_size=3` and `worker_idle_sleep_seconds=1.0` the
+        unthrottled version issued roughly two no-op RPCs per worker per
+        second — about 500k round-trips a day with nothing recovering. Both
+        probes are therefore gated on `recovery_refresh_interval_seconds`,
+        tracked on the pool instance.
+
+        The gate is released the moment a pass finds real work, so an active
+        catch-up still advances at full tick speed; only the idle case slows
+        down. The cost is up to one interval of extra latency before a freshly
+        created recovery is first noticed, which is immaterial for a progress
+        indicator whose events retry through the normal claim path anyway.
         """
+        # `config` is only populated once start() runs; an unconfigured pool
+        # (direct unit-test construction) simply does not throttle.
+        interval = (
+            max(float(self.config.recovery_refresh_interval_seconds or 0.0), 0.0)
+            if self.config
+            else 0.0
+        )
+        now_monotonic = time.monotonic()
+        if interval > 0 and (now_monotonic - self._last_recovery_probe_at) < interval:
+            return False
+        self._last_recovery_probe_at = now_monotonic
+
         try:
             recovery = claim_integration_recovery(client, worker_id, lock_seconds=120)
         except IntegrationError as e:
@@ -289,6 +318,8 @@ class WorkerPool:
             recovery = None
 
         if recovery:
+            # Real work in flight — drop the gate so the next tick probes again.
+            self._last_recovery_probe_at = 0.0
             try:
                 tagged = requeue_calendar_recovery_batch(
                     client, recovery["id"], worker_id
@@ -318,6 +349,9 @@ class WorkerPool:
         except CalendarsError as e:
             logger.error(f"{worker_id}: Error refreshing waiting calendar recoveries: {e}")
             return False
+        if refreshed > 0:
+            # Generations completed this pass; keep probing at full speed.
+            self._last_recovery_probe_at = 0.0
         return refreshed > 0
 
     async def _process_scheduled_task(
