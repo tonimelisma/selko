@@ -1,11 +1,14 @@
 """Worker pool for continuously processing background work.
 
 This module implements a pool of long-running asyncio tasks that continuously
-poll for work from four sources:
-1. Scheduled tasks (photo_fetch)
-2. Pending emails (status-based claiming)
-3. Pending photos (status-based claiming)
-4. Approved events (status-based claiming)
+poll for work from two sources:
+1. Pending emails (status-based claiming) — deprecated, owned by IngestionRuntime
+2. Approved events (status-based claiming)
+3. Calendar OAuth recovery bookkeeping
+
+Photo ingestion is parked; photo_fetch and pending-photo polling have been
+removed from the hot loop (egress fix inc 1). Email polling remains here only
+until inc 2 removes the duplicate owner.
 
 This replaces the job queue with direct status-based polling of data tables.
 """
@@ -230,11 +233,11 @@ class WorkerPool:
         """Try to find and process work from any source.
 
         Polls in priority order:
-        1. Scheduled tasks (periodic operations like photo_fetch)
-        2. Pending emails (need LLM processing)
-        3. Pending photos (need LLM processing)
-        4. Approved events (need calendar sync)
-        5. Calendar OAuth reconnect recovery (tagging/progress bookkeeping)
+        1. Pending emails (need LLM processing) — duplicate, removed in inc 2
+        2. Approved events (need calendar sync)
+        3. Calendar OAuth reconnect recovery (tagging/progress bookkeeping)
+
+        Photo polling removed in egress inc 1 (parked feature).
 
         Args:
             worker_id: Unique identifier for this worker.
@@ -247,22 +250,8 @@ class WorkerPool:
 
         client = self._get_client()
 
-        # 1. Try scheduled tasks first. Email discovery is not among them:
-        # it is owned by the ingestion coordinator's own leases.
-        task_types = []
-        if circuit_breaker.is_available("google_photos"):
-            task_types.append("photo_fetch")
-
-        if task_types:
-            try:
-                task = claim_scheduled_task(client, task_types, worker_id)
-                if task:
-                    await self._process_scheduled_task(client, worker_id, task)
-                    return True
-            except ScheduledTasksError as e:
-                logger.error(f"{worker_id}: Error claiming scheduled task: {e}")
-
-        # 2. Try pending emails - requires LLM
+        # 1. Try pending emails - requires LLM (duplicate owner; IngestionRuntime
+        # is the canonical owner — removed in egress inc 2).
         if circuit_breaker.is_available("llm"):
             try:
                 email = claim_pending_email(
@@ -274,19 +263,7 @@ class WorkerPool:
             except EmailError as e:
                 logger.error(f"{worker_id}: Error claiming email: {e}")
 
-        # 3. Try pending photos - requires LLM and Google Photos
-        if circuit_breaker.is_available("llm") and circuit_breaker.is_available("google_photos"):
-            try:
-                photo = claim_pending_photo(
-                    client, worker_id, lock_duration_seconds=600,
-                )
-                if photo:
-                    await self._process_photo(client, worker_id, photo)
-                    return True
-            except PhotosError as e:
-                logger.error(f"{worker_id}: Error claiming photo: {e}")
-
-        # 4. Try approved events - requires Google Calendar
+        # 2. Try approved events - requires Google Calendar (sole writer is worker)
         if circuit_breaker.is_available("google_calendar"):
             try:
                 event = claim_approved_event_for_sync(
@@ -298,7 +275,7 @@ class WorkerPool:
             except EventsError as e:
                 logger.error(f"{worker_id}: Error claiming event: {e}")
 
-        # 5. Advance calendar OAuth reconnect recovery. Pure DB bookkeeping
+        # 3. Advance calendar OAuth reconnect recovery. Pure DB bookkeeping
         # (no Calendar API calls), so it doesn't need the circuit breaker gate.
         if await self._process_integration_recovery(client, worker_id):
             return True
