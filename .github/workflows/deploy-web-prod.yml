@@ -1,0 +1,8 @@
+name: Deploy Web Prod
+on: workflow_dispatch
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB_PRODUCTION }}"
+      - run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_APP_PRODUCTION }}"
