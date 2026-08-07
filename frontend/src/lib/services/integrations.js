@@ -118,7 +118,7 @@ export async function fetchCalendarRecovery() {
 	try {
 		const { data, error } = await supabase
 			.from('integration_recoveries')
-			.select('id, integration_id, user_id, provider, status, discovered_count, completed_count, remaining_count, error_detail, requested_at')
+			.select('id, integration_id, user_id, provider, status, discovered_count, completed_count, remaining_count, withdrawn_count, error_detail, requested_at')
 			.eq('provider', 'google_calendar')
 			.order('requested_at', { ascending: false })
 			.limit(1)

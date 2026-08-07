@@ -176,9 +176,19 @@ class EmailSyncHealthEvaluator:
         for state in states:
             last_success = _parse_datetime(state.get("last_success_at"))
             last_started = _parse_datetime(state.get("last_started_at"))
-            age = (now - last_success).total_seconds() if last_success else self.config.email_health_warning_seconds + 1
+            # 7b: an integration whose first poll is still running (last_started set,
+            # last_success still null) must not open a stale_poll incident immediately.
+            # Hardcoding age = warning+1 did exactly that — every new connection
+            # generated an opened+resolved pair once the notifier is configured.
             if last_success is None and last_started is None:
-                continue  # initial grace period before the first coordinator claim
+                continue  # initial grace: no coordinator claim yet
+            if last_success is None:
+                # First poll in flight: grace until last_started itself is stale
+                age = (now - last_started).total_seconds() if last_started else 0
+                if age < self.config.email_health_warning_seconds:
+                    continue
+            else:
+                age = (now - last_success).total_seconds()
             if age >= self.config.email_health_critical_seconds:
                 incident = self._incident(state, "stale_poll", "critical", "Normal email polling has been stale for over one hour")
                 expected[incident.incident_key] = incident
