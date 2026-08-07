@@ -180,22 +180,27 @@ class EmailSyncHealthEvaluator:
             # last_success still null) must not open a stale_poll incident immediately.
             # Hardcoding age = warning+1 did exactly that — every new connection
             # generated an opened+resolved pair once the notifier is configured.
+            in_initial_grace = False
             if last_success is None and last_started is None:
+                in_initial_grace = True
                 continue  # initial grace: no coordinator claim yet
             if last_success is None:
                 # First poll in flight: grace until last_started itself is stale
                 age = (now - last_started).total_seconds() if last_started else 0
                 if age < self.config.email_health_warning_seconds:
+                    in_initial_grace = True
                     continue
             else:
                 age = (now - last_success).total_seconds()
-            if age >= self.config.email_health_critical_seconds:
-                incident = self._incident(state, "stale_poll", "critical", "Normal email polling has been stale for over one hour")
-                expected[incident.incident_key] = incident
-            elif age >= self.config.email_health_warning_seconds:
-                incident = self._incident(state, "stale_poll", "warning", "Normal email polling has been stale for over thirty minutes")
-                expected[incident.incident_key] = incident
-            if (state.get("consecutive_failures") or 0) >= 3:
+            if not in_initial_grace:
+                if age >= self.config.email_health_critical_seconds:
+                    incident = self._incident(state, "stale_poll", "critical", "Normal email polling has been stale for over one hour")
+                    expected[incident.incident_key] = incident
+                elif age >= self.config.email_health_warning_seconds:
+                    incident = self._incident(state, "stale_poll", "warning", "Normal email polling has been stale for over thirty minutes")
+                    expected[incident.incident_key] = incident
+            # R7: inside initial grace, consecutive failures are not yet "repeated"
+            if not in_initial_grace and (state.get("consecutive_failures") or 0) >= 3:
                 incident = self._incident(state, "repeated_failures", "critical", "Three consecutive email polling runs failed")
                 expected[incident.incident_key] = incident
 
