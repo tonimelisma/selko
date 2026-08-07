@@ -32,12 +32,12 @@ Do not flip the flag via Render env alone. Follow the ordered cutover below.
 
 Per `egress-and-work-scheduling.md` Ordering constraint and `polling-email-ingestion-v2.md`:
 
-1. **Restore CI minutes** (GitHub) so `workflow_dispatch` and `supabase db push` work.
+1. **No CI minutes will ever be bought — CI is a bonus, not required.** `workflow_dispatch`/`gh workflow run test.yml` will stay queued or absent; do not wait on it.
 2. **Staging token:** `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging, copies working → stale; if both stale, re-auth one side then re-sync). Do not ask to reauth when one side is working.
-3. **Staging deploy:** `supabase db push --linked` on staging, then `gh workflow run test.yml` to staging.
+3. **Staging deploy (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push` (dry-run then push). Render deploys on main push. `gh workflow run test.yml` to staging is a bonus only — never required.
 4. **Staging drills:** `./scripts/drill-lease-recovery.sh` (local Supabase) and staging full-path.
-5. **Prod migrations:** `supabase db push` on prod (dry-run first).
-6. **Prod code:** `gh workflow run test.yml` on prod (requires your approval, never auto).
+5. **Prod migrations (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref khahcozfbnpykspvatrg && supabase db push --dry-run` (review 11) then `supabase db push`.
+6. **Prod code:** tag/push for Render (`git tag -a v1.0.0 -m "Release 1.0.0" && git push origin v1.0.0`) or Render dashboard Deploy — never `gh workflow run test.yml` (needs minutes we will never buy; if it does run, it's a bonus). Requires your approval, never auto.
 7. **Flag:** set `ENABLE_BACKGROUND_PROCESSING=true` only after steps 5-6 and health below.
 
 ## Local DoD (gate, not CI — CI is out of minutes)
@@ -66,6 +66,6 @@ No integration tests run by default (`-m "not integration"` gate per AGENTS.md);
 
 ## Explicit non-deploy
 
-Per your instruction, **prod stays `ENABLE_BACKGROUND_PROCESSING=false`**. This commit does not trigger a deploy, does not set the flag, and does not wait on CI. When you are ready to deploy, run `gh workflow run test.yml` yourself — the last sentence per AGENTS.md must be the question, not the action.
+Per your instruction, **prod stays `ENABLE_BACKGROUND_PROCESSING=false`**. This commit does not trigger a deploy, does not set the flag, and does not wait on CI. When you are ready to deploy, run the local push above yourself — `gh workflow run test.yml` is deprecated and needs minutes we will never buy. The last sentence per AGENTS.md must be the question, not the action.
 
 Should I deploy this to production?

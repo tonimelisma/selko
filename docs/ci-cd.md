@@ -24,40 +24,32 @@ PR opened/updated
 All tests pass -> PR ready for review (no deployment)
 ```
 
-### On Push to Main
+### On Push to Main (local is the gate; CI is a bonus)
 
 ```
-Code merged to main
+Code merged to main (via merge-and-cleanup.sh — never waits on CI)
     |
-    +-- Unit Tests (backend)
-    +-- Android Unit Tests
-    +-- Frontend Unit Tests
+    +-- Local gate you already ran: uv run pytest, frontend unit, assert-schema-code-compat
     |
-All tests pass
+    +-- Bonus if minutes exist: GitHub runs same tests + bonus deploy/integration (may never run)
     |
-Deploy to Staging (ATOMIC)
-    |-- 1. Deploy database migrations (supabase db push)
-    |-- 2. Deploy FastAPI to Render (auto-deploys via GitHub integration)
-    |-- 3. Deploy frontend to Render (auto-deploys via GitHub integration)
-    |
-    +-- Integration Tests (Staging backend) — real Supabase/Gmail OAuth;
-        no LLM tests selected (use `--run-llm` locally for real LLM coverage)
-    |
-Staging environment running latest code
+    +-- You deploy staging locally when ready (never automatic):
+        |-- 1. ./scripts/assert-schema-code-compat.sh (migrations before code — R5 gate)
+        |-- 2. supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push
+        |-- 3. Render auto-deploys on main push (GitHub integration)
+        |-- 4. Verify: GET /health/ingestion, /health/egress, scripts/smoke-ingestion.py
 ```
 
-### On Manual Trigger or Git Tag
+### To Production (always local; never gh workflow run)
 
 ```
-workflow_dispatch or tag push
+You decide to cut prod (no CI required)
     |
-Deploy to Production (ATOMIC)
-    |-- 1. Deploy database migrations (supabase db push)
-    |-- 2. Deploy FastAPI to Render (manual deploy or auto-deploy on tag)
-    |
-(Optional) Production smoke tests (read-only)
-    |
-Production environment updated
+    +-- Gate: ./scripts/assert-schema-code-compat.sh
+    |-- 1. supabase link --project-ref khahcozfbnpykspvatrg && supabase db push  (--dry-run first, review 11)
+    |-- 2. Render deploy: push tag or Render dashboard Deploy (auto on main/tag)
+    |-- 3. Verify: GET /health/ingestion == ok, /health/egress, Sentry synthetic, dead-letter 0
+Do not use: gh workflow run test.yml (requires minutes we will never buy; if it does run it's a bonus, not required)
 ```
 
 ## Critical Deployment Principle: Atomic Updates
@@ -113,50 +105,52 @@ Configure at: Repository -> Settings -> Secrets and variables -> Actions
 
 ## Deployment Commands
 
-### Manual Staging Deployment
+### Deploys without CI (the real path — staging and prod)
+
+We never top up GitHub minutes. `supabase db push` is done from your machine.
+Always run the R5 gate first — migrations before code, or Render boots head-ahead of schema.
 
 ```bash
-# Link to staging
+# 0. Gate: code and migrations are in the right order
+./scripts/assert-schema-code-compat.sh
+
+# 1a. Staging
 supabase link --project-ref lxmysergoeaegxlyfzwk
-
-# Deploy migrations
+supabase db push --dry-run   # review 11, then
 supabase db push
 
-# FastAPI auto-deploys to Render via GitHub integration
-# See PRD_ARCH.md Part 3 for deployment details
-```
-
-### Manual Production Deployment
-
-```bash
-# Link to production
+# 1b. Production (same, different project)
 supabase link --project-ref khahcozfbnpykspvatrg
-
-# Deploy migrations
+supabase db push --dry-run
 supabase db push
 
-# FastAPI deploys to Render (manual or auto on tag)
-# See PRD_ARCH.md Part 3 for deployment details
+# 2. Render deploys on push/tag (GitHub integration) — no workflow_dispatch needed
+# Verify after: curl $API/health/ingestion, $API/health/egress, scripts/smoke-ingestion.py
 ```
 
-### Trigger Production Deployment via GitHub
 
-**Production deploys require explicit human approval.** Staging updates automatically on every merge to main; production never does. An AI agent must **ask the user** before triggering a prod deploy — the last sentence of its DoD report is "Should I deploy this to production?" — and only run the following on an explicit yes.
+
+### Production still requires your explicit approval
+
+An AI agent must **ask** before any prod deploy — the last sentence of its DoD report is "Should I deploy this to production?" — and only proceed on an explicit yes. When you say yes, the agent runs the local push above, not `gh workflow run test.yml`.
 
 ```bash
-# Option 1: Manual workflow dispatch
-gh workflow run test.yml
-
-# Option 2: Create and push a tag
+# Preferred: local push (no minutes)
+./scripts/assert-schema-code-compat.sh
+supabase link --project-ref khahcozfbnpykspvatrg && supabase db push
+# then tag/push for Render:
 git tag -a v1.0.0 -m "Release 1.0.0"
 git push origin v1.0.0
+
+# Deprecated: gh workflow run test.yml — requires minutes we will never buy.
+# If it does run, treat it as a bonus verification only.
 ```
 
 ## Merge Workflow
 
-### CI is a safety net, not a gate
+### CI is never a gate, never funded — local is the gate
 
-Local, change-scoped tests are the gate (see the DoD scope table in `CLAUDE.md`). Merges do **not** wait on GitHub Actions — Actions minutes are limited and CI may not run at all. CI runs on the merge commit as a safety net; if it fails, fix forward with a follow-up PR.
+We will never buy GitHub minutes. Merges use `merge-and-cleanup.sh` and never wait on CI — CI may be out of minutes, queued forever, or absent. CI on the merge commit is a bonus safety net; if it never runs, that's expected. If it does run and fails, fix forward.
 
 ### Default: merge-and-cleanup.sh
 
@@ -176,9 +170,9 @@ The script:
 
 It never blocks on CI. Run it as your final step — the worktree is gone afterward.
 
-### Optional: poll-and-merge.sh (verify CI before prod)
+### Deprecated: poll-and-merge.sh
 
-When you *do* want to confirm CI is green — e.g. before a production deploy — `scripts/poll-and-merge.sh <pr_number>` polls PR checks, merges, and watches the post-merge workflow (staging deploy + integration tests). It is optional and not part of the normal DoD.
+`scripts/poll-and-merge.sh` polls `workflow_dispatch` — it needs minutes we will never buy. Use local verification instead: `./scripts/assert-schema-code-compat.sh`, `supabase db push --dry-run`, `GET /health/ingestion`, `GET /health/egress`, `scripts/smoke-ingestion.py`. Polling CI is deprecated; if CI does happen to run, you may glance at it as a bonus.
 
 > **Note:** Auto-merge via branch protection requires GitHub Pro for private repos, so these scripts drive the merge instead.
 
@@ -198,8 +192,8 @@ git push
 ```
 
 Common issues:
-- **Merge conflicts:** Rebase your branch and force-push, then re-run the script
-- **Expired Google OAuth tokens** (`RefreshError: invalid_grant`): Run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging and copies working → stale; no reauth needed unless both are stale, then re-auth one side and re-run `--sync`), then re-run the post-merge workflow
+- **Merge conflicts:** Rebase your branch and force-push, then re-run `merge-and-cleanup.sh`
+- **Expired Google OAuth tokens** (`RefreshError: invalid_grant`): Run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging and copies working → stale; only if both stale, re-auth one side then re-run `--sync`). No workflow re-run needed — proceed locally
 
 ### Email Notifications
 
