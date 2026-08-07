@@ -539,8 +539,7 @@ and the connect UI.
 
 ### Manual end-to-end (staging)
 
-1. `ENVIRONMENT=staging uv run python -m cli.cli_auth_outlook` (consent with a real
-   outlook.com account).
+1. `uv run python -m cli.cli_auth_outlook` or `ENVIRONMENT=staging uv run python -m cli.cli_auth_outlook` (consent with a real outlook.com account), then `uv run python -m cli.cli_seed_tokens --sync --provider outlook` to copy working → stale (dev↔staging; production never).
 2. Trigger a fetch (scheduler or a manual task) and confirm rows land in `emails` with
    `email_provider='outlook'`, correct flags, and attachments in storage.
 3. Confirm the worker pool extracts events as it does for Gmail.

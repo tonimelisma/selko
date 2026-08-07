@@ -1029,10 +1029,7 @@ reason for this work.
   `itemAttachment`), not exercised end to end against a real mailbox.
 
 Staging drills are currently blocked: the staging Gmail refresh token is dead
-(`invalid_grant`, last updated 2026-02-12). Recovery requires
-`ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`, which opens a browser
-and needs an interactive Google sign-in and consent. It cannot be worked around
-by copying tokens — see "Environment separation" in `CLAUDE.md`.
+(`invalid_grant`, last updated 2026-02-12). Recovery is `uv run python -m cli.cli_seed_tokens --sync --provider gmail` — checks both dev and staging and copies working → stale (dev↔staging allowed, production never). Only if both are stale is a browser reauth needed (`uv run python -m cli.cli_auth_gmail` or `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`), then re-run `--sync`.
 
 ### Known gaps, deliberately not fixed here
 

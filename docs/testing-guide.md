@@ -106,17 +106,17 @@ uv run python -m cli.cli_seed_tokens --from staging --to development --provider 
 If Gmail tests fail with `unauthorized_client` or `credentials expired or revoked`:
 
 ```bash
-# Step 1: Try re-seeding tokens from staging (usually sufficient)
-uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+# Auto-sync dev↔staging: checks both, copies working → stale (or no-op if both fresh)
+uv run python -m cli.cli_seed_tokens --sync --provider gmail
+# For all providers:
+uv run python -m cli.cli_seed_tokens --sync --all-providers
 
-# Step 2: Only if seeding fails, run OAuth flow to get fresh tokens
-ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
-
-# Step 3: Then seed the fresh tokens to development
-uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+# If both are stale, re-auth one side then re-sync:
+#   uv run python -m cli.cli_auth_gmail   # or ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
+#   uv run python -m cli.cli_seed_tokens --sync --provider gmail
 ```
 
-Staging tokens are persistent and usually valid. Only run the OAuth flow if seeding fails.
+Staging tokens are persistent and usually valid. `--sync` is the normal fix; OAuth is only needed when both envs are stale.
 
 > **WARNING: NEVER modify tests to skip when credentials are missing or invalid.**
 > Tests are designed to FAIL when credentials are unavailable. This is intentional.

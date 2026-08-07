@@ -336,7 +336,7 @@ Result: discovery→acquisition p50 goes from up to 30 s → <100 ms (coalesced)
 
 4. **Single ordered doc.** Keep `cutover-verification-20260807.md` as the **sole** ordered checklist. Replace both `egress-and-work-scheduling.md` "Ordering constraint" and `polling-email-ingestion-v2.md` duplicated cutover section with a one-line pointer: `See cutover-verification-20260807.md — the gate before any flag flip.`
 
-5. **Unblock the three gates.** Top-up doc now tracks them as checkboxes with owners: GitHub minutes top-up (you), `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail` browser auth (you), `workflow_dispatch` re-dispatch (cancel stuck run `31127495914`, re-run on-demand). No code change, but the plan explicitly lists them so CI is not the invisible blocker again.
+5. **Unblock the three gates.** Top-up doc now tracks them as checkboxes with owners: GitHub minutes top-up (you), `uv run python -m cli.cli_seed_tokens --sync --provider gmail` dev↔staging sync (you) — re-auth one side only if both stale, then re-sync — `workflow_dispatch` re-dispatch (cancel stuck run `31127495914`, re-run on-demand). No code change, but the plan explicitly lists them so CI is not the invisible blocker again.
 
 **Verify**
 
@@ -450,7 +450,7 @@ R1/R2/R3 start parallel in three worktrees. R4 after R3. R5 gates flag forever.
 ### Cutover re-gate (replaces the duplicated runbook)
 
 1. Restore GitHub minutes; cancel & re-dispatch stuck `workflow_dispatch` run.
-2. You: `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail` (browser).
+2. You: `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging, copies working → stale; if both stale, re-auth one side then re-sync — no prompt to reauth when one side is working).
 3. Staging `supabase db push --linked` via workflow (not manual) + staging `gh workflow run test.yml`.
 4. Staging `scripts/drill-lease-recovery.sh` + staging reconcile → `items_pending==0` after one tick.
 5. Prod `supabase db push` dry-run + reviewed migration list (11 → reviewed, no HEAD surprises).
