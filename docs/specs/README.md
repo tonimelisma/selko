@@ -4,30 +4,26 @@ Implementation specifications for planned or in-progress features.
 
 ## Active plans
 
-Status as of 2026-08-03.
+Status as of 2026-08-06.
 
-- [Ingestion & recovery hardening](ingestion-recovery-hardening.md) — **planned,
-  not started.** Top-up plan from the review of #229–#240. Increments 1–4 are
-  P0 and gate the production cutover below: a substring error classifier that
-  permanently dead-letters Gmail mail, unsupervised ingestion loops that die
-  silently on one transient DB error, a race that lets the LLM claim an email
-  before its attachment rows exist, and a red `main`. Increments 5–10 cover
-  observability, provider-call efficiency, recovery-progress correctness,
-  cleanups and the durability drills that have never been run.
+- [Post-Cutover Reliability and Scale](post-cutover-reliability-and-scale.md) — **planned, not started (2026-08-06).** Rock-solid fix for every residual seam from the Aug 3–6 batch: counted health (no 1000-row truncation), Gmail batch per-request outcomes, unified tick+nudge (nudge reaches every claim loop, no dead `num_workers`), heartbeat-around-discovery + reconcile anti-starve, enforced cutover/rollback rehearsal, observability contract + synthetic, exact recovery + Realtime seam, and real SIGKILL drills. **The gate before any `ENABLE_BACKGROUND_PROCESSING=true` in prod.**
+- [Ingestion & recovery hardening](ingestion-recovery-hardening.md) — **built and merged (PRs #241–#247 + Aug 6 egress arch A, inc 1–10).** The history now; remaining open Finding 30 (rollback asserted, never rehearsed) and the health/efficiency residue are carried forward to the post-cutover plan above.
 - [Polling Email Ingestion v2](polling-email-ingestion-v2.md) — **built and
   merged (#231–#235), awaiting production cutover.** Durable polling is now the
   only ingestion path; the legacy `email_fetch` poller, APScheduler job and
   implementation flag are gone. See its "Production cutover runbook" and "Open
   items after cutover" sections — production Outlook has been suppressed by a
-  stuck timer row since 2026-07-31 with ~456 messages outstanding.
+  stuck timer row since 2026-07-31 with ~456 messages outstanding. Ordered cutover now lives in [Cutover Verification](cutover-verification-20260807.md); do not use this file's duplicated runbook section.
 - [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) — **backend delivered
   (#236–#239 + review-fix migration) and UI projection delivered on web, iOS,
   and Android.** Remaining: live invalidation wiring (via `live-ui-updates.md`),
   reviewed legacy production repair, staging fault injection, and production
   rollout.
+- [Egress and Work Scheduling](egress-and-work-scheduling.md) — **built and merged (egress arch A, 1.5 M → ~3k RPCs/day).** Busy-wait removed via single scheduler + drain-then-sleep + in-process nudge; duplicate email owner and parked photo polls removed; egress meter + `/health/egress` shipped. Remaining soft spots (dual idle model, 5 s floor invisibility, dead `num_workers`) carried forward to the post-cutover plan.
+- [Cutover Verification](cutover-verification-20260807.md) — **verified locally, not deployed.** Ordered checklist (`migrations → code via `gh workflow run test.yml` → flag last); the sole ordered gate — the two other duplicated runbook sections now point here.
 - [Live UI updates](live-ui-updates.md) — **planned, not started.** Private
   per-user Broadcast invalidations with lifecycle-safe catch-up across web, iOS,
-  and Android.
+  and Android. ConnectionRecovery poll (5 s) kept as debt with expiry in the post-cutover plan.
 - [Photo surface removal](photo-surface-removal.md) — **ready to implement, not
   started.** Deliberately deferred while photo ingestion is parked.
 - [Cross-platform Review layout and action accessibility](cross-platform-review-accessibility.md)
