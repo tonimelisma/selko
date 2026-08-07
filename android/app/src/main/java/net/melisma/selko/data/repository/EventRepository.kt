@@ -46,7 +46,12 @@ class EventRepository(
                 }
                 .decodeList<CalendarEvent>()
 
-            EventResult.Success(events)
+            val now = kotlin.time.Clock.System.now()
+            val filtered = events.filter { event ->
+                val effective = event.endDatetime ?: event.startDatetime ?: return@filter true
+                effective >= now
+            }
+            EventResult.Success(filtered)
         } catch (e: Exception) {
             EventResult.Error(e.message ?: "Failed to fetch pending events")
         }
@@ -170,7 +175,12 @@ class EventRepository(
                     order("start_datetime", Order.ASCENDING)
                 }
                 .decodeList<CalendarEvent>()
-            EventResult.Success(events)
+            val now = kotlin.time.Clock.System.now()
+            val filtered = events.filter { event ->
+                val effective = event.endDatetime ?: event.startDatetime ?: return@filter true
+                effective >= now
+            }
+            EventResult.Success(filtered)
         } catch (e: Exception) {
             EventResult.Error(e.message ?: "Failed to fetch pending events with sources")
         }

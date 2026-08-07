@@ -28,7 +28,11 @@ describe('events service', () => {
 
 	describe('fetchPendingEvents', () => {
 		it('fetches events with pending_review status', async () => {
-			const pendingEvents = mockEvents.filter((e) => e.status === 'pending_review');
+			const future = new Date(Date.now() + 86400000).toISOString();
+			const futureEnd = new Date(Date.now() + 90000000).toISOString();
+			const pendingEvents = mockEvents
+				.filter((e) => e.status === 'pending_review')
+				.map((e) => ({ ...e, start_datetime: future, end_datetime: futureEnd }));
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
@@ -74,9 +78,13 @@ describe('events service', () => {
 
 	describe('fetchPendingEventsWithSources', () => {
 		it('fetches pending events with source email data', async () => {
+			const future = new Date(Date.now() + 86400000).toISOString();
+			const futureEnd = new Date(Date.now() + 90000000).toISOString();
 			const eventsWithSources = [
 				{
 					...mockEvents[0],
+					start_datetime: future,
+					end_datetime: futureEnd,
 					event_sources: [
 						{
 							id: 'src-1',
@@ -142,6 +150,40 @@ describe('events service', () => {
 
 			expect(result.data).toEqual([]);
 			expect(result.error).toBeNull();
+		});
+
+		it('filters out past events from the review queue', async () => {
+			const past = new Date(Date.now() - 86400000).toISOString();
+			const pastEnd = new Date(Date.now() - 80000000).toISOString();
+			const future = new Date(Date.now() + 86400000).toISOString();
+			const futureEnd = new Date(Date.now() + 90000000).toISOString();
+			const eventsWithSources = [
+				{ ...mockEvents[0], start_datetime: past, end_datetime: pastEnd, event_sources: [] },
+				{ ...mockEvents[0], id: 'future-1', start_datetime: future, end_datetime: futureEnd, event_sources: [] }
+			];
+			const mockQuery = {
+				select: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
+				order: vi.fn().mockResolvedValue({ data: eventsWithSources, error: null })
+			};
+			mockFrom.mockReturnValue(mockQuery);
+			const result = await fetchPendingEventsWithSources();
+			expect(result.data).toHaveLength(1);
+			expect(result.data[0].id).toBe('future-1');
+		});
+
+		it('keeps events with no datetime', async () => {
+			const eventsWithSources = [
+				{ ...mockEvents[0], start_datetime: null, end_datetime: null, event_sources: [] }
+			];
+			const mockQuery = {
+				select: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
+				order: vi.fn().mockResolvedValue({ data: eventsWithSources, error: null })
+			};
+			mockFrom.mockReturnValue(mockQuery);
+			const result = await fetchPendingEventsWithSources();
+			expect(result.data).toHaveLength(1);
 		});
 	});
 
