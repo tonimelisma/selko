@@ -336,7 +336,7 @@ Result: discovery→acquisition p50 goes from up to 30 s → <100 ms (coalesced)
 
 4. **Single ordered doc.** Keep `cutover-verification-20260807.md` as the **sole** ordered checklist. Replace both `egress-and-work-scheduling.md` "Ordering constraint" and `polling-email-ingestion-v2.md` duplicated cutover section with a one-line pointer: `See cutover-verification-20260807.md — the gate before any flag flip.`
 
-5. **Unblock the three gates.** Top-up doc now tracks them as checkboxes with owners: GitHub minutes top-up (you), `uv run python -m cli.cli_seed_tokens --sync --provider gmail` dev↔staging sync (you) — re-auth one side only if both stale, then re-sync — `workflow_dispatch` re-dispatch (cancel stuck run `31127495914`, re-run on-demand). No code change, but the plan explicitly lists them so CI is not the invisible blocker again.
+5. **Unblock the three gates.** Doc now tracks them as checkboxes: no GitHub minutes will ever be bought (CI is a bonus, never wait), `uv run python -m cli.cli_seed_tokens --sync --provider gmail` dev↔staging sync (you) — re-auth one side only if both stale, then re-sync — `workflow_dispatch` is deprecated re-dispatch (cancel stuck run `31127495914`, re-run on-demand). No code change, but the plan explicitly lists them so CI is not the invisible blocker again.
 
 **Verify**
 
@@ -449,12 +449,12 @@ R1/R2/R3 start parallel in three worktrees. R4 after R3. R5 gates flag forever.
 
 ### Cutover re-gate (replaces the duplicated runbook)
 
-1. Restore GitHub minutes; cancel & re-dispatch stuck `workflow_dispatch` run.
+1. **No minutes will ever be bought — CI is a bonus, not required.** Ignore stuck `workflow_dispatch` (31127495914); never wait on `gh workflow run test.yml`.
 2. You: `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging, copies working → stale; if both stale, re-auth one side then re-sync — no prompt to reauth when one side is working).
-3. Staging `supabase db push --linked` via workflow (not manual) + staging `gh workflow run test.yml`.
+3. Staging `supabase db push` locally (`supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push --dry-run && supabase db push`) after `./scripts/assert-schema-code-compat.sh` — Render deploys on push. Workflow `gh workflow run test.yml` to staging is a bonus only.
 4. Staging `scripts/drill-lease-recovery.sh` + staging reconcile → `items_pending==0` after one tick.
-5. Prod `supabase db push` dry-run + reviewed migration list (11 → reviewed, no HEAD surprises).
-6. Prod `gh workflow run test.yml` (your approval — never auto).
+5. Prod `supabase db push` locally (`supabase link --project-ref khahcozfbnpykspvatrg && supabase db push --dry-run && supabase db push`) after `./scripts/assert-schema-code-compat.sh` + reviewed migration list (11).
+6. Prod Render deploy via tag/push (`git tag -a vX && git push origin vX`) or dashboard Deploy — never `gh workflow run test.yml` (needs minutes we will never buy; if it does run, it's a bonus). Your approval still required — never auto.
 7. Flag `ENABLE_BACKGROUND_PROCESSING=true` only after R5 gate + `/health/ingestion==ok` + `/health/egress` single-digit MB projection + Sentry synthetic + revival row count + 24 h dead-letter 0 + Toni 456→0 with Inbox/Archive, two-SLO-interval liveness.
 
 Rollback rehearsal (R5) is a prerequisite to step 5, not an afterthought.

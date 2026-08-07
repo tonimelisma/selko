@@ -129,15 +129,18 @@ This keeps stale review feedback from silently rotting once a PR is merged and o
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
-### CI Ownership — safety net, not a gate
+### CI Ownership — never gate, never funded
 
-Local, change-scoped tests are the gate. **Never block a merge waiting for CI** — Actions minutes are limited and CI may not run at all. CI (unit tests, staging deploy, integration tests) runs on the merge commit as a safety net; if it fails, fix forward:
+**We will never top up GitHub Actions minutes. Never trust CI to run — if it does, it's a bonus, not a gate.**
 
+Local, change-scoped tests are the only gate. `test.yml` may be out of minutes, queued forever (`workflow_dispatch` 31127495914), or absent — merge anyway via `merge-and-cleanup.sh` (does not wait on CI). On the merge commit CI runs as a best-effort safety net; if it never runs, that's expected.
+
+If CI does run and fails, fix forward:
 1. **Diagnose** — `gh run view <id> --log-failed`
-2. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, re-auth one side then re-run `--sync`, then re-trigger.
+2. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, re-auth one side then re-run `--sync`, then re-trigger *only if minutes exist — otherwise ignore and proceed locally*.
 3. **Code issue** — follow-up PR.
 
-To verify CI before a prod deploy, `./scripts/poll-and-merge.sh <pr_number>` still polls PR + post-merge CI, but it is optional and not part of the normal DoD.
+Prod deploy never requires `gh workflow run test.yml`. Staging/prod `supabase db push` is done locally from your machine after `./scripts/assert-schema-code-compat.sh` (R5 gate) — see `docs/ci-cd.md` “Deploys without CI”. `./scripts/poll-and-merge.sh` is deprecated; CI polling is optional and never blocks a merge or a prod cutover.
 
 ### Worktree Cleanup Rules
 
