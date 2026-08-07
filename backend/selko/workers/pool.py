@@ -104,6 +104,12 @@ class WorkerPool:
         # so it is bound to the running loop (asyncio.Event is loop-bound).
         self._nudge_event: Optional[asyncio.Event] = None
         self._scheduler_task: Optional[asyncio.Task] = None
+        # LLM extraction parallelism — single claim loop + semaphore fan-out
+        # keeps polling at tick speed (no egress storm) while emails
+        # themselves run in parallel. 8 drains 578 pending in ~6 min,
+        # 1 would be 29 min. Paid gemini is 60-1000 RPM so 8 is safe.
+        self._llm_semaphore: Optional[asyncio.Semaphore] = None
+        self._email_tasks: set[asyncio.Task] = set()
 
     def nudge(self) -> None:
         """Wake the scheduler immediately (in-process, same FastAPI process).
@@ -162,6 +168,10 @@ class WorkerPool:
             self.config = load_config()
         self._client = None
         self._nudge_event = asyncio.Event()
+        # LLM parallelism semaphore — bound to this loop
+        _conc = int(getattr(self.config, "llm_extraction_concurrency", 8) or 8)
+        self._llm_semaphore = asyncio.Semaphore(max(_conc, 1))
+        self._email_tasks = set()
 
         worker_id = f"worker-{os.getpid()}-scheduler"
         self._scheduler_task = asyncio.create_task(
@@ -195,15 +205,21 @@ class WorkerPool:
             if not task.done():
                 task.cancel()
 
+        # Also cancel any in-flight LLM email tasks
+        for task in list(self._email_tasks):
+            if not task.done():
+                task.cancel()
+
         try:
             await asyncio.wait_for(
-                asyncio.gather(*self.tasks, return_exceptions=True),
+                asyncio.gather(*self.tasks, *self._email_tasks, return_exceptions=True),
                 timeout=timeout,
             )
         except asyncio.TimeoutError:
             logger.warning(f"Worker pool shutdown timed out after {timeout}s")
 
         self.tasks.clear()
+        self._email_tasks.clear()
         self._scheduler_task = None
         # Keep _nudge_event but clear it so a restarted pool starts clean
         try:
@@ -298,14 +314,23 @@ class WorkerPool:
             self._client = get_service_client(self.config)
         return self._client
 
+    async def _process_email_with_semaphore(self, email: dict, worker_id: str) -> None:
+        """LLM extraction for one email, gated by the 8-wide semaphore."""
+        sem = self._llm_semaphore
+        if sem is None:
+            await self._process_email(self._get_client(), worker_id, email)
+            return
+        async with sem:
+            await self._process_email(self._get_client(), worker_id, email)
+
     async def _process_any_work(self, worker_id: str) -> bool:
         """Try to find and process work from any source.
 
         Polls in priority order:
         1. Approved events (need calendar sync)
-        2. Calendar OAuth reconnect recovery (tagging/progress bookkeeping)
+        2. LLM email extraction (8-wide, single claim loop + semaphore)
+        3. Calendar OAuth reconnect recovery (tagging/progress bookkeeping)
 
-        Email polling removed in egress inc 2 (single owner: IngestionRuntime).
         Photo polling removed in inc 1.
 
         Args:
@@ -331,7 +356,24 @@ class WorkerPool:
             except EventsError as e:
                 logger.error(f"{worker_id}: Error claiming event: {e}")
 
-        # 2. Advance calendar OAuth reconnect recovery. Pure DB bookkeeping
+        # 2. LLM email extraction — single claim loop keeps DB polling at
+        # tick speed (no 18/s storm), semaphore fans out the LLM work to 8.
+        if circuit_breaker.is_available("llm"):
+            try:
+                email = claim_pending_email(client, worker_id, lock_duration_seconds=300)
+                if email:
+                    # Fire-and-forget behind semaphore; scheduler immediately
+                    # re-drains to fill up to 8 in parallel.
+                    task = asyncio.create_task(
+                        self._process_email_with_semaphore(email, worker_id)
+                    )
+                    self._email_tasks.add(task)
+                    task.add_done_callback(lambda t: self._email_tasks.discard(t))
+                    return True
+            except EmailError as e:
+                logger.error(f"{worker_id}: Error claiming email: {e}")
+
+        # 3. Advance calendar OAuth reconnect recovery. Pure DB bookkeeping
         # (no Calendar API calls), so it doesn't need the circuit breaker gate.
         if await self._process_integration_recovery(client, worker_id):
             return True

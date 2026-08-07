@@ -82,6 +82,11 @@ class Config:
     # Worker pool configuration
     worker_pool_size: int = 3  # deprecated alias for worker_calendar_sync_concurrency (kept 1 release)
     worker_calendar_sync_concurrency: int = 2
+    # LLM extraction parallelism — emails are independent, so this is the
+    # primary knob for draining the 578-pending backlog. 1 = 29 min,
+    # 2 = 15 min, 5 = 6 min, 10 = 3 min at ~3s avg. Paid gemini is 60-1000 RPM,
+    # so 5 is safe; 10 will hit provider_rate_limited and defer via breaker.
+    llm_extraction_concurrency: int = 8
     worker_idle_sleep_seconds: float = 1.0
     # Ceiling for the pool's geometric idle backoff. The flat idle sleep above
     # is the *first* wait after work runs out; consecutive idle ticks back off
@@ -381,6 +386,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
             getenv("WORKER_CALENDAR_SYNC_CONCURRENCY")
             or getenv("WORKER_POOL_SIZE", "2")
         ),
+        llm_extraction_concurrency=int(getenv("LLM_EXTRACTION_CONCURRENCY", "8")),
         worker_idle_sleep_seconds=float(getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
         worker_idle_max_seconds=float(getenv("WORKER_IDLE_MAX_SECONDS", "30")),
         egress_log_interval_seconds=float(getenv("EGRESS_LOG_INTERVAL_SECONDS", "300")),
