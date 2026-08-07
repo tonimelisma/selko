@@ -400,11 +400,65 @@ class TestScorerIdentity:
         def changed_getsource(obj):
             source = original_getsource(obj)
             if obj is run_eval.string_similarity:
-                return source + "\n# changed helper implementation"
+                # Change actual logic, not just a comment - normalized hash must detect semantic change
+                return source.replace("return", "x = 42\n    return", 1)
             return source
 
         monkeypatch.setattr(identity_module.inspect, "getsource", changed_getsource)
         assert compute_scorer_hash("merge") != baseline
+
+    def test_comment_and_whitespace_do_not_invalidate_prompt(self, monkeypatch):
+        from tests.eval import identity as identity_module
+        from tests.eval.identity import compute_prompt_contract_hash
+
+        original_getsource = identity_module.inspect.getsource
+        baseline = compute_prompt_contract_hash("extract")
+
+        def fake_getsource(obj):
+            src = original_getsource(obj)
+            # Return same logic with extra comment and reformatting - AST-normalized hash must stay HIT
+            return src + "\n# trailing comment added\n"
+
+        monkeypatch.setattr(identity_module.inspect, "getsource", fake_getsource)
+        identity_module.clear_source_hash_cache()
+        assert compute_prompt_contract_hash("extract") == baseline
+
+    def test_comment_and_whitespace_do_not_invalidate_scorer(self, monkeypatch):
+        from tests.eval import identity as identity_module
+        from tests.eval.identity import compute_scorer_hash
+        from tests.eval import run_eval
+
+        original_getsource = identity_module.inspect.getsource
+        baseline = compute_scorer_hash("merge")
+
+        def fake_getsource(obj):
+            src = original_getsource(obj)
+            if obj is run_eval.string_similarity:
+                return src + "\n# comment only\n"
+            return src
+
+        monkeypatch.setattr(identity_module.inspect, "getsource", fake_getsource)
+        identity_module.clear_source_hash_cache()
+        assert compute_scorer_hash("merge") == baseline
+
+    def test_schema_source_whitespace_does_not_invalidate(self, monkeypatch):
+        from tests.eval import identity as identity_module
+        from tests.eval.identity import compute_prompt_contract_hash
+        import selko.api.schemas.calendar as calendar_schemas
+
+        original_getsource = identity_module.inspect.getsource
+        baseline = compute_prompt_contract_hash("extract")
+
+        def fake_getsource(obj):
+            src = original_getsource(obj)
+            if obj is calendar_schemas.CalendarEvent:
+                return src + "\n# schema class comment\n"
+            return src
+
+        monkeypatch.setattr(identity_module.inspect, "getsource", fake_getsource)
+        identity_module.clear_source_hash_cache()
+        # Schema hash is now schema-only, so class source comment must not affect prompt hash
+        assert compute_prompt_contract_hash("extract") == baseline
 
 
 class TestCostUnknown:
