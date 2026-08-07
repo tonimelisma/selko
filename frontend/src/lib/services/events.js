@@ -29,7 +29,13 @@ export async function fetchPendingEvents() {
 
 		if (error) throw error;
 
-		return { data: data ?? [], count, error: null };
+		const now = new Date();
+		const filtered = (data ?? []).filter((event) => {
+			const raw = event.end_datetime || event.start_datetime;
+			if (!raw) return true;
+			return new Date(raw) >= now;
+		});
+		return { data: filtered, count: filtered.length, error: null };
 	} catch (error) {
 		return { data: [], count: null, error: parseSupabaseError(error) };
 	}
@@ -122,7 +128,13 @@ export async function fetchPendingEventsWithSources() {
 			.in('status', ['pending_review', 'pending_change'])
 			.order('start_datetime', { ascending: true });
 		if (eventsError) throw eventsError;
-		return { data: events ?? [], error: null };
+		const now = new Date();
+		const filtered = (events ?? []).filter((event) => {
+			const raw = event.end_datetime || event.start_datetime;
+			if (!raw) return true;
+			return new Date(raw) >= now;
+		});
+		return { data: filtered, error: null };
 	} catch (error) {
 		return { data: [], error: parseSupabaseError(error) };
 	}
