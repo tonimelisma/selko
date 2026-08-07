@@ -301,20 +301,28 @@ class EmailIngestionWorker:
         # listing. Defer to those branches: a 5-minute incremental poll on a
         # healthy cursor never needs the profile at all (one wasted Gmail call
         # per integration per poll, forever).
+        # R4: heartbeat around long provider enumeration so a slow listing does
+        # not outlive the 900s lease before the first upsert.
         replacement_cursor = None
         if lookback_days is not None or not cursor:
+            self.repository.require_heartbeat(claim.integration_id, self.worker_id)
             replacement_cursor = get_user_profile(service).get("historyId")
             query = build_initial_sync_query(days=lookback_days or 14)
             identities = [row.get("id") for row in list_message_ids(service, query=query) if row.get("id")]
+            self.repository.require_heartbeat(claim.integration_id, self.worker_id)
             next_cursor = None if lookback_days is not None else replacement_cursor
         else:
             try:
+                self.repository.require_heartbeat(claim.integration_id, self.worker_id)
                 identities, next_cursor = fetch_history_message_ids(service, cursor)
+                self.repository.require_heartbeat(claim.integration_id, self.worker_id)
             except GmailHistoryExpiredError:
                 # Capture the replacement history boundary before the bounded
                 # listing so new mail arriving during reconciliation is not lost.
+                self.repository.require_heartbeat(claim.integration_id, self.worker_id)
                 replacement_cursor = get_user_profile(service).get("historyId")
                 identities = [row.get("id") for row in list_message_ids(service, query=build_initial_sync_query()) if row.get("id")]
+                self.repository.require_heartbeat(claim.integration_id, self.worker_id)
                 next_cursor = None if lookback_days is not None else replacement_cursor
 
         # 6b: incremental polls are already O(delta) and are never bounded here.
@@ -422,6 +430,7 @@ class EmailIngestionWorker:
 
     def _discover_outlook(self, claim: SyncClaim, *, lookback_days: int | None = None) -> dict[str, int]:
         totals = {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
+        self.repository.require_heartbeat(claim.integration_id, self.worker_id)
         self._outlook_token(claim.user_id)
 
         def list_folders(token: str):
@@ -431,6 +440,7 @@ class EmailIngestionWorker:
             )
 
         discovered = self._outlook_call(claim.user_id, list_folders)
+        self.repository.require_heartbeat(claim.integration_id, self.worker_id)
         upsert_discovered_folders(
             self.client,
             user_id=claim.user_id,

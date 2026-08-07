@@ -1061,3 +1061,26 @@ def test_outlook_resync_sentinel_is_never_persisted_as_a_cursor(mock_config):
 
     committed = [c.kwargs.get("cursor") for c in upsert.call_args_list]
     assert RESYNC_REQUIRED not in committed
+
+def test_discover_heartbeats_around_long_listing(mock_config):
+    """R4: listing must heartbeat before and after long provider calls, not just before upsert."""
+    from unittest.mock import MagicMock, patch
+    from selko.workers.email_ingestion import EmailIngestionWorker
+    from selko.services.email_ingestion import SyncClaim
+
+    def _gmail_discovery_client(cursor="cursor-1"):
+        # minimal client for _integration fetch mock
+        c = MagicMock()
+        c.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
+            data={"sync_cursor": cursor}
+        )
+        return c
+
+    worker = EmailIngestionWorker(_gmail_discovery_client(), mock_config, "w-1")
+    claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
+    # fetch_history returns 1 id, but we heartbeat around it
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()),          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()),          patch("selko.workers.email_ingestion.list_labels", return_value=[]),          patch("selko.workers.email_ingestion.upsert_discovered_folders"),          patch("selko.workers.email_ingestion.fetch_history_message_ids", return_value=(["m1"], "next")) as fh,          patch("selko.workers.email_ingestion.get_messages_metadata_batch", return_value={"m1": {"id": "m1", "labelIds": ["INBOX"]}}),          patch.object(worker.repository, "require_heartbeat") as hb,          patch.object(worker.repository, "upsert_discovered", return_value={"provider_ids_seen":1, "items_inserted":1, "items_existing":0}):
+        worker._discover_gmail(claim)
+        # At least 2 heartbeats for the history fetch (before+after) plus per-upsert
+        assert hb.call_count >= 2, f"expected heartbeat around listing, got {hb.call_count}"
+        assert fh.called
