@@ -45,14 +45,7 @@ class EventRepository(
                         isIn("status", listOf("pending_review", "pending_change"))
                         or {
                             gte("end_datetime", nowStr)
-                            and {
-                                isNull("end_datetime")
-                                gte("start_datetime", nowStr)
-                            }
-                            and {
-                                isNull("end_datetime")
-                                isNull("start_datetime")
-                            }
+                            gte("start_datetime", nowStr)
                         }
                     }
                     order("start_datetime", Order.ASCENDING)
@@ -189,14 +182,7 @@ class EventRepository(
                         isIn("status", listOf("pending_review", "pending_change"))
                         or {
                             gte("end_datetime", nowStr)
-                            and {
-                                isNull("end_datetime")
-                                gte("start_datetime", nowStr)
-                            }
-                            and {
-                                isNull("end_datetime")
-                                isNull("start_datetime")
-                            }
+                            gte("start_datetime", nowStr)
                         }
                     }
                     order("start_datetime", Order.ASCENDING)
