@@ -36,6 +36,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: pendingEvents,
 					error: null,
@@ -60,6 +61,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: null,
 					error: mockErrors.permissionDenied,
@@ -96,6 +98,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: eventsWithSources,
 					error: null
@@ -120,6 +123,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: null,
 					error: mockErrors.permissionDenied
@@ -138,6 +142,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: null,
 					error: null
@@ -164,6 +169,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({ data: eventsWithSources, error: null })
 			};
 			mockFrom.mockReturnValue(mockQuery);
@@ -179,6 +185,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({ data: eventsWithSources, error: null })
 			};
 			mockFrom.mockReturnValue(mockQuery);
@@ -193,6 +200,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockReturnThis(),
 				range: vi.fn().mockResolvedValue({
 					data: activityEvents,
@@ -224,6 +232,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockReturnThis(),
 				range: vi.fn().mockResolvedValue({
 					data: [],
@@ -243,6 +252,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockReturnThis(),
 				range: vi.fn().mockResolvedValue({
 					data: null,

@@ -66,14 +66,17 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
     }
 
     func fetchPendingEvents() async throws -> [CalendarEvent] {
+        let now = Date()
+        let nowStr = isoFormatter.string(from: now)
+        let orFilter = "end_datetime.gte.\(nowStr),and(end_datetime.is.null,start_datetime.gte.\(nowStr)),and(end_datetime.is.null,start_datetime.is.null)"
         let events: [CalendarEvent] = try await supabase.from("events")
             .select()
             .in("status", values: ["pending_review", "pending_change"])
+            .or(orFilter)
             .order("start_datetime")
             .execute()
             .value
 
-        let now = Date()
         return events.filter { event in
             guard let effective = event.endDatetime ?? event.startDatetime else { return true }
             return effective >= now
@@ -81,14 +84,17 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
     }
 
     func fetchPendingEventsWithSources() async throws -> [CalendarEvent] {
+        let now = Date()
+        let nowStr = isoFormatter.string(from: now)
+        let orFilter = "end_datetime.gte.\(nowStr),and(end_datetime.is.null,start_datetime.gte.\(nowStr)),and(end_datetime.is.null,start_datetime.is.null)"
         let events: [CalendarEvent] = try await supabase.from("events")
             .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")
             .in("status", values: ["pending_review", "pending_change"])
+            .or(orFilter)
             .order("start_datetime")
             .execute()
             .value
 
-        let now = Date()
         return events.filter { event in
             guard let effective = event.endDatetime ?? event.startDatetime else { return true }
             return effective >= now

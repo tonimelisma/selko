@@ -21,15 +21,17 @@ import { parseSupabaseError } from '$lib/errors.js';
  */
 export async function fetchPendingEvents() {
 	try {
+		const nowIso = new Date().toISOString();
 		const { data, error, count } = await supabase
 			.from('events')
 			.select('*', { count: 'exact' })
 			.eq('status', 'pending_review')
+			.or(`end_datetime.gte.${nowIso},and(end_datetime.is.null,start_datetime.gte.${nowIso}),and(end_datetime.is.null,start_datetime.is.null)`)
 			.order('start_datetime', { ascending: true });
 
 		if (error) throw error;
 
-		const now = new Date();
+		const now = new Date(nowIso);
 		const filtered = (data ?? []).filter((event) => {
 			const raw = event.end_datetime || event.start_datetime;
 			if (!raw) return true;
@@ -122,13 +124,15 @@ export async function updateEventStatus(eventId, status) {
  */
 export async function fetchPendingEventsWithSources() {
 	try {
+		const nowIso = new Date().toISOString();
 		const { data: events, error: eventsError } = await supabase
 			.from('events')
 			.select('*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))')
 			.in('status', ['pending_review', 'pending_change'])
+			.or(`end_datetime.gte.${nowIso},and(end_datetime.is.null,start_datetime.gte.${nowIso}),and(end_datetime.is.null,start_datetime.is.null)`)
 			.order('start_datetime', { ascending: true });
 		if (eventsError) throw eventsError;
-		const now = new Date();
+		const now = new Date(nowIso);
 		const filtered = (events ?? []).filter((event) => {
 			const raw = event.end_datetime || event.start_datetime;
 			if (!raw) return true;

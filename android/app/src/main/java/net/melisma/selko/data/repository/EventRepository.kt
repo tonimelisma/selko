@@ -37,16 +37,28 @@ class EventRepository(
 
     suspend fun fetchPendingEvents(): EventResult<List<CalendarEvent>> {
         return try {
+            val now = kotlin.time.Clock.System.now()
+            val nowStr = now.toString()
             val events = supabaseClient.from("events")
                 .select {
                     filter {
                         isIn("status", listOf("pending_review", "pending_change"))
+                        or {
+                            gte("end_datetime", nowStr)
+                            and {
+                                isNull("end_datetime")
+                                gte("start_datetime", nowStr)
+                            }
+                            and {
+                                isNull("end_datetime")
+                                isNull("start_datetime")
+                            }
+                        }
                     }
                     order("start_datetime", Order.ASCENDING)
                 }
                 .decodeList<CalendarEvent>()
 
-            val now = kotlin.time.Clock.System.now()
             val filtered = events.filter { event ->
                 val effective = event.endDatetime ?: event.startDatetime ?: return@filter true
                 effective >= now
@@ -169,13 +181,27 @@ class EventRepository(
 
     suspend fun fetchPendingEventsWithSources(): EventResult<List<CalendarEvent>> {
         return try {
+            val now = kotlin.time.Clock.System.now()
+            val nowStr = now.toString()
             val events = supabaseClient.from("events")
                 .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")) {
-                    filter { isIn("status", listOf("pending_review", "pending_change")) }
+                    filter {
+                        isIn("status", listOf("pending_review", "pending_change"))
+                        or {
+                            gte("end_datetime", nowStr)
+                            and {
+                                isNull("end_datetime")
+                                gte("start_datetime", nowStr)
+                            }
+                            and {
+                                isNull("end_datetime")
+                                isNull("start_datetime")
+                            }
+                        }
+                    }
                     order("start_datetime", Order.ASCENDING)
                 }
                 .decodeList<CalendarEvent>()
-            val now = kotlin.time.Clock.System.now()
             val filtered = events.filter { event ->
                 val effective = event.endDatetime ?: event.startDatetime ?: return@filter true
                 effective >= now
