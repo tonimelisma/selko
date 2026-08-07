@@ -735,16 +735,16 @@ including `itemAttachment` (unsupported) and `fileAttachment` (stored). Not a
 substitute for a live run, but it converts an unknown into a known-shape test.
 
 **9d. Unblock staging drills.** The staging Gmail refresh token has been dead
-since 2026-02-12 (`invalid_grant`). Recovery requires an interactive browser
-sign-in:
+since 2026-02-12 (`invalid_grant`). Recovery is normally automatic:
 
 ```bash
-ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
+uv run python -m cli.cli_seed_tokens --sync --provider gmail
+# checks both dev and staging, copies working → stale; only if both are stale
+# do you need a browser reauth (uv run python -m cli.cli_auth_gmail), then re-run --sync
 ```
 
-**This is yours to run** — it cannot be worked around by copying credentials
-(see "Environment separation" in `CLAUDE.md`). Steps 17–19 of
-`polling-email-ingestion-v2.md` stay blocked until it happens.
+Production is never a source or target. Steps 17–19 of
+`polling-email-ingestion-v2.md` stay blocked until one side is fresh and `--sync` succeeds.
 
 ---
 

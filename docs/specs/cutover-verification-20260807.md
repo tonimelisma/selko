@@ -33,7 +33,7 @@ Do not flip the flag via Render env alone. Follow the ordered cutover below.
 Per `egress-and-work-scheduling.md` Ordering constraint and `polling-email-ingestion-v2.md`:
 
 1. **Restore CI minutes** (GitHub) so `workflow_dispatch` and `supabase db push` work.
-2. **Staging token:** you run `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail` (browser).
+2. **Staging token:** `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging, copies working → stale; if both stale, re-auth one side then re-sync). Do not ask to reauth when one side is working.
 3. **Staging deploy:** `supabase db push --linked` on staging, then `gh workflow run test.yml` to staging.
 4. **Staging drills:** `./scripts/drill-lease-recovery.sh` (local Supabase) and staging full-path.
 5. **Prod migrations:** `supabase db push` on prod (dry-run first).

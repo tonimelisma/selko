@@ -806,13 +806,15 @@ ENVIRONMENT=production uv run pytest backend/tests/integration/ -m "production" 
    - Enable Gmail API
    - Add burner account email to OAuth consent screen test users
 
-3. **Authorize OAuth for staging:**
+3. **Authorize OAuth (one side, then sync):**
    ```bash
-   # Run once to authorize and store tokens
-   ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
+   # Authorize on either dev or staging, then sync to the other:
+   uv run python -m cli.cli_auth_gmail  # or ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
+   uv run python -m cli.cli_seed_tokens --sync --provider gmail
    ```
-   - Complete OAuth flow in browser
-   - Tokens stored in staging database `integrations` table
+   - Complete OAuth flow in browser (only one side needed)
+   - `--sync` copies working dev↔staging token to the stale side (production never touched)
+   - Tokens stored in both databases `integrations` tables
 
 4. **Prepare test data in Gmail:**
    - Send a few test emails to the burner account
