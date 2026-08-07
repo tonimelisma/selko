@@ -77,13 +77,34 @@
 	let catchUpNeedingAttention = $derived.by(() => {
 		const r = /** @type {import('$lib/types.js').IntegrationRecovery | null} */ (recovery);
 		if (!r) return 0;
-		return Math.max(0, (r.discovered_count ?? 0) - (r.completed_count ?? 0));
+		// 7a: remaining_count is authoritative (withdrawn events no longer undercount it);
+		// fallback to discovered - completed - withdrawn for older rows lacking withdrawn_count.
+		if (typeof r.remaining_count === 'number') return Math.max(0, r.remaining_count);
+		return Math.max(0, (r.discovered_count ?? 0) - (r.completed_count ?? 0) - (r.withdrawn_count ?? 0));
 	});
 
 	async function loadRecovery() {
-		const { data } = await fetchCalendarRecovery();
+		// 7c: fetchCalendarRecovery never throws — it returns {data: null, error}. A single
+		// network blip must not nuke the card (previous bug: recovery became null and the
+		// self-rescheduling chain stopped). Keep previous value and retry with backoff.
+		let data = null;
+		let error = null;
+		try {
+			const result = await fetchCalendarRecovery();
+			data = result.data;
+			error = result.error;
+		} catch (e) {
+			error = e;
+		}
+
+		if (error) {
+			// Keep previous recovery, retry soon. Do not null the card.
+			pollTimer = setTimeout(loadRecovery, 5000);
+			return;
+		}
+
 		const previous = recovery;
-		recovery = data ?? null;
+		recovery = data ?? previous ?? null;
 		if (previous && previous.status !== 'completed' && data && data.status === 'completed') {
 			justCaughtUp = true;
 			setTimeout(() => {
@@ -91,6 +112,9 @@
 			}, 4000);
 		}
 		if (data && !isTerminal(data)) {
+			pollTimer = setTimeout(loadRecovery, 5000);
+		} else if (!data && previous && !isTerminal(previous)) {
+			// If data is null but previous was non-terminal (e.g. transient null), keep polling
 			pollTimer = setTimeout(loadRecovery, 5000);
 		}
 	}

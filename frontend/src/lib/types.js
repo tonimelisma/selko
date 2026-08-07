@@ -29,6 +29,7 @@
  * @property {number} [discovered_count]
  * @property {number} [completed_count]
  * @property {number} [remaining_count]
+ * @property {number} [withdrawn_count] - 7a: cancelled/rejected mid-recovery (terminal-not-errored)
  * @property {string} [error_detail]
  * @property {string} requested_at
  */

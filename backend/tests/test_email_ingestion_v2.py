@@ -394,6 +394,95 @@ def test_safe_incident_defaults_keep_user_scope_optional():
     assert incident.last_success_at is None
 
 
+def test_new_integration_first_poll_in_flight_does_not_open_stale_incident(mock_config):
+    """7b: a new integration whose first poll is still running must not be stale."""
+    now = datetime.now(timezone.utc)
+    state = _health_state()
+    state["last_success_at"] = None
+    state["last_started_at"] = now.isoformat()
+    state["consecutive_failures"] = 0
+
+    client = MagicMock()
+    inserted: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "email_sync_state":
+            handle.select.return_value.execute.return_value.data = [state]
+        elif name in {"attachments", "email_ingestion_items"}:
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
+        elif name == "operational_incidents":
+            handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.execute.return_value.data = []
+            handle.select.return_value.eq.return_value.like.return_value.execute.return_value.data = []
+            handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
+        return handle
+
+    client.table.side_effect = table
+    asyncio.run(EmailSyncHealthEvaluator(client, mock_config, None).evaluate_once())
+
+    assert inserted == [], "first poll in-flight should not open stale_poll"
+
+
+def test_new_integration_never_started_has_grace_and_no_stale_incident(mock_config):
+    """Both timestamps null — before first claim — must not be stale."""
+    state = _health_state()
+    state["last_success_at"] = None
+    state["last_started_at"] = None
+    state["consecutive_failures"] = 0
+
+    client = MagicMock()
+    inserted: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "email_sync_state":
+            handle.select.return_value.execute.return_value.data = [state]
+        elif name in {"attachments", "email_ingestion_items"}:
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
+        elif name == "operational_incidents":
+            handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.execute.return_value.data = []
+            handle.select.return_value.eq.return_value.like.return_value.execute.return_value.data = []
+            handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
+        return handle
+
+    client.table.side_effect = table
+    asyncio.run(EmailSyncHealthEvaluator(client, mock_config, None).evaluate_once())
+
+    assert inserted == []
+
+def test_stale_poll_after_grace_does_open_incident(mock_config):
+    """After warning_seconds with no success, stale_poll must open."""
+    now = datetime.now(timezone.utc)
+    state = _health_state()
+    # last_started 40 minutes ago, warning is 1800s (30m) -> should be stale warning
+    state["last_success_at"] = None
+    state["last_started_at"] = (now - timedelta(seconds=mock_config.email_health_warning_seconds + 600)).isoformat()
+    state["consecutive_failures"] = 0
+
+    client = MagicMock()
+    inserted: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "email_sync_state":
+            handle.select.return_value.execute.return_value.data = [state]
+        elif name in {"attachments", "email_ingestion_items"}:
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
+        elif name == "operational_incidents":
+            handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.execute.return_value.data = []
+            handle.select.return_value.eq.return_value.like.return_value.execute.return_value.data = []
+            handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
+        return handle
+
+    client.table.side_effect = table
+    asyncio.run(EmailSyncHealthEvaluator(client, mock_config, None).evaluate_once())
+
+    assert any(row["incident_type"] == "stale_poll" for row in inserted)
+
+
 # --- Behaviours inherited from the removed legacy poller -------------------
 # These were regression tests against selko.workers.email_fetch. That module is
 # gone, but the production lessons behind them are not, so they are re-asserted

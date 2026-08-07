@@ -76,6 +76,10 @@ keep an unrestricted WebSocket alive in the background. On resume they
 resubscribe and fetch, so the first visible frame converges even when the
 operating system suspended the app.
 
+## Known consumer to migrate (hardening 7d)
+
+`frontend/src/lib/components/ConnectionRecovery.svelte` currently polls `fetchCalendarRecovery()` every 5s via `setTimeout`. This is the only consumer not yet on Realtime invalidation. It is left as polling for now because the recovery table is service-role-only (no Realtime auth) and the catch-up UI is progress-only (no missed-event risk). Recorded here so it is not forgotten when the Broadcast auth for `integration_recoveries` is added.
+
 ## Implementation map
 
 | Area | Primary files |
