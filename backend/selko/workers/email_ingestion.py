@@ -26,12 +26,15 @@ from selko.services.email_ingestion import (
     safe_error_code,
 )
 from selko.services.emails import parse_gmail_message
+import selko.services.gmail as gmail  # 8a: module import keeps patch target stable
+
 from selko.services.gmail import (
     GmailHistoryExpiredError,
     build_initial_sync_query,
     build_service,
     fetch_history_message_ids,
-    get_credentials,
+    get_full_message as get_gmail_full_message,
+    get_gmail_credentials,
     get_messages_metadata_batch,
     get_user_profile,
     extract_attachments,
@@ -39,6 +42,11 @@ from selko.services.gmail import (
     list_labels,
     list_message_ids,
 )
+
+# 8a/8c: canonical names are get_gmail_credentials and get_gmail_full_message.
+# Keep old patch targets working: tests patch selko.workers.email_ingestion.get_credentials
+# (old name) and selko.services.gmail.get_full_message. Both must hit.
+get_credentials = get_gmail_credentials  # old alias for 8c compat
 from selko.services.outlook import (
     GraphHttpError,
     RESYNC_REQUIRED,
@@ -109,6 +117,9 @@ class EmailIngestionWorker:
         # Egress 5: in-process nudge for user-initiated email sync (same loop-bound
         # constraint as WorkerPool — created per runtime, cleared on wake).
         self._nudge_event: asyncio.Event | None = None
+        # 8f: explicit init so _outlook_call never AttributeErrors if called
+        # before _outlook_token. Previously created implicitly in _outlook_token.
+        self._outlook_access_token: str | None = None
 
     def nudge(self) -> None:
         """Wake the coordinator immediately (approve/request_email_sync_now path)."""
@@ -169,6 +180,18 @@ class EmailIngestionWorker:
             await asyncio.to_thread(self.repository.complete_sync, claim, self.worker_id, reconciled=True)
             self._log_sync_run(claim, started_at, totals=totals)
         except Exception as exc:
+            # 8e: record Graph failures during reconciliation too (most likely to hit throttling)
+            if isinstance(exc, GraphHttpError):
+                record_graph_failure(
+                    self.client,
+                    self.config,
+                    integration_id=claim.integration_id,
+                    operation="reconcile",
+                    url=getattr(exc, "safe_url_template", "/me/mailFolders/{folder-id}/messages/delta"),
+                    error=exc,
+                    run_id=claim.run_id,
+                )
+            logger.warning("Email reconcile failed provider=%s code=%s", claim.provider, safe_error_code(exc))
             await asyncio.to_thread(self.repository.fail_sync, claim, self.worker_id, exc)
             self._log_sync_run(claim, started_at, error_code=safe_error_code(exc))
         return True
@@ -219,7 +242,7 @@ class EmailIngestionWorker:
     def _discover_gmail(self, claim: SyncClaim, *, lookback_days: int | None = None) -> dict[str, int]:
         totals = {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
         integration = self._integration(claim.integration_id)
-        credentials = get_credentials(self.client, self.config, user_id=claim.user_id)
+        credentials = get_gmail_credentials(self.client, self.config, user_id=claim.user_id)
         if not credentials:
             raise ProviderAuthenticationError("Gmail credentials are unavailable")
         service = build_service(credentials)
@@ -367,6 +390,8 @@ class EmailIngestionWorker:
         which marks the integration expired and stops ingestion entirely until
         the user reconnects, even though the refresh token is perfectly valid.
         """
+        if not self._outlook_access_token:
+            raise RuntimeError("Outlook access token not initialized — call _outlook_token first")
         try:
             return operation(self._outlook_access_token)
         except GraphHttpError as exc:
@@ -492,10 +517,36 @@ class EmailIngestionWorker:
                 if exc.status_code == 404:
                     self.client.table("email_folders").delete().eq("id", folder["id"]).execute()
                     continue
+                logger.warning(
+                    "Outlook folder %s discovery failed code=%s (%d failures so far)",
+                    folder.get("provider_folder_id"),
+                    safe_error_code(exc),
+                    len(failures) + 1,
+                )
                 failures.append(exc)
             except Exception as exc:
+                # 8d: log secondary failures, not just the first raised one
+                logger.warning(
+                    "Outlook folder %s discovery failed code=%s (%d failures so far)",
+                    folder.get("provider_folder_id"),
+                    safe_error_code(exc),
+                    len(failures) + 1,
+                )
                 failures.append(exc)
         if failures:
+            # 8d: log every failure, not just the first, before raising
+            for idx, failure in enumerate(failures):
+                logger.warning(
+                    "Outlook discovery secondary failure %d/%d: %s",
+                    idx + 1,
+                    len(failures),
+                    safe_error_code(failure),
+                )
+            logger.info(
+                "Outlook discovery completed with %d failures; raising first (code=%s)",
+                len(failures),
+                safe_error_code(failures[0]),
+            )
             raise failures[0]
         return totals
 
@@ -534,10 +585,12 @@ class EmailIngestionWorker:
     def acquire_item(self, item: dict[str, Any]) -> str:
         provider = item["provider"]
         if provider == "gmail":
-            credentials = get_credentials(self.client, self.config, user_id=item["user_id"])
+            credentials = get_gmail_credentials(self.client, self.config, user_id=item["user_id"])
             if not credentials:
                 raise ProviderAuthenticationError("Gmail credentials are unavailable")
-            message = __import__("selko.services.gmail", fromlist=["get_full_message"]).get_full_message(
+            # 8a: direct import, patch at use site
+            # (selko.workers.email_ingestion.get_gmail_full_message)
+            message = get_gmail_full_message(
                 build_service(credentials), item["provider_message_id"]
             )
             parsed = parse_gmail_message(message)
@@ -605,10 +658,10 @@ class EmailIngestionWorker:
             return "unsupported"
         email = self.client.table("emails").select("user_id,email_provider,provider_message_id,integration_id").eq("id", attachment["email_id"]).single().execute().data
         if email["email_provider"] == "gmail":
-            credentials = get_credentials(self.client, self.config, user_id=email["user_id"])
+            credentials = get_gmail_credentials(self.client, self.config, user_id=email["user_id"])
             if not credentials:
                 raise ProviderAuthenticationError("Gmail credentials are unavailable")
-            message = __import__("selko.services.gmail", fromlist=["get_full_message"]).get_full_message(build_service(credentials), email["provider_message_id"])
+            message = get_gmail_full_message(build_service(credentials), email["provider_message_id"])
             # Inline images are registered as descriptors during acquisition but
             # are skipped by extract_attachments(), so both sources must be
             # searched or every CID image would be marked unsupported.
