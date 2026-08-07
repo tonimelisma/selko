@@ -117,6 +117,10 @@ class EmailIngestionWorker:
         # Egress 5: in-process nudge for user-initiated email sync (same loop-bound
         # constraint as WorkerPool — created per runtime, cleared on wake).
         self._nudge_event: asyncio.Event | None = None
+        # R3: claim loops also nudge-aware so discovery->acquisition is <100ms
+        # not up to 30s geometric backoff. Separate event so coordinator nudge
+        # does not starve claim wake and vice versa.
+        self._claim_nudge: asyncio.Event | None = None
         # 8f: explicit init so _outlook_call never AttributeErrors if called
         # before _outlook_token. Previously created implicitly in _outlook_token.
         self._outlook_access_token: str | None = None
@@ -126,6 +130,8 @@ class EmailIngestionWorker:
         try:
             if self._nudge_event is not None and not self._nudge_event.is_set():
                 self._nudge_event.set()
+            if self._claim_nudge is not None and not self._claim_nudge.is_set():
+                self._claim_nudge.set()
         except Exception:
             pass
 
@@ -134,12 +140,26 @@ class EmailIngestionWorker:
             self._nudge_event = asyncio.Event()
         return self._nudge_event
 
+    def ensure_claim_nudge(self) -> asyncio.Event:
+        if self._claim_nudge is None:
+            self._claim_nudge = asyncio.Event()
+        return self._claim_nudge
+
+    def nudge_claim(self) -> None:
+        try:
+            if self._claim_nudge is not None and not self._claim_nudge.is_set():
+                self._claim_nudge.set()
+        except Exception:
+            pass
+
     def stop(self) -> None:
         self.stop_event.set()
-        # Wake coordinator if it is sleeping on the nudge event
+        # Wake coordinator and claim loops if they are sleeping on nudge events
         try:
             if self._nudge_event is not None and not self._nudge_event.is_set():
                 self._nudge_event.set()
+            if self._claim_nudge is not None and not self._claim_nudge.is_set():
+                self._claim_nudge.set()
         except Exception:
             pass
 
@@ -755,18 +775,38 @@ class EmailIngestionWorker:
         return min(ceiling, base * (2 ** max(consecutive_idle - 1, 0)))
 
     async def _claim_loop(self, run_once) -> None:
+        # R3: claim loop is nudge-aware — discovery wakes it in <100ms instead
+        # of up to 30s backoff. Backoff remains as the floor when no nudge
+        # arrives (single idle model, not dual).
+        self.ensure_claim_nudge()
         consecutive_idle = 0
         while not self.stop_event.is_set():
             if await self._guarded(run_once):
                 consecutive_idle = 0
                 continue
             consecutive_idle += 1
+            timeout = self.idle_backoff(consecutive_idle)
+            # Wait for stop, nudge, or timeout — whichever comes first
+            claim_nudge = self._claim_nudge
             try:
-                await asyncio.wait_for(
-                    self.stop_event.wait(), timeout=self.idle_backoff(consecutive_idle)
-                )
+                # Use wait_for on the nudge with timeout; stop_event is checked
+                # via the outer while and also wakes nudge via stop()
+                if claim_nudge is not None:
+                    try:
+                        await asyncio.wait_for(claim_nudge.wait(), timeout=timeout)
+                    except asyncio.TimeoutError:
+                        pass
+                    if claim_nudge.is_set():
+                        claim_nudge.clear()
+                        consecutive_idle = 0
+                else:
+                    await asyncio.wait_for(
+                        self.stop_event.wait(), timeout=timeout
+                    )
             except asyncio.TimeoutError:
                 pass
+            except asyncio.CancelledError:
+                raise
 
     async def acquisition_loop(self) -> None:
         await self._claim_loop(self.run_acquisition_once)

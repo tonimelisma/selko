@@ -670,3 +670,29 @@ def test_sync_run_log_line_records_error_code_on_failure(mock_config, caplog):
     assert len(matches) == 1
     msg = matches[0].getMessage()
     assert "error_code=provider_rate_limited" in msg
+
+
+def test_claim_loop_nudge_wakes_acquisition(mock_config):
+    """R3: discovery->acquisition must be <100ms, not 30s backoff. Claim loop is now nudge-aware."""
+    import asyncio
+    from dataclasses import replace
+    from unittest.mock import MagicMock
+    from selko.workers.email_ingestion import EmailIngestionWorker
+    config = replace(mock_config, email_worker_idle_base_seconds=30.0, email_worker_idle_max_seconds=30.0)
+    client = MagicMock()
+    worker = EmailIngestionWorker(client, config, "w-1")
+    calls = {"n": 0}
+    async def run_once():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return False  # first Idle triggers long backoff
+        worker.stop()
+        return False
+    async def scenario():
+        task = asyncio.create_task(worker._claim_loop(run_once))
+        await asyncio.sleep(0.05)
+        assert not task.done(), "loop should still be sleeping on 30s backoff"
+        worker.nudge()
+        await asyncio.wait_for(task, timeout=1.0)
+        assert calls["n"] >= 2
+    asyncio.run(scenario())
