@@ -155,8 +155,26 @@ def upload_to_storage(
         AttachmentError: If upload fails.
     """
     # Generate unique filename with user namespace
-    # Sanitize filename: remove path separators and limit length
-    safe_filename = filename.replace("/", "_").replace("\\", "_")[:100]
+    # Sanitize for Supabase Storage InvalidKey: storage keys must be URL-safe
+    # ASCII. The previous sanitizer only stripped slashes, so a real inbox
+    # filename like 'Beslut om klagomål(1049457).pdf' or
+    # 'Screenshot … AM.png' (narrow no-break space U+202F) raised
+    # StorageApiError InvalidKey and retried 8 times to dead_letter.
+    import re as _re
+    import unicodedata as _ud
+    # NFKD transliterate ö→o etc, drop non-ASCII, then strip unsafe chars
+    _norm = _ud.normalize('NFKD', filename)
+    _ascii = _norm.encode('ascii', 'ignore').decode('ascii')
+    # Keep alphanumerics, dot, dash, underscore; everything else → underscore
+    _sanitized = _re.sub(r'[^A-Za-z0-9._-]+', '_', _ascii)
+    # Collapse runs, trim dots/underscores, fallback if empty
+    _sanitized = _re.sub(r'_+', '_', _sanitized).strip('._')
+    if not _sanitized:
+        _sanitized = 'attachment'
+    # Preserve extension separately so filtering still works when truncated
+    # (e.g. .pdf) — keep last dot + ext within the 100-char budget
+    _sanitized = _sanitized[:100].strip('._') or 'attachment'
+    safe_filename = _sanitized
     unique_id = uuid4().hex[:12]
     storage_path = f"{user_id}/{unique_id}_{safe_filename}"
 
