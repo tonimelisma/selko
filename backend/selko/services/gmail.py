@@ -479,12 +479,18 @@ def get_messages_metadata_batch(service, message_ids: Iterable[str], *, batch_si
     if not ids:
         return results
 
+    # R2: never raise inside the callback — some googleapiclient versions swallow
+    # per-request callback exceptions. Capture per-request outcomes as values
+    # and resolve after execute().
+    per_request_errors: list[BaseException] = []
+
     def _on_message(request_id, response, exception):  # noqa: ANN001
         if exception is None:
             results[request_id] = response
             return
         if isinstance(exception, RefreshError):
-            raise _auth_error(exception, prefix="Gmail credentials expired or revoked")
+            per_request_errors.append(_auth_error(exception, prefix="Gmail credentials expired or revoked"))
+            return
         if isinstance(exception, HttpError):
             if getattr(exception.resp, "status", None) == 404:
                 # The message was deleted between listing and metadata fetch.
@@ -493,11 +499,13 @@ def get_messages_metadata_batch(service, message_ids: Iterable[str], *, batch_si
                 # instead of failing the whole batch.
                 results[request_id] = {"id": request_id, "_deleted": True}
                 return
-            raise _wrap_http_error(exception, prefix="Gmail API error batch metadata")
+            per_request_errors.append(_wrap_http_error(exception, prefix="Gmail API error batch metadata"))
+            return
         # Anything else (transport, parsing) is not per-message recoverable.
-        raise GmailError(f"Gmail API error batch metadata: {exception}")
+        per_request_errors.append(GmailError(f"Gmail API error batch metadata: {exception}"))
 
     for chunk in _chunks(ids, batch_size):
+        per_request_errors.clear()
         batch = service.new_batch_http_request()
         for mid in chunk:
             batch.add(
@@ -511,6 +519,22 @@ def get_messages_metadata_batch(service, message_ids: Iterable[str], *, batch_si
             raise _auth_error(e, prefix="Gmail credentials expired or revoked") from e
         except HttpError as e:
             raise _wrap_http_error(e, prefix="Gmail API error batch metadata") from e
+        if per_request_errors:
+            # Auth aborts the whole discover — no partial progress is safe
+            for err in per_request_errors:
+                if isinstance(err, GmailAuthError):
+                    raise err
+            # One transient in a 100-chunk must not silently disappear; raise
+            # a batch-level transient so classify_email_error → provider_transient
+            # and the caller retries via backoff. Successful ids in this chunk
+            # are preserved in `results` for the caller to commit before retry
+            # (see R4 chunk-level retry), but raising here surfaces the partial
+            # failure now — the next pass will re-fetch the failed identities
+            # via the resumable known_provider_message_ids filter.
+            raise GmailError(
+                f"Gmail batch metadata partial failure ({len(per_request_errors)}/{len(chunk)})",
+                status_code=500,
+            )
     return results
 
 

@@ -130,3 +130,90 @@ class TestGetOAuthCredentialsExpiry:
 
         assert creds is not None
         assert creds.expiry == datetime(2026, 7, 11, 5, 21, 38, 359080)
+
+# R2 regression: batch callback exceptions used to be swallowed by googleapiclient
+from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError
+from selko.services.gmail import get_messages_metadata_batch, GmailError, GmailAuthError
+
+
+class _FakeResp:
+    def __init__(self, status):
+        self.status = status
+        self.reason = "reason"
+
+
+def _make_http_error(status):
+    import json
+    content = json.dumps({"error": {"code": status, "message": "err"}}).encode()
+    return HttpError(resp=_FakeResp(status), content=content)
+
+
+class TestGetMessagesMetadataBatch:
+    def test_404_in_batch_becomes_deleted_not_failure(self):
+        """Per-message 404 (deleted between listing and fetch) must become _deleted."""
+        service = MagicMock()
+
+        def fake_batch():
+            b = MagicMock()
+
+            def add(req, callback=None, request_id=None):
+                if request_id == "msg-404":
+                    callback(request_id, None, _make_http_error(404))
+                else:
+                    callback(request_id, {"id": request_id, "labelIds": ["INBOX"]}, None)
+            b.add.side_effect = add
+            b.execute.return_value = None
+            return b
+
+        service.new_batch_http_request.side_effect = fake_batch
+        service.users.return_value.messages.return_value.get.return_value = MagicMock()
+        result = get_messages_metadata_batch(service, ["msg-ok", "msg-404"])
+        assert result["msg-ok"]["labelIds"] == ["INBOX"]
+        assert result["msg-404"] == {"id": "msg-404", "_deleted": True}
+
+    def test_transient_500_is_not_swallowed(self):
+        """One 500 in a 100-chunk must not silently disappear — it raises transient."""
+        service = MagicMock()
+
+        def fake_batch():
+            b = MagicMock()
+
+            def add(req, callback=None, request_id=None):
+                if request_id == "msg-500":
+                    callback(request_id, None, _make_http_error(500))
+                else:
+                    callback(request_id, {"id": request_id, "labelIds": ["INBOX"]}, None)
+            b.add.side_effect = add
+            b.execute.return_value = None
+            return b
+
+        service.new_batch_http_request.side_effect = fake_batch
+        service.users.return_value.messages.return_value.get.return_value = MagicMock()
+        try:
+            get_messages_metadata_batch(service, ["msg-ok", "msg-500"])
+            assert False, "expected transient GmailError"
+        except GmailError as e:
+            assert e.status_code == 500
+            assert "partial failure" in str(e)
+
+    def test_auth_in_batch_aborts(self):
+        """Auth error in callback must surface as GmailAuthError, not swallow."""
+        service = MagicMock()
+
+        def fake_batch():
+            b = MagicMock()
+
+            def add(req, callback=None, request_id=None):
+                callback(request_id, None, RefreshError("invalid_grant"))
+            b.add.side_effect = add
+            b.execute.return_value = None
+            return b
+
+        service.new_batch_http_request.side_effect = fake_batch
+        service.users.return_value.messages.return_value.get.return_value = MagicMock()
+        try:
+            get_messages_metadata_batch(service, ["msg-1"])
+            assert False, "expected GmailAuthError"
+        except GmailAuthError:
+            pass
