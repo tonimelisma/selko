@@ -247,6 +247,10 @@ class IngestionRuntime:
         Safe codes only; never payloads, addresses, message ids or tokens. The
         DB calls are best-effort: a transient failure degrades to ``unknown``
         counts rather than failing the route.
+
+        R1: counted RPCs — one call, no Python sum() over a truncated
+        response. At 100k rows the old sum() truncated at 1000 and reported
+        ok while dead.
         """
         snapshot = {
             "status": "ok",
@@ -262,58 +266,38 @@ class IngestionRuntime:
             "open_incidents": None,
         }
         try:
-            now_dt = datetime.now(timezone.utc)
-            states = (
-                self.client.table("email_sync_state")
-                .select("next_poll_at,lease_expires_at")
-                .execute()
-            ).data or []
-            due = 0
-            leases = 0
-            oldest: datetime | None = None
-            for row in states:
-                npr = _parse_ts(row.get("next_poll_at"))
-                if npr is not None and npr <= now_dt and (row.get("lease_expires_at") is None or _parse_ts(row.get("lease_expires_at")) <= now_dt):
-                    due += 1
-                lex = _parse_ts(row.get("lease_expires_at"))
-                if lex is not None and lex > now_dt:
-                    leases += 1
-                if npr is not None and (oldest is None or npr < oldest):
-                    oldest = npr
-            snapshot["integrations_due"] = due
-            snapshot["leases_held"] = leases
-            snapshot["oldest_next_poll_seconds"] = (
-                None if oldest is None else max(0, int((now_dt - oldest).total_seconds()))
-            )
+            # R1: two counted RPCs — fixed cost regardless of scale
+            dead = self.client.rpc("health_dead_letter_counts").execute()
+            dead_row = (getattr(dead, "data", None) or [None])[0] if isinstance(getattr(dead, "data", None), list) else getattr(dead, "data", None)
+            if isinstance(dead_row, dict):
+                snapshot["items_pending"] = int(dead_row.get("items_pending") or 0)
+                snapshot["items_dead_letter"] = int(dead_row.get("items_dead_letter") or 0)
+                snapshot["attachments_dead_letter"] = int(dead_row.get("attachments_dead_letter") or 0)
+            else:
+                # Fallback for PostgREST shape where RETURNS TABLE is list[dict]
+                dl = getattr(dead, "data", None) or []
+                if dl and isinstance(dl[0], dict):
+                    snapshot["items_pending"] = int(dl[0].get("items_pending") or 0)
+                    snapshot["items_dead_letter"] = int(dl[0].get("items_dead_letter") or 0)
+                    snapshot["attachments_dead_letter"] = int(dl[0].get("attachments_dead_letter") or 0)
 
-            items = self.client.table("email_ingestion_items").select(
-                "id,acquisition_status", count="exact"
+            slo = self.client.rpc(
+                "health_poll_slo",
+                {"p_warning_seconds": int(self.config.email_health_warning_seconds or 1800)},
             ).execute()
-            snapshot["items_pending"] = sum(
-                1 for r in (items.data or [])
-                if r.get("acquisition_status") in ("pending", "retry", "processing")
-            )
-            snapshot["items_dead_letter"] = sum(
-                1 for r in (items.data or [])
-                if r.get("acquisition_status") == "dead_letter"
-            )
-
-            atts = self.client.table("attachments").select(
-                "id,ingestion_status", count="exact"
-            ).execute()
-            snapshot["attachments_dead_letter"] = sum(
-                1 for r in (atts.data or [])
-                if r.get("ingestion_status") == "dead_letter"
-            )
-
-            incidents = (
-                self.client.table("operational_incidents")
-                .select("incident_key", count="exact")
-                .eq("status", "open")
-                .like("incident_key", "email-sync:%")
-                .execute()
-            )
-            snapshot["open_incidents"] = len(incidents.data or [])
+            slo_row = (getattr(slo, "data", None) or [None])[0] if isinstance(getattr(slo, "data", None), list) else getattr(slo, "data", None)
+            if isinstance(slo_row, dict):
+                snapshot["integrations_due"] = int(slo_row.get("integrations_due") or 0)
+                snapshot["leases_held"] = int(slo_row.get("leases_held") or 0)
+                snapshot["oldest_next_poll_seconds"] = int(slo_row.get("oldest_next_poll_seconds") or 0) if slo_row.get("oldest_next_poll_seconds") is not None else None
+                snapshot["open_incidents"] = int(slo_row.get("open_incidents") or 0)
+            else:
+                sl = getattr(slo, "data", None) or []
+                if sl and isinstance(sl[0], dict):
+                    snapshot["integrations_due"] = int(sl[0].get("integrations_due") or 0)
+                    snapshot["leases_held"] = int(sl[0].get("leases_held") or 0)
+                    snapshot["oldest_next_poll_seconds"] = int(sl[0].get("oldest_next_poll_seconds") or 0) if sl[0].get("oldest_next_poll_seconds") is not None else None
+                    snapshot["open_incidents"] = int(sl[0].get("open_incidents") or 0)
         except Exception:
             logger.exception("Ingestion health snapshot DB queries failed")
             snapshot["status"] = "degraded"
