@@ -230,7 +230,8 @@ class EmailSyncHealthEvaluator:
                 expected[incident.incident_key] = incident
 
         for incident in expected.values():
-            existing = self.client.table("operational_incidents").select("*").eq("incident_key", incident.incident_key).maybe_single().execute().data
+            _maybe = self.client.table("operational_incidents").select("*").eq("incident_key", incident.incident_key).maybe_single().execute()
+            existing = getattr(_maybe, "data", None)
             if not existing:
                 self.client.table("operational_incidents").insert({
                     "incident_key": incident.incident_key,
