@@ -69,9 +69,10 @@ class WorkerPool:
     (approve/retry). If the nudge is missed, the next tick catches it — degraded
     latency, never lost.
 
-    num_workers is retained as a concurrency hint for the executor pool that
-    fans out I/O (arch A). Durability stays in SQL leases (FOR UPDATE SKIP
-    LOCKED), not in process topology.
+    R3: single scheduler with Semaphore concurrency for calendar sync.
+    worker_pool_size is a deprecated alias for worker_calendar_sync_concurrency;
+    num_workers is kept for compat but the real knob is
+    config.worker_calendar_sync_concurrency. Durability stays in SQL leases.
     """
 
     def __init__(
@@ -125,12 +126,23 @@ class WorkerPool:
         floored at the legacy idle_sleep_seconds so a misconfigured small max
         cannot accidentally re-create a busy-wait. Geometric backoff (PR #247)
         is retained only as the safety-net poll inside _process_integration_recovery.
+
+        R3: floor at 5.0s is intentional — prevents WORKER_IDLE_MAX_SECONDS=1
+        from recreating a busy-wait. A clamp is logged once at DEBUG.
         """
         if self.config is not None:
             # Prefer explicit tick if caller passed it; otherwise use max.
             base = float(getattr(self.config, "worker_idle_max_seconds", 0) or 0)
             floor = float(self.idle_sleep_seconds or 1.0)
-            return max(base, floor, 5.0)
+            tick = max(base, floor, 5.0)
+            # R3: visible clamp — if the configured max is below the floor,
+            # log once so latency debugging is not silent.
+            if base > 0 and base < 5.0 and tick == 5.0:
+                logger.debug(
+                    "WorkerPool tick clamped to 5.0s (configured worker_idle_max_seconds=%.1fs below floor)",
+                    base,
+                )
+            return tick
         return max(float(self.idle_sleep_seconds or 1.0), 5.0)
 
     async def start(self) -> None:

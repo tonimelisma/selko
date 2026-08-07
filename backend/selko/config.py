@@ -80,11 +80,14 @@ class Config:
     max_other_size_for_llm: int = 20 * 1024 * 1024    # 20 MB
 
     # Worker pool configuration
-    worker_pool_size: int = 3
+    worker_pool_size: int = 3  # deprecated alias for worker_calendar_sync_concurrency (kept 1 release)
+    worker_calendar_sync_concurrency: int = 2
     worker_idle_sleep_seconds: float = 1.0
     # Ceiling for the pool's geometric idle backoff. The flat idle sleep above
     # is the *first* wait after work runs out; consecutive idle ticks back off
     # up to this value so an idle deployment stops polling at tick speed.
+    # R3: _tick_seconds() floors at 5.0 so WORKER_IDLE_MAX_SECONDS=1 cannot
+    # recreate a busy-wait; the clamp is logged once at DEBUG.
     worker_idle_max_seconds: float = 30.0
     egress_log_interval_seconds: float = 300.0
     worker_error_backoff_seconds: float = 5.0
@@ -374,6 +377,10 @@ def load_config(env_override: Optional[str] = None) -> Config:
         test_user_email=getenv("TEST_USER_EMAIL"),
         test_user_password=getenv("TEST_USER_PASSWORD"),
         worker_pool_size=int(getenv("WORKER_POOL_SIZE", "3")),
+        worker_calendar_sync_concurrency=int(
+            getenv("WORKER_CALENDAR_SYNC_CONCURRENCY")
+            or getenv("WORKER_POOL_SIZE", "2")
+        ),
         worker_idle_sleep_seconds=float(getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
         worker_idle_max_seconds=float(getenv("WORKER_IDLE_MAX_SECONDS", "30")),
         egress_log_interval_seconds=float(getenv("EGRESS_LOG_INTERVAL_SECONDS", "300")),
