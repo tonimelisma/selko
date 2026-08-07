@@ -8,6 +8,7 @@ editing expected output or the scorer rescores without calling a model.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import inspect
 import json
@@ -18,9 +19,9 @@ from typing import Any, Literal
 
 from .eval_config import ATTACHMENTS_DIR, EVENT_PROCESSING_PATH
 
-IDENTITY_VERSION = 1
-SCORING_VERSION = 1
-PROMPT_RENDERER_VERSION = 1
+IDENTITY_VERSION = 2
+SCORING_VERSION = 2
+PROMPT_RENDERER_VERSION = 2
 
 OperationName = Literal["extract", "compare", "merge"]
 
@@ -47,18 +48,43 @@ def hash_file_bytes(path: Path) -> str:
     return sha256_hex(path.read_bytes())
 
 
+def _normalized_source(obj: Any) -> str:
+    """AST-normalized source: strips comments, docstrings, whitespace and formatting.
+
+    Falls back to repr() when source is unavailable. This makes prompt/adapter
+    hashes invariant to non-semantic edits (comments, black formatting) while
+    still invalidating on real logic or prompt-string changes.
+    """
+    try:
+        source = inspect.getsource(obj)
+    except (OSError, TypeError):
+        return repr(obj)
+    try:
+        tree = ast.parse(source)
+        # Strip top-level docstring from FunctionDef/ClassDef/Module
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Module)):
+                if node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str):
+                    node.body = node.body[1:]
+                # Clear lineno/col info so formatting doesn't affect hash
+                for child in ast.walk(node):
+                    for field in ("lineno", "col_offset", "end_lineno", "end_col_offset"):
+                        if hasattr(child, field):
+                            setattr(child, field, 0)
+        return ast.dump(tree, annotate_fields=True, include_attributes=False)
+    except SyntaxError:
+        return source.strip()
+
+
 def hash_source_object(obj: Any, *, label: str | None = None) -> str:
-    """Hash Python source for a function/class. Cached by label or qualname."""
+    """Hash normalized source for a function/class. Cached by label or qualname."""
     cache_key = label or f"{getattr(obj, '__module__', '')}.{getattr(obj, '__qualname__', repr(obj))}"
     with _source_hash_lock:
         cached = _source_hash_cache.get(cache_key)
         if cached is not None:
             return cached
-    try:
-        source = inspect.getsource(obj)
-    except (OSError, TypeError):
-        source = repr(obj)
-    digest = sha256_hex(source)
+    normalized = _normalized_source(obj)
+    digest = sha256_hex(normalized)
     with _source_hash_lock:
         _source_hash_cache[cache_key] = digest
     return digest
@@ -187,11 +213,9 @@ def compute_expected_output_hash(fixture: dict[str, Any]) -> str:
 
 
 def _schema_hash(cls: type) -> str:
-    parts = [
-        inspect.getsource(cls),
-        canonical_json(cls.model_json_schema()),
-    ]
-    return sha256_hex("\n".join(parts))
+    # Hash only the canonical JSON schema, not class source - source whitespace
+    # must not invalidate still-valid inference where schema is unchanged.
+    return sha256_of_canonical(cls.model_json_schema())
 
 
 def compute_prompt_contract_hash(operation: OperationName | str) -> str:
@@ -209,19 +233,19 @@ def compute_prompt_contract_hash(operation: OperationName | str) -> str:
     parts: list[str] = [f"renderer:{PROMPT_RENDERER_VERSION}", f"operation:{operation}"]
 
     if operation == "extract":
-        parts.append(inspect.getsource(event_processing._build_prompt))
-        parts.append(inspect.getsource(event_processing.extract_calendar_events))
+        parts.append(_normalized_source(event_processing._build_prompt))
+        parts.append(_normalized_source(event_processing.extract_calendar_events))
         for helper_name in ("_build_content_parts", "_get_attachment_size_limit"):
             helper = getattr(event_processing, helper_name, None)
             if helper is not None:
-                parts.append(inspect.getsource(helper))
+                parts.append(_normalized_source(helper))
         parts.append(_schema_hash(CalendarEvent))
         parts.append(_schema_hash(EventExtractionResponse))
     elif operation == "compare":
-        parts.append(inspect.getsource(event_processing.compare_events))
+        parts.append(_normalized_source(event_processing.compare_events))
         # Compare uses an inline JSON schema inside the function source above.
     elif operation == "merge":
-        parts.append(inspect.getsource(event_processing.merge_event_data))
+        parts.append(_normalized_source(event_processing.merge_event_data))
     else:
         raise ValueError(f"Unknown operation for prompt contract: {operation}")
 
@@ -297,7 +321,7 @@ def compute_scorer_hash(operation: OperationName | str) -> str:
 
     parts = [f"scoring_version:{SCORING_VERSION}", f"operation:{operation}"]
     for obj in objs:
-        parts.append(inspect.getsource(obj))
+        parts.append(_normalized_source(obj))
     # Thresholds affect scoring without changing function source.
     from . import eval_config
 
