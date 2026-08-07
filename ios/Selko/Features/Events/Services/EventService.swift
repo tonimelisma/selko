@@ -73,7 +73,11 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
             .execute()
             .value
 
-        return events
+        let now = Date()
+        return events.filter { event in
+            guard let effective = event.endDatetime ?? event.startDatetime else { return true }
+            return effective >= now
+        }
     }
 
     func fetchPendingEventsWithSources() async throws -> [CalendarEvent] {
@@ -84,7 +88,11 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
             .execute()
             .value
 
-        return events
+        let now = Date()
+        return events.filter { event in
+            guard let effective = event.endDatetime ?? event.startDatetime else { return true }
+            return effective >= now
+        }
     }
 
     func fetchActivityEvents(limit: Int = 20, offset: Int = 0) async throws -> [CalendarEvent] {
