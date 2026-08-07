@@ -119,6 +119,8 @@
 		}
 	}
 
+	// R7: keep 5s poll as debt with expiry — see live-ui-updates.md Broadcast
+	// TODO(R7): replace with private per-user Broadcast on user:<uid>:selko-changes filtered resource=integration_recoveries; poll stays only as reconnect catch-up
 	onMount(() => {
 		loadRecovery();
 		return () => {
