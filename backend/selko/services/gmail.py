@@ -132,12 +132,17 @@ def run_oauth_flow(config: Config) -> Credentials:
         raise GmailError(f"Invalid OAuth configuration: {e}") from e
 
 
-def get_credentials(
+def get_gmail_credentials(
     client: Client,
     config: Config,
     user_id: Optional[str] = None,
 ) -> Optional[Credentials]:
     """Get Gmail credentials from database, refreshing if needed.
+
+    Renamed from get_credentials (8c) to disambiguate from
+    selko.services.integrations.get_credentials which has an incompatible
+    signature (client, user_id, provider). The old name is kept as an alias
+    for backwards compat with tests that patch the import path.
 
     Args:
         client: Authenticated Supabase client.
@@ -185,6 +190,13 @@ def get_credentials(
             return None
 
     return creds
+
+
+# Backwards-compat alias: old name was get_credentials, new name is
+# get_gmail_credentials (8c). Keep the old import path working so existing
+# patches (selko.services.gmail.get_credentials) and callers that have not
+# yet migrated do not break. New code should import get_gmail_credentials.
+get_credentials = get_gmail_credentials
 
 
 def build_service(credentials: Credentials):

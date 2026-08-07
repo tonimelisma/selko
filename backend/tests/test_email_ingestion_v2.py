@@ -130,9 +130,9 @@ def test_gmail_inline_image_is_stored_rather_than_marked_unsupported(mock_config
         "filename": "inline_0.png",
     }
 
-    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
-         patch("selko.services.gmail.get_full_message", return_value=_gmail_message_with_inline_image()), \
+         patch("selko.workers.email_ingestion.get_gmail_full_message", return_value=_gmail_message_with_inline_image()), \
          patch("selko.workers.email_ingestion.download_gmail_attachment", return_value=b"png-bytes") as download, \
          patch("selko.workers.email_ingestion.calculate_content_hash", return_value="hash"), \
          patch("selko.workers.email_ingestion.upload_to_storage", return_value="path/inline_0.png"):
@@ -156,9 +156,9 @@ def test_acquire_item_does_not_query_integrations_per_message(mock_config):
         "provider_folder_ids": ["INBOX"],
     }
 
-    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
-         patch("selko.services.gmail.get_full_message", return_value={"id": "msg-1", "payload": {}}), \
+         patch("selko.workers.email_ingestion.get_gmail_full_message", return_value={"id": "msg-1", "payload": {}}), \
          patch("selko.workers.email_ingestion.parse_gmail_message", return_value={}), \
          patch.object(worker.repository, "save_email_with_attachment_descriptors", return_value="email-1") as atomic_save, \
          patch.object(worker, "_integration") as integration_lookup:
@@ -555,7 +555,7 @@ def test_gmail_history_expiry_captures_replacement_cursor_before_listing(mock_co
         return []
 
     claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
-    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
          patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
@@ -590,7 +590,7 @@ def test_gmail_incremental_poll_does_not_fetch_the_user_profile(mock_config):
     worker = EmailIngestionWorker(_gmail_discovery_client(), mock_config, "worker-1")
     claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
 
-    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
          patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
@@ -622,7 +622,7 @@ def test_gmail_discovery_batches_metadata_and_matches_the_serial_result(mock_con
         "message-excluded": {"id": "message-excluded", "labelIds": ["TRASH"]},
     }
 
-    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
          patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
@@ -661,7 +661,7 @@ def test_gmail_reconcile_skips_known_identities_and_resumes_next_pass(mock_confi
     window = [f"message-{i}" for i in range(6)]
     already_known = {"message-0", "message-1", "message-2"}
 
-    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
          patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
@@ -687,7 +687,7 @@ def test_gmail_reconcile_does_not_bound_the_incremental_path(mock_config):
     worker = EmailIngestionWorker(_gmail_discovery_client(), mock_config, "worker-1")
     claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
 
-    with patch("selko.workers.email_ingestion.get_credentials", return_value=MagicMock()), \
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.list_labels", return_value=[]), \
          patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
