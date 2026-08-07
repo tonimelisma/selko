@@ -134,7 +134,7 @@ See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI 
 Local, change-scoped tests are the gate. **Never block a merge waiting for CI** — Actions minutes are limited and CI may not run at all. CI (unit tests, staging deploy, integration tests) runs on the merge commit as a safety net; if it fails, fix forward:
 
 1. **Diagnose** — `gh run view <id> --log-failed`
-2. **Google OAuth expired** (`RefreshError: invalid_grant`): ask the user to run `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`, then re-trigger.
+2. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, re-auth one side then re-run `--sync`, then re-trigger.
 3. **Code issue** — follow-up PR.
 
 To verify CI before a prod deploy, `./scripts/poll-and-merge.sh <pr_number>` still polls PR + post-merge CI, but it is optional and not part of the normal DoD.
@@ -284,11 +284,12 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 - `cli_seed_tokens` is **development ↔ staging only**. Production is rejected at
   the argparse surface and inside `seed_tokens()` (CI imports the function
   directly, so the CLI layer alone is not enough). Do not reintroduce it.
-- When a staging or development OAuth token dies, the fix is to re-run the OAuth
-  flow for that environment, e.g.
-  `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`. That needs an
-  interactive browser sign-in and consent, so it is the user's to run. Do not
-  route around it by copying credentials.
+- When a development or staging OAuth token dies, **do not ask the user to reauth** —
+  check both dev and staging and copy the working token to the stale side:
+  `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both
+  envs, copies `development→staging` or `staging→development` whichever is
+  working→stale; no-op if both fresh). If both are stale, re-auth one side
+  then run `--sync` again. Also supports `--all-providers`.
 - Reading production state for diagnosis is fine (status, expiry, row counts).
   Print no tokens and copy nothing.
 

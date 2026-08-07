@@ -199,7 +199,7 @@ git push
 
 Common issues:
 - **Merge conflicts:** Rebase your branch and force-push, then re-run the script
-- **Expired Google OAuth tokens** (`RefreshError: invalid_grant`): Ask user to run `ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail`, then re-run the post-merge workflow
+- **Expired Google OAuth tokens** (`RefreshError: invalid_grant`): Run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging and copies working → stale; no reauth needed unless both are stale, then re-auth one side and re-run `--sync`), then re-run the post-merge workflow
 
 ### Email Notifications
 

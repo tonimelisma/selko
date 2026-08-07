@@ -18,6 +18,11 @@ from supabase import create_client
 from selko.config import Config, add_logging_arguments, load_config
 from selko.logging import setup_logging
 
+# Token staleness threshold — if expiry is within this window, treat as stale
+# and copy from the other env rather than failing. Google refresh tokens
+# typically expire in 1h, but we use 5m buffer.
+_STALE_BUFFER_SECONDS = 300
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,6 +66,42 @@ def get_integration_by_provider(admin_client, provider: str) -> dict | None:
             rows[0].get("status"),
         )
     return (active or rows)[0]
+
+
+def is_integration_stale(integration: dict | None) -> bool:
+    """Return True if integration is missing, non-active, or expiry is past.
+
+    This is the predicate for dev↔staging auto-sync: if either env is stale
+    and the other is fresh, copy fresh → stale. Both stale → need reauth.
+    Production is never considered here.
+    """
+    if not integration:
+        return True
+    if integration.get("status") != "active":
+        return True
+    # No expiry at all is treated as stale — cannot verify
+    expiry_raw = integration.get("token_expiry")
+    if not expiry_raw:
+        return True
+    try:
+        # token_expiry may be "2026-02-12T...Z" or with microseconds
+        expiry = datetime.fromisoformat(expiry_raw.replace("Z", "+00:00"))
+        # naive datetimes in DB are assumed UTC
+        if expiry.tzinfo is None:
+            from datetime import timezone as _tz
+            expiry = expiry.replace(tzinfo=_tz.utc)
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        # if expiry is within buffer or past, stale
+        if (expiry - now).total_seconds() < _STALE_BUFFER_SECONDS:
+            return True
+    except Exception:
+        # Unparseable expiry -> stale
+        return True
+    # Also stale if refresh_token missing (cannot refresh)
+    if not integration.get("refresh_token"):
+        return True
+    return False
 
 
 def get_user_by_email(admin_client, email: str) -> dict | None:
@@ -258,6 +299,54 @@ def seed_tokens(
     logger.info(f"  Provider email: {source_integration.get('provider_email')}")
 
 
+def sync_dev_staging(provider: str) -> str:
+    """Check both dev and staging; copy working → stale if one is stale.
+
+    Returns the direction taken ("development->staging", "staging->development",
+    or "already in sync"). Raises TokenSeedError if both are stale or both missing.
+    Production is never touched.
+    """
+    # Load both envs via prefixed or .env files; validate service keys present
+    dev_config = load_config_with_prefix("development", "SOURCE")
+    staging_config = load_config_with_prefix("staging", "TARGET")
+    # Re-load staging as SOURCE for symmetry when checking staging→dev
+    # (load_config_with_prefix handles both .env and prefixed CI vars)
+    # For staleness check we just need the integrations, so load both clients
+    dev_admin = create_client(dev_config.supabase_url, dev_config.supabase_service_role_key)
+    staging_admin = create_client(staging_config.supabase_url, staging_config.supabase_service_role_key)
+
+    dev_integration = get_integration_by_provider(dev_admin, provider)
+    staging_integration = get_integration_by_provider(staging_admin, provider)
+
+    dev_stale = is_integration_stale(dev_integration)
+    staging_stale = is_integration_stale(staging_integration)
+
+    logger.info(
+        f"Dev↔Staging sync check for {provider}: dev stale={dev_stale} (status={dev_integration.get('status') if dev_integration else 'missing'}), "
+        f"staging stale={staging_stale} (status={staging_integration.get('status') if staging_integration else 'missing'})"
+    )
+
+    if not dev_stale and not staging_stale:
+        logger.info("Both dev and staging tokens are fresh — nothing to do")
+        return "already in sync"
+
+    if dev_stale and staging_stale:
+        raise TokenSeedError(
+            f"Both dev and staging {provider} tokens are stale/missing — need fresh OAuth. "
+            f"Run: uv run python -m cli.cli_auth_gmail (for dev) or ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail"
+        )
+
+    if dev_stale and not staging_stale:
+        logger.info(f"Dev stale, staging fresh — copying staging → development for {provider}")
+        seed_tokens("staging", "development", provider)
+        return "staging->development"
+
+    # staging stale, dev fresh
+    logger.info(f"Staging stale, dev fresh — copying development → staging for {provider}")
+    seed_tokens("development", "staging", provider)
+    return "development->staging"
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Copy OAuth tokens between environments with user ID remapping",
@@ -270,18 +359,27 @@ Examples:
   # Copy with verbose logging
   uv run python -m cli.cli_seed_tokens -v --from staging --to development --provider gmail
 
+  # Auto-sync dev↔staging: check both, copy working → stale
+  uv run python -m cli.cli_seed_tokens --sync --provider gmail
+  uv run python -m cli.cli_seed_tokens --sync --provider gmail --provider outlook
+
 Prerequisites:
-  1. OAuth tokens must exist in source environment:
+  1. OAuth tokens must exist in source environment (for explicit --from/--to):
      ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
 
-  2. Test user must exist in target environment:
+  2. For --sync, at least one of dev/staging must have a fresh token; the
+     stale side is overwritten with the fresh side. If both are stale, re-auth
+     one side then re-run --sync.
+
+  3. Test user must exist in target environment:
      uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
 
-  3. Both environments must have SUPABASE_SERVICE_ROLE_KEY configured
+  4. Both environments must have SUPABASE_SERVICE_ROLE_KEY configured
 
 Note:
-  This copies the tokens with user ID remapping - the source and target users
-  can have different UUIDs, the script handles the mapping automatically.
+  Production is never a source or target for seeding — it holds real users'
+  OAuth credentials. Dev and staging are kept in sync via --sync; if either is
+  stale the working side is copied to the stale side automatically.
         """,
     )
     add_logging_arguments(parser)
@@ -294,27 +392,66 @@ Note:
     parser.add_argument(
         "--from",
         dest="source_env",
-        required=True,
+        required=False,
+        default=None,
         choices=["development", "staging"],
         help="Source environment to copy tokens from (never production)",
     )
     parser.add_argument(
         "--to",
         dest="target_env",
-        required=True,
+        required=False,
+        default=None,
         choices=["development", "staging"],
         help="Target environment to copy tokens to (never production)",
     )
     parser.add_argument(
         "--provider",
-        required=True,
+        required=False,
+        default=None,
         choices=["gmail", "outlook", "google_calendar", "google_photos"],
-        help="Integration provider to copy",
+        help="Integration provider to copy (or all with --sync)",
+    )
+    parser.add_argument(
+        "--sync",
+        action="store_true",
+        help="Check both dev and staging; copy working → stale (or do nothing if both fresh). Production never touched.",
+    )
+    parser.add_argument(
+        "--all-providers",
+        action="store_true",
+        help="With --sync, sync all providers (gmail, outlook, google_calendar)",
     )
 
     args = parser.parse_args()
     setup_logging(verbose=args.verbose, quiet=args.quiet)
 
+    # --sync mode: check both dev/staging, copy working → stale
+    if args.sync:
+        providers = []
+        if args.all_providers:
+            providers = ["gmail", "outlook", "google_calendar"]
+        elif args.provider:
+            providers = [args.provider]
+        else:
+            # Default: sync gmail (most common) — explicit is better for safety
+            logger.error("--sync requires --provider <name> or --all-providers")
+            sys.exit(1)
+        failed = []
+        for prov in providers:
+            try:
+                direction = sync_dev_staging(prov)
+                logger.info(f"Sync {prov}: {direction}")
+            except TokenSeedError as e:
+                logger.error(f"Sync {prov} failed: {e}")
+                failed.append(prov)
+        if failed:
+            sys.exit(1)
+        return
+
+    # Explicit --from/--to mode (legacy)
+    if not args.source_env or not args.target_env or not args.provider:
+        parser.error("--from/--to/--provider are required unless --sync is used")
     # Validate not copying to same environment
     if args.source_env == args.target_env:
         logger.error("Source and target environments must be different")
