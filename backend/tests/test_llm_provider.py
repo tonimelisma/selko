@@ -34,7 +34,7 @@ class TestModelRegistry:
     def test_registry_matches_model_specs(self):
         """MODEL_REGISTRY is the dict view of MODEL_SPECS."""
         assert set(MODEL_REGISTRY) == set(MODEL_SPECS)
-        assert len(MODEL_SPECS) == 29
+        assert len(MODEL_SPECS) == 30
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -139,6 +139,7 @@ class TestModelRegistry:
             "glm-4.6v",
             "grok-4.5",
             "muse-spark-1.1",
+            "muse-spark-1.2-contributor",
             "inkling",
         }
         assert expected == MODEL_REGISTRY.keys()

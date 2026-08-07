@@ -102,7 +102,7 @@ _BUDGET_OFF = ThinkingConfig("toggle", False)
 _TOGGLE_ON = ThinkingConfig("toggle", True)
 _TOGGLE_OFF = ThinkingConfig("toggle", False)
 _ADAPTIVE_LOW = ThinkingConfig("effort", "low")
-_AS_OF = date(2026, 7, 25)
+_AS_OF = date(2026, 8, 6)
 
 # Expanded current + value-tier matrix (live-verified IDs, Jul 2026).
 MODEL_SPECS: dict[str, ModelSpec] = {
@@ -160,7 +160,7 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         preferred_thinking=_EFFORT_LOW,
         supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
         request_api="openai_compatible",
-        pricing=Pricing(5.00, 30.00, estimated=True),
+        pricing=Pricing(0.20, 1.20),
         pricing_as_of=_AS_OF,
         base_url=_OPENAI_BASE,
     ),
@@ -172,7 +172,7 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         preferred_thinking=_EFFORT_LOW,
         supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
         request_api="openai_compatible",
-        pricing=Pricing(5.00, 30.00, estimated=True),
+        pricing=Pricing(2.00, 12.00),
         pricing_as_of=_AS_OF,
         base_url=_OPENAI_BASE,
     ),
@@ -323,7 +323,7 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         preferred_thinking=_EFFORT_LOW,
         supported_thinking=(_EFFORT_NONE, _EFFORT_LOW, _EFFORT_MEDIUM),
         request_api="openai_compatible",
-        pricing=Pricing(0.45, 0.88, estimated=True),
+        pricing=Pricing(0.435, 0.87),
         pricing_as_of=_AS_OF,
         base_url=_DEEPSEEK_BASE,
     ),
@@ -447,6 +447,18 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         supported_thinking=(_EFFORT_MINIMAL, _EFFORT_LOW, _EFFORT_MEDIUM),
         request_api="openai_compatible",
         pricing=Pricing(1.25, 4.25),
+        pricing_as_of=_AS_OF,
+        base_url=_META_BASE,
+    ),
+    "muse-spark-1.2-contributor": ModelSpec(
+        provider="meta",
+        model="muse-spark-1.2-contributor",
+        vision=True,
+        structured_output="json_schema",
+        preferred_thinking=_EFFORT_MINIMAL,
+        supported_thinking=(_EFFORT_MINIMAL, _EFFORT_LOW, _EFFORT_MEDIUM),
+        request_api="openai_compatible",
+        pricing=Pricing(0.10, 0.20),
         pricing_as_of=_AS_OF,
         base_url=_META_BASE,
     ),
