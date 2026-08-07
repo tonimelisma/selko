@@ -396,15 +396,32 @@ def save_extracted_events(
                 )
                 apply_pending_change(supabase_client, event_id)
             else:
-                propose_local_change(
-                    supabase_client,
-                    match.match_id,
-                    source_proposal,
-                    email_id,
-                    change_set,
-                    source_type=source_type,
-                )
-                apply_pending_change(supabase_client, match.match_id)
+                # Collapse: if baseline not yet in calendar (pending_review), just update it
+                if match.baseline.get("status") == "pending_review":
+                    # Merge better info into the single suggested event
+                    if proposed_fields:
+                        supabase_client.table("events").update(proposed_fields).eq("id", match.match_id).execute()
+                    ensure_email_event_source(
+                        supabase_client,
+                        event_id=match.match_id,
+                        email_id=email_id,
+                        extracted_data=source_proposal,
+                        source_type=source_type,
+                    )
+                    # Refresh attribution
+                    attribution = generate_source_attribution(supabase_client, match.match_id)
+                    if attribution:
+                        supabase_client.table("events").update({"source_attribution": attribution}).eq("id", match.match_id).execute()
+                else:
+                    propose_local_change(
+                        supabase_client,
+                        match.match_id,
+                        source_proposal,
+                        email_id,
+                        change_set,
+                        source_type=source_type,
+                    )
+                    apply_pending_change(supabase_client, match.match_id)
             num_updated += 1
             continue
 
@@ -421,15 +438,31 @@ def save_extracted_events(
             )
             num_updated += 1
         else:
-            propose_local_change(
-                supabase_client,
-                match.match_id,
-                source_proposal,
-                email_id,
-                change_set,
-                source_type=source_type,
-            )
-            num_updated += 1
+            # Collapse pending_review: better info collapses into one suggested event
+            if match.baseline.get("status") == "pending_review":
+                if proposed_fields:
+                    supabase_client.table("events").update(proposed_fields).eq("id", match.match_id).execute()
+                ensure_email_event_source(
+                    supabase_client,
+                    event_id=match.match_id,
+                    email_id=email_id,
+                    extracted_data=source_proposal,
+                    source_type=source_type,
+                )
+                attribution = generate_source_attribution(supabase_client, match.match_id)
+                if attribution:
+                    supabase_client.table("events").update({"source_attribution": attribution}).eq("id", match.match_id).execute()
+                num_updated += 1
+            else:
+                propose_local_change(
+                    supabase_client,
+                    match.match_id,
+                    source_proposal,
+                    email_id,
+                    change_set,
+                    source_type=source_type,
+                )
+                num_updated += 1
 
     return num_new, num_updated
 
