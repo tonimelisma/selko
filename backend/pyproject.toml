@@ -25,6 +25,7 @@ dependencies = [
     "msal>=1.37.0",
     "requests>=2.34.2",
     "sentry-sdk[fastapi]>=2.20.0",
+    "asyncpg>=0.30.0",
 ]
 
 [project.optional-dependencies]

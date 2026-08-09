@@ -28,6 +28,7 @@ from selko.services.photos import PhotosError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.services.memory_monitor import start_memory_monitor
+from selko.services.pg import assert_session_mode_url, create_pool
 from selko.workers.pool import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,21 @@ async def lifespan(app: FastAPI):
         from selko.workers.ingestion_runtime import IngestionRuntime
 
         logger.info("Starting background processing (worker pool + email ingestion)")
+        # Inc3: create asyncpg session-pooler pool before workers (fail if misconfigured)
+        pg_pool = None
+        if config.supabase_db_url:
+            assert_session_mode_url(config.supabase_db_url)
+            try:
+                import asyncpg  # noqa: F401
+                # Pool creation is async; defer to lifespan async context
+                pg_pool = await create_pool(config)
+                logger.info("Supavisor session pooler connected")
+            except ImportError:
+                logger.warning("asyncpg not installed — falling back to PostgREST (Inc3 canary only)")
+            except Exception as exc:
+                logger.warning("Failed to create pg pool, falling back to PostgREST: %s", exc)
+        elif config.environment == "production":
+            logger.warning("SUPABASE_DB_URL not set while background processing is on — falling back to PostgREST")
         service_client = get_service_client(config)
 
         worker_pool = WorkerPool(
@@ -157,6 +173,13 @@ async def lifespan(app: FastAPI):
             await ingestion_runtime.stop()
         if worker_pool:
             await worker_pool.stop()
+        # Inc3: close pg pool
+        try:
+            if 'pg_pool' in locals() and pg_pool is not None:
+                await pg_pool.close()
+                logger.info("Pg pool closed")
+        except Exception:
+            pass
 
         logger.info("Background workers shutdown complete")
 
