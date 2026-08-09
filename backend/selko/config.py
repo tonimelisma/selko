@@ -137,6 +137,8 @@ class Config:
     pg_pool_max_size: int = 4
     pg_keepalive_seconds: int = 60
     pg_connect_timeout_seconds: int = 10
+    worker_safety_poll_seconds: int = 300
+    pg_listener_heartbeat_seconds: int = 120
     operational_notification_sender: Optional[str] = None
     operational_notification_recipient: Optional[str] = None
     operational_notification_api_key: Optional[str] = None
@@ -522,6 +524,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         pg_pool_max_size=int(getenv("PG_POOL_MAX_SIZE", "4")),
         pg_keepalive_seconds=int(getenv("PG_KEEPALIVE_SECONDS", "60")),
         pg_connect_timeout_seconds=int(getenv("PG_CONNECT_TIMEOUT_SECONDS", "10")),
+        worker_safety_poll_seconds=max(60, int(getenv("WORKER_SAFETY_POLL_SECONDS", "300"))),
+        pg_listener_heartbeat_seconds=int(getenv("PG_LISTENER_HEARTBEAT_SECONDS", "120")),
         operational_notification_sender=getenv("OPERATIONAL_NOTIFICATION_SENDER"),
         operational_notification_recipient=getenv("OPERATIONAL_NOTIFICATION_RECIPIENT"),
         operational_notification_api_key=getenv("OPERATIONAL_NOTIFICATION_API_KEY"),
