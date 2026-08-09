@@ -477,6 +477,26 @@ def fetch_emails_for_user(
 # --- Status-based worker claiming functions ---
 
 
+async def claim_pending_email_via_pool(
+    pool,
+    worker_id: str,
+    lock_duration_seconds: int = 300,
+) -> Optional[dict[str, Any]]:
+    """Direct-pg variant: claim via asyncpg pool (Inc4)."""
+    try:
+        row = await pool.fetchrow("SELECT * FROM public.claim_unprocessed_email($1, $2)", worker_id, lock_duration_seconds)
+        if row:
+            email = dict(row)
+            subject = email.get("subject", "(no subject)")[:50]
+            import logging
+            logging.getLogger(__name__).info(f"Worker {worker_id} claimed email {email['id']}: {subject} (pool)")
+            return email
+        return None
+    except Exception as e:
+        from selko.services.emails import EmailError
+        raise EmailError(f"Failed to claim pending email via pool: {e}") from e
+
+
 def claim_pending_email(
     client: Client,
     worker_id: str,

@@ -43,6 +43,7 @@ from selko.services.emails import (
 from selko.services.events import (
     EventsError,
     claim_approved_event_for_sync,
+    claim_approved_event_for_sync_via_pool,
     complete_event_sync,
     defer_event_sync_for_quota,
     fail_event_sync,
@@ -80,6 +81,7 @@ class WorkerPool:
         num_workers: int = 3,
         idle_sleep_seconds: float = 1.0,
         error_backoff_seconds: float = 5.0,
+        pg_pool=None,
     ):
         """Initialize the worker pool.
 
@@ -93,6 +95,8 @@ class WorkerPool:
         self.num_workers = num_workers
         self.idle_sleep_seconds = idle_sleep_seconds
         self.error_backoff_seconds = error_backoff_seconds
+        self.pg_pool = pg_pool
+        self.pg_pool = pg_pool
         self.tasks: list[asyncio.Task] = []
         self.running = False
         self.config: Optional[Config] = None
@@ -345,11 +349,17 @@ class WorkerPool:
         client = self._get_client()
 
         # 1. Try approved events - requires Google Calendar (sole writer is worker)
+        # Inc4: try direct pg pool first, fallback to PostgREST RPC
         if circuit_breaker.is_available("google_calendar"):
             try:
-                event = claim_approved_event_for_sync(
-                    client, worker_id, lock_duration_seconds=300,
-                )
+                if self.pg_pool is not None:
+                    event = await claim_approved_event_for_sync_via_pool(
+                        self.pg_pool, worker_id, lock_duration_seconds=300,
+                    )
+                else:
+                    event = claim_approved_event_for_sync(
+                        client, worker_id, lock_duration_seconds=300,
+                    )
                 if event:
                     await self._process_event_sync(client, worker_id, event)
                     return True
@@ -360,7 +370,10 @@ class WorkerPool:
         # tick speed (no 18/s storm), semaphore fans out the LLM work to 8.
         if circuit_breaker.is_available("llm"):
             try:
-                email = claim_pending_email(client, worker_id, lock_duration_seconds=300)
+                if self.pg_pool is not None:
+                    email = await claim_pending_email_via_pool(self.pg_pool, worker_id, lock_duration_seconds=300)
+                else:
+                    email = claim_pending_email(client, worker_id, lock_duration_seconds=300)
                 if email:
                     # Fire-and-forget behind semaphore; scheduler immediately
                     # re-drains to fill up to 8 in parallel.
