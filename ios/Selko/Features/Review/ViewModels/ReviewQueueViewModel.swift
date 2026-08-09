@@ -59,17 +59,19 @@ final class ReviewQueueViewModel {
         self.integrationService = integrationService ?? DependencyContainer.shared.integrationService
         self.senderRuleService = senderRuleService ?? DependencyContainer.shared.senderRuleService
         self.backendAPI = backendAPI ?? DependencyContainer.shared.backendAPI
-        self.liveUpdateService = liveUpdateService ?? DependencyContainer.shared.liveUpdateService
+        // In tests liveUpdateService stays nil to avoid real Supabase; Views inject the shared service
+        self.liveUpdateService = liveUpdateService
     }
 
-    private let liveUpdateService: LiveUpdateService
+    private let liveUpdateService: LiveUpdateService?
     private var liveUpdateTask: Task<Void, Never>?
 
     func startLiveUpdates() {
+        guard let liveUpdateService else { return }
         liveUpdateTask?.cancel()
         liveUpdateTask = Task { [weak self] in
             guard let self else { return }
-            for await inv in self.liveUpdateService.stream {
+            for await inv in liveUpdateService.stream {
                 if inv.resource == "events" || inv.resource == "event_sources" || inv.resource == "integrations" {
                     if self.processingEventIds.isEmpty {
                         await self.load()
@@ -86,7 +88,7 @@ final class ReviewQueueViewModel {
 
     func handleScenePhaseActive() async {
         // Ensure subscription and do catch-up fetch per spec
-        await liveUpdateService.refreshAll()
+        if let liveUpdateService { await liveUpdateService.refreshAll() }
         await load()
     }
 
