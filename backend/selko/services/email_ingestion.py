@@ -208,11 +208,16 @@ def _rpc_data(result: Any) -> list[dict[str, Any]]:
 
 
 class EmailIngestionRepository:
-    """Small service-role repository around the v2 coordination RPCs."""
+    """Small service-role repository around the v2 coordination RPCs.
 
-    def __init__(self, client: Client, config: Config):
+    Inc4: when pg_pool is set, claim/heartbeat/complete paths use direct
+    asyncpg (port 5432) instead of PostgREST RPCs. Cost ~100B vs 1690B.
+    """
+
+    def __init__(self, client: Client, config: Config, pg_pool=None):
         self.client = client
         self.config = config
+        self.pg_pool = pg_pool
 
     def claim_due_sync(self, worker_id: str) -> SyncClaim | None:
         result = self.client.rpc(
@@ -416,6 +421,37 @@ class EmailIngestionRepository:
             .execute()
         )
         return bool(getattr(result, "data", None))
+
+    # --- Inc4 direct-pg async variants (pool) ---
+    async def claim_due_sync_via_pool(self, worker_id: str):
+        row = await self.pg_pool.fetchrow("SELECT * FROM public.claim_due_email_sync($1, $2)", worker_id, self.config.email_lease_seconds)
+        return SyncClaim(**dict(row)) if row else None
+
+    async def claim_due_reconciliation_via_pool(self, worker_id: str):
+        row = await self.pg_pool.fetchrow("SELECT * FROM public.claim_due_email_reconciliation($1, $2)", worker_id, self.config.email_lease_seconds)
+        return SyncClaim(**dict(row)) if row else None
+
+    async def heartbeat_sync_via_pool(self, integration_id: str, worker_id: str) -> bool:
+        val = await self.pg_pool.fetchval("SELECT public.heartbeat_email_sync($1, $2, $3)", integration_id, worker_id, self.config.email_lease_seconds)
+        return bool(val)
+
+    async def complete_sync_via_pool(self, claim, worker_id: str, *, reconciled: bool = False) -> bool:
+        val = await self.pg_pool.fetchval("SELECT public.complete_email_sync($1, $2, $3, $4, $5)", claim.integration_id, claim.run_id, worker_id, self.config.email_poll_interval_seconds, reconciled)
+        return bool(val)
+
+    async def claim_item_via_pool(self, worker_id: str):
+        row = await self.pg_pool.fetchrow("SELECT * FROM public.claim_email_ingestion_item($1, $2)", worker_id, self.config.email_lease_seconds)
+        return dict(row) if row else None
+
+    async def claim_attachment_via_pool(self, worker_id: str):
+        row = await self.pg_pool.fetchrow("SELECT * FROM public.claim_email_attachment($1, $2)", worker_id, self.config.email_lease_seconds)
+        return dict(row) if row else None
+
+    async def upsert_discovered_via_pool(self, claim, items, *, cursor=None, folder_id=None):
+        import json
+        page = list(items)
+        val = await self.pg_pool.fetchrow("SELECT * FROM public.upsert_discovered_email_items($1, $2, $3, $4, $5)", claim.integration_id, claim.run_id, json.dumps(page), cursor, folder_id)
+        return dict(val) if val else {"inserted_count": 0}
 
     def claim_attachment(self, worker_id: str) -> dict[str, Any] | None:
         result = self.client.rpc(
