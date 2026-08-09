@@ -139,6 +139,44 @@ _TRUNCATED_FINISH_MARKERS = (
 _RETRY_AFTER_RE = re.compile(r"retry[- ]after[:\s]+(\d+(?:\.\d+)?)", re.IGNORECASE)
 
 
+def _contents_require_vision(contents: list[Any]) -> bool:
+    """Return True if contents contain any image/PDF attachment."""
+    for part in contents:
+        # ImageContent is the multimodal part type used by event_processing
+        if part.__class__.__name__ == "ImageContent":
+            return True
+        # Fallback: check for dict-style image_url parts (should not happen here)
+        if isinstance(part, dict) and part.get("type") == "image_url":
+            return True
+    return False
+
+
+def _provider_is_vision(provider: Any) -> bool:
+    """Check if a provider/model supports vision via registry or flag."""
+    # Fast path: OpenAICompatibleProvider exposes supports_vision
+    if hasattr(provider, "supports_vision"):
+        try:
+            return bool(provider.supports_vision)
+        except Exception:
+            pass
+    # Fallback: check MODEL_SPECS/REGISTRY by model name
+    try:
+        from selko.services.llm_provider import MODEL_SPECS, MODEL_REGISTRY
+
+        model_name = getattr(provider, "model", None)
+        if model_name:
+            spec = MODEL_SPECS.get(model_name) or MODEL_REGISTRY.get(model_name)
+            if spec is not None:
+                # MODEL_SPECS entry is ModelSpec with .vision, registry is dict
+                if hasattr(spec, "vision"):
+                    return bool(spec.vision)
+                if isinstance(spec, dict):
+                    return bool(spec.get("vision"))
+    except Exception:
+        pass
+    return False
+
+
 class LLMGateway:
     """Unified gateway for all LLM operations.
 
@@ -220,6 +258,52 @@ class LLMGateway:
             )
         return routes
 
+    def _vision_aware_routes(self, contents: list[Any]) -> list[LLMRoute]:
+        """Return routes reordered to ensure vision coverage for attachments.
+
+        If contents require vision (ImageContent) and primary is text-only
+        while fallback is vision, skip primary entirely — it would silently
+        drop attachments via prepare_content_for_provider returning [] and
+        still return a valid (but incomplete) extraction. This guarantees
+        at least one vision model sees the attachment.
+        """
+        if not _contents_require_vision(contents):
+            return self.routes
+        primary_is_vision = _provider_is_vision(self.provider)
+        if primary_is_vision:
+            return self.routes
+        # Primary is text-only but we have images/PDFs
+        if self.fallback_provider is not None and _provider_is_vision(
+            self.fallback_provider
+        ):
+            logger.warning(
+                "Attachments require vision but primary %s/%s is text-only — "
+                "routing directly to vision fallback %s/%s",
+                self.provider.provider_name,
+                self.provider.model,
+                self.fallback_provider.provider_name,
+                self.fallback_provider.model,
+            )
+            return [
+                LLMRoute(
+                    role="fallback",
+                    provider=self.fallback_provider,
+                    max_attempts=self.fallback_max_attempts,
+                )
+            ]
+        logger.warning(
+            "Attachments require vision but no vision provider is available "
+            "(primary %s/%s text-only, fallback %s) — attachments will be dropped",
+            self.provider.provider_name,
+            self.provider.model,
+            (
+                f"{self.fallback_provider.provider_name}/{self.fallback_provider.model}"
+                if self.fallback_provider
+                else "none"
+            ),
+        )
+        return self.routes
+
     def for_user(self, user_id: str) -> "LLMGateway":
         """Set user context for logging and rate limiting.
 
@@ -273,6 +357,31 @@ class LLMGateway:
         """
         self._check_quota()
 
+        # Vision-aware provider selection for unstructured calls too.
+        effective_provider = self.provider
+        if _contents_require_vision(contents) and not _provider_is_vision(
+            self.provider
+        ):
+            if self.fallback_provider and _provider_is_vision(
+                self.fallback_provider
+            ):
+                logger.warning(
+                    "Unstructured call has attachments but primary %s/%s is text-only — "
+                    "using vision fallback %s/%s",
+                    self.provider.provider_name,
+                    self.provider.model,
+                    self.fallback_provider.provider_name,
+                    self.fallback_provider.model,
+                )
+                effective_provider = self.fallback_provider
+            else:
+                logger.warning(
+                    "Unstructured call has attachments but no vision provider available "
+                    "(primary %s/%s)",
+                    self.provider.provider_name,
+                    self.provider.model,
+                )
+
         prompt_for_logging = self._build_prompt_for_logging(contents)
         self._init_trace(contents, json_schema)
 
@@ -281,10 +390,10 @@ class LLMGateway:
             start_time = time.time()
             try:
                 logger.info(
-                    f"Calling {self.provider.provider_name} "
-                    f"{self.model} for {operation.value}..."
+                    f"Calling {effective_provider.provider_name} "
+                    f"{effective_provider.model} for {operation.value}..."
                 )
-                response = self.provider.generate(
+                response = effective_provider.generate(
                     contents=contents,
                     json_schema=json_schema,
                 )
@@ -310,7 +419,7 @@ class LLMGateway:
                     prompt_text=prompt_for_logging,
                     response=response,
                     latency_ms=latency_ms,
-                    provider=self.provider,
+                    provider=effective_provider,
                 )
 
                 return response
@@ -324,7 +433,7 @@ class LLMGateway:
                     self.trace["retry_count"] = attempt
                     self.trace["error_traceback"] = traceback.format_exc()
                     self.trace["json_schema_sanitized"] = getattr(
-                        self.provider, "_last_sanitized_schema", None
+                        effective_provider, "_last_sanitized_schema", None
                     )
 
                 # Check for rate limiting
@@ -332,7 +441,7 @@ class LLMGateway:
                     if attempt < max_retries - 1:
                         wait_time = self._backoff_seconds(attempt, e)
                         logger.warning(
-                            f"Rate limited by {self.provider.provider_name} API, "
+                            f"Rate limited by {effective_provider.provider_name} API, "
                             f"waiting {wait_time:.1f}s "
                             f"(attempt {attempt + 1}/{max_retries})"
                         )
@@ -346,7 +455,7 @@ class LLMGateway:
                             error_message=str(e),
                             latency_ms=latency_ms,
                             error_type=LLMErrorType.RATE_LIMIT,
-                            provider=self.provider,
+                            provider=effective_provider,
                         )
                         raise LLMRateLimitError(
                             f"Failed after {max_retries} retries (rate limited)"
@@ -360,10 +469,10 @@ class LLMGateway:
                         error_message=str(e),
                         latency_ms=latency_ms,
                         error_type=error_type,
-                        provider=self.provider,
+                        provider=effective_provider,
                     )
                     raise LLMAPIError(
-                        f"{self.provider.provider_name} API error: {e}"
+                        f"{effective_provider.provider_name} API error: {e}"
                     ) from e
 
         # Should not reach here, but just in case
@@ -433,7 +542,7 @@ class LLMGateway:
         last_failure_kind = LLMFailureKind.PERMANENT_PROVIDER
         last_error: Optional[BaseException] = None
 
-        for route in self.routes:
+        for route in self._vision_aware_routes(contents):
             route_exhausted_transient = False
             for attempt_idx in range(route.max_attempts):
                 start_time = time.time()

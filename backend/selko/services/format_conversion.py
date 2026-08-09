@@ -50,7 +50,10 @@ PROVIDER_ACCEPTED_FORMATS: dict[str, set[str]] = {
     "openai": {"image/png", "image/jpeg", "image/gif", "image/webp"},
     "anthropic": {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"},
     "xai": {"image/png", "image/jpeg", "image/gif", "image/webp"},
-    "meta": {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"},
+    # Meta's OpenAI-compatible endpoint (api.meta.ai) rejects application/pdf as
+    # image_url; PDFs must be rendered to PNG first (same as qwen/moonshot).
+    # Native Gemini/Anthropic are the only providers with true PDF passthrough.
+    "meta": {"image/png", "image/jpeg", "image/gif", "image/webp"},
     "tinker": {"image/png", "image/jpeg", "image/gif", "image/webp"},
 }
 
