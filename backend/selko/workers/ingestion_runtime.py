@@ -122,10 +122,9 @@ class IngestionRuntime:
     async def start(self) -> None:
         self._stop_event.clear()
         self._spawn("coordinator", "coordinator_loop", "email-sync-coordinator")
-        for index in range(max(self.config.email_acquisition_concurrency, 1)):
-            self._spawn(f"acquisition-{index}", "acquisition_loop", f"email-acquisition-{index}")
-        for index in range(max(self.config.email_attachment_concurrency, 1)):
-            self._spawn(f"attachment-{index}", "attachment_loop", f"email-attachment-{index}")
+        # Inc2: one claim loop per type, concurrency via Semaphore in worker (not pollers)
+        self._spawn("acquisition", "acquisition_loop", "email-acquisition")
+        self._spawn("attachment", "attachment_loop", "email-attachment")
         self._spawn_health()
         self._watchdog_task = asyncio.create_task(self._watchdog(), name="ingestion-watchdog")
         logger.info(

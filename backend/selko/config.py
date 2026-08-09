@@ -118,8 +118,9 @@ class Config:
     email_health_critical_seconds: int = 3600
     email_lease_seconds: int = 900
     email_sync_max_run_seconds: int = 900
-    # Each claim worker holds an idle poll loop, so concurrency multiplies the
-    # deployment's baseline request rate. Two apiece saturates a single-mailbox
+    # Executor width for the single claim loop (Inc2). One loop drains the
+    # queue and fans work to Semaphore-limited tasks; concurrency no longer
+    # multiplies pollers or egress. Two apiece saturates a single-mailbox
     # workload; raise only when acquisition is measurably the bottleneck.
     email_acquisition_concurrency: int = 2
     email_attachment_concurrency: int = 2

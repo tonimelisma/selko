@@ -88,9 +88,10 @@ def test_runtime_spawns_configured_workers_and_stops_cleanly(mock_config):
 
     spawned, names, remaining = asyncio.run(scenario())
 
-    assert spawned == 1 + 2 + 3 + 1  # workers + health evaluator
+    assert spawned == 1 + 1 + 1 + 1  # coordinator + single acquisition + single attachment + health (Inc2)
     assert names[0] == "test-instance-coordinator"
-    assert "test-instance-attachment-2" in names
+    assert "test-instance-acquisition" in names
+    assert "test-instance-attachment" in names
     assert remaining == []
 
 
