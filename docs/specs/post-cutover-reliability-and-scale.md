@@ -1,6 +1,6 @@
 # Post-Cutover Reliability and Scale — Rock-Solid Plan
 
-**Status:** Planned, not started. Written 2026-08-06 (evening).
+**Status:** Implemented R1-R9 (#248-#251 + 8b94c53a, de9694eb, 766961d1, 9b14e0ca, a6d8d0c4) — counted health, Gmail batch per-request, unified nudge, heartbeat+anti-starve, enforced cutover gate, observability synthetic, recovery exact+Realtime seam, behavioral drills, config/docs tidy. Written 2026-08-06 (evening).
 **Scope:** `backend/**`, `supabase/**`, `frontend/src/**` (+ iOS/Android for one increment), `config`, `scripts/`, `docs/`.
 **Supersedes / completes:** `ingestion-recovery-hardening.md` findings 30–31 and egress open questions 1–8; `egress-and-work-scheduling.md` increments 3–6 hardening tail; `cutover-verification-20260807.md` operational gate.
 **Does not re-litigate:** the leased durable pipeline (`FOR UPDATE SKIP LOCKED` + heartbeat + `save_email_with_attachment_descriptors` + provider-cursor triggers), the structural Gmail/Graph error classifier, or the Outlook well-known-folder resolution. Those are correct and stay.

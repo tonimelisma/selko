@@ -1,6 +1,6 @@
 # Egress and Work Scheduling
 
-**Status:** planned · **Scope:** `backend/**` · **Priority: P0 — active cost leak**
+**Status:** implemented — arch A egress 1.5M→~3k RPCs/day, single scheduler + drain, egress meter + `/health/egress` (#241-#247). Residues → post-cutover R1/R3/R9. Historical P0 now closed.
 
 ## The issue
 
