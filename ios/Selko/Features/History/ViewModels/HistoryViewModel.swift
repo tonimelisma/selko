@@ -28,9 +28,57 @@ final class HistoryViewModel {
     private let eventService: EventServiceProtocol
     private let backendAPI: BackendAPIProtocol
 
-    init(eventService: EventServiceProtocol? = nil, backendAPI: BackendAPIProtocol? = nil) {
+    private let liveUpdateService: LiveUpdateService?
+    private var liveUpdateTask: Task<Void, Never>?
+
+    init(eventService: EventServiceProtocol? = nil, backendAPI: BackendAPIProtocol? = nil, liveUpdateService: LiveUpdateService? = nil) {
         self.eventService = eventService ?? DependencyContainer.shared.eventService
         self.backendAPI = backendAPI ?? DependencyContainer.shared.backendAPI
+        self.liveUpdateService = liveUpdateService
+    }
+
+    func startLiveUpdates() {
+        guard let liveUpdateService else { return }
+        liveUpdateTask?.cancel()
+        liveUpdateTask = Task { [weak self] in
+            guard let self else { return }
+            for await inv in liveUpdateService.stream {
+                if inv.resource == "events" || inv.resource == "event_sources" || inv.resource == "emails" {
+                    if self.processingEventIds.isEmpty {
+                        await self.refreshForLiveUpdate()
+                    }
+                }
+            }
+        }
+    }
+
+    func stopLiveUpdates() {
+        liveUpdateTask?.cancel()
+        liveUpdateTask = nil
+    }
+
+    func handleScenePhaseActive() async {
+        if let liveUpdateService { await liveUpdateService.refreshAll() }
+        await refreshForLiveUpdate()
+    }
+
+    private func refreshForLiveUpdate() async {
+        // Spec §3: refetch first max(20, events.length) so pagination does not collapse; dedupe; preserve errors/optimistic state
+        let currentCount = dateGroups.flatMap(\.events).count
+        let limit = max(pageSize, currentCount)
+        do {
+            let events = try await eventService.fetchActivityEvents(limit: limit, offset: 0)
+            // Deduplicate by ID (fetchActivityEvents already deduped, but keep spec contract)
+            var seen = Set<UUID>()
+            var deduped: [CalendarEvent] = []
+            for e in events where seen.insert(e.id).inserted { deduped.append(e) }
+            dateGroups = groupEventsByDate(deduped)
+            offset = deduped.count
+            hasMore = events.count == limit
+        } catch {
+            // Preserve existing data; surface error contextually without wiping dateGroups
+            if errorMessage == nil { errorMessage = error.localizedDescription }
+        }
     }
 
     func load() async {
