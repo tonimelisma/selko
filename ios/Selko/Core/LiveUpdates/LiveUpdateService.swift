@@ -45,13 +45,15 @@ final class LiveUpdateService: ObservableObject {
         // setAuth for private channel
         do {
             let session = try await supabase.auth.session
-            try await supabase.realtime.setAuth(session.accessToken)
+            await supabase.realtimeV2.setAuth(session.accessToken)
         } catch {
             // Non-fatal: snapshot fetching still works
             print("[LiveUpdate] setAuth failed: \(error)")
         }
         let topic = "user:\(userId.uuidString.lowercased()):selko-changes"
-        let ch = supabase.channel(topic, options: ChannelOptions(config: ChannelConfig(private: true)))
+        let ch = supabase.channel(topic) { config in
+            config.isPrivate = true
+        }
         ch.onBroadcast(event: "invalidate") { [weak self] message in
             guard let self else { return }
             Task { @MainActor in
@@ -71,7 +73,7 @@ final class LiveUpdateService: ObservableObject {
 
     func stop() async {
         if let ch = channel {
-            try? await supabase.removeChannel(ch)
+            await supabase.realtimeV2.removeChannel(ch)
             channel = nil
         }
         userId = nil
@@ -86,7 +88,7 @@ final class LiveUpdateService: ObservableObject {
         // Realtime V2 payload is {payload: {resource, operation, entity_id, occurred_at}, event: "invalidate"}
         let payload = (message["payload"] as? JSONObject) ?? message
         guard let resource = payload["resource"] as? String,
-              let allowed = Set(["events", "event_sources", "emails", "integrations"]).contains(resource), allowed else { return }
+              Set(["events", "event_sources", "emails", "integrations"]).contains(resource) else { return }
         let op = payload["operation"] as? String ?? "UPDATE"
         let eidStr = payload["entity_id"] as? String
         let eid = eidStr.flatMap { UUID(uuidString: $0) }
