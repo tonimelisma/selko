@@ -229,8 +229,8 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
     # Add body columns if content was found
     if body_text:
         result["body_text"] = body_text
-    if body_html:
-        result["body_html"] = body_html
+    # body_html intentionally not persisted (Inc1 payload fix) — linked
+    # images are extracted in-memory from payload, not from DB.
 
     invite_method = _detect_gmail_invite_method(payload)
     result["is_calendar_invite"] = invite_method in INVITE_METHODS
