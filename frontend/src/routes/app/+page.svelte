@@ -10,6 +10,7 @@
 	import {
 		applyEventChange,
 		rejectEventChange,
+		undoHistoryEvent,
 		initiateGmailAuth,
 		initiateOutlookAuth,
 		initiateCalendarAuth
@@ -47,6 +48,9 @@
 	/** Preserve sender-group positions while rows are removed during this review session. */
 	let newSenderOrder = $state(new Map());
 	let changeSenderOrder = $state(new Map());
+	/** @type {{events: any[], timer: ReturnType<typeof setTimeout>} | null} */
+	let rejectedUndo = $state(null);
+	let undoingReject = $state(false);
 
 	let gcalIntegration = $derived(
 		integrationsList.find((i) => i.provider === 'google_calendar')
@@ -120,6 +124,73 @@
 		senderErrors = next;
 	}
 
+	function clearRejectUndoTimer() {
+		if (rejectedUndo?.timer) clearTimeout(rejectedUndo.timer);
+	}
+
+	function dismissRejectUndo() {
+		clearRejectUndoTimer();
+		rejectedUndo = null;
+	}
+
+	/** @param {any[]} newlyRejected */
+	function showRejectUndo(newlyRejected) {
+		if (!newlyRejected || newlyRejected.length === 0) return;
+		clearRejectUndoTimer();
+		const existing = rejectedUndo?.events ?? [];
+		const combined = [...existing, ...newlyRejected];
+		const timer = setTimeout(() => {
+			rejectedUndo = null;
+		}, 8000);
+		rejectedUndo = { events: combined, timer };
+	}
+
+	async function handleUndoRejected() {
+		if (!rejectedUndo || undoingReject) return;
+		const toRestore = rejectedUndo.events;
+		clearRejectUndoTimer();
+		rejectedUndo = null;
+		undoingReject = true;
+		// Optimistically reinsert events in chronological order
+		const idsInEvents = new Set(events.map((e) => e.id));
+		const toReinsert = toRestore.filter((e) => !idsInEvents.has(e.id));
+		if (toReinsert.length > 0) {
+			events = [...events, ...toReinsert].sort(
+				(a, b) => new Date(a.start_datetime || 0).getTime() - new Date(b.start_datetime || 0).getTime()
+			);
+			// Ensure sender order contains restored senders for stable grouping
+			for (const ev of toReinsert) {
+				const { senderKey } = senderForEvent(ev);
+				if (ev.status === 'pending_change') {
+					if (!changeSenderOrder.has(senderKey)) changeSenderOrder.set(senderKey, changeSenderOrder.size);
+				} else {
+					if (!newSenderOrder.has(senderKey)) newSenderOrder.set(senderKey, newSenderOrder.size);
+				}
+			}
+			newSenderOrder = new Map(newSenderOrder);
+			changeSenderOrder = new Map(changeSenderOrder);
+		}
+		let hadError = false;
+		for (const ev of toRestore) {
+			const { error } = await undoHistoryEvent(ev.id);
+			if (error) {
+				hadError = true;
+				setEventError(ev.id, error.message);
+				// Remove optimistically restored event on failure
+				events = events.filter((e) => e.id !== ev.id);
+			} else {
+				setEventError(ev.id, '');
+			}
+		}
+		undoingReject = false;
+		if (hadError) {
+			await loadEvents();
+		} else {
+			// Refresh to ensure server state (status already pending, but ensures ordering)
+			await loadEvents();
+		}
+	}
+
 	onMount(async () => {
 		const params = new URLSearchParams(window.location.search);
 		const oauth = params.get('oauth');
@@ -155,7 +226,10 @@
 			unsubEvents();
 			unsubSources();
 			unsubIntegrations();
+			clearRejectUndoTimer();
 		};
+
+	onDestroy(() => clearRejectUndoTimer());
 	});
 
 	async function loadIntegrations() {
@@ -234,6 +308,7 @@
 				setEventError(event.id, updateError.message);
 				return;
 			}
+			showRejectUndo([event]);
 		} finally {
 			const next = new Set(processingEvents);
 			next.delete(event.id);
@@ -280,6 +355,7 @@
 				setEventError(event.id, rejectError.message);
 				return;
 			}
+			showRejectUndo([event]);
 		} finally {
 			const next = new Set(processingEvents);
 			next.delete(event.id);
@@ -314,9 +390,48 @@
 
 	/** @param {any[]} eventsList */
 	async function handleRejectAllNew(eventsList) {
+		const rejected = [];
 		for (const event of eventsList) {
-			await handleRejectNew(event);
+			if (processingEvents.has(event.id)) continue;
+			setEventError(event.id, '');
+			processingEvents = new Set([...processingEvents, event.id]);
+			const previous = events;
+			events = events.filter((e) => e.id !== event.id);
+			const { error: updateError } = await updateEventStatus(event.id, 'rejected');
+			const next = new Set(processingEvents);
+			next.delete(event.id);
+			processingEvents = next;
+			if (updateError) {
+				events = previous;
+				setEventError(event.id, updateError.message);
+			} else {
+				rejected.push(event);
+			}
 		}
+		if (rejected.length > 0) showRejectUndo(rejected);
+	}
+
+	/** @param {any[]} eventsList */
+	async function handleRejectAllChange(eventsList) {
+		const rejected = [];
+		for (const event of eventsList) {
+			if (processingEvents.has(event.id)) continue;
+			setEventError(event.id, '');
+			processingEvents = new Set([...processingEvents, event.id]);
+			const previous = events;
+			events = events.filter((e) => e.id !== event.id);
+			const { error: rejectError } = await rejectEventChange(event.id);
+			const next = new Set(processingEvents);
+			next.delete(event.id);
+			processingEvents = next;
+			if (rejectError) {
+				events = previous;
+				setEventError(event.id, rejectError.message);
+			} else {
+				rejected.push(event);
+			}
+		}
+		if (rejected.length > 0) showRejectUndo(rejected);
 	}
 
 	/**
@@ -516,9 +631,7 @@
 								onapproveAll={() => {
 									for (const event of senderGroup.events) handleApproveChange(event);
 								}}
-								onrejectAll={() => {
-									for (const event of senderGroup.events) handleRejectChange(event);
-								}}
+								onrejectAll={() => handleRejectAllChange(senderGroup.events)}
 								onignoreSender={() => handleIgnoreSender(senderKey)}
 								onautoApproveSender={() =>
 									handleAutoApproveSender(senderKey, senderGroup.events)}
@@ -546,13 +659,43 @@
 		</div>
 		</div>
 	</div>
-	<ConfirmModal
-		open={acceptAllConfirmOpen}
-		title={$_('home.acceptAll')}
-		description={$_('home.acceptAllConfirm', { values: { count: newEvents.length + changeEvents.length } })}
-		confirmText={$_('home.acceptAll')}
-		confirmClass="btn-primary"
-		onconfirm={handleApproveAll}
-		oncancel={() => (acceptAllConfirmOpen = false)}
-	/>
 {/if}
+{#if rejectedUndo}
+	<div class="toast toast-bottom toast-center z-50" role="status" aria-live="polite">
+		<div class="alert bg-base-100 shadow-lg border border-base-300 gap-3 max-w-md">
+			<span class="text-sm font-medium">
+				{#if rejectedUndo.events.length === 1}
+					{$_('home.eventRejected')}
+				{:else}
+					{$_('home.eventsRejected', { values: { count: rejectedUndo.events.length } })}
+				{/if}
+			</span>
+			<button
+				class="btn btn-sm btn-primary"
+				disabled={undoingReject}
+				onclick={handleUndoRejected}
+			>
+				{#if undoingReject}
+					<span class="loading loading-spinner loading-xs"></span>
+				{/if}
+				{$_('history.undo')}
+			</button>
+			<button
+				class="btn btn-ghost btn-sm btn-circle"
+				onclick={dismissRejectUndo}
+				aria-label={$_('common.dismiss')}
+			>
+				✕
+			</button>
+		</div>
+	</div>
+{/if}
+<ConfirmModal
+	open={acceptAllConfirmOpen}
+	title={$_('home.acceptAll')}
+	description={$_('home.acceptAllConfirm', { values: { count: newEvents.length + changeEvents.length } })}
+	confirmText={$_('home.acceptAll')}
+	confirmClass="btn-primary"
+	onconfirm={handleApproveAll}
+	oncancel={() => (acceptAllConfirmOpen = false)}
+/>

@@ -30,6 +30,7 @@ const mockSyncEventToCalendar = vi.fn();
 const mockInitiateGmailAuth = vi.fn();
 const mockInitiateOutlookAuth = vi.fn();
 const mockInitiateCalendarAuth = vi.fn();
+const mockUndoHistoryEvent = vi.fn();
 
 vi.mock('$lib/api/backend.js', () => ({
 	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
@@ -37,7 +38,8 @@ vi.mock('$lib/api/backend.js', () => ({
 	initiateOutlookAuth: (...args) => mockInitiateOutlookAuth(...args),
 	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args),
 	applyEventChange: vi.fn().mockResolvedValue({ data: { status: 'approved' }, error: null }),
-	rejectEventChange: vi.fn().mockResolvedValue({ data: { status: 'deleted' }, error: null })
+	rejectEventChange: vi.fn().mockResolvedValue({ data: { status: 'deleted' }, error: null }),
+	undoHistoryEvent: (...args) => mockUndoHistoryEvent(...args)
 }));
 
 // Import after mocking
@@ -48,6 +50,7 @@ describe('Review Queue (App Page)', () => {
 		vi.clearAllMocks();
 		mockSyncEventToCalendar.mockResolvedValue({ data: null, error: null });
 		mockFetchPendingEventsWithSources.mockResolvedValue({ data: [], error: null });
+		mockUndoHistoryEvent.mockResolvedValue({ data: { event_id: 'evt-1', status: 'pending_review' }, error: null });
 		mockUpdateEventStatus.mockResolvedValue({ data: null, error: null });
 		mockCreateSenderRule.mockResolvedValue({ data: { id: 'rule-1' }, error: null });
 		mockIgnoreSenderRetroactive.mockResolvedValue({
@@ -659,6 +662,120 @@ describe('Review Queue (App Page)', () => {
 		});
 
 		resolveUpdate({ data: null, error: null });
+	});
+
+	it('shows undo toast after reject and restores event on undo', async () => {
+		const user = userEvent.setup();
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-undo-1',
+					title: 'Undo Test',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [
+						{
+							emails: {
+								id: 'email-1',
+								subject: 'Test',
+								from_email: 'test@example.com',
+								from_name: 'Test',
+								date_sent: '2024-01-15T10:00:00Z'
+							}
+						}
+					]
+				}
+			],
+			error: null
+		});
+		mockUpdateEventStatus.mockResolvedValue({ data: { id: 'evt-undo-1', status: 'rejected' }, error: null });
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Undo Test')).toBeInTheDocument();
+		});
+
+		const rejectBtn = screen.getByRole('button', { name: /reject undo test/i });
+		await user.click(rejectBtn);
+
+		await waitFor(() => {
+			expect(screen.queryByText('Undo Test')).not.toBeInTheDocument();
+		});
+		// Undo toast should appear
+		expect(screen.getByText('Event rejected')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+
+		// Click undo
+		await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+		await waitFor(() => {
+			expect(mockUndoHistoryEvent).toHaveBeenCalledWith('evt-undo-1');
+		});
+		// After undo, event should be restored (optimistically and then via reload)
+		await waitFor(() => {
+			expect(screen.getByText('Undo Test')).toBeInTheDocument();
+		});
+	});
+
+	it('shows count and batches multiple rejects into one undo toast', async () => {
+		const user = userEvent.setup();
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-batch-1',
+					title: 'Batch One',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: [{ emails: { id: 'e1', subject: 'S', from_email: 'a@b.com', from_name: 'A', date_sent: '2024-01-15T10:00:00Z' } }]
+				},
+				{
+					id: 'evt-batch-2',
+					title: 'Batch Two',
+					start_datetime: '2024-01-20T15:00:00Z',
+					status: 'pending_review',
+					event_sources: [{ emails: { id: 'e2', subject: 'S', from_email: 'a@b.com', from_name: 'A', date_sent: '2024-01-15T10:00:00Z' } }]
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Batch One')).toBeInTheDocument();
+			expect(screen.getByText('Batch Two')).toBeInTheDocument();
+		});
+
+		const rejectButtons = screen.getAllByRole('button', { name: /reject batch/i });
+		// Reject first event
+		await user.click(rejectButtons[0]);
+		await waitFor(() => expect(screen.queryByText('Batch One')).not.toBeInTheDocument());
+		expect(screen.getByText('Event rejected')).toBeInTheDocument();
+
+		// Reject second event - should batch into same toast with count
+		await user.click(rejectButtons[1] || screen.getByRole('button', { name: /reject batch two/i }));
+		await waitFor(() => expect(screen.queryByText('Batch Two')).not.toBeInTheDocument());
+		await waitFor(() => expect(screen.getByText('2 events rejected')).toBeInTheDocument());
+
+		await user.click(screen.getByRole('button', { name: 'Undo' }));
+		await waitFor(() => expect(mockUndoHistoryEvent).toHaveBeenCalledTimes(2));
 	});
 
 });

@@ -68,7 +68,8 @@ vi.mock('$lib/api/backend.js', () => ({
 	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
 	initiateGmailAuth: vi.fn(),
 	initiateOutlookAuth: vi.fn(),
-	initiateCalendarAuth: vi.fn()
+	initiateCalendarAuth: vi.fn(),
+	undoHistoryEvent: vi.fn().mockResolvedValue({ data: { event_id: 'evt-1', status: 'pending_review' }, error: null })
 }));
 
 const { default: EventDetailPage } = await import('../+page.svelte');
