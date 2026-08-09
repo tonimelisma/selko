@@ -101,6 +101,7 @@ EVAL_MODELS = [
     # xAI / Meta / Tinker
     ("xai", "grok-4.5", "low"),
     ("meta", "muse-spark-1.1", "minimal"),
+    ("meta", "muse-spark-1.2-contributor", "minimal"),
     ("tinker", "inkling", "low"),
 ]
 

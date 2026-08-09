@@ -189,12 +189,92 @@ def _parse_allowed_origins(getenv=os.getenv) -> list[str]:
 
 # Primary→fallback pairs (eval-backed Jul 2026). Always a *different* provider
 # so a provider-wide outage cannot defeat both.
+# Text-only primaries (deepseek, zai glm-5.x) get a vision fallback so
+# attachments are never silently dropped — see _ensure_vision_fallback.
 _PROVISIONAL_FALLBACK: dict[str, tuple[str, str]] = {
     "gemini": ("qwen", "qwen3.7-flash"),
     "qwen": ("gemini", "gemini-3.5-flash-lite"),
     "anthropic": ("gemini", "gemini-3.5-flash-lite"),
     "openai": ("gemini", "gemini-3.5-flash-lite"),
+    "deepseek": ("gemini", "gemini-3.5-flash-lite"),
+    "zai": ("gemini", "gemini-3.5-flash-lite"),
+    "meta": ("gemini", "gemini-3.5-flash-lite"),
+    "moonshot": ("gemini", "gemini-3.5-flash-lite"),
+    "minimax": ("gemini", "gemini-3.5-flash-lite"),
+    "xai": ("gemini", "gemini-3.5-flash-lite"),
+    "tinker": ("gemini", "gemini-3.5-flash-lite"),
 }
+
+_VISION_FALLBACK_PROVIDER = "gemini"
+_VISION_FALLBACK_MODEL = "gemini-3.5-flash-lite"
+
+
+def _is_vision_model(model_name: Optional[str]) -> bool:
+    """Return True if model supports vision (images/PDFs)."""
+    if not model_name:
+        return False
+    try:
+        from selko.services.llm_provider import MODEL_SPECS
+
+        spec = MODEL_SPECS.get(model_name)
+        if spec is not None:
+            return bool(spec.vision)
+    except Exception:
+        pass
+    # Unknown models are assumed non-vision to be safe (forces fallback).
+    return False
+
+
+def _ensure_vision_fallback(
+    primary_provider: str,
+    primary_model: Optional[str],
+    fallback_provider: Optional[str],
+    fallback_model: Optional[str],
+    getenv=os.getenv,
+) -> tuple[Optional[str], Optional[str]]:
+    """Ensure a vision-capable fallback when primary is text-only.
+
+    If the resolved primary model is text-only (vision=False), a text-only
+    or missing fallback would silently drop attachments (PDFs/images are
+    returned as [] by prepare_content_for_provider). This forces a vision
+    fallback (gemini-3.5-flash-lite) when the configured fallback cannot
+    cover visuals and a key is available.
+    """
+    # Resolve primary model name (explicit or provider default).
+    if not primary_model:
+        try:
+            from selko.services.llm_provider import PROVIDER_DEFAULT_MODEL
+
+            primary_model = PROVIDER_DEFAULT_MODEL.get(primary_provider)
+        except Exception:
+            primary_model = None
+
+    if not _is_vision_model(primary_model):
+        # Primary is text-only — fallback must be vision.
+        if not fallback_model or not _is_vision_model(fallback_model):
+            # Don't override an explicitly configured text-only fallback that
+            # the user intentionally set with a key — just warn.
+            # Otherwise, auto-select vision fallback if key is present.
+            if _fallback_key_present(_VISION_FALLBACK_PROVIDER, getenv):
+                logger.warning(
+                    "Primary model '%s' is text-only — forcing vision fallback "
+                    "%s/%s to ensure attachments are not silently dropped. "
+                    "Set LLM_FALLBACK_PROVIDER/MODEL explicitly to override.",
+                    primary_model,
+                    _VISION_FALLBACK_PROVIDER,
+                    _VISION_FALLBACK_MODEL,
+                )
+                return _VISION_FALLBACK_PROVIDER, _VISION_FALLBACK_MODEL
+            else:
+                logger.warning(
+                    "Primary model '%s' is text-only and no vision fallback key "
+                    "(%s) is available — attachments will be dropped on this route. "
+                    "Set %s API key or configure a vision fallback.",
+                    primary_model,
+                    _VISION_FALLBACK_PROVIDER,
+                    _VISION_FALLBACK_PROVIDER,
+                )
+    return fallback_provider, fallback_model
 
 
 def _resolve_provisional_fallback(
@@ -339,6 +419,16 @@ def load_config(env_override: Optional[str] = None) -> Config:
     llm_fallback_model = getenv("LLM_FALLBACK_MODEL") or None
     llm_fallback_provider, llm_fallback_model = _resolve_provisional_fallback(
         llm_provider, llm_fallback_provider, llm_fallback_model
+    )
+    # Ensure attachments are never silently dropped: text-only primary
+    # must have a vision fallback. This is a safety net even if provisional
+    # mapping misses a new text-only model.
+    llm_fallback_provider, llm_fallback_model = _ensure_vision_fallback(
+        llm_provider,
+        getenv("LLM_MODEL") or None,
+        llm_fallback_provider,
+        llm_fallback_model,
+        getenv,
     )
     _warn_if_fallback_unavailable(
         environment, llm_fallback_provider, llm_fallback_model, getenv

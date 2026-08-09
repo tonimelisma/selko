@@ -432,6 +432,72 @@ class TestLlmDefaultsAndFallback:
         assert provider == "anthropic"
         assert model == "claude-sonnet-5"
 
+    def test_resolve_provisional_deepseek_to_vision_fallback(self):
+        from selko.config import _resolve_provisional_fallback
+
+        provider, model = _resolve_provisional_fallback("deepseek", None, None)
+        assert provider == "gemini"
+        assert model == "gemini-3.5-flash-lite"
+
+    def test_resolve_provisional_zai_to_vision_fallback(self):
+        from selko.config import _resolve_provisional_fallback
+
+        provider, model = _resolve_provisional_fallback("zai", None, None)
+        assert provider == "gemini"
+        assert model == "gemini-3.5-flash-lite"
+
+
+class TestVisionFallback:
+    """Ensure text-only primaries never silently drop attachments."""
+
+    def test_ensure_vision_fallback_for_deepseek(self, monkeypatch):
+        from selko.config import _ensure_vision_fallback
+
+        monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+        provider, model = _ensure_vision_fallback(
+            "deepseek", "deepseek-v4-flash", None, None
+        )
+        assert provider == "gemini"
+        assert model == "gemini-3.5-flash-lite"
+
+    def test_ensure_vision_fallback_for_glm_text_only(self, monkeypatch):
+        from selko.config import _ensure_vision_fallback
+
+        monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+        provider, model = _ensure_vision_fallback("zai", "glm-5.2", None, None)
+        assert provider == "gemini"
+        assert model == "gemini-3.5-flash-lite"
+
+    def test_ensure_vision_fallback_respects_vision_primary(self):
+        from selko.config import _ensure_vision_fallback
+
+        provider, model = _ensure_vision_fallback(
+            "gemini", "gemini-3.5-flash-lite", "qwen", "qwen3.7-flash"
+        )
+        assert provider == "qwen"
+        assert model == "qwen3.7-flash"
+
+    def test_ensure_vision_fallback_respects_existing_vision_fallback(self, monkeypatch):
+        from selko.config import _ensure_vision_fallback
+
+        monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+        provider, model = _ensure_vision_fallback(
+            "deepseek", "deepseek-v4-pro", "qwen", "qwen3.7-flash"
+        )
+        # Already vision — keep it, don't force gemini
+        assert provider == "qwen"
+        assert model == "qwen3.7-flash"
+
+    def test_is_vision_model(self):
+        from selko.config import _is_vision_model
+
+        assert _is_vision_model("gemini-3.5-flash-lite") is True
+        assert _is_vision_model("deepseek-v4-flash") is False
+        assert _is_vision_model("glm-5.2") is False
+        assert _is_vision_model("glm-4.6v") is True
+        assert _is_vision_model(None) is False
+        assert _is_vision_model("unknown-model-xyz") is False
+
     def test_load_config_default_pairing(self, monkeypatch):
         from selko.config import load_config
 
