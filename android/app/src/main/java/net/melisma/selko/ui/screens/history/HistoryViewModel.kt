@@ -17,6 +17,7 @@ import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
+import net.melisma.selko.data.repository.LiveUpdateRepository
 
 data class DateGroup(
     val dateLabel: String,
@@ -39,7 +40,8 @@ class HistoryViewModel(
     application: Application,
     private val eventRepository: EventRepository,
     private val integrationRepository: IntegrationRepository,
-    private val backendApiClient: BackendApiClient
+    private val backendApiClient: BackendApiClient,
+    private val liveUpdateRepository: LiveUpdateRepository? = null
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HistoryUiState())
@@ -50,8 +52,66 @@ class HistoryViewModel(
 
     private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
 
+    private var liveUpdateJob: kotlinx.coroutines.Job? = null
+
     init {
         loadHistory()
+    }
+
+    fun startLiveUpdates() {
+        val repo = liveUpdateRepository ?: return
+        liveUpdateJob?.cancel()
+        liveUpdateJob = viewModelScope.launch {
+            repo.invalidations.collect { inv ->
+                if (inv.resource in setOf("events", "event_sources", "emails")) {
+                    if (_uiState.value.processingEventIds.isEmpty()) {
+                        refreshForLiveUpdate()
+                    }
+                }
+            }
+        }
+    }
+
+    fun stopLiveUpdates() {
+        liveUpdateJob?.cancel()
+        liveUpdateJob = null
+    }
+
+    fun onResume() {
+        viewModelScope.launch {
+            liveUpdateRepository?.refreshAll()
+            refreshForLiveUpdate()
+        }
+    }
+
+    private suspend fun refreshForLiveUpdate() {
+        val currentCount = _uiState.value.allEvents.size
+        val limit = maxOf(pageSize, currentCount)
+        when (val result = eventRepository.fetchActivityEvents(limit = limit, offset = 0)) {
+            is EventResult.Success -> {
+                val events = result.data
+                // Deduplicate by id per spec
+                val seen = mutableSetOf<String>()
+                val deduped = mutableListOf<net.melisma.selko.data.model.CalendarEvent>()
+                for (e in events) if (seen.add(e.id)) deduped.add(e)
+                val groups = groupByDate(deduped)
+                currentOffset = deduped.size
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isLoadingMore = false,
+                        allEvents = deduped,
+                        dateGroups = groups,
+                        hasMore = events.size >= limit
+                    )
+                }
+            }
+            is EventResult.Error -> {
+                if (_uiState.value.errorMessage == null) {
+                    _uiState.update { it.copy(errorMessage = result.message) }
+                }
+            }
+        }
     }
 
     fun loadHistory() {

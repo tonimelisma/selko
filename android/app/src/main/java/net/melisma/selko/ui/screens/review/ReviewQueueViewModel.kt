@@ -19,6 +19,7 @@ import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
+import net.melisma.selko.data.repository.LiveUpdateRepository
 import net.melisma.selko.data.repository.RepositoryResult
 import net.melisma.selko.data.repository.SenderRuleRepository
 
@@ -60,7 +61,8 @@ class ReviewQueueViewModel(
     private val eventRepository: EventRepository,
     private val integrationRepository: IntegrationRepository,
     private val backendApiClient: BackendApiClient,
-    private val senderRuleRepository: SenderRuleRepository
+    private val senderRuleRepository: SenderRuleRepository,
+    private val liveUpdateRepository: LiveUpdateRepository? = null
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(ReviewQueueUiState())
@@ -68,8 +70,37 @@ class ReviewQueueViewModel(
 
     private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
 
+    private var liveUpdateJob: kotlinx.coroutines.Job? = null
+
     init {
         loadData()
+    }
+
+    fun startLiveUpdates() {
+        val repo = liveUpdateRepository ?: return
+        liveUpdateJob?.cancel()
+        liveUpdateJob = viewModelScope.launch {
+            repo.invalidations.collect { inv ->
+                if (inv.resource in setOf("events", "event_sources", "integrations")) {
+                    if (_uiState.value.processingEventIds.isEmpty()) {
+                        // Reuse existing fetch path; preserves optimistic removals via processing guard + trailing
+                        checkIntegrations()
+                    }
+                }
+            }
+        }
+    }
+
+    fun stopLiveUpdates() {
+        liveUpdateJob?.cancel()
+        liveUpdateJob = null
+    }
+
+    fun onResume() {
+        viewModelScope.launch {
+            liveUpdateRepository?.refreshAll()
+            checkIntegrations()
+        }
     }
 
     fun loadData() {
