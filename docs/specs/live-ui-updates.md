@@ -1,6 +1,6 @@
 # Live UI Updates Across Web, iOS, and Android
 
-**Status:** Planned
+**Status:** Implemented — web #270, iOS #271, Android #272 (private Broadcast `user:<uid>:selko-changes`, `realtime.send` triggers + `realtime.messages` policy, coordinators with 350ms debounce/inFlight+trailing/SUBSCRIBED synthetic, lifecycle catch-up)
 
 ## Outcome
 
