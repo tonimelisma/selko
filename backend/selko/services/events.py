@@ -1673,6 +1673,29 @@ def generate_source_attribution(
 # --- Status-based worker claiming functions for calendar sync ---
 
 
+async def claim_approved_event_for_sync_via_pool(
+    pool,
+    worker_id: str,
+    lock_duration_seconds: int = 300,
+) -> Optional[dict[str, Any]]:
+    """Direct-pg variant: claim via asyncpg session pooler (Inc4).
+
+    Falls back to RPC caller if pool is None. One less PostgREST round-trip.
+    """
+    try:
+        row = await pool.fetchrow("SELECT * FROM public.claim_approved_event($1, $2)", worker_id, lock_duration_seconds)
+        if row:
+            event = dict(row)
+            title = event.get("title", "(no title)")[:50]
+            import logging
+            logging.getLogger(__name__).info(f"Worker {worker_id} claimed event {event['id']}: {title} (pool)")
+            return event
+        return None
+    except Exception as e:
+        from selko.services.events import EventsError
+        raise EventsError(f"Failed to claim approved event via pool: {e}") from e
+
+
 def claim_approved_event_for_sync(
     client: Client,
     worker_id: str,
