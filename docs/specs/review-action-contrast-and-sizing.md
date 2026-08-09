@@ -1,6 +1,6 @@
 # Review Action Contrast, Sizing and Grouping
 
-**Status:** Planned, not started.
+**Status:** Implemented in #273 (2026-08-09) — WS1 tokens/docs, WS2 web intrinsic peer group, WS3 iOS tiered layout, WS4 Android peer group (all 322/78/android tests passing).
 
 **Date:** 2026-08-09
 
