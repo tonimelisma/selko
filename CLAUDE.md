@@ -320,6 +320,7 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **Live UI updates** | `docs/specs/live-ui-updates.md` | When implementing cross-platform Realtime invalidation, lifecycle catch-up, or refresh behavior |
 | **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |
 | **Cross-platform Review accessibility** | `docs/specs/cross-platform-review-accessibility.md` | When changing Review width/columns, grouped action styling, button labels/targets, or Review/Event Detail accessibility on web, iOS, or Android |
+| **Review action contrast & sizing** | `docs/specs/review-action-contrast-and-sizing.md` | Before touching peer action colours, button sizing/reflow, or the Accept/Edit/Reject group on any platform. Supersedes decisions 5, 8 and 11 of the spec above |
 | **Calendar policy + LLM fallback** | `docs/specs/calendar-policy-llm-fallback-and-incremental-evals.md` | When changing all-day materialization, primary/fallback LLM routing, or incremental eval identity |
 | **Warmth design system rollout** | `docs/specs/warmth-design-system.md` | When implementing the new coral/Figtree "Warmth" visual identity on any platform |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |
