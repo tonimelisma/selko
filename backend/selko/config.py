@@ -131,6 +131,12 @@ class Config:
     recovery_refresh_interval_seconds: float = 30.0
     email_health_interval_seconds: int = 300
     email_folder_refresh_seconds: int = 3600
+    # Inc3: direct Postgres work transport (asyncpg session pooler)
+    supabase_db_url: str | None = None
+    pg_pool_min_size: int = 1
+    pg_pool_max_size: int = 4
+    pg_keepalive_seconds: int = 60
+    pg_connect_timeout_seconds: int = 10
     operational_notification_sender: Optional[str] = None
     operational_notification_recipient: Optional[str] = None
     operational_notification_api_key: Optional[str] = None
@@ -511,6 +517,11 @@ def load_config(env_override: Optional[str] = None) -> Config:
         recovery_refresh_interval_seconds=float(getenv("RECOVERY_REFRESH_INTERVAL_SECONDS", "30")),
         email_health_interval_seconds=int(getenv("EMAIL_HEALTH_INTERVAL_SECONDS", "300")),
         email_folder_refresh_seconds=int(getenv("EMAIL_FOLDER_REFRESH_SECONDS", "3600")),
+        supabase_db_url=getenv("SUPABASE_DB_URL"),
+        pg_pool_min_size=int(getenv("PG_POOL_MIN_SIZE", "1")),
+        pg_pool_max_size=int(getenv("PG_POOL_MAX_SIZE", "4")),
+        pg_keepalive_seconds=int(getenv("PG_KEEPALIVE_SECONDS", "60")),
+        pg_connect_timeout_seconds=int(getenv("PG_CONNECT_TIMEOUT_SECONDS", "10")),
         operational_notification_sender=getenv("OPERATIONAL_NOTIFICATION_SENDER"),
         operational_notification_recipient=getenv("OPERATIONAL_NOTIFICATION_RECIPIENT"),
         operational_notification_api_key=getenv("OPERATIONAL_NOTIFICATION_API_KEY"),
