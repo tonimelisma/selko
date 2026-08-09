@@ -5,6 +5,7 @@
 	import { get } from 'svelte/store';
 	import { _ } from 'svelte-i18n';
 	import { getEvent, updateEvent, updateEventStatus } from '$lib/services/events.js';
+	import { undoHistoryEvent } from '$lib/api/backend.js';
 	import { fetchEventSources } from '$lib/services/event-sources.js';
 	import { getEmail } from '$lib/services/emails.js';
 	import { fetchAttachments } from '$lib/services/attachments.js';
@@ -44,6 +45,9 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 				integration.provider === 'google_calendar' && integration.status === 'active'
 		)
 	);
+	/** @type {{event: any, timer: ReturnType<typeof setTimeout>} | null} */
+	let rejectedUndo = $state(null);
+	let undoingReject = $state(false);
 
 	// Form fields
 	let title = $state('');
@@ -60,6 +64,32 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 			await loadEventData();
 		}
 	});
+
+		function clearRejectUndoTimer() {
+		if (rejectedUndo?.timer) clearTimeout(rejectedUndo.timer);
+	}
+
+	function dismissRejectUndo() {
+		clearRejectUndoTimer();
+		rejectedUndo = null;
+		goto('/app');
+	}
+
+	async function handleUndoRejected() {
+		if (!rejectedUndo || undoingReject) return;
+		const toRestore = rejectedUndo.event;
+		clearRejectUndoTimer();
+		rejectedUndo = null;
+		undoingReject = true;
+		const { error: undoError } = await undoHistoryEvent(toRestore.id);
+		undoingReject = false;
+		if (undoError) {
+			error = undoError.message;
+			return;
+		}
+		// Reload event to reflect restored pending_review status
+		await loadEventData();
+	}
 
 	async function loadEventData() {
 		isLoading = true;
@@ -198,7 +228,11 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 				error = statusError.message;
 				return;
 			}
-			goto('/app');
+			const timer = setTimeout(() => {
+				rejectedUndo = null;
+				goto('/app');
+			}, 8000);
+			rejectedUndo = { event, timer };
 		} finally {
 			isActing = false;
 		}
@@ -460,6 +494,18 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 		</div>
 	</div>
 
+	{#if rejectedUndo}
+		<div class="toast toast-bottom toast-center z-50" role="status" aria-live="polite">
+			<div class="alert bg-base-100 shadow-lg border border-base-300 gap-3 max-w-md">
+				<span class="text-sm font-medium">{$_('home.eventRejected')}</span>
+				<button class="btn btn-sm btn-primary" disabled={undoingReject} onclick={handleUndoRejected}>
+					{#if undoingReject}<span class="loading loading-spinner loading-xs"></span>{/if}
+					{$_('history.undo')}
+				</button>
+				<button class="btn btn-ghost btn-sm btn-circle" onclick={dismissRejectUndo} aria-label={$_('common.dismiss')}>✕</button>
+			</div>
+		</div>
+	{/if}
 	<!-- Mobile fixed bottom action bar -->
 	{#if event.status === 'pending_review'}
 		<div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-surface p-4 lg:hidden">
