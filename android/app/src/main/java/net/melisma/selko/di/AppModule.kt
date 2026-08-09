@@ -8,6 +8,7 @@ import net.melisma.selko.data.repository.EmailRepository
 import net.melisma.selko.data.repository.EmailFolderRepository
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.IntegrationRepository
+import net.melisma.selko.data.repository.LiveUpdateRepository
 import net.melisma.selko.data.repository.SenderRuleRepository
 import net.melisma.selko.ui.screens.auth.AuthViewModel
 import net.melisma.selko.ui.screens.history.HistoryViewModel
@@ -33,13 +34,14 @@ val appModule = module {
     single { IntegrationRepository(get()) }
     single { CalendarSettingsRepository(get()) }
     single { SenderRuleRepository(get()) }
+    single { LiveUpdateRepository(get()) }
 
     // ViewModels
     viewModel { AuthViewModel(androidApplication(), get()) }
-    viewModel { ReviewQueueViewModel(androidApplication(), get(), get(), get(), get()) }
+    viewModel { ReviewQueueViewModel(androidApplication(), get(), get(), get(), get(), get()) }
     viewModel { (eventId: String) ->
         EventDetailViewModel(androidApplication(), get(), get(), get(), eventId)
     }
-    viewModel { HistoryViewModel(androidApplication(), get(), get(), get()) }
+    viewModel { HistoryViewModel(androidApplication(), get(), get(), get(), get()) }
     viewModel { SettingsViewModel(androidApplication(), get(), get(), get(), get(), get(), get()) }
 }

@@ -5,6 +5,7 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
 import io.ktor.client.engine.okhttp.OkHttp
 import net.melisma.selko.BuildConfig
 
@@ -19,6 +20,7 @@ fun createSupabaseClient(): SupabaseClient {
             autoSaveToStorage = true
         }
         install(Postgrest)
+        install(Realtime)
 
         httpEngine = OkHttp.create()
     }
