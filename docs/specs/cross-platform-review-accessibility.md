@@ -319,7 +319,7 @@ Steps:
 3. Add the local peer-group layout primitive on each platform.
 4. Update durable docs to distinguish peer decision groups from standalone
    destructive controls and native system dialogs.
-5. Mark this spec Implemented only after every platform has shipped.
+5. Mark this spec Implemented only after every platform has shipped. Decisions 5, 8 and 11 superseded by [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md) — peer actions now use one solid construction per theme (not mixed), intrinsic sizing to widest label (not equal thirds), and icons scale/disappear per tier (≤352 → 16px, ≤296 → hidden) rather than reflow-then-stack; one column, 720 cap, 48 targets, labels, Accept copy, and native dialogs remain as specified here.
 
 ### WS2 — Web and mobile web
 

@@ -30,7 +30,11 @@ data class SelkoColors(
     val badgeNewBackground: Color,
     val badgeNewForeground: Color,
     val badgeChangedBackground: Color,
-    val badgeChangedForeground: Color
+    val badgeChangedForeground: Color,
+    val actionAccept: Color,
+    val actionEdit: Color,
+    val actionReject: Color,
+    val actionLabel: Color
 )
 
 private val LightSelkoColors = SelkoColors(
@@ -49,7 +53,11 @@ private val LightSelkoColors = SelkoColors(
     badgeNewBackground = SelkoBadgeNewBackground,
     badgeNewForeground = SelkoBadgeNewForeground,
     badgeChangedBackground = SelkoBadgeChangedBackground,
-    badgeChangedForeground = SelkoBadgeChangedForeground
+    badgeChangedForeground = SelkoBadgeChangedForeground,
+    actionAccept = SelkoActionAccept,
+    actionEdit = SelkoActionEdit,
+    actionReject = SelkoActionReject,
+    actionLabel = SelkoActionLabel
 )
 
 private val DarkSelkoColors = SelkoColors(
@@ -68,7 +76,11 @@ private val DarkSelkoColors = SelkoColors(
     badgeNewBackground = SelkoBadgeNewBackgroundDark,
     badgeNewForeground = SelkoBadgeNewForegroundDark,
     badgeChangedBackground = SelkoBadgeChangedBackgroundDark,
-    badgeChangedForeground = SelkoBadgeChangedForegroundDark
+    badgeChangedForeground = SelkoBadgeChangedForegroundDark,
+    actionAccept = SelkoActionAcceptDark,
+    actionEdit = SelkoActionEditDark,
+    actionReject = SelkoActionRejectDark,
+    actionLabel = SelkoActionLabelDark
 )
 
 val LocalSelkoColors = staticCompositionLocalOf { LightSelkoColors }

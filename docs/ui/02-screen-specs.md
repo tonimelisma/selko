@@ -79,10 +79,7 @@ Each event card shows:
 - Title
 - Date/time (or "All Day")
 - Location (if any)
-- Action buttons are one filled peer group with three equal-width controls:
-  Accept (success fill and check), Edit (neutral fill and pencil), and Reject
-  (error fill and X). Every action has a visible icon-plus-text label and a
-  minimum 48px target.
+- Action buttons are one solid peer group sharing one construction per theme (light: dark fill/white label, dark: bright fill/near-black label, hue only — green Accept, warm Edit, berry Reject), sized intrinsically to the widest label (equal to each other, leading-aligned, `width: fit-content`, never stretched), with 12px gap (8px ≤352), never stacked at 320-720px English widths; tier 2 ≤352 compacts to 16px icon/10px padding, tier 3 ≤296 hides icons, fallback 1+2 only for long locales. Every action has a visible icon-plus-text label (icon is colour-blind cue, survives to phone widths) and a minimum 48px target. No button is within 3:1 of its card/paper; labels clear 7:1 AAA.
 
 Events are grouped by sender only (no email sub-grouping). All events from a sender appear directly under that sender's header.
 
@@ -96,8 +93,7 @@ Same sender-grouped structure as stacked cards:
 
 - **Sender**: section header with sender name, email, and three-dot menu (right-aligned)
 - **Events**: full-width cards stacked below each sender
-- Action buttons: the same labeled, equal-width filled peer group. At narrow
-  widths or large text sizes the group stacks vertically without truncation.
+- Action buttons: the same labeled intrinsic peer group described above. At narrow widths or large text sizes it follows the 3-tier reflow ladder (never a three-slab stack); labels never truncate or wrap, icons scale before they disappear.
 
 ### Integration and Recovery States
 

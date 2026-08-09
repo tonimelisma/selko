@@ -39,6 +39,10 @@ supporting copy instead of repeating the tagline.
 | changed | `#C97A2E` | `#F0B45C` | Changed / caution state |
 | berry (error) | `#AD3650` | `#EE7189` | Errors, failed syncs, destructive actions (reject, ignore, disconnect, logout) |
 | info | `#6E655C` | `#B8AC9F` | Quiet informational UI (warm slate; Selko has no loud "info" semantics) |
+| acceptFill | `#276243` | `#7FD9A8` | Peer Accept (Review, Event Detail) |
+| editFill | `#544A40` | `#C9BAA8` | Peer Edit |
+| rejectFill | `#84203A` | `#F0899C` | Peer Reject |
+| actionLabel | `#FFFFFF` | `#12100E` | Peer action label (white light, ink dark) |
 
 Dark mode uses borders in place of shadows. Filled dark-mode buttons use dark
 ink labels on bright Warmth fills where the contrast requires it.
@@ -54,12 +58,8 @@ ink labels on bright Warmth fills where the contrast requires it.
    the brand color at night.
 3. **Dark mode adjusts lightness, never hue.** Each token has a light/dark
    pair within its own hue family; do not remap one hue onto another.
-4. **Destructive controls use the berry/error semantic.** Peer decision groups
-   use a filled berry Reject action so the decision remains legible beside
-   Accept and Edit; confirmation dialogs may use the same filled treatment.
-5. **Filled action content is semantic.** Light coral uses ink `#2B2622`, green
-   uses `#12100E`, and berry uses white. Small successful status text uses
-   `#3F7D5F`; warning text uses `#9A5C1D`.
+4. **Peer decision groups use one solid construction.** Light theme: solid dark fill with white label; dark theme: solid bright fill with near-black label (`#12100E`). Light-mode filled peer actions carry **white** (`#FFFFFF`), not `#12100E`; `onSuccess` remains only for non-peer success surfaces.
+5. **Filled action content is semantic outside peer groups.** Light coral uses ink `#2B2622`, green uses `#12100E`, and berry uses white. Small successful status text uses `#3F7D5F`; warning text uses `#9A5C1D`.
 6. **NEW is neutral, not successful.** NEW uses `#F5EEE6`/`#6E655C`; CHANGED
    uses `#FDF1E7`/`#9A5C1D`.
 

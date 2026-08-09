@@ -91,7 +91,7 @@ struct EventDetailView: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.selko(.success))
+                    .buttonStyle(.selko(.accept))
                     .disabled(viewModel.isActing || !viewModel.calendarConnected)
                     .accessibilityLabel("Accept \(event.title)")
                     .accessibilityHint(
