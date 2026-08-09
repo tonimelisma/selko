@@ -6,6 +6,7 @@
 	import { supabase } from '$lib/supabase.js';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+	import * as liveUpdates from '$lib/live-updates.js';
 
 	let { children } = $props();
 	/** @type {any} */
@@ -13,20 +14,50 @@
 	let isLoading = $state(true);
 
 	onMount(() => {
+		let currentUid = null;
 		const unsubLoading = loading.subscribe((v) => {
 			isLoading = v;
 		});
 		const unsubUser = user.subscribe((u) => {
 			currentUser = u;
 			if (!isLoading && !u) goto('/login');
+			const uid = u?.id || null;
+			if (uid !== currentUid) {
+				currentUid = uid;
+				if (uid) {
+					liveUpdates.start(uid);
+				} else {
+					liveUpdates.stop();
+				}
+			}
 		});
+
+		// Lifecycle catch-up: visible tab / online / focus
+		function onVisible() {
+			if (document.visibilityState === 'visible' && currentUid) {
+				// Trigger a catch-up fetch via synthetic invalidation for all subscribed resources
+				liveUpdates.start(currentUid);
+			}
+		}
+		function onOnline() {
+			if (currentUid) liveUpdates.start(currentUid);
+		}
+		document.addEventListener('visibilitychange', onVisible);
+		window.addEventListener('focus', onVisible);
+		window.addEventListener('online', onOnline);
+
 		return () => {
 			unsubLoading();
 			unsubUser();
+			document.removeEventListener('visibilitychange', onVisible);
+			window.removeEventListener('focus', onVisible);
+			window.removeEventListener('online', onOnline);
+			liveUpdates.stop();
 		};
 	});
 
 	async function handleLogout() {
+		await liveUpdates.stop();
 		await supabase.auth.signOut();
 		goto('/login');
 	}
