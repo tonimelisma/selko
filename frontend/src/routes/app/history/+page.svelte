@@ -17,6 +17,7 @@
 	import UndoConflictDialog from '$lib/components/UndoConflictDialog.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
 	import { formatChangeValue } from '$lib/format-change-value.js';
+	import * as liveUpdates from '$lib/live-updates.js';
 
 	/** @type {any[]} */
 	let events = $state([]);
@@ -100,6 +101,33 @@
 
 	onMount(async () => {
 		await Promise.all([loadEvents(), loadEmailHistory()]);
+
+		const unsubEvents = liveUpdates.subscribe('events', async () => {
+			const currentLen = events.length;
+			const result = await fetchActivityEvents({ limit: Math.max(20, currentLen), offset: 0 });
+			if (!result.error && result.data) {
+				// Deduplicate by ID and prepend newly terminal actions while preserving depth
+				const seen = new Set(events.map((e) => e.id));
+				const newOnes = result.data.filter((e) => !seen.has(e.id));
+				if (newOnes.length > 0) events = [...newOnes, ...events].slice(0, result.data.length);
+				else events = result.data;
+				totalCount = result.count || totalCount;
+			}
+		});
+		const unsubSources = liveUpdates.subscribe('event_sources', async () => {
+			const result = await fetchActivityEvents({ limit: Math.max(20, events.length), offset: 0 });
+			if (!result.error && result.data) events = result.data;
+		});
+		const unsubEmails = liveUpdates.subscribe('emails', async () => {
+			const result = await fetchEmailHistory({ limit: Math.max(20, emailHistory.length), offset: 0 });
+			if (!result.error && result.data) emailHistory = result.data;
+		});
+
+		return () => {
+			unsubEvents();
+			unsubSources();
+			unsubEmails();
+		};
 	});
 
 	onDestroy(() => {
