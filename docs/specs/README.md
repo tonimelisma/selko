@@ -21,11 +21,8 @@ Status as of 2026-08-06.
   rollout.
 - [Egress and Work Scheduling](egress-and-work-scheduling.md) — **built and merged (egress arch A, 1.5 M → ~3k RPCs/day).** Busy-wait removed via single scheduler + drain-then-sleep + in-process nudge; duplicate email owner and parked photo polls removed; egress meter + `/health/egress` shipped. Remaining soft spots (dual idle model, 5 s floor invisibility, dead `num_workers`) carried forward to the post-cutover plan.
 - [Cutover Verification](cutover-verification-20260807.md) — **verified locally, not deployed.** Ordered checklist (`migrations → code via `gh workflow run test.yml` → flag last); the sole ordered gate — the two other duplicated runbook sections now point here.
-- [Live UI updates](live-ui-updates.md) — **planned, not started.** Private
-  per-user Broadcast invalidations with lifecycle-safe catch-up across web, iOS,
-  and Android. ConnectionRecovery poll (5 s) kept as debt with expiry in the post-cutover plan.
-- [Photo surface removal](photo-surface-removal.md) — **ready to implement, not
-  started.** Deliberately deferred while photo ingestion is parked.
+- [Live UI updates](live-ui-updates.md) — **implemented — web #270, iOS #271, Android #272.** Private per-user Broadcast invalidations with lifecycle-safe catch-up.
+- [Photo surface removal](photo-surface-removal.md) — **implemented in #201 (2026-07-13).** Connect surfaces removed; photo-source rendering retained (see spec for restoration).
 - [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md)
   — **planned, not started (2026-08-09).** Fixes a real WCAG 1.4.11 failure (the
   dark-mode Edit button is 1.00:1 against its card, because `base-200` and

@@ -1,6 +1,6 @@
 # Spec: Remove photo surfaces from UI and docs (photos parked)
 
-**Status:** Ready to implement
+**Status:** Implemented in #201 (2026-07-13) — frontend, iOS, Android, backend (connect surfaces removed, rendering retained per principles). Spec remains as restoration reference.
 **Author:** Design plan (see git history)
 **Context:** Photo ingestion is parked for cost/value reasons — see
 [`onedrive-photo-ingestion.md`](onedrive-photo-ingestion.md) (PARKED), which
