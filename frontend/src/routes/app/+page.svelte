@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import { fetchIntegrations } from '$lib/services/integrations.js';
 	import {
@@ -26,6 +26,7 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import InlineActionError from '$lib/components/InlineActionError.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
+	import * as liveUpdates from '$lib/live-updates.js';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
@@ -132,7 +133,29 @@
 			oauthError = params.get('message') || $_('integrations.connectFailed');
 			window.history.replaceState({}, '', '/app');
 		}
-		await loadIntegrations();
+			await loadIntegrations();
+
+		// Live UI: subscribe to invalidations for events/event_sources/integrations
+		const unsubEvents = liveUpdates.subscribe('events', async () => {
+			if (processingEvents.size === 0) {
+				await loadEvents();
+			} else {
+				// Defer refresh until optimistic mutations complete — preserve optimistic removals
+				setTimeout(() => { if (processingEvents.size === 0) loadEvents(); }, 500);
+			}
+		});
+		const unsubSources = liveUpdates.subscribe('event_sources', async () => {
+			if (processingEvents.size === 0) await loadEvents();
+		});
+		const unsubIntegrations = liveUpdates.subscribe('integrations', async () => {
+			await loadIntegrations();
+		});
+
+		return () => {
+			unsubEvents();
+			unsubSources();
+			unsubIntegrations();
+		};
 	});
 
 	async function loadIntegrations() {
