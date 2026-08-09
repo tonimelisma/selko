@@ -7,7 +7,8 @@ import SwiftUI
 
 struct HistoryView: View {
     let email: String
-    @State private var viewModel = HistoryViewModel()
+    @State private var viewModel = HistoryViewModel(liveUpdateService: DependencyContainer.shared.liveUpdateService)
+    @Environment(\.scenePhase) private var scenePhase
 
     init(email: String = "") {
         self.email = email
@@ -49,9 +50,18 @@ struct HistoryView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.load()
+            viewModel.startLiveUpdates()
         }
         .refreshable {
             await viewModel.load()
+        }
+        .onDisappear {
+            viewModel.stopLiveUpdates()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await viewModel.handleScenePhaseActive() }
+            }
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             if viewModel.canForceUndo {

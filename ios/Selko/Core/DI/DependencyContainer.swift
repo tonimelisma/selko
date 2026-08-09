@@ -57,4 +57,8 @@ final class DependencyContainer {
     lazy var senderRuleService: SenderRuleServiceProtocol = {
         SenderRuleService(supabase: supabase)
     }()
+
+    lazy var liveUpdateService: LiveUpdateService = {
+        LiveUpdateService(supabase: supabase)
+    }()
 }

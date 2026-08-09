@@ -8,13 +8,15 @@ import SwiftUI
 struct ReviewQueueView: View {
     let email: String
     let onNavigateToEvent: (UUID) -> Void
-    @State private var viewModel = ReviewQueueViewModel()
+    @State private var viewModel = ReviewQueueViewModel(liveUpdateService: DependencyContainer.shared.liveUpdateService)
     @State private var showAcceptAllConfirm = false
 
     init(email: String = "", onNavigateToEvent: @escaping (UUID) -> Void = { _ in }) {
         self.email = email
         self.onNavigateToEvent = onNavigateToEvent
     }
+
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,9 +54,18 @@ struct ReviewQueueView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.load()
+            viewModel.startLiveUpdates()
         }
         .refreshable {
             await viewModel.load()
+        }
+        .onDisappear {
+            viewModel.stopLiveUpdates()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await viewModel.handleScenePhaseActive() }
+            }
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
