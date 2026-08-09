@@ -129,6 +129,7 @@ class Config:
     email_runtime_watchdog_seconds: int = 30
     recovery_refresh_interval_seconds: float = 30.0
     email_health_interval_seconds: int = 300
+    email_folder_refresh_seconds: int = 3600
     operational_notification_sender: Optional[str] = None
     operational_notification_recipient: Optional[str] = None
     operational_notification_api_key: Optional[str] = None
@@ -508,6 +509,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_runtime_watchdog_seconds=int(getenv("EMAIL_RUNTIME_WATCHDOG_SECONDS", "30")),
         recovery_refresh_interval_seconds=float(getenv("RECOVERY_REFRESH_INTERVAL_SECONDS", "30")),
         email_health_interval_seconds=int(getenv("EMAIL_HEALTH_INTERVAL_SECONDS", "300")),
+        email_folder_refresh_seconds=int(getenv("EMAIL_FOLDER_REFRESH_SECONDS", "3600")),
         operational_notification_sender=getenv("OPERATIONAL_NOTIFICATION_SENDER"),
         operational_notification_recipient=getenv("OPERATIONAL_NOTIFICATION_RECIPIENT"),
         operational_notification_api_key=getenv("OPERATIONAL_NOTIFICATION_API_KEY"),

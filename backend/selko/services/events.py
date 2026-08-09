@@ -473,8 +473,12 @@ def process_email_for_events(
     email_id: str,
     user_id: str,
     config: Optional[Config] = None,
+    email_row: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Main pipeline function to extract events from an email.
+
+    If email_row is supplied, the extra SELECT in fetch_email_with_attachments
+    is skipped — Inc1 payload fix; workers already have the claimed row.
 
     Orchestrates sender checking, LLM extraction, dedup, and persistence.
 
@@ -497,7 +501,7 @@ def process_email_for_events(
         mark_email_status(supabase_client, email_id, "processing")
 
         email_metadata, email_text, attachments = event_processing.fetch_email_with_attachments(
-            supabase_client, email_id
+            supabase_client, email_id, email_row=email_row
         )
 
         # Inject user timezone for timezone-aware current_date in prompt

@@ -355,8 +355,19 @@ def extract_calendar_events(
 def fetch_email_with_attachments(
     supabase_client: Client,
     email_id: str,
+    email_row: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], str, list[dict[str, Any]]]:
     """Fetch email and its attachments from Supabase.
+
+    If email_row is supplied (already claimed), the email SELECT is skipped
+    and only attachments are fetched — Inc1 payload fix.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        email_id: UUID of email record in database.
+        email_row: Optional already-fetched email dict to skip SELECT.
+
+    Returns:
 
     Args:
         supabase_client: Authenticated Supabase client.
@@ -372,19 +383,22 @@ def fetch_email_with_attachments(
         LLMGatewayError: If email not found or attachment fetch fails.
     """
     try:
-        # Fetch email record
-        email_result = (
-            supabase_client.table("emails")
-            .select("*")
-            .eq("id", email_id)
-            .single()
-            .execute()
-        )
+        if email_row is not None:
+            email = email_row
+        else:
+            # Fetch email record
+            email_result = (
+                supabase_client.table("emails")
+                .select("*")
+                .eq("id", email_id)
+                .single()
+                .execute()
+            )
 
-        if not email_result.data:
-            raise LLMGatewayError(f"Email not found: {email_id}")
+            if not email_result.data:
+                raise LLMGatewayError(f"Email not found: {email_id}")
 
-        email = email_result.data
+            email = email_result.data
         logger.debug(f"Fetched email: {email.get('subject', '(no subject)')}")
 
         # Build metadata

@@ -69,6 +69,7 @@ async def process_email(
             email_id,
             user_id,
             config,
+            email,  # Inc1: pass claimed row to skip re-fetch
         )
 
         num_events = result.get("num_events", 0)

@@ -276,12 +276,26 @@ class EmailIngestionWorker:
             .execute()
         )
         excluded = {row.get("provider_folder_id") for row in (excluded_result.data or [])}
-        upsert_discovered_folders(
-            self.client,
-            user_id=claim.user_id,
-            integration_id=claim.integration_id,
-            provider="gmail",
-            folders=[
+        # Inc1 payload: hourly folder refresh — skip listing/upsert inside interval
+        _folders_due = True
+        try:
+            _state = self.client.table("email_sync_state").select("folders_refreshed_at").eq("integration_id", claim.integration_id).single().execute()
+            _fr = (_state.data or {}).get("folders_refreshed_at")
+            if _fr:
+                from datetime import datetime, timezone
+                _prev = datetime.fromisoformat(str(_fr).replace("Z", "+00:00"))
+                _age = (datetime.now(timezone.utc) - _prev).total_seconds()
+                if _age < self.config.email_folder_refresh_seconds:
+                    _folders_due = False
+        except Exception:
+            _folders_due = True
+        if _folders_due:
+            upsert_discovered_folders(
+                self.client,
+                user_id=claim.user_id,
+                integration_id=claim.integration_id,
+                provider="gmail",
+                folders=[
                 {
                     "id": label.get("id"),
                     "name": label.get("name") or label.get("id"),
@@ -293,7 +307,11 @@ class EmailIngestionWorker:
                 }
                 for label in labels if label.get("id")
             ],
-        )
+            )
+            try:
+                self.client.table("email_sync_state").update({"folders_refreshed_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}).eq("integration_id", claim.integration_id).execute()
+            except Exception:
+                pass
         cursor = integration.get("sync_cursor")
         # 6c: get_user_profile() was fetched unconditionally here, but
         # replacement_cursor is only used when there is no cursor (initial sync)
@@ -439,15 +457,33 @@ class EmailIngestionWorker:
                 fetch_mail_folders(token, resolved_well_known_ids=resolved)
             )
 
-        discovered = self._outlook_call(claim.user_id, list_folders)
-        self.repository.require_heartbeat(claim.integration_id, self.worker_id)
-        upsert_discovered_folders(
-            self.client,
-            user_id=claim.user_id,
-            integration_id=claim.integration_id,
-            provider="outlook",
-            folders=discovered,
-        )
+        # Inc1 payload: hourly folder refresh
+        _folders_due = True
+        try:
+            _state = self.client.table("email_sync_state").select("folders_refreshed_at").eq("integration_id", claim.integration_id).single().execute()
+            _fr = (_state.data or {}).get("folders_refreshed_at")
+            if _fr:
+                from datetime import datetime, timezone
+                _prev = datetime.fromisoformat(str(_fr).replace("Z", "+00:00"))
+                _age = (datetime.now(timezone.utc) - _prev).total_seconds()
+                if _age < self.config.email_folder_refresh_seconds:
+                    _folders_due = False
+        except Exception:
+            _folders_due = True
+        if _folders_due:
+            discovered = self._outlook_call(claim.user_id, list_folders)
+            self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+            upsert_discovered_folders(
+                self.client,
+                user_id=claim.user_id,
+                integration_id=claim.integration_id,
+                provider="outlook",
+                folders=discovered,
+            )
+            try:
+                self.client.table("email_sync_state").update({"folders_refreshed_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}).eq("integration_id", claim.integration_id).execute()
+            except Exception:
+                pass
         rows = (
             self.client.table("email_folders")
             .select("*")
