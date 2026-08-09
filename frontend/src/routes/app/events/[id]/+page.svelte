@@ -436,23 +436,25 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 
 			<!-- Desktop action buttons -->
 			{#if event.status === 'pending_review'}
-				<div class="peer-action-group mt-6 hidden lg:grid" data-peer-count="2">
-					<button class="btn peer-action peer-action-destructive" onclick={handleReject} disabled={isActing} aria-label={`${$_('events.reject')} ${event.title}`} aria-busy={isActing}>
-						{#if isActing}
-							<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-						{:else}
-							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="m7 7 10 10M17 7 7 17" /></svg>
-							{$_('events.reject')}
-						{/if}
-					</button>
-					<button class="btn btn-success peer-action" onclick={handleApprove} disabled={!title || isActing || !calendarConnected} aria-label={`${$_('events.accept')} ${event.title}${calendarConnected ? '' : `. ${$_('integrations.calendarRequiredToAccept')}`}`} aria-busy={isActing}>
-						{#if isActing}
-							<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-						{:else}
-							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
-							{$_('events.accept')}
-						{/if}
-					</button>
+				<div class="peer-action-wrap mt-6 hidden lg:block">
+					<div class="peer-action-group" data-peer-count="2">
+						<button class="btn peer-action peer-action-destructive" onclick={handleReject} disabled={isActing} aria-label={`${$_('events.reject')} ${event.title}`} aria-busy={isActing}>
+							{#if isActing}
+								<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+							{:else}
+								<svg xmlns="http://www.w3.org/2000/svg" class="peer-icon h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m7 7 10 10M17 7 7 17" /></svg>
+								{$_('events.reject')}
+							{/if}
+						</button>
+						<button class="btn peer-action peer-action-accept" onclick={handleApprove} disabled={!title || isActing || !calendarConnected} aria-label={`${$_('events.accept')} ${event.title}${calendarConnected ? '' : `. ${$_('integrations.calendarRequiredToAccept')}`}`} aria-busy={isActing}>
+							{#if isActing}
+								<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+							{:else}
+								<svg xmlns="http://www.w3.org/2000/svg" class="peer-icon h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+								{$_('events.accept')}
+							{/if}
+						</button>
+					</div>
 				</div>
 			{/if}
 		</div>
@@ -461,23 +463,25 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 	<!-- Mobile fixed bottom action bar -->
 	{#if event.status === 'pending_review'}
 		<div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-surface p-4 lg:hidden">
-			<div class="peer-action-group mx-auto w-full max-w-[var(--review-max-width)]" data-peer-count="2">
-				<button class="btn peer-action peer-action-destructive" onclick={handleReject} disabled={isActing} aria-label={`${$_('events.reject')} ${event.title}`} aria-busy={isActing}>
-					{#if isActing}
-						<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-					{:else}
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="m7 7 10 10M17 7 7 17" /></svg>
-						{$_('events.reject')}
-					{/if}
-				</button>
-				<button class="btn btn-success peer-action" onclick={handleApprove} disabled={!title || isActing || !calendarConnected} aria-label={`${$_('events.accept')} ${event.title}${calendarConnected ? '' : `. ${$_('integrations.calendarRequiredToAccept')}`}`} aria-busy={isActing}>
-					{#if isActing}
-						<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-					{:else}
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
-						{$_('events.accept')}
-					{/if}
-				</button>
+			<div class="peer-action-wrap mx-auto w-full max-w-[var(--review-max-width)]">
+				<div class="peer-action-group" data-peer-count="2">
+					<button class="btn peer-action peer-action-destructive" onclick={handleReject} disabled={isActing} aria-label={`${$_('events.reject')} ${event.title}`} aria-busy={isActing}>
+						{#if isActing}
+							<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+						{:else}
+							<svg xmlns="http://www.w3.org/2000/svg" class="peer-icon h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m7 7 10 10M17 7 7 17" /></svg>
+							{$_('events.reject')}
+						{/if}
+					</button>
+					<button class="btn peer-action peer-action-accept" onclick={handleApprove} disabled={!title || isActing || !calendarConnected} aria-label={`${$_('events.accept')} ${event.title}${calendarConnected ? '' : `. ${$_('integrations.calendarRequiredToAccept')}`}`} aria-busy={isActing}>
+						{#if isActing}
+							<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+						{:else}
+							<svg xmlns="http://www.w3.org/2000/svg" class="peer-icon h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+							{$_('events.accept')}
+						{/if}
+					</button>
+				</div>
 			</div>
 		</div>
 	{/if}

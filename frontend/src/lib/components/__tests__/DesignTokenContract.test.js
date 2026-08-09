@@ -33,8 +33,11 @@ describe('canonical design token contract', () => {
 		expect(css).toContain(`--screen-gutter: ${tokens.layout.screenGutter}px`);
 		expect(css).toContain(`--compact-horizontal-padding: ${tokens.control.compactHorizontalPadding}px`);
 		expect(css).toContain('.peer-action-group');
-		expect(css).toContain('@media (max-width: 520px)');
-		expect(css).toContain('grid-template-columns: minmax(0, 1fr)');
+		expect(css).toContain('.peer-action-wrap');
+		expect(css).toContain('container-type: inline-size');
+		expect(css).toContain('width: fit-content');
+		expect(css).toContain('@container (max-width: 352px)');
+		expect(css).toContain('@container (max-width: 296px)');
 	});
 
 	it.each([
@@ -50,8 +53,43 @@ describe('canonical design token contract', () => {
 		['dark muted on paper', 'dark', 'muted', 'paper', 4.5],
 		['dark faint on paper', 'dark', 'faint', 'paper', 4.5],
 		['dark NEW tag', 'dark', 'newForeground', 'newBackground', 4.5],
-		['dark CHANGED tag', 'dark', 'changedForeground', 'changedBackground', 4.5]
+		['dark CHANGED tag', 'dark', 'changedForeground', 'changedBackground', 4.5],
+		['light accept label vs fill', 'light', 'actionLabel', 'acceptFill', 7.0],
+		['light edit label vs fill', 'light', 'actionLabel', 'editFill', 7.0],
+		['light reject label vs fill', 'light', 'actionLabel', 'rejectFill', 7.0],
+		['dark accept label vs fill', 'dark', 'actionLabel', 'acceptFill', 7.0],
+		['dark edit label vs fill', 'dark', 'actionLabel', 'editFill', 7.0],
+		['dark reject label vs fill', 'dark', 'actionLabel', 'rejectFill', 7.0],
+		['light accept vs surface', 'light', 'acceptFill', 'surface', 3.0],
+		['light edit vs surface', 'light', 'editFill', 'surface', 3.0],
+		['light reject vs surface', 'light', 'rejectFill', 'surface', 3.0],
+		['dark accept vs surface', 'dark', 'acceptFill', 'surface', 3.0],
+		['dark edit vs surface', 'dark', 'editFill', 'surface', 3.0],
+		['dark reject vs surface', 'dark', 'rejectFill', 'surface', 3.0],
+		['light accept vs paper', 'light', 'acceptFill', 'paper', 3.0],
+		['light edit vs paper', 'light', 'editFill', 'paper', 3.0],
+		['light reject vs paper', 'light', 'rejectFill', 'paper', 3.0],
+		['dark accept vs paper', 'dark', 'acceptFill', 'paper', 3.0],
+		['dark edit vs paper', 'dark', 'editFill', 'paper', 3.0],
+		['dark reject vs paper', 'dark', 'rejectFill', 'paper', 3.0]
 	])('%s meets contrast', (_name, mode, foreground, background, minimum) => {
 		expect(contrast(tokens.color[mode][foreground], tokens.color[mode][background])).toBeGreaterThanOrEqual(minimum);
+	});
+
+	it('peer action group is not descendant of date chip column', async () => {
+		const { readFileSync: rf } = await import('node:fs');
+		const ec = rf(resolve(root, 'frontend/src/lib/components/EventCard.svelte'), 'utf8');
+		const cc = rf(resolve(root, 'frontend/src/lib/components/ChangeCard.svelte'), 'utf8');
+		// Action wrap must be sibling of date-chip flex container, not nested inside flex-1
+		expect(ec).toContain('class="peer-action-wrap');
+		expect(ec).toContain('class="flex gap-3');
+		expect(cc).toContain('class="peer-action-wrap');
+	});
+	it('no peer button declares white-space normal', async () => {
+		const { readFileSync: rf } = await import('node:fs');
+		const css2 = rf(resolve(root, 'frontend/src/app.css'), 'utf8');
+		// Ensure peer buttons use nowrap, not normal/wrap
+		expect(css2).toContain('white-space: nowrap');
+		expect(css2).not.toMatch(/\.peer-action-group[\s\S]*?white-space:\s*normal/);
 	});
 });

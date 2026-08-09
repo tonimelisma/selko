@@ -72,17 +72,19 @@
 			{/each}
 		</div>
 
-		<div class="modal-action peer-action-group" data-peer-count="3">
-			<button class="btn peer-action peer-action-secondary" onclick={oncancel} disabled={isProcessing}>{$_('common.cancel')}</button>
-			{#if conflict?.google_event_url}
-				<a class="btn peer-action peer-action-secondary" href={conflict.google_event_url} target="_blank" rel="noreferrer">
-					{$_('history.openInGoogleCalendar')}
-				</a>
-			{/if}
-			<button class="btn peer-action peer-action-destructive" onclick={onconfirm} disabled={isProcessing}>
-				{#if isProcessing}<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>{/if}
-				{$_('history.forceUndo')}
-			</button>
+		<div class="modal-action peer-action-wrap">
+			<div class="peer-action-group peer-action-group--trailing" data-peer-count="3">
+				<button class="btn peer-action peer-action-secondary" onclick={oncancel} disabled={isProcessing}>{$_('common.cancel')}</button>
+				{#if conflict?.google_event_url}
+					<a class="btn peer-action peer-action-secondary" href={conflict.google_event_url} target="_blank" rel="noreferrer">
+						{$_('history.openInGoogleCalendar')}
+					</a>
+				{/if}
+				<button class="btn peer-action peer-action-destructive" onclick={onconfirm} disabled={isProcessing}>
+					{#if isProcessing}<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>{/if}
+					{$_('history.forceUndo')}
+				</button>
+			</div>
 		</div>
 	</div>
 	<form method="dialog" class="modal-backdrop">

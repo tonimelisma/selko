@@ -45,9 +45,7 @@ bar at the end of the list.
 - Destructive outline: transparent with a berry border and label for standalone
   destructive utilities.
 - Tertiary: borderless text action with a visible hover/focus surface.
-- Accept: success fill with a check icon.
-- Reject/destructive: filled error treatment inside a peer decision group;
-  standalone destructive utilities may remain outlined.
+- Peer Accept/Edit/Reject: one solid construction per theme (light: dark fill/white label, dark: bright fill/near-black label; acceptFill #276243/#7FD9A8, editFill #544A40/#C9BAA8, rejectFill #84203A/#F0899C, actionLabel #FFFFFF/#12100E), hue only separates the three (green/warm/berry).
 - Inputs: 46px tall, 14px radius, paper fill and warm border; focus uses coral
   border and a restrained coral ring.
 
@@ -68,21 +66,11 @@ disabled states. Disabled controls have no brand shadow or action-colored glow.
 
 ### EventCard
 
-An event card has a date chip, state tag, title, faint metadata, and a peer
-action group: three equal-width filled controls labeled Accept, Edit, and
-Reject with check, pencil, and X icons. The group stacks when labels would not
-fit. Changed events show the old value struck through in disabled text and the
-new value in ink.
+An event card has a date chip, state tag, title, faint metadata, and a peer action group: three controls sharing one solid construction per theme, sized intrinsically to the widest label (equal to each other, leading-aligned, `width: fit-content`), never stretched, with `peerGap` 12 (8 when ≤352). The group reflows via 3-tier ladder (full → compact 16px icon/10px pad → label-only) and never stacks into three slabs; fallback 1+2 only for long locales. Changed events show the old value struck through in disabled text and the new value in ink.
 
 ### Peer action groups
 
-Adjacent custom choices for the same item use one filled visual family and
-equal-width controls. Review cards use Accept → Edit → Reject; Event Detail
-uses Reject → Accept. Each target is at least 48px high, has a visible label
-and icon, and exposes an event-specific accessible name beginning with that
-visible label. Labels reflow to a full-width vertical stack rather than
-truncating or becoming icon-only controls. Native dialogs, menus, pickers,
-swipe actions, and navigation retain their platform-owned presentation.
+Adjacent custom choices for the same item use one solid visual family per theme and intrinsically-sized equal controls (`width: fit-content`, leading-aligned). Review cards use Accept → Edit → Reject; Event Detail uses Reject → Accept. Each target is at least 48px high, has a visible label and icon (icon scales to `iconCompact` 16 ≤352, hidden ≤296, never truncates/wraps), and exposes an event-specific accessible name beginning with that visible label. Row spans full card width (not beside date chip). Native dialogs, menus, pickers, swipe actions, and navigation retain their platform-owned presentation.
 
 ### SenderHeader and sender rules
 

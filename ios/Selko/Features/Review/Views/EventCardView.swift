@@ -81,7 +81,7 @@ struct EventCardView: View {
                             }
                             .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.selko(.success))
+                        .buttonStyle(.selko(.accept))
                         .disabled(isProcessing || !canApprove)
                         .accessibilityLabel("Accept \(event.title)")
                         .accessibilityHint(

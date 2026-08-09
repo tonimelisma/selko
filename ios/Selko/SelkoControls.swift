@@ -7,6 +7,8 @@ enum SelkoMetrics {
     static let compactHorizontalPadding: CGFloat = 10
     static let contentGap: CGFloat = 8
     static let iconSize: CGFloat = 20
+    static let peerGap: CGFloat = 12
+    static let iconCompact: CGFloat = 16
     static let reviewMaxWidth: CGFloat = 720
     static let screenGutter: CGFloat = 16
 }
@@ -14,7 +16,8 @@ enum SelkoMetrics {
 enum SelkoActionRole {
     case primary
     case secondary
-    case success
+    case accept
+    case success // legacy alias for accept — keep for selector compat, maps to acceptFill
     case destructiveFilled
     case destructiveOutline
     case tertiary
@@ -51,19 +54,20 @@ struct SelkoButtonStyle: ButtonStyle {
     private var foreground: Color {
         switch role {
         case .primary: return .selkoOnPrimary
-        case .success: return .selkoOnSuccess
-        case .destructiveFilled: return .selkoOnError
+        case .success, .accept: return .selkoActionLabel
+        case .destructiveFilled: return .selkoActionLabel
         case .destructiveOutline: return .selkoError
-        case .secondary, .tertiary: return .selkoInk
+        case .secondary: return .selkoActionLabel
+        case .tertiary: return .selkoInk
         }
     }
 
     private func background(configuration: Configuration) -> Color {
         switch role {
         case .primary: return .accentColor
-        case .secondary: return .selkoSubtle
-        case .success: return .selkoSuccess
-        case .destructiveFilled: return .selkoError
+        case .secondary: return .selkoActionEdit
+        case .accept, .success: return .selkoActionAccept
+        case .destructiveFilled: return .selkoActionReject
         case .destructiveOutline: return .clear
         case .tertiary: return configuration.isPressed ? .selkoSubtle : .clear
         }
@@ -81,101 +85,104 @@ extension ButtonStyle where Self == SelkoButtonStyle {
     }
 }
 
+enum SelkoPeerActionTier: String { case full, compact, labelOnly }
+
+private struct SelkoPeerActionTierKey: EnvironmentKey { static let defaultValue: SelkoPeerActionTier = .full }
+extension EnvironmentValues { var selkoPeerTier: SelkoPeerActionTier { get { self[SelkoPeerActionTierKey.self] } set { self[SelkoPeerActionTierKey.self] = newValue } } }
+
 private struct SelkoPeerActionLayout: Layout {
-    func sizeThatFits(
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) -> CGSize {
+    // Three-tier ladder per spec: tier 1 >352, tier 2 ≤352, tier 3 ≤296; fallback 1+2 if tier 3 still overflows.
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         guard !subviews.isEmpty else { return .zero }
-
-        let idealWidths = subviews.map { $0.sizeThatFits(.unspecified).width }
-        let rowWidth = idealWidths.reduce(0, +) + SelkoMetrics.contentGap * CGFloat(subviews.count - 1)
-        let availableWidth = proposal.width ?? rowWidth
-
-        if rowWidth <= availableWidth {
-            let itemWidth = (availableWidth - SelkoMetrics.contentGap * CGFloat(subviews.count - 1)) / CGFloat(subviews.count)
-            let height = subviews.map {
-                $0.sizeThatFits(ProposedViewSize(width: itemWidth, height: nil)).height
-            }.max() ?? SelkoMetrics.minimumTarget
-            return CGSize(width: availableWidth, height: height)
+        let available = proposal.width ?? .infinity
+        // Ideal intrinsic row widths per tier (measure unsized, gap peerGap/8)
+        func rowWidth(forTier tier: SelkoPeerActionTier) -> CGFloat {
+            let gap: CGFloat = tier == .full ? SelkoMetrics.peerGap : SelkoMetrics.contentGap
+            let ideal = subviews.map { $0.sizeThatFits(.unspecified).width }.reduce(0,+) + gap*CGFloat(subviews.count-1)
+            return ideal
         }
-
-        let heights = subviews.map {
-            $0.sizeThatFits(ProposedViewSize(width: availableWidth, height: nil)).height
+        let w1 = rowWidth(forTier: .full)
+        let w2 = rowWidth(forTier: .compact)
+        let w3 = rowWidth(forTier: .labelOnly)
+        let intrinsic: CGFloat
+        if w1 <= available { intrinsic = w1 }
+        else if w2 <= available { intrinsic = w2 }
+        else if w3 <= available { intrinsic = w3 }
+        else { // 1+2 fallback: Accept full width + Edit/Reject row
+            let h1 = subviews.first?.sizeThatFits(ProposedViewSize(width: available, height: nil)).height ?? SelkoMetrics.minimumTarget
+            let gap = SelkoMetrics.contentGap
+            let bottomCount = max(0, subviews.count - 1)
+            let bottomHeight: CGFloat = bottomCount > 0 ? (subviews.dropFirst().map { $0.sizeThatFits(ProposedViewSize(width: (available - gap*CGFloat(bottomCount-1))/CGFloat(bottomCount), height: nil)).height }.max() ?? SelkoMetrics.minimumTarget) : 0
+            return CGSize(width: available, height: h1 + (bottomCount>0 ? gap + bottomHeight : 0))
         }
-        return CGSize(
-            width: availableWidth,
-            height: heights.reduce(0, +) + SelkoMetrics.contentGap * CGFloat(subviews.count - 1)
-        )
+        let h = subviews.map { $0.sizeThatFits(ProposedViewSize(width: intrinsic/CGFloat(subviews.count), height: nil)).height }.max() ?? SelkoMetrics.minimumTarget
+        return CGSize(width: min(intrinsic, available), height: h)
     }
-
-    func placeSubviews(
-        in bounds: CGRect,
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) {
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         guard !subviews.isEmpty else { return }
-
-        let idealWidths = subviews.map { $0.sizeThatFits(.unspecified).width }
-        let rowWidth = idealWidths.reduce(0, +) + SelkoMetrics.contentGap * CGFloat(subviews.count - 1)
-        let shouldStack = rowWidth > bounds.width
-
-        if !shouldStack {
-            let itemWidth = (bounds.width - SelkoMetrics.contentGap * CGFloat(subviews.count - 1)) / CGFloat(subviews.count)
-            for (index, subview) in subviews.enumerated() {
-                subview.place(
-                    at: CGPoint(
-                        x: bounds.minX + CGFloat(index) * (itemWidth + SelkoMetrics.contentGap),
-                        y: bounds.minY
-                    ),
-                    anchor: .topLeading,
-                    proposal: ProposedViewSize(width: itemWidth, height: bounds.height)
-                )
+        let available = bounds.width
+        func gap(forTier tier: SelkoPeerActionTier) -> CGFloat { tier == .full ? SelkoMetrics.peerGap : SelkoMetrics.contentGap }
+        func idealWidth(forTier tier: SelkoPeerActionTier) -> CGFloat {
+            let g = gap(forTier: tier)
+            return subviews.map { $0.sizeThatFits(.unspecified).width }.reduce(0,+) + g*CGFloat(subviews.count-1)
+        }
+        var chosen: SelkoPeerActionTier = .full
+        if idealWidth(forTier: .full) > available { chosen = .compact }
+        if idealWidth(forTier: chosen) > available && chosen == .compact { chosen = .labelOnly }
+        if idealWidth(forTier: .labelOnly) > available {
+            // 1+2 fallback
+            let g = SelkoMetrics.contentGap
+            let top = subviews.first!
+            let th = top.sizeThatFits(ProposedViewSize(width: available, height: nil)).height
+            top.place(at: CGPoint(x: bounds.minX, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: available, height: th))
+            let rest = Array(subviews.dropFirst())
+            if !rest.isEmpty {
+                let bw = (available - g*CGFloat(rest.count-1))/CGFloat(rest.count)
+                let y = bounds.minY + th + g
+                for (i, sv) in rest.enumerated() {
+                    sv.place(at: CGPoint(x: bounds.minX + CGFloat(i)*(bw+g), y: y), anchor: .topLeading, proposal: ProposedViewSize(width: bw, height: nil))
+                }
             }
             return
         }
-
-        var y = bounds.minY
-        for subview in subviews {
-            let height = subview.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil)).height
-            subview.place(
-                at: CGPoint(x: bounds.minX, y: y),
-                anchor: .topLeading,
-                proposal: ProposedViewSize(width: bounds.width, height: height)
-            )
-            y += height + SelkoMetrics.contentGap
+        let g = gap(forTier: chosen)
+        let ideal = idealWidth(forTier: chosen)
+        let rowW = min(ideal, available)
+        let slot = (rowW - g*CGFloat(subviews.count-1))/CGFloat(subviews.count)
+        for (i, sv) in subviews.enumerated() {
+            sv.place(at: CGPoint(x: bounds.minX + CGFloat(i)*(slot+g), y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: slot, height: bounds.height))
         }
     }
 }
 
 struct SelkoPeerActionGroup<Content: View>: View {
     private let content: () -> Content
-
-    init(@ViewBuilder content: @escaping () -> Content) {
-        self.content = content
-    }
-
+    init(@ViewBuilder content: @escaping () -> Content) { self.content = content }
     var body: some View {
-        SelkoPeerActionLayout {
-            content()
+        GeometryReader { proxy in
+            let w = proxy.size.width
+            let tier: SelkoPeerActionTier = w <= 296 ? .labelOnly : (w <= 352 ? .compact : .full)
+            SelkoPeerActionLayout { content() }
+                .environment(\.selkoPeerTier, tier)
         }
-        .frame(maxWidth: .infinity)
+        .frame(height: SelkoMetrics.minimumTarget)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 struct SelkoActionLabel: View {
     let title: String
     let systemImage: String
-
+    @Environment(\.selkoPeerTier) private var tier
     var body: some View {
-        HStack(spacing: SelkoMetrics.contentGap - 2) {
-            Image(systemName: systemImage)
-            Text(title)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
+        HStack(spacing: (tier == .full ? SelkoMetrics.contentGap : 6)) {
+            if tier != .labelOnly {
+                Image(systemName: systemImage)
+                    .font(.system(size: tier == .compact ? SelkoMetrics.iconCompact : SelkoMetrics.iconSize))
+            }
+            Text(title).lineLimit(1).fixedSize(horizontal: true, vertical: false)
         }
+        .padding(.horizontal, tier == .full ? SelkoMetrics.horizontalPadding : SelkoMetrics.compactHorizontalPadding)
     }
 }
 
