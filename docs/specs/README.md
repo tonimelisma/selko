@@ -26,9 +26,17 @@ Status as of 2026-08-06.
   and Android. ConnectionRecovery poll (5 s) kept as debt with expiry in the post-cutover plan.
 - [Photo surface removal](photo-surface-removal.md) — **ready to implement, not
   started.** Deliberately deferred while photo ingestion is parked.
+- [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md)
+  — **planned, not started (2026-08-09).** Fixes a real WCAG 1.4.11 failure (the
+  dark-mode Edit button is 1.00:1 against its card, because `base-200` and
+  `surface` are the same hex), moves Accept/Edit/Reject to one solid AAA
+  construction per theme, and replaces the full-width-then-stack layout with an
+  intrinsic row that never stacks. Supersedes decisions 5, 8 and 11 of the
+  cross-platform spec below.
 - [Cross-platform Review layout and action accessibility](cross-platform-review-accessibility.md)
   — **implemented**, except canonical Android screenshots, which are blocked by
-  a repeatable Pixel_8 emulator crash after APK install.
+  a repeatable Pixel_8 emulator crash after APK install. Decisions 5, 8 and 11
+  are superseded by the contrast/sizing spec above.
 - [OneDrive photo ingestion](onedrive-photo-ingestion.md) — **parked
   (2026-07-13)** on cost/value. Do not re-propose without new information.
 
