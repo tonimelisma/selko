@@ -117,12 +117,22 @@ body {
 	--review-max-width: 720px;
 	--screen-gutter: 16px;
 	--compact-horizontal-padding: 10px;
+	--action-accept: #276243;
+	--action-edit: #544a40;
+	--action-reject: #84203a;
+	--action-label: #ffffff;
+	--peer-gap: 12px;
+	--icon-compact: 16px;
 }
 
 [data-theme='selko-dark'] {
 	--color-faint: #9a8f84;
 	--color-success-text: #5fbe90;
 	--color-warning-text: #f0b45c;
+	--action-accept: #7fd9a8;
+	--action-edit: #c9baa8;
+	--action-reject: #f0899c;
+	--action-label: #12100e;
 }
 
 /* Opacity-based text falls below AA on paper. Keep legacy utility call sites
@@ -158,27 +168,22 @@ body {
 	padding-inline: 0;
 }
 
-/* Peer decision groups share their treatment, width, and constrained reflow. */
+/* Peer decision groups — WS2: intrinsic, container-query ladder (spec § WS2) */
+/* The query container is the wrapper, never the fit-content group. */
+.peer-action-wrap { container-type: inline-size; }
+
 .peer-action-group {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--control-content-gap, 8px);
-	container-type: inline-size;
+	gap: var(--peer-gap);
+	width: fit-content;
+	max-width: 100%;
 }
+.peer-action-group[data-peer-count='2'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.peer-action-group[data-peer-count='1'] { grid-template-columns: minmax(0, 1fr); }
 
-/* Recovery actions are an intrinsic flex child; inline-size containment would
-   remove the buttons from its shrink-to-fit measurement. */
-.peer-action-group--intrinsic {
-	container-type: normal;
-}
-
-.peer-action-group[data-peer-count='2'] {
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.peer-action-group[data-peer-count='1'] {
-	grid-template-columns: minmax(0, 1fr);
-}
+/* Dialog actions keep their conventional trailing alignment. */
+.peer-action-group--trailing { margin-inline-start: auto; }
 
 .peer-action-group > :is(.btn, a.btn) {
 	width: 100%;
@@ -186,35 +191,26 @@ body {
 	min-height: var(--control-height);
 	height: auto !important;
 	justify-content: center;
-	white-space: normal;
-	text-align: center;
-	overflow-wrap: anywhere;
+	white-space: nowrap;
 }
 
-.peer-action-secondary {
-	border-color: var(--color-base-300) !important;
-	background: var(--color-base-200) !important;
-	color: var(--color-base-content) !important;
+.peer-action-accept    { background: var(--action-accept) !important; border-color: var(--action-accept) !important; color: var(--action-label) !important; }
+.peer-action-secondary { background: var(--action-edit)   !important; border-color: var(--action-edit)   !important; color: var(--action-label) !important; }
+.peer-action-destructive { background: var(--action-reject) !important; border-color: var(--action-reject) !important; color: var(--action-label) !important; }
+
+@container (max-width: 352px) {
+	.peer-action-group { gap: var(--control-content-gap); }
+	.peer-action-group > .btn { padding-inline: var(--compact-horizontal-padding); gap: 6px; }
+	.peer-action-group .peer-icon { width: var(--icon-compact); height: var(--icon-compact); }
+}
+@container (max-width: 296px) {
+	.peer-action-group .peer-icon { display: none; }
 }
 
-.peer-action-destructive {
-	border-color: var(--color-error) !important;
-	background: var(--color-error) !important;
-	color: var(--color-error-content) !important;
-}
-
-@container (max-width: 520px) {
-	.peer-action-group,
-	.peer-action-group[data-peer-count='2'] {
-		grid-template-columns: minmax(0, 1fr);
-	}
-}
-
-@media (max-width: 520px) {
-	.peer-action-group,
-	.peer-action-group[data-peer-count='2'] {
-		grid-template-columns: minmax(0, 1fr);
-	}
+/* Recovery actions are an intrinsic flex child; inline-size containment would
+   remove the buttons from its shrink-to-fit measurement. */
+.peer-action-group--intrinsic {
+	container-type: normal;
 }
 
 :where(.input, .select, .textarea) {
