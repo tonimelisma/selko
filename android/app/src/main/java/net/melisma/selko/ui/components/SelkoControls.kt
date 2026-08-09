@@ -58,6 +58,8 @@ object SelkoControlMetrics {
     val compactHorizontalPadding = 10.dp
     val contentGap = 8.dp
     val icon = 20.dp
+    val peerGap = 12.dp
+    val iconCompact = 16.dp
     val reviewMaxWidth = 720.dp
     val screenGutter = 16.dp
     val navigationRadius = 12.dp
@@ -66,7 +68,7 @@ object SelkoControlMetrics {
     val pillRadius = 999.dp
 }
 
-enum class SelkoActionRole { Primary, Secondary, Success, DestructiveFilled, DestructiveOutline, Tertiary }
+enum class SelkoActionRole { Primary, Secondary, Accept, Success, DestructiveFilled, DestructiveOutline, Tertiary }
 
 @Composable
 fun SelkoButton(
@@ -108,20 +110,20 @@ fun SelkoButton(
             contentPadding = PaddingValues(horizontal = SelkoControlMetrics.horizontalPadding),
             content = { content() }
         )
-        SelkoActionRole.Secondary -> Button(
+        SelkoActionRole.Accept, SelkoActionRole.Success -> Button(
             onClick = onClick, modifier = sized, enabled = active, shape = shape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurface
+                containerColor = SelkoTheme.colors.actionAccept,
+                contentColor = SelkoTheme.colors.actionLabel
             ),
             contentPadding = PaddingValues(horizontal = SelkoControlMetrics.horizontalPadding),
             content = { content() }
         )
-        SelkoActionRole.Success -> Button(
+        SelkoActionRole.Secondary -> Button(
             onClick = onClick, modifier = sized, enabled = active, shape = shape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = SelkoTheme.colors.success,
-                contentColor = SelkoTheme.colors.onSuccess
+                containerColor = SelkoTheme.colors.actionEdit,
+                contentColor = SelkoTheme.colors.actionLabel
             ),
             contentPadding = PaddingValues(horizontal = SelkoControlMetrics.horizontalPadding),
             content = { content() }
@@ -129,8 +131,8 @@ fun SelkoButton(
         SelkoActionRole.DestructiveFilled -> Button(
             onClick = onClick, modifier = sized, enabled = active, shape = shape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError
+                containerColor = SelkoTheme.colors.actionReject,
+                contentColor = SelkoTheme.colors.actionLabel
             ),
             contentPadding = PaddingValues(horizontal = SelkoControlMetrics.horizontalPadding),
             content = { content() }
@@ -169,60 +171,38 @@ fun SelkoPeerActionGroup(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val gap = SelkoControlMetrics.contentGap
-        val slotWidth = (maxWidth - gap * (actions.size - 1)) / actions.size.coerceAtLeast(1)
-        val widestAction = actions.maxOfOrNull { action ->
-            val textWidth = with(density) {
-                textMeasurer.measure(
-                    text = AnnotatedString(action.text),
-                    style = MaterialTheme.typography.labelLarge
-                ).size.width.toDp()
-            }
-            val iconWidth = if (action.icon != null || action.loading) {
-                SelkoControlMetrics.icon + gap
-            } else {
-                0.dp
-            }
-            textWidth + iconWidth + (SelkoControlMetrics.horizontalPadding * 2)
+        val useLabelOnly = maxWidth <= 296.dp
+        val useCompact = maxWidth <= 352.dp
+        val useGap = if (!useCompact) SelkoControlMetrics.peerGap else SelkoControlMetrics.contentGap
+        val usePad = if (!useCompact) SelkoControlMetrics.horizontalPadding else SelkoControlMetrics.compactHorizontalPadding
+        val useIcon = if (useLabelOnly) 0.dp else if (useCompact) SelkoControlMetrics.iconCompact else SelkoControlMetrics.icon
+        val useWidest = actions.maxOfOrNull { a ->
+            val tw = with(density) { textMeasurer.measure(AnnotatedString(a.text), style = MaterialTheme.typography.labelLarge).size.width.toDp() }
+            val iw = if (useLabelOnly) 0.dp else if (a.icon != null || a.loading) useIcon + SelkoControlMetrics.contentGap else 0.dp
+            tw + iw + usePad * 2
         } ?: 0.dp
-        val stacked = slotWidth < widestAction
-        if (stacked) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(SelkoControlMetrics.contentGap)
-            ) {
-                actions.forEach { action ->
-                    SelkoButton(
-                        text = action.text,
-                        onClick = action.onClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        role = action.role,
-                        enabled = action.enabled,
-                        loading = action.loading,
-                        icon = action.icon,
-                        accessibleLabel = action.accessibleLabel
-                    )
+        val useSlot = useWidest + 1.dp
+        val useRowWidth = useSlot * actions.size + useGap * (actions.size - 1)
+        val useFits = useRowWidth <= maxWidth
+        if (!useFits && actions.size == 3) {
+            // 1+2 fallback: Accept full width on row 1, Edit+Reject share row 2
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(useGap)) {
+                SelkoButton(text = actions[0].text, onClick = actions[0].onClick, modifier = Modifier.fillMaxWidth(), role = actions[0].role, enabled = actions[0].enabled, loading = actions[0].loading, icon = if (useLabelOnly) null else actions[0].icon, accessibleLabel = actions[0].accessibleLabel)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(useGap)) {
+                    for (i in 1 until actions.size) {
+                        SelkoButton(text = actions[i].text, onClick = actions[i].onClick, modifier = Modifier.weight(1f), role = actions[i].role, enabled = actions[i].enabled, loading = actions[i].loading, icon = if (useLabelOnly) null else actions[i].icon, accessibleLabel = actions[i].accessibleLabel)
+                    }
                 }
             }
         } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(SelkoControlMetrics.contentGap)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(useGap)) {
                 actions.forEach { action ->
-                    SelkoButton(
-                        text = action.text,
-                        onClick = action.onClick,
-                        modifier = Modifier.weight(1f),
-                        role = action.role,
-                        enabled = action.enabled,
-                        loading = action.loading,
-                        icon = action.icon,
-                        accessibleLabel = action.accessibleLabel
-                    )
+                    // Equal intrinsic width, leading-aligned row, not stretched thirds
+                    val wModifier = Modifier.width(useSlot)
+                    SelkoButton(text = action.text, onClick = action.onClick, modifier = wModifier, role = action.role, enabled = action.enabled, loading = action.loading, icon = if (useLabelOnly) null else action.icon, accessibleLabel = action.accessibleLabel)
                 }
+                Spacer(Modifier.weight(1f))
             }
         }
     }

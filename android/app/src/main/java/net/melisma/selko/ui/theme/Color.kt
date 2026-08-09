@@ -56,6 +56,16 @@ val SelkoWarning = Color(0xFFF0A85C)
 val SelkoOnWarning = Color(0xFF2B2622)
 val SelkoWarningDark = Color(0xFFF0B45C)
 
+// Peer action fills (one solid construction per theme — spec review-action-contrast)
+val SelkoActionAccept = Color(0xFF276243)
+val SelkoActionEdit = Color(0xFF544A40)
+val SelkoActionReject = Color(0xFF84203A)
+val SelkoActionLabel = Color(0xFFFFFFFF)
+val SelkoActionAcceptDark = Color(0xFF7FD9A8)
+val SelkoActionEditDark = Color(0xFFC9BAA8)
+val SelkoActionRejectDark = Color(0xFFF0899C)
+val SelkoActionLabelDark = Color(0xFF12100E)
+
 // Status badge colors
 val SelkoBadgeNewBackground = Color(0xFFF5EEE6)
 val SelkoBadgeNewForeground = Color(0xFF6E655C)
