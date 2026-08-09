@@ -1,6 +1,6 @@
 # Ingestion & Recovery Hardening (top-up)
 
-**Status:** Planned, not started. Written 2026-08-03.
+**Status:** implemented PRs #241-#247 + egress arch A, inc 1-10 (history). Remaining Finding 30 + health residues → post-cutover R5. Written 2026-08-03.
 
 This is the top-up plan for the review of PRs #229–#240 — durable polling email
 ingestion v2 (#231–#235) and calendar OAuth reconnect recovery (#236–#240). It

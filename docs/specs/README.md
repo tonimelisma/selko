@@ -6,7 +6,7 @@ Implementation specifications for planned or in-progress features.
 
 Status as of 2026-08-06.
 
-- [Post-Cutover Reliability and Scale](post-cutover-reliability-and-scale.md) — **planned, not started (2026-08-06).** Rock-solid fix for every residual seam from the Aug 3–6 batch: counted health (no 1000-row truncation), Gmail batch per-request outcomes, unified tick+nudge (nudge reaches every claim loop, no dead `num_workers`), heartbeat-around-discovery + reconcile anti-starve, enforced cutover/rollback rehearsal, observability contract + synthetic, exact recovery + Realtime seam, and real SIGKILL drills. **The gate before any `ENABLE_BACKGROUND_PROCESSING=true` in prod.**
+- [Post-Cutover Reliability and Scale](post-cutover-reliability-and-scale.md) — **implemented R1-R9 (#248-#251 + 8b94c53a, de9694eb, 766961d1, 9b14e0ca, a6d8d0c4) — counted health, Gmail batch, unified nudge, heartbeat+anti-starve, cutover gate, observability, recovery, drills, config tidy.** Gate before `ENABLE_BACKGROUND_PROCESSING=true` satisfied.
 - [Ingestion & recovery hardening](ingestion-recovery-hardening.md) — **built and merged (PRs #241–#247 + Aug 6 egress arch A, inc 1–10).** The history now; remaining open Finding 30 (rollback asserted, never rehearsed) and the health/efficiency residue are carried forward to the post-cutover plan above.
 - [Polling Email Ingestion v2](polling-email-ingestion-v2.md) — **built and
   merged (#231–#235), awaiting production cutover.** Durable polling is now the
