@@ -160,3 +160,4 @@ class HealthEgressResponse(BaseModel):
     projected_bytes_per_30d: int
     by_destination: dict[str, dict[str, int]] = {}
     top_operations: list[EgressOperationResponse] = []
+    bytes_per_mailbox_per_day: int | None = None
