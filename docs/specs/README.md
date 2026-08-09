@@ -24,12 +24,7 @@ Status as of 2026-08-06.
 - [Live UI updates](live-ui-updates.md) — **implemented — web #270, iOS #271, Android #272.** Private per-user Broadcast invalidations with lifecycle-safe catch-up.
 - [Photo surface removal](photo-surface-removal.md) — **implemented in #201 (2026-07-13).** Connect surfaces removed; photo-source rendering retained (see spec for restoration).
 - [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md)
-  — **planned, not started (2026-08-09).** Fixes a real WCAG 1.4.11 failure (the
-  dark-mode Edit button is 1.00:1 against its card, because `base-200` and
-  `surface` are the same hex), moves Accept/Edit/Reject to one solid AAA
-  construction per theme, and replaces the full-width-then-stack layout with an
-  intrinsic row that never stacks. Supersedes decisions 5, 8 and 11 of the
-  cross-platform spec below.
+  — **implemented in #273 (2026-08-09).** One solid AAA peer-action construction per theme, intrinsic row never stacks.
 - [Cross-platform Review layout and action accessibility](cross-platform-review-accessibility.md)
   — **implemented**, except canonical Android screenshots, which are blocked by
   a repeatable Pixel_8 emulator crash after APK install. Decisions 5, 8 and 11
