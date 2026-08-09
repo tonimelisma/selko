@@ -89,3 +89,66 @@ def test_projection_extrapolates_the_observed_rate():
     # matters is that it is derived from the rate, not from the raw total.
     assert snapshot["projected_bytes_per_30d"] > snapshot["total_bytes"]
     assert snapshot["bytes_per_hour"] > 0
+
+def test_llm_egress_records_request_and_response_bytes():
+    """Inc 0: LLM payload must be metered — the previous blind spot."""
+    from unittest.mock import MagicMock
+
+    from selko.services.egress import LLM, egress_snapshot
+    from selko.services.llm_gateway import LLMGateway
+    from selko.services.llm_logging import LLMOperationType
+    from selko.services.llm_provider import ImageContent
+
+    mock_provider = MagicMock()
+    mock_provider.provider_name = "gemini"
+    mock_provider.model = "gemini-3.5-flash-lite"
+    mock_provider.generate.return_value = MagicMock(
+        text='{"events": []}',
+        prompt_tokens=10,
+        completion_tokens=5,
+        finish_reason="stop",
+    )
+
+    gateway = LLMGateway(provider=mock_provider)
+    gateway.call(LLMOperationType.EXTRACT_EVENTS, ["hello world", ImageContent(data=b"fakeimagedata123", mime_type="image/png")])
+
+    snap = egress_snapshot()
+    assert LLM in snap["by_destination"]
+    assert snap["by_destination"][LLM]["bytes"] > len(b"fakeimagedata123")
+    # Operation name is bounded and identifier-free
+    ops = [r["operation"] for r in snap["top_operations"] if r["destination"] == LLM]
+    assert ops
+    assert ops[0] == "gemini:extract_events"
+    assert "hello" not in ops[0]
+    assert "fakeimagedata" not in ops[0]
+
+
+def test_llm_validated_call_records_egress():
+    from unittest.mock import MagicMock
+
+    from selko.services.egress import LLM, egress_snapshot
+    from selko.services.llm_gateway import LLMGateway
+    from selko.services.llm_logging import LLMOperationType
+
+    mock_provider = MagicMock()
+    mock_provider.provider_name = "openai"
+    mock_provider.model = "gpt-4o-mini"
+    mock_provider.generate.return_value = MagicMock(
+        text='{"ok": true}',
+        prompt_tokens=5,
+        completion_tokens=2,
+        finish_reason="stop",
+    )
+
+    gateway = LLMGateway(provider=mock_provider)
+    gateway.call_validated(
+        LLMOperationType.COMPARE_EVENTS,
+        ["compare"],
+        validator=lambda r: r.text,
+        json_schema={"type": "object"},
+    )
+
+    snap = egress_snapshot()
+    assert snap["by_destination"][LLM]["calls"] == 1
+    assert snap["by_destination"][LLM]["bytes"] > 0
+

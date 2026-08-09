@@ -33,9 +33,53 @@ from selko.services.llm_provider import (
     LLMProvider,
     LLMResponse,
 )
+from selko.services.egress import LLM, record_egress
 from selko.services.quotas import QuotaExceededError, QuotaService
 
 logger = logging.getLogger(__name__)
+
+
+def _estimate_llm_request_bytes(
+    contents: list[Any],
+    json_schema: Optional[dict] = None,
+) -> int:
+    """Estimate serialized request size for egress metering.
+
+    Uses raw text/byte lengths plus JSON schema length. Bounded operation
+    names keep cardinality low; this function never includes identifiers.
+    """
+    total = 0
+    for part in contents:
+        if isinstance(part, str):
+            total += len(part.encode("utf-8"))
+        elif isinstance(part, ImageContent):
+            # Image/PDF bytes; base64 overhead (~33%) is not counted
+            # separately — raw size is the meter's payload signal.
+            try:
+                total += len(part.data)
+            except Exception:
+                pass
+    if json_schema is not None:
+        try:
+            import json
+            total += len(json.dumps(json_schema).encode("utf-8"))
+        except Exception:
+            pass
+    return total
+
+
+def _llm_operation_name(provider: Any, operation: Any) -> str:
+    """Bounded operation name: provider:operation (no identifiers)."""
+    try:
+        provider_name = getattr(provider, "provider_name", str(provider))
+    except Exception:
+        provider_name = "unknown"
+    try:
+        op_value = getattr(operation, "value", str(operation))
+    except Exception:
+        op_value = str(operation)
+    # Sanitize to keep bounded and identifier-free
+    return f"{provider_name}:{op_value}" 
 
 T = TypeVar("T")
 
@@ -404,6 +448,19 @@ class LLMGateway:
                 self._last_prompt_tokens = response.prompt_tokens
                 self._last_completion_tokens = response.completion_tokens
 
+                # Egress metering: payload that was invisible before Inc 0
+                try:
+                    req_bytes = _estimate_llm_request_bytes(contents, json_schema)
+                    resp_bytes = len(response.text.encode("utf-8")) if response.text else 0
+                    record_egress(
+                        LLM,
+                        _llm_operation_name(effective_provider, operation),
+                        request_bytes=req_bytes,
+                        response_bytes=resp_bytes,
+                    )
+                except Exception:
+                    pass
+
                 # Populate trace with post-call data
                 if self.trace is not None:
                     self.trace["raw_response_text"] = response.text
@@ -608,6 +665,18 @@ class LLMGateway:
                             latency_ms=latency_ms,
                         )
                     )
+                    # Egress metering for validated structured calls
+                    try:
+                        req_bytes = _estimate_llm_request_bytes(contents, json_schema)
+                        resp_bytes = len(response.text.encode("utf-8")) if response.text else 0
+                        record_egress(
+                            LLM,
+                            _llm_operation_name(route.provider, operation),
+                            request_bytes=req_bytes,
+                            response_bytes=resp_bytes,
+                        )
+                    except Exception:
+                        pass
                     self._log_success(
                         operation=operation,
                         prompt_text=prompt_for_logging,
