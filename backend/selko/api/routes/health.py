@@ -127,6 +127,32 @@ async def health_egress_check() -> HealthEgressResponse:
     long-running instance; a freshly deployed one has nothing to say yet.
     """
     snapshot = egress_snapshot()
+    # Inc6: bytes per mailbox per day — supabase bytes projected per mailbox
+    bytes_per_mailbox = None
+    try:
+        supabase_bytes = (snapshot.get("by_destination", {}).get("supabase", {}) or {}).get("bytes", 0) or snapshot.get("total_bytes", 0)
+        # Best-effort mailbox count; failure degrades to total per day
+        mailbox_count = 1
+        try:
+            from selko.services.auth import get_service_client
+            from selko.config import load_config
+            cfg = load_config()
+            svc = get_service_client(cfg)
+            # Count active email integrations (gmail/outlook)
+            res = svc.table("integrations").select("id", count="exact").in_("provider", ["gmail", "outlook"]).eq("status", "active").execute()
+            cnt = getattr(res, "count", None)
+            if cnt is None and hasattr(res, "data"):
+                cnt = len(res.data or [])
+            if cnt and cnt > 0:
+                mailbox_count = int(cnt)
+        except Exception:
+            mailbox_count = 1
+        uptime = max(snapshot.get("uptime_seconds", 1), 1)
+        bytes_per_day = supabase_bytes / uptime * 86400
+        bytes_per_mailbox = int(bytes_per_day / max(mailbox_count, 1))
+    except Exception:
+        bytes_per_mailbox = None
+
     return HealthEgressResponse(
         uptime_seconds=snapshot["uptime_seconds"],
         total_calls=snapshot["total_calls"],
@@ -138,4 +164,5 @@ async def health_egress_check() -> HealthEgressResponse:
         top_operations=[
             EgressOperationResponse(**row) for row in snapshot["top_operations"]
         ],
+        bytes_per_mailbox_per_day=bytes_per_mailbox,
     )
