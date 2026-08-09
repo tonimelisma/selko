@@ -52,12 +52,42 @@ final class ReviewQueueViewModel {
         eventService: EventServiceProtocol? = nil,
         integrationService: IntegrationServiceProtocol? = nil,
         senderRuleService: SenderRuleServiceProtocol? = nil,
-        backendAPI: BackendAPIProtocol? = nil
+        backendAPI: BackendAPIProtocol? = nil,
+        liveUpdateService: LiveUpdateService? = nil
     ) {
         self.eventService = eventService ?? DependencyContainer.shared.eventService
         self.integrationService = integrationService ?? DependencyContainer.shared.integrationService
         self.senderRuleService = senderRuleService ?? DependencyContainer.shared.senderRuleService
         self.backendAPI = backendAPI ?? DependencyContainer.shared.backendAPI
+        self.liveUpdateService = liveUpdateService ?? DependencyContainer.shared.liveUpdateService
+    }
+
+    private let liveUpdateService: LiveUpdateService
+    private var liveUpdateTask: Task<Void, Never>?
+
+    func startLiveUpdates() {
+        liveUpdateTask?.cancel()
+        liveUpdateTask = Task { [weak self] in
+            guard let self else { return }
+            for await inv in self.liveUpdateService.stream {
+                if inv.resource == "events" || inv.resource == "event_sources" || inv.resource == "integrations" {
+                    if self.processingEventIds.isEmpty {
+                        await self.load()
+                    }
+                }
+            }
+        }
+    }
+
+    func stopLiveUpdates() {
+        liveUpdateTask?.cancel()
+        liveUpdateTask = nil
+    }
+
+    func handleScenePhaseActive() async {
+        // Ensure subscription and do catch-up fetch per spec
+        await liveUpdateService.refreshAll()
+        await load()
     }
 
     func load() async {
