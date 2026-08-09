@@ -300,3 +300,28 @@ class TestPrepareContentForProvider:
     def test_anthropic_accepts_pdf(self):
         """Anthropic's accepted formats include application/pdf."""
         assert "application/pdf" in PROVIDER_ACCEPTED_FORMATS["anthropic"]
+
+    def test_meta_pdf_converted_to_images(self):
+        """Meta's OpenAI-compatible endpoint rejects PDF — must render to PNG."""
+        result = prepare_content_for_provider(PDF_1PAGE, "application/pdf", "meta")
+        assert len(result) == 1
+        assert result[0].mime_type == "image/png"
+
+    def test_meta_pdf_no_passthrough(self):
+        """Meta must NOT have application/pdf in accepted formats."""
+        assert "application/pdf" not in PROVIDER_ACCEPTED_FORMATS["meta"]
+
+    def test_meta_pdf_multi_page(self):
+        result = prepare_content_for_provider(PDF_3PAGE, "application/pdf", "meta")
+        assert len(result) == 3
+        assert all(r.mime_type == "image/png" for r in result)
+
+    def test_gemini_and_anthropic_are_only_pdf_passthrough(self):
+        """Only gemini and anthropic support native PDF passthrough."""
+        for provider in PROVIDER_ACCEPTED_FORMATS:
+            if provider in ("gemini", "anthropic"):
+                assert "application/pdf" in PROVIDER_ACCEPTED_FORMATS[provider]
+            else:
+                assert "application/pdf" not in PROVIDER_ACCEPTED_FORMATS[provider], (
+                    f"{provider} should not accept PDF natively"
+                )

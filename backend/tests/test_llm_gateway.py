@@ -289,3 +289,88 @@ class TestErrorClassification:
         assert gateway._is_retryable_error("503 unavailable")
         assert gateway._is_retryable_error("this model is currently experiencing high demand")
         assert gateway._is_retryable_error("service overloaded")
+
+
+class TestVisionAwareRouting:
+    """Ensure attachments are never sent to text-only primary."""
+
+    def test_text_only_primary_with_vision_fallback_routes_to_fallback(self):
+        from selko.services.llm_gateway import LLMGateway
+        from selko.services.llm_provider import ImageContent
+
+        primary = MagicMock(spec=LLMProvider)
+        primary.provider_name = "deepseek"
+        primary.model = "deepseek-v4-flash"
+        primary.supports_vision = False
+        primary.generate.return_value = MagicMock(text='{"ok":1}')
+
+        fallback = MagicMock(spec=LLMProvider)
+        fallback.provider_name = "gemini"
+        fallback.model = "gemini-3.5-flash-lite"
+        fallback.supports_vision = True
+        fallback.generate.return_value = MagicMock(text='{"ok":1}')
+
+        gateway = LLMGateway(primary, fallback_provider=fallback)
+        contents = ["prompt", ImageContent(data=b"fake", mime_type="image/png")]
+
+        routes = gateway._vision_aware_routes(contents)
+        assert len(routes) == 1
+        assert routes[0].provider == fallback
+        assert routes[0].role == "fallback"
+
+    def test_vision_primary_keeps_primary(self):
+        from selko.services.llm_gateway import LLMGateway
+        from selko.services.llm_provider import ImageContent
+
+        primary = MagicMock(spec=LLMProvider)
+        primary.provider_name = "gemini"
+        primary.model = "gemini-3.5-flash-lite"
+        primary.supports_vision = True
+
+        fallback = MagicMock(spec=LLMProvider)
+        fallback.provider_name = "qwen"
+        fallback.model = "qwen3.7-flash"
+        fallback.supports_vision = True
+
+        gateway = LLMGateway(primary, fallback_provider=fallback)
+        contents = ["prompt", ImageContent(data=b"fake", mime_type="image/png")]
+
+        routes = gateway._vision_aware_routes(contents)
+        assert len(routes) == 2
+        assert routes[0].provider == primary
+
+    def test_text_only_no_vision_fallback_warns_but_keeps_primary(self):
+        from selko.services.llm_gateway import LLMGateway
+        from selko.services.llm_provider import ImageContent
+
+        primary = MagicMock(spec=LLMProvider)
+        primary.provider_name = "deepseek"
+        primary.model = "deepseek-v4-flash"
+        primary.supports_vision = False
+
+        gateway = LLMGateway(primary, fallback_provider=None)
+        contents = ["prompt", ImageContent(data=b"fake", mime_type="image/png")]
+
+        routes = gateway._vision_aware_routes(contents)
+        assert len(routes) == 1
+        assert routes[0].provider == primary
+
+    def test_no_attachments_always_uses_primary(self):
+        from selko.services.llm_gateway import LLMGateway
+
+        primary = MagicMock(spec=LLMProvider)
+        primary.provider_name = "deepseek"
+        primary.model = "deepseek-v4-flash"
+        primary.supports_vision = False
+
+        fallback = MagicMock(spec=LLMProvider)
+        fallback.provider_name = "gemini"
+        fallback.model = "gemini-3.5-flash-lite"
+        fallback.supports_vision = True
+
+        gateway = LLMGateway(primary, fallback_provider=fallback)
+        contents = ["prompt only"]
+
+        routes = gateway._vision_aware_routes(contents)
+        assert len(routes) == 2
+        assert routes[0].provider == primary
