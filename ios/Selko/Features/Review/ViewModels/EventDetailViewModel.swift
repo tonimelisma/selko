@@ -101,40 +101,21 @@ final class EventDetailViewModel {
 
     func reject() async {
         guard !isActing else { return }
+        guard let event else {
+            errorMessage = String(localized: "Event not loaded")
+            return
+        }
         isActing = true
         errorMessage = nil
         defer { isActing = false }
 
         do {
-            if let event, event.isPendingChange {
+            if event.isPendingChange {
                 _ = try await backendAPI.rejectEventChange(eventId: eventId)
             } else {
                 _ = try await eventService.rejectEvent(id: eventId)
             }
-            // Store rejected event for undo; fallback to minimal event if not loaded
-            let rejectedEvent: CalendarEvent
-            if let event {
-                rejectedEvent = event
-            } else {
-                rejectedEvent = CalendarEvent(
-                    id: eventId,
-                    userId: UUID(),
-                    title: title,
-                    startDatetime: startDate,
-                    endDatetime: endDate,
-                    allDay: allDay,
-                    location: location.isEmpty ? nil : location,
-                    description: eventDescription.isEmpty ? nil : eventDescription,
-                    sourceAttribution: nil,
-                    status: .rejected,
-                    googleCalendarEventId: nil,
-                    syncedAt: nil,
-                    createdAt: Date(),
-                    updatedAt: Date(),
-                    eventSources: nil
-                )
-            }
-            showRejectUndo(events: [rejectedEvent])
+            showRejectUndo(events: [event])
         } catch {
             errorMessage = error.localizedDescription
         }

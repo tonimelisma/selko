@@ -138,21 +138,87 @@ struct EventDetailViewModelTests {
     }
 
     @Test
-    func rejectSuccessSetsDidComplete() async throws {
+    func rejectSuccessShowsUndoToastAndDelaysDidComplete() async throws {
         // Given
         let mockEventService = MockEventService()
         let eventId = UUID()
-        mockEventService.rejectEventResult = .success(.mock)
+        let mockEvent = CalendarEvent(
+            id: eventId,
+            userId: UUID(),
+            title: "Team Standup",
+            startDatetime: Date().addingTimeInterval(86400),
+            endDatetime: Date().addingTimeInterval(90000),
+            allDay: false,
+            location: nil,
+            description: nil,
+            sourceAttribution: nil,
+            status: .pendingReview,
+            googleCalendarEventId: nil,
+            syncedAt: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            eventSources: nil
+        )
+        mockEventService.rejectEventResult = .success(mockEvent)
+        mockEventService.getEventWithSourcesResult = .success(mockEvent)
 
         let viewModel = EventDetailViewModel(eventId: eventId, eventService: mockEventService)
+        await viewModel.load()
 
         // When
         await viewModel.reject()
 
-        // Then
-        #expect(viewModel.didComplete == true)
+        // Then - reject is now undoable via toast, navigation is delayed 8s
+        #expect(viewModel.showUndoToast == true)
+        #expect(viewModel.undoToastMessage == "Event rejected")
+        #expect(viewModel.lastRejectedEvents.count == 1)
+        #expect(viewModel.didComplete == false)
         #expect(viewModel.errorMessage == nil)
         #expect(mockEventService.rejectEventCallCount == 1)
+
+        // Dismiss should complete navigation
+        viewModel.dismissUndoToast()
+        #expect(viewModel.didComplete == true)
+        #expect(viewModel.showUndoToast == false)
+    }
+
+    @Test
+    func rejectUndoRestoresAndDoesNotComplete() async throws {
+        let mockEventService = MockEventService()
+        let mockBackendAPI = MockBackendAPI()
+        let eventId = UUID()
+        let mockEvent = CalendarEvent(
+            id: eventId,
+            userId: UUID(),
+            title: "Team Standup",
+            startDatetime: Date().addingTimeInterval(86400),
+            endDatetime: Date().addingTimeInterval(90000),
+            allDay: false,
+            location: nil,
+            description: nil,
+            sourceAttribution: nil,
+            status: .pendingReview,
+            googleCalendarEventId: nil,
+            syncedAt: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            eventSources: nil
+        )
+        mockEventService.rejectEventResult = .success(mockEvent)
+        mockEventService.getEventWithSourcesResult = .success(mockEvent)
+        mockBackendAPI.undoHistoryEventResult = .success(EventChangeResponse(eventId: eventId.uuidString, status: "pending_review"))
+        let viewModel = EventDetailViewModel(eventId: eventId, eventService: mockEventService, backendAPI: mockBackendAPI)
+        await viewModel.load()
+
+        await viewModel.reject()
+        #expect(viewModel.showUndoToast == true)
+
+        await viewModel.undoLastRejected()
+
+        #expect(mockBackendAPI.undoHistoryEventCallCount == 1)
+        #expect(viewModel.showUndoToast == false)
+        #expect(viewModel.didComplete == false)
+        #expect(viewModel.errorMessage == nil)
     }
 
     @Test
@@ -160,9 +226,28 @@ struct EventDetailViewModelTests {
         // Given
         let mockEventService = MockEventService()
         let eventId = UUID()
+        let mockEvent = CalendarEvent(
+            id: eventId,
+            userId: UUID(),
+            title: "Team Standup",
+            startDatetime: Date().addingTimeInterval(86400),
+            endDatetime: Date().addingTimeInterval(90000),
+            allDay: false,
+            location: nil,
+            description: nil,
+            sourceAttribution: nil,
+            status: .pendingReview,
+            googleCalendarEventId: nil,
+            syncedAt: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            eventSources: nil
+        )
         mockEventService.rejectEventResult = .failure(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Reject failed"]))
+        mockEventService.getEventWithSourcesResult = .success(mockEvent)
 
         let viewModel = EventDetailViewModel(eventId: eventId, eventService: mockEventService)
+        await viewModel.load()
 
         // When
         await viewModel.reject()
@@ -170,5 +255,6 @@ struct EventDetailViewModelTests {
         // Then
         #expect(viewModel.errorMessage != nil)
         #expect(viewModel.didComplete == false)
+        #expect(mockEventService.rejectEventCallCount == 1)
     }
 }

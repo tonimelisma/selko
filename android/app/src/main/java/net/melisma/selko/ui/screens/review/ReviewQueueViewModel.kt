@@ -401,15 +401,14 @@ class ReviewQueueViewModel(
     fun showRejectUndo(events: List<CalendarEvent>) {
         if (events.isEmpty()) return
         undoJob?.cancel()
-        val existing = if (_uiState.value.showUndoSnackbar) _uiState.value.lastRejectedEvents else emptyList()
-        val combined = existing + events
-        val message = if (combined.size == 1) {
-            getString(R.string.review_event_rejected)
-        } else {
-            getString(R.string.review_events_rejected, combined.size)
-        }
-        _uiState.update {
-            it.copy(
+        _uiState.update { state ->
+            val combined = if (state.showUndoSnackbar) state.lastRejectedEvents + events else events
+            val message = if (combined.size == 1) {
+                getString(R.string.review_event_rejected)
+            } else {
+                getString(R.string.review_events_rejected, combined.size)
+            }
+            state.copy(
                 lastRejectedEvents = combined,
                 showUndoSnackbar = true,
                 undoSnackbarMessage = message

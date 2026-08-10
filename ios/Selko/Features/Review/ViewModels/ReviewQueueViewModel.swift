@@ -185,7 +185,9 @@ final class ReviewQueueViewModel {
         errorMessage = nil
         defer { processingEventIds.subtract(eventIds) }
 
-        var rejected: [CalendarEvent] = []
+        var succeeded: [CalendarEvent] = []
+        var anyFailed = false
+        var lastError: String?
         for event in group.events {
             do {
                 if event.isPendingChange {
@@ -193,15 +195,29 @@ final class ReviewQueueViewModel {
                 } else {
                     _ = try await eventService.rejectEvent(id: event.id)
                 }
-                rejected.append(event)
+                succeeded.append(event)
             } catch {
-                errorMessage = error.localizedDescription
-                return
+                anyFailed = true
+                lastError = error.localizedDescription
             }
         }
-        removeGroup(group.id)
-        if !rejected.isEmpty {
-            showRejectUndo(events: rejected)
+
+        if succeeded.count == group.events.count && !anyFailed {
+            removeGroup(group.id)
+            if !succeeded.isEmpty {
+                showRejectUndo(events: succeeded)
+            }
+        } else if !succeeded.isEmpty && anyFailed {
+            // Partial success: remove succeeded, show undo for them, sync failed from server
+            for ev in succeeded {
+                removeEventFromGroups(ev.id)
+            }
+            showRejectUndo(events: succeeded)
+            errorMessage = lastError
+            await load()
+        } else if succeeded.isEmpty && anyFailed {
+            errorMessage = lastError
+            await load()
         }
     }
 
