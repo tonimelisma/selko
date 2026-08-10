@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -117,54 +118,130 @@ class WorkListener:
     handed to a query and lose its LISTEN registration.
 
     Liveness (H3): every PG_LISTENER_HEARTBEAT_SECONDS it emits a self-NOTIFY
-    on the 'selko_heartbeat' channel and asserts receipt within 10s. A miss
-    means the socket is dead-but-open; the connection is torn down and
+    on 'selko_work' with payload 'heartbeat' and asserts receipt within 10s. A
+    miss means the socket is dead-but-open; the connection is torn down and
     reconnected with exponential backoff (1s, 2s, 4s … capped at 60s).
     Reconnect always re-issues LISTEN before declaring itself healthy.
     """
-    def __init__(self, config, pg_pool=None):
+
+    CHANNEL = "selko_work"
+    HEARTBEAT_PAYLOAD = "heartbeat"
+    WORK_TYPES = ("email_pending", "event_approved", "item_pending", "attachment_pending")
+
+    def __init__(self, config):
         self.config = config
-        self.pg_pool = pg_pool
         self._conn = None
         self._events: dict[str, asyncio.Event] = {}
         self._connected = False
         self._reconnects = 0
         self._last_notification_at: float | None = None
-        self._task: asyncio.Task | None = None
+        self._heartbeat_seen = asyncio.Event()
         self._heartbeat_task: asyncio.Task | None = None
+        self._stopping = False
 
     def event_for(self, work_type: str) -> asyncio.Event:
         if work_type not in self._events:
             self._events[work_type] = asyncio.Event()
         return self._events[work_type]
 
-    async def start(self) -> None:
-        # Stub for now — real LISTEN wired next; tests use event_for directly
+    def _on_notify(self, connection, pid, channel, payload):
+        self._last_notification_at = time.time()
+        if payload == self.HEARTBEAT_PAYLOAD:
+            self._heartbeat_seen.set()
+            return
+        event = self._events.get(payload)
+        if event is not None:
+            event.set()
+        else:
+            logger.debug("WorkListener: unknown payload %r on %s", payload, channel)
+
+    async def _connect(self) -> None:
+        import asyncpg
+
+        assert_session_mode_url(self.config.supabase_db_url)
+        self._conn = await asyncpg.connect(
+            dsn=self.config.supabase_db_url,
+            statement_cache_size=0,
+            timeout=getattr(self.config, "pg_connect_timeout_seconds", 10) or 10,
+            # Identifiable for the H3 dead-socket drill: the spec terminates
+            # the listener backend via pg_stat_activity.application_name.
+            server_settings={"application_name": "selko-worker"},
+        )
+        await self._conn.add_listener(self.CHANNEL, self._on_notify)
         self._connected = True
-        logger.info("WorkListener started (stub, Inc5)")
+        logger.info("WorkListener: LISTEN %s established", self.CHANNEL)
+
+    async def start(self) -> None:
+        self._stopping = False
+        for work_type in self.WORK_TYPES:
+            self.event_for(work_type)
+        await self._connect()
+        self._heartbeat_task = asyncio.create_task(
+            self._heartbeat_loop(), name="pg-work-listener-heartbeat"
+        )
+
+    async def _heartbeat_loop(self) -> None:
+        interval = max(int(getattr(self.config, "pg_listener_heartbeat_seconds", 120) or 120), 30)
+        backoff = 1.0
+        while not self._stopping:
+            try:
+                await asyncio.sleep(interval)
+                if self._stopping:
+                    return
+                self._heartbeat_seen.clear()
+                await self._conn.execute(
+                    "SELECT pg_notify($1, $2)", self.CHANNEL, self.HEARTBEAT_PAYLOAD
+                )
+                try:
+                    await asyncio.wait_for(self._heartbeat_seen.wait(), timeout=10.0)
+                    backoff = 1.0
+                except asyncio.TimeoutError:
+                    raise ConnectionError("listener heartbeat not received within 10s")
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self._connected = False
+                self._reconnects += 1
+                logger.warning(
+                    "WorkListener: reconnecting after %s (reconnect #%d, backoff %.0fs)",
+                    exc, self._reconnects, backoff,
+                )
+                await self._teardown_connection()
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 60.0)
+                try:
+                    await self._connect()
+                    # A dropped socket may have lost notifications. Wake every
+                    # work type so the next drain reconciles from the database,
+                    # which is the durable source of truth.
+                    for event in self._events.values():
+                        event.set()
+                except Exception as reconnect_exc:
+                    logger.error("WorkListener: reconnect failed: %s", reconnect_exc)
+
+    async def _teardown_connection(self) -> None:
+        if self._conn is not None:
+            try:
+                await self._conn.remove_listener(self.CHANNEL, self._on_notify)
+            except Exception:
+                pass
+            try:
+                await self._conn.close()
+            except Exception as exc:
+                logger.warning("WorkListener: error closing connection: %s", exc)
+            self._conn = None
 
     async def stop(self) -> None:
+        self._stopping = True
         self._connected = False
-        if self._task:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
-            self._task = None
-        if self._heartbeat_task:
+        if self._heartbeat_task is not None:
             self._heartbeat_task.cancel()
             try:
                 await self._heartbeat_task
             except asyncio.CancelledError:
                 pass
             self._heartbeat_task = None
-        if self._conn is not None:
-            try:
-                await self._conn.close()
-            except Exception:
-                pass
-            self._conn = None
+        await self._teardown_connection()
 
     def status(self) -> dict:
         return {
@@ -172,15 +249,3 @@ class WorkListener:
             "reconnects": self._reconnects,
             "last_notification_at": self._last_notification_at,
         }
-
-    def _on_notify(self, connection, pid, channel, payload):
-        self._last_notification_at = __import__("time").time()
-        ev = self._events.get(payload)
-        if ev is not None:
-            ev.set()
-        # Also wake generic listeners
-        for e in self._events.values():
-            if e is not ev:
-                # For now, wake all — work types share channel selko_work, payload discriminates
-                pass
-

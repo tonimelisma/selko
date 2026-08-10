@@ -28,7 +28,7 @@ from selko.services.photos import PhotosError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.services.memory_monitor import start_memory_monitor
-from selko.services.pg import create_pool
+from selko.services.pg import WorkListener, create_pool
 from selko.workers.pool import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -90,6 +90,7 @@ async def lifespan(app: FastAPI):
     config = load_config()
 
     pg_pool = None
+    work_listener = None
 
     memory_monitor_task = start_memory_monitor(
         config.memory_log_interval_seconds,
@@ -115,11 +116,16 @@ async def lifespan(app: FastAPI):
         logger.info("Supavisor session pooler connected")
         service_client = get_service_client(config)
 
+        work_listener = WorkListener(config)
+        await work_listener.start()
+        app.state.work_listener = work_listener
+
         worker_pool = WorkerPool(
             num_workers=config.worker_pool_size,
             idle_sleep_seconds=config.worker_idle_sleep_seconds,
             error_backoff_seconds=config.worker_error_backoff_seconds,
             pg_pool=pg_pool,
+            work_listener=work_listener,
         )
         await worker_pool.start()
 
@@ -142,7 +148,9 @@ async def lifespan(app: FastAPI):
                 f"{recoveries_unlocked} integration recoveries"
             )
 
-        ingestion_runtime = IngestionRuntime(service_client, config, pg_pool=pg_pool)
+        ingestion_runtime = IngestionRuntime(
+            service_client, config, pg_pool=pg_pool, work_listener=work_listener
+        )
         await ingestion_runtime.start()
 
         logger.info("Background workers started successfully")
@@ -168,6 +176,8 @@ async def lifespan(app: FastAPI):
             await ingestion_runtime.stop()
         if worker_pool:
             await worker_pool.stop()
+        if work_listener is not None:
+            await work_listener.stop()
         if pg_pool:
             await pg_pool.close()
             logger.info("Pg pool closed")

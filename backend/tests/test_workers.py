@@ -26,10 +26,28 @@ def mock_config():
     return cfg
 
 
+class _FakeWorkListener:
+    """Minimal WorkListener double: per-work-type events, no connection."""
+
+    def __init__(self):
+        self._events = {}
+
+    def event_for(self, work_type: str):
+        if work_type not in self._events:
+            import asyncio
+            self._events[work_type] = asyncio.Event()
+        return self._events[work_type]
+
+
 @pytest.fixture
-def pool(fake_pg_pool):
+def fake_work_listener():
+    return _FakeWorkListener()
+
+
+@pytest.fixture
+def pool(fake_pg_pool, fake_work_listener):
     """WorkerPool with small settings for testing."""
-    return WorkerPool(fake_pg_pool, num_workers=2, idle_sleep_seconds=0.01, error_backoff_seconds=0.01)
+    return WorkerPool(fake_pg_pool, fake_work_listener, num_workers=2, idle_sleep_seconds=0.01, error_backoff_seconds=0.01)
 
 
 # ===========================================================================
@@ -218,11 +236,11 @@ class TestSingleTransportWiring:
     retain a PostgREST fallback branch."""
 
     @pytest.mark.asyncio
-    async def test_worker_pool_claims_over_the_pool(self, fake_pg_pool):
+    async def test_worker_pool_claims_over_the_pool(self, fake_pg_pool, fake_work_listener):
         """A configured pool must actually reach the claim call."""
         from selko.config import load_config
 
-        pool = WorkerPool(fake_pg_pool)
+        pool = WorkerPool(fake_pg_pool, fake_work_listener)
         pool.config = load_config()
         await pool._process_any_work("test-worker")
         assert any("claim_approved_event" in sql for sql, _ in fake_pg_pool.calls)
@@ -449,9 +467,9 @@ class TestEmailProcessWorker:
         assert args[2] == "e1"  # email_id is 3rd positional arg
 
     @pytest.mark.asyncio
-    async def test_pool_email_processing_uses_wait_for(self, mock_config, fake_pg_pool):
+    async def test_pool_email_processing_uses_wait_for(self, mock_config, fake_pg_pool, fake_work_listener):
         """Python 3.10 has no asyncio.timeout; pool must use wait_for."""
-        pool = WorkerPool(fake_pg_pool, num_workers=1)
+        pool = WorkerPool(fake_pg_pool, fake_work_listener, num_workers=1)
         pool.config = mock_config
         mock_config.email_processing_timeout = 30
         mock_client = MagicMock()
@@ -480,10 +498,10 @@ class TestEmailProcessWorker:
         mock_cb.record_success.assert_called_with("llm")
 
     @pytest.mark.asyncio
-    async def test_pool_does_not_overwrite_skipped_email(self, mock_config, fake_pg_pool):
+    async def test_pool_does_not_overwrite_skipped_email(self, mock_config, fake_pg_pool, fake_work_listener):
         """Regression: a sender-ignored/calendar-invite email must stay
         'skipped', not get flipped back to 'processed' by the pool."""
-        pool = WorkerPool(fake_pg_pool, num_workers=1)
+        pool = WorkerPool(fake_pg_pool, fake_work_listener, num_workers=1)
         pool.config = mock_config
         mock_config.email_processing_timeout = 30
         mock_client = MagicMock()
@@ -535,10 +553,10 @@ class TestCalendarSyncWorker:
         assert result == "google-cal-event-123"
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_not_recorded_on_complete_failure(self, mock_config, fake_pg_pool):
+    async def test_circuit_breaker_not_recorded_on_complete_failure(self, mock_config, fake_pg_pool, fake_work_listener):
         """Circuit breaker should not record success if complete_*_processing raises."""
         # This test verifies B5: record_success must be AFTER complete_*_processing
-        pool = WorkerPool(fake_pg_pool, num_workers=1, idle_sleep_seconds=0.01, error_backoff_seconds=0.01)
+        pool = WorkerPool(fake_pg_pool, fake_work_listener, num_workers=1, idle_sleep_seconds=0.01, error_backoff_seconds=0.01)
         # The fix ensures record_success is the last statement, so if
         # complete_email_processing raises, record_success is never called.
         # This is a structural verification - the actual test is that the code ordering is correct.
@@ -561,9 +579,9 @@ class TestCalendarSyncWorker:
                 await sync_event(mock_client, mock_config, event)
 
     @pytest.mark.asyncio
-    async def test_worker_is_single_calendar_writer(self, mock_config, fake_pg_pool):
+    async def test_worker_is_single_calendar_writer(self, mock_config, fake_pg_pool, fake_work_listener):
         """A claimed event is quota-checked and written exactly once by its worker."""
-        pool = WorkerPool(fake_pg_pool, num_workers=1)
+        pool = WorkerPool(fake_pg_pool, fake_work_listener, num_workers=1)
         pool.config = mock_config
         mock_client = MagicMock()
         event = {
@@ -595,10 +613,10 @@ class TestCalendarSyncWorker:
 
     @pytest.mark.asyncio
     async def test_worker_defers_without_writing_when_calendar_quota_is_exhausted(
-        self, mock_config, fake_pg_pool
+        self, mock_config, fake_pg_pool, fake_work_listener
     ):
         """Quota denial releases the claim without consuming an attempt."""
-        pool = WorkerPool(fake_pg_pool, num_workers=1)
+        pool = WorkerPool(fake_pg_pool, fake_work_listener, num_workers=1)
         pool.config = mock_config
         mock_client = MagicMock()
         event = {
@@ -635,7 +653,7 @@ class TestCalendarSyncWorker:
 
     @pytest.mark.asyncio
     async def test_worker_parks_event_without_dead_lettering_on_oauth_failure(
-        self, mock_config, fake_pg_pool
+        self, mock_config, fake_pg_pool, fake_work_listener
     ):
         """An OAuth-blocked sync must not dead-letter the event or trip the
         shared google_calendar circuit breaker.
@@ -645,7 +663,7 @@ class TestCalendarSyncWorker:
         """
         from selko.services.calendars import CalendarAuthRequiredError
 
-        pool = WorkerPool(fake_pg_pool, num_workers=1)
+        pool = WorkerPool(fake_pg_pool, fake_work_listener, num_workers=1)
         pool.config = mock_config
         mock_client = MagicMock()
         event = {
@@ -684,12 +702,12 @@ class TestCalendarSyncWorker:
 
     @pytest.mark.asyncio
     async def test_worker_dead_letters_and_trips_circuit_on_provider_failure(
-        self, mock_config, fake_pg_pool
+        self, mock_config, fake_pg_pool, fake_work_listener
     ):
         """A non-OAuth failure keeps today's behavior: fail_event_sync and
         the shared circuit breaker both still fire.
         """
-        pool = WorkerPool(fake_pg_pool, num_workers=1)
+        pool = WorkerPool(fake_pg_pool, fake_work_listener, num_workers=1)
         pool.config = mock_config
         mock_client = MagicMock()
         event = {

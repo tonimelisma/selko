@@ -94,3 +94,34 @@ def test_keepalive_init_hook_sets_socket_options():
         assert socket.TCP_KEEPINTVL in opts
     if hasattr(socket, "TCP_KEEPCNT"):
         assert socket.TCP_KEEPCNT in opts
+
+def _fake_config():
+    from types import SimpleNamespace
+    return SimpleNamespace(
+        supabase_db_url="postgresql://postgres:pw@x.pooler.supabase.com:5432/postgres",
+        pg_connect_timeout_seconds=10,
+        pg_listener_heartbeat_seconds=120,
+    )
+
+def test_listener_sets_event_for_payload():
+    from selko.services.pg import WorkListener
+    listener = WorkListener(config=_fake_config())
+    event = listener.event_for("email_pending")
+    assert not event.is_set()
+    listener._on_notify(None, 1, "selko_work", "email_pending")
+    assert event.is_set()
+
+
+def test_heartbeat_payload_does_not_set_work_events():
+    from selko.services.pg import WorkListener
+    listener = WorkListener(config=_fake_config())
+    work = listener.event_for("email_pending")
+    listener._on_notify(None, 1, "selko_work", "heartbeat")
+    assert listener._heartbeat_seen.is_set()
+    assert not work.is_set()
+
+
+def test_status_is_false_before_start():
+    """Regression: the Inc5 stub reported connected=True without a LISTEN."""
+    from selko.services.pg import WorkListener
+    assert WorkListener(config=_fake_config()).status()["connected"] is False

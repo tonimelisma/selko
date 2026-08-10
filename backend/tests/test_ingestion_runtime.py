@@ -55,7 +55,7 @@ def test_idle_backoff_resets_after_work_is_found(mock_config):
         return original(consecutive_idle)
 
     worker.idle_backoff = record
-    asyncio.run(worker._claim_loop(run_once))
+    asyncio.run(worker._claim_loop(run_once, "item_pending"))
 
     # Three idle claims escalate, the successful claim resets, then the next
     # idle claim starts over at 1 rather than continuing from 4.
@@ -126,6 +126,7 @@ def test_lifespan_runs_ingestion_in_process(mock_config):
         with patch("selko.api.app.load_config", return_value=config), \
              patch("selko.api.app.start_memory_monitor", return_value=None), \
              patch("selko.api.app.create_pool", new=AsyncMock(return_value=fake_pool)) as create_pool, \
+             patch("selko.api.app.WorkListener") as listener_cls, \
              patch("selko.services.auth.get_service_client", return_value=MagicMock()), \
              patch("selko.services.emails.unlock_expired_email_locks", return_value=0), \
              patch("selko.services.events.unlock_expired_event_locks", return_value=0), \
@@ -137,14 +138,19 @@ def test_lifespan_runs_ingestion_in_process(mock_config):
              patch("selko.workers.ingestion_runtime.IngestionRuntime.stop", new=AsyncMock()) as stop:
             pool_cls.return_value.start = AsyncMock()
             pool_cls.return_value.stop = AsyncMock()
+            listener_cls.return_value.start = AsyncMock()
+            listener_cls.return_value.stop = AsyncMock()
             app = MagicMock()
             async with lifespan(app):
                 pass
-            return pool_cls.return_value, start, stop, create_pool, fake_pool, app
+            return pool_cls.return_value, start, stop, create_pool, fake_pool, app, listener_cls
 
-    pool, start, stop, create_pool, fake_pool, app = asyncio.run(scenario())
+    pool, start, stop, create_pool, fake_pool, app, listener_cls = asyncio.run(scenario())
 
     create_pool.assert_awaited_once()
+    listener_cls.assert_called_once()
+    listener_cls.return_value.start.assert_awaited_once()
+    listener_cls.return_value.stop.assert_awaited_once()
     assert app.state.pg_pool is fake_pool
     pool.start.assert_awaited_once()
     start.assert_awaited_once()
@@ -164,6 +170,7 @@ def test_lifespan_recovers_stale_integration_recoveries_on_startup(mock_config):
         with patch("selko.api.app.load_config", return_value=config), \
              patch("selko.api.app.start_memory_monitor", return_value=None), \
              patch("selko.api.app.create_pool", new=AsyncMock(return_value=AsyncMock())), \
+             patch("selko.api.app.WorkListener") as listener_cls, \
              patch("selko.services.auth.get_service_client", return_value=MagicMock()), \
              patch("selko.services.emails.unlock_expired_email_locks", return_value=0), \
              patch("selko.services.events.unlock_expired_event_locks", return_value=0), \
@@ -178,6 +185,8 @@ def test_lifespan_recovers_stale_integration_recoveries_on_startup(mock_config):
              patch("selko.workers.ingestion_runtime.IngestionRuntime.stop", new=AsyncMock()):
             pool_cls.return_value.start = AsyncMock()
             pool_cls.return_value.stop = AsyncMock()
+            listener_cls.return_value.start = AsyncMock()
+            listener_cls.return_value.stop = AsyncMock()
             async with lifespan(MagicMock()):
                 pass
             return unlock_recoveries
@@ -698,7 +707,7 @@ def test_claim_loop_nudge_wakes_acquisition(mock_config):
         worker.stop()
         return False
     async def scenario():
-        task = asyncio.create_task(worker._claim_loop(run_once))
+        task = asyncio.create_task(worker._claim_loop(run_once, "item_pending"))
         await asyncio.sleep(0.05)
         assert not task.done(), "loop should still be sleeping on 30s backoff"
         worker.nudge()

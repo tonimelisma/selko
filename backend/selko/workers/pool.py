@@ -78,6 +78,7 @@ class WorkerPool:
     def __init__(
         self,
         pg_pool,
+        work_listener,
         num_workers: int = 3,
         idle_sleep_seconds: float = 1.0,
         error_backoff_seconds: float = 5.0,
@@ -95,7 +96,7 @@ class WorkerPool:
         self.idle_sleep_seconds = idle_sleep_seconds
         self.error_backoff_seconds = error_backoff_seconds
         self.pg_pool = pg_pool
-        self.pg_pool = pg_pool
+        self._work_listener = work_listener
         self.tasks: list[asyncio.Task] = []
         self.running = False
         self.config: Optional[Config] = None
@@ -260,19 +261,23 @@ class WorkerPool:
                     logger.debug(f"{worker_id}: drained {drained} items, re-draining")
                     continue
 
-                # --- idle: wait for tick or nudge ---
-                if self._nudge_event is None:
-                    await asyncio.sleep(self._tick_seconds())
-                else:
-                    try:
-                        await asyncio.wait_for(
-                            self._nudge_event.wait(), timeout=self._tick_seconds()
-                        )
-                    except asyncio.TimeoutError:
-                        pass
-                    # Consume the nudge (level-triggered -> edge)
-                    if self._nudge_event.is_set():
-                        self._nudge_event.clear()
+                # --- idle: wait for nudge, notification, or safety poll ---
+                waiters = [asyncio.create_task(self._nudge_event.wait())]
+                for work_type in ("event_approved", "email_pending"):
+                    waiters.append(
+                        asyncio.create_task(self._work_listener.event_for(work_type).wait())
+                    )
+                _, pending = await asyncio.wait(
+                    waiters,
+                    timeout=float(self.config.worker_safety_poll_seconds),
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
+                if self._nudge_event.is_set():
+                    self._nudge_event.clear()
+                for work_type in ("event_approved", "email_pending"):
+                    self._work_listener.event_for(work_type).clear()
 
             except asyncio.CancelledError:
                 logger.info(f"{worker_id}: scheduler cancelled, shutting down")
