@@ -35,3 +35,62 @@ def test_assert_rejects_missing_url():
         assert_session_mode_url("")
     with pytest.raises(ConfigurationError):
         assert_session_mode_url(None)
+
+def test_create_pool_sets_keepalives_and_timeout(monkeypatch):
+    """H3: asyncpg sets no TCP keepalives by default; we must pass them."""
+    captured = {}
+
+    async def fake_create_pool(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    import asyncpg
+    monkeypatch.setattr(asyncpg, "create_pool", fake_create_pool)
+
+    from types import SimpleNamespace
+    from selko.services.pg import create_pool
+
+    config = SimpleNamespace(
+        supabase_db_url="postgresql://postgres:pw@x.pooler.supabase.com:5432/postgres",
+        pg_pool_min_size=1, pg_pool_max_size=4,
+        pg_keepalive_seconds=60, pg_connect_timeout_seconds=10,
+        pg_command_timeout_seconds=30,
+    )
+    import asyncio
+    asyncio.run(create_pool(config))
+
+    assert captured["statement_cache_size"] == 0
+    assert captured["command_timeout"] == 30
+    assert captured["server_settings"] == {"application_name": "selko-worker"}
+    assert captured["init"] is not None  # keepalives applied via init hook
+
+def test_keepalive_init_hook_sets_socket_options():
+    """H3: the pool init hook enables SO_KEEPALIVE with idle/interval/count."""
+    import socket
+    from selko.services.pg import _enable_tcp_keepalives
+
+    calls = []
+
+    class FakeSock:
+        def setsockopt(self, level, opt, val):
+            calls.append((level, opt, val))
+
+    class FakeTransport:
+        def get_extra_info(self, name):
+            assert name == "socket"
+            return FakeSock()
+
+    class FakeConn:
+        _transport = FakeTransport()
+
+    import asyncio
+    asyncio.run(_enable_tcp_keepalives(60)(FakeConn()))
+
+    opts = {opt for _, opt, _ in calls}
+    assert socket.SO_KEEPALIVE in opts
+    keepidle = getattr(socket, "TCP_KEEPIDLE", None) or getattr(socket, "TCP_KEEPALIVE", None)
+    assert keepidle in opts
+    if hasattr(socket, "TCP_KEEPINTVL"):
+        assert socket.TCP_KEEPINTVL in opts
+    if hasattr(socket, "TCP_KEEPCNT"):
+        assert socket.TCP_KEEPCNT in opts

@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from selko.api.deps import get_config
 from selko.api.schemas.common import (
@@ -114,7 +114,7 @@ async def health_ingestion_check() -> HealthIngestionResponse:
 
 
 @router.get("/health/egress", response_model=HealthEgressResponse)
-async def health_egress_check() -> HealthEgressResponse:
+async def health_egress_check(request: Request) -> HealthEgressResponse:
     """Where this instance's outbound bytes are going.
 
     The platform bandwidth graph reports a monthly total with no attribution,
@@ -165,4 +165,5 @@ async def health_egress_check() -> HealthEgressResponse:
             EgressOperationResponse(**row) for row in snapshot["top_operations"]
         ],
         bytes_per_mailbox_per_day=bytes_per_mailbox,
+        transport="asyncpg" if getattr(request.app.state, "pg_pool", None) is not None else "none",
     )
