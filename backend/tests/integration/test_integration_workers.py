@@ -4,6 +4,7 @@ Tests the worker job handlers with real Supabase database but mocked
 external APIs (Gmail, Google Calendar, Gemini).
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
@@ -90,8 +91,8 @@ def cleanup_test_data(service_client: Client, test_user_id: str):
 class TestEmailStatusBasedClaiming:
     """Tests for email status-based claiming (replacing email_process jobs)."""
 
-    def test_claim_pending_email_directly(
-        self, service_client, authenticated_client, test_user_id
+    async def test_claim_pending_email_directly(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that worker can claim a pending email directly from the emails table."""
         # Create a pending email
@@ -110,16 +111,16 @@ class TestEmailStatusBasedClaiming:
         email_id = result.data[0]["id"]
 
         # Claim the email
-        claimed = claim_pending_email(service_client, "test-worker-1")
+        claimed = await claim_pending_email(pg_pool, "test-worker-1")
 
         assert claimed is not None
-        assert claimed["id"] == email_id
+        assert str(claimed["id"]) == email_id
         assert claimed["processing_status"] == "processing"
         assert claimed["locked_by"] == "test-worker-1"
         assert claimed["attempts"] == 1
 
-    def test_complete_email_processing_updates_status(
-        self, service_client, authenticated_client, test_user_id
+    async def test_complete_email_processing_updates_status(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that completing email processing updates status correctly."""
         # Create and claim an email
@@ -135,10 +136,10 @@ class TestEmailStatusBasedClaiming:
         result = authenticated_client.table("emails").insert(email_data).execute()
         email_id = result.data[0]["id"]
 
-        claim_pending_email(service_client, "test-worker")
+        await claim_pending_email(pg_pool, "test-worker")
 
         # Complete processing
-        complete_email_processing(service_client, email_id)
+        await complete_email_processing(pg_pool, email_id)
 
         # Verify status
         email = authenticated_client.table("emails").select("*").eq(
@@ -149,8 +150,8 @@ class TestEmailStatusBasedClaiming:
         assert email.data["processed_at"] is not None
         assert email.data["locked_by"] is None
 
-    def test_fail_email_processing_with_retry(
-        self, service_client, authenticated_client, test_user_id
+    async def test_fail_email_processing_with_retry(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that failing email processing allows retry."""
         # Create email with max_attempts=3
@@ -168,8 +169,8 @@ class TestEmailStatusBasedClaiming:
         email_id = result.data[0]["id"]
 
         # Claim and fail
-        claim_pending_email(service_client, "worker-1")
-        fail_email_processing(service_client, email_id, "Test error")
+        await claim_pending_email(pg_pool, "worker-1")
+        await fail_email_processing(pg_pool, email_id, "Test error")
 
         # Should be back to pending for retry
         email = authenticated_client.table("emails").select("*").eq(
@@ -180,8 +181,8 @@ class TestEmailStatusBasedClaiming:
         assert email.data["processing_error"] == "Test error"
         assert email.data["locked_by"] is None
 
-    def test_concurrent_workers_no_duplicate_email_processing(
-        self, service_client, authenticated_client, test_user_id
+    async def test_concurrent_workers_no_duplicate_email_processing(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that SKIP LOCKED prevents concurrent workers from claiming same email."""
         # Clean up any existing pending emails first
@@ -202,15 +203,15 @@ class TestEmailStatusBasedClaiming:
         authenticated_client.table("emails").insert(email_data).execute()
 
         # Worker 1 claims it
-        claimed_1 = claim_pending_email(service_client, "worker-1")
+        claimed_1 = await claim_pending_email(pg_pool, "worker-1")
         assert claimed_1 is not None
 
         # Worker 2 tries to claim - should get None (only one email exists)
-        claimed_2 = claim_pending_email(service_client, "worker-2")
+        claimed_2 = await claim_pending_email(pg_pool, "worker-2")
         assert claimed_2 is None
 
-    def test_email_lock_expiry_recovery(
-        self, service_client, authenticated_client, test_user_id
+    async def test_email_lock_expiry_recovery(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that expired email locks can be recovered."""
         # Create and claim an email with short lock
@@ -226,7 +227,7 @@ class TestEmailStatusBasedClaiming:
 
         authenticated_client.table("emails").insert(email_data).execute()
 
-        claim_pending_email(service_client, "worker-1", lock_duration_seconds=1)
+        await claim_pending_email(pg_pool, "worker-1", lock_duration_seconds=1)
 
         # Set lock_until to past directly instead of waiting
         past_time = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
@@ -235,11 +236,11 @@ class TestEmailStatusBasedClaiming:
         }).eq("provider_message_id", provider_message_id).execute()
 
         # Unlock expired locks
-        count = unlock_expired_email_locks(service_client)
+        count = await unlock_expired_email_locks(pg_pool)
         assert count >= 1
 
         # Should be claimable again
-        claimed = claim_pending_email(service_client, "worker-2")
+        claimed = await claim_pending_email(pg_pool, "worker-2")
         assert claimed is not None
 
 
@@ -269,8 +270,8 @@ class TestEventStatusBasedClaiming:
             "user_id", test_user_id
         ).eq("provider", "google_calendar").execute()
 
-    def test_claim_approved_event_directly(
-        self, service_client, authenticated_client, test_user_id
+    async def test_claim_approved_event_directly(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that worker can claim an approved event directly."""
         # Create an approved event
@@ -285,16 +286,16 @@ class TestEventStatusBasedClaiming:
         event_id = result.data[0]["id"]
 
         # Claim the event
-        claimed = claim_approved_event_for_sync(service_client, "test-worker-1")
+        claimed = await claim_approved_event_for_sync(pg_pool, "test-worker-1")
 
         assert claimed is not None
-        assert claimed["id"] == event_id
+        assert str(claimed["id"]) == event_id
         assert claimed["status"] == "syncing"
         assert claimed["locked_by"] == "test-worker-1"
         assert claimed["sync_attempts"] == 1
 
-    def test_complete_event_sync_updates_status(
-        self, service_client, authenticated_client, test_user_id
+    async def test_complete_event_sync_updates_status(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that completing event sync updates status correctly."""
         # Create and claim an event
@@ -309,10 +310,10 @@ class TestEventStatusBasedClaiming:
         result = authenticated_client.table("events").insert(event_data).execute()
         event_id = result.data[0]["id"]
 
-        claim_approved_event_for_sync(service_client, "test-worker")
+        await claim_approved_event_for_sync(pg_pool, "test-worker")
 
         # Complete sync
-        complete_event_sync(service_client, event_id, "google-event-123")
+        await complete_event_sync(pg_pool, event_id, "google-event-123")
 
         # Verify status
         event = authenticated_client.table("events").select("*").eq(
@@ -325,8 +326,8 @@ class TestEventStatusBasedClaiming:
         assert event.data["locked_by"] is None
         assert event.data["sync_failure_code"] is None
 
-    def test_fail_event_sync_with_retry(
-        self, service_client, authenticated_client, test_user_id
+    async def test_fail_event_sync_with_retry(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that failing event sync allows retry."""
         # Create event with max_sync_attempts=3
@@ -342,8 +343,8 @@ class TestEventStatusBasedClaiming:
         event_id = result.data[0]["id"]
 
         # Claim and fail
-        claim_approved_event_for_sync(service_client, "worker-1")
-        fail_event_sync(service_client, event_id, "Test sync error")
+        await claim_approved_event_for_sync(pg_pool, "worker-1")
+        await fail_event_sync(pg_pool, event_id, "Test sync error")
 
         # Should be back to approved for retry
         event = authenticated_client.table("events").select("*").eq(
@@ -354,8 +355,8 @@ class TestEventStatusBasedClaiming:
         assert event.data["sync_error"] == "Test sync error"
         assert event.data["locked_by"] is None
 
-    def test_concurrent_workers_no_duplicate_event_sync(
-        self, service_client, authenticated_client, test_user_id
+    async def test_concurrent_workers_no_duplicate_event_sync(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that SKIP LOCKED prevents concurrent workers from claiming same event."""
         # Clean up any existing approved events first
@@ -374,15 +375,15 @@ class TestEventStatusBasedClaiming:
         authenticated_client.table("events").insert(event_data).execute()
 
         # Worker 1 claims it
-        claimed_1 = claim_approved_event_for_sync(service_client, "worker-1")
+        claimed_1 = await claim_approved_event_for_sync(pg_pool, "worker-1")
         assert claimed_1 is not None
 
         # Worker 2 tries to claim - should get None (only one event exists)
-        claimed_2 = claim_approved_event_for_sync(service_client, "worker-2")
+        claimed_2 = await claim_approved_event_for_sync(pg_pool, "worker-2")
         assert claimed_2 is None
 
-    def test_claim_excludes_users_without_active_calendar_integration(
-        self, service_client, authenticated_client, test_user_id
+    async def test_claim_excludes_users_without_active_calendar_integration(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """An expired google_calendar integration must not be claimed for sync.
 
@@ -401,7 +402,7 @@ class TestEventStatusBasedClaiming:
         }
         authenticated_client.table("events").insert(event_data).execute()
 
-        claimed = claim_approved_event_for_sync(service_client, "worker-1")
+        claimed = await claim_approved_event_for_sync(pg_pool, "worker-1")
         assert claimed is None
 
 
@@ -411,7 +412,7 @@ class TestScheduledTasks:
     """Tests for scheduled tasks (photo_fetch only)."""
 
     def test_enqueue_and_claim_scheduled_task(
-        self, service_client, test_user_id
+        self, service_client, test_user_id, pg_pool
     ):
         """Test basic scheduled task enqueue and claim operations."""
         # Enqueue a task
@@ -436,8 +437,8 @@ class TestScheduledTasks:
         assert claimed["status"] == "processing"
         assert claimed["locked_by"] == "test-worker-1"
 
-    def test_complete_scheduled_task(
-        self, service_client, test_user_id
+    async def test_complete_scheduled_task(
+        self, service_client, test_user_id, pg_pool
     ):
         """Test marking a scheduled task as completed."""
         # Enqueue and claim
@@ -462,8 +463,8 @@ class TestScheduledTasks:
         assert task.data["completed_at"] is not None
         assert task.data["locked_by"] is None
 
-    def test_fail_scheduled_task(
-        self, service_client, test_user_id
+    async def test_fail_scheduled_task(
+        self, service_client, test_user_id, pg_pool
     ):
         """Test marking a scheduled task as failed."""
         # Enqueue and claim
@@ -597,8 +598,8 @@ class TestWorkerConcurrency:
             "user_id", test_user_id
         ).eq("provider", "google_calendar").execute()
 
-    def test_multiple_workers_get_different_emails(
-        self, service_client, authenticated_client, test_user_id
+    async def test_multiple_workers_get_different_emails(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that multiple workers claim different emails."""
         # Create multiple pending emails
@@ -618,16 +619,16 @@ class TestWorkerConcurrency:
         # Multiple workers claim emails
         claimed_ids = set()
         for i in range(3):
-            claimed = claim_pending_email(service_client, f"worker-{i}")
+            claimed = await claim_pending_email(pg_pool, f"worker-{i}")
             if claimed:
-                claimed_ids.add(claimed["id"])
+                claimed_ids.add(str(claimed["id"]))
 
         # All emails should be claimed by different workers
         assert len(claimed_ids) == 3
-        assert claimed_ids == set(email_ids)
+        assert claimed_ids == {str(i) for i in email_ids}
 
-    def test_multiple_workers_get_different_events(
-        self, service_client, authenticated_client, test_user_id
+    async def test_multiple_workers_get_different_events(
+        self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that multiple workers claim different events."""
         # Create multiple approved events
@@ -645,10 +646,10 @@ class TestWorkerConcurrency:
         # Multiple workers claim events
         claimed_ids = set()
         for i in range(3):
-            claimed = claim_approved_event_for_sync(service_client, f"worker-{i}")
+            claimed = await claim_approved_event_for_sync(pg_pool, f"worker-{i}")
             if claimed:
-                claimed_ids.add(claimed["id"])
+                claimed_ids.add(str(claimed["id"]))
 
         # All events should be claimed by different workers
         assert len(claimed_ids) == 3
-        assert claimed_ids == set(event_ids)
+        assert claimed_ids == {str(i) for i in event_ids}

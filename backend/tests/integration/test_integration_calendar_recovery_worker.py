@@ -6,6 +6,7 @@ quota/validation/permission/unknown failures are left untouched, and progress
 finalizes once every tagged event reaches a terminal state.
 """
 
+import asyncio
 import pytest
 
 from selko.services.calendars import (
@@ -53,7 +54,7 @@ def _make_blocked_event(admin_client, user_id, sync_failure_code="oauth_required
     return result.data[0]["id"]
 
 
-def _create_and_claim_recovery(admin_client, user_id):
+async def _create_and_claim_recovery(admin_client, user_id, pg_pool):
     complete_integration_reauthorization(
         admin_client,
         user_id=user_id,
@@ -64,13 +65,13 @@ def _create_and_claim_recovery(admin_client, user_id):
         scopes=["calendar"],
         provider_email=None,
     )
-    return claim_integration_recovery(admin_client, "worker-1", lock_seconds=120)
+    return await claim_integration_recovery(pg_pool, "worker-1", lock_seconds=120)
 
 
 @pytest.mark.integration
 @pytest.mark.development
 class TestRequeueCalendarRecoveryBatch:
-    def test_tags_only_oauth_blocked_approved_events(self, admin_client, test_user_id):
+    async def test_tags_only_oauth_blocked_approved_events(self, admin_client, test_user_id, pg_pool):
         oauth_event_id = _make_blocked_event(admin_client, test_user_id, "oauth_required")
         scope_event_id = _make_blocked_event(
             admin_client, test_user_id, "oauth_scope_required"
@@ -80,9 +81,9 @@ class TestRequeueCalendarRecoveryBatch:
         )
         no_code_event_id = _make_blocked_event(admin_client, test_user_id, None)
 
-        recovery = _create_and_claim_recovery(admin_client, test_user_id)
-        tagged = requeue_calendar_recovery_batch(
-            admin_client, recovery["id"], "worker-1"
+        recovery = await _create_and_claim_recovery(admin_client, test_user_id, pg_pool)
+        tagged = await requeue_calendar_recovery_batch(
+            pg_pool, recovery["id"], "worker-1"
         )
         assert tagged == 2
 
@@ -101,22 +102,22 @@ class TestRequeueCalendarRecoveryBatch:
         for stray_id in (untouched_event_id, no_code_event_id):
             admin_client.table("events").delete().eq("id", stray_id).execute()
 
-    def test_returns_negative_one_when_claim_lost(self, admin_client, test_user_id):
-        recovery = _create_and_claim_recovery(admin_client, test_user_id)
+    async def test_returns_negative_one_when_claim_lost(self, admin_client, test_user_id, pg_pool):
+        recovery = await _create_and_claim_recovery(admin_client, test_user_id, pg_pool)
 
-        result = requeue_calendar_recovery_batch(
-            admin_client, recovery["id"], "a-different-worker"
+        result = await requeue_calendar_recovery_batch(
+            pg_pool, recovery["id"], "a-different-worker"
         )
 
         assert result == -1
 
-    def test_reclaims_processing_recovery_with_expired_lock(
-        self, admin_client, test_user_id
+    async def test_reclaims_processing_recovery_with_expired_lock(
+        self, admin_client, test_user_id, pg_pool
     ):
         """A crashed worker's claim (processing + expired lock) must be reclaimed
         on the next claim instead of waiting for an API restart (#239 was startup
         only; the claim itself must self-heal)."""
-        recovery = _create_and_claim_recovery(admin_client, test_user_id)
+        recovery = await _create_and_claim_recovery(admin_client, test_user_id, pg_pool)
 
         admin_client.table("integration_recoveries").update(
             {
@@ -124,29 +125,29 @@ class TestRequeueCalendarRecoveryBatch:
             }
         ).eq("id", recovery["id"]).execute()
 
-        reclaimed = claim_integration_recovery(
-            admin_client, "worker-2", lock_seconds=120
+        reclaimed = await claim_integration_recovery(
+            pg_pool, "worker-2", lock_seconds=120
         )
 
         assert reclaimed is not None
-        assert reclaimed["id"] == recovery["id"]
+        assert str(reclaimed["id"]) == str(recovery["id"])
         assert reclaimed["status"] == "processing"
         assert reclaimed["locked_by"] == "worker-2"
         assert reclaimed["attempts"] == 2
 
-    def test_finalizes_completed_once_tagged_events_synced(
-        self, admin_client, test_user_id
+    async def test_finalizes_completed_once_tagged_events_synced(
+        self, admin_client, test_user_id, pg_pool
     ):
         event_id = _make_blocked_event(admin_client, test_user_id)
-        recovery = _create_and_claim_recovery(admin_client, test_user_id)
-        requeue_calendar_recovery_batch(admin_client, recovery["id"], "worker-1")
+        recovery = await _create_and_claim_recovery(admin_client, test_user_id, pg_pool)
+        await requeue_calendar_recovery_batch(pg_pool, recovery["id"], "worker-1")
 
         # Simulate the normal calendar worker syncing the tagged event.
         admin_client.table("events").update({"status": "synced"}).eq(
             "id", event_id
         ).execute()
 
-        refresh_waiting_calendar_recoveries(admin_client)
+        await refresh_waiting_calendar_recoveries(pg_pool)
 
         row = (
             admin_client.table("integration_recoveries")
@@ -159,12 +160,12 @@ class TestRequeueCalendarRecoveryBatch:
         assert row.data["completed_count"] == 1
         assert row.data["remaining_count"] == 0
 
-    def test_finalizes_completed_with_errors_when_a_tagged_event_fails(
-        self, admin_client, test_user_id
+    async def test_finalizes_completed_with_errors_when_a_tagged_event_fails(
+        self, admin_client, test_user_id, pg_pool
     ):
         event_id = _make_blocked_event(admin_client, test_user_id)
-        recovery = _create_and_claim_recovery(admin_client, test_user_id)
-        requeue_calendar_recovery_batch(admin_client, recovery["id"], "worker-1")
+        recovery = await _create_and_claim_recovery(admin_client, test_user_id, pg_pool)
+        await requeue_calendar_recovery_batch(pg_pool, recovery["id"], "worker-1")
 
         # Simulate the normal calendar worker permanently failing the event
         # for a non-OAuth reason after recovery tagged it.
@@ -172,7 +173,7 @@ class TestRequeueCalendarRecoveryBatch:
             {"status": "sync_failed", "sync_failure_code": "invalid_event"}
         ).eq("id", event_id).execute()
 
-        refresh_waiting_calendar_recoveries(admin_client)
+        await refresh_waiting_calendar_recoveries(pg_pool)
 
         row = (
             admin_client.table("integration_recoveries")
@@ -183,12 +184,12 @@ class TestRequeueCalendarRecoveryBatch:
         )
         assert row.data["status"] == "completed_with_errors"
 
-    def test_still_waiting_while_tagged_event_is_unresolved(
-        self, admin_client, test_user_id
+    async def test_still_waiting_while_tagged_event_is_unresolved(
+        self, admin_client, test_user_id, pg_pool
     ):
         _make_blocked_event(admin_client, test_user_id)
-        recovery = _create_and_claim_recovery(admin_client, test_user_id)
-        requeue_calendar_recovery_batch(admin_client, recovery["id"], "worker-1")
+        recovery = await _create_and_claim_recovery(admin_client, test_user_id, pg_pool)
+        await requeue_calendar_recovery_batch(pg_pool, recovery["id"], "worker-1")
 
         row = (
             admin_client.table("integration_recoveries")

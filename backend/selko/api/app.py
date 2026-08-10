@@ -119,16 +119,17 @@ async def lifespan(app: FastAPI):
             num_workers=config.worker_pool_size,
             idle_sleep_seconds=config.worker_idle_sleep_seconds,
             error_backoff_seconds=config.worker_error_backoff_seconds,
+            pg_pool=pg_pool,
         )
         await worker_pool.start()
 
         # Recover any stale jobs from a previous instance crash. Email sync
         # leases need no equivalent step: claims reclaim expired leases.
-        emails_unlocked = unlock_expired_email_locks(service_client)
-        events_unlocked = unlock_expired_event_locks(service_client)
-        photos_unlocked = unlock_expired_photo_locks(service_client)
-        tasks_unlocked = unlock_expired_scheduled_tasks(service_client)
-        recoveries_unlocked = unlock_expired_integration_recoveries(service_client)
+        emails_unlocked = await unlock_expired_email_locks(pg_pool)
+        events_unlocked = await unlock_expired_event_locks(pg_pool)
+        photos_unlocked = await unlock_expired_photo_locks(pg_pool)
+        tasks_unlocked = await unlock_expired_scheduled_tasks(pg_pool)
+        recoveries_unlocked = await unlock_expired_integration_recoveries(pg_pool)
 
         if (
             emails_unlocked or events_unlocked or photos_unlocked
@@ -141,7 +142,7 @@ async def lifespan(app: FastAPI):
                 f"{recoveries_unlocked} integration recoveries"
             )
 
-        ingestion_runtime = IngestionRuntime(service_client, config)
+        ingestion_runtime = IngestionRuntime(service_client, config, pg_pool=pg_pool)
         await ingestion_runtime.start()
 
         logger.info("Background workers started successfully")
@@ -167,7 +168,7 @@ async def lifespan(app: FastAPI):
             await ingestion_runtime.stop()
         if worker_pool:
             await worker_pool.stop()
-        if pg_pool is not None:
+        if pg_pool:
             await pg_pool.close()
             logger.info("Pg pool closed")
 

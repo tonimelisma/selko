@@ -328,15 +328,15 @@ def update_integration_status(
         raise IntegrationError(f"Failed to update integration status: {e.message}") from e
 
 
-def claim_integration_recovery(
-    client: Client,
+async def claim_integration_recovery(
+    pool,
     worker_id: str,
     lock_seconds: int = 300,
 ) -> Optional[dict[str, Any]]:
     """Atomically claim the next pending integration recovery generation.
 
     Args:
-        client: Service-role Supabase client.
+        pool: asyncpg session-pooler pool.
         worker_id: Unique identifier for this worker process.
         lock_seconds: How long to hold the claim lock.
 
@@ -347,18 +347,16 @@ def claim_integration_recovery(
         IntegrationError: If the claim RPC fails.
     """
     try:
-        result = client.rpc(
-            "claim_integration_recovery",
-            {"p_worker_id": worker_id, "p_lock_seconds": lock_seconds},
-        ).execute()
-        if result.data:
-            return result.data[0]
-        return None
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to claim integration recovery: {e.message}") from e
+        row = await pool.fetchrow(
+            "SELECT * FROM public.claim_integration_recovery($1, $2)",
+            worker_id, lock_seconds,
+        )
+        return dict(row) if row else None
+    except Exception as e:
+        raise IntegrationError(f"Failed to claim integration recovery: {e}") from e
 
 
-def unlock_expired_integration_recoveries(client: Client) -> int:
+async def unlock_expired_integration_recoveries(pool) -> int:
     """Return crashed-worker recovery claims to pending.
 
     Returns:
@@ -368,11 +366,10 @@ def unlock_expired_integration_recoveries(client: Client) -> int:
         IntegrationError: If the unlock RPC fails.
     """
     try:
-        result = client.rpc("unlock_expired_integration_recoveries").execute()
-        return result.data or 0
-    except PostgrestAPIError as e:
+        return await pool.fetchval("SELECT public.unlock_expired_integration_recoveries()") or 0
+    except Exception as e:
         raise IntegrationError(
-            f"Failed to unlock expired integration recoveries: {e.message}"
+            f"Failed to unlock expired integration recoveries: {e}"
         ) from e
 
 

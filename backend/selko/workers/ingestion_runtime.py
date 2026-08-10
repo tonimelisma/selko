@@ -58,9 +58,10 @@ def build_notifier(config: Config) -> ResendOperationalNotifier | None:
 class IngestionRuntime:
     """Owns the v2 task set and shuts it down without dropping leases."""
 
-    def __init__(self, client: Client, config: Config, *, instance_id: str | None = None):
+    def __init__(self, client: Client, config: Config, *, pg_pool=None, instance_id: str | None = None):
         self.client = client
         self.config = config
+        self.pg_pool = pg_pool
         self.instance_id = instance_id or f"poller-{os.getpid()}"
         self._workers: list[EmailIngestionWorker] = []
         # Per-task {name, factory, task, restarts, last_exception_code}. The
@@ -72,7 +73,7 @@ class IngestionRuntime:
 
     def _spawn(self, suffix: str, loop_name: str, task_name: str) -> None:
         def factory() -> asyncio.Task:
-            worker = EmailIngestionWorker(self.client, self.config, f"{self.instance_id}-{suffix}")
+            worker = EmailIngestionWorker(self.client, self.config, f"{self.instance_id}-{suffix}", pg_pool=self.pg_pool)
             self._workers.append(worker)
             return asyncio.create_task(getattr(worker, loop_name)(), name=task_name)
 

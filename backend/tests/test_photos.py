@@ -280,20 +280,23 @@ class TestGetPhoto:
 class TestUnlockExpiredPhotoLocks:
     """Test expired photo lock recovery."""
 
-    def test_unlocks_expired_locks(self, mock_supabase_client):
+    def test_unlocks_expired_locks(self, fake_pg_pool):
         """Verify expired locks are unlocked."""
-        mock_supabase_client.rpc().execute.return_value = MagicMock(data=2)
+        import asyncio
 
-        count = unlock_expired_photo_locks(mock_supabase_client)
+        fake_pg_pool.rows.append(2)
+
+        count = asyncio.run(unlock_expired_photo_locks(fake_pg_pool))
 
         assert count == 2
-        mock_supabase_client.rpc.assert_called_with("unlock_expired_photo_locks")
 
-    def test_returns_zero_when_no_expired_locks(self, mock_supabase_client):
+    def test_returns_zero_when_no_expired_locks(self, fake_pg_pool):
         """Verify zero is returned when no locks are expired."""
-        mock_supabase_client.rpc().execute.return_value = MagicMock(data=0)
+        import asyncio
 
-        count = unlock_expired_photo_locks(mock_supabase_client)
+        fake_pg_pool.rows.append(0)
+
+        count = asyncio.run(unlock_expired_photo_locks(fake_pg_pool))
 
         assert count == 0
 

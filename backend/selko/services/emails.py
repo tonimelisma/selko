@@ -477,38 +477,19 @@ def fetch_emails_for_user(
 # --- Status-based worker claiming functions ---
 
 
-async def claim_pending_email_via_pool(
+async def claim_pending_email(
     pool,
-    worker_id: str,
-    lock_duration_seconds: int = 300,
-) -> Optional[dict[str, Any]]:
-    """Direct-pg variant: claim via asyncpg pool (Inc4)."""
-    try:
-        row = await pool.fetchrow("SELECT * FROM public.claim_unprocessed_email($1, $2)", worker_id, lock_duration_seconds)
-        if row:
-            email = dict(row)
-            subject = email.get("subject", "(no subject)")[:50]
-            import logging
-            logging.getLogger(__name__).info(f"Worker {worker_id} claimed email {email['id']}: {subject} (pool)")
-            return email
-        return None
-    except Exception as e:
-        from selko.services.emails import EmailError
-        raise EmailError(f"Failed to claim pending email via pool: {e}") from e
-
-
-def claim_pending_email(
-    client: Client,
     worker_id: str,
     lock_duration_seconds: int = 300,
 ) -> Optional[dict[str, Any]]:
     """Atomically claim the next pending email for processing.
 
     Uses PostgreSQL FOR UPDATE SKIP LOCKED to safely claim emails without
-    conflicts between multiple workers.
+    conflicts between multiple workers. Runs over the asyncpg session pooler —
+    there is one implementation, no PostgREST twin.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
         worker_id: Unique identifier for this worker process.
         lock_duration_seconds: How long to hold the lock (default: 5 minutes).
 
@@ -519,53 +500,47 @@ def claim_pending_email(
         EmailError: If claim operation fails.
     """
     try:
-        result = client.rpc('claim_unprocessed_email', {
-            'p_worker_id': worker_id,
-            'p_lock_duration_seconds': lock_duration_seconds,
-        }).execute()
-
-        if result.data and len(result.data) > 0:
-            email = result.data[0]
+        row = await pool.fetchrow("SELECT * FROM public.claim_unprocessed_email($1, $2)", worker_id, lock_duration_seconds)
+        if row:
+            email = dict(row)
             subject = email.get("subject", "(no subject)")[:50]
             logger.info(
                 f"Worker {worker_id} claimed email {email['id']}: {subject} "
-                f"(attempt {email['attempts']}/{email['max_attempts']})"
+                f"(attempt {email.get('attempts', 0)}/{email.get('max_attempts', 0)})"
             )
             return email
-
         return None
 
     except Exception as e:
         raise EmailError(f"Failed to claim pending email: {e}") from e
 
 
-def complete_email_processing(client: Client, email_id: str) -> None:
+async def complete_email_processing(pool, email_id: str) -> None:
     """Mark email as processed successfully and clear the lock.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
         email_id: UUID of email to mark as processed.
 
     Raises:
         EmailError: If update fails.
     """
     try:
-        client.table("emails").update({
-            "processing_status": "processed",
-            "processing_error": None,
-            "processed_at": datetime.now(timezone.utc).isoformat(),
-            "locked_by": None,
-            "locked_until": None,
-        }).eq("id", email_id).execute()
-
+        await pool.execute(
+            "UPDATE public.emails"
+            " SET processing_status = 'processed', processing_error = NULL,"
+            " processed_at = $2, locked_by = NULL, locked_until = NULL"
+            " WHERE id = $1",
+            email_id, datetime.now(timezone.utc),
+        )
         logger.info(f"Completed processing email {email_id}")
 
     except Exception as e:
         raise EmailError(f"Failed to complete email processing: {e}") from e
 
 
-def fail_email_processing(
-    client: Client,
+async def fail_email_processing(
+    pool,
     email_id: str,
     error: str,
 ) -> None:
@@ -575,7 +550,7 @@ def fail_email_processing(
     Otherwise, sets status to 'failed' permanently.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
         email_id: UUID of email that failed processing.
         error: Error message to store.
 
@@ -583,46 +558,48 @@ def fail_email_processing(
         EmailError: If update fails.
     """
     try:
-        # Fetch current email to check retry eligibility
-        result = client.table("emails").select(
-            "attempts, max_attempts"
-        ).eq("id", email_id).single().execute()
-
-        email = result.data
-        attempts = email["attempts"]
-        max_attempts = email["max_attempts"]
+        row = await pool.fetchrow(
+            "SELECT attempts, max_attempts FROM public.emails WHERE id = $1",
+            email_id,
+        )
+        if row is None:
+            raise EmailError(f"Email {email_id} not found")
+        attempts = row["attempts"]
+        max_attempts = row["max_attempts"]
         should_retry = attempts < max_attempts
-
-        update_data = {
-            "processing_status": "pending" if should_retry else "failed",
-            "processing_error": error,
-            "locked_by": None,
-            "locked_until": None,
-        }
 
         if should_retry:
             delay, next_retry_at = calculate_retry_delay(attempts)
-            update_data["next_retry_at"] = next_retry_at
-        else:
-            # Dead letter: permanently failed
-            update_data["dead_letter_reason"] = error
-            update_data["dead_letter_at"] = datetime.now(timezone.utc).isoformat()
-
-        client.table("emails").update(update_data).eq("id", email_id).execute()
-
-        if should_retry:
+            next_retry_dt = datetime.fromisoformat(next_retry_at.replace("Z", "+00:00"))
+            await pool.execute(
+                "UPDATE public.emails"
+                " SET processing_status = 'pending', processing_error = $2,"
+                " locked_by = NULL, locked_until = NULL, next_retry_at = $3"
+                " WHERE id = $1",
+                email_id, error, next_retry_dt,
+            )
             logger.warning(
                 f"Email {email_id} processing failed "
                 f"(attempt {attempts}/{max_attempts}): {error}. "
                 f"Will retry in {delay}s."
             )
         else:
+            await pool.execute(
+                "UPDATE public.emails"
+                " SET processing_status = 'failed', processing_error = $2,"
+                " locked_by = NULL, locked_until = NULL,"
+                " dead_letter_reason = $2, dead_letter_at = $3"
+                " WHERE id = $1",
+                email_id, error, datetime.now(timezone.utc),
+            )
             logger.error(
                 f"Email {email_id} processing failed permanently "
                 f"after {attempts} attempts: {error}. "
                 f"Moved to dead letter."
             )
 
+    except EmailError:
+        raise
     except Exception as e:
         raise EmailError(f"Failed to mark email as failed: {e}") from e
 
@@ -650,13 +627,13 @@ def skip_email_processing(client: Client, email_id: str) -> None:
         raise EmailError(f"Failed to skip email: {e}") from e
 
 
-def unlock_expired_email_locks(client: Client) -> int:
+async def unlock_expired_email_locks(pool) -> int:
     """Reset expired email locks back to pending.
 
     Handles the case where a worker crashes mid-processing and the lock expires.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
 
     Returns:
         Number of emails unlocked.
@@ -665,13 +642,12 @@ def unlock_expired_email_locks(client: Client) -> int:
         EmailError: If unlock fails.
     """
     try:
-        result = client.rpc('unlock_expired_email_locks').execute()
-        count = result.data if result.data else 0
+        count = await pool.fetchval("SELECT public.unlock_expired_email_locks()")
 
-        if count > 0:
+        if count:
             logger.warning(f"Unlocked {count} expired email locks")
 
-        return count
+        return count or 0
 
     except Exception as e:
         raise EmailError(f"Failed to unlock expired email locks: {e}") from e

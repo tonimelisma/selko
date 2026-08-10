@@ -62,6 +62,38 @@ def mock_supabase_client():
 
 
 @pytest.fixture
+def fake_pg_pool():
+    """Minimal asyncpg pool double: records SQL and returns queued rows.
+
+    C2: every worker database operation runs over the pool, so tests assert
+    on the recorded calls instead of mocking PostgREST ``client.rpc``.
+    """
+
+    class FakePool:
+        def __init__(self):
+            self.calls = []
+            self.rows = []
+
+        async def fetchrow(self, sql, *args):
+            self.calls.append((sql, args))
+            return self.rows.pop(0) if self.rows else None
+
+        async def fetchval(self, sql, *args):
+            self.calls.append((sql, args))
+            return self.rows.pop(0) if self.rows else None
+
+        async def fetch(self, sql, *args):
+            self.calls.append((sql, args))
+            row = self.rows.pop(0) if self.rows else None
+            return [row] if row is not None else []
+
+        async def execute(self, sql, *args):
+            self.calls.append((sql, args))
+
+    return FakePool()
+
+
+@pytest.fixture
 def sample_gmail_message():
     """Create a sample Gmail API message for testing."""
     return {

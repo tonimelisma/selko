@@ -162,13 +162,13 @@ def fail_scheduled_task(
         raise ScheduledTasksError(f"Failed to update failed scheduled task: {e}") from e
 
 
-def unlock_expired_scheduled_tasks(client: Client) -> int:
+async def unlock_expired_scheduled_tasks(pool) -> int:
     """Reset expired scheduled task locks back to pending.
 
     Handles the case where a worker crashes mid-task and the lock expires.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
 
     Returns:
         Number of tasks unlocked.
@@ -177,13 +177,12 @@ def unlock_expired_scheduled_tasks(client: Client) -> int:
         ScheduledTasksError: If unlock fails.
     """
     try:
-        result = client.rpc('unlock_expired_scheduled_tasks').execute()
-        count = result.data if result.data else 0
+        count = await pool.fetchval("SELECT public.unlock_expired_scheduled_tasks()")
 
-        if count > 0:
+        if count:
             logger.warning(f"Unlocked {count} expired scheduled task locks")
 
-        return count
+        return count or 0
 
     except Exception as e:
         raise ScheduledTasksError(f"Failed to unlock expired scheduled tasks: {e}") from e
