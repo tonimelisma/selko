@@ -50,19 +50,64 @@ def assert_session_mode_url(url: str) -> None:
     elif port != 5432:
         raise ConfigurationError(f"SUPABASE_DB_URL must use port 5432 (session mode) for LISTEN/NOTIFY, got {port} (H1)")
 
+def _enable_tcp_keepalives(idle_seconds: int):
+    """Pool init hook: set SO_KEEPALIVE and TCP keepalive timers (H3).
+
+    asyncpg 0.31 has no keepalive parameter — both `connect_kwargs` and
+    top-level `keepalives` kwargs are rejected with TypeError at connect time.
+    The socket is only reachable through the pool's documented `init` callback,
+    which runs on every new pooled connection.
+    """
+    import socket
+
+    keepidle = getattr(socket, "TCP_KEEPIDLE", None) or getattr(socket, "TCP_KEEPALIVE", None)
+    keepintvl = getattr(socket, "TCP_KEEPINTVL", None)
+    keepcnt = getattr(socket, "TCP_KEEPCNT", None)
+
+    async def _init(connection) -> None:
+        sock = connection._transport.get_extra_info("socket")
+        if sock is None:
+            return
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        if keepidle is not None:
+            sock.setsockopt(socket.IPPROTO_TCP, keepidle, idle_seconds)
+        if keepintvl is not None:
+            sock.setsockopt(socket.IPPROTO_TCP, keepintvl, 10)
+        if keepcnt is not None:
+            sock.setsockopt(socket.IPPROTO_TCP, keepcnt, 3)
+
+    return _init
+
 async def create_pool(config) -> "asyncpg.Pool":  # type: ignore
-    """Session-pooler pool with TCP keepalives and statement cache disabled."""
+    """Session-pooler pool with TCP keepalives and statement cache disabled.
+
+    statement_cache_size=0 is set even though session mode supports prepared
+    statements: it costs nothing here and makes a future misconfiguration to
+    transaction mode fail loudly rather than intermittently.
+
+    TCP keepalives (H3) are set below any known NAT/LB idle timeout so a
+    silently dropped socket surfaces as a connection error rather than as a
+    listener that never fires again.
+    """
     import asyncpg
     assert_session_mode_url(config.supabase_db_url)
+    keepalive = max(int(getattr(config, "pg_keepalive_seconds", 60) or 60), 10)
     pool = await asyncpg.create_pool(
         dsn=config.supabase_db_url,
         min_size=max(int(getattr(config, "pg_pool_min_size", 1) or 1), 1),
         max_size=max(int(getattr(config, "pg_pool_max_size", 4) or 4), 1),
         statement_cache_size=0,
-        command_timeout=10,
+        command_timeout=float(getattr(config, "pg_command_timeout_seconds", 30) or 30),
         timeout=getattr(config, "pg_connect_timeout_seconds", 10) or 10,
+        server_settings={"application_name": "selko-worker"},
+        init=_enable_tcp_keepalives(keepalive),
     )
-    logger.info("Created asyncpg session-pooler pool min=%s max=%s", getattr(config, "pg_pool_min_size", 1), getattr(config, "pg_pool_max_size", 4))
+    logger.info(
+        "Created asyncpg session-pooler pool min=%s max=%s keepalive_idle=%ss",
+        getattr(config, "pg_pool_min_size", 1),
+        getattr(config, "pg_pool_max_size", 4),
+        keepalive,
+    )
     return pool
 
 class WorkListener:

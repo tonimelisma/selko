@@ -14,6 +14,7 @@ import signal
 
 from selko.config import load_config
 from selko.services.auth import get_service_client
+from selko.services.pg import create_pool
 from selko.workers.ingestion_runtime import IngestionRuntime
 from selko.workers.pool import WorkerPool
 
@@ -23,6 +24,11 @@ logger = logging.getLogger(__name__)
 async def main() -> None:
     config = load_config()
     client = get_service_client(config)
+    # The direct-pg transport is the only transport for worker coordination.
+    # A missing URL or a failed pool is a configuration error — a drill that
+    # runs on a different transport than production proves nothing.
+    pg_pool = await create_pool(config)
+    logger.info("Supavisor session pooler connected")
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
 
@@ -49,6 +55,7 @@ async def main() -> None:
     finally:
         await runtime.stop()
         await downstream_pool.stop()
+        await pg_pool.close()
         logger.info("Dedicated worker stopped; unfinished leases remain reclaimable")
 
 
