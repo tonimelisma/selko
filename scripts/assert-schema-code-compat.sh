@@ -1,41 +1,48 @@
 #!/usr/bin/env bash
-# R5 — Enforced cutover: migrations must not be behind code.
-# Fails CI/deploy if HEAD migrations are not yet pushed to the linked
-# environment. This makes the wrong order (Render ENV redeploy of HEAD
-# ahead of schema) mechanically impossible — the runbook alone cannot.
+# R5 — migrations must not be behind code.
 #
-# Usage: ./scripts/assert-schema-code-compat.sh [--linked]
-#   --linked  checks remote linked project (requires supabase link)
-#   default   checks local vs committed migration count (no auth needed)
+# Compares migration VERSIONS (not counts) between the repository and the
+# linked Supabase project. Any local version missing remotely is a failure.
+#
+# Usage: ./scripts/assert-schema-code-compat.sh --linked
+#
+# There is no mode that passes without checking. If the check cannot run,
+# it fails. A gate that exits 0 when it cannot verify is not a gate.
 set -euo pipefail
 
 MIGR_DIR="supabase/migrations"
-EXPECTED_COUNT=$(ls -1 "$MIGR_DIR"/*.sql 2>/dev/null | wc -l | tr -d ' ')
-echo "Local migration files: $EXPECTED_COUNT"
 
-if [[ "${1:-}" == "--linked" ]]; then
-  if ! command -v supabase >/dev/null 2>&1; then
-    echo "supabase CLI not installed — skipping linked check"
-    exit 0
-  fi
-  # supabase migration list --linked lists applied migrations; compare counts
-  # This is best-effort: if linked project not configured, warn not fail
-  if ! supabase migration list --linked 2>&1 | head -n 5; then
-    echo "⚠️  Could not list linked migrations — ensure 'supabase link' and SUPABASE_ACCESS_TOKEN"
-    echo "   Continuing without remote count check (local count is $EXPECTED_COUNT)"
-    exit 0
-  fi
-  REMOTE_COUNT=$(supabase migration list --linked 2>&1 | grep -c "\.sql" || true)
-  echo "Remote applied migrations: $REMOTE_COUNT"
-  if [[ "$REMOTE_COUNT" -lt "$EXPECTED_COUNT" ]]; then
-    echo "❌ FAIL: $((EXPECTED_COUNT - REMOTE_COUNT)) migration(s) pending on remote — run 'supabase db push' first"
-    exit 1
-  fi
-  echo "✅ Schema and code are in sync ($REMOTE_COUNT/$EXPECTED_COUNT)"
-else
-  # Local-only sanity: ensure no untracked migration would be missed by CI
-  if git diff --name-only origin/main 2>/dev/null | grep -q "supabase/migrations/"; then
-    echo "ℹ️  Migration changes vs origin/main detected — workflow will enforce sync on push"
-  fi
-  echo "✅ Local migration count check passed ($EXPECTED_COUNT) — use --linked for remote check"
+if [[ "${1:-}" != "--linked" ]]; then
+  echo "❌ FAIL: --linked is required. A local-only check proves nothing."
+  exit 1
 fi
+
+if ! command -v supabase >/dev/null 2>&1; then
+  echo "❌ FAIL: supabase CLI not installed — cannot verify remote schema."
+  exit 1
+fi
+
+LOCAL_VERSIONS=$(ls -1 "$MIGR_DIR"/*.sql | xargs -n1 basename | cut -d_ -f1 | sort -u)
+LOCAL_COUNT=$(echo "$LOCAL_VERSIONS" | grep -c . || true)
+echo "Local migration versions: $LOCAL_COUNT"
+
+if ! REMOTE_RAW=$(supabase migration list --linked 2>&1); then
+  echo "❌ FAIL: could not list linked migrations."
+  echo "   Run 'supabase link' and export SUPABASE_ACCESS_TOKEN."
+  echo "$REMOTE_RAW"
+  exit 1
+fi
+
+REMOTE_VERSIONS=$(echo "$REMOTE_RAW" | grep -oE '[0-9]{14}' | sort -u)
+REMOTE_COUNT=$(echo "$REMOTE_VERSIONS" | grep -c . || true)
+echo "Remote applied versions: $REMOTE_COUNT"
+
+MISSING=$(comm -23 <(echo "$LOCAL_VERSIONS") <(echo "$REMOTE_VERSIONS"))
+if [[ -n "$MISSING" ]]; then
+  echo "❌ FAIL: these migrations exist in the repo but not on the remote:"
+  echo "$MISSING" | sed 's/^/   /'
+  echo "   Run 'supabase db push' before deploying this code."
+  exit 1
+fi
+
+echo "✅ Every local migration is applied remotely ($LOCAL_COUNT local, $REMOTE_COUNT remote)"

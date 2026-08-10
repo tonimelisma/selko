@@ -29,12 +29,12 @@ All tests pass -> PR ready for review (no deployment)
 ```
 Code merged to main (via merge-and-cleanup.sh — never waits on CI)
     |
-    +-- Local gate you already ran: uv run pytest, frontend unit, assert-schema-code-compat
+    +-- Local gate you already ran: uv run pytest, frontend unit, assert-schema-code-compat --linked
     |
     +-- Bonus if minutes exist: GitHub runs same tests + bonus deploy/integration (may never run)
     |
     +-- You deploy staging locally when ready (never automatic):
-        |-- 1. ./scripts/assert-schema-code-compat.sh (migrations before code — R5 gate)
+        |-- 1. ./scripts/assert-schema-code-compat.sh --linked (migrations before code — R5 gate; exits 1 without --linked and on any verification failure, blocking the deploy)
         |-- 2. supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push
         |-- 3. Render auto-deploys on main push (GitHub integration)
         |-- 4. Verify: GET /health/ingestion, /health/egress, scripts/smoke-ingestion.py
@@ -45,7 +45,7 @@ Code merged to main (via merge-and-cleanup.sh — never waits on CI)
 ```
 You decide to cut prod (no CI required)
     |
-    +-- Gate: ./scripts/assert-schema-code-compat.sh
+    +-- Gate: ./scripts/assert-schema-code-compat.sh --linked
     |-- 1. supabase link --project-ref khahcozfbnpykspvatrg && supabase db push  (--dry-run first, review 11)
     |-- 2. Render deploy: push tag or Render dashboard Deploy (auto on main/tag)
     |-- 3. Verify: GET /health/ingestion == ok, /health/egress, Sentry synthetic, dead-letter 0
@@ -111,8 +111,12 @@ We never top up GitHub minutes. `supabase db push` is done from your machine.
 Always run the R5 gate first — migrations before code, or Render boots head-ahead of schema.
 
 ```bash
-# 0. Gate: code and migrations are in the right order
-./scripts/assert-schema-code-compat.sh
+# 0. Gate: code and migrations are in the right order.
+#    --linked is the ONLY supported invocation (C8). A local-only check
+#    proves nothing, so the script exits 1 without it. A non-zero exit
+#    BLOCKS the deploy — never proceed past this step on a failure, and
+#    never run it with a trick that makes it pass without verifying.
+./scripts/assert-schema-code-compat.sh --linked
 
 # 1a. Staging
 supabase link --project-ref lxmysergoeaegxlyfzwk
@@ -136,7 +140,7 @@ An AI agent must **ask** before any prod deploy — the last sentence of its DoD
 
 ```bash
 # Preferred: local push (no minutes)
-./scripts/assert-schema-code-compat.sh
+./scripts/assert-schema-code-compat.sh --linked
 supabase link --project-ref khahcozfbnpykspvatrg && supabase db push
 # then tag/push for Render:
 git tag -a v1.0.0 -m "Release 1.0.0"
