@@ -43,6 +43,8 @@
     <string name="review_error_ignore_rule">Failed to create ignore rule</string>
     <string name="review_error_auto_approve_rule">Failed to create auto-approve rule</string>
     <string name="review_calendar_reconnect_required">Reconnect Google Calendar to accept suggestions.</string>
+    <string name="review_event_rejected">Event rejected</string>
+    <string name="review_events_rejected">%1$d events rejected</string>
 
     <!-- Connection Recovery -->
     <string name="recovery_email_title">Reconnect an email account</string>

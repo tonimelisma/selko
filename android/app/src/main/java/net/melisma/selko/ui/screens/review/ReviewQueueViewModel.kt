@@ -3,6 +3,8 @@ package net.melisma.selko.ui.screens.review
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,7 +40,10 @@ data class ReviewQueueUiState(
     val changeSenderGroups: List<SenderGroup> = emptyList(),
     val errorMessage: String? = null,
     val isRefreshing: Boolean = false,
-    val processingEventIds: Set<String> = emptySet()
+    val processingEventIds: Set<String> = emptySet(),
+    val lastRejectedEvents: List<CalendarEvent> = emptyList(),
+    val showUndoSnackbar: Boolean = false,
+    val undoSnackbarMessage: String = ""
 ) {
     val isFirstRun: Boolean
         get() = integrations.isEmpty()
@@ -69,8 +74,10 @@ class ReviewQueueViewModel(
     val uiState: StateFlow<ReviewQueueUiState> = _uiState.asStateFlow()
 
     private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
+    private fun getString(resId: Int, vararg args: Any): String = getApplication<Application>().getString(resId, *args)
 
-    private var liveUpdateJob: kotlinx.coroutines.Job? = null
+    private var liveUpdateJob: Job? = null
+    private var undoJob: Job? = null
 
     init {
         loadData()
@@ -83,7 +90,6 @@ class ReviewQueueViewModel(
             repo.invalidations.collect { inv ->
                 if (inv.resource in setOf("events", "event_sources", "integrations")) {
                     if (_uiState.value.processingEventIds.isEmpty()) {
-                        // Reuse existing fetch path; preserves optimistic removals via processing guard + trailing
                         checkIntegrations()
                     }
                 }
@@ -215,7 +221,6 @@ class ReviewQueueViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventId) }
             val event = _uiState.value.events.find { it.id == eventId }
-            // Optimistic remove — restore on failure
             removeEventFromState(eventId)
             val ok = if (event?.isPendingChange == true) {
                 backendApiClient.applyEventChange(eventId).isSuccess
@@ -223,7 +228,6 @@ class ReviewQueueViewModel(
                 eventRepository.approveEvent(eventId) is EventResult.Success
             }
             if (!ok) {
-                // Restore event into state on failure
                 if (event != null) {
                     _uiState.update { state ->
                         val updatedEvents = state.events + event
@@ -301,7 +305,6 @@ class ReviewQueueViewModel(
                     )
                 }
             } else {
-                // Refresh to get accurate state
                 _uiState.update { it.copy(processingEventIds = it.processingEventIds - eventIds) }
                 fetchPendingEvents()
             }
@@ -317,19 +320,22 @@ class ReviewQueueViewModel(
             val eventIds = eventsToReject.map { it.id }.toSet()
             _uiState.update { it.copy(processingEventIds = it.processingEventIds + eventIds) }
 
-            var allSucceeded = true
+            val succeeded = mutableListOf<CalendarEvent>()
+            var anyFailed = false
             for (event in eventsToReject) {
                 val ok = if (event.isPendingChange) {
                     backendApiClient.rejectEventChange(event.id).isSuccess
                 } else {
                     eventRepository.rejectEvent(event.id) is EventResult.Success
                 }
-                if (!ok) {
-                    allSucceeded = false
+                if (ok) {
+                    succeeded.add(event)
+                } else {
+                    anyFailed = true
                 }
             }
 
-            if (allSucceeded) {
+            if (succeeded.isNotEmpty() && !anyFailed) {
                 _uiState.update { state ->
                     val updatedEvents = state.events.filter { it.id !in eventIds }
                     val newEvents = updatedEvents.filter { !it.isPendingChange }
@@ -342,6 +348,24 @@ class ReviewQueueViewModel(
                         processingEventIds = state.processingEventIds - eventIds
                     )
                 }
+                showRejectUndo(succeeded)
+            } else if (succeeded.isNotEmpty() && anyFailed) {
+                // Partial success: remove succeeded, show undo for them, refresh for failed to get accurate state
+                val succeededIds = succeeded.map { it.id }.toSet()
+                _uiState.update { state ->
+                    val updatedEvents = state.events.filter { it.id !in succeededIds }
+                    val newEvents = updatedEvents.filter { !it.isPendingChange }
+                    val changeEvents = updatedEvents.filter { it.isPendingChange }
+                    state.copy(
+                        events = updatedEvents,
+                        senderGroups = groupBySender(updatedEvents),
+                        newSenderGroups = groupBySender(newEvents),
+                        changeSenderGroups = groupBySender(changeEvents),
+                        processingEventIds = state.processingEventIds - eventIds
+                    )
+                }
+                showRejectUndo(succeeded)
+                fetchPendingEvents()
             } else {
                 _uiState.update { it.copy(processingEventIds = it.processingEventIds - eventIds) }
                 fetchPendingEvents()
@@ -360,6 +384,9 @@ class ReviewQueueViewModel(
             }
             if (ok) {
                 removeEventFromState(eventId)
+                if (event != null) {
+                    showRejectUndo(listOf(event))
+                }
             } else {
                 _uiState.update {
                     it.copy(
@@ -371,6 +398,86 @@ class ReviewQueueViewModel(
         }
     }
 
+    fun showRejectUndo(events: List<CalendarEvent>) {
+        if (events.isEmpty()) return
+        undoJob?.cancel()
+        val existing = if (_uiState.value.showUndoSnackbar) _uiState.value.lastRejectedEvents else emptyList()
+        val combined = existing + events
+        val message = if (combined.size == 1) {
+            getString(R.string.review_event_rejected)
+        } else {
+            getString(R.string.review_events_rejected, combined.size)
+        }
+        _uiState.update {
+            it.copy(
+                lastRejectedEvents = combined,
+                showUndoSnackbar = true,
+                undoSnackbarMessage = message
+            )
+        }
+        undoJob = viewModelScope.launch {
+            delay(8000)
+            dismissUndo()
+        }
+    }
+
+    fun dismissUndo() {
+        undoJob?.cancel()
+        undoJob = null
+        _uiState.update {
+            it.copy(
+                lastRejectedEvents = emptyList(),
+                showUndoSnackbar = false,
+                undoSnackbarMessage = ""
+            )
+        }
+    }
+
+    fun undoLastRejected() {
+        val toUndo = _uiState.value.lastRejectedEvents
+        if (toUndo.isEmpty()) return
+        undoJob?.cancel()
+        undoJob = null
+        // Optimistically reinsert events
+        _uiState.update { state ->
+            val updatedEvents = state.events + toUndo
+            val newEvents = updatedEvents.filter { !it.isPendingChange }
+            val changeEvents = updatedEvents.filter { it.isPendingChange }
+            state.copy(
+                events = updatedEvents,
+                senderGroups = groupBySender(updatedEvents),
+                newSenderGroups = groupBySender(newEvents),
+                changeSenderGroups = groupBySender(changeEvents),
+                lastRejectedEvents = emptyList(),
+                showUndoSnackbar = false,
+                undoSnackbarMessage = ""
+            )
+        }
+        viewModelScope.launch {
+            var hadError = false
+            for (event in toUndo) {
+                val result = backendApiClient.undoHistoryEvent(event.id)
+                if (result.isFailure) {
+                    hadError = true
+                    val msg = result.exceptionOrNull()?.message ?: getString(R.string.history_error_undo)
+                    _uiState.update { state ->
+                        val updatedEvents = state.events.filter { it.id != event.id }
+                        val newEvents = updatedEvents.filter { !it.isPendingChange }
+                        val changeEvents = updatedEvents.filter { it.isPendingChange }
+                        state.copy(
+                            events = updatedEvents,
+                            senderGroups = groupBySender(updatedEvents),
+                            newSenderGroups = groupBySender(newEvents),
+                            changeSenderGroups = groupBySender(changeEvents),
+                            errorMessage = msg
+                        )
+                    }
+                }
+            }
+            fetchPendingEvents()
+        }
+    }
+
     fun ignoreSender(senderEmail: String) {
         viewModelScope.launch {
             when (senderRuleRepository.createRule(
@@ -379,7 +486,6 @@ class ReviewQueueViewModel(
                 action = "ignore"
             )) {
                 is RepositoryResult.Success -> {
-                    // Reject all events from this sender
                     val eventsToReject = _uiState.value.senderGroups
                         .find { it.senderEmail == senderEmail }
                         ?.events ?: return@launch
@@ -416,7 +522,6 @@ class ReviewQueueViewModel(
                 action = "auto_approve"
             )) {
                 is RepositoryResult.Success -> {
-                    // Approve all events from this sender
                     val eventsToApprove = _uiState.value.senderGroups
                         .find { it.senderEmail == senderEmail }
                         ?.events ?: return@launch
@@ -457,5 +562,11 @@ class ReviewQueueViewModel(
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        undoJob?.cancel()
+        liveUpdateJob?.cancel()
     }
 }

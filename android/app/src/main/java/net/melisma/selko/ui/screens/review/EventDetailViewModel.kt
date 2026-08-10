@@ -3,6 +3,8 @@ package net.melisma.selko.ui.screens.review
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,7 +48,10 @@ data class EventDetailUiState(
     val errorMessage: String? = null,
     val isDone: Boolean = false,
     val hasUnsavedChanges: Boolean = false,
-    val integrations: List<Integration> = emptyList()
+    val integrations: List<Integration> = emptyList(),
+    val showUndoSnackbar: Boolean = false,
+    val undoSnackbarMessage: String = "",
+    val lastRejectedEvent: CalendarEvent? = null
 ) {
     val isCalendarConnected: Boolean
         get() = integrations.any {
@@ -67,6 +72,9 @@ class EventDetailViewModel(
     val uiState: StateFlow<EventDetailUiState> = _uiState.asStateFlow()
 
     private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
+    private fun getString(resId: Int, vararg args: Any): String = getApplication<Application>().getString(resId, *args)
+
+    private var undoJob: Job? = null
 
     init {
         loadEvent()
@@ -221,7 +229,6 @@ class EventDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isApproving = true) }
 
-            // Save any pending changes first
             if (_uiState.value.hasUnsavedChanges) {
                 val saved = saveChangesSync()
                 if (!saved) {
@@ -254,17 +261,114 @@ class EventDetailViewModel(
     fun rejectEvent() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRejecting = true) }
-
-            when (eventRepository.rejectEvent(eventId)) {
-                is EventResult.Success -> {
-                    _uiState.update { it.copy(isRejecting = false, isDone = true) }
+            val currentEvent = _uiState.value.event
+            val isPendingChange = currentEvent?.isPendingChange == true
+            val result: Result<Boolean> = if (isPendingChange) {
+                val r = backendApiClient.rejectEventChange(eventId)
+                if (r.isSuccess) Result.success(true) else Result.failure(r.exceptionOrNull() ?: Exception("Reject failed"))
+            } else {
+                when (eventRepository.rejectEvent(eventId)) {
+                    is EventResult.Success -> Result.success(true)
+                    is EventResult.Error -> Result.failure(Exception("Reject failed"))
                 }
-                is EventResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isRejecting = false,
-                            errorMessage = getString(R.string.event_detail_error_reject)
-                        )
+            }
+            if (result.isSuccess) {
+                val eventToStore = currentEvent ?: _uiState.value.event
+                _uiState.update {
+                    it.copy(
+                        isRejecting = false,
+                        showUndoSnackbar = true,
+                        undoSnackbarMessage = getString(R.string.review_event_rejected),
+                        lastRejectedEvent = eventToStore
+                    )
+                }
+                undoJob?.cancel()
+                undoJob = viewModelScope.launch {
+                    delay(8000)
+                    dismissUndoAndNavigate()
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isRejecting = false,
+                        errorMessage = getString(R.string.event_detail_error_reject)
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissUndo() {
+        undoJob?.cancel()
+        undoJob = null
+        _uiState.update {
+            it.copy(
+                showUndoSnackbar = false,
+                undoSnackbarMessage = "",
+                lastRejectedEvent = null
+            )
+        }
+    }
+
+    private fun dismissUndoAndNavigate() {
+        undoJob?.cancel()
+        undoJob = null
+        _uiState.update {
+            it.copy(
+                showUndoSnackbar = false,
+                undoSnackbarMessage = "",
+                lastRejectedEvent = null,
+                isDone = true
+            )
+        }
+    }
+
+    fun dismissUndoWithNavigation() {
+        dismissUndoAndNavigate()
+    }
+
+    fun undoLastRejected() {
+        val toUndo = _uiState.value.lastRejectedEvent ?: return
+        undoJob?.cancel()
+        undoJob = null
+        _uiState.update {
+            it.copy(
+                showUndoSnackbar = false,
+                undoSnackbarMessage = "",
+                lastRejectedEvent = null
+            )
+        }
+        viewModelScope.launch {
+            val result = backendApiClient.undoHistoryEvent(toUndo.id)
+            if (result.isFailure) {
+                _uiState.update {
+                    it.copy(errorMessage = result.exceptionOrNull()?.message ?: getString(R.string.history_error_undo))
+                }
+            } else {
+                // Reload to reflect restored pending state, keep user on screen
+                when (val reload = eventRepository.getEventWithSources(eventId)) {
+                    is EventResult.Success -> {
+                        val event = reload.data
+                        val sources = event.eventSources ?: emptyList()
+                        val firstSource = sources.firstOrNull()
+                        _uiState.update {
+                            it.copy(
+                                event = event,
+                                sources = sources,
+                                sourceEmail = firstSource?.emails,
+                                sourceOrigin = firstSource?.sourceOrigin ?: SourceOrigin.EMAIL,
+                                title = event.title,
+                                startInstant = event.startDatetime,
+                                endInstant = event.endDatetime,
+                                location = event.location ?: "",
+                                description = event.description ?: "",
+                                allDay = event.allDay,
+                                errorMessage = null
+                            )
+                        }
+                    }
+                    is EventResult.Error -> {
+                        _uiState.update { it.copy(errorMessage = reload.message) }
                     }
                 }
             }
@@ -297,4 +401,9 @@ class EventDetailViewModel(
 
     suspend fun startOAuth(provider: IntegrationProvider): Result<String> =
         backendApiClient.startOAuth(provider)
+
+    override fun onCleared() {
+        super.onCleared()
+        undoJob?.cancel()
+    }
 }

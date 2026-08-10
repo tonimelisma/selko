@@ -201,6 +201,31 @@ fun EventDetailScreen(
                     Text(error)
                 }
             }
+
+            // Reject undo snackbar
+            if (uiState.showUndoSnackbar) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp),
+                    action = {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SelkoButton(
+                                text = stringResource(R.string.history_undo),
+                                onClick = viewModel::undoLastRejected,
+                                role = SelkoActionRole.Primary
+                            )
+                            SelkoButton(
+                                text = stringResource(R.string.review_dismiss),
+                                onClick = viewModel::dismissUndo,
+                                role = SelkoActionRole.Tertiary
+                            )
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.review_event_rejected))
+                }
+            }
         }
     }
 }
