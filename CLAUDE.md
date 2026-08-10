@@ -118,6 +118,17 @@ This keeps stale review feedback from silently rotting once a PR is merged and o
   specific fixture before shipping; if the prompt changes, run the broader eval
   suite required by `docs/evals-process.md` to check for regressions.
 - **Screenshots** only for the platform whose UI you changed (see "Screenshot Updates"). Skip for backend/docs/config.
+- **Every new table in a migration MUST include `ENABLE ROW LEVEL SECURITY` in
+  the same migration.** `emails_body_html_backup` reached production holding
+  email bodies with RLS off because a spec said "create a backup table" and
+  nobody asked whether it needed securing (#277).
+- **An increment is not implemented until its call sites are wired.** Do not
+  mark a spec increment done, and do not write "next PR wires the call sites",
+  when the new code has no callers. Direct-pg increments 3–5 shipped this way:
+  `asyncpg` was never installed, `pg_pool` was never passed to any worker, and
+  `WorkListener.start()` was a stub that reported healthy — all with a green
+  test suite. If you add a code path behind a flag or an injected dependency,
+  add a test that asserts the dependency actually reaches the call.
 
 ### 2. Ship it
 
@@ -316,6 +327,7 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **Microsoft Graph failure ledger** | `docs/microsoft-graph-failure-ledger.md` | Before changing Graph request/retry/resync behavior or after any production Graph failure |
 | **OAuth reconnect catch-up** | `docs/specs/oauth-reconnect-catch-up.md` | When implementing automatic email/calendar recovery after OAuth reauthorization |
 | **Egress & work scheduling** | `docs/specs/egress-and-work-scheduling.md` | Before changing worker scheduling, claim loops, or anything that polls; and when investigating bandwidth or egress cost |
+| **Direct-PG completion & live-UI hardening** | `docs/specs/direct-pg-completion-and-live-ui-hardening.md` | **Read before touching the pg pool, `WorkListener`, ingestion concurrency, or Realtime live updates.** Direct-pg increments 3–5 shipped as unreachable code; this spec completes them and fixes Realtime auth expiry and Broadcast fan-out |
 | **Ingestion & recovery hardening** | `docs/specs/ingestion-recovery-hardening.md` | Before the ingestion production cutover, and when touching provider error classification, ingestion loop supervision, the attachment readiness race, or ingestion observability |
 | **Live UI updates** | `docs/specs/live-ui-updates.md` | When implementing cross-platform Realtime invalidation, lifecycle catch-up, or refresh behavior |
 | **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |

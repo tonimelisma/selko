@@ -21,7 +21,14 @@ Status as of 2026-08-06.
   rollout.
 - [Egress and Work Scheduling](egress-and-work-scheduling.md) — **built and merged (egress arch A, 1.5 M → ~3k RPCs/day).** Busy-wait removed via single scheduler + drain-then-sleep + in-process nudge; duplicate email owner and parked photo polls removed; egress meter + `/health/egress` shipped. Remaining soft spots (dual idle model, 5 s floor invisibility, dead `num_workers`) carried forward to the post-cutover plan.
 - [Cutover Verification](cutover-verification-20260807.md) — **verified locally, not deployed.** Ordered checklist (`migrations → code via `gh workflow run test.yml` → flag last); the sole ordered gate — the two other duplicated runbook sections now point here.
-- [Live UI updates](live-ui-updates.md) — **implemented — web #270, iOS #271, Android #272.** Private per-user Broadcast invalidations with lifecycle-safe catch-up.
+- [Direct-PG completion and live-UI hardening](direct-pg-completion-and-live-ui-hardening.md)
+  — **planned.** Remediation of the Aug 6–9 batch. Increments 3–5 of the
+  direct-Postgres spec shipped as unreachable code (`asyncpg` never installed,
+  `pg_pool` never passed to any worker, `WorkListener` a stub, `LISTEN` never
+  issued); Inc2 removed concurrency instead of relocating it. Also fixes
+  Realtime auth expiry on all three clients, Broadcast fan-out, and the R5
+  schema gate. **Read this before trusting any "implemented" status below.**
+- [Live UI updates](live-ui-updates.md) — **partially implemented — web #270, iOS #271, Android #272.** Private per-user Broadcast invalidations. Known gaps: Realtime auth is never refreshed (channel goes deaf ~1 h after sign-in on all three platforms), web lifecycle catch-up is a no-op, no terminal-state rejoin, and per-row Broadcast fan-out. Fixed by increments C6 and C7 of the remediation spec above.
 - [Photo surface removal](photo-surface-removal.md) — **implemented in #201 (2026-07-13).** Connect surfaces removed; photo-source rendering retained (see spec for restoration).
 - [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md)
   — **implemented in #273 (2026-08-09).** One solid AAA peer-action construction per theme, intrinsic row never stacks.
