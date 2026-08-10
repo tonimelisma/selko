@@ -17,92 +17,141 @@ struct EventDetailView: View {
         ))
     }
 
+    // Testing initializer
+    init(viewModel: EventDetailViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
+
     var body: some View {
-        Group {
-            if viewModel.isLoading {
-                ProgressView("Loading event...")
-            } else if let _ = viewModel.event {
-                if horizontalSizeClass == .regular {
-                    // iPad: side-by-side layout
-                    VStack(spacing: 12) {
-                        ConnectionRecoveryView(integrations: viewModel.integrations)
-                            .padding(.horizontal)
-                        HStack(alignment: .top, spacing: 0) {
-                            sourcePanel
-                                .frame(maxWidth: .infinity)
-                            Divider()
-                            formPanel
-                                .frame(maxWidth: .infinity)
+        ZStack(alignment: .bottom) {
+            Group {
+                if viewModel.isLoading {
+                    ProgressView("Loading event...")
+                } else if let _ = viewModel.event {
+                    if horizontalSizeClass == .regular {
+                        // iPad: side-by-side layout
+                        VStack(spacing: 12) {
+                            ConnectionRecoveryView(integrations: viewModel.integrations)
+                                .padding(.horizontal)
+                            HStack(alignment: .top, spacing: 0) {
+                                sourcePanel
+                                    .frame(maxWidth: .infinity)
+                                Divider()
+                                formPanel
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                    } else {
+                        // iPhone: Form as root scrollable container
+                        Form {
+                            ConnectionRecoveryView(integrations: viewModel.integrations)
+                            formSections
+                            sourceDisclosureSection
                         }
                     }
-                } else {
-                    // iPhone: Form as root scrollable container
-                    Form {
-                        ConnectionRecoveryView(integrations: viewModel.integrations)
-                        formSections
-                        sourceDisclosureSection
+                } else if let error = viewModel.errorMessage, !viewModel.showUndoToast {
+                    ContentUnavailableView {
+                        Label("Error", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(error)
                     }
-                }
-            } else if let error = viewModel.errorMessage {
-                ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(error)
+                } else if viewModel.showUndoToast {
+                    // When showing undo toast after reject, keep the form visible underneath
+                    // This branch is rarely hit because event remains non-nil until pop
+                    Form {
+                        formSections
+                    }
                 }
             }
-        }
-        .navigationTitle("Event Detail")
-        .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) {
-            if let event = viewModel.event, event.status == .pendingReview {
-                SelkoPeerActionGroup {
-                    Button(role: .destructive) {
-                        Task {
-                            await viewModel.reject()
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if viewModel.isActing {
-                                ProgressView()
-                                    .controlSize(.small)
-                                    .tint(Color.selkoOnError)
+            .navigationTitle("Event Detail")
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                if let event = viewModel.event, event.status == .pendingReview || event.status == .pendingChange {
+                    if !viewModel.showUndoToast {
+                        SelkoPeerActionGroup {
+                            Button(role: .destructive) {
+                                Task {
+                                    await viewModel.reject()
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    if viewModel.isActing {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                            .tint(Color.selkoOnError)
+                                    }
+                                    SelkoActionLabel(title: "Reject", systemImage: "xmark")
+                                }
+                                .frame(maxWidth: .infinity)
                             }
-                            SelkoActionLabel(title: "Reject", systemImage: "xmark")
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.selko(.destructiveFilled))
-                    .disabled(viewModel.isActing)
-                    .accessibilityLabel("Reject \(event.title)")
-                    .accessibilityIdentifier("rejectButton")
+                            .buttonStyle(.selko(.destructiveFilled))
+                            .disabled(viewModel.isActing)
+                            .accessibilityLabel("Reject \(event.title)")
+                            .accessibilityIdentifier("rejectButton")
 
-                    Button {
-                        Task {
-                            await viewModel.approve()
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if viewModel.isActing {
-                                ProgressView()
-                                    .controlSize(.small)
-                                    .tint(Color.selkoOnSuccess)
+                            Button {
+                                Task {
+                                    await viewModel.approve()
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    if viewModel.isActing {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                            .tint(Color.selkoOnSuccess)
+                                    }
+                                    SelkoActionLabel(title: "Accept", systemImage: "checkmark")
+                                }
+                                .frame(maxWidth: .infinity)
                             }
-                            SelkoActionLabel(title: "Accept", systemImage: "checkmark")
+                            .buttonStyle(.selko(.accept))
+                            .disabled(viewModel.isActing || !viewModel.calendarConnected)
+                            .accessibilityLabel("Accept \(event.title)")
+                            .accessibilityHint(
+                                viewModel.calendarConnected
+                                    ? ""
+                                    : "Reconnect Google Calendar to accept suggestions."
+                            )
+                            .accessibilityIdentifier("approveButton")
                         }
-                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(.bar)
                     }
-                    .buttonStyle(.selko(.accept))
-                    .disabled(viewModel.isActing || !viewModel.calendarConnected)
-                    .accessibilityLabel("Accept \(event.title)")
-                    .accessibilityHint(
-                        viewModel.calendarConnected
-                            ? ""
-                            : "Reconnect Google Calendar to accept suggestions."
-                    )
-                    .accessibilityIdentifier("approveButton")
                 }
-                .padding()
-                .background(.bar)
+            }
+
+            if viewModel.showUndoToast {
+                HStack(spacing: 12) {
+                    Text(viewModel.undoToastMessage)
+                        .font(SelkoTypography.body)
+                        .foregroundStyle(Color.selkoInk)
+                        .lineLimit(2)
+                        .accessibilityIdentifier("detailRejectUndoMessage")
+                    Spacer()
+                    Button("Undo") {
+                        Task { await viewModel.undoLastRejected() }
+                    }
+                    .font(SelkoTypography.title)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityIdentifier("detailRejectUndoButton")
+                    Button("Dismiss") {
+                        viewModel.dismissUndoToast()
+                    }
+                    .font(SelkoTypography.caption)
+                    .foregroundStyle(Color.selkoMuted)
+                    .accessibilityIdentifier("detailRejectUndoDismissButton")
+                    .accessibilityLabel("Dismiss")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.selkoSurface)
+                .clipShape(SelkoShape.card)
+                .overlay(SelkoShape.card.stroke(Color.selkoBorder, lineWidth: 1))
+                .shadow(color: Color.selkoShadow.opacity(0.15), radius: 8, y: 4)
+                .padding(.horizontal, SelkoMetrics.screenGutter)
+                .padding(.bottom, 12)
+                .accessibilityIdentifier("detailRejectUndoToast")
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .task {
@@ -113,7 +162,7 @@ struct EventDetailView: View {
                 dismiss()
             }
         }
-        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil && !viewModel.isLoading)) {
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil && !viewModel.isLoading && !viewModel.showUndoToast)) {
             Button("OK") {
                 viewModel.errorMessage = nil
             }

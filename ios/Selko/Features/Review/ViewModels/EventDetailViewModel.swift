@@ -17,6 +17,12 @@ final class EventDetailViewModel {
     var integrations: [Integration] = []
     var calendarConnected = true
 
+    // Reject undo state
+    var lastRejectedEvents: [CalendarEvent] = []
+    var showUndoToast: Bool = false
+    var undoToastMessage: String = ""
+    private var undoTask: Task<Void, Never>?
+
     // Editable fields
     var title: String = ""
     var allDay: Bool = false
@@ -28,16 +34,19 @@ final class EventDetailViewModel {
     private let eventId: UUID
     private let eventService: EventServiceProtocol
     private let integrationService: IntegrationServiceProtocol?
+    private let backendAPI: BackendAPIProtocol
     private var saveTask: Task<Void, Never>?
 
     init(
         eventId: UUID,
         eventService: EventServiceProtocol? = nil,
-        integrationService: IntegrationServiceProtocol? = nil
+        integrationService: IntegrationServiceProtocol? = nil,
+        backendAPI: BackendAPIProtocol? = nil
     ) {
         self.eventId = eventId
         self.eventService = eventService ?? DependencyContainer.shared.eventService
         self.integrationService = integrationService
+        self.backendAPI = backendAPI ?? DependencyContainer.shared.backendAPI
     }
 
     func load() async {
@@ -79,7 +88,11 @@ final class EventDetailViewModel {
 
         do {
             _ = try await saveChanges()
-            _ = try await eventService.approveEvent(id: eventId)
+            if let event, event.isPendingChange {
+                _ = try await backendAPI.applyEventChange(eventId: eventId)
+            } else {
+                _ = try await eventService.approveEvent(id: eventId)
+            }
             didComplete = true
         } catch {
             errorMessage = error.localizedDescription
@@ -93,11 +106,98 @@ final class EventDetailViewModel {
         defer { isActing = false }
 
         do {
-            _ = try await eventService.rejectEvent(id: eventId)
-            didComplete = true
+            if let event, event.isPendingChange {
+                _ = try await backendAPI.rejectEventChange(eventId: eventId)
+            } else {
+                _ = try await eventService.rejectEvent(id: eventId)
+            }
+            // Store rejected event for undo; fallback to minimal event if not loaded
+            let rejectedEvent: CalendarEvent
+            if let event {
+                rejectedEvent = event
+            } else {
+                rejectedEvent = CalendarEvent(
+                    id: eventId,
+                    userId: UUID(),
+                    title: title,
+                    startDatetime: startDate,
+                    endDatetime: endDate,
+                    allDay: allDay,
+                    location: location.isEmpty ? nil : location,
+                    description: eventDescription.isEmpty ? nil : eventDescription,
+                    sourceAttribution: nil,
+                    status: .rejected,
+                    googleCalendarEventId: nil,
+                    syncedAt: nil,
+                    createdAt: Date(),
+                    updatedAt: Date(),
+                    eventSources: nil
+                )
+            }
+            showRejectUndo(events: [rejectedEvent])
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    // MARK: - Reject Undo
+
+    func showRejectUndo(events: [CalendarEvent]) {
+        guard !events.isEmpty else { return }
+        undoTask?.cancel()
+        if showUndoToast {
+            lastRejectedEvents.append(contentsOf: events)
+        } else {
+            lastRejectedEvents = events
+        }
+        undoToastMessage = lastRejectedEvents.count == 1 ? "Event rejected" : "\(lastRejectedEvents.count) events rejected"
+        showUndoToast = true
+        undoTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.showUndoToast = false
+                self?.lastRejectedEvents = []
+                self?.undoTask = nil
+                self?.didComplete = true
+            }
+        }
+    }
+
+    func dismissUndoToast() {
+        undoTask?.cancel()
+        undoTask = nil
+        showUndoToast = false
+        lastRejectedEvents = []
+        didComplete = true
+    }
+
+    func undoLastRejected() async {
+        undoTask?.cancel()
+        undoTask = nil
+        let toRestore = lastRejectedEvents
+        guard !toRestore.isEmpty else {
+            showUndoToast = false
+            return
+        }
+        showUndoToast = false
+        lastRejectedEvents = []
+        var hadError = false
+        var lastError: String?
+        for ev in toRestore {
+            do {
+                _ = try await backendAPI.undoHistoryEvent(eventId: ev.id, force: false)
+            } catch {
+                hadError = true
+                lastError = error.localizedDescription
+            }
+        }
+        if hadError, let lastError {
+            errorMessage = lastError
+            return
+        }
+        // Reload event to reflect restored pending_review status
+        await load()
     }
 
     func scheduleSave() {

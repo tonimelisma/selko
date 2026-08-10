@@ -19,35 +19,72 @@ struct ReviewQueueView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        VStack(spacing: 0) {
-            SelkoScreenHeader(title: "Review", subtitle: "Choose what belongs on your calendar.", email: email)
-            Group {
-                if viewModel.isLoading {
-                    ProgressView("Loading events...")
-                        .tint(Color.accentColor)
-                        .accessibilityIdentifier("reviewQueueLoading")
-                } else if viewModel.isFirstRun {
-                    IntegrationSetupView(
-                        gmailConnected: false,
-                        calendarConnected: false
-                    )
-                    .accessibilityIdentifier("integrationSetupView")
-                } else if viewModel.newSenderGroups.isEmpty && viewModel.changeSenderGroups.isEmpty {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            ConnectionRecoveryView(integrations: viewModel.integrations)
-                            emptyState
-                                .frame(minHeight: 320)
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                SelkoScreenHeader(title: "Review", subtitle: "Choose what belongs on your calendar.", email: email)
+                Group {
+                    if viewModel.isLoading {
+                        ProgressView("Loading events...")
+                            .tint(Color.accentColor)
+                            .accessibilityIdentifier("reviewQueueLoading")
+                    } else if viewModel.isFirstRun {
+                        IntegrationSetupView(
+                            gmailConnected: false,
+                            calendarConnected: false
+                        )
+                        .accessibilityIdentifier("integrationSetupView")
+                    } else if viewModel.newSenderGroups.isEmpty && viewModel.changeSenderGroups.isEmpty {
+                        ScrollView {
+                            VStack(spacing: 24) {
+                                ConnectionRecoveryView(integrations: viewModel.integrations)
+                                emptyState
+                                    .frame(minHeight: 320)
+                            }
+                            .padding(SelkoMetrics.screenGutter)
                         }
-                        .padding(SelkoMetrics.screenGutter)
+                    } else {
+                        eventList
                     }
-                } else {
-                    eventList
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(maxWidth: SelkoMetrics.reviewMaxWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if viewModel.showUndoToast {
+                HStack(spacing: 12) {
+                    Text(viewModel.undoToastMessage)
+                        .font(SelkoTypography.body)
+                        .foregroundStyle(Color.selkoInk)
+                        .lineLimit(2)
+                        .accessibilityIdentifier("rejectUndoMessage")
+                    Spacer()
+                    Button("Undo") {
+                        Task { await viewModel.undoLastRejected() }
+                    }
+                    .font(SelkoTypography.title)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityIdentifier("rejectUndoButton")
+                    Button("Dismiss") {
+                        viewModel.dismissUndoToast()
+                    }
+                    .font(SelkoTypography.caption)
+                    .foregroundStyle(Color.selkoMuted)
+                    .accessibilityIdentifier("rejectUndoDismissButton")
+                    .accessibilityLabel("Dismiss")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.selkoSurface)
+                .clipShape(SelkoShape.card)
+                .overlay(SelkoShape.card.stroke(Color.selkoBorder, lineWidth: 1))
+                .shadow(color: Color.selkoShadow.opacity(0.15), radius: 8, y: 4)
+                .padding(.horizontal, SelkoMetrics.screenGutter)
+                .padding(.bottom, 12)
+                .accessibilityIdentifier("rejectUndoToast")
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
-        .frame(maxWidth: SelkoMetrics.reviewMaxWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.selkoPaper.ignoresSafeArea())
         .navigationTitle("Review")

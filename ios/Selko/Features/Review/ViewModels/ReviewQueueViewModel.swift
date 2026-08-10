@@ -24,6 +24,12 @@ final class ReviewQueueViewModel {
     var integrations: [Integration] = []
     var processingEventIds: Set<UUID> = []
 
+    // MARK: - Reject Undo state
+    var lastRejectedEvents: [CalendarEvent] = []
+    var showUndoToast: Bool = false
+    var undoToastMessage: String = ""
+    private var undoTask: Task<Void, Never>?
+
     var isFirstRun: Bool { integrations.isEmpty }
     var emailConnected: Bool {
         integrations.contains {
@@ -145,6 +151,7 @@ final class ReviewQueueViewModel {
                 _ = try await eventService.rejectEvent(id: event.id)
             }
             removeEventFromGroups(event.id)
+            showRejectUndo(events: [event])
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -178,6 +185,7 @@ final class ReviewQueueViewModel {
         errorMessage = nil
         defer { processingEventIds.subtract(eventIds) }
 
+        var rejected: [CalendarEvent] = []
         for event in group.events {
             do {
                 if event.isPendingChange {
@@ -185,12 +193,16 @@ final class ReviewQueueViewModel {
                 } else {
                     _ = try await eventService.rejectEvent(id: event.id)
                 }
+                rejected.append(event)
             } catch {
                 errorMessage = error.localizedDescription
                 return
             }
         }
         removeGroup(group.id)
+        if !rejected.isEmpty {
+            showRejectUndo(events: rejected)
+        }
     }
 
     func ignoreSender(_ group: SenderGroup) async {
@@ -241,6 +253,81 @@ final class ReviewQueueViewModel {
             removeGroup(group.id)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Reject Undo
+
+    func showRejectUndo(events: [CalendarEvent]) {
+        guard !events.isEmpty else { return }
+        undoTask?.cancel()
+        if showUndoToast {
+            lastRejectedEvents.append(contentsOf: events)
+        } else {
+            lastRejectedEvents = events
+        }
+        undoToastMessage = lastRejectedEvents.count == 1 ? "Event rejected" : "\(lastRejectedEvents.count) events rejected"
+        showUndoToast = true
+        undoTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.showUndoToast = false
+                self?.lastRejectedEvents = []
+                self?.undoTask = nil
+            }
+        }
+    }
+
+    func dismissUndoToast() {
+        undoTask?.cancel()
+        undoTask = nil
+        showUndoToast = false
+        lastRejectedEvents = []
+    }
+
+    func undoLastRejected() async {
+        undoTask?.cancel()
+        undoTask = nil
+        let toRestore = lastRejectedEvents
+        guard !toRestore.isEmpty else {
+            showUndoToast = false
+            return
+        }
+        showUndoToast = false
+        lastRejectedEvents = []
+
+        // Optimistically reinsert events
+        let existing = senderGroups.flatMap(\.events)
+        var combined = existing + toRestore
+        // Deduplicate by ID
+        var deduped: [UUID: CalendarEvent] = [:]
+        for e in combined { deduped[e.id] = e }
+        let dedupedEvents = Array(deduped.values)
+        senderGroups = groupEventsBySender(dedupedEvents)
+        newSenderGroups = groupEventsBySender(dedupedEvents.filter { !$0.isPendingChange })
+        changeSenderGroups = groupEventsBySender(dedupedEvents.filter { $0.isPendingChange })
+
+        var hadError = false
+        var lastError: String?
+        for event in toRestore {
+            do {
+                _ = try await backendAPI.undoHistoryEvent(eventId: event.id, force: false)
+            } catch {
+                hadError = true
+                lastError = error.localizedDescription
+                // Remove optimistically restored event on failure
+                removeEventFromGroups(event.id)
+            }
+        }
+        if hadError, let lastError {
+            errorMessage = lastError
+        }
+        // Reload for consistency; preserve errorMessage if we had one
+        let preservedError = errorMessage
+        await load()
+        if hadError, let preservedError {
+            errorMessage = preservedError
         }
     }
 
