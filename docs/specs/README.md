@@ -22,16 +22,15 @@ Status as of 2026-08-06.
 - [Egress and Work Scheduling](egress-and-work-scheduling.md) — **built and merged (egress arch A, 1.5 M → ~3k RPCs/day).** Busy-wait removed via single scheduler + drain-then-sleep + in-process nudge; duplicate email owner and parked photo polls removed; egress meter + `/health/egress` shipped. Remaining soft spots (dual idle model, 5 s floor invisibility, dead `num_workers`) carried forward to the post-cutover plan.
 - [Cutover Verification](cutover-verification-20260807.md) — **verified locally, not deployed.** Ordered checklist (`migrations → code via `gh workflow run test.yml` → flag last); the sole ordered gate — the two other duplicated runbook sections now point here.
 - [Direct-PG completion and live-UI hardening](direct-pg-completion-and-live-ui-hardening.md)
-  — **planned.** Remediation of the Aug 6–9 batch. Increments 3–5 of the
-  direct-Postgres spec shipped as unreachable code (`asyncpg` never installed,
-  `pg_pool` never passed to any worker, `WorkListener` a stub, `LISTEN` never
-  issued); Inc2 removed concurrency instead of relocating it. C2 moves the whole
-  worker coordination surface to asyncpg and **deletes the PostgREST twins** —
-  one implementation per operation, no fallbacks. C5 deletes the thirteen dead
-  code and dead config items the batch left behind. Also fixes Realtime auth
-  expiry on all three clients, Broadcast fan-out, and the R5 schema gate.
-  **Read this before trusting any "implemented" status below.**
-- [Live UI updates](live-ui-updates.md) — **partially implemented — web #270, iOS #271, Android #272.** Private per-user Broadcast invalidations. Known gaps: Realtime auth is never refreshed (channel goes deaf ~1 h after sign-in on all three platforms), web lifecycle catch-up is a no-op, no terminal-state rejoin, and per-row Broadcast fan-out. Fixed by increments C6 and C7 of the remediation spec above.
+  — **implemented (C1–C9: #279–#286 + 0654d4fe).** Remediation of the Aug 6–9
+  batch: the asyncpg session-pooler pool is mandatory at startup, the whole
+  worker coordination surface runs over it with the PostgREST twins deleted,
+  the LISTEN/NOTIFY WorkListener is live, executor concurrency is real on all
+  four paths, the dead code/config is purged, all three clients refresh
+  realtime auth / catch up / rejoin, Broadcast fan-out collapses to one
+  message per transaction, and the R5 schema gate compares versions and
+  cannot pass without verifying.
+- [Live UI updates](live-ui-updates.md) — **implemented — web #270, iOS #271, Android #272**, hardened by C6 #284 (auth refresh, lifecycle catch-up, terminal-channel rejoin) and C7 #285 (per-transaction fan-out collapse).
 - [Photo surface removal](photo-surface-removal.md) — **implemented in #201 (2026-07-13).** Connect surfaces removed; photo-source rendering retained (see spec for restoration).
 - [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md)
   — **implemented in #273 (2026-08-09).** One solid AAA peer-action construction per theme, intrinsic row never stacks.

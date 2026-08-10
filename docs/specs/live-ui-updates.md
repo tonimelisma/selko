@@ -1,6 +1,22 @@
 # Live UI Updates Across Web, iOS, and Android
 
-**Status:** Implemented — web #270, iOS #271, Android #272 (private Broadcast `user:<uid>:selko-changes`, `realtime.send` triggers + `realtime.messages` policy, coordinators with 350ms debounce/inFlight+trailing/SUBSCRIBED synthetic, lifecycle catch-up)
+**Status:** Implemented — web #270, iOS #271, Android #272 (private Broadcast `user:<uid>:selko-changes`, `realtime.send` triggers + `realtime.messages` policy, coordinators with 350ms debounce/inFlight+trailing/SUBSCRIBED synthetic, lifecycle catch-up), hardened by the remediation plan C6 #284 and C7 #285:
+
+- **Auth refresh (C6):** all three clients re-authorize the realtime socket on
+  token rotation (`TOKEN_REFRESHED` / `sessionStatus`), or the private channel
+  went deaf ~1h after sign-in.
+- **Lifecycle catch-up (C6):** web visibility/focus/online and mobile
+  scene-active now call `catchUp()` (a synthetic invalidation per subscribed
+  resource) — the previous calls to `start()` short-circuited when the channel
+  existed, so they were no-ops. iOS and Android `start()` are now actually
+  wired from the auth flow (they previously had zero callers).
+- **Terminal-channel rejoin (C6):** CHANNEL_ERROR/TIMED_OUT/CLOSED (or
+  subscribe errors) rejoin with capped exponential backoff; the database
+  snapshot on success is the source of truth.
+- **Fan-out collapse (C7):** `realtime.send` does not deduplicate like
+  `pg_notify`; a transaction-local GUC guard in `broadcast_user_ui_change`
+  collapses N rows to one message per (transaction, user, resource), and the
+  events UPDATE trigger only fires on the user-visible columns.
 
 ## Outcome
 
