@@ -25,9 +25,12 @@ Status as of 2026-08-06.
   — **planned.** Remediation of the Aug 6–9 batch. Increments 3–5 of the
   direct-Postgres spec shipped as unreachable code (`asyncpg` never installed,
   `pg_pool` never passed to any worker, `WorkListener` a stub, `LISTEN` never
-  issued); Inc2 removed concurrency instead of relocating it. Also fixes
-  Realtime auth expiry on all three clients, Broadcast fan-out, and the R5
-  schema gate. **Read this before trusting any "implemented" status below.**
+  issued); Inc2 removed concurrency instead of relocating it. C2 moves the whole
+  worker coordination surface to asyncpg and **deletes the PostgREST twins** —
+  one implementation per operation, no fallbacks. C5 deletes the thirteen dead
+  code and dead config items the batch left behind. Also fixes Realtime auth
+  expiry on all three clients, Broadcast fan-out, and the R5 schema gate.
+  **Read this before trusting any "implemented" status below.**
 - [Live UI updates](live-ui-updates.md) — **partially implemented — web #270, iOS #271, Android #272.** Private per-user Broadcast invalidations. Known gaps: Realtime auth is never refreshed (channel goes deaf ~1 h after sign-in on all three platforms), web lifecycle catch-up is a no-op, no terminal-state rejoin, and per-row Broadcast fan-out. Fixed by increments C6 and C7 of the remediation spec above.
 - [Photo surface removal](photo-surface-removal.md) — **implemented in #201 (2026-07-13).** Connect surfaces removed; photo-source rendering retained (see spec for restoration).
 - [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md)
