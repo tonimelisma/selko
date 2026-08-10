@@ -187,30 +187,31 @@ class TestCompleteIntegrationReauthorization:
 
 
 class TestIntegrationRecoveryClaiming:
-    """RPC wrappers for the recovery worker stage (claim/unlock)."""
+    """Pool wrappers for the recovery worker stage (claim/unlock)."""
 
-    def test_claim_returns_first_row(self, mock_supabase_client):
-        mock_supabase_client.rpc.return_value.execute.return_value = MagicMock(
-            data=[{"id": "recovery-1", "status": "processing"}]
-        )
+    def test_claim_returns_first_row(self, fake_pg_pool):
+        import asyncio
 
-        claimed = claim_integration_recovery(mock_supabase_client, "worker-1")
+        fake_pg_pool.rows.append({"id": "recovery-1", "status": "processing"})
+
+        claimed = asyncio.run(claim_integration_recovery(fake_pg_pool, "worker-1"))
 
         assert claimed == {"id": "recovery-1", "status": "processing"}
-        mock_supabase_client.rpc.assert_called_once_with(
-            "claim_integration_recovery",
-            {"p_worker_id": "worker-1", "p_lock_seconds": 300},
-        )
+        sql, args = fake_pg_pool.calls[0]
+        assert "claim_integration_recovery" in sql
+        assert args == ("worker-1", 300)
 
-    def test_claim_returns_none_when_nothing_pending(self, mock_supabase_client):
-        mock_supabase_client.rpc.return_value.execute.return_value = MagicMock(data=[])
+    def test_claim_returns_none_when_nothing_pending(self, fake_pg_pool):
+        import asyncio
 
-        assert claim_integration_recovery(mock_supabase_client, "worker-1") is None
+        assert asyncio.run(claim_integration_recovery(fake_pg_pool, "worker-1")) is None
 
-    def test_unlock_returns_count(self, mock_supabase_client):
-        mock_supabase_client.rpc.return_value.execute.return_value = MagicMock(data=3)
+    def test_unlock_returns_count(self, fake_pg_pool):
+        import asyncio
 
-        assert unlock_expired_integration_recoveries(mock_supabase_client) == 3
+        fake_pg_pool.rows.append(3)
+
+        assert asyncio.run(unlock_expired_integration_recoveries(fake_pg_pool)) == 3
 
 
 class TestGetOAuthCredentials:

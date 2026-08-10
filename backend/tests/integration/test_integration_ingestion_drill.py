@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from supabase import Client
@@ -50,7 +50,7 @@ class TestIngestionGate:
         """acquire_item must call save_email_with_attachment_descriptors once."""
         client = MagicMock(spec=Client)
         worker = EmailIngestionWorker(client, mock_config, "test-worker")
-        worker.repository.save_email_with_attachment_descriptors = MagicMock(return_value="email-uuid")
+        worker.repository.save_email_with_attachment_descriptors = AsyncMock(return_value="email-uuid")
         worker.repository.claim_item = MagicMock(return_value=None)
 
         # Gmail item with one attachment + one inline image
@@ -80,7 +80,7 @@ class TestIngestionGate:
             patch("selko.workers.email_ingestion.extract_attachments", return_value=[{"attachment_id": "att1", "filename": "a.pdf", "mime_type": "application/pdf", "size_bytes": 123}]),
             patch("selko.workers.email_ingestion.extract_inline_images", return_value=[{"attachment_id": "img1", "filename": "img.png", "mime_type": "image/png", "size_bytes": 456}]),
         ):
-            email_id = worker.acquire_item(item)
+            email_id = asyncio.run(worker.acquire_item(item))
 
         assert email_id == "email-uuid"
         worker.repository.save_email_with_attachment_descriptors.assert_called_once()
@@ -183,7 +183,7 @@ class TestOutlookFixture:
             patch("selko.workers.email_ingestion.list_attachments", return_value=[file_att, item_att]),
         ):
             worker.repository = MagicMock()
-            worker.repository.save_email_with_attachment_descriptors = MagicMock(return_value="email-uuid")
+            worker.repository.save_email_with_attachment_descriptors = AsyncMock(return_value="email-uuid")
             item = {
                 "id": "item-1",
                 "user_id": "user-1",
@@ -192,7 +192,7 @@ class TestOutlookFixture:
                 "provider_message_id": "outlook-msg-1",
                 "provider_folder_ids": ["inbox-id"],
             }
-            email_id = worker.acquire_item(item)
+            email_id = asyncio.run(worker.acquire_item(item))
             assert email_id == "email-uuid"
             descs = worker.repository.save_email_with_attachment_descriptors.call_args[0][2]
             assert len(descs) == 2
@@ -221,5 +221,5 @@ class TestOutlookFixture:
             patch("selko.workers.email_ingestion.get_access_token", return_value="tok"),
             patch("selko.workers.email_ingestion.list_attachments", return_value=[{"id": "att-item-1", "@odata.type": "#microsoft.graph.itemAttachment"}]),
         ):
-            status = worker.acquire_attachment(attachment)
+            status = asyncio.run(worker.acquire_attachment(attachment))
             assert status == "unsupported"

@@ -298,61 +298,58 @@ class TestFailScheduledTask:
 class TestUnlockExpiredScheduledTasks:
     """Tests for unlock_expired_scheduled_tasks()."""
 
-    def test_unlock_returns_count_when_tasks_unlocked(self):
+    def test_unlock_returns_count_when_tasks_unlocked(self, fake_pg_pool):
         """Test that unlock returns the count of unlocked tasks."""
-        mock_client = MagicMock()
+        import asyncio
 
-        mock_result = MagicMock()
-        mock_result.data = 3
-        mock_client.rpc.return_value.execute.return_value = mock_result
+        fake_pg_pool.rows.append(3)
 
-        count = unlock_expired_scheduled_tasks(mock_client)
+        count = asyncio.run(unlock_expired_scheduled_tasks(fake_pg_pool))
 
         assert count == 3
 
-    def test_unlock_returns_zero_when_none_expired(self):
+    def test_unlock_returns_zero_when_none_expired(self, fake_pg_pool):
         """Test that unlock returns zero when no tasks are expired."""
-        mock_client = MagicMock()
+        import asyncio
 
-        mock_result = MagicMock()
-        mock_result.data = 0
-        mock_client.rpc.return_value.execute.return_value = mock_result
+        fake_pg_pool.rows.append(0)
 
-        count = unlock_expired_scheduled_tasks(mock_client)
+        count = asyncio.run(unlock_expired_scheduled_tasks(fake_pg_pool))
 
         assert count == 0
 
-    def test_unlock_handles_null_data(self):
+    def test_unlock_handles_null_data(self, fake_pg_pool):
         """Test that unlock returns zero when RPC returns null data."""
-        mock_client = MagicMock()
+        import asyncio
 
-        mock_result = MagicMock()
-        mock_result.data = None
-        mock_client.rpc.return_value.execute.return_value = mock_result
+        fake_pg_pool.rows.append(None)
 
-        count = unlock_expired_scheduled_tasks(mock_client)
+        count = asyncio.run(unlock_expired_scheduled_tasks(fake_pg_pool))
 
         assert count == 0
 
-    def test_unlock_calls_correct_rpc(self):
+    def test_unlock_calls_correct_rpc(self, fake_pg_pool):
         """Test that unlock calls the correct RPC function."""
-        mock_client = MagicMock()
+        import asyncio
 
-        mock_result = MagicMock()
-        mock_result.data = 0
-        mock_client.rpc.return_value.execute.return_value = mock_result
+        fake_pg_pool.rows.append(0)
 
-        unlock_expired_scheduled_tasks(mock_client)
+        asyncio.run(unlock_expired_scheduled_tasks(fake_pg_pool))
 
-        mock_client.rpc.assert_called_once_with("unlock_expired_scheduled_tasks")
+        sql, args = fake_pg_pool.calls[0]
+        assert "unlock_expired_scheduled_tasks" in sql
 
-    def test_unlock_db_error_raises_scheduled_tasks_error(self):
+    def test_unlock_db_error_raises_scheduled_tasks_error(self, fake_pg_pool):
         """Test that a database error raises ScheduledTasksError."""
-        mock_client = MagicMock()
-        mock_client.rpc.return_value.execute.side_effect = Exception("RPC timeout")
+        import asyncio
+
+        async def fail(*_args, **_kwargs):
+            raise Exception("RPC timeout")
+
+        fake_pg_pool.fetchval = fail
 
         with pytest.raises(ScheduledTasksError) as exc_info:
-            unlock_expired_scheduled_tasks(mock_client)
+            asyncio.run(unlock_expired_scheduled_tasks(fake_pg_pool))
 
         assert "Failed to unlock expired scheduled tasks" in str(exc_info.value)
 

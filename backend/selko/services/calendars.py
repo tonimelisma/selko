@@ -9,7 +9,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from postgrest.exceptions import APIError as PostgrestAPIError
 from supabase import Client
 
 from selko.services.google_errors import (
@@ -153,8 +152,8 @@ def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
     )
 
 
-def requeue_calendar_recovery_batch(
-    client: Client,
+async def requeue_calendar_recovery_batch(
+    pool,
     recovery_id: str,
     worker_id: str,
     batch_size: int = 100,
@@ -168,7 +167,7 @@ def requeue_calendar_recovery_batch(
     exists to give the UI a recovery-scoped progress count.
 
     Args:
-        client: Service-role Supabase client.
+        pool: asyncpg session-pooler pool.
         recovery_id: The recovery generation, previously claimed via
             `claim_integration_recovery`.
         worker_id: Must match the worker that holds the claim.
@@ -182,22 +181,17 @@ def requeue_calendar_recovery_batch(
         CalendarsError: If the RPC call fails.
     """
     try:
-        result = client.rpc(
-            "requeue_calendar_recovery_batch",
-            {
-                "p_recovery_id": recovery_id,
-                "p_worker_id": worker_id,
-                "p_batch_size": batch_size,
-            },
-        ).execute()
-        return result.data
-    except PostgrestAPIError as e:
+        return await pool.fetchval(
+            "SELECT public.requeue_calendar_recovery_batch($1, $2, $3)",
+            recovery_id, worker_id, batch_size,
+        )
+    except Exception as e:
         raise CalendarsError(
-            f"Failed to requeue calendar recovery batch: {e.message}"
+            f"Failed to requeue calendar recovery batch: {e}"
         ) from e
 
 
-def refresh_waiting_calendar_recoveries(client: Client, batch_size: int = 20) -> int:
+async def refresh_waiting_calendar_recoveries(pool, batch_size: int = 20) -> int:
     """Recompute progress for `waiting` recoveries, finalizing drained ones.
 
     No claim/lock needed: every step is a single atomic SQL pass over
@@ -210,14 +204,12 @@ def refresh_waiting_calendar_recoveries(client: Client, batch_size: int = 20) ->
         CalendarsError: If the RPC call fails.
     """
     try:
-        result = client.rpc(
-            "refresh_waiting_calendar_recoveries",
-            {"p_batch_size": batch_size},
-        ).execute()
-        return result.data or 0
-    except PostgrestAPIError as e:
+        return await pool.fetchval(
+            "SELECT public.refresh_waiting_calendar_recoveries($1)", batch_size
+        ) or 0
+    except Exception as e:
         raise CalendarsError(
-            f"Failed to refresh waiting calendar recoveries: {e.message}"
+            f"Failed to refresh waiting calendar recoveries: {e}"
         ) from e
 
 

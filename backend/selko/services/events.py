@@ -1673,41 +1673,19 @@ def generate_source_attribution(
 # --- Status-based worker claiming functions for calendar sync ---
 
 
-async def claim_approved_event_for_sync_via_pool(
+async def claim_approved_event_for_sync(
     pool,
-    worker_id: str,
-    lock_duration_seconds: int = 300,
-) -> Optional[dict[str, Any]]:
-    """Direct-pg variant: claim via asyncpg session pooler (Inc4).
-
-    Falls back to RPC caller if pool is None. One less PostgREST round-trip.
-    """
-    try:
-        row = await pool.fetchrow("SELECT * FROM public.claim_approved_event($1, $2)", worker_id, lock_duration_seconds)
-        if row:
-            event = dict(row)
-            title = event.get("title", "(no title)")[:50]
-            import logging
-            logging.getLogger(__name__).info(f"Worker {worker_id} claimed event {event['id']}: {title} (pool)")
-            return event
-        return None
-    except Exception as e:
-        from selko.services.events import EventsError
-        raise EventsError(f"Failed to claim approved event via pool: {e}") from e
-
-
-def claim_approved_event_for_sync(
-    client: Client,
     worker_id: str,
     lock_duration_seconds: int = 300,
 ) -> Optional[dict[str, Any]]:
     """Atomically claim the next approved event for calendar sync.
 
     Uses PostgreSQL FOR UPDATE SKIP LOCKED to safely claim events without
-    conflicts between multiple workers.
+    conflicts between multiple workers. Runs over the asyncpg session pooler —
+    there is one implementation, no PostgREST twin.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
         worker_id: Unique identifier for this worker process.
         lock_duration_seconds: How long to hold the lock (default: 5 minutes).
 
@@ -1718,31 +1696,25 @@ def claim_approved_event_for_sync(
         EventsError: If claim operation fails.
     """
     try:
-        result = client.rpc('claim_approved_event', {
-            'p_worker_id': worker_id,
-            'p_lock_duration_seconds': lock_duration_seconds,
-        }).execute()
-
-        if result.data and len(result.data) > 0:
-            event = result.data[0]
+        row = await pool.fetchrow("SELECT * FROM public.claim_approved_event($1, $2)", worker_id, lock_duration_seconds)
+        if row:
+            event = dict(row)
             title = event.get("title", "(no title)")[:50]
             logger.info(
                 f"Worker {worker_id} claimed event {event['id']}: {title} "
-                f"(attempt {event['sync_attempts']}/{event['max_sync_attempts']})"
+                f"(attempt {event.get('sync_attempts', 0)}/{event.get('max_sync_attempts', 0)})"
             )
             return event
-
         return None
-
     except Exception as e:
         raise EventsError(f"Failed to claim approved event: {e}") from e
 
 
-def complete_event_sync(client: Client, event_id: str, google_event_id: str) -> None:
+async def complete_event_sync(pool, event_id: str, google_event_id: str) -> None:
     """Mark event as synced successfully and clear the lock.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
         event_id: UUID of event to mark as synced.
         google_event_id: ID of the created Google Calendar event.
 
@@ -1750,24 +1722,22 @@ def complete_event_sync(client: Client, event_id: str, google_event_id: str) -> 
         EventsError: If update fails.
     """
     try:
-        client.table("events").update({
-            "status": "synced",
-            "google_calendar_event_id": google_event_id,
-            "synced_at": datetime.now(timezone.utc).isoformat(),
-            "sync_error": None,
-            "sync_failure_code": None,
-            "locked_by": None,
-            "locked_until": None,
-        }).eq("id", event_id).execute()
-
+        await pool.execute(
+            "UPDATE public.events"
+            " SET status = 'synced', google_calendar_event_id = $2,"
+            " synced_at = $3, sync_error = NULL, sync_failure_code = NULL,"
+            " locked_by = NULL, locked_until = NULL"
+            " WHERE id = $1",
+            event_id, google_event_id, datetime.now(timezone.utc),
+        )
         logger.info(f"Completed sync for event {event_id} -> {google_event_id}")
 
     except Exception as e:
         raise EventsError(f"Failed to complete event sync: {e}") from e
 
 
-def defer_event_sync_for_quota(
-    client: Client,
+async def defer_event_sync_for_quota(
+    pool,
     event_id: str,
     sync_attempts: int,
     next_retry_at: str,
@@ -1779,16 +1749,14 @@ def defer_event_sync_for_quota(
     the lock and schedule the next claim for the quota reset.
     """
     try:
-        client.table("events").update(
-            {
-                "status": "approved",
-                "sync_attempts": max(0, sync_attempts - 1),
-                "sync_error": "Daily calendar sync quota exceeded",
-                "locked_by": None,
-                "locked_until": None,
-                "next_retry_at": next_retry_at,
-            }
-        ).eq("id", event_id).execute()
+        await pool.execute(
+            "UPDATE public.events"
+            " SET status = 'approved', sync_attempts = $2,"
+            " sync_error = 'Daily calendar sync quota exceeded',"
+            " locked_by = NULL, locked_until = NULL, next_retry_at = $3"
+            " WHERE id = $1",
+            event_id, max(0, sync_attempts - 1), next_retry_at,
+        )
         logger.warning(
             "Deferred event %s until calendar quota resets at %s",
             event_id,
@@ -1798,8 +1766,8 @@ def defer_event_sync_for_quota(
         raise EventsError(f"Failed to defer event sync for quota: {e}") from e
 
 
-def park_event_for_oauth_reauth(
-    client: Client,
+async def park_event_for_oauth_reauth(
+    pool,
     event_id: str,
     sync_attempts: int,
     sync_failure_code: str,
@@ -1816,19 +1784,14 @@ def park_event_for_oauth_reauth(
     reconnect recovery flow) once the user reauthorizes.
     """
     try:
-        client.table("events").update(
-            {
-                "status": "approved",
-                "sync_attempts": max(0, sync_attempts - 1),
-                "sync_error": user_message,
-                "sync_failure_code": sync_failure_code,
-                "locked_by": None,
-                "locked_until": None,
-                "next_retry_at": None,
-                "dead_letter_reason": None,
-                "dead_letter_at": None,
-            }
-        ).eq("id", event_id).execute()
+        await pool.execute(
+            "UPDATE public.events"
+            " SET status = 'approved', sync_attempts = $2, sync_error = $3,"
+            " sync_failure_code = $4, locked_by = NULL, locked_until = NULL,"
+            " next_retry_at = NULL, dead_letter_reason = NULL, dead_letter_at = NULL"
+            " WHERE id = $1",
+            event_id, max(0, sync_attempts - 1), user_message, sync_failure_code,
+        )
         logger.warning(
             "Parked event %s for %s reauthorization", event_id, sync_failure_code
         )
@@ -1836,8 +1799,8 @@ def park_event_for_oauth_reauth(
         raise EventsError(f"Failed to park event for oauth reauth: {e}") from e
 
 
-def fail_event_sync(
-    client: Client,
+async def fail_event_sync(
+    pool,
     event_id: str,
     error: str,
 ) -> None:
@@ -1847,7 +1810,7 @@ def fail_event_sync(
     Otherwise, sets status to 'sync_failed' permanently.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
         event_id: UUID of event that failed syncing.
         error: Error message to store.
 
@@ -1855,57 +1818,58 @@ def fail_event_sync(
         EventsError: If update fails.
     """
     try:
-        # Fetch current event to check retry eligibility
-        result = client.table("events").select(
-            "sync_attempts, max_sync_attempts"
-        ).eq("id", event_id).single().execute()
-
-        event = result.data
-        sync_attempts = event["sync_attempts"]
-        max_sync_attempts = event["max_sync_attempts"]
+        row = await pool.fetchrow(
+            "SELECT sync_attempts, max_sync_attempts FROM public.events WHERE id = $1",
+            event_id,
+        )
+        if row is None:
+            raise EventsError(f"Event {event_id} not found")
+        sync_attempts = row["sync_attempts"]
+        max_sync_attempts = row["max_sync_attempts"]
         should_retry = sync_attempts < max_sync_attempts
-
-        update_data = {
-            "status": "approved" if should_retry else "sync_failed",
-            "sync_error": error,
-            "locked_by": None,
-            "locked_until": None,
-        }
 
         if should_retry:
             delay, next_retry_at = calculate_retry_delay(sync_attempts)
-            update_data["next_retry_at"] = next_retry_at
-        else:
-            # Dead letter: permanently failed
-            update_data["dead_letter_reason"] = error
-            update_data["dead_letter_at"] = datetime.now(timezone.utc).isoformat()
-
-        client.table("events").update(update_data).eq("id", event_id).execute()
-
-        if should_retry:
+            next_retry_dt = datetime.fromisoformat(next_retry_at.replace("Z", "+00:00"))
+            await pool.execute(
+                "UPDATE public.events"
+                " SET status = 'approved', sync_error = $2, locked_by = NULL,"
+                " locked_until = NULL, next_retry_at = $3"
+                " WHERE id = $1",
+                event_id, error, next_retry_dt,
+            )
             logger.warning(
                 f"Event {event_id} sync failed "
                 f"(attempt {sync_attempts}/{max_sync_attempts}): {error}. "
                 f"Will retry in {delay}s."
             )
         else:
+            await pool.execute(
+                "UPDATE public.events"
+                " SET status = 'sync_failed', sync_error = $2, locked_by = NULL,"
+                " locked_until = NULL, dead_letter_reason = $2, dead_letter_at = $3"
+                " WHERE id = $1",
+                event_id, error, datetime.now(timezone.utc),
+            )
             logger.error(
                 f"Event {event_id} sync failed permanently "
                 f"after {sync_attempts} attempts: {error}. "
                 f"Moved to dead letter."
             )
 
+    except EventsError:
+        raise
     except Exception as e:
         raise EventsError(f"Failed to mark event sync as failed: {e}") from e
 
 
-def unlock_expired_event_locks(client: Client) -> int:
+async def unlock_expired_event_locks(pool) -> int:
     """Reset expired event sync locks back to approved.
 
     Handles the case where a worker crashes mid-sync and the lock expires.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
 
     Returns:
         Number of events unlocked.
@@ -1914,13 +1878,12 @@ def unlock_expired_event_locks(client: Client) -> int:
         EventsError: If unlock fails.
     """
     try:
-        result = client.rpc('unlock_expired_event_locks').execute()
-        count = result.data if result.data else 0
+        count = await pool.fetchval("SELECT public.unlock_expired_event_locks()")
 
-        if count > 0:
+        if count:
             logger.warning(f"Unlocked {count} expired event sync locks")
 
-        return count
+        return count or 0
 
     except Exception as e:
         raise EventsError(f"Failed to unlock expired event locks: {e}") from e

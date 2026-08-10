@@ -98,6 +98,21 @@ def staging_config():
         return None
 
 
+@pytest.fixture
+async def pg_pool(development_config):
+    """Real asyncpg session-pooler pool against the local Supabase (C2).
+
+    Proves the ``SELECT * FROM public.fn($1, $2)`` invocation form that the
+    worker transport uses end to end. Function-scoped: asyncpg pools are
+    loop-bound, and pytest-asyncio gives each test its own loop.
+    """
+    from selko.services.pg import create_pool
+
+    pool = await create_pool(development_config)
+    yield pool
+    await pool.close()
+
+
 @pytest.fixture(scope="function")
 def config(request, development_config, staging_config):
     """Get config based on test markers.

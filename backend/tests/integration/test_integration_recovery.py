@@ -6,6 +6,7 @@ callbacks, FOR UPDATE SKIP LOCKED claiming, expired-lock recovery, and RLS
 (users read their own recovery rows, cannot write them).
 """
 
+import asyncio
 import pytest
 from postgrest.exceptions import APIError
 from uuid import uuid4
@@ -170,8 +171,8 @@ class TestCompleteIntegrationReauthorization:
 @pytest.mark.integration
 @pytest.mark.development
 class TestClaimIntegrationRecovery:
-    def test_claim_locks_row_and_increments_attempts(
-        self, admin_client, test_user_id
+    async def test_claim_locks_row_and_increments_attempts(
+        self, admin_client, test_user_id, pg_pool
     ):
         complete_integration_reauthorization(
             admin_client,
@@ -184,7 +185,7 @@ class TestClaimIntegrationRecovery:
             provider_email=None,
         )
 
-        claimed = claim_integration_recovery(admin_client, "worker-1", lock_seconds=300)
+        claimed = await claim_integration_recovery(pg_pool, "worker-1", lock_seconds=300)
 
         assert claimed is not None
         assert claimed["status"] == "processing"
@@ -192,10 +193,10 @@ class TestClaimIntegrationRecovery:
         assert claimed["attempts"] == 1
 
         # Already claimed: a second worker must not also get it.
-        assert claim_integration_recovery(admin_client, "worker-2") is None
+        assert await claim_integration_recovery(pg_pool, "worker-2") is None
 
-    def test_unlock_expired_returns_locked_rows_to_pending(
-        self, admin_client, test_user_id
+    async def test_unlock_expired_returns_locked_rows_to_pending(
+        self, admin_client, test_user_id, pg_pool
     ):
         complete_integration_reauthorization(
             admin_client,
@@ -207,14 +208,14 @@ class TestClaimIntegrationRecovery:
             scopes=["calendar"],
             provider_email=None,
         )
-        claim_integration_recovery(admin_client, "worker-1", lock_seconds=300)
+        await claim_integration_recovery(pg_pool, "worker-1", lock_seconds=300)
 
         # Force the lock into the past to simulate a crashed worker.
         admin_client.table("integration_recoveries").update(
             {"locked_until": "2000-01-01T00:00:00Z"}
         ).eq("user_id", test_user_id).execute()
 
-        unlocked = unlock_expired_integration_recoveries(admin_client)
+        unlocked = await unlock_expired_integration_recoveries(pg_pool)
         assert unlocked >= 1
 
         row = (

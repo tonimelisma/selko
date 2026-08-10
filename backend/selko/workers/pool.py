@@ -43,7 +43,6 @@ from selko.services.emails import (
 from selko.services.events import (
     EventsError,
     claim_approved_event_for_sync,
-    claim_approved_event_for_sync_via_pool,
     complete_event_sync,
     defer_event_sync_for_quota,
     fail_event_sync,
@@ -78,10 +77,10 @@ class WorkerPool:
 
     def __init__(
         self,
+        pg_pool,
         num_workers: int = 3,
         idle_sleep_seconds: float = 1.0,
         error_backoff_seconds: float = 5.0,
-        pg_pool=None,
     ):
         """Initialize the worker pool.
 
@@ -349,17 +348,11 @@ class WorkerPool:
         client = self._get_client()
 
         # 1. Try approved events - requires Google Calendar (sole writer is worker)
-        # Inc4: try direct pg pool first, fallback to PostgREST RPC
         if circuit_breaker.is_available("google_calendar"):
             try:
-                if self.pg_pool is not None:
-                    event = await claim_approved_event_for_sync_via_pool(
-                        self.pg_pool, worker_id, lock_duration_seconds=300,
-                    )
-                else:
-                    event = claim_approved_event_for_sync(
-                        client, worker_id, lock_duration_seconds=300,
-                    )
+                event = await claim_approved_event_for_sync(
+                    self.pg_pool, worker_id, lock_duration_seconds=300,
+                )
                 if event:
                     await self._process_event_sync(client, worker_id, event)
                     return True
@@ -370,10 +363,7 @@ class WorkerPool:
         # tick speed (no 18/s storm), semaphore fans out the LLM work to 8.
         if circuit_breaker.is_available("llm"):
             try:
-                if self.pg_pool is not None:
-                    email = await claim_pending_email_via_pool(self.pg_pool, worker_id, lock_duration_seconds=300)
-                else:
-                    email = claim_pending_email(client, worker_id, lock_duration_seconds=300)
+                email = await claim_pending_email(self.pg_pool, worker_id, lock_duration_seconds=300)
                 if email:
                     # Fire-and-forget behind semaphore; scheduler immediately
                     # re-drains to fill up to 8 in parallel.
@@ -428,7 +418,7 @@ class WorkerPool:
         self._last_recovery_probe_at = now_monotonic
 
         try:
-            recovery = claim_integration_recovery(client, worker_id, lock_seconds=120)
+            recovery = await claim_integration_recovery(self.pg_pool, worker_id, lock_seconds=120)
         except IntegrationError as e:
             logger.error(f"{worker_id}: Error claiming integration recovery: {e}")
             recovery = None
@@ -437,8 +427,8 @@ class WorkerPool:
             # Real work in flight — drop the gate so the next tick probes again.
             self._last_recovery_probe_at = 0.0
             try:
-                tagged = requeue_calendar_recovery_batch(
-                    client, recovery["id"], worker_id
+                tagged = await requeue_calendar_recovery_batch(
+                    self.pg_pool, recovery["id"], worker_id
                 )
             except CalendarsError as e:
                 logger.error(f"{worker_id}: Error requeuing calendar recovery batch: {e}")
@@ -461,7 +451,7 @@ class WorkerPool:
             return True
 
         try:
-            refreshed = refresh_waiting_calendar_recoveries(client)
+            refreshed = await refresh_waiting_calendar_recoveries(self.pg_pool)
         except CalendarsError as e:
             logger.error(f"{worker_id}: Error refreshing waiting calendar recoveries: {e}")
             return False
@@ -540,7 +530,7 @@ class WorkerPool:
             # terminal "skipped" state by process_email_for_events; don't
             # overwrite that back to "processed".
             if not (result or {}).get("skipped"):
-                complete_email_processing(client, email_id)
+                await complete_email_processing(self.pg_pool, email_id)
             logger.info(f"{worker_id}: Completed email {email_id}")
             circuit_breaker.record_success("llm")
 
@@ -549,7 +539,7 @@ class WorkerPool:
             circuit_breaker.record_failure("llm")
             logger.error(f"{worker_id}: {error_msg} for email {email_id}")
             try:
-                fail_email_processing(client, email_id, error_msg)
+                await fail_email_processing(self.pg_pool, email_id, error_msg)
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark email as failed: {fail_error}")
 
@@ -557,7 +547,7 @@ class WorkerPool:
             circuit_breaker.record_failure("llm")
             logger.error(f"{worker_id}: Email {email_id} failed: {e}", exc_info=True)
             try:
-                fail_email_processing(client, email_id, str(e))
+                await fail_email_processing(self.pg_pool, email_id, str(e))
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark email as failed: {fail_error}")
 
@@ -633,8 +623,8 @@ class WorkerPool:
                 event["user_id"], "calendar_syncs"
             )
             if not quota_result.allowed:
-                defer_event_sync_for_quota(
-                    client,
+                await defer_event_sync_for_quota(
+                    self.pg_pool,
                     event_id,
                     event["sync_attempts"],
                     quota_result.resets_at,
@@ -645,7 +635,7 @@ class WorkerPool:
                 sync_event(client, self.config, event),
                 timeout=self.config.event_sync_timeout,
             )
-            complete_event_sync(client, event_id, google_event_id)
+            await complete_event_sync(self.pg_pool, event_id, google_event_id)
             logger.info(f"{worker_id}: Completed event sync {event_id}")
             circuit_breaker.record_success("google_calendar")
 
@@ -654,7 +644,7 @@ class WorkerPool:
             circuit_breaker.record_failure("google_calendar")
             logger.error(f"{worker_id}: {error_msg} for event {event_id}")
             try:
-                fail_event_sync(client, event_id, error_msg)
+                await fail_event_sync(self.pg_pool, event_id, error_msg)
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")
 
@@ -673,14 +663,14 @@ class WorkerPool:
                     # park it so it resumes automatically once the user
                     # reauthorizes, instead of burning retries toward
                     # dead-letter.
-                    park_event_for_oauth_reauth(
-                        client,
+                    await park_event_for_oauth_reauth(
+                        self.pg_pool,
                         event_id,
                         event["sync_attempts"],
                         classification.code,
                         classification.user_message,
                     )
                 else:
-                    fail_event_sync(client, event_id, str(e))
+                    await fail_event_sync(self.pg_pool, event_id, str(e))
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")

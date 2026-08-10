@@ -48,136 +48,139 @@ def freeze_retry_clock(now: datetime = FROZEN_NOW):
 # ===========================================================================
 
 
-class TestExponentialBackoff:
-    """Tests for exponential backoff calculation in fail_email_processing."""
+def _email_pool(pool, attempts: int, max_attempts: int):
+    """Queue the attempts row for the SELECT and record the UPDATE."""
+    pool.rows.append({"attempts": attempts, "max_attempts": max_attempts})
+    return pool
 
-    def _make_mock_client(self, attempts: int, max_attempts: int):
-        """Create a mock client that returns given attempt counts."""
-        client = MagicMock()
-        select_result = MagicMock()
-        select_result.data = {
-            "attempts": attempts,
-            "max_attempts": max_attempts,
-        }
-        client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = select_result
-        client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
-        return client
+
+def _last_update_args(pool) -> tuple:
+    """Args of the last UPDATE executed against the pool."""
+    for sql, args in reversed(pool.calls):
+        if "UPDATE" in sql:
+            return args
+    raise AssertionError("no UPDATE call recorded")
+
+
+class TestExponentialBackoff:
+    @pytest.fixture(autouse=True)
+    def pool(self, fake_pg_pool):
+        self.pool = fake_pg_pool
+
+    """Tests for exponential backoff calculation in fail_email_processing."""
 
     def test_first_retry_delay_60s(self):
         """First retry (attempt 1) should have 60s delay."""
+        import asyncio
+
         from selko.services.emails import fail_email_processing
 
-        client = self._make_mock_client(attempts=1, max_attempts=3)
+        pool = _email_pool(self.pool, attempts=1, max_attempts=3)
         with freeze_retry_clock():
-            fail_email_processing(client, "email-1", "test error")
+            asyncio.run(fail_email_processing(pool, "email-1", "test error"))
 
-        # Check the update call includes next_retry_at
-        update_call = client.table.return_value.update.call_args[0][0]
-        assert update_call["processing_status"] == "pending"
-        assert "next_retry_at" in update_call
-        retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-        assert retry_at == FROZEN_NOW + timedelta(seconds=60)
+        sql, args = pool.calls[-1]
+        assert "processing_status = 'pending'" in sql
+        assert "next_retry_at = $3" in sql
+        assert args[2] == FROZEN_NOW + timedelta(seconds=60)
 
     def test_second_retry_delay_120s(self):
         """Second retry (attempt 2) should have 120s delay."""
+        import asyncio
+
         from selko.services.emails import fail_email_processing
 
-        client = self._make_mock_client(attempts=2, max_attempts=3)
+        pool = _email_pool(self.pool, attempts=2, max_attempts=3)
         with freeze_retry_clock():
-            fail_email_processing(client, "email-1", "test error")
+            asyncio.run(fail_email_processing(pool, "email-1", "test error"))
 
-        update_call = client.table.return_value.update.call_args[0][0]
-        assert update_call["processing_status"] == "pending"
-        retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-        assert retry_at == FROZEN_NOW + timedelta(seconds=120)
+        sql, args = pool.calls[-1]
+        assert "processing_status = 'pending'" in sql
+        assert args[2] == FROZEN_NOW + timedelta(seconds=120)
 
     def test_delay_capped_at_3600s(self):
         """Delay should be capped at 3600s (1 hour) for high attempt counts."""
+        import asyncio
+
         from selko.services.emails import fail_email_processing
 
         # Attempt 7 would be 60 * 2^6 = 3840, but should be capped at 3600
-        client = self._make_mock_client(attempts=7, max_attempts=10)
+        pool = _email_pool(self.pool, attempts=7, max_attempts=10)
         with freeze_retry_clock():
-            fail_email_processing(client, "email-1", "test error")
+            asyncio.run(fail_email_processing(pool, "email-1", "test error"))
 
-        update_call = client.table.return_value.update.call_args[0][0]
-        retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-        assert retry_at == FROZEN_NOW + timedelta(seconds=3600)
+        sql, args = pool.calls[-1]
+        assert args[2] == FROZEN_NOW + timedelta(seconds=3600)
 
     def test_backoff_doubles_each_attempt(self):
         """Verify delay doubles exactly with each attempt until the cap."""
+        import asyncio
+
         from selko.services.emails import fail_email_processing
 
         delays = []
         for attempt in [1, 2, 3, 4]:
-            client = self._make_mock_client(attempts=attempt, max_attempts=5)
+            pool = _email_pool(self.pool, attempts=attempt, max_attempts=5)
             with freeze_retry_clock():
-                fail_email_processing(client, f"email-{attempt}", "test error")
-            update_call = client.table.return_value.update.call_args[0][0]
-            retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-            delays.append(int((retry_at - FROZEN_NOW).total_seconds()))
+                asyncio.run(fail_email_processing(pool, f"email-{attempt}", "test error"))
+            sql, args = pool.calls[-1]
+            delays.append(int((args[2] - FROZEN_NOW).total_seconds()))
+            self.pool.calls.clear()
+            self.pool.rows.clear()
 
         assert delays == [60, 120, 240, 480]
 
 
 class TestExponentialBackoffEvents:
-    """Tests for exponential backoff in fail_event_sync."""
+    @pytest.fixture(autouse=True)
+    def pool(self, fake_pg_pool):
+        self.pool = fake_pg_pool
 
-    def _make_mock_client(self, sync_attempts: int, max_sync_attempts: int):
-        """Create a mock client that returns given attempt counts."""
-        client = MagicMock()
-        select_result = MagicMock()
-        select_result.data = {
-            "sync_attempts": sync_attempts,
-            "max_sync_attempts": max_sync_attempts,
-        }
-        client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = select_result
-        client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
-        return client
+    """Tests for exponential backoff in fail_event_sync."""
 
     def test_event_retry_with_backoff(self):
         """Event retry should include next_retry_at with exponential backoff."""
+        import asyncio
+
         from selko.services.events import fail_event_sync
 
-        client = self._make_mock_client(sync_attempts=1, max_sync_attempts=3)
+        self.pool.rows.append({"sync_attempts": 1, "max_sync_attempts": 3})
         with freeze_retry_clock():
-            fail_event_sync(client, "event-1", "Calendar API error")
+            asyncio.run(fail_event_sync(self.pool, "event-1", "Calendar API error"))
 
-        update_call = client.table.return_value.update.call_args[0][0]
-        assert update_call["status"] == "approved"
-        assert update_call["next_retry_at"] == (FROZEN_NOW + timedelta(seconds=60)).isoformat()
+        sql, args = self.pool.calls[-1]
+        assert "status = 'approved'" in sql
+        assert args[2] == FROZEN_NOW + timedelta(seconds=60)
 
     def test_event_delay_capped(self):
         """Event delay should also be capped at 3600s."""
+        import asyncio
+
         from selko.services.events import fail_event_sync
 
-        client = self._make_mock_client(sync_attempts=7, max_sync_attempts=10)
+        self.pool.rows.append({"sync_attempts": 7, "max_sync_attempts": 10})
         with freeze_retry_clock():
-            fail_event_sync(client, "event-1", "error")
+            asyncio.run(fail_event_sync(self.pool, "event-1", "error"))
 
-        update_call = client.table.return_value.update.call_args[0][0]
-        retry_at = datetime.fromisoformat(update_call["next_retry_at"])
-        assert retry_at == FROZEN_NOW + timedelta(seconds=3600)
+        sql, args = self.pool.calls[-1]
+        assert args[2] == FROZEN_NOW + timedelta(seconds=3600)
 
     def test_calendar_quota_deferral_releases_claim_without_spending_attempt(self):
         """Quota deferral returns the claimed event to its pre-claim budget."""
+        import asyncio
+
         from selko.services.events import defer_event_sync_for_quota
 
-        client = MagicMock()
         reset_at = "2026-04-10T00:00:00+00:00"
 
-        defer_event_sync_for_quota(client, "event-1", 2, reset_at)
+        asyncio.run(defer_event_sync_for_quota(self.pool, "event-1", 2, reset_at))
 
-        client.table.return_value.update.assert_called_once_with(
-            {
-                "status": "approved",
-                "sync_attempts": 1,
-                "sync_error": "Daily calendar sync quota exceeded",
-                "locked_by": None,
-                "locked_until": None,
-                "next_retry_at": reset_at,
-            }
-        )
+        sql, args = self.pool.calls[-1]
+        assert "status = 'approved'" in sql
+        assert "sync_attempts = $2" in sql
+        assert args[1] == 1
+        assert "Daily calendar sync quota exceeded" in sql
+        assert args[2] == reset_at
 
     def test_oauth_park_releases_claim_without_spending_attempt_or_dead_lettering(self):
         """An OAuth-blocked sync isn't a real attempt: no dead-letter, no backoff.
@@ -187,31 +190,25 @@ class TestExponentialBackoffEvents:
         any stale retry/dead-letter state so the event is a clean `approved`
         row once the user reauthorizes.
         """
+        import asyncio
+
         from selko.services.events import park_event_for_oauth_reauth
 
-        client = MagicMock()
-
-        park_event_for_oauth_reauth(
-            client,
+        asyncio.run(park_event_for_oauth_reauth(
+            self.pool,
             "event-1",
             2,
             "oauth_required",
             "Google Calendar needs to be reconnected.",
-        )
+        ))
 
-        client.table.return_value.update.assert_called_once_with(
-            {
-                "status": "approved",
-                "sync_attempts": 1,
-                "sync_error": "Google Calendar needs to be reconnected.",
-                "sync_failure_code": "oauth_required",
-                "locked_by": None,
-                "locked_until": None,
-                "next_retry_at": None,
-                "dead_letter_reason": None,
-                "dead_letter_at": None,
-            }
-        )
+        sql, args = self.pool.calls[-1]
+        assert "status = 'approved'" in sql
+        assert "sync_attempts = $2" in sql
+        assert args[1] == 1
+        assert args[2] == "Google Calendar needs to be reconnected."
+        assert args[3] == "oauth_required"
+        assert "dead_letter_at = NULL" in sql
 
 
 # ===========================================================================
@@ -220,84 +217,76 @@ class TestExponentialBackoffEvents:
 
 
 class TestDeadLetterEmail:
-    """Tests for dead letter fields when max attempts exceeded for emails."""
+    @pytest.fixture(autouse=True)
+    def pool(self, fake_pg_pool):
+        self.pool = fake_pg_pool
 
-    def _make_mock_client(self, attempts: int, max_attempts: int):
-        """Create a mock client that returns given attempt counts."""
-        client = MagicMock()
-        select_result = MagicMock()
-        select_result.data = {
-            "attempts": attempts,
-            "max_attempts": max_attempts,
-        }
-        client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = select_result
-        client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
-        return client
+    """Tests for dead letter fields when max attempts exceeded for emails."""
 
     def test_dead_letter_on_max_attempts(self):
         """When max attempts exceeded, dead_letter fields should be set."""
+        import asyncio
+
         from selko.services.emails import fail_email_processing
 
-        client = self._make_mock_client(attempts=3, max_attempts=3)
-        fail_email_processing(client, "email-1", "Permanent failure")
+        self.pool.rows.append({"attempts": 3, "max_attempts": 3})
+        asyncio.run(fail_email_processing(self.pool, "email-1", "Permanent failure"))
 
-        update_call = client.table.return_value.update.call_args[0][0]
-        assert update_call["processing_status"] == "failed"
-        assert update_call["dead_letter_reason"] == "Permanent failure"
-        assert "dead_letter_at" in update_call
+        sql, args = self.pool.calls[-1]
+        assert "processing_status = 'failed'" in sql
+        assert "dead_letter_reason = $2" in sql
+        assert "dead_letter_at = $3" in sql
         # Should NOT have next_retry_at
-        assert "next_retry_at" not in update_call
+        assert "next_retry_at" not in sql
 
     def test_no_dead_letter_on_retry(self):
         """When retries remain, dead_letter fields should NOT be set."""
+        import asyncio
+
         from selko.services.emails import fail_email_processing
 
-        client = self._make_mock_client(attempts=1, max_attempts=3)
-        fail_email_processing(client, "email-1", "Transient failure")
+        self.pool.rows.append({"attempts": 1, "max_attempts": 3})
+        asyncio.run(fail_email_processing(self.pool, "email-1", "Transient failure"))
 
-        update_call = client.table.return_value.update.call_args[0][0]
-        assert update_call["processing_status"] == "pending"
-        assert "dead_letter_reason" not in update_call
-        assert "dead_letter_at" not in update_call
+        sql, args = self.pool.calls[-1]
+        assert "processing_status = 'pending'" in sql
+        assert "dead_letter_reason" not in sql
+        assert "dead_letter_at" not in sql
 
 
 class TestDeadLetterEvent:
-    """Tests for dead letter fields when max attempts exceeded for events."""
+    @pytest.fixture(autouse=True)
+    def pool(self, fake_pg_pool):
+        self.pool = fake_pg_pool
 
-    def _make_mock_client(self, sync_attempts: int, max_sync_attempts: int):
-        """Create a mock client that returns given attempt counts."""
-        client = MagicMock()
-        select_result = MagicMock()
-        select_result.data = {
-            "sync_attempts": sync_attempts,
-            "max_sync_attempts": max_sync_attempts,
-        }
-        client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = select_result
-        client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
-        return client
+    """Tests for dead letter fields when max attempts exceeded for events."""
 
     def test_dead_letter_on_max_sync_attempts(self):
         """When max sync attempts exceeded, dead_letter fields should be set."""
+        import asyncio
+
         from selko.services.events import fail_event_sync
 
-        client = self._make_mock_client(sync_attempts=3, max_sync_attempts=3)
-        fail_event_sync(client, "event-1", "Calendar API down")
+        self.pool.rows.append({"sync_attempts": 3, "max_sync_attempts": 3})
+        asyncio.run(fail_event_sync(self.pool, "event-1", "Calendar API down"))
 
-        update_call = client.table.return_value.update.call_args[0][0]
-        assert update_call["status"] == "sync_failed"
-        assert update_call["dead_letter_reason"] == "Calendar API down"
-        assert "dead_letter_at" in update_call
+        sql, args = self.pool.calls[-1]
+        assert "status = 'sync_failed'" in sql
+        assert "dead_letter_reason = $2" in sql
+        assert "dead_letter_at = $3" in sql
 
     def test_no_dead_letter_on_event_retry(self):
         """When retries remain, dead_letter fields should NOT be set."""
+        import asyncio
+
         from selko.services.events import fail_event_sync
 
-        client = self._make_mock_client(sync_attempts=1, max_sync_attempts=3)
-        fail_event_sync(client, "event-1", "Temporary error")
+        self.pool.rows.append({"sync_attempts": 1, "max_sync_attempts": 3})
+        asyncio.run(fail_event_sync(self.pool, "event-1", "Temporary error"))
 
-        update_call = client.table.return_value.update.call_args[0][0]
-        assert update_call["status"] == "approved"
-        assert "dead_letter_reason" not in update_call
+        sql, args = self.pool.calls[-1]
+        assert "status = 'approved'" in sql
+        assert "dead_letter_reason" not in sql
 
 
 # ===========================================================================
