@@ -80,7 +80,6 @@ class Config:
     max_other_size_for_llm: int = 20 * 1024 * 1024    # 20 MB
 
     # Worker pool configuration
-    worker_pool_size: int = 3  # deprecated alias for worker_calendar_sync_concurrency (kept 1 release)
     worker_calendar_sync_concurrency: int = 2
     # LLM extraction parallelism — emails are independent, so this is the
     # primary knob for draining the 578-pending backlog. 1 = 29 min,
@@ -485,11 +484,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         tinker_api_key=getenv("TINKER_API_KEY"),
         test_user_email=getenv("TEST_USER_EMAIL"),
         test_user_password=getenv("TEST_USER_PASSWORD"),
-        worker_pool_size=int(getenv("WORKER_POOL_SIZE", "3")),
-        worker_calendar_sync_concurrency=int(
-            getenv("WORKER_CALENDAR_SYNC_CONCURRENCY")
-            or getenv("WORKER_POOL_SIZE", "2")
-        ),
+        worker_calendar_sync_concurrency=int(getenv("WORKER_CALENDAR_SYNC_CONCURRENCY", "2")),
         llm_extraction_concurrency=int(getenv("LLM_EXTRACTION_CONCURRENCY", "8")),
         llm_claim_lease_seconds=int(getenv("LLM_CLAIM_LEASE_SECONDS", "900")),
         worker_idle_sleep_seconds=float(getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),

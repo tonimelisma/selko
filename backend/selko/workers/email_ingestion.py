@@ -834,7 +834,7 @@ class EmailIngestionWorker:
         ``IngestionRuntime.stop()`` later gathered with ``return_exceptions=True``
         — silently swallowing the traceback. One attempt, loop dead forever.
 
-        This mirrors ``WorkerPool._worker_loop``: catch every non-cancel
+        This mirrors ``WorkerPool._scheduler_loop``: catch every non-cancel
         exception, log it with a traceback, back off briefly, and return
         ``True`` so the iteration is treated as work (idle backoff does not
         compound on top of the error backoff).

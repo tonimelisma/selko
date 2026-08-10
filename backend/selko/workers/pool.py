@@ -1,15 +1,15 @@
 """Worker pool for continuously processing background work.
 
-This module implements a pool of long-running asyncio tasks that continuously
-poll for work from one source:
-1. Approved events (status-based claiming)
-2. Calendar OAuth recovery bookkeeping
+One scheduler task drains the queue in priority order:
 
-Photo ingestion is parked (egress inc 1). Email ingestion is owned solely by
-IngestionRuntime (egress inc 2) — WorkerPool no longer claims emails. The
-_process_email helper is retained for hardening inc 8 cleanup only.
+1. Approved events → calendar sync (semaphore-bounded executor tasks)
+2. Pending emails → LLM event extraction (semaphore-bounded executor tasks)
+3. Calendar OAuth recovery bookkeeping (claim/tag/refresh)
 
-This replaces the job queue with direct status-based polling of data tables.
+Photo ingestion is parked (egress inc 1). Email ingestion *discovery* is
+owned solely by IngestionRuntime; the LLM extraction of already-saved emails
+runs here. Work arrives by NOTIFY through the WorkListener; the safety-net
+poll is a floor, not a schedule. Durability stays in SQL leases.
 """
 
 import asyncio
@@ -28,12 +28,6 @@ from selko.services.calendars import (
 )
 from selko.services.circuit_breaker import circuit_breaker
 from selko.services.integrations import IntegrationError, claim_integration_recovery
-from selko.services.scheduled_tasks import (
-    ScheduledTasksError,
-    claim_scheduled_task,
-    complete_scheduled_task,
-    fail_scheduled_task,
-)
 from selko.services.emails import (
     EmailError,
     claim_pending_email,
@@ -47,12 +41,6 @@ from selko.services.events import (
     defer_event_sync_for_quota,
     fail_event_sync,
     park_event_for_oauth_reauth,
-)
-from selko.services.photos import (
-    PhotosError,
-    claim_pending_photo,
-    complete_photo_processing,
-    fail_photo_processing,
 )
 from selko.services.quotas import QuotaService
 
@@ -69,30 +57,25 @@ class WorkerPool:
     (approve/retry). If the nudge is missed, the next tick catches it — degraded
     latency, never lost.
 
-    R3: single scheduler with Semaphore concurrency for calendar sync.
-    worker_pool_size is a deprecated alias for worker_calendar_sync_concurrency;
-    num_workers is kept for compat but the real knob is
-    config.worker_calendar_sync_concurrency. Durability stays in SQL leases.
+    R3: single scheduler with Semaphore concurrency for calendar sync; the
+    real knob is config.worker_calendar_sync_concurrency. Durability stays in
+    SQL leases.
     """
 
     def __init__(
         self,
         pg_pool,
         work_listener,
-        num_workers: int = 3,
         idle_sleep_seconds: float = 1.0,
         error_backoff_seconds: float = 5.0,
     ):
         """Initialize the worker pool.
 
         Args:
-            num_workers: Concurrency for the executor pool (kept for compat;
-                actual scheduler is single — workers are executors, not pollers).
-            idle_sleep_seconds: Idle tick interval (now the fixed sleep between
+            idle_sleep_seconds: Idle tick interval (the fixed sleep between
                 drain passes; previously the busy-poll sleep).
             error_backoff_seconds: Time to sleep after errors.
         """
-        self.num_workers = num_workers
         self.idle_sleep_seconds = idle_sleep_seconds
         self.error_backoff_seconds = error_backoff_seconds
         self.pg_pool = pg_pool
@@ -168,9 +151,8 @@ class WorkerPool:
     async def start(self) -> None:
         """Start the single scheduler (arch A).
 
-        Previously this spawned num_workers independent pollers. Now it spawns
-        one scheduler task that drains the queue and sleeps to the next tick,
-        with an in-process nudge for approve/retry paths.
+        One scheduler task drains the queue and sleeps to the next tick, with
+        an in-process nudge for approve/retry paths.
         """
         if self.running:
             logger.warning("Worker pool already running")
@@ -249,13 +231,11 @@ class WorkerPool:
         """Single scheduler: drain the queue, then sleep to next tick or nudge.
 
         A pass drains: call _process_any_work until it returns False, then sleep.
-        Processing is sequential today; concurrency comes from the caller awaiting
-        each sync (calendar writes are idempotent and lease-protected). If a
-        future pass needs parallelism, fan out here behind a Semaphore sized by
-        num_workers.
+        Concurrency comes from the semaphore-bounded executor tasks (calendar
+        sync and LLM extraction) fanned out by each pass.
 
-        The nudge (approve/retry) wakes the idle sleep immediately; if missed,
-        the next tick catches it.
+        The nudge (approve/retry) and the WorkListener NOTIFY wake the idle
+        sleep immediately; if missed, the next tick catches it.
         """
         logger.info(f"{worker_id}: scheduler started (tick={self._tick_seconds()}s)")
 
@@ -299,28 +279,6 @@ class WorkerPool:
                 await asyncio.sleep(self.error_backoff_seconds)
 
         logger.info(f"{worker_id}: scheduler stopped")
-
-    # Legacy alias: previously N workers called _worker_loop. Keep for tests that
-    # patch it, but it now delegates to the scheduler.
-    async def _worker_loop(self, worker_id: str) -> None:
-        await self._scheduler_loop(worker_id)
-
-    def _idle_backoff(self, consecutive_idle: int) -> float:
-        """Retained for compat; geometric backoff now only for recovery polling.
-
-        The scheduler no longer uses this — it sleeps a fixed tick. Recovery
-        throttling in _process_integration_recovery still gates on wall-clock
-        interval (arch A keeps that). This helper remains so external callers
-        and tests that import it do not break.
-        """
-        ceiling = self.idle_sleep_seconds
-        if self.config:
-            ceiling = max(
-                float(self.config.worker_idle_max_seconds or 0.0),
-                self.idle_sleep_seconds,
-            )
-        step = min(max(consecutive_idle - 1, 0), 20)
-        return min(self.idle_sleep_seconds * (2**step), ceiling)
 
     def _get_client(self) -> Any:
         """Return the shared service client, creating it on first use.
@@ -434,12 +392,11 @@ class WorkerPool:
         step only tags blocked events with `recovery_id` and tracks
         completion, so the UI can show "Catching up" instead of "Connected".
 
-        6d: this runs on every idle tick of every worker. At
-        `worker_pool_size=3` and `worker_idle_sleep_seconds=1.0` the
-        unthrottled version issued roughly two no-op RPCs per worker per
-        second — about 500k round-trips a day with nothing recovering. Both
-        probes are therefore gated on `recovery_refresh_interval_seconds`,
-        tracked on the pool instance.
+        6d: this runs on every idle tick. Unthrottled, the old multi-worker
+        topology issued roughly two no-op RPCs per worker per second — about
+        500k round-trips a day with nothing recovering. Both probes are
+        therefore gated on `recovery_refresh_interval_seconds`, tracked on
+        the pool instance.
 
         The gate is released the moment a pass finds real work, so an active
         catch-up still advances at full tick speed; only the idle case slows
@@ -502,47 +459,6 @@ class WorkerPool:
             self._last_recovery_probe_at = 0.0
         return refreshed > 0
 
-    async def _process_scheduled_task(
-        self,
-        client: Any,
-        worker_id: str,
-        task: dict[str, Any],
-    ) -> None:
-        """Process a scheduled task (currently photo_fetch only).
-
-        Args:
-            client: Supabase client.
-            worker_id: Unique identifier for this worker.
-            task: The claimed scheduled task.
-        """
-        from selko.workers.photo_fetch import process_photo_fetch_task
-
-        task_id = task["id"]
-        task_type = task["task_type"]
-        payload = task["payload"]
-
-        logger.info(f"{worker_id}: Processing scheduled task {task_id}: {task_type}")
-
-        service_name = "google_photos" if task_type == "photo_fetch" else task_type
-
-        try:
-            if task_type == "photo_fetch":
-                await process_photo_fetch_task(client, self.config, payload)
-            else:
-                raise ValueError(f"Unknown scheduled task type: {task_type}")
-
-            complete_scheduled_task(client, task_id)
-            circuit_breaker.record_success(service_name)
-            logger.info(f"{worker_id}: Completed scheduled task {task_id}")
-
-        except Exception as e:
-            circuit_breaker.record_failure(service_name)
-            logger.error(f"{worker_id}: Scheduled task {task_id} failed: {e}", exc_info=True)
-            try:
-                fail_scheduled_task(client, task_id, str(e))
-            except Exception as fail_error:
-                logger.error(f"{worker_id}: Failed to mark task as failed: {fail_error}")
-
     async def _process_email(
         self,
         client: Any,
@@ -592,53 +508,6 @@ class WorkerPool:
                 await fail_email_processing(self.pg_pool, email_id, str(e))
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark email as failed: {fail_error}")
-
-    async def _process_photo(
-        self,
-        client: Any,
-        worker_id: str,
-        photo: dict[str, Any],
-    ) -> None:
-        """Process a photo for event extraction.
-
-        Args:
-            client: Supabase client.
-            worker_id: Unique identifier for this worker.
-            photo: The claimed photo record.
-        """
-        from selko.workers.photo_process import process_photo
-
-        photo_id = photo["id"]
-        filename = photo.get("filename", "(unknown)")[:50]
-
-        logger.info(f"{worker_id}: Processing photo {photo_id}: {filename}")
-
-        try:
-            await asyncio.wait_for(
-                process_photo(client, self.config, photo),
-                timeout=self.config.photo_processing_timeout,
-            )
-            complete_photo_processing(client, photo_id)
-            logger.info(f"{worker_id}: Completed photo {photo_id}")
-            circuit_breaker.record_success("llm")
-            circuit_breaker.record_success("google_photos")
-
-        except asyncio.TimeoutError:
-            error_msg = f"Photo processing timed out after {self.config.photo_processing_timeout}s"
-            circuit_breaker.record_failure("llm")
-            logger.error(f"{worker_id}: {error_msg} for photo {photo_id}")
-            try:
-                fail_photo_processing(client, photo_id, error_msg)
-            except Exception as fail_error:
-                logger.error(f"{worker_id}: Failed to mark photo as failed: {fail_error}")
-
-        except Exception as e:
-            circuit_breaker.record_failure("llm")
-            logger.error(f"{worker_id}: Photo {photo_id} failed: {e}", exc_info=True)
-            try:
-                fail_photo_processing(client, photo_id, str(e))
-            except Exception as fail_error:
-                logger.error(f"{worker_id}: Failed to mark photo as failed: {fail_error}")
 
     async def _process_event_sync(
         self,
