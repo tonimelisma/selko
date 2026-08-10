@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import io.github.jan.supabase.auth.status.SessionStatus
 import net.melisma.selko.data.repository.AuthRepository
+import net.melisma.selko.data.repository.LiveUpdateRepository
 import net.melisma.selko.ui.screens.auth.AuthScreen
 import net.melisma.selko.ui.screens.review.EventDetailScreen
 import org.koin.compose.koinInject
@@ -27,9 +28,22 @@ fun SelkoNavHost(
     onDeepLinkConsumed: () -> Unit = {}
 ) {
     val sessionStatus by authRepository.sessionStatus.collectAsState(initial = SessionStatus.Initializing)
+    // Live invalidation wiring (C6): establish the private Broadcast channel
+    // for the signed-in user; tear it down on sign-out.
+    val liveUpdateRepository: LiveUpdateRepository = koinInject()
 
     // Handle session status changes
     LaunchedEffect(sessionStatus) {
+        when (val status = sessionStatus) {
+            is SessionStatus.Authenticated -> {
+                status.session.user?.id?.let { liveUpdateRepository.start(it) }
+            }
+            is SessionStatus.NotAuthenticated -> {
+                liveUpdateRepository.stop()
+            }
+            else -> { /* loading */ }
+        }
+
         // On the first resolved session, NavHost has not installed its graph yet;
         // its startDestination below already reflects that session. Navigating
         // before graph installation crashes cold launches and screenshot tests.

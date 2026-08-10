@@ -33,14 +33,16 @@
 		});
 
 		// Lifecycle catch-up: visible tab / online / focus
+		// start() returns early when the channel already exists, so these
+		// handlers call catchUp() — a synthetic invalidation for every
+		// subscribed resource — which is what actually refetches.
 		function onVisible() {
 			if (document.visibilityState === 'visible' && currentUid) {
-				// Trigger a catch-up fetch via synthetic invalidation for all subscribed resources
-				liveUpdates.start(currentUid);
+				liveUpdates.catchUp();
 			}
 		}
 		function onOnline() {
-			if (currentUid) liveUpdates.start(currentUid);
+			if (currentUid) liveUpdates.catchUp();
 		}
 		document.addEventListener('visibilitychange', onVisible);
 		window.addEventListener('focus', onVisible);

@@ -61,14 +61,32 @@ final class LiveUpdateService: ObservableObject {
             }
         }
         self.channel = ch
-        do {
-            try await ch.subscribeWithError()
-            connectionStatus = "subscribed"
-            // Synthetic refresh on SUBSCRIBED per reliability model
-            await debounceAndEmit(LiveInvalidation(resource: "events", operation: "SUBSCRIBED", entityId: nil, occurredAt: Date()))
-        } catch {
-            connectionStatus = "error: \(error.localizedDescription)"
+        // Terminal channel states (auth expiry, server drop) do not self-heal.
+        // Rejoin with capped exponential backoff; on success the database
+        // snapshot is the source of truth, the channel is a hint.
+        var rejoinAttempts = 0
+        while !Task.isCancelled {
+            do {
+                try await ch.subscribeWithError()
+                rejoinAttempts = 0
+                connectionStatus = "subscribed"
+                // Synthetic refresh on SUBSCRIBED per reliability model
+                await catchUp()
+                return
+            } catch {
+                connectionStatus = "error: \(error.localizedDescription)"
+                rejoinAttempts += 1
+                let delay = min(1.0 * pow(2.0, Double(rejoinAttempts - 1)), 60.0)
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
         }
+    }
+
+    /// Re-authorize the realtime socket after a token rotation.
+    /// Private channels authorize per-JWT; without this the channel goes deaf
+    /// when the access token expires (~1h) and nothing reports it.
+    func refreshAuth(_ token: String) async {
+        await supabase.realtimeV2.setAuth(token)
     }
 
     func stop() async {
@@ -122,10 +140,12 @@ final class LiveUpdateService: ObservableObject {
         debounceTasks[resource] = task
     }
 
-    // For scenePhase catch-up
-    func refreshAll() async {
+    // For scenePhase catch-up: a synthetic invalidation for every subscribed
+    // resource. Unlike start(), this does not short-circuit when the channel
+    // already exists — the database snapshot is the source of truth.
+    func catchUp() async {
         for resource in ["events", "event_sources", "integrations", "emails"] {
-            await debounceAndEmit(LiveInvalidation(resource: resource, operation: "SUBSCRIBED", entityId: nil, occurredAt: Date()))
+            await debounceAndEmit(LiveInvalidation(resource: resource, operation: "CATCHUP", entityId: nil, occurredAt: Date()))
         }
     }
 }

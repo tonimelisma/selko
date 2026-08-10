@@ -48,6 +48,14 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
                         }
                     case .signedOut:
                         authStateSubject.send(.unauthenticated)
+                    case .tokenRefreshed:
+                        // Private realtime channels authorize per-JWT; re-auth
+                        // the socket or it goes deaf ~1h after sign-in.
+                        if let token = session?.accessToken {
+                            Task { @MainActor in
+                                await DependencyContainer.shared.liveUpdateService.refreshAuth(token)
+                            }
+                        }
                     default:
                         break
                     }

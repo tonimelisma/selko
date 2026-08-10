@@ -9,7 +9,9 @@
 
 import { supabase } from '$lib/supabase.js';
 
+/** @type {import('@supabase/supabase-js').RealtimeChannel | null} */
 let channel = null;
+/** @type {string | null} */
 let userId = null;
 let debounceTimers = new Map();
 let trailingRefresh = new Map();
@@ -22,6 +24,21 @@ let connectionStatus = 'disconnected';
  */
 
 const DEBOUNCE_MS = 350;
+
+/**
+ * Re-authorize the realtime socket after a token rotation.
+ * Private channels authorize per-JWT; without this the channel goes deaf
+ * when the access token expires (~1h) and nothing reports it.
+ * @param {string | null} accessToken
+ */
+export async function refreshAuth(accessToken) {
+	if (!accessToken) return;
+	try {
+		await supabase.realtime.setAuth(accessToken);
+	} catch (e) {
+		console.warn('[live-updates] setAuth refresh failed', e);
+	}
+}
 
 /**
  * Subscribe to invalidation for a resource.
@@ -83,6 +100,21 @@ function scheduleRefresh(resource, inv) {
 	}, DEBOUNCE_MS));
 }
 
+/**
+ * Force a catch-up refetch for every subscribed resource.
+ * Used on tab-visible, window-focus and network-online. Unlike start(),
+ * this does not short-circuit when the channel already exists.
+ */
+export function catchUp() {
+	for (const resource of [...listeners.keys()]) {
+		scheduleRefresh(resource, {
+			resource,
+			operation: 'CATCHUP',
+			occurred_at: new Date().toISOString()
+		});
+	}
+}
+
 function handleInvalidate(payload) {
 	// payload is {resource, operation, entity_id, occurred_at}
 	const inv = payload?.payload || payload;
@@ -123,16 +155,26 @@ export async function start(uid) {
 		handleInvalidate(payload);
 	});
 
+	let rejoinAttempts = 0;
 	channel.subscribe((status) => {
 		connectionStatus = status;
 		console.debug('[live-updates] channel status', status);
 		if (status === 'SUBSCRIBED') {
-			// Spec § reliability: fetch canonical snapshot on SUBSCRIBED
-			// Consumers will have subscribed via subscribe(); we trigger a
-			// synthetic refresh for each resource they care about.
-			for (const resource of [...listeners.keys()]) {
-				scheduleRefresh(resource, { resource, operation: 'SUBSCRIBED', occurred_at: new Date().toISOString() });
-			}
+			rejoinAttempts = 0;
+			catchUp();
+			return;
+		}
+		if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+			// A private channel that fails authorization will not self-heal.
+			// Rejoin with backoff and catch up from the database on success —
+			// the database is the source of truth, the channel is a hint.
+			const delay = Math.min(1000 * 2 ** rejoinAttempts, 60000);
+			rejoinAttempts += 1;
+			const uid = userId;
+			setTimeout(() => {
+				if (!uid) return;
+				stop().then(() => start(uid));
+			}, delay);
 		}
 	});
 }

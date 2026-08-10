@@ -104,7 +104,7 @@ class ReviewQueueViewModel(
 
     fun onResume() {
         viewModelScope.launch {
-            liveUpdateRepository?.refreshAll()
+            liveUpdateRepository?.catchUp()
             checkIntegrations()
         }
     }
