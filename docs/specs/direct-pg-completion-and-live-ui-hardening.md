@@ -134,6 +134,36 @@ mitigation in the spec and nothing in the code.
 Replace `create_pool` in full:
 
 ```python
+def _enable_tcp_keepalives(idle_seconds: int):
+    """Pool init hook: set SO_KEEPALIVE and TCP keepalive timers (H3).
+
+    asyncpg 0.31 has no keepalive parameter — both `connect_kwargs` and
+    top-level `keepalives` kwargs are rejected with TypeError at connect time
+    (verified against 0.31.0; the asyncpg master signature is the same). The
+    socket is only reachable through the pool's documented `init` callback,
+    which runs on every new pooled connection.
+    """
+    import socket
+
+    keepidle = getattr(socket, "TCP_KEEPIDLE", None) or getattr(socket, "TCP_KEEPALIVE", None)
+    keepintvl = getattr(socket, "TCP_KEEPINTVL", None)
+    keepcnt = getattr(socket, "TCP_KEEPCNT", None)
+
+    async def _init(connection) -> None:
+        sock = connection._transport.get_extra_info("socket")
+        if sock is None:
+            return
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        if keepidle is not None:
+            sock.setsockopt(socket.IPPROTO_TCP, keepidle, idle_seconds)
+        if keepintvl is not None:
+            sock.setsockopt(socket.IPPROTO_TCP, keepintvl, 10)
+        if keepcnt is not None:
+            sock.setsockopt(socket.IPPROTO_TCP, keepcnt, 3)
+
+    return _init
+
+
 async def create_pool(config) -> "asyncpg.Pool":
     """Session-pooler pool with TCP keepalives and statement cache disabled.
 
@@ -157,14 +187,7 @@ async def create_pool(config) -> "asyncpg.Pool":
         command_timeout=float(getattr(config, "pg_command_timeout_seconds", 30) or 30),
         timeout=getattr(config, "pg_connect_timeout_seconds", 10) or 10,
         server_settings={"application_name": "selko-worker"},
-        # H3: below the ~350s idle timeout common to NAT and load balancers.
-        # asyncpg sets no keepalives by default.
-        connect_kwargs={
-            "keepalives": 1,
-            "keepalives_idle": keepalive,
-            "keepalives_interval": 10,
-            "keepalives_count": 3,
-        },
+        init=_enable_tcp_keepalives(keepalive),
     )
     logger.info(
         "Created asyncpg session-pooler pool min=%s max=%s keepalive_idle=%ss",
@@ -175,11 +198,17 @@ async def create_pool(config) -> "asyncpg.Pool":
     return pool
 ```
 
-**On `connect_kwargs`:** asyncpg forwards unknown keyword arguments from
-`create_pool` to `connect`. If your installed asyncpg version rejects
-`connect_kwargs`, pass the four keepalive keys as top-level kwargs to
-`asyncpg.create_pool` instead. Decide which form your version accepts by running
-the C1 test below — do not guess.
+**On keepalives and asyncpg 0.31:** asyncpg has **no** keepalive parameter.
+Both `connect_kwargs` and top-level `keepalives` kwargs raise
+`TypeError: connect() got an unexpected keyword argument` at connect time
+(verified against 0.31.0 and against asyncpg master as of 2026-08-09). The
+keepalives are therefore applied by the pool's documented `init` callback,
+touching the raw socket via `connection._transport.get_extra_info("socket")`.
+`_transport` is private API but is in `Connection.__slots__` and has been
+stable for the package's lifetime; keep the accessor in one place
+(`_enable_tcp_keepalives`) so a future asyncpg with native keepalives can
+swap it out. macOS exposes `TCP_KEEPALIVE` where Linux exposes `TCP_KEEPIDLE`;
+the helper uses whichever exists.
 
 ### C1.3 Replace the hardcoded `command_timeout=10`
 
@@ -296,9 +325,40 @@ def test_create_pool_sets_keepalives_and_timeout(monkeypatch):
 
     assert captured["statement_cache_size"] == 0
     assert captured["command_timeout"] == 30
-    flat = {**captured, **captured.get("connect_kwargs", {})}
-    assert flat["keepalives"] == 1
-    assert flat["keepalives_idle"] == 60
+    assert captured["server_settings"] == {"application_name": "selko-worker"}
+    assert captured["init"] is not None  # keepalives applied via init hook
+
+
+def test_keepalive_init_hook_sets_socket_options():
+    """H3: the pool init hook enables SO_KEEPALIVE with idle/interval/count."""
+    import socket
+    from selko.services.pg import _enable_tcp_keepalives
+
+    calls = []
+
+    class FakeSock:
+        def setsockopt(self, level, opt, val):
+            calls.append((level, opt, val))
+
+    class FakeTransport:
+        def get_extra_info(self, name):
+            assert name == "socket"
+            return FakeSock()
+
+    class FakeConn:
+        _transport = FakeTransport()
+
+    import asyncio
+    asyncio.run(_enable_tcp_keepalives(60)(FakeConn()))
+
+    opts = {opt for _, opt, _ in calls}
+    assert socket.SO_KEEPALIVE in opts
+    keepidle = getattr(socket, "TCP_KEEPIDLE", None) or getattr(socket, "TCP_KEEPALIVE", None)
+    assert keepidle in opts
+    if hasattr(socket, "TCP_KEEPINTVL"):
+        assert socket.TCP_KEEPINTVL in opts
+    if hasattr(socket, "TCP_KEEPCNT"):
+        assert socket.TCP_KEEPCNT in opts
 ```
 
 ### DoD
