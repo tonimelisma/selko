@@ -79,7 +79,7 @@ class HistoryViewModel(
 
     fun onResume() {
         viewModelScope.launch {
-            liveUpdateRepository?.refreshAll()
+            liveUpdateRepository?.catchUp()
             refreshForLiveUpdate()
         }
     }

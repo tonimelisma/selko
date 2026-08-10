@@ -98,10 +98,19 @@ final class AppRouter {
             isLoading = false
             isAuthenticated = true
             userEmail = user.email
+            // Live invalidation wiring (C6): establish the private Broadcast
+            // channel for this user. The view models catch up from the
+            // database on scene-active via catchUp(); the channel is the hint.
+            Task { @MainActor in
+                await DependencyContainer.shared.liveUpdateService.start(userId: user.id)
+            }
         case .unauthenticated:
             isLoading = false
             isAuthenticated = false
             userEmail = ""
+            Task { @MainActor in
+                await DependencyContainer.shared.liveUpdateService.stop()
+            }
         }
     }
 }

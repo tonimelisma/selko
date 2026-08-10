@@ -94,7 +94,7 @@ final class ReviewQueueViewModel {
 
     func handleScenePhaseActive() async {
         // Ensure subscription and do catch-up fetch per spec
-        if let liveUpdateService { await liveUpdateService.refreshAll() }
+        if let liveUpdateService { await liveUpdateService.catchUp() }
         await load()
     }
 

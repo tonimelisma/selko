@@ -58,7 +58,7 @@ final class HistoryViewModel {
     }
 
     func handleScenePhaseActive() async {
-        if let liveUpdateService { await liveUpdateService.refreshAll() }
+        if let liveUpdateService { await liveUpdateService.catchUp() }
         await refreshForLiveUpdate()
     }
 

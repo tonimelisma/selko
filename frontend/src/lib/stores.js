@@ -33,7 +33,10 @@ export async function initAuth() {
 	user.set(session?.user ?? null);
 	loading.set(false);
 
-	supabase.auth.onAuthStateChange((_event, session) => {
+	supabase.auth.onAuthStateChange((event, session) => {
 		user.set(session?.user ?? null);
+		if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+			import('$lib/live-updates.js').then((m) => m.refreshAuth(session?.access_token ?? null));
+		}
 	});
 }
