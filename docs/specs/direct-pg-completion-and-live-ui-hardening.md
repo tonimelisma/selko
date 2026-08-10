@@ -1,6 +1,7 @@
 # Direct-PG Completion and Live-UI Hardening
 
-**Status:** planned — remediation of PRs #262–#278 (Aug 6–9 batch)
+**Status:** implemented — C1 #279, C2 #280, C3 #281, C4 #282, C5 #283, C6 #284, C7 #285, C8 (committed to main as 0654d4fe), C9 #286.
+Every increment's DoD command was run and its output pasted into the PR body.
 
 **Supersedes the "Status: implemented" line of**
 [`direct-postgres-work-transport.md`](direct-postgres-work-transport.md). That

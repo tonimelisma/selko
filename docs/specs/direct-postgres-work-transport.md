@@ -1,6 +1,12 @@
 # Direct Postgres Work Transport
 
-**Status:** PARTIALLY implemented — **do not trust the previous status line, which was wrong.**
+**Status:** implemented — the direct-pg work transport is complete. The
+Aug 6–9 batch's unreachable-code increments (Inc3–Inc5) were finished by the
+remediation plan in `direct-pg-completion-and-live-ui-hardening.md` (C1 #279,
+C2 #280, C3 #281): the asyncpg session-pooler pool is mandatory at startup,
+every trusted-worker coordination call runs over it (no PostgREST twins), and
+the LISTEN/NOTIFY WorkListener is live. Inc2's missing semaphore landed in C4
+#282, dead code/config was purged in C5 #283.
 
 - **Inc0 (#262) and Inc1 (#263) are real and shipped.** LLM egress metering and
   the payload fixes work.
