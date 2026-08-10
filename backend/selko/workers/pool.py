@@ -37,6 +37,7 @@ from selko.services.scheduled_tasks import (
 from selko.services.emails import (
     EmailError,
     claim_pending_email,
+    claim_pending_email_via_pool,
     complete_email_processing,
     fail_email_processing,
 )
