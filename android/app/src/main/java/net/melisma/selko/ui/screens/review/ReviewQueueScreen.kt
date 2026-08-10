@@ -210,6 +210,31 @@ fun ReviewQueueScreen(
                 Text(error)
             }
         }
+
+        // Reject undo snackbar - survives empty state, batches consecutive rejects
+        if (uiState.showUndoSnackbar) {
+            Snackbar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                action = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SelkoButton(
+                            text = stringResource(R.string.history_undo),
+                            onClick = viewModel::undoLastRejected,
+                            role = SelkoActionRole.Primary
+                        )
+                        SelkoButton(
+                            text = stringResource(R.string.review_dismiss),
+                            onClick = viewModel::dismissUndo,
+                            role = SelkoActionRole.Tertiary
+                        )
+                    }
+                }
+            ) {
+                Text(uiState.undoSnackbarMessage)
+            }
+        }
     }
 }
 
