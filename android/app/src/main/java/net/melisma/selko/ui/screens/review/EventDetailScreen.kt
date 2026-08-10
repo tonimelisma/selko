@@ -109,7 +109,7 @@ fun EventDetailScreen(
             )
         },
         bottomBar = {
-            if (!uiState.isLoading && uiState.event != null) {
+            if (!uiState.isLoading && uiState.event != null && !uiState.showUndoSnackbar) {
                 BottomAppBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 0.dp

@@ -305,7 +305,8 @@ class EventDetailViewModel(
             it.copy(
                 showUndoSnackbar = false,
                 undoSnackbarMessage = "",
-                lastRejectedEvent = null
+                lastRejectedEvent = null,
+                isDone = true
             )
         }
     }
