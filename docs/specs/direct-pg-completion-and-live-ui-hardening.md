@@ -1165,9 +1165,15 @@ appearing once:
         IF (NEW.status IS DISTINCT FROM OLD.status
             OR NEW.title IS DISTINCT FROM OLD.title
             OR NEW.start_datetime IS DISTINCT FROM OLD.start_datetime
-            OR NEW.end_datetime IS DISTINCT FROM OLD.end_datetime
-            OR NEW.sync_status IS DISTINCT FROM OLD.sync_status) THEN
+            OR NEW.end_datetime IS DISTINCT FROM OLD.end_datetime) THEN
 ```
+
+**Spec correction (found while running C3):** the 20260809000003 original also
+references `NEW.sync_status`, a column that has never existed on `public.events`
+— every UPDATE on events raises `record "new" has no field "sync_status"`.
+That reference is dropped here too, not just deduplicated. Do not reintroduce
+it; if a future spec adds a `sync_status` column it must update this trigger
+in the same migration.
 
 If C7 has already landed, fold this into C7's migration instead of adding a
 second one.
@@ -1186,6 +1192,20 @@ DELETE FROM public.scheduled_tasks WHERE task_type = 'email_fetch';
 ```
 
 Record the deleted row count in the PR body.
+
+### C5.7 Repair `save_email_with_attachment_descriptors`
+
+**Spec correction (found while running C3):** migration `20260809000001`
+overwrote this function with a body that inserts into
+`public.attachments (file_name, file_size)` — columns that have never existed
+(the real columns are `filename`, `size_bytes`). Any environment that has
+`20260809000001` applied raises `column "file_name" of relation "attachments"
+does not exist` on every acquisition. New migration
+`supabase/migrations/20260811000004_repair_atomic_email_descriptors.sql`
+re-applies the correct body from `20260803000002` verbatim (the
+`jsonb_populate_record` + partial-unique-index `ON CONFLICT` version). Verify
+the fix by running the C2 acquisition integration tests against a database
+with `20260809000001` applied.
 
 ### Tests
 
@@ -1471,10 +1491,13 @@ list**, so it fires on every column change including lease churn:
 ```sql
 DROP TRIGGER IF EXISTS trg_events_broadcast_upd ON public.events;
 CREATE TRIGGER trg_events_broadcast_upd
-    AFTER UPDATE OF status, title, start_datetime, end_datetime, sync_status
+    AFTER UPDATE OF status, title, start_datetime, end_datetime
     ON public.events
     FOR EACH ROW EXECUTE FUNCTION public.trg_events_broadcast();
 ```
+
+(`sync_status` was in the original C7.3 text but the column does not exist on
+`public.events` — see the C5.5 correction.)
 
 Fold C5.5's duplicate-condition fix into this migration if C5 has not landed.
 

@@ -62,7 +62,7 @@ async def health_db_check(
 
 
 @router.get("/health/ingestion", response_model=HealthIngestionResponse)
-async def health_ingestion_check() -> HealthIngestionResponse:
+async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
     """Live ingestion health — the surface Render's health check should watch.
 
     ``/health`` returns ``ok`` unconditionally; this route reflects the actual
@@ -77,6 +77,11 @@ async def health_ingestion_check() -> HealthIngestionResponse:
     # time (the routes module is imported during app construction).
     from selko.api.app import ingestion_runtime
 
+    listener_status = None
+    work_listener = getattr(request.app.state, "work_listener", None)
+    if work_listener is not None:
+        listener_status = work_listener.status()
+
     if ingestion_runtime is None:
         # Background processing disabled (local servers, tests, CI). Nothing
         # is running, so the system cannot be "down"; report the disabled
@@ -84,6 +89,7 @@ async def health_ingestion_check() -> HealthIngestionResponse:
         return HealthIngestionResponse(
             status="ok",
             background_processing_enabled=False,
+            listener=listener_status,
         )
 
     try:
@@ -94,12 +100,14 @@ async def health_ingestion_check() -> HealthIngestionResponse:
             status="degraded",
             background_processing_enabled=True,
             instance_id=ingestion_runtime.instance_id,
+            listener=listener_status,
         )
 
     return HealthIngestionResponse(
         status=snapshot["status"],
         background_processing_enabled=True,
         instance_id=snapshot.get("instance_id"),
+        listener=listener_status,
         tasks=[
             HealthIngestionTaskResponse(**task) for task in snapshot.get("tasks", [])
         ],

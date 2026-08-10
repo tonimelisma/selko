@@ -125,6 +125,7 @@ class HealthIngestionResponse(BaseModel):
     items_dead_letter: int | None = None
     attachments_dead_letter: int | None = None
     open_incidents: int | None = None
+    listener: dict | None = None
 
 
 class EgressOperationResponse(BaseModel):
