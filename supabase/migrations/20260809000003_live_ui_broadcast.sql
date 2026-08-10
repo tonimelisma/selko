@@ -149,7 +149,7 @@ CREATE TRIGGER trg_integrations_broadcast_upd
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_policies WHERE polname = 'live_ui_broadcast_select_own_topic' AND tablename = 'messages' AND schemaname = 'realtime'
+        SELECT 1 FROM pg_policies WHERE policyname = 'live_ui_broadcast_select_own_topic' AND tablename = 'messages' AND schemaname = 'realtime'
     ) THEN
         CREATE POLICY live_ui_broadcast_select_own_topic ON realtime.messages
             FOR SELECT TO authenticated
