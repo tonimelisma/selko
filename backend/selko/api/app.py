@@ -121,7 +121,6 @@ async def lifespan(app: FastAPI):
         app.state.work_listener = work_listener
 
         worker_pool = WorkerPool(
-            num_workers=config.worker_pool_size,
             idle_sleep_seconds=config.worker_idle_sleep_seconds,
             error_backoff_seconds=config.worker_error_backoff_seconds,
             pg_pool=pg_pool,
