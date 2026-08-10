@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 from typing import Any, Iterable
 
 from postgrest.exceptions import APIError as PostgrestAPIError
-from supabase import Client
 
 from selko.config import Config
 from selko.services.google_errors import (
@@ -198,89 +197,78 @@ class SyncClaim:
     lease_expires_at: str | None = None
 
 
-def _rpc_data(result: Any) -> list[dict[str, Any]]:
-    data = getattr(result, "data", None)
-    if data is None:
-        return []
-    if isinstance(data, dict):
-        return [data]
-    return list(data)
-
-
 class EmailIngestionRepository:
     """Small service-role repository around the v2 coordination RPCs.
 
-    Inc4: when pg_pool is set, claim/heartbeat/complete paths use direct
-    asyncpg (port 5432) instead of PostgREST RPCs. Cost ~100B vs 1690B.
+    Every operation runs over the asyncpg session-pooler pool (port 5432) —
+    there is exactly one implementation per operation, and no PostgREST twin.
+    Cost ~100B vs 1690B per call.
     """
 
-    def __init__(self, client: Client, config: Config, pg_pool=None):
-        self.client = client
+    def __init__(self, config: Config, pg_pool):
         self.config = config
         self.pg_pool = pg_pool
 
-    def claim_due_sync(self, worker_id: str) -> SyncClaim | None:
-        result = self.client.rpc(
-            "claim_due_email_sync",
-            {"p_worker_id": worker_id, "p_lease_seconds": self.config.email_lease_seconds},
-        ).execute()
-        rows = _rpc_data(result)
-        return SyncClaim(**rows[0]) if rows else None
+    async def claim_due_sync(self, worker_id: str) -> SyncClaim | None:
+        try:
+            row = await self.pg_pool.fetchrow(
+                "SELECT * FROM public.claim_due_email_sync($1, $2)",
+                worker_id, self.config.email_lease_seconds,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to claim due email sync: {exc}") from exc
+        return SyncClaim(**dict(row)) if row else None
 
-    def claim_due_reconciliation(self, worker_id: str) -> SyncClaim | None:
-        result = self.client.rpc(
-            "claim_due_email_reconciliation",
-            {"p_worker_id": worker_id, "p_lease_seconds": self.config.email_lease_seconds},
-        ).execute()
-        rows = _rpc_data(result)
-        return SyncClaim(**rows[0]) if rows else None
+    async def claim_due_reconciliation(self, worker_id: str) -> SyncClaim | None:
+        try:
+            row = await self.pg_pool.fetchrow(
+                "SELECT * FROM public.claim_due_email_reconciliation($1, $2)",
+                worker_id, self.config.email_lease_seconds,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to claim due email reconciliation: {exc}") from exc
+        return SyncClaim(**dict(row)) if row else None
 
-    def heartbeat_sync(self, integration_id: str, worker_id: str) -> bool:
-        result = self.client.rpc(
-            "heartbeat_email_sync",
-            {
-                "p_integration_id": integration_id,
-                "p_worker_id": worker_id,
-                "p_lease_seconds": self.config.email_lease_seconds,
-            },
-        ).execute()
-        return bool(getattr(result, "data", False))
+    async def heartbeat_sync(self, integration_id: str, worker_id: str) -> bool:
+        try:
+            val = await self.pg_pool.fetchval(
+                "SELECT public.heartbeat_email_sync($1, $2, $3)",
+                integration_id, worker_id, self.config.email_lease_seconds,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to heartbeat email sync: {exc}") from exc
+        return bool(val)
 
-    def require_heartbeat(self, integration_id: str, worker_id: str) -> None:
-        if not self.heartbeat_sync(integration_id, worker_id):
+    async def require_heartbeat(self, integration_id: str, worker_id: str) -> None:
+        if not await self.heartbeat_sync(integration_id, worker_id):
             raise LeaseLostError("email sync lease is no longer owned")
 
-    def complete_sync(self, claim: SyncClaim, worker_id: str, *, reconciled: bool = False) -> bool:
-        result = self.client.rpc(
-            "complete_email_sync",
-            {
-                "p_integration_id": claim.integration_id,
-                "p_run_id": claim.run_id,
-                "p_worker_id": worker_id,
-                "p_poll_interval_seconds": self.config.email_poll_interval_seconds,
-                "p_reconciled": reconciled,
-            },
-        ).execute()
-        return bool(getattr(result, "data", False))
+    async def complete_sync(self, claim: SyncClaim, worker_id: str, *, reconciled: bool = False) -> bool:
+        try:
+            val = await self.pg_pool.fetchval(
+                "SELECT public.complete_email_sync($1, $2, $3, $4, $5)",
+                claim.integration_id, claim.run_id, worker_id,
+                self.config.email_poll_interval_seconds, reconciled,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to complete email sync: {exc}") from exc
+        return bool(val)
 
-    def fail_sync(self, claim: SyncClaim, worker_id: str, exc: BaseException) -> bool:
+    async def fail_sync(self, claim: SyncClaim, worker_id: str, exc: BaseException) -> bool:
         classification = classify_email_error(exc)
-        result = self.client.rpc(
-            "fail_email_sync",
-            {
-                "p_integration_id": claim.integration_id,
-                "p_run_id": claim.run_id,
-                "p_worker_id": worker_id,
-                "p_error_code": classification.code,
-                "p_error_detail": safe_error_detail(exc),
-                "p_retry_base_seconds": self.config.email_retry_base_seconds,
-                "p_retry_max_seconds": self.config.email_retry_max_seconds,
-                "p_auth_failure": classification.auth_failure,
-            },
-        ).execute()
-        return bool(getattr(result, "data", False))
+        try:
+            val = await self.pg_pool.fetchval(
+                "SELECT public.fail_email_sync($1, $2, $3, $4, $5, $6, $7, $8)",
+                claim.integration_id, claim.run_id, worker_id,
+                classification.code, safe_error_detail(exc),
+                self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
+                classification.auth_failure,
+            )
+        except Exception as e:
+            raise EmailIngestionError(f"Failed to fail email sync: {e}") from e
+        return bool(val)
 
-    def upsert_discovered(
+    async def upsert_discovered(
         self,
         claim: SyncClaim,
         items: Iterable[dict[str, Any]],
@@ -289,64 +277,64 @@ class EmailIngestionRepository:
         folder_id: str | None = None,
     ) -> dict[str, int]:
         """Persist one bounded provider page before exposing its cursor."""
+        import json
+
         page = list(items)
         if len(page) > MAX_PAGE_ITEMS:
             raise ValueError(f"provider page exceeds {MAX_PAGE_ITEMS} identities")
-        result = self.client.rpc(
-            "upsert_discovered_email_items",
-            {
-                "p_integration_id": claim.integration_id,
-                "p_run_id": claim.run_id,
-                "p_items": page,
-                "p_cursor": cursor,
-                "p_folder_id": folder_id,
-            },
-        ).execute()
-        row = _rpc_data(result)
-        return row[0] if row else {"inserted_count": 0, "existing_count": 0, "provider_ids_seen": 0}
+        try:
+            row = await self.pg_pool.fetchrow(
+                "SELECT * FROM public.upsert_discovered_email_items($1, $2, $3::jsonb, $4, $5)",
+                claim.integration_id, claim.run_id, json.dumps(page), cursor, folder_id,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to upsert discovered email items: {exc}") from exc
+        return dict(row) if row else {"inserted_count": 0, "existing_count": 0, "provider_ids_seen": 0}
 
-    def known_provider_message_ids(
+    async def known_provider_message_ids(
         self, integration_id: str, provider_message_ids: Iterable[str]
     ) -> set[str]:
         """Subset of ``provider_message_ids`` already discovered for this integration.
 
-        Queried in chunks rather than one ``in_`` list: PostgREST sends the
-        filter in the URL, and a full reconcile window can hold tens of
-        thousands of IDs, which would blow past the request-line limit. The
-        chunk size also keeps each response under the PostgREST row cap.
+        Queried in chunks so a full reconcile window — tens of thousands of
+        IDs — never materializes in one query plan or one response.
         """
         known: set[str] = set()
         ids = [pid for pid in provider_message_ids if pid]
-        for start in range(0, len(ids), KNOWN_ID_QUERY_CHUNK):
-            chunk = ids[start : start + KNOWN_ID_QUERY_CHUNK]
-            rows = (
-                self.client.table("email_ingestion_items")
-                .select("provider_message_id")
-                .eq("integration_id", integration_id)
-                .in_("provider_message_id", chunk)
-                .execute()
-            ).data or []
-            known.update(
-                row["provider_message_id"] for row in rows if row.get("provider_message_id")
-            )
+        try:
+            for start in range(0, len(ids), KNOWN_ID_QUERY_CHUNK):
+                chunk = ids[start : start + KNOWN_ID_QUERY_CHUNK]
+                rows = await self.pg_pool.fetch(
+                    "SELECT provider_message_id FROM public.email_ingestion_items"
+                    " WHERE integration_id = $1 AND provider_message_id = ANY($2::text[])",
+                    integration_id, chunk,
+                )
+                known.update(row["provider_message_id"] for row in rows if row.get("provider_message_id"))
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to query known provider message ids: {exc}") from exc
         return known
 
-    def claim_item(self, worker_id: str) -> dict[str, Any] | None:
-        result = self.client.rpc(
-            "claim_email_ingestion_item",
-            {"p_worker_id": worker_id, "p_lease_seconds": self.config.email_lease_seconds},
-        ).execute()
-        rows = _rpc_data(result)
-        return rows[0] if rows else None
+    async def claim_item(self, worker_id: str) -> dict[str, Any] | None:
+        try:
+            row = await self.pg_pool.fetchrow(
+                "SELECT * FROM public.claim_email_ingestion_item($1, $2)",
+                worker_id, self.config.email_lease_seconds,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to claim email ingestion item: {exc}") from exc
+        return dict(row) if row else None
 
-    def complete_item(self, item_id: str, worker_id: str, email_id: str) -> bool:
-        result = self.client.rpc(
-            "complete_email_ingestion_item",
-            {"p_item_id": item_id, "p_worker_id": worker_id, "p_email_id": email_id},
-        ).execute()
-        return bool(getattr(result, "data", False))
+    async def complete_item(self, item_id: str, worker_id: str, email_id: str) -> bool:
+        try:
+            val = await self.pg_pool.fetchval(
+                "SELECT public.complete_email_ingestion_item($1, $2, $3)",
+                item_id, worker_id, email_id,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to complete email ingestion item: {exc}") from exc
+        return bool(val)
 
-    def save_email_with_attachment_descriptors(
+    async def save_email_with_attachment_descriptors(
         self,
         user_id: str,
         email_payload: dict[str, Any],
@@ -354,34 +342,26 @@ class EmailIngestionRepository:
     ) -> str:
         """Atomically upsert the email row and its attachment descriptors.
 
-        One RPC commits both writes in a single transaction so the SQL
+        One SQL call commits both writes in a single transaction so the
         readiness gate (``claim_unprocessed_email``) never observes an email
         row whose attachment descriptors have not been written yet — the race
         that let an LLM worker claim an email before its attachment rows
-        existed, causing silent flaky extraction. Replaces the previous
-        ``save_emails`` + N×(SELECT+INSERT) sequence in ``acquire_item``.
+        existed, causing silent flaky extraction.
         """
-        result = self.client.rpc(
-            "save_email_with_attachment_descriptors",
-            {
-                "p_user_id": str(user_id),
-                "p_email": email_payload,
-                "p_descriptors": list(descriptors),
-            },
-        ).execute()
-        data = getattr(result, "data", None)
-        # PostgREST returns a scalar-RETURNS-uuid function call as the scalar
-        # directly; guard both that and a row-list shape.
-        if data is None:
-            raise RuntimeError("email upsert returned no row")
-        if isinstance(data, list):
-            if not data:
-                raise RuntimeError("email upsert returned no row")
-            row = data[0]
-            return row["id"] if isinstance(row, dict) else str(row)
-        return str(data)
+        import json
 
-    def fail_item(self, item_id: str, worker_id: str, exc: BaseException, *, terminal: bool | None = None) -> bool:
+        try:
+            email_id = await self.pg_pool.fetchval(
+                "SELECT public.save_email_with_attachment_descriptors($1::uuid, $2::jsonb, $3::jsonb)",
+                user_id, json.dumps(email_payload), json.dumps(list(descriptors)),
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to save email with attachment descriptors: {exc}") from exc
+        if email_id is None:
+            raise EmailIngestionError("email upsert returned no row")
+        return str(email_id)
+
+    async def fail_item(self, item_id: str, worker_id: str, exc: BaseException, *, terminal: bool | None = None) -> bool:
         """Record an acquisition failure.
 
         ``terminal`` defaults to the classifier's ``retryable`` flag: only
@@ -393,87 +373,51 @@ class EmailIngestionRepository:
         classification = classify_email_error(exc)
         if terminal is None:
             terminal = not classification.retryable
-        result = self.client.rpc(
-            "fail_email_ingestion_item",
-            {
-                "p_item_id": item_id,
-                "p_worker_id": worker_id,
-                "p_error_code": classification.code,
-                "p_retry_base_seconds": self.config.email_retry_base_seconds,
-                "p_retry_max_seconds": self.config.email_retry_max_seconds,
-                "p_terminal": terminal,
-            },
-        ).execute()
-        return bool(getattr(result, "data", False))
-
-    def remove_item(self, item_id: str, worker_id: str) -> bool:
-        result = (
-            self.client.table("email_ingestion_items")
-            .update({
-                "acquisition_status": "removed",
-                "lease_owner": None,
-                "lease_expires_at": None,
-                "completed_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            })
-            .eq("id", item_id)
-            .eq("lease_owner", worker_id)
-            .execute()
-        )
-        return bool(getattr(result, "data", None))
-
-    # --- Inc4 direct-pg async variants (pool) ---
-    async def claim_due_sync_via_pool(self, worker_id: str):
-        row = await self.pg_pool.fetchrow("SELECT * FROM public.claim_due_email_sync($1, $2)", worker_id, self.config.email_lease_seconds)
-        return SyncClaim(**dict(row)) if row else None
-
-    async def claim_due_reconciliation_via_pool(self, worker_id: str):
-        row = await self.pg_pool.fetchrow("SELECT * FROM public.claim_due_email_reconciliation($1, $2)", worker_id, self.config.email_lease_seconds)
-        return SyncClaim(**dict(row)) if row else None
-
-    async def heartbeat_sync_via_pool(self, integration_id: str, worker_id: str) -> bool:
-        val = await self.pg_pool.fetchval("SELECT public.heartbeat_email_sync($1, $2, $3)", integration_id, worker_id, self.config.email_lease_seconds)
+        try:
+            val = await self.pg_pool.fetchval(
+                "SELECT public.fail_email_ingestion_item($1, $2, $3, $4, $5, $6)",
+                item_id, worker_id, classification.code,
+                self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
+                terminal,
+            )
+        except Exception as e:
+            raise EmailIngestionError(f"Failed to fail email ingestion item: {e}") from e
         return bool(val)
 
-    async def complete_sync_via_pool(self, claim, worker_id: str, *, reconciled: bool = False) -> bool:
-        val = await self.pg_pool.fetchval("SELECT public.complete_email_sync($1, $2, $3, $4, $5)", claim.integration_id, claim.run_id, worker_id, self.config.email_poll_interval_seconds, reconciled)
+    async def remove_item(self, item_id: str, worker_id: str) -> bool:
+        try:
+            row = await self.pg_pool.fetchval(
+                "UPDATE public.email_ingestion_items"
+                " SET acquisition_status = 'removed', lease_owner = NULL,"
+                " lease_expires_at = NULL, completed_at = $3, updated_at = $3"
+                " WHERE id = $1 AND lease_owner = $2 RETURNING id",
+                item_id, worker_id, datetime.now(timezone.utc),
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to remove email ingestion item: {exc}") from exc
+        return row is not None
+
+    async def claim_attachment(self, worker_id: str) -> dict[str, Any] | None:
+        try:
+            row = await self.pg_pool.fetchrow(
+                "SELECT * FROM public.claim_email_attachment($1, $2)",
+                worker_id, self.config.email_lease_seconds,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to claim email attachment: {exc}") from exc
+        return dict(row) if row else None
+
+    async def finish_attachment(self, attachment_id: str, worker_id: str, status: str, error_code: str | None = None) -> bool:
+        try:
+            val = await self.pg_pool.fetchval(
+                "SELECT public.finish_email_attachment($1, $2, $3, $4)",
+                attachment_id, worker_id, status, error_code,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to finish email attachment: {exc}") from exc
         return bool(val)
 
-    async def claim_item_via_pool(self, worker_id: str):
-        row = await self.pg_pool.fetchrow("SELECT * FROM public.claim_email_ingestion_item($1, $2)", worker_id, self.config.email_lease_seconds)
-        return dict(row) if row else None
-
-    async def claim_attachment_via_pool(self, worker_id: str):
-        row = await self.pg_pool.fetchrow("SELECT * FROM public.claim_email_attachment($1, $2)", worker_id, self.config.email_lease_seconds)
-        return dict(row) if row else None
-
-    async def upsert_discovered_via_pool(self, claim, items, *, cursor=None, folder_id=None):
-        import json
-        page = list(items)
-        val = await self.pg_pool.fetchrow("SELECT * FROM public.upsert_discovered_email_items($1, $2, $3, $4, $5)", claim.integration_id, claim.run_id, json.dumps(page), cursor, folder_id)
-        return dict(val) if val else {"inserted_count": 0}
-
-    def claim_attachment(self, worker_id: str) -> dict[str, Any] | None:
-        result = self.client.rpc(
-            "claim_email_attachment",
-            {"p_worker_id": worker_id, "p_lease_seconds": self.config.email_lease_seconds},
-        ).execute()
-        rows = _rpc_data(result)
-        return rows[0] if rows else None
-
-    def finish_attachment(self, attachment_id: str, worker_id: str, status: str, error_code: str | None = None) -> bool:
-        result = self.client.rpc(
-            "finish_email_attachment",
-            {
-                "p_attachment_id": attachment_id,
-                "p_worker_id": worker_id,
-                "p_status": status,
-                "p_error_code": error_code,
-            },
-        ).execute()
-        return bool(getattr(result, "data", False))
-
-    def ensure_attachment_descriptors(
+    async def ensure_attachment_descriptors(
         self,
         email_id: str,
         user_id: str,
@@ -481,33 +425,43 @@ class EmailIngestionRepository:
     ) -> int:
         """Create pending attachment work without resetting stored rows."""
         created = 0
-        for descriptor in descriptors:
-            provider_id = descriptor.get("provider_attachment_id") or descriptor.get("attachment_id")
-            if not provider_id:
-                continue
-            existing = (
-                self.client.table("attachments")
-                .select("id")
-                .eq("email_id", email_id)
-                .eq("provider_attachment_id", provider_id)
-                .maybe_single()
-                .execute()
-            )
-            if getattr(existing, "data", None):
-                continue
-            self.client.table("attachments").insert({
-                "user_id": user_id,
-                "email_id": email_id,
-                "provider_attachment_id": provider_id,
-                "filename": descriptor.get("filename") or descriptor.get("name") or "unnamed",
-                "mime_type": descriptor.get("mime_type") or descriptor.get("contentType") or "application/octet-stream",
-                "size_bytes": descriptor.get("size_bytes") or descriptor.get("size") or 0,
-                "ingestion_status": "pending",
-            }).execute()
-            created += 1
+        try:
+            for descriptor in descriptors:
+                provider_id = descriptor.get("provider_attachment_id") or descriptor.get("attachment_id")
+                if not provider_id:
+                    continue
+                existing = await self.pg_pool.fetchval(
+                    "SELECT id FROM public.attachments"
+                    " WHERE email_id = $1 AND provider_attachment_id = $2",
+                    email_id, provider_id,
+                )
+                if existing:
+                    continue
+                await self.pg_pool.execute(
+                    "INSERT INTO public.attachments"
+                    " (user_id, email_id, provider_attachment_id, filename, mime_type,"
+                    " size_bytes, ingestion_status)"
+                    " VALUES ($1, $2, $3, $4, $5, $6, 'pending')",
+                    user_id, email_id, provider_id,
+                    descriptor.get("filename") or descriptor.get("name") or "unnamed",
+                    descriptor.get("mime_type") or descriptor.get("contentType") or "application/octet-stream",
+                    descriptor.get("size_bytes") or descriptor.get("size") or 0,
+                )
+                created += 1
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to ensure attachment descriptors: {exc}") from exc
         return created
 
-    def attachment_readiness(self, email_id: str) -> bool:
+    async def attachment_readiness(self, email_id: str) -> bool:
         """Mirror the SQL readiness gate for diagnostics and repair tooling."""
-        result = self.client.table("attachments").select("ingestion_status").eq("email_id", email_id).execute()
-        return all(row.get("ingestion_status") in {"stored", "unsupported", "dead_letter"} for row in (result.data or []))
+        try:
+            rows = await self.pg_pool.fetch(
+                "SELECT ingestion_status FROM public.attachments WHERE email_id = $1",
+                email_id,
+            )
+        except Exception as exc:
+            raise EmailIngestionError(f"Failed to check attachment readiness: {exc}") from exc
+        return all(
+            row.get("ingestion_status") in {"stored", "unsupported", "dead_letter"}
+            for row in rows
+        )

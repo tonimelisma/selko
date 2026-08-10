@@ -217,13 +217,13 @@ def get_photo(client: Client, photo_id: str) -> Optional[dict[str, Any]]:
         raise PhotosError(f"Failed to get photo: {e}") from e
 
 
-def unlock_expired_photo_locks(client: Client) -> int:
+async def unlock_expired_photo_locks(pool) -> int:
     """Reset expired photo locks back to pending.
 
     Handles the case where a worker crashes mid-processing and the lock expires.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        pool: asyncpg session-pooler pool.
 
     Returns:
         Number of photos unlocked.
@@ -232,13 +232,12 @@ def unlock_expired_photo_locks(client: Client) -> int:
         PhotosError: If unlock fails.
     """
     try:
-        result = client.rpc("unlock_expired_photo_locks").execute()
-        count = result.data if result.data else 0
+        count = await pool.fetchval("SELECT public.unlock_expired_photo_locks()")
 
-        if count > 0:
+        if count:
             logger.warning(f"Unlocked {count} expired photo locks")
 
-        return count
+        return count or 0
 
     except Exception as e:
         raise PhotosError(f"Failed to unlock expired photo locks: {e}") from e

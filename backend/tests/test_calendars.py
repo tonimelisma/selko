@@ -1271,52 +1271,55 @@ class TestSyncEventToCalendarOAuthScopeRequired:
 
 
 class TestRequeueCalendarRecoveryBatch:
-    """RPC wrapper for the calendar recovery worker's tagging step."""
+    """Pool wrapper for the calendar recovery worker's tagging step."""
 
-    def test_returns_tagged_count_from_rpc(self):
-        mock_client = MagicMock()
-        mock_client.rpc.return_value.execute.return_value = MagicMock(data=42)
+    def test_returns_tagged_count_from_rpc(self, fake_pg_pool):
+        import asyncio
 
-        result = requeue_calendar_recovery_batch(
-            mock_client, "recovery-1", "worker-1", batch_size=50
-        )
+        fake_pg_pool.rows.append(42)
+
+        result = asyncio.run(requeue_calendar_recovery_batch(
+            fake_pg_pool, "recovery-1", "worker-1", batch_size=50
+        ))
 
         assert result == 42
-        mock_client.rpc.assert_called_once_with(
-            "requeue_calendar_recovery_batch",
-            {
-                "p_recovery_id": "recovery-1",
-                "p_worker_id": "worker-1",
-                "p_batch_size": 50,
-            },
-        )
+        sql, args = fake_pg_pool.calls[0]
+        assert "requeue_calendar_recovery_batch" in sql
+        assert args == ("recovery-1", "worker-1", 50)
 
-    def test_wraps_rpc_failure(self):
-        from postgrest.exceptions import APIError
+    def test_wraps_rpc_failure(self, fake_pg_pool):
+        import asyncio
 
-        mock_client = MagicMock()
-        mock_client.rpc.return_value.execute.side_effect = APIError({"message": "boom"})
+        class Boom(RuntimeError):
+            pass
+
+        async def fail(*_args, **_kwargs):
+            raise Boom("boom")
+
+        fake_pg_pool.fetchval = fail
 
         with pytest.raises(CalendarsError):
-            requeue_calendar_recovery_batch(mock_client, "recovery-1", "worker-1")
+            asyncio.run(requeue_calendar_recovery_batch(fake_pg_pool, "recovery-1", "worker-1"))
 
 
 class TestRefreshWaitingCalendarRecoveries:
-    """RPC wrapper for the calendar recovery worker's completion-check step."""
+    """Pool wrapper for the calendar recovery worker's completion-check step."""
 
-    def test_returns_processed_count_from_rpc(self):
-        mock_client = MagicMock()
-        mock_client.rpc.return_value.execute.return_value = MagicMock(data=5)
+    def test_returns_processed_count_from_rpc(self, fake_pg_pool):
+        import asyncio
 
-        result = refresh_waiting_calendar_recoveries(mock_client, batch_size=10)
+        fake_pg_pool.rows.append(5)
+
+        result = asyncio.run(refresh_waiting_calendar_recoveries(fake_pg_pool, batch_size=10))
 
         assert result == 5
-        mock_client.rpc.assert_called_once_with(
-            "refresh_waiting_calendar_recoveries", {"p_batch_size": 10}
-        )
+        sql, args = fake_pg_pool.calls[0]
+        assert "refresh_waiting_calendar_recoveries" in sql
+        assert args == (10,)
 
-    def test_defaults_to_zero_when_rpc_returns_none(self):
-        mock_client = MagicMock()
-        mock_client.rpc.return_value.execute.return_value = MagicMock(data=None)
+    def test_defaults_to_zero_when_rpc_returns_none(self, fake_pg_pool):
+        import asyncio
 
-        assert refresh_waiting_calendar_recoveries(mock_client) == 0
+        fake_pg_pool.rows.append(None)
+
+        assert asyncio.run(refresh_waiting_calendar_recoveries(fake_pg_pool)) == 0

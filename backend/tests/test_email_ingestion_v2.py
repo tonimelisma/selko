@@ -3,7 +3,7 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -29,7 +29,7 @@ from selko.services.outlook import GraphHttpError
 from selko.workers.email_ingestion import EmailIngestionWorker
 
 
-def test_expired_sync_claim_uses_durable_rpc_and_returns_run(mock_config):
+def test_expired_sync_claim_uses_durable_rpc_and_returns_run(mock_config, fake_pg_pool):
     client = MagicMock()
     client.rpc.return_value.execute.return_value = MagicMock(data=[{
         "integration_id": "integration-1",
@@ -40,13 +40,22 @@ def test_expired_sync_claim_uses_durable_rpc_and_returns_run(mock_config):
         "lease_expires_at": datetime.now(timezone.utc).isoformat(),
     }])
 
-    claim = EmailIngestionRepository(client, mock_config).claim_due_sync("worker-1")
+    fake_pg_pool.rows.append({
+        "integration_id": "integration-1",
+        "user_id": "user-1",
+        "provider": "outlook",
+        "run_id": "run-1",
+        "run_kind": "incremental",
+        "lease_expires_at": datetime.now(timezone.utc).isoformat(),
+    })
+    claim = asyncio.run(
+        EmailIngestionRepository(mock_config, fake_pg_pool).claim_due_sync("worker-1")
+    )
 
     assert claim.integration_id == "integration-1"
-    client.rpc.assert_called_once_with(
-        "claim_due_email_sync",
-        {"p_worker_id": "worker-1", "p_lease_seconds": mock_config.email_lease_seconds},
-    )
+    sql, args = fake_pg_pool.calls[0]
+    assert "claim_due_email_sync" in sql
+    assert args == ("worker-1", mock_config.email_lease_seconds)
 
 
 def test_ingestion_error_codes_are_stable_and_details_redacted():
@@ -56,11 +65,11 @@ def test_ingestion_error_codes_are_stable_and_details_redacted():
     assert safe_error_detail(exc) == "provider operation failed"
 
 
-def test_outlook_unsupported_video_attachment_is_terminal_without_provider_call(mock_config):
+def test_outlook_unsupported_video_attachment_is_terminal_without_provider_call(mock_config, fake_pg_pool):
     worker = EmailIngestionWorker(MagicMock(), mock_config, "attachment-worker")
     attachment = {"mime_type": "video/mp4", "filename": "clip.mp4"}
 
-    assert worker.acquire_attachment(attachment) == "unsupported"
+    assert asyncio.run(worker.acquire_attachment(attachment)) == "unsupported"
 
 
 def test_graph_transport_sends_correlation_and_immutable_request_headers():
@@ -111,7 +120,7 @@ def _gmail_message_with_inline_image() -> dict:
     }
 
 
-def test_gmail_inline_image_is_stored_rather_than_marked_unsupported(mock_config):
+def test_gmail_inline_image_is_stored_rather_than_marked_unsupported(mock_config, fake_pg_pool):
     """extract_attachments() skips CID images, so the descriptor lookup must
     also consult extract_inline_images() or every inline image dead-ends."""
     client = MagicMock()
@@ -136,13 +145,13 @@ def test_gmail_inline_image_is_stored_rather_than_marked_unsupported(mock_config
          patch("selko.workers.email_ingestion.download_gmail_attachment", return_value=b"png-bytes") as download, \
          patch("selko.workers.email_ingestion.calculate_content_hash", return_value="hash"), \
          patch("selko.workers.email_ingestion.upload_to_storage", return_value="path/inline_0.png"):
-        status = worker.acquire_attachment(attachment)
+        status = asyncio.run(worker.acquire_attachment(attachment))
 
     assert status == "stored"
     assert download.call_args[0][2] == "inline-att-1"
 
 
-def test_acquire_item_does_not_query_integrations_per_message(mock_config):
+def test_acquire_item_does_not_query_integrations_per_message(mock_config, fake_pg_pool):
     """A dead per-message integrations lookup costs a round trip and can raise
     on a missing row, dead-lettering mail for an unrelated reason."""
     client = MagicMock()
@@ -160,12 +169,12 @@ def test_acquire_item_does_not_query_integrations_per_message(mock_config):
          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()), \
          patch("selko.workers.email_ingestion.get_gmail_full_message", return_value={"id": "msg-1", "payload": {}}), \
          patch("selko.workers.email_ingestion.parse_gmail_message", return_value={}), \
-         patch.object(worker.repository, "save_email_with_attachment_descriptors", return_value="email-1") as atomic_save, \
+         patch.object(worker.repository, "save_email_with_attachment_descriptors", new=AsyncMock(return_value="email-1")) as atomic_save, \
          patch.object(worker, "_integration") as integration_lookup:
-        assert worker.acquire_item(item) == "email-1"
+        assert asyncio.run(worker.acquire_item(item)) == "email-1"
 
     integration_lookup.assert_not_called()
-    atomic_save.assert_called_once()
+    atomic_save.assert_awaited_once()
 
 
 def _health_state() -> dict:
@@ -519,9 +528,9 @@ def test_outlook_deleted_folder_is_removed_without_blocking_later_folders(mock_c
          patch("selko.workers.email_ingestion.record_graph_failure"), \
          patch("selko.workers.email_ingestion.fetch_message_changes",
                side_effect=[GraphHttpError(404, "folder missing"), ([], "cursor-current")]) as changes, \
-         patch.object(worker.repository, "require_heartbeat"), \
-         patch.object(worker.repository, "upsert_discovered") as upsert:
-        worker._discover_outlook(_sync_claim())
+         patch.object(worker.repository, "require_heartbeat", new=AsyncMock()), \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})) as upsert:
+        asyncio.run(worker._discover_outlook(_sync_claim()))
 
     assert changes.call_count == 2, "the second folder must still be polled"
     client.table.return_value.delete.return_value.eq.assert_any_call("id", "row-deleted")
@@ -562,9 +571,9 @@ def test_gmail_history_expiry_captures_replacement_cursor_before_listing(mock_co
          patch("selko.workers.email_ingestion.fetch_history_message_ids", side_effect=expired), \
          patch("selko.workers.email_ingestion.get_user_profile", side_effect=profile), \
          patch("selko.workers.email_ingestion.list_message_ids", side_effect=listing), \
-         patch.object(worker.repository, "require_heartbeat"), \
-         patch.object(worker.repository, "upsert_discovered") as upsert:
-        worker._discover_gmail(claim)
+         patch.object(worker.repository, "require_heartbeat", new=AsyncMock()), \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})) as upsert:
+        asyncio.run(worker._discover_gmail(claim))
 
     assert order == ["history", "profile", "search"]
     assert upsert.call_args.kwargs["cursor"] == "replacement-cursor"
@@ -596,9 +605,9 @@ def test_gmail_incremental_poll_does_not_fetch_the_user_profile(mock_config):
          patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
          patch("selko.workers.email_ingestion.fetch_history_message_ids", return_value=([], "next-cursor")), \
          patch("selko.workers.email_ingestion.get_user_profile") as profile, \
-         patch.object(worker.repository, "require_heartbeat"), \
-         patch.object(worker.repository, "upsert_discovered"):
-        worker._discover_gmail(claim)
+         patch.object(worker.repository, "require_heartbeat", new=AsyncMock()), \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})):
+        asyncio.run(worker._discover_gmail(claim))
 
     profile.assert_not_called()
 
@@ -630,9 +639,9 @@ def test_gmail_discovery_batches_metadata_and_matches_the_serial_result(mock_con
                return_value=(list(batched), "next-cursor")), \
          patch("selko.workers.email_ingestion.get_messages_metadata_batch",
                return_value=batched) as batch, \
-         patch.object(worker.repository, "require_heartbeat"), \
-         patch.object(worker.repository, "upsert_discovered") as upsert:
-        worker._discover_gmail(claim)
+         patch.object(worker.repository, "require_heartbeat", new=AsyncMock()), \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})) as upsert:
+        asyncio.run(worker._discover_gmail(claim))
 
     # One batched call for the whole page, not one call per message.
     batch.assert_called_once()
@@ -668,12 +677,12 @@ def test_gmail_reconcile_skips_known_identities_and_resumes_next_pass(mock_confi
          patch("selko.workers.email_ingestion.get_user_profile", return_value={"historyId": "h"}), \
          patch("selko.workers.email_ingestion.list_message_ids",
                return_value=[{"id": mid} for mid in window]), \
-         patch.object(worker.repository, "known_provider_message_ids", return_value=already_known), \
+         patch.object(worker.repository, "known_provider_message_ids", new=AsyncMock(return_value=already_known)), \
          patch("selko.workers.email_ingestion.get_messages_metadata_batch",
                return_value={}) as batch, \
-         patch.object(worker.repository, "require_heartbeat"), \
-         patch.object(worker.repository, "upsert_discovered"):
-        worker._discover_gmail(claim, lookback_days=90)
+         patch.object(worker.repository, "require_heartbeat", new=AsyncMock()), \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})):
+        asyncio.run(worker._discover_gmail(claim, lookback_days=90))
 
     requested = list(batch.call_args.args[1])
     # Known identities are never re-fetched, and what remains honours the cap.
@@ -681,7 +690,7 @@ def test_gmail_reconcile_skips_known_identities_and_resumes_next_pass(mock_confi
     assert requested == ["message-3", "message-4"]
 
 
-def test_gmail_reconcile_does_not_bound_the_incremental_path(mock_config):
+def test_gmail_reconcile_does_not_bound_the_incremental_path(mock_config, fake_pg_pool):
     """Only reconcile passes are bounded; an incremental delta is already O(delta)."""
     mock_config.email_reconcile_max_identities = 1
     worker = EmailIngestionWorker(_gmail_discovery_client(), mock_config, "worker-1")
@@ -693,38 +702,38 @@ def test_gmail_reconcile_does_not_bound_the_incremental_path(mock_config):
          patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
          patch("selko.workers.email_ingestion.fetch_history_message_ids",
                return_value=(["a", "b", "c"], "next-cursor")), \
-         patch.object(worker.repository, "known_provider_message_ids") as known, \
+         patch.object(worker.repository, "known_provider_message_ids", new=AsyncMock()) as known, \
          patch("selko.workers.email_ingestion.get_messages_metadata_batch", return_value={}) as batch, \
-         patch.object(worker.repository, "require_heartbeat"), \
-         patch.object(worker.repository, "upsert_discovered"):
-        worker._discover_gmail(claim)
+         patch.object(worker.repository, "require_heartbeat", new=AsyncMock()), \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})):
+        asyncio.run(worker._discover_gmail(claim))
 
     known.assert_not_called()
     assert list(batch.call_args.args[1]) == ["a", "b", "c"]
 
 
-def test_known_provider_message_ids_chunks_its_in_filter(mock_config):
+def test_known_provider_message_ids_chunks_its_in_filter(mock_config, fake_pg_pool):
     """A full reconcile window would overflow the PostgREST request line."""
     from selko.services.email_ingestion import KNOWN_ID_QUERY_CHUNK
 
-    client = MagicMock()
-    chunks: list[list[str]] = []
-
-    def in_(_column, values):
-        chunks.append(list(values))
-        return MagicMock(execute=MagicMock(return_value=MagicMock(data=[])))
-
-    client.table.return_value.select.return_value.eq.return_value.in_.side_effect = in_
     ids = [f"message-{i}" for i in range(KNOWN_ID_QUERY_CHUNK * 2 + 5)]
 
-    EmailIngestionRepository(client, mock_config).known_provider_message_ids("integration-1", ids)
+    asyncio.run(
+        EmailIngestionRepository(mock_config, fake_pg_pool)
+        .known_provider_message_ids("integration-1", ids)
+    )
 
-    assert len(chunks) == 3
-    assert all(len(chunk) <= KNOWN_ID_QUERY_CHUNK for chunk in chunks)
-    assert [mid for chunk in chunks for mid in chunk] == ids
+    # One query per chunk; each binds a chunk of ids via ANY($2::text[]).
+    chunk_calls = [
+        args for sql, args in fake_pg_pool.calls if "provider_message_id = ANY" in sql
+    ]
+    assert len(chunk_calls) == 3
+    bound = [list(args[1]) for args in chunk_calls]
+    assert all(len(chunk) <= KNOWN_ID_QUERY_CHUNK for chunk in bound)
+    assert [mid for chunk in bound for mid in chunk] == ids
 
 
-def test_attachment_failure_cannot_touch_provider_cursors(mock_config):
+def test_attachment_failure_cannot_touch_provider_cursors(mock_config, fake_pg_pool):
     """Attachment work is a separate claim, so it can never rewind discovery.
 
     The legacy poller fetched attachments inline and had to be careful not to
@@ -735,10 +744,10 @@ def test_attachment_failure_cannot_touch_provider_cursors(mock_config):
     attachment = {"id": "attachment-1", "email_id": "email-1", "attempts": 1, "max_attempts": 8,
                   "provider_attachment_id": "att-1", "mime_type": "image/png", "filename": "x.png"}
 
-    with patch.object(worker.repository, "claim_attachment", return_value=attachment), \
-         patch.object(worker, "acquire_attachment", side_effect=RuntimeError("download failed")), \
-         patch.object(worker.repository, "finish_attachment", return_value=True) as finish, \
-         patch.object(worker.repository, "upsert_discovered") as upsert:
+    with patch.object(worker.repository, "claim_attachment", new=AsyncMock(return_value=attachment)), \
+         patch.object(worker, "acquire_attachment", new=AsyncMock(side_effect=RuntimeError("download failed"))), \
+         patch.object(worker.repository, "finish_attachment", new=AsyncMock(return_value=True)) as finish, \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})) as upsert:
         assert asyncio.run(worker.run_attachment_once()) is True
 
     assert finish.call_args[0][2] == "retry"
@@ -769,32 +778,32 @@ def test_outlook_attachment_decodes_base64_and_skips_item_attachments(mock_confi
          patch("selko.workers.email_ingestion.list_attachments", return_value=listing), \
          patch("selko.workers.email_ingestion.calculate_content_hash", return_value="hash"), \
          patch("selko.workers.email_ingestion.upload_to_storage", return_value="path") as upload:
-        stored = worker.acquire_attachment({**{"id": "a", "email_id": "email-1"},
+        stored = asyncio.run(worker.acquire_attachment({**{"id": "a", "email_id": "email-1"},
                                             "provider_attachment_id": "file-1",
-                                            "mime_type": "text/plain", "filename": "document.txt"})
-        unsupported = worker.acquire_attachment({**{"id": "b", "email_id": "email-1"},
+                                            "mime_type": "text/plain", "filename": "document.txt"}))
+        unsupported = asyncio.run(worker.acquire_attachment({**{"id": "b", "email_id": "email-1"},
                                                  "provider_attachment_id": "item-1",
-                                                 "mime_type": "text/plain", "filename": "item"})
+                                                 "mime_type": "text/plain", "filename": "item"}))
 
     assert stored == "stored"
     assert unsupported == "unsupported"
     assert upload.call_args[0][3] == b"outlook bytes"
 
 
-def test_missing_credentials_are_classified_as_auth_and_expire_the_integration(mock_config):
+def test_missing_credentials_are_classified_as_auth_and_expire_the_integration(mock_config, fake_pg_pool):
     """A missing credential must mark the integration expired, not look like a
     deleted message — otherwise it retries forever and never prompts reconnect."""
     exc = ProviderAuthenticationError("Gmail credentials are unavailable")
     assert safe_error_code(exc) == "provider_auth_expired"
 
-    client = MagicMock()
-    client.rpc.return_value.execute.return_value = MagicMock(data=True)
-    repository = EmailIngestionRepository(client, mock_config)
-    repository.fail_sync(_sync_claim(), "worker-1", exc)
+    fake_pg_pool.rows.append(True)
+    repository = EmailIngestionRepository(mock_config, fake_pg_pool)
+    asyncio.run(repository.fail_sync(_sync_claim(), "worker-1", exc))
 
-    payload = client.rpc.call_args[0][1]
-    assert payload["p_error_code"] == "provider_auth_expired"
-    assert payload["p_auth_failure"] is True
+    sql, args = fake_pg_pool.calls[0]
+    assert "fail_email_sync" in sql
+    assert args[3] == "provider_auth_expired"
+    assert args[7] is True
 
 
 # --- Error classification regression table (top-up increment 2) -------------
@@ -911,80 +920,79 @@ def test_safe_error_code_is_the_classifier_not_a_shadowed_substring_matcher():
     assert source.count("\ndef safe_error_detail(") == 1
 
 
-def test_no_acquisition_failure_is_terminal_on_first_attempt(mock_config):
+def test_no_acquisition_failure_is_terminal_on_first_attempt(mock_config, fake_pg_pool):
     """A transient provider error must NOT pass p_terminal=True on the first
     attempt — `fail_email_ingestion_item` dead-letters only by exhausting
     max_attempts server-side (or via explicit ProviderPermanentError)."""
-    client = MagicMock()
-    client.rpc.return_value.execute.return_value = MagicMock(data=True)
-    repository = EmailIngestionRepository(client, mock_config)
+    fake_pg_pool.rows.append(True)
+    repository = EmailIngestionRepository(mock_config, fake_pg_pool)
 
     # A plain Gmail 401 — the pre-fix data-loss input.
-    repository.fail_item("item-1", "worker-1", _gmail_error(401, message="Invalid Credentials"))
+    asyncio.run(repository.fail_item("item-1", "worker-1", _gmail_error(401, message="Invalid Credentials")))
 
-    payload = client.rpc.call_args[0][1]
-    assert payload["p_error_code"] == "provider_auth_expired"
-    assert payload["p_terminal"] is False
+    sql, args = fake_pg_pool.calls[0]
+    assert "fail_email_ingestion_item" in sql
+    assert args[2] == "provider_auth_expired"
+    assert args[5] is False
 
 
-def test_permanent_error_is_terminal_on_first_attempt(mock_config):
+def test_permanent_error_is_terminal_on_first_attempt(mock_config, fake_pg_pool):
     """The only first-attempt terminal path is a deliberate ProviderPermanentError."""
-    client = MagicMock()
-    client.rpc.return_value.execute.return_value = MagicMock(data=True)
-    repository = EmailIngestionRepository(client, mock_config)
+    fake_pg_pool.rows.append(True)
+    repository = EmailIngestionRepository(mock_config, fake_pg_pool)
 
-    repository.fail_item("item-1", "worker-1", ProviderPermanentError("unparseable"))
+    asyncio.run(repository.fail_item("item-1", "worker-1", ProviderPermanentError("unparseable")))
 
-    payload = client.rpc.call_args[0][1]
-    assert payload["p_error_code"] == "provider_permanent"
-    assert payload["p_terminal"] is True
+    sql, args = fake_pg_pool.calls[0]
+    assert "fail_email_ingestion_item" in sql
+    assert args[2] == "provider_permanent"
+    assert args[5] is True
 
 
-def test_gmail_401_during_discovery_expires_the_integration(mock_config):
+def test_gmail_401_during_discovery_expires_the_integration(mock_config, fake_pg_pool):
     """Regression: Gmail 401 used to never reach p_auth_failure=True (so the
     ConnectionRecovery card never fired for Gmail). The classifier now returns
     auth_failure=True from the typed/structured path."""
-    client = MagicMock()
-    client.rpc.return_value.execute.return_value = MagicMock(data=True)
-    repository = EmailIngestionRepository(client, mock_config)
+    fake_pg_pool.rows.append(True)
+    repository = EmailIngestionRepository(mock_config, fake_pg_pool)
 
-    repository.fail_sync(_sync_claim(), "worker-1", _gmail_error(401, message="Invalid Credentials"))
+    asyncio.run(repository.fail_sync(_sync_claim(), "worker-1", _gmail_error(401, message="Invalid Credentials")))
 
-    payload = client.rpc.call_args[0][1]
-    assert payload["p_error_code"] == "provider_auth_expired"
-    assert payload["p_auth_failure"] is True
+    sql, args = fake_pg_pool.calls[0]
+    assert "fail_email_sync" in sql
+    assert args[3] == "provider_auth_expired"
+    assert args[7] is True
 
 
-def test_run_acquisition_once_does_not_mark_terminal_on_code(mock_config):
+def test_run_acquisition_once_does_not_mark_terminal_on_code(mock_config, fake_pg_pool):
     """The worker must not pass a hardcoded terminal flag derived from a code
     substring; the default classifier path inside fail_item handles it."""
     client = MagicMock()
-    worker = EmailIngestionWorker(client, mock_config, "worker-1")
+    worker = EmailIngestionWorker(client, mock_config, "worker-1", pg_pool=fake_pg_pool)
     item = {"id": "item-1", "provider": "gmail", "user_id": "u",
             "provider_message_id": "m", "provider_folder_ids": ["INBOX"]}
 
-    captured_payloads = []
+    captured: list[tuple[str, tuple]] = []
 
-    def fake_rpc(name, payload):
-        if name == "claim_email_ingestion_item":
-            return MagicMock(execute=lambda: MagicMock(data=[item]))
-        if name == "fail_email_ingestion_item":
-            captured_payloads.append(payload)
-            return MagicMock(execute=lambda: MagicMock(data=True))
-        return MagicMock(execute=lambda: MagicMock(data=False))
-
-    client.rpc.side_effect = fake_rpc
+    async def fake_fail_item(item_id, worker_id, exc, *, terminal=None):
+        captured.append((exc, terminal))
+        return True
 
     def fake_acquire(_item):
         # Simulate a Gmail 401 raised mid-acquisition (the data-loss input).
         raise _gmail_error(401, message="Invalid Credentials")
 
-    with patch.object(worker, "acquire_item", side_effect=fake_acquire):
+    with patch.object(worker.repository, "claim_item", new=AsyncMock(return_value=item)), \
+         patch.object(worker.repository, "fail_item", new=AsyncMock(side_effect=fake_fail_item)), \
+         patch.object(worker, "acquire_item", new=AsyncMock(side_effect=fake_acquire)):
         asyncio.run(worker.run_acquisition_once())
 
-    assert captured_payloads, "fail_item should have been called"
-    assert captured_payloads[0]["p_error_code"] == "provider_auth_expired"
-    assert captured_payloads[0]["p_terminal"] is False
+    assert captured, "fail_item should have been called"
+    exc, terminal = captured[0]
+    assert classify_email_error(exc).code == "provider_auth_expired"
+    # The worker passes no terminal flag: the classifier inside fail_item
+    # decides (retryable on code, terminal only for ProviderPermanentError).
+    assert terminal is None
 
 
 def test_outlook_token_expiring_mid_pass_refreshes_instead_of_expiring_the_account(
@@ -1025,9 +1033,9 @@ def test_outlook_token_expiring_mid_pass_refreshes_instead_of_expiring_the_accou
          patch("selko.workers.email_ingestion.upsert_discovered_folders"), \
          patch("selko.workers.email_ingestion.record_graph_failure"), \
          patch("selko.workers.email_ingestion.fetch_message_changes", side_effect=changes), \
-         patch.object(worker.repository, "require_heartbeat"), \
-         patch.object(worker.repository, "upsert_discovered") as upsert:
-        worker._discover_outlook(_sync_claim())
+         patch.object(worker.repository, "require_heartbeat", new=AsyncMock()), \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})) as upsert:
+        asyncio.run(worker._discover_outlook(_sync_claim()))
 
     assert "fresh-token" in tokens_used, "expected one forced refresh"
     # Both folders still commit their cursors; the run does not fail.
@@ -1054,17 +1062,17 @@ def test_outlook_resync_sentinel_is_never_persisted_as_a_cursor(mock_config):
          patch("selko.workers.email_ingestion.record_graph_failure"), \
          patch("selko.workers.email_ingestion.fetch_message_changes",
                return_value=([], RESYNC_REQUIRED)), \
-         patch.object(worker.repository, "require_heartbeat"), \
-         patch.object(worker.repository, "upsert_discovered") as upsert:
+         patch.object(worker.repository, "require_heartbeat", new=AsyncMock()), \
+         patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen": 1, "items_inserted": 1, "items_existing": 0})) as upsert:
         with pytest.raises(GraphHttpError):
-            worker._discover_outlook(_sync_claim())
+            asyncio.run(worker._discover_outlook(_sync_claim()))
 
     committed = [c.kwargs.get("cursor") for c in upsert.call_args_list]
     assert RESYNC_REQUIRED not in committed
 
 def test_discover_heartbeats_around_long_listing(mock_config):
     """R4: listing must heartbeat before and after long provider calls, not just before upsert."""
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import AsyncMock, MagicMock, patch
     from selko.workers.email_ingestion import EmailIngestionWorker
     from selko.services.email_ingestion import SyncClaim
 
@@ -1079,8 +1087,8 @@ def test_discover_heartbeats_around_long_listing(mock_config):
     worker = EmailIngestionWorker(_gmail_discovery_client(), mock_config, "w-1")
     claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
     # fetch_history returns 1 id, but we heartbeat around it
-    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()),          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()),          patch("selko.workers.email_ingestion.list_labels", return_value=[]),          patch("selko.workers.email_ingestion.upsert_discovered_folders"),          patch("selko.workers.email_ingestion.fetch_history_message_ids", return_value=(["m1"], "next")) as fh,          patch("selko.workers.email_ingestion.get_messages_metadata_batch", return_value={"m1": {"id": "m1", "labelIds": ["INBOX"]}}),          patch.object(worker.repository, "require_heartbeat") as hb,          patch.object(worker.repository, "upsert_discovered", return_value={"provider_ids_seen":1, "items_inserted":1, "items_existing":0}):
-        worker._discover_gmail(claim)
+    with patch("selko.workers.email_ingestion.get_gmail_credentials", return_value=MagicMock()),          patch("selko.workers.email_ingestion.build_service", return_value=MagicMock()),          patch("selko.workers.email_ingestion.list_labels", return_value=[]),          patch("selko.workers.email_ingestion.upsert_discovered_folders"),          patch("selko.workers.email_ingestion.fetch_history_message_ids", return_value=(["m1"], "next")) as fh,          patch("selko.workers.email_ingestion.get_messages_metadata_batch", return_value={"m1": {"id": "m1", "labelIds": ["INBOX"]}}),          patch.object(worker.repository, "require_heartbeat", new=AsyncMock()) as hb,          patch.object(worker.repository, "upsert_discovered", new=AsyncMock(return_value={"provider_ids_seen":1, "items_inserted":1, "items_existing":0})):
+        asyncio.run(worker._discover_gmail(claim))
         # At least 2 heartbeats for the history fetch (before+after) plus per-upsert
         assert hb.call_count >= 2, f"expected heartbeat around listing, got {hb.call_count}"
         assert fh.called

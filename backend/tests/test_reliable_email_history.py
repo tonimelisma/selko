@@ -253,15 +253,15 @@ def test_folder_classifier_uses_only_folder_metadata_and_preserves_structured_re
     assert "Email Body" not in prompt
 
 
-def test_successful_completion_clears_stale_processing_error_atomically():
-    client = MagicMock()
+def test_successful_completion_clears_stale_processing_error_atomically(fake_pg_pool):
+    import asyncio
 
-    complete_email_processing(client, "email-1")
+    asyncio.run(complete_email_processing(fake_pg_pool, "email-1"))
 
-    update = client.table.return_value.update.call_args.args[0]
-    assert update["processing_status"] == "processed"
-    assert update["processing_error"] is None
-    assert update["locked_by"] is None
-    assert update["locked_until"] is None
+    sql, args = fake_pg_pool.calls[-1]
+    assert "processing_status = 'processed'" in sql
+    assert "processing_error = NULL" in sql
+    assert "locked_by = NULL" in sql
+    assert "locked_until = NULL" in sql
 
 
