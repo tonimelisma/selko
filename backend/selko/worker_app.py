@@ -14,7 +14,7 @@ import signal
 
 from selko.config import load_config
 from selko.services.auth import get_service_client
-from selko.services.pg import create_pool
+from selko.services.pg import WorkListener, create_pool
 from selko.workers.ingestion_runtime import IngestionRuntime
 from selko.workers.pool import WorkerPool
 
@@ -29,6 +29,8 @@ async def main() -> None:
     # runs on a different transport than production proves nothing.
     pg_pool = await create_pool(config)
     logger.info("Supavisor session pooler connected")
+    work_listener = WorkListener(config)
+    await work_listener.start()
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
 
@@ -47,15 +49,17 @@ async def main() -> None:
         idle_sleep_seconds=config.worker_idle_sleep_seconds,
         error_backoff_seconds=config.worker_error_backoff_seconds,
         pg_pool=pg_pool,
+        work_listener=work_listener,
     )
     await downstream_pool.start()
-    runtime = IngestionRuntime(client, config, pg_pool=pg_pool)
+    runtime = IngestionRuntime(client, config, pg_pool=pg_pool, work_listener=work_listener)
     await runtime.start()
     try:
         await stop_event.wait()
     finally:
         await runtime.stop()
         await downstream_pool.stop()
+        await work_listener.stop()
         await pg_pool.close()
         logger.info("Dedicated worker stopped; unfinished leases remain reclaimable")
 

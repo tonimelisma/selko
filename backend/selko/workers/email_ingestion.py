@@ -108,11 +108,12 @@ def _eligible_gmail_metadata(metadata: dict[str, Any], excluded: set[str]) -> bo
 class EmailIngestionWorker:
     """Coordinates v2 work while preserving one durable owner per item."""
 
-    def __init__(self, client: Client, config: Config, worker_id: str, *, pg_pool=None):
+    def __init__(self, client: Client, config: Config, worker_id: str, *, pg_pool=None, work_listener=None):
         self.client = client
         self.config = config
         self.worker_id = worker_id
         self.repository = EmailIngestionRepository(config, pg_pool)
+        self._work_listener = work_listener
         self.stop_event = asyncio.Event()
         # Egress 5: in-process nudge for user-initiated email sync (same loop-bound
         # constraint as WorkerPool — created per runtime, cleared on wake).
@@ -819,10 +820,13 @@ class EmailIngestionWorker:
         ceiling = max(self.config.email_worker_idle_max_seconds, base)
         return min(ceiling, base * (2 ** max(consecutive_idle - 1, 0)))
 
-    async def _claim_loop(self, run_once) -> None:
+    async def _claim_loop(self, run_once, work_type: str) -> None:
         # R3: claim loop is nudge-aware — discovery wakes it in <100ms instead
         # of up to 30s backoff. Backoff remains as the floor when no nudge
-        # arrives (single idle model, not dual).
+        # arrives (single idle model, not dual). C3: when the pg listener is
+        # live, a NOTIFY for this work type wakes the idle wait immediately;
+        # the safety-poll backoff below remains the floor so a missed
+        # notification costs latency, never work.
         self.ensure_claim_nudge()
         consecutive_idle = 0
         while not self.stop_event.is_set():
@@ -831,33 +835,35 @@ class EmailIngestionWorker:
                 continue
             consecutive_idle += 1
             timeout = self.idle_backoff(consecutive_idle)
-            # Wait for stop, nudge, or timeout — whichever comes first
             claim_nudge = self._claim_nudge
             try:
-                # Use wait_for on the nudge with timeout; stop_event is checked
-                # via the outer while and also wakes nudge via stop()
-                if claim_nudge is not None:
-                    try:
-                        await asyncio.wait_for(claim_nudge.wait(), timeout=timeout)
-                    except asyncio.TimeoutError:
-                        pass
-                    if claim_nudge.is_set():
-                        claim_nudge.clear()
-                        consecutive_idle = 0
-                else:
-                    await asyncio.wait_for(
-                        self.stop_event.wait(), timeout=timeout
+                waiters = [asyncio.create_task(claim_nudge.wait())]
+                if self._work_listener is not None:
+                    waiters.append(
+                        asyncio.create_task(
+                            self._work_listener.event_for(work_type).wait()
+                        )
                     )
-            except asyncio.TimeoutError:
-                pass
+                else:
+                    waiters.append(asyncio.create_task(self.stop_event.wait()))
+                _, pending = await asyncio.wait(
+                    waiters, timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in pending:
+                    task.cancel()
+                if claim_nudge.is_set():
+                    claim_nudge.clear()
+                    consecutive_idle = 0
+                if self._work_listener is not None:
+                    self._work_listener.event_for(work_type).clear()
             except asyncio.CancelledError:
                 raise
 
     async def acquisition_loop(self) -> None:
-        await self._claim_loop(self.run_acquisition_once)
+        await self._claim_loop(self.run_acquisition_once, "item_pending")
 
     async def attachment_loop(self) -> None:
-        await self._claim_loop(self.run_attachment_once)
+        await self._claim_loop(self.run_attachment_once, "attachment_pending")
 
     async def run(self) -> None:
         await asyncio.gather(self.coordinator_loop(), self.acquisition_loop(), self.attachment_loop())
