@@ -57,6 +57,7 @@ class EventDetailViewModelTest {
         application = mockk(relaxed = true)
         every { application.getString(R.string.event_detail_error_approve) } returns "Failed to approve event"
         every { application.getString(R.string.event_detail_error_reject) } returns "Failed to reject event"
+        every { application.getString(R.string.review_event_rejected) } returns "Event rejected"
         every { application.getString(R.string.event_detail_error_save) } returns "Failed to save changes. Please try again."
         every {
             application.getString(R.string.review_calendar_reconnect_required)
@@ -274,5 +275,25 @@ class EventDetailViewModelTest {
             viewModel.uiState.value.errorMessage
         )
         coVerify(exactly = 0) { eventRepository.approveEvent(any()) }
+    }
+
+    // --- C9.3: reject on an unloaded event does not fabricate one (#278 parity) ---
+
+    @Test
+    fun `reject on unloaded event does not fabricate one`() = runTest {
+        coEvery { eventRepository.rejectEvent("event-ghost") } returns
+                EventResult.Success(
+                    CalendarEvent(id = "event-ghost", userId = "user-1", title = "Ghost")
+                )
+
+        val viewModel = createViewModel("event-ghost")
+        // Intentionally do NOT load the event.
+        viewModel.rejectEvent()
+        testDispatcher.scheduler.runCurrent()
+
+        val state = viewModel.uiState.value
+        assertEquals(true, state.showUndoSnackbar)
+        assertEquals("Event rejected", state.undoSnackbarMessage)
+        assertNull("unloaded reject must not fabricate a stored event", state.lastRejectedEvent)
     }
 }
