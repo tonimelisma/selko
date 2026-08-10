@@ -18,6 +18,7 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
     var undoHistoryEventCallCount = 0
     var lastUndoHistoryEventId: UUID?
     var lastUndoHistoryForce: Bool = false
+    var undoHistoryEventIds: [UUID] = []
     var undoHistoryEventResult: Result<EventChangeResponse, Error> = .success(
         EventChangeResponse(eventId: UUID().uuidString, status: "pending_review")
     )
@@ -62,6 +63,7 @@ final class MockBackendAPI: BackendAPIProtocol, @unchecked Sendable {
         undoHistoryEventCallCount += 1
         lastUndoHistoryEventId = eventId
         lastUndoHistoryForce = force
+        undoHistoryEventIds.append(eventId)
         switch undoHistoryEventResult {
         case .success(let response): return response
         case .failure(let error): throw error

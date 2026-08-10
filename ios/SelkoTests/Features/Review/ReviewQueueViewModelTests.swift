@@ -26,6 +26,26 @@ struct ReviewQueueViewModelTests {
         )
     }
 
+    private func makeEvent(title: String = "Test Event", status: EventStatus = .pendingReview) -> CalendarEvent {
+        CalendarEvent(
+            id: UUID(),
+            userId: UUID(),
+            title: title,
+            startDatetime: Date().addingTimeInterval(86400),
+            endDatetime: Date().addingTimeInterval(90000),
+            allDay: false,
+            location: "Conference Room",
+            description: "A test event",
+            sourceAttribution: "From test@example.com",
+            status: status,
+            googleCalendarEventId: nil,
+            syncedAt: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            eventSources: nil
+        )
+    }
+
     // MARK: - Ignore Sender
 
     @Test
@@ -250,5 +270,133 @@ struct ReviewQueueViewModelTests {
         let resolved = ReviewQueueViewModel.resolveSender(for: event)
         #expect(resolved.email == "sender@example.com")
         #expect(resolved.name == Email.mock.fromName || resolved.name == "sender@example.com")
+    }
+
+    // MARK: - Reject Undo
+
+    @Test
+    func rejectEventShowsUndoToast() async {
+        let event = makeEvent(title: "Dentist")
+        let mockEventService = MockEventService()
+        let mockBackendAPI = MockBackendAPI()
+        let mockIntegrationService = MockIntegrationService()
+        mockEventService.rejectEventResult = .success(event)
+        let viewModel = ReviewQueueViewModel(
+            eventService: mockEventService,
+            integrationService: mockIntegrationService,
+            backendAPI: mockBackendAPI
+        )
+        viewModel.integrations = [integration(.googleCalendar)]
+        let source = EventSource(
+            id: UUID(), eventId: event.id, emailId: UUID(), sourceOrigin: .email, sourceType: .newInvitation,
+            extractedData: nil, changeSet: nil, isUndone: false, createdAt: Date(),
+            emails: Email(id: UUID(), userId: nil, integrationId: nil, emailProvider: "gmail", providerMessageId: "m", threadId: "t", subject: "Hi", fromEmail: "a@b.com", fromName: "A", toEmails: nil, dateSent: Date(), snippet: nil, providerLabels: nil, isSpam: false, isTrash: false, isPromotions: false, isSocial: false, isUpdates: false, isForums: false, isPrimary: true, isImportant: false, isStarred: false, isUnread: true, hasAttachments: false, createdAt: Date())
+        )
+        var eventWithSource = event
+        eventWithSource = CalendarEvent(id: event.id, userId: event.userId, title: event.title, startDatetime: event.startDatetime, endDatetime: event.endDatetime, allDay: event.allDay, location: event.location, description: event.description, sourceAttribution: event.sourceAttribution, status: event.status, googleCalendarEventId: event.googleCalendarEventId, syncedAt: event.syncedAt, createdAt: event.createdAt, updatedAt: event.updatedAt, eventSources: [source])
+        viewModel.senderGroups = [SenderGroup(id: "a@b.com", senderName: "A", senderEmail: "a@b.com", events: [eventWithSource])]
+        viewModel.newSenderGroups = viewModel.senderGroups
+        viewModel.changeSenderGroups = []
+
+        await viewModel.rejectEvent(eventWithSource)
+
+        #expect(viewModel.showUndoToast == true)
+        #expect(viewModel.undoToastMessage == "Event rejected")
+        #expect(viewModel.lastRejectedEvents.count == 1)
+        #expect(viewModel.senderGroups.isEmpty)
+        #expect(mockEventService.rejectEventCallCount == 1)
+    }
+
+    @Test
+    func undoLastRejectedRestoresGroupAndCallsBackend() async {
+        let event = makeEvent(title: "Lunch")
+        let mockEventService = MockEventService()
+        let mockBackendAPI = MockBackendAPI()
+        let mockIntegrationService = MockIntegrationService()
+        // Mock load to return event again after undo
+        let restoredEvent = event
+        mockEventService.fetchPendingEventsWithSourcesResult = .success([restoredEvent])
+        mockIntegrationService.fetchIntegrationsResult = .success([integration(.googleCalendar)])
+        mockBackendAPI.undoHistoryEventResult = .success(EventChangeResponse(eventId: event.id.uuidString, status: "pending_review"))
+
+        let viewModel = ReviewQueueViewModel(
+            eventService: mockEventService,
+            integrationService: mockIntegrationService,
+            backendAPI: mockBackendAPI
+        )
+        viewModel.integrations = [integration(.googleCalendar)]
+        viewModel.senderGroups = []
+
+        // Simulate rejected state
+        viewModel.showRejectUndo(events: [event])
+        #expect(viewModel.showUndoToast == true)
+        #expect(viewModel.lastRejectedEvents.count == 1)
+
+        await viewModel.undoLastRejected()
+
+        #expect(mockBackendAPI.undoHistoryEventCallCount == 1)
+        #expect(mockBackendAPI.lastUndoHistoryEventId == event.id)
+        #expect(viewModel.showUndoToast == false)
+        #expect(viewModel.lastRejectedEvents.isEmpty)
+        // After undo + load, group should be restored via load's fetched events
+        #expect(!viewModel.senderGroups.isEmpty)
+    }
+
+    @Test
+    func consecutiveRejectsBatchIntoSingleToast() async {
+        let event1 = makeEvent(title: "Event 1")
+        let event2 = makeEvent(title: "Event 2")
+        let mockEventService = MockEventService()
+        let mockBackendAPI = MockBackendAPI()
+        let viewModel = ReviewQueueViewModel(
+            eventService: mockEventService,
+            backendAPI: mockBackendAPI
+        )
+        viewModel.showRejectUndo(events: [event1])
+        #expect(viewModel.undoToastMessage == "Event rejected")
+        #expect(viewModel.lastRejectedEvents.count == 1)
+
+        viewModel.showRejectUndo(events: [event2])
+        #expect(viewModel.undoToastMessage == "2 events rejected")
+        #expect(viewModel.lastRejectedEvents.count == 2)
+        #expect(viewModel.showUndoToast == true)
+    }
+
+    @Test
+    func rejectAllInGroupShowsUndoToast() async {
+        let event1 = makeEvent(title: "Bulk 1")
+        let event2 = makeEvent(title: "Bulk 2")
+        let mockEventService = MockEventService()
+        let mockBackendAPI = MockBackendAPI()
+        let mockIntegrationService = MockIntegrationService()
+        let viewModel = ReviewQueueViewModel(
+            eventService: mockEventService,
+            integrationService: mockIntegrationService,
+            backendAPI: mockBackendAPI
+        )
+        viewModel.integrations = [integration(.googleCalendar)]
+        let group = SenderGroup(id: "bulk@example.com", senderName: "Bulk", senderEmail: "bulk@example.com", events: [event1, event2])
+        viewModel.senderGroups = [group]
+        viewModel.newSenderGroups = [group]
+
+        await viewModel.rejectAllInGroup(group)
+
+        #expect(viewModel.showUndoToast == true)
+        #expect(viewModel.undoToastMessage == "2 events rejected")
+        #expect(viewModel.lastRejectedEvents.count == 2)
+        #expect(viewModel.senderGroups.isEmpty)
+        #expect(mockEventService.rejectEventCallCount == 2)
+    }
+
+    @Test
+    func dismissUndoToastClearsState() async {
+        let event = makeEvent()
+        let viewModel = ReviewQueueViewModel()
+        viewModel.showRejectUndo(events: [event])
+        #expect(viewModel.showUndoToast == true)
+        viewModel.dismissUndoToast()
+        #expect(viewModel.showUndoToast == false)
+        #expect(viewModel.lastRejectedEvents.isEmpty)
+        #expect(viewModel.undoToastMessage != "" || viewModel.lastRejectedEvents.isEmpty)
     }
 }
