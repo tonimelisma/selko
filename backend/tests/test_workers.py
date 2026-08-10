@@ -177,8 +177,10 @@ class TestProcessAnyWork:
             patch.object(pool, "_process_event_sync", new_callable=AsyncMock) as mock_proc,
         ):
             result = await pool._process_any_work("w-0")
+            await asyncio.sleep(0)  # let the fired executor task run
 
         assert result is True
+        # C4: the sync runs as a semaphore-bounded executor task, not inline.
         mock_proc.assert_awaited_once()
 
     @pytest.mark.asyncio

@@ -1092,3 +1092,122 @@ def test_discover_heartbeats_around_long_listing(mock_config):
         # At least 2 heartbeats for the history fetch (before+after) plus per-upsert
         assert hb.call_count >= 2, f"expected heartbeat around listing, got {hb.call_count}"
         assert fh.called
+
+
+# --- C4: executor concurrency (acquire before claim) -------------------------
+
+
+def _concurrency_config(mock_config, width: int):
+    from dataclasses import replace
+    return replace(
+        mock_config,
+        email_acquisition_concurrency=width,
+        email_attachment_concurrency=width,
+    )
+
+
+class TestExecutorConcurrency:
+    """C4: backpressure belongs at the claim, not at the work."""
+
+    def _worker(self, mock_config, pool, width: int):
+        from selko.workers.email_ingestion import EmailIngestionWorker
+        return EmailIngestionWorker(
+            MagicMock(), _concurrency_config(mock_config, width), "c4-worker",
+            pg_pool=pool,
+        )
+
+    @pytest.mark.asyncio
+    async def test_acquisition_respects_executor_width(self, mock_config, fake_pg_pool):
+        """Concurrency 4 with 10 items — one claim loop, max 4 in flight, all 10 done."""
+        items = [{"id": f"item-{i}", "change_kind": "upsert"} for i in range(10)]
+        fake_pg_pool.rows = list(items) + [None] * 20
+        worker = self._worker(mock_config, fake_pg_pool, 4)
+
+        done = 0
+        started = 0
+        peak_in_flight = 0
+
+        async def fake_acquire(item):
+            nonlocal done, started, peak_in_flight
+            started += 1
+            peak_in_flight = max(peak_in_flight, started - done)
+            await asyncio.sleep(0.01)
+            done += 1
+            return "email-1"
+
+        with patch.object(worker, "acquire_item", new=AsyncMock(side_effect=fake_acquire)), \
+             patch.object(worker.repository, "complete_item", new=AsyncMock(return_value=True)):
+            for _ in range(10):
+                await worker.run_acquisition_once()
+            while worker._acquisition_inflight:
+                await asyncio.sleep(0.01)
+
+        assert peak_in_flight <= 4
+        assert done == 10
+
+    @pytest.mark.asyncio
+    async def test_claim_never_outruns_executors(self, mock_config, fake_pg_pool):
+        """C4.1 regression: claiming before acquiring let leases expire in the queue.
+
+        Concurrency 1 with a blocked processor: only ONE claim may be made
+        while the executor slot is occupied.
+        """
+        items = [{"id": f"item-{i}", "change_kind": "upsert"} for i in range(10)]
+        fake_pg_pool.rows = list(items) + [None] * 20
+        worker = self._worker(mock_config, fake_pg_pool, 1)
+
+        released = asyncio.Event()
+
+        async def blocking_acquire(item):
+            await released.wait()
+
+        with patch.object(worker, "acquire_item", new=AsyncMock(side_effect=blocking_acquire)):
+            first = await worker.run_acquisition_once()
+            assert first is True
+            # The second claim blocks on the semaphore — it must not run the
+            # claim while the executor slot is occupied.
+            second = asyncio.create_task(worker.run_acquisition_once())
+            await asyncio.sleep(0.05)
+            assert not second.done(), "second claim must wait for the executor slot"
+            released.set()
+            assert await asyncio.wait_for(second, timeout=5) is True
+            await asyncio.wait(worker._acquisition_inflight, timeout=5)
+
+        claim_calls = [sql for sql, _ in fake_pg_pool.calls if "claim_email_ingestion_item" in sql]
+        assert len(claim_calls) == 2
+
+    @pytest.mark.asyncio
+    async def test_semaphore_released_when_claim_returns_none(self, mock_config, fake_pg_pool):
+        """A no-work claim must not leak a permit."""
+        worker = self._worker(mock_config, fake_pg_pool, 2)
+        assert await worker.run_acquisition_once() is False
+        assert worker._acquisition_semaphore._value == 2
+
+    @pytest.mark.asyncio
+    async def test_semaphore_released_when_claim_raises(self, mock_config, fake_pg_pool):
+        """An error must not leak a permit."""
+
+        async def boom(*_args, **_kwargs):
+            raise RuntimeError("db down")
+
+        fake_pg_pool.fetchrow = boom
+        worker = self._worker(mock_config, fake_pg_pool, 2)
+        with pytest.raises(Exception):
+            await worker.run_acquisition_once()
+        assert worker._acquisition_semaphore._value == 2
+
+
+def test_every_concurrency_knob_is_read_by_a_worker():
+    """Regression: after Inc2 three of these were read nowhere."""
+    import pathlib
+
+    source = "\n".join(
+        p.read_text() for p in pathlib.Path("backend/selko/workers").rglob("*.py")
+    )
+    for knob in (
+        "email_acquisition_concurrency",
+        "email_attachment_concurrency",
+        "llm_extraction_concurrency",
+        "worker_calendar_sync_concurrency",
+    ):
+        assert knob in source, f"{knob} is not read by any worker"

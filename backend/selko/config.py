@@ -87,6 +87,10 @@ class Config:
     # 2 = 15 min, 5 = 6 min, 10 = 3 min at ~3s avg. Paid gemini is 60-1000 RPM,
     # so 5 is safe; 10 will hit provider_rate_limited and defer via breaker.
     llm_extraction_concurrency: int = 8
+    # How long a claimed LLM-path email is locked. Must outlast the executor
+    # queue: a claim held while waiting for a semaphore slot must not expire
+    # and get re-claimed (duplicate LLM spend). Default 15 min >> 300s.
+    llm_claim_lease_seconds: int = 900
     worker_idle_sleep_seconds: float = 1.0
     # Ceiling for the pool's geometric idle backoff. The flat idle sleep above
     # is the *first* wait after work runs out; consecutive idle ticks back off
@@ -118,10 +122,9 @@ class Config:
     email_health_critical_seconds: int = 3600
     email_lease_seconds: int = 900
     email_sync_max_run_seconds: int = 900
-    # Executor width for the single claim loop (Inc2). One loop drains the
-    # queue and fans work to Semaphore-limited tasks; concurrency no longer
-    # multiplies pollers or egress. Two apiece saturates a single-mailbox
-    # workload; raise only when acquisition is measurably the bottleneck.
+    # Executor width, NOT poller count. One claim loop per type drains the
+    # queue; these bound how many items are processed concurrently. Raising
+    # them does not increase database polling.
     email_acquisition_concurrency: int = 2
     email_attachment_concurrency: int = 2
     email_worker_idle_base_seconds: float = 1.0
@@ -488,6 +491,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
             or getenv("WORKER_POOL_SIZE", "2")
         ),
         llm_extraction_concurrency=int(getenv("LLM_EXTRACTION_CONCURRENCY", "8")),
+        llm_claim_lease_seconds=int(getenv("LLM_CLAIM_LEASE_SECONDS", "900")),
         worker_idle_sleep_seconds=float(getenv("WORKER_IDLE_SLEEP_SECONDS", "1.0")),
         worker_idle_max_seconds=float(getenv("WORKER_IDLE_MAX_SECONDS", "30")),
         egress_log_interval_seconds=float(getenv("EGRESS_LOG_INTERVAL_SECONDS", "300")),

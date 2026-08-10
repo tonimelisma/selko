@@ -114,6 +114,18 @@ class EmailIngestionWorker:
         self.worker_id = worker_id
         self.repository = EmailIngestionRepository(config, pg_pool)
         self._work_listener = work_listener
+        # C4: executor width, NOT poller count. One claim loop per type drains
+        # the queue; these bound how many items are processed concurrently.
+        # The semaphore is acquired BEFORE the claim so a claimed row never
+        # waits in a queue holding a lease.
+        self._acquisition_semaphore = asyncio.Semaphore(
+            max(int(getattr(config, "email_acquisition_concurrency", 2) or 2), 1)
+        )
+        self._attachment_semaphore = asyncio.Semaphore(
+            max(int(getattr(config, "email_attachment_concurrency", 2) or 2), 1)
+        )
+        self._acquisition_inflight: set[asyncio.Task] = set()
+        self._attachment_inflight: set[asyncio.Task] = set()
         self.stop_event = asyncio.Event()
         # Egress 5: in-process nudge for user-initiated email sync (same loop-bound
         # constraint as WorkerPool — created per runtime, cleared on wake).
@@ -626,13 +638,30 @@ class EmailIngestionWorker:
         return {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
 
     async def run_acquisition_once(self) -> bool:
-        item = await self.repository.claim_item(self.worker_id)
+        # Acquire the executor slot BEFORE claiming. Claiming first lets the
+        # drain loop outrun the executors, and every claimed row holds a lease
+        # that expires while it waits in the queue.
+        await self._acquisition_semaphore.acquire()
+        try:
+            item = await self.repository.claim_item(self.worker_id)
+        except BaseException:
+            self._acquisition_semaphore.release()
+            raise
         if not item:
+            self._acquisition_semaphore.release()
             return False
+
+        task = asyncio.create_task(self._process_acquisition_item(item))
+        self._acquisition_inflight.add(task)
+        task.add_done_callback(self._acquisition_inflight.discard)
+        task.add_done_callback(lambda _: self._acquisition_semaphore.release())
+        return True
+
+    async def _process_acquisition_item(self, item: dict[str, Any]) -> None:
         try:
             if item.get("change_kind") == "removed":
                 await self.repository.remove_item(item["id"], self.worker_id)
-                return True
+                return
             email_id = await self.acquire_item(item)
             if not await self.repository.complete_item(item["id"], self.worker_id, email_id):
                 logger.warning("Email acquisition completion lost lease")
@@ -647,7 +676,6 @@ class EmailIngestionWorker:
             # other failure retries until max_attempts is exhausted server-side,
             # so a 401 resolved by reconnect never dead-letters mail on attempt #1.
             await self.repository.fail_item(item["id"], self.worker_id, exc)
-        return True
 
     async def acquire_item(self, item: dict[str, Any]) -> str:
         provider = item["provider"]
@@ -704,9 +732,25 @@ class EmailIngestionWorker:
         return email_id
 
     async def run_attachment_once(self) -> bool:
-        attachment = await self.repository.claim_attachment(self.worker_id)
+        # C4: acquire the executor slot BEFORE claiming (same rule as
+        # acquisition) so a claimed attachment never waits holding a lease.
+        await self._attachment_semaphore.acquire()
+        try:
+            attachment = await self.repository.claim_attachment(self.worker_id)
+        except BaseException:
+            self._attachment_semaphore.release()
+            raise
         if not attachment:
+            self._attachment_semaphore.release()
             return False
+
+        task = asyncio.create_task(self._process_attachment_item(attachment))
+        self._attachment_inflight.add(task)
+        task.add_done_callback(self._attachment_inflight.discard)
+        task.add_done_callback(lambda _: self._attachment_semaphore.release())
+        return True
+
+    async def _process_attachment_item(self, attachment: dict[str, Any]) -> None:
         try:
             status = await self.acquire_attachment(attachment)
             await self.repository.finish_attachment(attachment["id"], self.worker_id, status)
@@ -716,7 +760,6 @@ class EmailIngestionWorker:
                 attachment["id"], self.worker_id,
                 "dead_letter" if terminal else "retry", safe_error_code(exc),
             )
-        return True
 
     async def acquire_attachment(self, attachment: dict[str, Any]) -> str:
         mime = str(attachment.get("mime_type") or "application/octet-stream").lower()
@@ -858,6 +901,14 @@ class EmailIngestionWorker:
                     self._work_listener.event_for(work_type).clear()
             except asyncio.CancelledError:
                 raise
+        # C4.4: drain in-flight executor tasks before the loop reports done.
+        inflight = (
+            self._acquisition_inflight
+            if work_type == "item_pending"
+            else self._attachment_inflight
+        )
+        if inflight:
+            await asyncio.wait(inflight, timeout=30)
 
     async def acquisition_loop(self) -> None:
         await self._claim_loop(self.run_acquisition_once, "item_pending")
