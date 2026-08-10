@@ -112,8 +112,18 @@ class WorkerPool:
         # keeps polling at tick speed (no egress storm) while emails
         # themselves run in parallel. 8 drains 578 pending in ~6 min,
         # 1 would be 29 min. Paid gemini is 60-1000 RPM so 8 is safe.
-        self._llm_semaphore: Optional[asyncio.Semaphore] = None
+        # C4: executor semaphores. Created here — since Python 3.10 asyncio
+        # primitives do not bind to a loop at construction, so direct
+        # construction in tests works. Acquired BEFORE the claim so a claimed
+        # row never waits in a queue holding its lease.
+        self._llm_semaphore = asyncio.Semaphore(
+            max(int(getattr(self.config, "llm_extraction_concurrency", 8) or 8), 1)
+        )
+        self._calendar_semaphore = asyncio.Semaphore(
+            max(int(getattr(self.config, "worker_calendar_sync_concurrency", 2) or 2), 1)
+        )
         self._email_tasks: set[asyncio.Task] = set()
+        self._event_sync_tasks: set[asyncio.Task] = set()
 
     def nudge(self) -> None:
         """Wake the scheduler immediately (in-process, same FastAPI process).
@@ -172,10 +182,8 @@ class WorkerPool:
             self.config = load_config()
         self._client = None
         self._nudge_event = asyncio.Event()
-        # LLM parallelism semaphore — bound to this loop
-        _conc = int(getattr(self.config, "llm_extraction_concurrency", 8) or 8)
-        self._llm_semaphore = asyncio.Semaphore(max(_conc, 1))
         self._email_tasks = set()
+        self._event_sync_tasks = set()
 
         worker_id = f"worker-{os.getpid()}-scheduler"
         self._scheduler_task = asyncio.create_task(
@@ -209,14 +217,17 @@ class WorkerPool:
             if not task.done():
                 task.cancel()
 
-        # Also cancel any in-flight LLM email tasks
-        for task in list(self._email_tasks):
+        # Also cancel any in-flight executor tasks (LLM extraction + calendar sync)
+        for task in list(self._email_tasks) + list(self._event_sync_tasks):
             if not task.done():
                 task.cancel()
 
         try:
             await asyncio.wait_for(
-                asyncio.gather(*self.tasks, *self._email_tasks, return_exceptions=True),
+                asyncio.gather(
+                    *self.tasks, *self._email_tasks, *self._event_sync_tasks,
+                    return_exceptions=True,
+                ),
                 timeout=timeout,
             )
         except asyncio.TimeoutError:
@@ -224,6 +235,7 @@ class WorkerPool:
 
         self.tasks.clear()
         self._email_tasks.clear()
+        self._event_sync_tasks.clear()
         self._scheduler_task = None
         # Keep _nudge_event but clear it so a restarted pool starts clean
         try:
@@ -322,15 +334,6 @@ class WorkerPool:
             self._client = get_service_client(self.config)
         return self._client
 
-    async def _process_email_with_semaphore(self, email: dict, worker_id: str) -> None:
-        """LLM extraction for one email, gated by the 8-wide semaphore."""
-        sem = self._llm_semaphore
-        if sem is None:
-            await self._process_email(self._get_client(), worker_id, email)
-            return
-        async with sem:
-            await self._process_email(self._get_client(), worker_id, email)
-
     async def _process_any_work(self, worker_id: str) -> bool:
         """Try to find and process work from any source.
 
@@ -353,31 +356,65 @@ class WorkerPool:
         client = self._get_client()
 
         # 1. Try approved events - requires Google Calendar (sole writer is worker)
+        # C4: acquire the calendar executor slot BEFORE claiming so a claimed
+        # event never waits in a queue holding its lease.
         if circuit_breaker.is_available("google_calendar"):
             try:
-                event = await claim_approved_event_for_sync(
-                    self.pg_pool, worker_id, lock_duration_seconds=300,
-                )
+                await self._calendar_semaphore.acquire()
+                try:
+                    event = await claim_approved_event_for_sync(
+                        self.pg_pool, worker_id,
+                        lock_duration_seconds=getattr(
+                            self.config, "llm_claim_lease_seconds", 900
+                        ),
+                    )
+                except BaseException:
+                    self._calendar_semaphore.release()
+                    raise
                 if event:
-                    await self._process_event_sync(client, worker_id, event)
+                    task = asyncio.create_task(
+                        self._process_event_sync(client, worker_id, event)
+                    )
+                    self._event_sync_tasks.add(task)
+                    task.add_done_callback(self._event_sync_tasks.discard)
+                    task.add_done_callback(lambda _: self._calendar_semaphore.release())
                     return True
+                self._calendar_semaphore.release()
             except EventsError as e:
                 logger.error(f"{worker_id}: Error claiming event: {e}")
 
         # 2. LLM email extraction — single claim loop keeps DB polling at
-        # tick speed (no 18/s storm), semaphore fans out the LLM work to 8.
+        # tick speed (no 18/s storm), semaphore fans out the LLM work. C4:
+        # non-blocking acquire so a full executor pool does not stall the
+        # other work types; the claim happens only when a slot is free.
         if circuit_breaker.is_available("llm"):
             try:
-                email = await claim_pending_email(self.pg_pool, worker_id, lock_duration_seconds=300)
-                if email:
-                    # Fire-and-forget behind semaphore; scheduler immediately
-                    # re-drains to fill up to 8 in parallel.
-                    task = asyncio.create_task(
-                        self._process_email_with_semaphore(email, worker_id)
-                    )
-                    self._email_tasks.add(task)
-                    task.add_done_callback(lambda t: self._email_tasks.discard(t))
-                    return True
+                try:
+                    await asyncio.wait_for(self._llm_semaphore.acquire(), timeout=0.01)
+                except asyncio.TimeoutError:
+                    pass  # all executors busy; fall through to the next work type
+                else:
+                    try:
+                        email = await claim_pending_email(
+                            self.pg_pool, worker_id,
+                            lock_duration_seconds=getattr(
+                                self.config, "llm_claim_lease_seconds", 900
+                            ),
+                        )
+                    except BaseException:
+                        self._llm_semaphore.release()
+                        raise
+                    if email:
+                        # Fire-and-forget behind the already-held semaphore;
+                        # the scheduler immediately re-drains to fill up to N.
+                        task = asyncio.create_task(
+                            self._process_email(client, worker_id, email)
+                        )
+                        self._email_tasks.add(task)
+                        task.add_done_callback(lambda t: self._email_tasks.discard(t))
+                        task.add_done_callback(lambda _: self._llm_semaphore.release())
+                        return True
+                    self._llm_semaphore.release()
             except EmailError as e:
                 logger.error(f"{worker_id}: Error claiming email: {e}")
 
