@@ -1,6 +1,31 @@
 # Direct Postgres Work Transport
 
-**Status:** implemented — Inc0 #262, Inc1 #263, Inc2 #264, Inc3 #265, Inc4 #266-#267, Inc5 #268, Inc6 #269 (2026-08-09) — egress 1.5M→~3k Supabase RPCs/day, NOTIFY + WorkListener, budget enforcement; awaiting production cutover
+**Status:** PARTIALLY implemented — **do not trust the previous status line, which was wrong.**
+
+- **Inc0 (#262) and Inc1 (#263) are real and shipped.** LLM egress metering and
+  the payload fixes work.
+- **Inc2 (#264) is half-done.** N pollers → 1 claim loop landed; the semaphore
+  that was supposed to preserve throughput was never written, so acquisition and
+  attachment are now strictly serial and
+  `email_acquisition_concurrency` / `email_attachment_concurrency` are read
+  nowhere outside `config.py`.
+- **Inc3 (#265), Inc4 (#266–#267) and Inc5 (#268) are unreachable dead code.**
+  `asyncpg` was never added to `pyproject.toml`; `pg_pool` is never passed to
+  `WorkerPool`, `IngestionRuntime` or `EmailIngestionRepository`; the seven
+  `*_via_pool` methods have zero callers; `WorkListener.start()` is a stub that
+  sets `_connected = True` and returns, and the class is never instantiated.
+  **No query has ever run over asyncpg and nothing has ever issued `LISTEN`.**
+  The `pg_notify` triggers from `20260809000002` fire into an empty channel.
+- **Inc6 (#269) shipped** as a health field plus a test.
+
+The measured egress improvement (929 → 96 MB/day) came entirely from arch A plus
+increments 0–1. Every worker database call still crosses PostgREST at ~1,690 B,
+so the 373 MB/mailbox/month curve in §1.3 is **unchanged**.
+
+Completion is planned in
+[`direct-pg-completion-and-live-ui-hardening.md`](direct-pg-completion-and-live-ui-hardening.md)
+(increments C1–C3). Do not start from this document's increment list — start
+from that one.
 
 Supersedes the "target shape" section of [`egress-and-work-scheduling.md`](egress-and-work-scheduling.md),
 which fixed poll *frequency*. This fixes poll *existence* and per-call *cost*.
