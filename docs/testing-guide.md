@@ -14,9 +14,9 @@ uv run pytest backend/tests/ -v
 uv run pytest backend/tests/ -m "not integration" -v
 
 # Integration tests with mocked LLM
-uv run pytest backend/tests/integration/ -m "development" -v
+./scripts/verify.sh backend
 
-# Integration tests with real LLM (costs $$$)
+# Optional integration tests with real LLM (costs $$$)
 uv run pytest backend/tests/integration/ -m "development" --run-llm -v
 ```
 
@@ -48,7 +48,7 @@ cd android && ./gradlew test
 |--------|-------------|--------------|
 | `integration` | All integration tests | Local Supabase running |
 | `development` | Tests against local Supabase + real Gmail | Seeded tokens |
-| `staging` | Tests against cloud Supabase + real services | CI only |
+| `staging` | Tests against cloud Supabase + real services | `./scripts/verify.sh staging` after merge |
 | `llm` | Tests requiring real LLM API calls | `--run-llm` flag |
 
 ## Test Architecture
@@ -58,7 +58,7 @@ cd android && ./gradlew test
 | Unit | None | Mocked | Mocked | $0 |
 | Integration (default) | Local | **Mocked** | Real | $0 |
 | Integration (real LLM) | Local | **Real** | Real | $$$ |
-| Staging (CI only) | Cloud | None | Real | $0 |
+| Staging (Tier 2) | Cloud | None | Real | $0 |
 
 ## When to Use `--run-llm`
 
@@ -78,6 +78,9 @@ Don't use `--run-llm` for:
 ```bash
 # Start local Supabase
 supabase start
+
+# Run the complete local verification gate (unit + integration)
+./scripts/verify.sh backend
 
 # Create test user
 uv run python -m cli.cli_user create \
@@ -191,4 +194,7 @@ MCP servers (Playwright, XcodeBuildMCP, mobile-mcp) are available for **manual d
 
 ## Continuous Integration
 
-Tests run automatically on pull requests. See `docs/ci-cd.md` for CI pipeline details.
+Pull-request CI, when it runs, covers mocked/unit checks only and may not run
+because Actions minutes are not funded. The authoritative gates are
+`./scripts/verify.sh backend` before merge and `./scripts/verify.sh staging`
+after merge. See `docs/ci-cd.md` for the bonus CI details.
