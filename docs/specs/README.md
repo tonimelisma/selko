@@ -12,8 +12,15 @@ Status as of 2026-08-10.
   never executes the system, so SQL is never run, the asyncpg pool is never opened
   and triggers never fire. Builds a real execution gate (`scripts/verify.sh`),
   adds schema contract tests that make the `20260809000001`/`20260809000003` class
-  of defect structurally unrepeatable, fixes the six defects the review found
-  (D1–D6), and closes the 96-commit / 21-migration production gap. Increments F1–F9.
+  of defect structurally unrepeatable, fixes the defects the review found
+  (D1–D8), and closes the 96-commit / 21-migration production gap. Increments F1–F9.
+  **Establishes two verification tiers, neither of them CI** — Tier 1 local
+  (pre-merge, real Postgres), Tier 2 staging (post-merge, real Supavisor/Render/
+  OAuth/egress) — because local Supabase has no Supavisor and therefore cannot
+  reach the pooler hypotheses at all (D8). **Start with F1.4 (D7): `.env.test`
+  and `.env.production` have no `SUPABASE_DB_URL` while `.env.production` sets
+  `ENABLE_BACKGROUND_PROCESSING=true`, so deploying `main` today hard-fails the
+  API at startup.**
 - [Post-Cutover Reliability and Scale](post-cutover-reliability-and-scale.md) — **implemented R1-R9 (#248-#251 + 8b94c53a, de9694eb, 766961d1, 9b14e0ca, a6d8d0c4) — counted health, Gmail batch, unified nudge, heartbeat+anti-starve, cutover gate, observability, recovery, drills, config tidy.** Gate before `ENABLE_BACKGROUND_PROCESSING=true` satisfied.
 - [Ingestion & recovery hardening](ingestion-recovery-hardening.md) — **built and merged (PRs #241–#247 + Aug 6 egress arch A, inc 1–10).** The history now; remaining open Finding 30 (rollback asserted, never rehearsed) and the health/efficiency residue are carried forward to the post-cutover plan above.
 - [Polling Email Ingestion v2](polling-email-ingestion-v2.md) — **built and
