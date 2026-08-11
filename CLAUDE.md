@@ -100,12 +100,38 @@ work. Run it only when the current increment will edit source code.
 
 This keeps stale review feedback from silently rotting once a PR is merged and out of sight.
 
+## MANDATORY: Verification tiers
+
+CI is not a tier. It may never run. Both tiers below run from your machine.
+
+**Tier 1 — local, before the PR merges.** `./scripts/verify.sh backend`.
+Real Postgres via `supabase start`, all migrations applied, unit + integration
+tests. This is the merge gate.
+
+**Tier 2 — staging, immediately after the PR merges.** `./scripts/verify.sh staging`.
+Real Supavisor pooler, real Render, real OAuth, real Realtime, real egress.
+
+Tier 2 is not optional and not deferrable, because Tier 1 *cannot* reach what
+Tier 2 covers:
+
+- Local Supabase has **no Supavisor**. `.env` points at port 54322, direct
+  Postgres. Every session-pooler property — LISTEN/NOTIFY survival, host
+  resolution, idle-timeout behaviour — is unreachable locally by construction.
+- A missing environment variable is invisible locally and invisible in a diff.
+  `SUPABASE_DB_URL` was absent from `.env.test` and `.env.production` while
+  `ENABLE_BACKGROUND_PROCESSING=true`; every test passed and the deploy would
+  have hard-failed at startup.
+- Egress, memory ceilings and token expiry do not exist on a laptop.
+
+**A red Tier 2 run is the top-priority next increment**, ahead of new feature
+work. Fix forward. Never let a second increment merge on top of a red staging.
+
 ### 1. Scope your change
 
-| You changed | Required before merge |
-|-------------|-----------------------|
-| `backend/**`, `cli/**` | Backend unit tests (`uv run pytest backend/tests/ -m "not integration"`) |
-| `supabase/**` (schema/migrations) | Backend unit tests (also deploys to staging on merge) |
+| You changed | Required before merge (Tier 1) | Required after merge (Tier 2) |
+|-------------|-------------------------------|-------------------------------|
+| `backend/**`, `cli/**` | `./scripts/verify.sh backend` — unit **+** integration against local Supabase | `./scripts/verify.sh staging` |
+| `supabase/**` (schema/migrations) | `./scripts/verify.sh backend` — the integration run is what proves the migration executes | `./scripts/verify.sh staging` — **required**, migrations must reach staging before prod |
 | `frontend/src/**` | Frontend unit tests + `npm run check` + **web** screenshots |
 | `ios/**` | iOS tests + **iOS** screenshots |
 | `android/**` | Android tests + **Android** screenshots |
@@ -129,6 +155,17 @@ This keeps stale review feedback from silently rotting once a PR is merged and o
   `WorkListener.start()` was a stub that reported healthy — all with a green
   test suite. If you add a code path behind a flag or an injected dependency,
   add a test that asserts the dependency actually reaches the call.
+- **SQL that has never been executed has not been tested.** A migration is not
+  done because it applies cleanly. It is done when a test has called the
+  function it defines or fired the trigger it creates, against a real database.
+  `20260809000001` (inserted into `attachments` columns that have never existed)
+  and `20260809000003` (referenced `NEW.sync_status` on `events`, breaking every
+  UPDATE) both applied cleanly, passed the full mocked suite, and were broken on
+  their first real call.
+- **Configuration is part of the change.** If your increment adds a required
+  environment variable, it is not done until that variable is set in every
+  environment that runs the code. A correct diff plus a missing value is an
+  outage. Verify on staging (Tier 2), not by reading `.env.example`.
 
 ### 2. Ship it
 
@@ -142,9 +179,15 @@ See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI 
 
 ### CI Ownership — never gate, never funded
 
-**We will never top up GitHub Actions minutes. Never trust CI to run — if it does, it's a bonus, not a gate.**
+**We will never top up GitHub Actions minutes. Never trust CI to run.**
 
-Local, change-scoped tests are the only gate. `test.yml` may be out of minutes, queued forever (`workflow_dispatch` 31127495914), or absent — merge anyway via `merge-and-cleanup.sh` (does not wait on CI). On the merge commit CI runs as a best-effort safety net; if it never runs, that's expected.
+Verification is two tiers, both run from your machine: Tier 1 (local, pre-merge)
+and Tier 2 (staging, post-merge). See "Verification tiers" above. CI is a bonus.
+If it runs and fails, fix forward; if it never runs, that is expected.
+
+The `deploy-staging` and `integration-tests-staging` jobs in `test.yml` require
+Actions minutes and therefore do not run. `./scripts/verify.sh staging` is what
+actually deploys and verifies staging. Do not read those jobs as a live path.
 
 If CI does run and fails, fix forward:
 1. **Diagnose** — `gh run view <id> --log-failed`
