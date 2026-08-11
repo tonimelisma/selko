@@ -222,6 +222,58 @@ lower than the highest already-applied one is out of order. Because staging and
 production are both far behind, this has not bitten yet — which is exactly why
 it must be resolved *before* the cutover rather than discovered during it.
 
+### D7 — Deploying `main` today would fail to start the API (critical)
+
+`backend/selko/config.py:522`, `backend/selko/api/app.py:114`, `.env.test`, `.env.production`
+
+C1 correctly made the direct-pg pool mandatory — there is no fallback, and
+`app.py:114` calls `create_pool(config)` unguarded inside the
+`enable_background_processing` branch. `assert_session_mode_url` raises
+`ConfigurationError("SUPABASE_DB_URL is required when background processing is
+enabled")` when the URL is absent, and nothing catches it. That is the correct
+design.
+
+The problem is the configuration:
+
+| File | `ENABLE_BACKGROUND_PROCESSING` | `SUPABASE_DB_URL` |
+|---|---|---|
+| `.env` (local) | — | `postgresql://…@localhost:54322/postgres` |
+| `.env.test` (staging) | `false` | **absent** |
+| `.env.production` | **`true`** | **absent** |
+
+`config.py:137` defaults `supabase_db_url` to `None` and `config.py:522` reads it
+from the environment only. `.github/workflows/test.yml` never supplies it either.
+Staging is saved only by having the flag off.
+
+**Production has the flag on and no URL.** Unless the Render production service
+carries a `SUPABASE_DB_URL` that exists nowhere in the repository, deploying
+`main` to production hard-fails at startup.
+
+This defect is the argument for §3 Tier 2 in one example. The C1 diff is
+correct. Every unit test passes. Local execution passes, because `.env` has the
+URL. A reviewer reading the PR sees nothing wrong, because nothing *in the diff*
+is wrong — what is missing is a value in an environment no test has ever run
+against. Only deploying to a real environment surfaces it.
+
+### D8 — Local Postgres cannot test the session pooler, by construction (structural)
+
+`backend/selko/services/pg.py:48-50`
+
+```python
+if host in ("localhost", "127.0.0.1", "::1"):
+    if port not in (5432, 54322):
+```
+
+Port 54322 is local Supabase's **direct** Postgres. Local Supabase has no
+Supavisor. So every hypothesis the direct-pg transport rests on — H1 (LISTEN/NOTIFY
+survives session mode), H3 (dead-socket detection through the pooler's idle
+timeouts), H4 (the pooler host resolves over IPv4) — is untestable on a
+developer machine no matter how rigorous the local suite becomes.
+
+This is not a defect to fix. It is a permanent boundary that dictates where the
+verification tiers must sit, and the reason staging has to be part of the loop
+rather than a final step.
+
 ### D6 — Repo hygiene: 161 MB / 13 008 tracked eval result files (low, but growing)
 
 `backend/tests/eval/results/` is deliberately tracked
@@ -233,45 +285,99 @@ superseded prompt hashes. Every clone pays 161 MB and 13 008 inodes.
 
 ---
 
-## 3. The to-be state
+## 3. The to-be state: three verification tiers, none of them CI
 
-Three properties, in priority order. Each one is a thing that *runs*, not a
-thing that is *written down*.
+The project already made the decisive call once: **deploys moved off CI onto the
+developer's machine** (`supabase db push` run locally, `merge-and-cleanup.sh`
+never waiting on CI). That call was right, and the same reasoning applies to
+verification. CI is not a tier here. It is a bonus that may never fire.
 
-### Pillar 1 — One command executes the real system, and it is the gate
+The tiers exist because each catches a class the one below it **cannot** catch —
+not "is less likely to", *cannot*. D8 is the proof for Tier 2: local Supabase has
+no Supavisor, so the pooler hypotheses are unreachable locally by construction.
+D7 is the proof in the other direction: a missing environment value is invisible
+to every local test and every code review, because nothing in the diff is wrong.
+
+### Tier 1 — Local execution gate. Every increment, before the PR merges.
 
 `./scripts/verify.sh backend` starts local Supabase, applies every migration,
-runs unit **and** integration tests against real Postgres with a real asyncpg
-pool, and exits non-zero if anything fails. It becomes the DoD gate for
-`backend/**` and `supabase/**`.
+and runs unit **and** integration tests against real Postgres with a real
+asyncpg pool.
 
-This is not a new philosophy — the project already believes *"local tests are the
-gate, not CI."* It simply extends that belief to the tests that can actually
-observe the system. Of the five defects in the table in §1, this pillar catches
-four.
+Catches, and catches nothing else can afford to wait on: broken SQL
+(`20260809000001`, `20260809000003`), missing RLS (#277), unwired call sites
+(direct-pg Inc3–5), trigger errors, schema drift. Fast, free, deterministic,
+offline. Of the eight defects in §2, Tier 1 catches four.
 
-### Pillar 2 — Schema is a contract that is executed, not prose that is reviewed
+### Tier 2 — Staging verification. Every increment, right after merge.
 
-A test suite that, against a real database, calls every `SECURITY DEFINER`
-function with realistic arguments and fires every trigger with a realistic row.
-`20260809000001` and `20260809000003` both fail instantly under it. This kills
-the *class*: no future migration can reference a column that does not exist and
-reach `main`.
+`./scripts/verify.sh staging` pushes migrations, deploys, waits for health, and
+runs the `staging`-marked suite against the deployed system — **from the
+developer's machine, not from CI**.
 
-### Pillar 3 — The deployed delta stays small
+Catches what Tier 1 structurally cannot:
 
-Staging runs the same code with the same flags as production, workers included.
-The cutover happens once, deliberately, behind a gate that can actually fail
-(D2 fixed), and thereafter the delta between `main` and production is measured
-in one increment, not 96 commits.
+| Class | Why local cannot reach it | Evidence |
+|---|---|---|
+| Missing/wrong environment configuration | the value is absent from an env no local test loads | **D7 — prod would fail to start today** |
+| Supavisor session-mode LISTEN/NOTIFY (H1) | local is direct Postgres on 54322; no Supavisor exists | **D8** |
+| Pooler host resolution, IPv4/IPv6 (H4) | localhost is exempted from the check | `pg.py:44-50` |
+| Dead-socket detection through real idle timeouts (H3) | no NAT or LB in front of localhost | D3, and the drill it blocks |
+| Render memory ceiling / OOM | 512 MB limit does not exist locally | the ~2 MB/min leak that OOM-killed prod every ~3 h |
+| **Real egress numbers** | localhost transfers are not metered by anyone | the 1 690 B → ~100 B claim justifying the entire direct-pg batch **has never been measured** |
+| Realtime private-channel authorization | real JWTs, real expiry, real `setAuth` rotation | D1 and the whole of C6 |
+| OAuth token refresh at real expiry | tokens do not expire in a fixture | the recurring `invalid_grant` class |
+
+Thirteen integration files already carry `@pytest.mark.staging`. **They have
+never run**, because the only thing that runs them is the
+`integration-tests-staging` CI job, which requires the `deploy-staging` job,
+which requires Actions minutes that will never be bought. The suite exists; the
+trigger is dead. Tier 2 is mostly a matter of moving the trigger to where it
+will actually fire.
+
+Note the same is true of the deploy itself: `test.yml:167-192` fires the Render
+deploy hooks, and only on a push to `main` in a workflow that does not run. So
+**staging has almost certainly never received the last 96 commits either.**
+Verify this in F7 step 1 rather than assuming it.
+
+### Tier 3 — Production. Small, deliberate, gated deltas.
+
+After the one-time cutover, the delta between `main` and production is one
+increment, not 96 commits. Tier 2 having passed is the precondition for Tier 3.
+
+### What this replaces
+
+| Today | To-be |
+|---|---|
+| PR gate: mocked tests only | PR gate: Tier 1, real Postgres |
+| Post-merge safety net: CI, which never runs | Post-merge safety net: Tier 2, on staging, run by the developer |
+| Staging: flag off, never deployed, never tested | Staging: same code and flags as prod, verified every increment |
+| Production: 96 commits behind | Production: one increment behind |
 
 ### Explicitly out of scope
 
-- Buying CI minutes. The policy stands; this plan deliberately puts every gate
-  on the developer's machine where it always runs.
-- New product features. Nothing in this plan changes user-visible behaviour
-  except by fixing D1.
+- **Buying CI minutes.** The policy stands. This plan deliberately puts every
+  tier on the developer's machine, where it always fires.
+- **New paid Render services.** Tier 2 uses the staging services that already
+  exist. No per-branch preview environments — that is why Tier 2 sits
+  *after* merge, not before it.
+- New product features. Nothing here changes user-visible behaviour except D1.
 - Re-litigating the asyncpg transport decision. It is correct and settled.
+
+### The honest cost of Tier 2 being post-merge
+
+Without paid preview environments, staging cannot gate a PR — it can only catch
+a defect once the code is on `main`. That is a real weakness and this plan does
+not pretend otherwise. It is mitigated, not solved, by:
+
+- Tier 1 being strong enough that anything catchable locally never reaches Tier 2.
+- Tier 2 running **immediately** after merge, not batched. A red staging run is
+  the top-priority next increment, ahead of new work.
+- Fix-forward, matching the project's existing stated posture for CI failures.
+
+For an unusually risky increment (a migration touching a hot table, a change to
+the pooler or listener), promote the branch to staging manually *before*
+merging. The mechanics are identical — `verify.sh staging` from the branch.
 
 ---
 
@@ -389,6 +495,45 @@ failed reconnect retries on the backoff schedule rather than after a full
    received a non-`None` `command_timeout`. Fails today.
 3. `test_heartbeat_backoff_resets_after_successful_reconnect`.
 
+#### F1.4 — D7: the missing `SUPABASE_DB_URL` (do this first — it is deploy-blocking)
+
+`.env.test` and `.env.production` have no `SUPABASE_DB_URL`, and
+`.env.production` has `ENABLE_BACKGROUND_PROCESSING=true`. As written, deploying
+`main` to production fails at startup.
+
+**Step 1 — establish the fact.** The Render service may carry the variable even
+though the repo does not. Check the staging and production Render services'
+environment for `SUPABASE_DB_URL` before changing anything, and record the
+answer in the PR body. Do **not** copy any production value into `.env.test` or
+into any local file — per `CLAUDE.md`, production credentials never move to a
+lower-trust environment. You only need to know *whether* the key is set.
+
+**Step 2 — supply the value in the right place.** The connection string carries
+a database password, so it belongs in the Render service environment, never in a
+committed file. In `.env.test` and `.env.production`, add a commented marker so
+the next reader knows the variable is required and where it lives:
+
+```
+# SUPABASE_DB_URL is set in the Render service environment, not here (contains
+# the database password). Must be the Supavisor SESSION pooler on port 5432 —
+# port 6543 is transaction mode and cannot carry LISTEN/NOTIFY (pg.py H1).
+```
+
+Set the real value on the staging Render service now; production waits for F8.
+
+**Step 3 — make the failure legible instead of fatal-at-startup-with-a-traceback.**
+Keep it fatal — that part is correct, there is no fallback — but add the check to
+config load so the message names the environment and the fix. **Test first, in
+`backend/tests/test_config.py`:** assert that
+`enable_background_processing=True` with `supabase_db_url=None` raises with a
+message containing both `SUPABASE_DB_URL` and `ENABLE_BACKGROUND_PROCESSING`.
+
+**Step 4 — resolve the contradiction in §1.1.** `.env.production:31` says
+`true`; `cutover-verification-20260807.md:3` says it must stay `false` until
+cutover. Set `.env.production` to `false` and add a comment pointing at F8 as
+the increment that flips it. The flag must be turned on deliberately, as the
+last step of a cutover, not inherited from a file.
+
 ---
 
 ### F2 — Make the integration suite run locally, and report honestly what it finds
@@ -459,24 +604,99 @@ checkout, and every one of the 26 files is either passing or explicitly marked
 Do this *after* F2 goes green, never before. A gate that is red on arrival gets
 routed around, and then you have a worse problem than no gate.
 
-Change the `CLAUDE.md` scope table:
+`CLAUDE.md` is the single source of truth for every agent working this repo, so
+it is where the tier model has to land or it will not be followed. Apply these
+four edits exactly.
+
+#### Edit 1 — replace the two backend rows of the "Scope your change" table
+
+Before:
 
 | You changed | Required before merge |
-|---|---|
-| `backend/**`, `cli/**` | `./scripts/verify.sh backend` (unit **+** integration against local Supabase) |
-| `supabase/**` (schema/migrations) | `./scripts/verify.sh backend` — the integration run is what proves the migration executes |
+|-------------|-----------------------|
+| `backend/**`, `cli/**` | Backend unit tests (`uv run pytest backend/tests/ -m "not integration"`) |
+| `supabase/**` (schema/migrations) | Backend unit tests (also deploys to staging on merge) |
 
-Add to the DoD prose, as a peer of the existing "an increment is not implemented
-until its call sites are wired" rule:
+After:
 
-> **SQL that has never been executed has not been tested.** A migration is not
-> done because it applies cleanly. It is done when a test has called the
-> function it defines or fired the trigger it creates, against a real database.
-> `20260809000001` and `20260809000003` both applied cleanly, passed the full
-> mocked suite, and were broken on their first real call.
+| You changed | Required before merge (Tier 1) | Required after merge (Tier 2) |
+|-------------|-------------------------------|-------------------------------|
+| `backend/**`, `cli/**` | `./scripts/verify.sh backend` — unit **+** integration against local Supabase | `./scripts/verify.sh staging` |
+| `supabase/**` (schema/migrations) | `./scripts/verify.sh backend` — the integration run is what proves the migration executes | `./scripts/verify.sh staging` — **required**, migrations must reach staging before prod |
 
-Update `docs/ci-cd.md` to say plainly what is true: PR CI runs mocked tests only
-and may not run at all; the local execution gate is the real gate.
+Note the parenthetical *"(also deploys to staging on merge)"* in the old row is
+false and must go: that deploy is triggered by the `deploy-staging` CI job,
+which needs Actions minutes that will never be bought.
+
+#### Edit 2 — add a new §"Verification tiers" immediately before "Definition of Done"
+
+```markdown
+## MANDATORY: Verification tiers
+
+CI is not a tier. It may never run. Both tiers below run from your machine.
+
+**Tier 1 — local, before the PR merges.** `./scripts/verify.sh backend`.
+Real Postgres via `supabase start`, all migrations applied, unit + integration
+tests. This is the merge gate.
+
+**Tier 2 — staging, immediately after the PR merges.** `./scripts/verify.sh staging`.
+Real Supavisor pooler, real Render, real OAuth, real Realtime, real egress.
+
+Tier 2 is not optional and not deferrable, because Tier 1 *cannot* reach what
+Tier 2 covers:
+
+- Local Supabase has **no Supavisor**. `.env` points at port 54322, direct
+  Postgres. Every session-pooler property — LISTEN/NOTIFY survival, host
+  resolution, idle-timeout behaviour — is unreachable locally by construction.
+- A missing environment variable is invisible locally and invisible in a diff.
+  `SUPABASE_DB_URL` was absent from `.env.test` and `.env.production` while
+  `ENABLE_BACKGROUND_PROCESSING=true`; every test passed and the deploy would
+  have hard-failed at startup.
+- Egress, memory ceilings and token expiry do not exist on a laptop.
+
+**A red Tier 2 run is the top-priority next increment**, ahead of new feature
+work. Fix forward. Never let a second increment merge on top of a red staging.
+```
+
+#### Edit 3 — add to the Definition of Done prose
+
+As a peer of the existing *"an increment is not implemented until its call sites
+are wired"* rule:
+
+```markdown
+- **SQL that has never been executed has not been tested.** A migration is not
+  done because it applies cleanly. It is done when a test has called the
+  function it defines or fired the trigger it creates, against a real database.
+  `20260809000001` (inserted into `attachments` columns that have never existed)
+  and `20260809000003` (referenced `NEW.sync_status` on `events`, breaking every
+  UPDATE) both applied cleanly, passed the full mocked suite, and were broken on
+  their first real call.
+- **Configuration is part of the change.** If your increment adds a required
+  environment variable, it is not done until that variable is set in every
+  environment that runs the code. A correct diff plus a missing value is an
+  outage. Verify on staging (Tier 2), not by reading `.env.example`.
+```
+
+#### Edit 4 — correct the "CI Ownership" section
+
+It currently reads *"Local, change-scoped tests are the only gate."* That
+remains true but is now incomplete — it is the pre-merge gate, and staging is
+the post-merge one. Rewrite the opening to:
+
+```markdown
+**We will never top up GitHub Actions minutes. Never trust CI to run.**
+
+Verification is two tiers, both run from your machine: Tier 1 (local, pre-merge)
+and Tier 2 (staging, post-merge). See "Verification tiers" above. CI is a bonus.
+If it runs and fails, fix forward; if it never runs, that is expected.
+
+The `deploy-staging` and `integration-tests-staging` jobs in `test.yml` require
+Actions minutes and therefore do not run. `./scripts/verify.sh staging` is what
+actually deploys and verifies staging. Do not read those jobs as a live path.
+```
+
+Finally, update `docs/ci-cd.md` and `docs/testing-guide.md` to match, and state
+plainly what is true there: PR CI runs mocked tests only and may not run at all.
 
 ---
 
@@ -621,47 +841,88 @@ proves it rejects a lower-numbered new file.
 
 ---
 
-### F7 — Staging becomes a real environment
+### F7 — Build Tier 2: staging becomes a verified environment, every increment
 
-**Branch:** none — this is an operational increment, not a code change.
+**Branch:** `feat/staging-verification-loop` (for `verify.sh`), plus operational steps.
 **Requires:** F1–F6 merged and `./scripts/verify.sh backend` green.
+**This is the increment that makes staging part of the process rather than a
+final ceremony.** It has two halves: build the tool, then use it.
 
-Staging currently runs with `ENABLE_BACKGROUND_PROCESSING=false`, which means the
-worker path — the entire subject of the last three specs — has never run
-anywhere but a laptop. This increment changes that, and only that.
+#### F7a — `./scripts/verify.sh staging`
 
-1. **Refresh the staging token** (never ask the user to re-auth first; the sync
-   script handles the common case):
+One command, run from a developer machine, that takes `main` to a verified
+staging deployment. It must be safe to re-run and must never touch production.
+
+**Hard safety requirements** — assert these first, and abort before doing
+anything if any fails:
+
+1. The linked project ref is `lxmysergoeaegxlyfzwk` (staging). If it is
+   `khahcozfbnpykspvatrg`, **abort immediately** — this script must be
+   incapable of touching production.
+2. `ENVIRONMENT=staging`.
+3. Never print a token, password, or connection string. Existence checks only.
+
+**Steps:**
+
+1. **Token freshness** — the recurring `invalid_grant` class. Do not ask anyone
+   to re-auth first; the sync script handles the common case:
    ```bash
    uv run python -m cli.cli_seed_tokens --sync --provider gmail
    ```
-2. **Gate, then push migrations** — the gate is now real because of F1.2:
+2. **Schema gate, then migrations** — the gate is real now because of F1.2:
    ```bash
    ./scripts/assert-schema-code-compat.sh --linked
    ```
-   Expect this to **fail**, listing the pending migrations. That is the gate
-   working. Then `supabase link --project-ref lxmysergoeaegxlyfzwk` and
-   `supabase db push --dry-run`, review, then `supabase db push`.
-3. **Deploy code to staging** (Render deploys on push to `main`).
-4. **Turn the workers on in staging**: set `ENABLE_BACKGROUND_PROCESSING=true` in
-   the staging Render service.
-5. **Run the drills** — `./scripts/drill-lease-recovery.sh`, and the H3
-   dead-socket drill from
-   `direct-pg-completion-and-live-ui-hardening.md` (terminate the listener
-   backend via `pg_stat_activity.application_name = 'selko-worker'` and assert
-   `WorkListener` reconnects). D3 must be fixed first or this drill hangs
-   instead of failing.
-6. **Watch for 24 h** against the health criteria in
-   `cutover-verification-20260807.md:54-61`.
-7. **Rehearse the rollback.** `cutover-verification-20260807.md:65` calls the
-   rollback *"an assertion, not a tested property"*, and it has carried that
-   caveat since hardening finding 30. Execute it on staging: revert, confirm the
-   system runs, re-apply. A rollback plan that has never been run is not a
-   rollback plan.
+   On the first run expect this to **fail**, listing the pending migrations.
+   That is the gate working. Then `supabase db push --dry-run`, review, push.
+3. **Deploy code** — POST the staging Render deploy hook directly. Do **not**
+   rely on the `deploy-staging` CI job; it does not run.
+4. **Wait for health** — poll `GET /health` until ready or a timeout, then
+   `GET /health/ingestion` and `GET /health/egress`. A deploy that boots but
+   reports unhealthy is a failure, not a pass. This step alone catches D7.
+5. **Run the staging suite:**
+   ```bash
+   uv run pytest backend/tests/integration/ -m "staging" -v --tb=short -n auto
+   ```
+   Thirteen files carry this marker and none has ever run. **Expect failures on
+   the first execution** and triage them with the same four-bucket table as F2.
+6. **Report egress** — print the `/health/egress` delta for the run. This is the
+   first real measurement of the 1 690 B → ~100 B claim that justified the
+   entire direct-pg batch. Record the number in the PR body. If it does not
+   match the claim, that is a finding, and a valuable one.
 
-**Definition of done:** staging has processed real email through the worker path
-for 24 h with `items_dead_letter = 0`, and the rollback has been performed and
-undone at least once.
+#### F7b — Turn the workers on in staging
+
+Only after F7a exits 0.
+
+1. Set `SUPABASE_DB_URL` on the staging Render service to the **session pooler**
+   host on **port 5432** (F1.4). Port 6543 is transaction mode and cannot carry
+   LISTEN/NOTIFY — `assert_session_mode_url` will reject it, which is the check
+   working.
+2. Set `ENABLE_BACKGROUND_PROCESSING=true` on staging. The worker path — the
+   subject of the last three specs — has never run outside a laptop.
+3. **Confirm the pooler hypotheses (D8), which nothing local can:**
+   - `WorkListener` establishes `LISTEN selko_work` through Supavisor and
+     receives a NOTIFY end to end (H1).
+   - The pooler host resolves and connects (H4).
+   - The H3 dead-socket drill: terminate the listener backend via
+     `pg_stat_activity.application_name = 'selko-worker'` and assert the
+     listener reconnects. **D3 must be fixed first** or this drill hangs instead
+     of failing.
+4. `./scripts/drill-lease-recovery.sh`.
+5. **Soak 24 h** against the health criteria in
+   `cutover-verification-20260807.md:54-61`. Watch RSS for the ~2 MB/min leak
+   signature — another thing only a real 512 MB instance shows.
+6. **Rehearse the rollback.** `cutover-verification-20260807.md:65` calls it
+   *"an assertion, not a tested property"*, and it has carried that caveat since
+   hardening finding 30. Execute it on staging: revert, confirm the system runs,
+   re-apply. A rollback plan that has never been run is not a rollback plan.
+
+**Definition of done:** `./scripts/verify.sh staging` exits 0 from a clean
+checkout; staging has processed real email through the worker path for 24 h with
+`items_dead_letter = 0`; the H1/H3/H4 pooler properties are confirmed on real
+infrastructure; the rollback has been performed and undone at least once; and
+the measured egress figure is recorded.
 
 ---
 
@@ -711,18 +972,32 @@ F0 ✅ ──▶ F1 ──▶ F2 ──▶ F3 ──▶ F4 ──▶ F5 ──�
                                               F9 (any time)
 ```
 
-| # | Increment | Size | Blocks |
-|---|---|---|---|
-| F0 | Land WIP, correct the record | done | — |
-| F1 | Three self-contained defects (D1–D3) | S | — |
-| F2 | Integration suite runs locally | **L — unknown until run** | F3, F4 |
-| F3 | Execution gate into the DoD | S | — |
-| F4 | Schema contract tests | M | — |
-| F5 | Executor head-of-line blocking (D4) | M | — |
-| F6 | Migration ordering (D5) | S | F7 |
-| F7 | Staging goes live | M, mostly waiting | F8 |
-| F8 | Production cutover | M, needs approval | — |
-| F9 | Eval retention (D6) | S | — |
+| # | Increment | Tier | Size | Blocks |
+|---|---|---|---|---|
+| F0 | Land WIP, correct the record | — | done | — |
+| F1 | Defects D1–D3 **+ D7 (deploy-blocking)** | — | S | F7 |
+| F2 | Integration suite runs locally | 1 | **L — unknown until run** | F3, F4 |
+| F3 | Both tiers into `CLAUDE.md` + DoD | 1+2 | S | — |
+| F4 | Schema contract tests | 1 | M | — |
+| F5 | Executor head-of-line blocking (D4) | 1 | M | — |
+| F6 | Migration ordering (D5) | 1 | S | F7 |
+| F7 | **Build Tier 2: `verify.sh staging`, workers on, 24 h soak** | 2 | **L** | F8 |
+| F8 | Production cutover | 3 | M, needs approval | — |
+| F9 | Eval retention (D6) | — | S | — |
+
+**Do F1.4 (D7) first, out of order if you like.** It is a config change, it is
+deploy-blocking, and until it is done no deploy of `main` can succeed.
+
+**Two increments have genuinely unknown size, for the same reason** — both run
+suites that have never run:
+
+- **F2**: 26 integration files, never run as a suite.
+- **F7**: 13 `staging`-marked files, never run *at all* (their only trigger is a
+  CI job that needs minutes that will never be bought).
+
+Scope both from their first execution, not from reading. If either turns out to
+be large, split it: land the tooling plus a passing subset first, then work the
+remainder file by file. Do not let either become a branch that lives for a week.
 
 **F2 is the one to watch.** Everything else is scoped from code that has been
 read. F2 is scoped from code that has never been run as a suite, so its size is
@@ -740,5 +1015,12 @@ Not "the tests pass" — the tests passed for every defect in §1. These:
 2. Removing a migration from the remote and running the schema gate exits 1.
 3. `./scripts/verify.sh backend` opens a real Postgres connection — verifiable
    in `pg_stat_activity` while it runs.
-4. Production and `main` are within one increment of each other.
-5. A new developer can clone, run one command, and see the system actually run.
+4. **Unsetting `SUPABASE_DB_URL` on the staging Render service makes
+   `./scripts/verify.sh staging` go red at the health check.** That is D7
+   becoming detectable rather than latent.
+5. **`LISTEN selko_work` is confirmed working through Supavisor on real
+   infrastructure**, and the egress claim behind the whole direct-pg batch has a
+   measured number attached to it instead of an estimate.
+6. Production and `main` are within one increment of each other, and staging is
+   never more than one increment behind `main`.
+7. A new developer can clone, run one command, and see the system actually run.
