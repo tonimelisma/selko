@@ -36,6 +36,9 @@ main() {
     backend)
       verify_backend
       ;;
+    staging)
+      ./scripts/verify-staging.sh
+      ;;
     frontend)
       verify_frontend
       ;;
