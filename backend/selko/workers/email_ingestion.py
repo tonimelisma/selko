@@ -61,6 +61,7 @@ from selko.services.outlook import (
     resolve_well_known_folder_ids,
 )
 from selko.services.msgraph import record_graph_failure
+from selko.workers.concurrency import _try_acquire
 
 logger = logging.getLogger(__name__)
 
@@ -641,7 +642,8 @@ class EmailIngestionWorker:
         # Acquire the executor slot BEFORE claiming. Claiming first lets the
         # drain loop outrun the executors, and every claimed row holds a lease
         # that expires while it waits in the queue.
-        await self._acquisition_semaphore.acquire()
+        if not await _try_acquire(self._acquisition_semaphore):
+            return False
         try:
             item = await self.repository.claim_item(self.worker_id)
         except BaseException:
@@ -734,7 +736,8 @@ class EmailIngestionWorker:
     async def run_attachment_once(self) -> bool:
         # C4: acquire the executor slot BEFORE claiming (same rule as
         # acquisition) so a claimed attachment never waits holding a lease.
-        await self._attachment_semaphore.acquire()
+        if not await _try_acquire(self._attachment_semaphore):
+            return False
         try:
             attachment = await self.repository.claim_attachment(self.worker_id)
         except BaseException:

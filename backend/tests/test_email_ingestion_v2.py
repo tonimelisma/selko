@@ -1137,8 +1137,11 @@ class TestExecutorConcurrency:
 
         with patch.object(worker, "acquire_item", new=AsyncMock(side_effect=fake_acquire)), \
              patch.object(worker.repository, "complete_item", new=AsyncMock(return_value=True)):
-            for _ in range(10):
-                await worker.run_acquisition_once()
+            accepted = 0
+            while accepted < 10:
+                accepted += int(await worker.run_acquisition_once())
+                if accepted < 10:
+                    await asyncio.sleep(0.011)
             while worker._acquisition_inflight:
                 await asyncio.sleep(0.01)
 
@@ -1146,35 +1149,42 @@ class TestExecutorConcurrency:
         assert done == 10
 
     @pytest.mark.asyncio
-    async def test_claim_never_outruns_executors(self, mock_config, fake_pg_pool):
-        """C4.1 regression: claiming before acquiring let leases expire in the queue.
+    async def test_saturated_acquisition_executor_does_not_block_attachments(
+        self, mock_config, fake_pg_pool
+    ):
+        """A full acquisition executor must not block attachment work."""
+        worker = self._worker(mock_config, fake_pg_pool, 1)
+        await worker._acquisition_semaphore.acquire()
+        try:
+            with patch.object(
+                worker.repository, "claim_attachment", new=AsyncMock(return_value=None)
+            ) as claim:
+                assert await worker.run_attachment_once() is False
+            claim.assert_awaited_once()
+        finally:
+            worker._acquisition_semaphore.release()
 
-        Concurrency 1 with a blocked processor: only ONE claim may be made
-        while the executor slot is occupied.
-        """
+    @pytest.mark.asyncio
+    async def test_claim_never_precedes_acquire(self, mock_config, fake_pg_pool):
+        """C4.1: a saturated executor must not claim a row and hold a lease."""
         items = [{"id": f"item-{i}", "change_kind": "upsert"} for i in range(10)]
         fake_pg_pool.rows = list(items) + [None] * 20
         worker = self._worker(mock_config, fake_pg_pool, 1)
 
         released = asyncio.Event()
 
-        async def blocking_acquire(item):
+        async def blocking_acquire(_item):
             await released.wait()
 
         with patch.object(worker, "acquire_item", new=AsyncMock(side_effect=blocking_acquire)):
             first = await worker.run_acquisition_once()
             assert first is True
-            # The second claim blocks on the semaphore — it must not run the
-            # claim while the executor slot is occupied.
-            second = asyncio.create_task(worker.run_acquisition_once())
-            await asyncio.sleep(0.05)
-            assert not second.done(), "second claim must wait for the executor slot"
+            assert await worker.run_acquisition_once() is False
             released.set()
-            assert await asyncio.wait_for(second, timeout=5) is True
             await asyncio.wait(worker._acquisition_inflight, timeout=5)
 
         claim_calls = [sql for sql, _ in fake_pg_pool.calls if "claim_email_ingestion_item" in sql]
-        assert len(claim_calls) == 2
+        assert len(claim_calls) == 1
 
     @pytest.mark.asyncio
     async def test_semaphore_released_when_claim_returns_none(self, mock_config, fake_pg_pool):

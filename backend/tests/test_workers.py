@@ -8,6 +8,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from selko.workers.concurrency import _try_acquire
 from selko.workers.pool import WorkerPool
 
 # ---------------------------------------------------------------------------
@@ -229,6 +230,47 @@ class TestProcessAnyWork:
 
         email_claim.assert_not_called()
         assert result is True
+
+    @pytest.mark.asyncio
+    async def test_saturated_calendar_executor_does_not_block_email_claims(
+        self, pool, mock_config
+    ):
+        """A full calendar executor must not park the shared drain loop."""
+        pool.config = mock_config
+        await pool._calendar_semaphore.acquire()
+        await pool._calendar_semaphore.acquire()
+        try:
+            with (
+                patch("selko.workers.pool.get_service_client"),
+                patch(
+                    "selko.workers.pool.claim_pending_email",
+                    new=AsyncMock(return_value={"id": "email-1"}),
+                ) as email_claim,
+                patch("selko.workers.pool.claim_approved_event_for_sync", new=AsyncMock()) as event_claim,
+                patch.object(pool, "_process_email", new=AsyncMock()),
+            ):
+                assert await pool._process_any_work("w-0") is True
+
+            event_claim.assert_not_awaited()
+            email_claim.assert_awaited_once()
+        finally:
+            pool._calendar_semaphore.release()
+            pool._calendar_semaphore.release()
+
+
+@pytest.mark.asyncio
+async def test_semaphore_permits_are_not_leaked_by_timeout():
+    """Repeated bounded waits must not consume permits after timing out."""
+    semaphore = asyncio.Semaphore(3)
+    for _ in range(3):
+        assert await _try_acquire(semaphore)
+
+    for _ in range(1000):
+        assert await _try_acquire(semaphore) is False
+
+    for _ in range(3):
+        semaphore.release()
+    assert [await _try_acquire(semaphore) for _ in range(3)] == [True, True, True]
 
 
 
