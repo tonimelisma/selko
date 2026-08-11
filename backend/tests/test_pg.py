@@ -125,3 +125,115 @@ def test_status_is_false_before_start():
     """Regression: the Inc5 stub reported connected=True without a LISTEN."""
     from selko.services.pg import WorkListener
     assert WorkListener(config=_fake_config()).status()["connected"] is False
+
+
+def test_listener_connection_sets_socket_keepalive(monkeypatch):
+    """F1.3 (D3): the listener sits idle for minutes between heartbeats —
+    the connection most likely to need keepalives — but _connect() calls
+    asyncpg.connect() directly, bypassing the pool's init= hook entirely.
+    Fails today (calls is empty).
+    """
+    import socket
+    import asyncio
+    from selko.services.pg import WorkListener
+
+    calls = []
+
+    class FakeSock:
+        def setsockopt(self, level, opt, val):
+            calls.append((level, opt, val))
+
+    class FakeTransport:
+        def get_extra_info(self, name):
+            assert name == "socket"
+            return FakeSock()
+
+    class FakeConn:
+        _transport = FakeTransport()
+
+        async def add_listener(self, channel, callback):
+            pass
+
+    async def fake_connect(**kwargs):
+        return FakeConn()
+
+    import asyncpg
+    monkeypatch.setattr(asyncpg, "connect", fake_connect)
+
+    listener = WorkListener(config=_fake_config())
+    asyncio.run(listener._connect())
+
+    opts = {opt for _, opt, _ in calls}
+    assert socket.SO_KEEPALIVE in opts
+
+
+def test_listener_connection_sets_command_timeout(monkeypatch):
+    """F1.3 (D3): without command_timeout, execute() on a dead-but-open
+    socket in _heartbeat_loop can block indefinitely, hanging before it ever
+    reaches the wait_for(..., timeout=10.0) meant to detect exactly that.
+    Fails today (captured.get("command_timeout") is None).
+    """
+    import asyncio
+    from selko.services.pg import WorkListener
+
+    captured = {}
+
+    class FakeTransport:
+        def get_extra_info(self, name):
+            return None  # short-circuits keepalive setup; not under test here
+
+    class FakeConn:
+        _transport = FakeTransport()
+
+        async def add_listener(self, channel, callback):
+            pass
+
+    async def fake_connect(**kwargs):
+        captured.update(kwargs)
+        return FakeConn()
+
+    import asyncpg
+    monkeypatch.setattr(asyncpg, "connect", fake_connect)
+
+    listener = WorkListener(config=_fake_config())
+    asyncio.run(listener._connect())
+
+    assert captured.get("command_timeout") is not None
+
+
+def test_heartbeat_backoff_resets_after_successful_reconnect(monkeypatch):
+    """D3 secondary: a failed reconnect used to fall through to the top of
+    _heartbeat_loop, which sleeps the full `interval` (default 120s) before
+    trying again — behind, not on, the backoff schedule. Fails today:
+    WorkListener has no _reconnect_loop method at all.
+    """
+    import asyncio
+    from selko.services.pg import WorkListener
+
+    listener = WorkListener(config=_fake_config())
+
+    sleep_calls = []
+
+    async def fake_sleep(duration):
+        sleep_calls.append(duration)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    attempts = {"n": 0}
+
+    async def fake_connect():
+        attempts["n"] += 1
+        if attempts["n"] < 3:
+            raise ConnectionError("still down")
+
+    monkeypatch.setattr(listener, "_connect", fake_connect)
+
+    result_backoff = asyncio.run(listener._reconnect_loop(1.0))
+
+    # Two failed attempts retry on the backoff schedule (1s, 2s), never the
+    # 120s interval; the delay computed for a hypothetical next attempt (4s)
+    # is also recorded since it's derived before the successful connect.
+    assert sleep_calls == [1.0, 2.0, 4.0]
+    assert attempts["n"] == 3
+    # Reset to 1.0 for the next *unrelated* failure after success.
+    assert result_backoff == 1.0
