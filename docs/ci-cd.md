@@ -68,7 +68,19 @@ Do not use: gh workflow run test.yml (requires minutes we will never buy; if it 
 | `frontend-unit-tests` | Every push/PR (frontend-tests.yml) | `frontend/**` | None | Frontend unit + build + svelte-check via dedicated workflow |
 | `deploy-staging` | Main push only | `backend/**` or `supabase/**` | unit-tests, android-unit-tests, frontend-unit-tests | Deploy DB + API + frontend to staging |
 | `integration-tests-staging` | Main push only | — | deploy-staging | Validate deployed staging backend (parallelized with pytest-xdist) |
+| `manual-staging-action` | Manual only | — | None | Apply pending staging migrations or deploy and verify staging explicitly |
 | `deploy-production` | Manual/tag only | — | None | Deploy DB + API to production |
+
+### Manual workflow dispatch
+
+`workflow_dispatch` is safe by default. Choose one `staging_action` at a time:
+
+1. `apply-migrations` reviews and applies pending staging migrations.
+2. `deploy` requires the migration gate to pass, then deploys and verifies the
+   staging services and integration suite.
+
+Production is not selected by a generic manual run. The `deploy_production`
+checkbox must be explicitly enabled, or a version tag must be pushed.
 
 ## Required GitHub Secrets
 
@@ -77,6 +89,7 @@ Configure at: Repository -> Settings -> Secrets and variables -> Actions
 | Secret | Purpose | How to Generate |
 |--------|---------|-----------------|
 | `SUPABASE_ACCESS_TOKEN` | Authenticate Supabase CLI for migrations | https://supabase.com/dashboard/account/tokens |
+| `STAGING_SUPABASE_DB_PASSWORD` | Password-authenticated staging migration queries and pushes | Supabase project database settings |
 | `STAGING_SUPABASE_URL` | Staging database connection | Supabase dashboard |
 | `STAGING_SUPABASE_ANON_KEY` | Staging API access | Supabase dashboard -> Settings -> API |
 | `STAGING_SUPABASE_SERVICE_ROLE_KEY` | Staging admin operations | Supabase dashboard -> Settings -> API |
@@ -131,7 +144,7 @@ supabase db push
 
 
 
-### Production still requires your explicit approval
+### Production still requires explicit approval
 
 An AI agent must **ask** before any prod deploy — the last sentence of its DoD report is "Should I deploy this to production?" — and only proceed on an explicit yes. When you say yes, the agent runs the local push above, not `gh workflow run test.yml`.
 
@@ -143,8 +156,8 @@ supabase link --project-ref khahcozfbnpykspvatrg && supabase db push
 git tag -a v1.0.0 -m "Release 1.0.0"
 git push origin v1.0.0
 
-# Deprecated: gh workflow run test.yml — requires minutes we will never buy.
-# If it does run, treat it as a bonus verification only.
+# The manual workflow's `deploy_production` checkbox is an explicit operator
+# gate; a generic workflow dispatch cannot deploy production.
 ```
 
 ## Merge Workflow
