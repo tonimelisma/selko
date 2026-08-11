@@ -107,11 +107,15 @@ class TestMainExitCodeWithFakeSupabaseCli:
     missing remotely.
     """
 
-    def _run_with_fake_cli(self, tmp_path, fake_cli_body: str) -> subprocess.CompletedProcess:
+    def _run_with_fake_cli(
+        self, tmp_path, fake_cli_body: str, extra_env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess:
         fake_supabase = tmp_path / "supabase"
         fake_supabase.write_text(f"#!/usr/bin/env bash\n{fake_cli_body}\n")
         fake_supabase.chmod(0o755)
         env = {"PATH": f"{tmp_path}:/usr/bin:/bin:/opt/homebrew/bin"}
+        if extra_env:
+            env.update(extra_env)
         return subprocess.run(
             ["bash", str(SCRIPT), "--linked"],
             capture_output=True,
@@ -141,6 +145,26 @@ class TestMainExitCodeWithFakeSupabaseCli:
         result = self._run_with_fake_cli(tmp_path, "echo 'not json'")
 
         assert result.returncode == 1
+
+    def test_uses_database_password_for_remote_migration_query(self, tmp_path):
+        args_file = tmp_path / "supabase-args"
+        result = self._run_with_fake_cli(
+            tmp_path,
+            f'printf "%s\\n" "$@" > "{args_file}"; '
+            'echo \'{"migrations":[{"local":"20260811000004","remote":"20260811000004","time":"t"}]}\'',
+            {"SUPABASE_DB_PASSWORD": "staging-password"},
+        )
+
+        assert result.returncode == 0
+        assert args_file.read_text().splitlines() == [
+            "migration",
+            "list",
+            "--linked",
+            "--output-format",
+            "json",
+            "--password",
+            "staging-password",
+        ]
 
 
 class TestMigrationOrder:
