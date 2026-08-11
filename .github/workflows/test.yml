@@ -318,7 +318,7 @@ jobs:
             if curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --output /dev/null "$health_url"; then
               exit 0
             fi
-            [[ "$attempt" -lt 30 ]] || exit 1
+            [[ "$attempt" -lt 12 ]] || exit 1
             sleep 10
           done
 
