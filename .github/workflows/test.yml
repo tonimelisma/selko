@@ -12,7 +12,22 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      staging_action:
+        description: "Staging action (apply migrations first, then deploy)"
+        required: true
+        type: choice
+        options:
+          - none
+          - apply-migrations
+          - deploy
+        default: none
+      deploy_production:
+        description: "Deploy production (requires an explicit checked confirmation)"
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   changes:
@@ -241,11 +256,112 @@ jobs:
         # NOTE: The staging marker selects real Supabase/Gmail coverage but no
         # LLM tests. Real LLM calls are opt-in locally with `--run-llm`.
 
+  manual-staging-action:
+    name: Manual Staging Action
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.staging_action != 'none'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Link to Staging Supabase
+        run: supabase link --project-ref lxmysergoeaegxlyfzwk
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Apply staging migrations
+        if: inputs.staging_action == 'apply-migrations'
+        run: |
+          supabase db push --dry-run
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
+
+      - name: Verify migration gate
+        if: inputs.staging_action == 'deploy'
+        run: ./scripts/assert-schema-code-compat.sh --linked
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
+
+      - name: Deploy staging database and services
+        if: inputs.staging_action == 'deploy'
+        run: |
+          supabase db push --dry-run
+          supabase db push
+          for hook_name in "App:${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}" "Web:${{ secrets.RENDER_DEPLOY_HOOK_WEB_STAGING }}"; do
+            name="${hook_name%%:*}"
+            url="${hook_name#*:}"
+            if [ -z "$url" ]; then
+              echo "${name} deploy hook is not configured"
+              continue
+            fi
+            curl --fail --silent --show-error --output /dev/null -X POST "$url"
+            echo "${name} staging deploy triggered"
+          done
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
+
+      - name: Wait for staging API
+        if: inputs.staging_action == 'deploy'
+        env:
+          STAGING_API_BASE_URL: https://selko.onrender.com
+        run: |
+          health_url="${STAGING_API_BASE_URL%/}/health"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --output /dev/null "$health_url"; then
+              exit 0
+            fi
+            [[ "$attempt" -lt 30 ]] || exit 1
+            sleep 10
+          done
+
+      - name: Check staging health surfaces
+        if: inputs.staging_action == 'deploy'
+        run: |
+          curl --fail --silent --show-error https://selko.onrender.com/health/ingestion
+          curl --fail --silent --show-error https://selko.onrender.com/health/egress
+
+      - name: Install uv
+        if: inputs.staging_action == 'deploy'
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          version: latest
+
+      - name: Set up Python
+        if: inputs.staging_action == 'deploy'
+        run: uv python install 3.14
+
+      - name: Install dependencies
+        if: inputs.staging_action == 'deploy'
+        run: |
+          uv sync --extra test
+          uv pip install pytest-xdist
+
+      - name: Run staging integration tests
+        if: inputs.staging_action == 'deploy'
+        run: uv run pytest backend/tests/integration/ -m staging -v --tb=short -n auto
+        env:
+          ENVIRONMENT: staging
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    # Only run on manual workflow_dispatch or git tags
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    # Only run when the manual production checkbox is enabled or a git tag is pushed.
+    if: (github.event_name == 'workflow_dispatch' && inputs.deploy_production == true) || startsWith(github.ref, 'refs/tags/')
     # No dependencies - production deployment is independent
     steps:
       - uses: actions/checkout@v7
