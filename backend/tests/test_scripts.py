@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).parent.parent.parent / "scripts" / "assert-schema-code-compat.sh"
+ORDER_SCRIPT = Path(__file__).parent.parent.parent / "scripts" / "check-migration-order.sh"
 
 
 def _find_missing_versions(stdin_text: str) -> subprocess.CompletedProcess:
@@ -140,3 +141,46 @@ class TestMainExitCodeWithFakeSupabaseCli:
         result = self._run_with_fake_cli(tmp_path, "echo 'not json'")
 
         assert result.returncode == 1
+
+
+class TestMigrationOrder:
+    def _repo(self, tmp_path, new_name: str):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        migrations = repo / "supabase" / "migrations"
+        migrations.mkdir(parents=True)
+        (migrations / "20260811000004_existing.sql").write_text("-- base\n")
+        subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
+        subprocess.run(
+            ["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "base"],
+            check=True,
+        )
+        (migrations / new_name).write_text("-- new\n")
+        subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
+        subprocess.run(
+            ["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "new"],
+            check=True,
+        )
+        return repo
+
+    def _run(self, repo):
+        return subprocess.run(
+            ["bash", str(ORDER_SCRIPT), "HEAD~1"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+    def test_rejects_lower_numbered_new_migration(self, tmp_path):
+        result = self._run(self._repo(tmp_path, "20260811000001_out_of_order.sql"))
+
+        assert result.returncode == 1
+        assert "20260811000001" in result.stderr
+
+    def test_accepts_newer_migration(self, tmp_path):
+        result = self._run(self._repo(tmp_path, "20260811000005_ordered.sql"))
+
+        assert result.returncode == 0
+        assert "ordered" in result.stdout
