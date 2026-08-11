@@ -20,6 +20,7 @@ linked_ref=$(tr -d '[:space:]' < "$LINKED_REF_FILE")
 
 [[ -n "${STAGING_RENDER_DEPLOY_HOOK:-}" ]] || fail "STAGING_RENDER_DEPLOY_HOOK is required"
 [[ -n "${STAGING_API_BASE_URL:-}" ]] || fail "STAGING_API_BASE_URL is required"
+[[ -n "${SUPABASE_DB_PASSWORD:-}" ]] || fail "SUPABASE_DB_PASSWORD is required for staging migration verification"
 [[ "${STAGING_APPLY_MIGRATIONS:-}" == "1" ]] || fail "set STAGING_APPLY_MIGRATIONS=1 after reviewing the migration dry-run"
 
 echo "Tier 2: staging ref verified"

@@ -61,7 +61,17 @@ main() {
     exit 1
   fi
 
-  if ! REMOTE_RAW=$(supabase migration list --linked --output-format json 2>&1); then
+  local migration_list_args=(migration list --linked --output-format json)
+  # Supabase's legacy linked-project path attempts to initialize a temporary
+  # login role before reading migrations. Staging currently rejects that role
+  # mutation, while a direct password-authenticated migration query works.
+  # Keep token-based linking as the fallback for environments that do not
+  # provide a database password.
+  if [[ -n "${SUPABASE_DB_PASSWORD:-}" ]]; then
+    migration_list_args+=(--password "${SUPABASE_DB_PASSWORD}")
+  fi
+
+  if ! REMOTE_RAW=$(supabase "${migration_list_args[@]}" 2>&1); then
     echo "❌ FAIL: could not list linked migrations."
     echo "   Run 'supabase link' and export SUPABASE_ACCESS_TOKEN."
     echo "$REMOTE_RAW"
