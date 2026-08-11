@@ -43,6 +43,7 @@ from selko.services.events import (
     park_event_for_oauth_reauth,
 )
 from selko.services.quotas import QuotaService
+from selko.workers.concurrency import _try_acquire
 
 logger = logging.getLogger(__name__)
 
@@ -318,26 +319,26 @@ class WorkerPool:
         # event never waits in a queue holding its lease.
         if circuit_breaker.is_available("google_calendar"):
             try:
-                await self._calendar_semaphore.acquire()
-                try:
-                    event = await claim_approved_event_for_sync(
-                        self.pg_pool, worker_id,
-                        lock_duration_seconds=getattr(
-                            self.config, "llm_claim_lease_seconds", 900
-                        ),
-                    )
-                except BaseException:
+                if await _try_acquire(self._calendar_semaphore):
+                    try:
+                        event = await claim_approved_event_for_sync(
+                            self.pg_pool, worker_id,
+                            lock_duration_seconds=getattr(
+                                self.config, "llm_claim_lease_seconds", 900
+                            ),
+                        )
+                    except BaseException:
+                        self._calendar_semaphore.release()
+                        raise
+                    if event:
+                        task = asyncio.create_task(
+                            self._process_event_sync(client, worker_id, event)
+                        )
+                        self._event_sync_tasks.add(task)
+                        task.add_done_callback(self._event_sync_tasks.discard)
+                        task.add_done_callback(lambda _: self._calendar_semaphore.release())
+                        return True
                     self._calendar_semaphore.release()
-                    raise
-                if event:
-                    task = asyncio.create_task(
-                        self._process_event_sync(client, worker_id, event)
-                    )
-                    self._event_sync_tasks.add(task)
-                    task.add_done_callback(self._event_sync_tasks.discard)
-                    task.add_done_callback(lambda _: self._calendar_semaphore.release())
-                    return True
-                self._calendar_semaphore.release()
             except EventsError as e:
                 logger.error(f"{worker_id}: Error claiming event: {e}")
 
@@ -347,11 +348,7 @@ class WorkerPool:
         # other work types; the claim happens only when a slot is free.
         if circuit_breaker.is_available("llm"):
             try:
-                try:
-                    await asyncio.wait_for(self._llm_semaphore.acquire(), timeout=0.01)
-                except asyncio.TimeoutError:
-                    pass  # all executors busy; fall through to the next work type
-                else:
+                if await _try_acquire(self._llm_semaphore):
                     try:
                         email = await claim_pending_email(
                             self.pg_pool, worker_id,
