@@ -1,0 +1,34 @@
+{
+  "run_id": "20260807T190236Z-da5d0f5a",
+  "operations": [
+    "extract"
+  ],
+  "matrix": [
+    {
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": "low"
+    }
+  ],
+  "provenance": {
+    "git_commit": "0293cec8a9d9c58ca499c5bbe1a51f734b8e071d",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "cells": [
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_kindercare_jan_01",
+      "inference_key": "3fe6bc94ec60d4f59d3d20c11e5e50432ebeded48c627519a1c7a34f5ca51e6e",
+      "score_key": "79ac8022931303f688b79f3fdcc21b8714d9d4aa611ec1892eb466142dbcc40d",
+      "state": "ERROR",
+      "reason": "meta API error: Error code: 400 - {'error': {'code': None, 'message': 'unsupported media type at messages[0].content[2]: `application/pdf`. Supported: JPEG, PNG, GIF, WebP, ICO.', 'param': None, 'type': 'invalid_request_error'}}"
+    }
+  ],
+  "written_at": "2026-08-07T19:02:36.162986+00:00"
+}

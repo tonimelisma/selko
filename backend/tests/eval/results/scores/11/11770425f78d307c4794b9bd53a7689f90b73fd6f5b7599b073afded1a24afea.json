@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/pdf_financial_statement_05",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": true,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "1aa8c240753b8b2b71a8be1c27fa8faafd0be753172617cf41f3447000502ff5",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "11770425f78d307c4794b9bd53a7689f90b73fd6f5b7599b073afded1a24afea",
+  "stored_at": "2026-08-09T18:22:20.843952+00:00"
+}

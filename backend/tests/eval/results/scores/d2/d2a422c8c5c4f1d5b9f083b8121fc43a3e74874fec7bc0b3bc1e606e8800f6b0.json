@@ -1,0 +1,57 @@
+{
+  "fixture_name": "appointments/winery_reservation_09",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Winter Cave & Vineyard Tour",
+        "start_datetime": "2026-06-18T14:30:00",
+        "end_datetime": null,
+        "location": "Example Winery, 200 Vineyard Road, Sonoma, CA",
+        "description": "Winery tour reservation for 3 guests",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "db9c7f004c6f48f195cd0388a1e40ac73bdbf656f94cdf0f12608bdc7c2eae4d",
+    "expected_output_hash": "5e3e86e2f83e7394d54d0d7b6cedd1a2e0c28a6a656d6f9c0f565646ea5e3b12",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "d2a422c8c5c4f1d5b9f083b8121fc43a3e74874fec7bc0b3bc1e606e8800f6b0",
+  "stored_at": "2026-08-07T06:43:07.306794+00:00"
+}

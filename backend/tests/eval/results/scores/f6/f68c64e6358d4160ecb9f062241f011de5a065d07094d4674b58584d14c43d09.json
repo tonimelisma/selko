@@ -1,0 +1,57 @@
+{
+  "fixture_name": "meetings/all_hands_06",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Company All-Hands Meeting",
+        "start_datetime": "2026-02-27T16:00:00",
+        "end_datetime": "2026-02-27T17:00:00",
+        "location": "Main Auditorium",
+        "description": "Monthly all-hands meeting with company updates and AMA",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "e213df1a9a85d1a8b612549ddbc61b2d9bd1e98891314dab0653a46c634da943",
+    "expected_output_hash": "1b16a48290ddbb271d5f7e7f03c5502b4c0a91bbf189af0b556dbab43c67a337",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "f68c64e6358d4160ecb9f062241f011de5a065d07094d4674b58584d14c43d09",
+  "stored_at": "2026-08-07T06:41:22.138342+00:00"
+}

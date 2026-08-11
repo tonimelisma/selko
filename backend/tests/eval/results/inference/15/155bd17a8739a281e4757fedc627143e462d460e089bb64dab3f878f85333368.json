@@ -1,0 +1,370 @@
+{
+  "fixture_name": "recurring/quarterly_review_04",
+  "operation": "extract",
+  "provider": "meta",
+  "model": "muse-spark-1.2-contributor",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-08-09T18:22:13.823654+00:00",
+  "duration_ms": 18495,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-08-09T18:21:55.311443+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-08-09T18:21:55.311453+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-08-09T18:21:55.317565+00:00",
+      "duration_ms": 18489
+    },
+    "scoring": {
+      "started_at": "2026-08-09T18:22:13.807230+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 1212,
+    "completion_tokens": 3463,
+    "total_tokens": 4675
+  },
+  "cost": 0.0008138,
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Q2 2026 Quarterly Business Review",
+        "start_datetime": "2026-04-15T09:00:00",
+        "end_datetime": "2026-04-15T12:00:00",
+        "all_day": false,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Q2 2026 Quarterly Business Review for Leadership Team. Agenda (Tentative): 9:00 AM CEO Opening Remarks, 9:15 AM Financial Review (CFO), 9:45 AM Sales & Revenue Update, 10:15 AM Break, 10:30 AM Product Roadmap, 11:00 AM Operations Update, 11:30 AM Strategic Initiatives, 12:00 PM Closing & Next Steps. Presentation materials due: April 8, 2026 - submit to ops@company.com. This is a recurring quarterly meeting. Future dates in series: July 15, 2026, October 14, 2026, January 13, 2027.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Q3 2026 Quarterly Business Review",
+        "start_datetime": "2026-07-15T09:00:00",
+        "end_datetime": "2026-07-15T12:00:00",
+        "all_day": false,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly Business Review - recurring quarterly meeting (Q3 2026). Same agenda/format as Q2 review. Part of series with Q2 2026 Review on April 15, 2026. Presentation materials due one week prior - submit to ops@company.com.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Q4 2026 Quarterly Business Review",
+        "start_datetime": "2026-10-14T09:00:00",
+        "end_datetime": "2026-10-14T12:00:00",
+        "all_day": false,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly Business Review - recurring quarterly meeting (Q4 2026). Same agenda/format as Q2 review. Part of series with Q2 2026 Review on April 15, 2026.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Q1 2027 Quarterly Business Review",
+        "start_datetime": "2027-01-13T09:00:00",
+        "end_datetime": "2027-01-13T12:00:00",
+        "all_day": false,
+        "location": "Executive Conference Room (HQ, 10th Floor)",
+        "description": "Quarterly Business Review - recurring quarterly meeting (Q1 2027). Same agenda/format as Q2 2026 review. Part of series with Q2 2026 Review on April 15, 2026.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4355,
+        "text": "You are an expert at extracting calendar events from emails.\n\n**Current Date:** 2026-03-01\n**User timezone (local wall clock):** America/New_York\n\n**Email Metadata:**\n- Subject: Q2 2026 Business Review - Calendar Hold\n- From: Operations Team <ops@company.com>\n- Date Sent: 2026-03-01T07:00:00Z\n\n**Instructions:**\n1. Analyze the email content and any attachments (including PDFs, images, calendars)\n2. Extract ALL calendar events mentioned \u2014 meetings, appointments, parties, closures, themed days, deadlines, etc.\n3. For each event, extract:\n   - Title: clear, descriptive event name\n   - Start date/time as a LOCAL wall-clock time in America/New_York\n   - End date/time as a LOCAL wall-clock time in America/New_York (if mentioned)\n   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.\n   - Full description with all relevant details\n   - Whether it's an all-day event (true/false)\n   - Importance: \"action_required\" or \"fyi\" (see classification below)\n   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., \"RRULE:FREQ=WEEKLY;BYDAY=MO\"). Null for one-time events.\n\n**Time rules (critical):**\n- Emit start_datetime / end_datetime as naive local ISO strings like 2026-09-13T10:00:00\n- Do NOT include Z, +00:00, or any numeric timezone offset \u2014 the system applies America/New_York\n- When an email lists both an Event Time (or doors / show time) AND setup / vendor / cleanup windows, use the Event Time for start/end. Put setup and cleanup only in the description.\n- Example: \"Event Time: 10:00 AM \u2013 2:00 PM\" with \"Vendor Set-Up: 7:00 AM \u2013 9:00 AM\" \u2192 start 10:00, end 14:00 (not 7:00\u201315:00)\n\n**Importance Classification:**\n- **action_required**: Events that require the recipient to take action or change their schedule.\n  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,\n  appointments, meetings, conferences, registration deadlines, performances to attend.\n- **fyi**: Informational events that are nice to know but don't require action.\n  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,\n  movie days, classroom activities the child participates in without parent involvement.\n\n**Important:**\n- If NO calendar events are found, set events_found=false and return empty events list\n- Parse dates carefully using the current date as context\n- Extract ALL events including themed days and informational items \u2014 classify them as \"fyi\"\n- For PDFs: extract events from calendar grids, flyers, and schedules\n\n**Examples of events:**\n\u2713 Birthday party invitations (action_required)\n\u2713 Doctor/dentist appointments (action_required)\n\u2713 Meeting requests (action_required)\n\u2713 School closures (action_required)\n\u2713 Themed dress-up days at school (fyi)\n\u2713 Staff birthdays (fyi)\n\u2713 Conference registrations (action_required)\n\n**NOT events \u2014 do NOT extract these:**\nAn event is something the recipient would put on their personal calendar to attend, participate in, or prepare for.\nIf the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) with no event the recipient needs to attend or prepare for, set events_found=false.\n- Third-party automated calendar-derived briefs, relationship digests, and reminder summaries that merely restate entries already on the recipient's calendar are NOT new event sources. Return events_found=false unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data.\n- This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas. Extract those events when the recipient is expected to attend or prepare and the date is explicit.\n\n**Extraction rules:**\n- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events\n- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs \u2014 note them in the main event's description instead\n- Only extract events with explicitly stated dates \u2014 do NOT infer dates from holidays, context, or subject lines\n"
+      },
+      {
+        "type": "text",
+        "length": 944,
+        "text": "\n**Email Body:**\nQUARTERLY BUSINESS REVIEW\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nQ2 2026 BUSINESS REVIEW\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nDear Leadership Team,\n\nPlease save the date for our Q2 2026 Quarterly Business Review.\n\nDate: Wednesday, April 15, 2026\nTime: 9:00 AM - 12:00 PM\nLocation: Executive Conference Room (HQ, 10th Floor)\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAGENDA (Tentative)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n9:00 AM - CEO Opening Remarks\n9:15 AM - Financial Review (CFO)\n9:45 AM - Sales & Revenue Update\n10:15 AM - Break\n10:30 AM - Product Roadmap\n11:00 AM - Operations Update\n11:30 AM - Strategic Initiatives\n12:00 PM - Closing & Next Steps\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nPresentation materials due: April 8, 2026\nSubmit to: ops@company.com\n\nReminder: This is a recurring quarterly meeting.\nFuture dates: July 15, October 14, January 13\n\nPlease confirm your attendance.\n\nThank you,\nOperations Team"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "description": "A single calendar event extracted from an email.",
+            "properties": {
+              "title": {
+                "description": "The event title or name",
+                "type": "string"
+              },
+              "start_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets."
+              },
+              "end_datetime": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets."
+              },
+              "all_day": {
+                "default": false,
+                "description": "Whether this is an all-day event",
+                "type": "boolean"
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The event location or venue"
+              },
+              "description": {
+                "description": "Detailed description of the event with all relevant information",
+                "type": "string"
+              },
+              "importance": {
+                "default": "action_required",
+                "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+                "enum": [
+                  "action_required",
+                  "fyi"
+                ],
+                "type": "string"
+              },
+              "recurrence_rule": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events."
+              }
+            },
+            "required": [
+              "title",
+              "start_datetime",
+              "end_datetime",
+              "all_day",
+              "location",
+              "description",
+              "importance",
+              "recurrence_rule"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "events_found",
+        "events"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw_response_text": "{\"events\": [{\"all_day\": false, \"description\": \"Q2 2026 Quarterly Business Review for Leadership Team. Agenda (Tentative): 9:00 AM CEO Opening Remarks, 9:15 AM Financial Review (CFO), 9:45 AM Sales & Revenue Update, 10:15 AM Break, 10:30 AM Product Roadmap, 11:00 AM Operations Update, 11:30 AM Strategic Initiatives, 12:00 PM Closing & Next Steps. Presentation materials due: April 8, 2026 - submit to ops@company.com. This is a recurring quarterly meeting. Future dates in series: July 15, 2026, October 14, 2026, January 13, 2027.\", \"end_datetime\": \"2026-04-15T12:00:00\", \"importance\": \"action_required\", \"location\": \"Executive Conference Room (HQ, 10th Floor)\", \"recurrence_rule\": null, \"start_datetime\": \"2026-04-15T09:00:00\", \"title\": \"Q2 2026 Quarterly Business Review\"}, {\"all_day\": false, \"description\": \"Quarterly Business Review - recurring quarterly meeting (Q3 2026). Same agenda/format as Q2 review. Part of series with Q2 2026 Review on April 15, 2026. Presentation materials due one week prior - submit to ops@company.com.\", \"end_datetime\": \"2026-07-15T12:00:00\", \"importance\": \"action_required\", \"location\": \"Executive Conference Room (HQ, 10th Floor)\", \"recurrence_rule\": null, \"start_datetime\": \"2026-07-15T09:00:00\", \"title\": \"Q3 2026 Quarterly Business Review\"}, {\"all_day\": false, \"description\": \"Quarterly Business Review - recurring quarterly meeting (Q4 2026). Same agenda/format as Q2 review. Part of series with Q2 2026 Review on April 15, 2026.\", \"end_datetime\": \"2026-10-14T12:00:00\", \"importance\": \"action_required\", \"location\": \"Executive Conference Room (HQ, 10th Floor)\", \"recurrence_rule\": null, \"start_datetime\": \"2026-10-14T09:00:00\", \"title\": \"Q4 2026 Quarterly Business Review\"}, {\"all_day\": false, \"description\": \"Quarterly Business Review - recurring quarterly meeting (Q1 2027). Same agenda/format as Q2 2026 review. Part of series with Q2 2026 Review on April 15, 2026.\", \"end_datetime\": \"2027-01-13T12:00:00\", \"importance\": \"action_required\", \"location\": \"Executive Conference Room (HQ, 10th Floor)\", \"recurrence_rule\": null, \"start_datetime\": \"2027-01-13T09:00:00\", \"title\": \"Q1 2027 Quarterly Business Review\"}], \"events_found\": true}",
+    "finish_reason": "stop",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "bc3f3e7d96c343b396d5e7fb409484fe",
+    "route_role": "primary"
+  },
+  "category": "recurring",
+  "description": "Quarterly business review meeting",
+  "difficulty": "easy",
+  "tags": [
+    "recurring",
+    "quarterly",
+    "review",
+    "business"
+  ],
+  "input_summary": {
+    "subject": "Q2 2026 Business Review - Calendar Hold",
+    "from": "ops@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "fixture_input_hash": "940a7bf093be1392c562f0d7d0f431151dd10db431eae409185a759bc105ac03",
+  "code_provenance": {
+    "git_commit": "e5aebe93ae9684cd4687dd99a984ec043563ce49",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "extract",
+    "provider": "meta",
+    "model": "muse-spark-1.2-contributor",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "meta/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "muse-spark-1.2-contributor",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "0f5dea9702f72bcf4ac8eb7117a31f1c2ce75dafda05c1e0e46c18c4aaed5f19",
+    "adapter_contract_hash": "885a9e1737e3137172903bfb097a852f298767fff41a3945fac4c30d626b0d52",
+    "fixture_input_hash": "940a7bf093be1392c562f0d7d0f431151dd10db431eae409185a759bc105ac03"
+  },
+  "inference_key": "155bd17a8739a281e4757fedc627143e462d460e089bb64dab3f878f85333368",
+  "stored_at": "2026-08-09T18:22:13.862095+00:00"
+}

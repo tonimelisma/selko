@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/terms_update_08",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "0845b491c461cf68836a5e06bbfea1cbc546bf1f9ddfe562f5e9dd4688b43249",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "15495dcb35483bff7fed8c2e48f12fa46fd6ef9a00380fa0a071e67244c01da0",
+  "stored_at": "2026-08-07T06:48:29.250435+00:00"
+}

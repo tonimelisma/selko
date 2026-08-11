@@ -1,0 +1,86 @@
+{
+  "fixture_name": "school/registration_opens_09",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "event_count_min": 1,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "Community Arts Preschool Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "0f49ead927417ab2f2c88ad8f1cc30e5ed93d1e5693c71d25472a1d964ab73f9",
+    "expected_output_hash": "faeae499dfd2539e9721c7e6c578be0195aeb2f5b81d8a2de9f3b12526ce16eb",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "35c2a9df4a90e93d4ea8b24554f58d736e5f241b4672638bb4b44c28d53dbdcb",
+  "stored_at": "2026-08-09T18:21:50.747264+00:00"
+}

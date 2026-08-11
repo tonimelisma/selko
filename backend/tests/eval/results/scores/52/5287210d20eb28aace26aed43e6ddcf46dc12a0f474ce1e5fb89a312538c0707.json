@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/promotional_offer_10",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "56ffb3445530201d1672bd4687970fddae1c9a685c354b938f70d728a7c1ddc6",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "5287210d20eb28aace26aed43e6ddcf46dc12a0f474ce1e5fb89a312538c0707",
+  "stored_at": "2026-08-07T06:41:05.672057+00:00"
+}

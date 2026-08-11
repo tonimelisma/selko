@@ -1,0 +1,57 @@
+{
+  "fixture_name": "invitations/dinner_party_09",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Dinner at Tom & Maria's",
+        "start_datetime": "2026-02-07T18:30:00",
+        "end_datetime": null,
+        "location": "321 Elm Street, Portland, OR 97201",
+        "description": "Dinner party at Tom and Maria's",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "f9fffb79468ea75a65997d038d013683eda5a66640c4f8ace019fb21e5528b5c",
+    "expected_output_hash": "e7d8f4061e587f1c213e820a4754010d3fed83749553a43e49b3dff9a3dec358",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "e28e88803c4279732eed18ee3bb89574e2a5d565a3788a95c8b3dc4e5d9e63f5",
+  "stored_at": "2026-08-07T06:42:05.251857+00:00"
+}

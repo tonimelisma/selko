@@ -1,0 +1,126 @@
+{
+  "fixture_name": "conferences/credential_maintenance_deadlines_07",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 3,
+    "events": [
+      {
+        "title": "Analytics Integration Certificate Maintenance Due",
+        "start_datetime": "2026-08-21T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Rotate the Analytics Integration certificate before service is interrupted",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Billing API Certificate Maintenance Due",
+        "start_datetime": "2026-12-04T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Rotate the Billing API certificate before service is interrupted",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Customer Portal Certificate Maintenance Due",
+        "start_datetime": "2027-04-16T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Rotate the Customer Portal certificate before service is interrupted",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-08-21",
+          "actual_date": "2026-08-21",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-12-04",
+          "actual_date": "2026-12-04",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2027-04-16",
+          "actual_date": "2027-04-16",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "52f7777ff0d5673dc8c5aac4c93590256f687192272c6d18ec32bcdac0d45514",
+    "expected_output_hash": "41bc4049eaaa73a9dc4c07a89beddd3f21cf3a45709ab3d447c55b6e266cb82c",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "762fc3111a11c0ce2c039cd7cb4ad8ff0ee621fd0ea7b86d80bcc05207c6ad90",
+  "stored_at": "2026-08-07T06:51:07.672461+00:00"
+}

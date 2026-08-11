@@ -1,0 +1,206 @@
+{
+  "fixture_name": "invitations/ysc_newsletter_multi_event_11",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 7,
+    "event_count_min": 5,
+    "events": [
+      {
+        "title": "Full Moon Hike",
+        "start_datetime": "2026-01-30",
+        "end_datetime": null,
+        "location": null,
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "YSC Annual Meeting",
+        "start_datetime": "2026-02-01T13:00:00",
+        "end_datetime": null,
+        "location": "Swedish American Hall",
+        "all_day": false,
+        "importance": "fyi"
+      },
+      {
+        "title": "YSC Happy Hour at Transamerica Building",
+        "start_datetime": "2026-02-19T17:30:00",
+        "end_datetime": null,
+        "location": "Transamerica Building, 48th Floor",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Happy Hour at The Royal Cuckoo",
+        "start_datetime": "2026-03-19T17:30:00",
+        "end_datetime": null,
+        "location": "The Royal Cuckoo",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "YSC Bus Trip to Wine Country",
+        "start_datetime": "2026-03-28",
+        "end_datetime": null,
+        "location": null,
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint YSC-SSCC Easter Luncheon",
+        "start_datetime": "2026-04-04",
+        "end_datetime": null,
+        "location": null,
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Joint YSC-SSCC Kids Easter & Crafts",
+        "start_datetime": "2026-04-05",
+        "end_datetime": null,
+        "location": "Scandinavian School and Cultural Center",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "missing": true,
+        "overall_match": false
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-03-28",
+          "actual_date": "2026-03-28",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-04-04",
+          "actual_date": "2026-04-04",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "expected_date": "2026-04-05",
+          "actual_date": "2026-04-05",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "fyi",
+          "match": false
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 4
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "fea09675b40499c950f68dc41b76294a9eb44bc10bd5577da9804274d6ef0d6c",
+    "expected_output_hash": "3cbfd647c04dfbea3309c1dc0a71ac8ef3a0ba162473e35caf5b3e9717c1596d",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "19d63f9910b4182c2c32f3d4e6e8c1786726a88cae77f0ff56b74f26b4fb6d92",
+  "stored_at": "2026-08-07T06:41:20.856577+00:00"
+}

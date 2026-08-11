@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/automatic_invoice_payment_16",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "e72f5a822594400dd5a71b9764455bd199c9fa6bac93288d4b42ecb2ed4fe3e4",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "17d1768b9e7fbd76fadeda4c716d8340a1744c1c7839fbf2575e9a16c1ac3139",
+  "stored_at": "2026-08-07T06:53:27.692053+00:00"
+}
