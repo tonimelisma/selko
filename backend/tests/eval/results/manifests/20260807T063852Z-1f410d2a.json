@@ -1,0 +1,1252 @@
+{
+  "run_id": "20260807T063852Z-1f410d2a",
+  "operations": [
+    "extract"
+  ],
+  "matrix": [
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": "low"
+    }
+  ],
+  "provenance": {
+    "git_commit": "bf56212a96f585a2cd763181ed84bb133649ef0f",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "cells": [
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/baby_shower_04",
+      "inference_key": "2e4e0c3502c5c6ff8105c8c5c045f88fe7e4cc8b827f1aff842a61416ce13585",
+      "score_key": "017f4fedf994dcbdf553e9780e600b0f082f37469cca661fd2b06b58ac5ab351",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/birthday_party_adult_02",
+      "inference_key": "6f627f5669d697c2de329c55309c00f4310974b1a67be35db504121803839e23",
+      "score_key": "d84fa4b7b32ccf7ad459e37cca50e8fb7b29c326319a858717f1282f56ad4c2a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/birthday_party_kids_01",
+      "inference_key": "57941ba3a1033b6be660c55f4aa9c06870b6c9c17040f048fc73a4be933a4e94",
+      "score_key": "e04c00faaba9028eb9a255342bb0f94247667465dcec97804d8da4bf378a6e1a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/dinner_party_09",
+      "inference_key": "e00e2a7d0a7e451e115e0953fbd4ed3064ce44c403f5f0ca4e020e5c9f841eec",
+      "score_key": "c48bab016e15b890613d8b809d4c39ee38bb3eac1459998ee3310cb049e7bff1",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/engagement_party_10",
+      "inference_key": "8452413a73b724a7a5b17f4d96dfd2773aa1faa9de07dda4492e6a513dc7ef55",
+      "score_key": "88b596bb697f9f125cfe187b59e7648dcbd0b9499fd93413afef9a8e29597d73",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/graduation_party_05",
+      "inference_key": "0fa264e9246ae51a6f9e8c5fe35384f12bd616921ed1179ff26e00769923ea8d",
+      "score_key": "64ea8e44a75fd0cc013c89e53bf26bd1c1225935d7e9e6ba61f7599a2b36d837",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/holiday_party_07",
+      "inference_key": "29df48f618dfd42b935cb5bc77058cecd3f034cd845ae28b7583bd9d096b79ae",
+      "score_key": "4ae6ddd954f547ce8c46016777341a7336498cde77057d2192cba4a7169ee465",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/housewarming_06",
+      "inference_key": "685f4163a1bb66a1cfa391a434673d8bb73fa56349f068afd6baa22133f33551",
+      "score_key": "353cb1826b64460a370f39ad4a82436051009ec41503f38f9e74aad91b857564",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/retirement_party_08",
+      "inference_key": "288eb5ccf80d0fb43064d220ba4e2f03b0df988ced5299def91681c1834d81a5",
+      "score_key": "f4c13403bac118b3e651fdd1310b492ee96fdc7187a08bf4a1ba623e241a3681",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/wedding_03",
+      "inference_key": "b85eb48d8cbbd2ae6f084ff63ccefce8ed822a0149724acd6f269bccd4c1f544",
+      "score_key": "ede5ebed6b39b0edca8b965ab7d60675f95baa52fc8966528630b6196a31e774",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/ysc_newsletter_multi_event_11",
+      "inference_key": "fea09675b40499c950f68dc41b76294a9eb44bc10bd5577da9804274d6ef0d6c",
+      "score_key": "19d63f9910b4182c2c32f3d4e6e8c1786726a88cae77f0ff56b74f26b4fb6d92",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/accountant_meeting_06",
+      "inference_key": "362f4cb44581f793f2b27184e84bf02956dcc2bce0731a5a41866e14dc6747ff",
+      "score_key": "f3be70f43b4bc94d8541599140fb853be34b3705ada5eeef23c78317a470f65e",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/car_service_03",
+      "inference_key": "fec4ef29b9dc5b7bd21f20786ffe34e51ce8e73b4eb5f499c38beda2169523b0",
+      "score_key": "9bf151471b71e9b1707fbfcccbcd48f6c83957357bdcd1ff493159213cc39fc8",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/dentist_appointment_02",
+      "inference_key": "55587ed4a450866c6e74abe3ad129a8508b0b59e90c376ff46fda32386fec8db",
+      "score_key": "1b102475bf99ae154df8450f5eddd7528d9086bfb4f62aef87f0e74be158c983",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/doctor_appointment_01",
+      "inference_key": "671774cd0955896b92c4cda982a9a32b81f3e12e6a13013d326e33ac9621ec90",
+      "score_key": "20314f2fe8d7b9d81d43d97646cd1b86ac5f76e278c35b62cca7ef2a47e1e90c",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/home_repair_08",
+      "inference_key": "c57c88ab04b7d7e3635909f1b31e2a1a0a056b6f4b57c5571d3f751c3de01639",
+      "score_key": "0ebdb15f1f8dddf3143656d35359d2cbf4aecdd2b49e144ece0a25751864c0a1",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/lawyer_consultation_05",
+      "inference_key": "ecc72511d5cfee3cb66b885ecdc8228acf5657408c161a51dc2d3e8ce09be8e9",
+      "score_key": "5bc533d24a2c23fbc09ecf5c5f0ef3b13014a24af819a1a661ad687465241d17",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/salon_appointment_04",
+      "inference_key": "1fcf7ee9743f61ed478e82521ef5eb52956264ee8c6dcf396c10ad025c9cd1c5",
+      "score_key": "744a223ca7528f302449ce093f32aee6bc76ba4c6f1afe7429be438e34122956",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/vet_appointment_07",
+      "inference_key": "04061d5546fa1983a266e3ccdab26051b057c3cecdc31235dde8aaded0a9e5c8",
+      "score_key": "96890efd14dc03ababab835ef3f7fc82b349d560357994e16e0d87f56ae1d8c0",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/winery_reservation_09",
+      "inference_key": "aad4475242281f57e8ceb324ec9b4376158ea076b3a71fdb77f512df541179c5",
+      "score_key": "d040fca16f79c466f97154f26ca19b3a867f9b6064fa9c606157ef350ce9b40a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/winery_reservation_reminder_10",
+      "inference_key": "78f8d149013a76dac509905b777ed80bad588d59c361f5933008c2ad3cd511eb",
+      "score_key": "0cfbb47b1f7ee040b8742f7c7e3fe53cb2a21a76963e9983f6b6db85a3dc9908",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/all_hands_06",
+      "inference_key": "e213df1a9a85d1a8b612549ddbc61b2d9bd1e98891314dab0653a46c634da943",
+      "score_key": "f68c64e6358d4160ecb9f062241f011de5a065d07094d4674b58584d14c43d09",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/board_meeting_03",
+      "inference_key": "e6b48e42ecdf160b06e0ee2796a73ece6c0879967c50339f479362cd6efad9ac",
+      "score_key": "e6ad28c2eec615bc9fd858b8b60cb313c1b97747274fbb26bf690cec37392e1f",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/client_call_04",
+      "inference_key": "5c25fbce1b6f391932b7f0a5786667571234e8c487a0ad346a99c37c1f7c533d",
+      "score_key": "d304fb7a3efa2c8967d7f14272c0d8ff74e19019b2005612356c63201f08d4fd",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/ics_calendar_invite",
+      "inference_key": "3ad0382fbe3e1a66e5e778330a412e8e926af6a364e8cdbef4eb6deb90f4cecc",
+      "score_key": "5c7f6e1f6550401d9a9001df1dd52502697fc7c3077f73fdf4d987e560b5b74a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/interview_05",
+      "inference_key": "599851de777da2ffdf420a052d572550be0683c169cae409e2c77241de969602",
+      "score_key": "cc29e781a6c9f6b7dedfd568031e7ffc251e5ac891e3adce20e986f8b5723e1a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/meeting_with_agenda_attachment",
+      "inference_key": "bde4fd1f700f0fe184dfbace08374d6a1f4eb0bb4b61e56988a328bdab3e74c2",
+      "score_key": "cdabaa8cc9632635367176f23ce5bb7b461056874785b9c8360103d77358e048",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/one_on_one_01",
+      "inference_key": "1d0a8cedc56e7dca66981bfd42d5c3b743fea84c77b29cc79235f556592da8e3",
+      "score_key": "3c766e588e51a2bfd457d816befe16325e7dfdab5f9c6f39b4d85f246986cd0d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/organizer_sent_agenda",
+      "inference_key": "5b16d9d829e7ebc27da58cc90474fedc46209a13f2bad9b70269af68be290c98",
+      "score_key": "46d2f1eb63dfb2184811f962d1a739dbb57f39951186bc0903a3066bdff2ddc9",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/performance_review_08",
+      "inference_key": "d440ad0abfdcb10e247e48fbce783d0986782cf7f63194acad8d64f7a4997dd4",
+      "score_key": "2724455ef3f1cabff4fcf97fb0601952b4a5c79b998ed7d12268d805808c5980",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/project_kickoff_07",
+      "inference_key": "2c6b39dce988aa08e9ac0aaab50a501ff40a3bb98881a0663c011dbf77b4b4d7",
+      "score_key": "5cfc8bd52a09f828d1760483af5cea249472af7e358f41a57dee9282af00d623",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/team_standup_02",
+      "inference_key": "8e5eb7fa57c5697d4fd8fd3889bfdbf44bdfdaba3c329d921ccf98c2da8f2a46",
+      "score_key": "2a516c9a010b6b990d96daf5a2ff9db6df20aeef8efbca23211e2e9e56ff4fde",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/airport_transfer_05",
+      "inference_key": "6ac8a17519ff005a5e5234584b892e4edf55631a23319f4b41921edbc5e74f4c",
+      "score_key": "bfb7b9c2d09c69bc5319c93c9d323cd89c49f13c56386d1804875d451f0260a3",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/car_rental_03",
+      "inference_key": "e7b1bbaf914c2cec09fc00e1fe30d17c0581138c647da39e96a7bf115b10c9e6",
+      "score_key": "f5fe18fb75cd0f79a2ec740f8491d71f1c7d769ba0a073b911afdb6626d58ef8",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/flight_confirmation_01",
+      "inference_key": "f5b13fdd0eb845ac272fc0315f870c9536caf52d7bc23c202689f63564901ad7",
+      "score_key": "2a519f2701fe18c2dcc2c19da469fc4832e78e9883b01f449396f9372b055174",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/hotel_reservation_02",
+      "inference_key": "0dde3203cb4f814f7d1a140d9c6b700be7b5bb659c9242899050fced6014b19a",
+      "score_key": "6adc45540b081e22ee442e596ba85324ec39caa4aa821b23bd811ce22326a09b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/train_booking_04",
+      "inference_key": "b02b6af203b5d0fefd947eef343f7617fc767808ae99bb1f91aa25015b157fc8",
+      "score_key": "f7e05c058327bba1ac57156561722ee72aa26399c781920267967a779ebe3b62",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/travel_itinerary_06",
+      "inference_key": "84293a91a3d5899317d0926b8274adaed32a194d867b69c35c9e2c869ccff8b8",
+      "score_key": "6110d596e8ea25e72c520df31655478025ffea82dbab783f646da5f491d2830b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/credential_maintenance_deadlines_07",
+      "inference_key": "2454dcac0fafa5d146aa1438b4910865dabdb427c33a74bb16aca6a8e9bbf884",
+      "score_key": "c1957b1bf2d7f62232d84068c937129520c15acb02e20e94c98ead502dcaa63c",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/tech_conference_01",
+      "inference_key": "4b7176e97791b32efa27327022dd502b60e58bf7c491701bda8d86b2098ff41b",
+      "score_key": "0ea0277be8cdadfa13dffe9e240d0196808d283be774830c4bcc2cbf7a85cb38",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/training_session_04",
+      "inference_key": "e6230f81ae0f92539f141c1395aa0162c74a69e726edeecb9ec2e1edb3e134cd",
+      "score_key": "8841173979fcb8cacd90d6571adbeea52c108de53bdc5f5b1425f3eca89d845d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/training_with_schedule_csv",
+      "inference_key": "f0a30fd38ad9bee4074d4bc804dc0fb2133fb2a30cd5f02eae8043cd7d69d045",
+      "score_key": "40d9703dcf1bdbfa9d29da25947b36707c8f63c3c205a98d62ee3b778c8b7d34",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/virtual_summit_05",
+      "inference_key": "93248050fcf4b0c3c1e23f7a2f26172368215b701b42e86f48ce63637c0ff56a",
+      "score_key": "3e5ccad0d9576a22ac363f50cf418ac2f8087bd545705c60ca8a1d8bc31f76c4",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/webinar_02",
+      "inference_key": "acf796e90988e2245f787d52e0769bedfd2bcbed6ae2323c5fa75fd6bb2166be",
+      "score_key": "08ee849c895c9a354aa9fcbe9181e78d410b7650abb48b1bd97e093c7165d57c",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/workshop_03",
+      "inference_key": "23762c098d354d6b43fefafbe590d84bb42a5eab2625bf9db01efc0c3865d572",
+      "score_key": "411cfeb0a824dced8de3240758e66abd0770c7ba63a37309252e7831ae6241c3",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/field_trip_04",
+      "inference_key": "6cf553aa3b5e8486b11d40cec63ed6bed1c389f976ae4832167788cae4ee2bb4",
+      "score_key": "f9aae9129dc2ee2616e2e18d4e3ff30a007835655a3a5772b0116e5e4cced7f3",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/government_comment_period_13",
+      "inference_key": "941cf387be3a7e3c06259951b5e006397f1c0f81d7277b72694969d060a79149",
+      "score_key": "72702c4bda2ffa9b274ac4b4dce73dcfd3ed8f7e5f2c38f95e22a2bbdd172f5c",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/graduation_ceremony_05",
+      "inference_key": "5e7f788881f90315802060978740a63a0bc814145af89dc11683b1757791f4f5",
+      "score_key": "0f19f253e5dfed1179b04f77436a4150f71f1d0ca9ccc9c4a8b06ba0155d99ba",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/parent_teacher_01",
+      "inference_key": "5fa0d6e9427d1f9ecc9a4f0202cf927e25c8e7ed6ae3274378aeab7ed46ee094",
+      "score_key": "4762843b2f2160bdb4ea485c049ac2bfb4e736f5ce8b9be32a6774d60ed72226",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_kindercare_dec_02",
+      "inference_key": "4645083c7c3c0173196860220e3cc3445ee38fba65dc2124afaae17486c14557",
+      "score_key": "34792f2c14228854a39b7dc320fc02f303dd34c870a530baec710557689a91de",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_kindercare_jan_01",
+      "inference_key": "d78bfe1c42d2fc9204b5143115d8a5b49fa6b09bc3c0744f9fc82af6cc8e53f5",
+      "score_key": "c3c3d020eacb48f669b991deeb140db7fe314c2e0d310ae650278175b6d058f4",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_personal_fwd_04",
+      "inference_key": "9f4995cf3965375e4b1c0aab77baf74908354c007340ce9743d12840b8018941",
+      "score_key": "b6f5cccd9ccef853cc47d63494b331c3b39367aaf8bde0059e9bca6fab7d59b6",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_dance_performance_03",
+      "inference_key": "47bab8a1ee0a330912327fc8c962803f5ed7c177f7106744fd082697ca8e51c6",
+      "score_key": "f54fb7fdd7a72f09fec98665f5367db804e4d1a66eaad930ac2ba2901b78a44e",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/public_hearing_08",
+      "inference_key": "281c17f44f84894aa623dc9870eb9c8d504ecd4458fec2bc0f81c1fe2aeb0bd9",
+      "score_key": "4da4f3280968a00623c33e08e5ab40b0e58c3e51e2ee666c70a76fc605af38d0",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/registration_opens_09",
+      "inference_key": "e81fbeb86381fc663135a02ef4e5b3bf3c84415dc1d76bf3191fabaa25f9b450",
+      "score_key": "07d1ea238f0c6a3d3ef19ab23528ccf5ca248a726d2b5db665f5ec3b5453bb2f",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_digest_author_visit_07",
+      "inference_key": "2f9481fb47707e28e8e8d7c6f603da50fc3bfe750726e5e50eeeeffa833e8b80",
+      "score_key": "5e849639f4a57448434d68753e38c2d25d6e3eaf0356e064051e40909a508c5e",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_newsletter_multi_event_06",
+      "inference_key": "5a5d12edeb43dc8ce5ad0fe2cf0ffa7adbeffbae0de3b6bfc5f4510607f6877b",
+      "score_key": "d1261e7b7d9eacf2fb264971c183c5859b4c8bc157942ba5ef7f4e37d489ee9a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_play_02",
+      "inference_key": "cca5c16dbf8f672e33cecf12e44295047aa82fc18e040f0a68d7ba8a247c4bdb",
+      "score_key": "5ceb43170c23301a2147e40592b2a98e2682a825bf0da66bcafc5256eebbcad2",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/sports_game_03",
+      "inference_key": "53b28b27522c1098b14b9def3d27472f5246cb418518973bfc92a2619224cf6b",
+      "score_key": "8b7ab6bacf338aac1901ba6676ed1f325d93a4d1ba9c8ddb39ef553b5bb06298",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/valentines_exchange_06",
+      "inference_key": "d9bc713b2409de2bae1f4384b84b3224a71aac96284da07d6b6d3670e648dc18",
+      "score_key": "2a00e1597db4dc397158baa9dd49a683cb86cf6923e669cc47a7b1c7f765046c",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/water_day_all_day_01",
+      "inference_key": "e5c8881371c8e213fc87c10d6a052073945d7e2415532c67f9427cadf479a357",
+      "score_key": "dbe870ce17f51cd3e342284ce4e56fe732fd708a1458d43ed3186d137c0246f8",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/biweekly_one_on_one_03",
+      "inference_key": "cfcce69c4f350378b891ae151b14ef50fd3656d977ff068bdd98d68ba6f200c0",
+      "score_key": "283527183c60b9a9fadad7cca6003abf2a73c2ffbbf5efb681c82914cecb0242",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/monthly_book_club_02",
+      "inference_key": "9d0c4358dca9b98b6bf7e6aa4d5b833fec5ecbb5e54e37f0518bb27e7d8628ed",
+      "score_key": "50bad45e539782f594d7fa3e55317366c5911fce6897799dc08d20a0830899b4",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/quarterly_review_04",
+      "inference_key": "953af9008e9e2e3c75d4266876a931883545e2da8258fea94fc3201b6b0e65f2",
+      "score_key": "ce2777747b489043758ebb64f341d446333778d7b941fa01b90b64006f7d7c50",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/weekly_team_meeting_01",
+      "inference_key": "aeaa1004c0b9b62540bdab0eb27740a45ed73b1cbc6bfa72ac6fcdcf8892cf8f",
+      "score_key": "3455a95e081554c28832ef17d561064d54a196e07a458f248dab1b4d34de49fd",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/account_inactivity_notice_14",
+      "inference_key": "89222e0138b7637d96c52f6003dd7a5039116e17cfe3294789cfb1b8adad3957",
+      "score_key": "f48da1f7c8686ea091d11e555c314cda1f84824260c113d0a31c392895878d10",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/account_statement_07",
+      "inference_key": "c5dec51714da7808f2b3a97b7ab6480cfaff444c00ef698db6f630612b64f685",
+      "score_key": "0e46c986051a0a69dca3bdefe118997b0cde40764853f2971c2e3e76bee72972",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/automatic_invoice_payment_16",
+      "inference_key": "e381d6e79912ae03090c83f38e90de6edc860f3573dca8a638d8af7dffd33208",
+      "score_key": "27f9755433a4f2bbef7d4cd4d9c8934801b1c6532aba6185885098f0c22e4fdf",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/autopay_scheduled_15",
+      "inference_key": "47d074fbbacf9d75a46ece2b528ceb406bf9c37b53cd9db3d51fef60ddb98791",
+      "score_key": "1ab089e1f790f3b711fb4712f35839c033089920344426fea2477216f7212b19",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/calendar_derived_daily_brief_18",
+      "inference_key": "8af5144d10e0b380d979dd30a7d3f07183e3d55d008e430e82ae850fde003ed1",
+      "score_key": "af36afd508c3e35bfc754ceb7f2c0993f5fc32dcd1f816192413b047b3dfafe8",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/early_direct_deposit_notice_20",
+      "inference_key": "f71fa733c1e6a40322504c2ed22abcccf03398a8b6f50e1bb725e48af7c0e2c3",
+      "score_key": "82c302ecd9a75045a18cbf834477c78cd92619d263d66f05846727371aae6dbf",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/informed_delivery_digest_19",
+      "inference_key": "8bff5472d295b5a61ec192ef125796c8f394491ab55644996f3ad19085a390d0",
+      "score_key": "28cebd9068dab842badf3dd648f143aa1c46840fa3cad319b5784a10fdf2ebcf",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/malformed_schema_echo_source_01",
+      "inference_key": "2c99fcbd6eee2ce3d9bb5a297f0d67555f15ddaf6aa48caca397d3eff9f05b9e",
+      "score_key": "f35818d53a69b19e36d43d3d28754013911c55ea16919908e68b790861bc7984",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/marketing_email_04",
+      "inference_key": "55e3d5f9d77cd166a60bc18344c88077b3aaeaf2b99aa49e5ec0983b492cfc00",
+      "score_key": "18d4773f4f870e44157f75af53469fd4a468df1f52d4e7ae82ae37f4cbd752f1",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/meeting_digest_past_topics_12",
+      "inference_key": "de0957ed78b889fdbb81328d67b4caef1d816668b8a4760e183a5cf02abbb73c",
+      "score_key": "bea25cbe433c0d5e8034b041ce7ec691d5fcb70445249baf4eec5283ae1e4228",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/meeting_recap_recording_11",
+      "inference_key": "c9393d16eb02a06a6e721c74aa8676ff95d02096e0106570271ce8bc7edb3259",
+      "score_key": "4af2574f32cb080abfc6a1803a1ba64ba9ef57596e9d05d4286611f61f120e95",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/newsletter_01",
+      "inference_key": "b0b0ecdb426ded0a7637b93992df9aebbc8d9e4bb6f34a739b2f8a65d86559af",
+      "score_key": "94a51b529b7d95d835c67fdebc87c1f210cdecb782d3eb99f0b96b4421a66915",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/notetaker_not_admitted_13",
+      "inference_key": "3640d21aead28a04ec78d897a1f32f95f09be7f00e156b64ceaf14e33fea483c",
+      "score_key": "77fe647122bca36046181c6ab175ccd6fd96838bd6ca623dfc5086d27803588c",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/order_pickup_12",
+      "inference_key": "ebbd0ad77599679ea9030e45189a953a3f7cd646074b181e58e94db41b274814",
+      "score_key": "909f8ae826e51388ffc05a7a917c077cf67d08172f8ddeac68a48dd9f368d590",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/order_receipt_02",
+      "inference_key": "f54689f4f784849d779f99ebee328709ac407bec2eba0ce14fec1d00d472edf9",
+      "score_key": "a2ce72a633b15d5c34730b624601e7191d342bc3b57bb0c3a37938301cb7ccbc",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/password_reset_06",
+      "inference_key": "dad1dd23e93b5c08ac705d878b4439a70e794d6a7b2547e61522f96fe77d6658",
+      "score_key": "109ca5d3149ac350abed8ca641c8fb623c83beef410502536c0f2180a7c276e2",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/pdf_financial_statement_05",
+      "inference_key": "5c5dcd20b2bbcb99215450ffe4e23bc16d1ef998e2fc12a94896080f28603318",
+      "score_key": "b4c9541de08bd1867017e5e734644db4429583c204a2b02017cf2cc3b09881d4",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/post_visit_survey_17",
+      "inference_key": "3f478a53c2f2a3fdbe26d705ca2b1ce26af887413e20724e93636484615e4ceb",
+      "score_key": "c3fabf28a941f9261f37f0407ae2371409ea435729dc544c966f4ad88c014393",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/promotional_offer_10",
+      "inference_key": "819ff285676493c8c66f7ae86723d531a29c1244b8720621f208bda748530c5d",
+      "score_key": "ea3fa0a370cf735e402d955b7a4691c3a90fff6df5ee402d722cfc70d3c26c92",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/shipping_notification_03",
+      "inference_key": "c745868871b99838ad556a1104e039e3796aac7a571edce91728a97810d5987a",
+      "score_key": "9d2cf0a5f5faabc98c5e337dba08dfa3358f13426370581b17488aa9bb1eecf7",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/social_notification_05",
+      "inference_key": "bc1a19da393ce83c0700a771efe7f035129b51d1666159cb3c689a92396d2135",
+      "score_key": "9837eb5ec8883ed36d35f3106cb2d88795cc6c3f1c78213841191e5ca3884dd8",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/survey_request_09",
+      "inference_key": "96261d659a9725871e8765ede608861bd13d494f127a7277efdba76579e45f3f",
+      "score_key": "f8a87482442d765af49fda46e4877b46ec6acae9e2d1761f325dd4402a912e52",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/terms_update_08",
+      "inference_key": "0655d66bae439894286810364b89262d8772ed19ec59c286cfc752eab0058bc8",
+      "score_key": "a9beaa598844452fc55c34a07e9b9182e03579b2e9531de6d9f0adb3570c1f7a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    }
+  ],
+  "written_at": "2026-08-07T06:38:52.879854+00:00"
+}

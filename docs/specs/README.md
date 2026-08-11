@@ -4,8 +4,16 @@ Implementation specifications for planned or in-progress features.
 
 ## Active plans
 
-Status as of 2026-08-06.
+Status as of 2026-08-10.
 
+- [Foundation integrity](foundation-integrity.md) — **planned, nothing implemented.**
+  The next plan to pick up. Written after reviewing the C1–C9 batch: every defect
+  that batch repaired shares one cause — the DoD gate (`pytest -m "not integration"`)
+  never executes the system, so SQL is never run, the asyncpg pool is never opened
+  and triggers never fire. Builds a real execution gate (`scripts/verify.sh`),
+  adds schema contract tests that make the `20260809000001`/`20260809000003` class
+  of defect structurally unrepeatable, fixes the six defects the review found
+  (D1–D6), and closes the 96-commit / 21-migration production gap. Increments F1–F9.
 - [Post-Cutover Reliability and Scale](post-cutover-reliability-and-scale.md) — **implemented R1-R9 (#248-#251 + 8b94c53a, de9694eb, 766961d1, 9b14e0ca, a6d8d0c4) — counted health, Gmail batch, unified nudge, heartbeat+anti-starve, cutover gate, observability, recovery, drills, config tidy.** Gate before `ENABLE_BACKGROUND_PROCESSING=true` satisfied.
 - [Ingestion & recovery hardening](ingestion-recovery-hardening.md) — **built and merged (PRs #241–#247 + Aug 6 egress arch A, inc 1–10).** The history now; remaining open Finding 30 (rollback asserted, never rehearsed) and the health/efficiency residue are carried forward to the post-cutover plan above.
 - [Polling Email Ingestion v2](polling-email-ingestion-v2.md) — **built and
@@ -20,7 +28,14 @@ Status as of 2026-08-06.
   reviewed legacy production repair, staging fault injection, and production
   rollout.
 - [Egress and Work Scheduling](egress-and-work-scheduling.md) — **built and merged (egress arch A, 1.5 M → ~3k RPCs/day).** Busy-wait removed via single scheduler + drain-then-sleep + in-process nudge; duplicate email owner and parked photo polls removed; egress meter + `/health/egress` shipped. Remaining soft spots (dual idle model, 5 s floor invisibility, dead `num_workers`) carried forward to the post-cutover plan.
-- [Cutover Verification](cutover-verification-20260807.md) — **verified locally, not deployed.** Ordered checklist (`migrations → code via `gh workflow run test.yml` → flag last); the sole ordered gate — the two other duplicated runbook sections now point here.
+- [Cutover Verification](cutover-verification-20260807.md) — **verified locally,
+  not deployed.** Ordered checklist (migrations → code → flag last); the sole
+  ordered gate — the two other duplicated runbook sections now point here.
+  **The gap has grown:** its line 28 records prod at code `a50e1e4e` / schema
+  `20260803000002`; `main` is now **96 commits and 21 migrations** ahead. Its
+  line 3 also states prod must stay `ENABLE_BACKGROUND_PROCESSING=false`, while
+  `.env.production:31` says `true` — reconcile before cutover. Execute via
+  [foundation-integrity.md](foundation-integrity.md) F7–F8, not directly.
 - [Direct-PG completion and live-UI hardening](direct-pg-completion-and-live-ui-hardening.md)
   — **implemented (C1–C9: #279–#286 + 0654d4fe).** Remediation of the Aug 6–9
   batch: the asyncpg session-pooler pool is mandatory at startup, the whole
@@ -28,9 +43,19 @@ Status as of 2026-08-06.
   the LISTEN/NOTIFY WorkListener is live, executor concurrency is real on all
   four paths, the dead code/config is purged, all three clients refresh
   realtime auth / catch up / rejoin, Broadcast fan-out collapses to one
-  message per transaction, and the R5 schema gate compares versions and
-  cannot pass without verifying.
-- [Live UI updates](live-ui-updates.md) — **implemented — web #270, iOS #271, Android #272**, hardened by C6 #284 (auth refresh, lifecycle catch-up, terminal-channel rejoin) and C7 #285 (per-transaction fan-out collapse).
+  message per transaction, and the R5 schema gate compares versions instead of
+  counts. **Six defects found reviewing this batch are open** — see
+  [foundation-integrity.md](foundation-integrity.md) §2 (D1–D6). Notably the R5
+  gate still cannot fail: it greps all 14-digit versions out of
+  `supabase migration list`, which includes the *local* column, so a local-only
+  migration reads as applied (D2).
+- [Live UI updates](live-ui-updates.md) — **implemented — web #270, iOS #271,
+  Android #272**, hardened by C6 #284 (auth refresh, lifecycle catch-up,
+  terminal-channel rejoin) and C7 #285 (per-transaction fan-out collapse).
+  **Open:** the web rejoin backoff never advances past 1 s because
+  `rejoinAttempts` is re-declared by each `start()` call, so an unauthorized
+  private channel retries at 1 Hz forever; iOS and Android are correct. See
+  [foundation-integrity.md](foundation-integrity.md) D1.
 - [Photo surface removal](photo-surface-removal.md) — **implemented in #201 (2026-07-13).** Connect surfaces removed; photo-source rendering retained (see spec for restoration).
 - [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md)
   — **implemented in #273 (2026-08-09).** One solid AAA peer-action construction per theme, intrinsic row never stacks.

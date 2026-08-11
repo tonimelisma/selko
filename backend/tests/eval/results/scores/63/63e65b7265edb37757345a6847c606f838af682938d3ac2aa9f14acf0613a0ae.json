@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/marketing_email_04",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "0e9dab77982264ca34b753233e45203855a47de2cde8c2b523f979db127ed13c",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "63e65b7265edb37757345a6847c606f838af682938d3ac2aa9f14acf0613a0ae",
+  "stored_at": "2026-08-07T06:53:37.826392+00:00"
+}

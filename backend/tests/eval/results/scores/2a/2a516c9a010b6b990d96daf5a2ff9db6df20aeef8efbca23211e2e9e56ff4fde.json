@@ -1,0 +1,63 @@
+{
+  "fixture_name": "meetings/team_standup_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Team Standup",
+        "start_datetime": "2026-02-09T09:30:00",
+        "end_datetime": "2026-02-09T09:45:00",
+        "location": "Conference Room B",
+        "description": "Daily team standup meeting (new time)",
+        "all_day": false,
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "recurrence_rule": {
+          "expected": "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+          "actual": "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "8e5eb7fa57c5697d4fd8fd3889bfdbf44bdfdaba3c329d921ccf98c2da8f2a46",
+    "expected_output_hash": "3f4b5217939037932eefc00d3b75d5e67a04230e710ebe7c97e0f420dbef9491",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "2a516c9a010b6b990d96daf5a2ff9db6df20aeef8efbca23211e2e9e56ff4fde",
+  "stored_at": "2026-08-07T06:41:24.204627+00:00"
+}

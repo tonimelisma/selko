@@ -1,0 +1,1252 @@
+{
+  "run_id": "20260809T182225Z-a1987381",
+  "operations": [
+    "extract"
+  ],
+  "matrix": [
+    {
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": "low"
+    }
+  ],
+  "provenance": {
+    "git_commit": "e5aebe93ae9684cd4687dd99a984ec043563ce49",
+    "event_processing_sha256": "ec71a481378230a85a95f804e7cfa32a6cc48080b419b8b53b5946abff721eaa"
+  },
+  "cells": [
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/baby_shower_04",
+      "inference_key": "8349238854f34c1f1cef50b0eafd640b7b4d798bffd2f78633dd57a9f8142233",
+      "score_key": "e3c312fdbe11bad05ec42329bc85f12c004b5c8b19e454ce0c2a343da9383aaa",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/birthday_party_adult_02",
+      "inference_key": "387e1fc02db312a9cab94d2c46c8b27b6472e4e146eb01b2372e794bff194474",
+      "score_key": "f0e8178a287ae7ea596ec6f743d000bb40ca2c56c62b25576bab48636bc1f4e8",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/birthday_party_kids_01",
+      "inference_key": "328323131b7728301ec7f462714a2e8197d1788e4123400a36f4fbaa42bdbec2",
+      "score_key": "c274dab26e278b53b03c6d9fdd116399dd4207145f3b7cb94f2eafb708a78aa6",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/dinner_party_09",
+      "inference_key": "e7fae7cf55760a8e3894a31ae5a5b658615e6888650ff557a7e2058dba8416ff",
+      "score_key": "8d849659bcb3b52775fffbedc07b31e33d6dd681c326c5964969d42acafa289c",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/engagement_party_10",
+      "inference_key": "5409deba92d5ba5456788969973ddcb6871139853b59f654f1d9fa4fb95c04d4",
+      "score_key": "2b91f61c106ace0e0bda075d8ac46dd3d480b32ff4c71272136902eef8e24c91",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/graduation_party_05",
+      "inference_key": "c60314ae97998f055ca4cac5fcb21f9641f5aa41cd7b1cc3b186791d719b9ebc",
+      "score_key": "704abd93b096ec36202d4e0c62b181d45fd259594d25aaad775adb5b2e0c3727",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/holiday_party_07",
+      "inference_key": "16e0b0cdfe9961dc4fa7808342cc92ffce3e2df38afe3c70432b3d2ce71c959c",
+      "score_key": "902b99bc7b61f978cb4d8239eb2af3baed7a0d652fa38a941c3bcb2f943919c2",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/housewarming_06",
+      "inference_key": "c4f799990c8128df3786adbab99fdaed5635b112abe052ac67a02e21c1d31db9",
+      "score_key": "01f9c571af1881020e283412a3f6b66484e1d8692137189ef550638e76490bd6",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/retirement_party_08",
+      "inference_key": "be29bd72a2805537c14bbf62ff6fa2221fdfefa7ee789874c9cecaa9b409b419",
+      "score_key": "4ba0378cf0318507493660e420ea39214b9cc34feb78507cb93184171b93be10",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/wedding_03",
+      "inference_key": "127b8168ff2e5b0e985fb6888fbac46472c06e5e5139d919863a1afb88838f98",
+      "score_key": "0e62c9ba6feeaaeefadbf28b7bd4cd28707233186cabebdd266d58ab08a211c5",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/ysc_newsletter_multi_event_11",
+      "inference_key": "586eddd1f72ebdd3edcd532d0554a8c0af1287329bc035dec3d2e86bbe5081de",
+      "score_key": "5196bd4d0b6bed4bcce58e7696b311a6ffa5aeb26fda2f9e3ce7a7bf61040046",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/accountant_meeting_06",
+      "inference_key": "c5eef8637301efebc88be717393e7794c9e805ab1498820fecb69edebdc726cc",
+      "score_key": "775a7168216c64ebcfe91bc1a618affa91502945fb393b3e44d655d93a9d33a5",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/car_service_03",
+      "inference_key": "a958094fcb8a8ce4f5f437c7452ecd47345f045e6f86d848259b2f851f533cd6",
+      "score_key": "506cd4f75bdfc56b15d3db9de542524a09c689f401e4abba1918de8dd993a340",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/dentist_appointment_02",
+      "inference_key": "fc126b0048d6249e20026a3d241b63abfc7ca425b63da57a7153605aa64de1eb",
+      "score_key": "75ced0e19211a41afca5a22c216a6521e019a3cc80135db724be0ec998afaf48",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/doctor_appointment_01",
+      "inference_key": "4fb1f68ef907b5abfec19a9417842ffc20e983422056216cad86029ce63d0b1a",
+      "score_key": "9e1ffbc052d20905d818130079fcbac819278dd45b1f22cc328dae798a66d03f",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/home_repair_08",
+      "inference_key": "1176760e3e50aba3a108b74190b36b874441292f9f18757c9c3c34f989f5f8b4",
+      "score_key": "28d3b66e1fd41c2c79bc9667d5a8808b874039ed3cfef3dc9899e7cfb76d3897",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/lawyer_consultation_05",
+      "inference_key": "eb74ffd09e42621d0d389bb2fb19ebd3d666abe6813ddb3399419bd1ec525bb6",
+      "score_key": "8844d5a89050230cd65d98dc8afb7e15e74db7c2213a40f0939290e6f4137609",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/salon_appointment_04",
+      "inference_key": "0aaffd36af022ebd7750b0f428d12627da63f8d71b5d234da54c2bc0952db0ff",
+      "score_key": "5aa09fdd3f7d302f5ef8515750c793cbf729891e95f3f0c65618c0e5af5d7be8",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/vet_appointment_07",
+      "inference_key": "a6cd2fc2d26b9d2b41db0afb89ed4eb8aa1c1a401a26ec8e7ebfa2becbca44a4",
+      "score_key": "e4b7d74a3eed8d0d108ed4c7216e84928a0d6415ccaf3fb7a27409430f21ce7a",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/winery_reservation_09",
+      "inference_key": "85a4df4cc01d8c9822f4c5a2b7fd34c7b2d856c3ef36f7d2c294c53305dc560b",
+      "score_key": "f3d08139e499b093b0a7bc536e5d2a4cb662e4952642e8ce955f4df723d618e4",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/winery_reservation_reminder_10",
+      "inference_key": "ad8819f11da8f9c84bd55a4426fd59a400fc3731f8b2ad71102bf487e1795385",
+      "score_key": "73fae98530ad8198b879d157c548376d852a0df9cb09d2cd7dcd2f509398a32e",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/all_hands_06",
+      "inference_key": "f60b27c71b34e5b8e328b4af5fc6021b81d8ef8df1003644cd2bcadc52ab1bc0",
+      "score_key": "68fec4d9f91c0c30f37451fe9685fbf652b97a08229f328dee86fc7e6d2ae004",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/board_meeting_03",
+      "inference_key": "9ab34978c8f556afdd88d58288169d37d7776284cfa52dab24e61c4137a135fa",
+      "score_key": "a71b96f7157f9563725231c9a15f6f60b81eca4aa2275b2b98eec656d643c658",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/client_call_04",
+      "inference_key": "dff0d8589d67789b3c21d14849aa3b196e9990ef27fe09d1947679c67bf66af4",
+      "score_key": "e768c204e497d5a28e4f3f4fb47b58aef865807efb3189b75572a23f6cf1c586",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/ics_calendar_invite",
+      "inference_key": "4b34afa1359e6ca250651e83362b2545347517ff0c1e480dbec77610f28b1bdd",
+      "score_key": "3f74fc561478dd1cf49434677cada947e188b799d7e4612e2bed1a124c7621b1",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/interview_05",
+      "inference_key": "eb06342fda994090d809d9925924506ebe293d3e01e2d8f987196e556c73516f",
+      "score_key": "a9e6697fe35905afd70f2c6fa1db64c6927bc632928c0a4072a2c5e4c3a6ff64",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/meeting_with_agenda_attachment",
+      "inference_key": "eaac11896fb7da5bff283c5bbb363a702517c97928be9e2440843fc490864b6c",
+      "score_key": "25d1f450f1c89334c7252d25fe1bc073cbebeadf2a77807e169d3c6a7349d4c1",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/one_on_one_01",
+      "inference_key": "a2a7116d29b2455e1414cbb64ce6c9a31ccb1abd2578f94ab220d5bf04456fe7",
+      "score_key": "d852221336aefcf3fa829ca3433ba96540f78ed4a9d5fa9426cd0ab307fb34a9",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/organizer_sent_agenda",
+      "inference_key": "cbf85777aceaa098472db830ec2f268c43d65f134149c739d2e74fafaba9cab6",
+      "score_key": "7c98b41727fef7b1f4952462c7481f26bcffad9d40a32affa4e8cd85de27f224",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/performance_review_08",
+      "inference_key": "4d0aac18d43517079266eb3bb9792cbb59b57328f0e1ed70e7fca3f3c8b1c094",
+      "score_key": "91fd2ceed762b08fd82e77ab4334cb4ccd7288994a3769c5581b871f727cd7d9",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/project_kickoff_07",
+      "inference_key": "58e5d720f4bff81c46ce49fb3547fa099e0d10dc98ac33c8036480415ac71210",
+      "score_key": "ebaf65a9a67a3730cda0b857de51a07fb2721212e220822274977da5f05a8175",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/team_standup_02",
+      "inference_key": "80253022372a6da78f6793569f7b5852d527891c59b3aba2affc6ef86a717a08",
+      "score_key": "4b291fe14ed5cf04e99a7aec47c91ae9e016c8839d2fbf51374306a63640e0a4",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/airport_transfer_05",
+      "inference_key": "63ff81eab93f3031192da908d082bf73f684b7e5fa9a715ec41155471ae8d90d",
+      "score_key": "8256898445274ac08bc3e0ed73a341cf1a7c586b9bb28de9f8dad2dc92ae2ca7",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/car_rental_03",
+      "inference_key": "6b04c408c4bc9602b71c1d1a0bc660d7ed9c2e58b434ede1475f53bc5129a7aa",
+      "score_key": "d6918cdfc9528cf43de897d55cc73e177cc4cd73185880b61288259fc8af48e2",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/flight_confirmation_01",
+      "inference_key": "740fdc4c0c3ec4924739b6fe0c3eeceaa7145a243390ffb2e6ba5e25fb653974",
+      "score_key": "2f761b08f33b8399241bb02b0b3bff07734cb64407d829ed38695d187eb89d2b",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/hotel_reservation_02",
+      "inference_key": "d92b7bfc2a2724fb5b410753153d47689aafac98a35f0896671ff8f66030110f",
+      "score_key": "08020cccdc0d4adb2bf8dea383300c418e3d2f3d6125560a61bf605f6c73e965",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/train_booking_04",
+      "inference_key": "2c80f6223ea7e8fd03bf909f49aeca752207538f972a1b0086a85a6503c81e0c",
+      "score_key": "45c8b05b37e7b5e75f30eb79589b538d4ab562a7b66304b2dadb88a1a2e5c406",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/travel_itinerary_06",
+      "inference_key": "4b6a65d57282d40920db84b84e0c7230799f7b624ce266a651a03f034b268637",
+      "score_key": "bd026d117950ed407818a116e2b06601c1a332472b5749c38b67f11b76e39f8d",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/credential_maintenance_deadlines_07",
+      "inference_key": "099939dfcc22a638a321b404c95f108b56af692acb231dbe7b7ee054a4a50eef",
+      "score_key": "e156cd96b4fea18dbf4fc868bb364c4a55cf14ec58d96411a1f09d05e20511fa",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/tech_conference_01",
+      "inference_key": "357819411e1895ee6dc1fc30dd266fadb48fac5ef8e451dd19470c0876780dfc",
+      "score_key": "e07b543bb50700f07c6c4cdc8f1b135f781fec9039615963355b6076d0c65643",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/training_session_04",
+      "inference_key": "eed17dbb5ac993553cc11dba9e878aba56d1d2e5d6142ab819308bb02f773dc3",
+      "score_key": "e54d8d59e19f6a4d3d223e280110598cc8a4f2a0db9b22eba859357b2754fd8c",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/training_with_schedule_csv",
+      "inference_key": "f318450f4b7be15f2b05cbe16cb9dd37052904f087a3da8d1e6f6c47cebb1367",
+      "score_key": "573998e0be8dbec5e14799ef5b79cb5a076d6744a46f3e3066c3b4c6114cd3fa",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/virtual_summit_05",
+      "inference_key": "06019dc0dd45067222430ee22226575a9bf5217be1e3d186f4f3c38ea4c489f4",
+      "score_key": "7aef7d95baa8e059cb1d645ee2b0d4e4a30e0f36f4a058a5a0e6fbe47809957f",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/webinar_02",
+      "inference_key": "0f3ce3c23b2cfa8d385fab15528b0dea5db13fc0d7ed6e8b0e2a1f86077a9702",
+      "score_key": "2d70127b2115598ab681996302946f7b008b8dc7778b52e510a3a1c7e4b7428d",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/workshop_03",
+      "inference_key": "1c7c4781476115ca5c1cedab3744d130081d201136e4186363c488008f998d93",
+      "score_key": "a53cf52d9c2af676cca05643a581d08635c738b61536e6766007f2668b77f72f",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/field_trip_04",
+      "inference_key": "15a4b4a04e18c2f3a97574f58b162780cb61dabac01fad0fd3fb710fc4a76b6a",
+      "score_key": "f217a85f5b249af547d3c81e4e8f8ddc4db8c9f02ed226a003fc895ad14932fc",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/government_comment_period_13",
+      "inference_key": "677a25d6ca17d4d406d6a20d1ae002db4a77a7313640db7acb52295ad27e6b64",
+      "score_key": "5dbe5f155abb1437330a44e1bcd2fab0621c09a3bf27b6741142ab73793e0703",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/graduation_ceremony_05",
+      "inference_key": "2b2ae0854fbd0f7e54d42fa2361609964aed359a085397dc47d3968f80a81bec",
+      "score_key": "29c2744a318eed63d2b96ca597ef97207728320f2703e098b6277ef5cb09bd20",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/parent_teacher_01",
+      "inference_key": "345d8b16017a9e4977a5eb6fa946e20c6183bcd946f229167a481b29eb4d3f7f",
+      "score_key": "1944692cb3234b2b9db69f13139eb5c90118f0f0ed7fd5d4ee15991bdd399021",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_kindercare_dec_02",
+      "inference_key": "9a47660fcaca44234a3996b43f6e95daf81c94bd7fd38ef011974dc85704dab3",
+      "score_key": "68dfc76dd36661d985f1e6ef3e50edacb20222d6ded462e354ee523766ea1b2d",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_kindercare_jan_01",
+      "inference_key": "65eb3b2f3758f7f791da9cc930e93ecc0ec34aa94490b594435fe07b2db0ae1d",
+      "score_key": "74d465450d17a93cab4356a9c7edcf8d89fb35b4dbfcd3bba01824e3046237aa",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_personal_fwd_04",
+      "inference_key": "fce04aa7c2f0ea1801d6fd25c7e067ad30ab6b65de35c3b89cb0ddd9d15f4f0a",
+      "score_key": "c630549ceb0fb99a852440e50ac200038b0e142a54e089d9cd839f33539f3002",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_dance_performance_03",
+      "inference_key": "d6f49f8098e8da073c9ac17a787dd3be5b16484994d04c02d45955c74da956d2",
+      "score_key": "0b10e14589c1d4fe02a3ae2e08b62c8af544e78e1276bbc44cb43a09d70416d6",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/public_hearing_08",
+      "inference_key": "1e11bca507aa292c4f8bf479e2c491221363b629b58cec416c9f7fd27789e013",
+      "score_key": "90323615fb248e19941702fff0d04270d6629b7455135a69482fd6b94b7339d5",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/registration_opens_09",
+      "inference_key": "0f49ead927417ab2f2c88ad8f1cc30e5ed93d1e5693c71d25472a1d964ab73f9",
+      "score_key": "35c2a9df4a90e93d4ea8b24554f58d736e5f241b4672638bb4b44c28d53dbdcb",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_digest_author_visit_07",
+      "inference_key": "d1044a3e686a40ea4d1a12ce11cad39772538a1a96a186e8c5d0d457e14ec5bc",
+      "score_key": "30fe90eee25ae6d385f734cdc1a54e296d92f3ebc2960d8ba1bbf81b7d68baef",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_newsletter_multi_event_06",
+      "inference_key": "f2c286c85edebe2f94fd80119c6637f18b53419173d4eb0b400ae938f966c969",
+      "score_key": "bc2d8b54636b8c01a7028ab8f98a47c1c88992081cfa5f543ef4b61e1705e82b",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_play_02",
+      "inference_key": "bc3b73fe7968d2331b1ed19b4f424617bbb65ccc7d4d001756737db53cdcf502",
+      "score_key": "07697b07776ff23fed63e7d3f9962ad247ad5317605652de5c77175764ad1c6c",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/sports_game_03",
+      "inference_key": "8ca5b2b23ce11a8dfa568332f869c57177e0c72b5909b91272b401c453baf1c9",
+      "score_key": "d1fa1808f1cc700d6390217710ece55a8208f7e031ab771ef5ec79ec7f4f0e08",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/valentines_exchange_06",
+      "inference_key": "bec68894a84b4a778a3d1debd53b23938f32ee9881e3067d2207f96f0ea1e9df",
+      "score_key": "d7bdf43e5aae4d0f2745eb8de9006de56c0dd20c448de12458064c8a38d563af",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/water_day_all_day_01",
+      "inference_key": "598a772064fea5b6c5f47262522d24a26d4936fe791dabb59b0d7efa3052bb8b",
+      "score_key": "fbb4d1098c92f2a3b07ef3a1053bc25684934cf10195002fa0c16667b6ec2adb",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/biweekly_one_on_one_03",
+      "inference_key": "9125dc81b29451dff1afbfc1078889958fbd61df1ea8ffe88a111625d878741a",
+      "score_key": "dd3fad31312c08a18f7f1a0a40bbf72617476192a1db743ae9e1419723df5748",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/monthly_book_club_02",
+      "inference_key": "d83fdcd86ab5feb22b4e951a8dfad6c619549ddb3fef164c69c9e03415ad5d5c",
+      "score_key": "489dcfea09959e3632e7140cd8f2c041a1d3c6bb6ff2df0c6407d8c52f839295",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/quarterly_review_04",
+      "inference_key": "155bd17a8739a281e4757fedc627143e462d460e089bb64dab3f878f85333368",
+      "score_key": "8c466e40de7f1818065c8d56234635ddd2abec3906409466098ced6502ac1120",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/weekly_team_meeting_01",
+      "inference_key": "e048f6097524aea451c94c7d3f02710e205acb8b540764a7f319f17c9c0b0a7e",
+      "score_key": "a4488bb36f1d2a277cb02d34d71bc7055f414abcaae6b1cfef1b11319e5ab947",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/account_inactivity_notice_14",
+      "inference_key": "32b1f9c403e89dd1acc23885de292e3d2377d7ebefb9d06bc7443c1f8ddfa1a3",
+      "score_key": "46b91082befa91be58807f96d002d595be68969cae2a2da143d85f1a681e49f4",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/account_statement_07",
+      "inference_key": "955dee3fc86e79235fd51db263da4844003ffb783dc22272276e3892bc88816f",
+      "score_key": "25b53df5de3a90565a3e1df60617de442472e472113abc7d078200f9b6a97739",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/automatic_invoice_payment_16",
+      "inference_key": "fa8501b441f064c051fff500d8b1ae663dcf87f65634f60ba126fa5b4f49d989",
+      "score_key": "f3cde243c16437aafde636758c638360f7ef133251297ef1e672db1bb0a25a3f",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/autopay_scheduled_15",
+      "inference_key": "7513b33c04c88506c714c7353e6e3aacb60dbb6fdc187c8cd159a59f94e4b453",
+      "score_key": "d04ec82881b5d844b6b32be379bb7bfa2a52b1a56f3c95412784b4beede54406",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/calendar_derived_daily_brief_18",
+      "inference_key": "40490c0016a30f2686b8ef6636eba9f80029b836d540383bac0a65c0250bb062",
+      "score_key": "fb49acd074e362aa5adee5f6769c0a1a75af5ffb3384e3b403365a9cb7989082",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/early_direct_deposit_notice_20",
+      "inference_key": "edf70bdd6b5baf66107aba0aa73fb09603a9d1c79bd4ddc6e89c52ce01ae3fbe",
+      "score_key": "9a1e5ec06fe42252ae2eeee575eb43f68f1bda14891c094934e0699091c90499",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/informed_delivery_digest_19",
+      "inference_key": "5a35c1920b3573d20dceae31f657baeec6f3b622cb62c1e85ecb9929e936f4a7",
+      "score_key": "874d20fa26b60a134779892922b8df24f8e02e7f78f20c3cf8af592f0325826e",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/malformed_schema_echo_source_01",
+      "inference_key": "f0eec7a6deee16a0b1bfabad2feae33ad9c61f4b9ce2aaadd9112743288e6808",
+      "score_key": "05cc64200b2316e23f8a552da3cad4cb11246f5dd052fe07ce0889b46a5cc26f",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/marketing_email_04",
+      "inference_key": "001a6b3605eb5fb3521b11b4ecd166b80e269c5fd0390fbd7239ae9ee6da595b",
+      "score_key": "7a543abba9e7da0c0ec7fac40fcbba2882712ecee0bf33cf611ebb664c3802b8",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/meeting_digest_past_topics_12",
+      "inference_key": "d65fbf40182f0124c81966ee0f4ded6a8a715696071390672a32d1d935fbd2db",
+      "score_key": "7676e9ec5b807fb56c4e120e4c584feda83a0cf0c6a9e34c4b602d43c628e036",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/meeting_recap_recording_11",
+      "inference_key": "86b112401f2f74bbdb69588fc3e1cd3c65f103891cdf244081f8372a9c73b0c4",
+      "score_key": "e369374350830356414dd12bbc2e0ba2a9b0c831f3446d6feea44f6152fe9994",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/newsletter_01",
+      "inference_key": "e4a88134ac67703f4c5721b093e5b4023539d93399041893494d3b129671379b",
+      "score_key": "1795a74ce812b83c89cce5bfee0f598fce83951d668a5e0b44203dae72ba4485",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/notetaker_not_admitted_13",
+      "inference_key": "f00d2bf5bbbd2bc30bf5d58ea08dac3c165bae60d5dfb4445de04a36f9fbd84e",
+      "score_key": "f2d1981c11281e217baac572ec3fb41c92a558f89d3f9d3bb02d7d8305578404",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/order_pickup_12",
+      "inference_key": "cbfb9d0687e2e8528d716e5c3a6119a99fbf7545b833c56ce18a61dd34bb4498",
+      "score_key": "2575d2994740062a507e7bf9c6165945c008e9af03638fde8936a561925e001d",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/order_receipt_02",
+      "inference_key": "63d27baa1e0798cf3fabc0c826b5b4e056a6d728917ef6628596ccec14a82c0d",
+      "score_key": "109d91d99564d12b9b9d2d7c5a7598fd26c0eeb931461a6bcd600e74b2e544a9",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/password_reset_06",
+      "inference_key": "b36bd40218e83a6c5ddef8bd81f70abc3151c1261e6f3fffbffeb9dd6351fd77",
+      "score_key": "d15a62442193f78b9aa21237c16c5865e6cbf6ff4414fc505fcca2bd15579a8d",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/pdf_financial_statement_05",
+      "inference_key": "1aa8c240753b8b2b71a8be1c27fa8faafd0be753172617cf41f3447000502ff5",
+      "score_key": "11770425f78d307c4794b9bd53a7689f90b73fd6f5b7599b073afded1a24afea",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/post_visit_survey_17",
+      "inference_key": "e8cafc8917f5965fb8ee53879dcb72732babc680c80b4d9d686cba80157d27b9",
+      "score_key": "c8821c04dc5633b155757e8f082075b699674191bf87034778b61318a976df29",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/promotional_offer_10",
+      "inference_key": "09ec36aeb2682b1bc34e3aef60c8a4b5765379fd8a0711c3c03f4e710e395965",
+      "score_key": "764ae5b38a448244090b47821d5f2e07012aa0e51ce7ad55f9bae1cb59ae1ef8",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/shipping_notification_03",
+      "inference_key": "8b9800eb45fe3297b7b6ac1680a55f9c9a2b4263e3e4f3c270a96f4c590d630c",
+      "score_key": "e32ef772af95756518c20601ab786e7ac9ca256b9e9c80f2ef520d3ecf746d58",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/social_notification_05",
+      "inference_key": "26dd43ca1f74368eb7ba583833d75aeb37b97932a911bf90372442eb9b580ab5",
+      "score_key": "13b6df3ab1bb87958c1c207d0ba39754a73ac2844f8fa7eab70f1104fe673370",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/survey_request_09",
+      "inference_key": "cae100d891f4a82b36b730c679190fb58375ae318c26c46d488f15ac689689d8",
+      "score_key": "d9c11d3f72e0f5b4ad0582f868ff66b707e3e3a19a447e578a1838f1b88cf79e",
+      "state": "HIT",
+      "reason": "execution completed"
+    },
+    {
+      "operation": "extract",
+      "provider": "meta",
+      "model": "muse-spark-1.2-contributor",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/terms_update_08",
+      "inference_key": "f408b284b096be22181b2c0e646a9a81a460075668cf0c3211d50258c37fc381",
+      "score_key": "4844a823f8f7025a06b0f3aba47f648e350b6d6dc00fee601c9eeafac7b530a1",
+      "state": "HIT",
+      "reason": "execution completed"
+    }
+  ],
+  "written_at": "2026-08-09T18:22:25.245371+00:00"
+}
