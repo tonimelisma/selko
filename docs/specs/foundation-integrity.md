@@ -1,6 +1,12 @@
 # Foundation Integrity — make the repo's claims verifiable, then deploy
 
-**Status:** planned. Nothing in this document is implemented yet.
+**Status:** Partially implemented (updated 2026-08-10). F1–F3, F5, and F9
+are merged in PRs #287–#291. F6 has a preserved migration-order guard in draft
+PR #292 but still needs authoritative staging/production migration state. F7
+has a fail-closed staging verifier in draft PR #293 but its staging execution,
+worker drill, and 24-hour soak remain pending. F4 schema-contract tests are not
+implemented yet because the required local database reset/fixture proof has not
+run. F8 production cutover remains blocked on F7 and explicit operator approval.
 **Written:** 2026-08-10, after reviewing the C1–C9 batch (#279–#286 + `0654d4fe`).
 **Audience:** a developer new to this codebase. Every increment names the file,
 the line, the failing test to write first, and the exact command that proves it
