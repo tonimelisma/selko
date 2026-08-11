@@ -78,7 +78,17 @@ main() {
     exit 1
   fi
 
-  if ! MISSING=$(echo "$REMOTE_RAW" | find_missing_versions); then
+  # The password-authenticated Supabase CLI path writes connection progress
+  # before the JSON payload. Strip only leading non-JSON lines, then validate
+  # the complete payload with jq so noisy output cannot become a false pass.
+  local remote_json
+  if ! remote_json=$(printf '%s\n' "$REMOTE_RAW" | sed -n '/^[[:space:]]*{/,$p' | jq -c .); then
+    echo "❌ FAIL: could not parse migration list output as JSON — cannot verify."
+    echo "$REMOTE_RAW"
+    exit 1
+  fi
+
+  if ! MISSING=$(printf '%s\n' "$remote_json" | find_missing_versions); then
     echo "❌ FAIL: could not parse migration list output as JSON — cannot verify."
     echo "$REMOTE_RAW"
     exit 1
@@ -91,7 +101,7 @@ main() {
     exit 1
   fi
 
-  TOTAL=$(echo "$REMOTE_RAW" | jq '.migrations | length')
+  TOTAL=$(printf '%s\n' "$remote_json" | jq '.migrations | length')
   echo "✅ Every local migration is applied remotely ($TOTAL total)"
 }
 

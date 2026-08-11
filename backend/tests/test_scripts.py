@@ -146,6 +146,15 @@ class TestMainExitCodeWithFakeSupabaseCli:
 
         assert result.returncode == 1
 
+    def test_accepts_connection_progress_before_json(self, tmp_path):
+        result = self._run_with_fake_cli(
+            tmp_path,
+            'echo "Connecting to remote database..."; '
+            'echo \'{"migrations":[{"local":"20260811000004","remote":"20260811000004","time":"t"}]}\'',
+        )
+
+        assert result.returncode == 0
+
     def test_uses_database_password_for_remote_migration_query(self, tmp_path):
         args_file = tmp_path / "supabase-args"
         result = self._run_with_fake_cli(
