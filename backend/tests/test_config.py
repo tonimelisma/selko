@@ -241,6 +241,12 @@ class TestBackgroundProcessingDefaults:
         monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
         monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
         monkeypatch.delenv("ENABLE_BACKGROUND_PROCESSING", raising=False)
+        # F1.4 (D7): production's default is enabled, so it also needs a URL —
+        # this test is about the default value, not about SUPABASE_DB_URL.
+        monkeypatch.setenv(
+            "SUPABASE_DB_URL",
+            "postgresql://postgres:pw@x.pooler.supabase.com:5432/postgres",
+        )
 
         config = config_module.load_config()
 
@@ -272,6 +278,10 @@ class TestBackgroundProcessingDefaults:
         monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
         monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
         monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "true")
+        monkeypatch.setenv(
+            "SUPABASE_DB_URL",
+            "postgresql://postgres:pw@x.pooler.supabase.com:5432/postgres",
+        )
 
         config = config_module.load_config()
 
@@ -301,6 +311,63 @@ class TestBackgroundProcessingDefaults:
         assert staging.supabase_url == "https://staging.example"
         assert development.supabase_url == "http://localhost:54321"
         assert "SUPABASE_URL" not in os.environ
+
+
+class TestSupabaseDbUrlRequiredWhenBackgroundProcessingEnabled:
+    """F1.4 (D7): a missing SUPABASE_DB_URL must fail loudly at config load,
+    not deep inside async startup when create_pool() happens to be called.
+    """
+
+    def test_raises_with_actionable_message(self, monkeypatch, tmp_path):
+        from selko import config as config_module
+
+        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "true")
+        monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
+
+        with pytest.raises(Exception) as exc_info:
+            config_module.load_config()
+
+        message = str(exc_info.value)
+        assert "SUPABASE_DB_URL" in message
+        assert "ENABLE_BACKGROUND_PROCESSING" in message
+
+    def test_does_not_raise_when_background_processing_disabled(
+        self, monkeypatch, tmp_path
+    ):
+        from selko import config as config_module
+
+        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
+        monkeypatch.setenv("ENVIRONMENT", "staging")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "false")
+        monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
+
+        config = config_module.load_config()
+
+        assert config.enable_background_processing is False
+        assert config.supabase_db_url is None
+
+    def test_does_not_raise_when_url_present(self, monkeypatch, tmp_path):
+        from selko import config as config_module
+
+        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "true")
+        monkeypatch.setenv(
+            "SUPABASE_DB_URL",
+            "postgresql://postgres:pw@x.pooler.supabase.com:5432/postgres",
+        )
+
+        config = config_module.load_config()
+
+        assert config.supabase_db_url is not None
 
 
 class TestAttachmentLimitsDefaults:

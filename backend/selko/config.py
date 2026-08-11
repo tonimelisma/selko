@@ -447,6 +447,26 @@ def load_config(env_override: Optional[str] = None) -> Config:
         environment, llm_fallback_provider, llm_fallback_model, getenv
     )
 
+    enable_background_processing = (
+        getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true"
+        if "ENABLE_BACKGROUND_PROCESSING" in values
+        else environment == "production"
+    )
+    supabase_db_url = getenv("SUPABASE_DB_URL")
+    if enable_background_processing and not supabase_db_url:
+        # Local import: selko.services.pg is a leaf module, but selko.services'
+        # package __init__ eagerly imports selko.services.auth, which imports
+        # this module — importing pg at module scope here would be circular.
+        from selko.services.pg import ConfigurationError
+
+        raise ConfigurationError(
+            f"SUPABASE_DB_URL is required in {environment} because "
+            "ENABLE_BACKGROUND_PROCESSING is true. Set SUPABASE_DB_URL on the "
+            f"{environment} Render service environment to the Supavisor "
+            "session pooler URL (port 5432) — it is never committed to a "
+            f".env file. See {env_file} for the marker comment."
+        )
+
     return Config(
         environment=environment,
         supabase_url=supabase_url,
@@ -494,11 +514,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_processing_timeout=int(getenv("EMAIL_PROCESSING_TIMEOUT", "120")),
         photo_processing_timeout=int(getenv("PHOTO_PROCESSING_TIMEOUT", "120")),
         event_sync_timeout=int(getenv("EVENT_SYNC_TIMEOUT", "60")),
-        enable_background_processing=(
-            getenv("ENABLE_BACKGROUND_PROCESSING", "").lower() == "true"
-            if "ENABLE_BACKGROUND_PROCESSING" in values
-            else environment == "production"
-        ),
+        enable_background_processing=enable_background_processing,
         email_poll_interval_seconds=int(getenv("EMAIL_POLL_INTERVAL_SECONDS", "300")),
         email_coordinator_tick_seconds=int(getenv("EMAIL_COORDINATOR_TICK_SECONDS", "60")),
         email_retry_base_seconds=int(getenv("EMAIL_RETRY_BASE_SECONDS", "60")),
@@ -519,7 +535,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         recovery_refresh_interval_seconds=float(getenv("RECOVERY_REFRESH_INTERVAL_SECONDS", "30")),
         email_health_interval_seconds=int(getenv("EMAIL_HEALTH_INTERVAL_SECONDS", "300")),
         email_folder_refresh_seconds=int(getenv("EMAIL_FOLDER_REFRESH_SECONDS", "3600")),
-        supabase_db_url=getenv("SUPABASE_DB_URL"),
+        supabase_db_url=supabase_db_url,
         pg_pool_min_size=int(getenv("PG_POOL_MIN_SIZE", "1")),
         pg_pool_max_size=int(getenv("PG_POOL_MAX_SIZE", "4")),
         pg_keepalive_seconds=int(getenv("PG_KEEPALIVE_SECONDS", "60")),

@@ -74,4 +74,91 @@ describe('live-updates auth + lifecycle (C6)', () => {
 		expect(supabase.channel).toHaveBeenCalledTimes(2);
 		vi.useRealTimers();
 	});
+
+	// F1.1 (D1): rejoinAttempts was declared inside start(), so every rejoin
+	// re-declared it at 0 and the backoff never advanced past 1000ms.
+	it('grows the rejoin delay across consecutive failures', async () => {
+		vi.useFakeTimers();
+		await liveUpdates.start('user-1');
+		expect(subscribeCallback).toBeTypeOf('function');
+
+		// 1st failure -> 1000ms delay
+		subscribeCallback?.('CHANNEL_ERROR');
+		await vi.advanceTimersByTimeAsync(999);
+		expect(supabase.channel).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(supabase.channel).toHaveBeenCalledTimes(2);
+
+		// 2nd failure (on the new channel) -> 2000ms delay
+		subscribeCallback?.('CHANNEL_ERROR');
+		await vi.advanceTimersByTimeAsync(1999);
+		expect(supabase.channel).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(supabase.channel).toHaveBeenCalledTimes(3);
+
+		// 3rd failure -> 4000ms delay
+		subscribeCallback?.('CHANNEL_ERROR');
+		await vi.advanceTimersByTimeAsync(3999);
+		expect(supabase.channel).toHaveBeenCalledTimes(3);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(supabase.channel).toHaveBeenCalledTimes(4);
+
+		vi.useRealTimers();
+	});
+
+	it('caps the rejoin delay at 60s', async () => {
+		vi.useFakeTimers();
+		await liveUpdates.start('user-1');
+
+		const growingDelays = [1000, 2000, 4000, 8000, 16000, 32000];
+		for (const delay of growingDelays) {
+			subscribeCallback?.('CHANNEL_ERROR');
+			await vi.advanceTimersByTimeAsync(delay);
+		}
+
+		// 7th failure would be 64000ms uncapped; must cap at 60000ms.
+		subscribeCallback?.('CHANNEL_ERROR');
+		const callsBefore = vi.mocked(supabase.channel).mock.calls.length;
+		await vi.advanceTimersByTimeAsync(59999);
+		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore + 1);
+
+		vi.useRealTimers();
+	});
+
+	it('resets the delay after a successful SUBSCRIBED', async () => {
+		vi.useFakeTimers();
+		await liveUpdates.start('user-1');
+
+		subscribeCallback?.('CHANNEL_ERROR'); // 1000ms delay
+		await vi.advanceTimersByTimeAsync(1000);
+
+		subscribeCallback?.('CHANNEL_ERROR'); // 2000ms delay
+		await vi.advanceTimersByTimeAsync(2000);
+
+		subscribeCallback?.('SUBSCRIBED'); // resets backoff
+
+		subscribeCallback?.('CHANNEL_ERROR'); // should be back to 1000ms
+		const callsBefore = vi.mocked(supabase.channel).mock.calls.length;
+		await vi.advanceTimersByTimeAsync(999);
+		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore + 1);
+
+		vi.useRealTimers();
+	});
+
+	it('does not rejoin after a deliberate stop', async () => {
+		vi.useFakeTimers();
+		await liveUpdates.start('user-1');
+		const callsBefore = vi.mocked(supabase.channel).mock.calls.length;
+
+		await liveUpdates.stop();
+		subscribeCallback?.('CLOSED');
+		await vi.advanceTimersByTimeAsync(60000);
+
+		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore);
+		vi.useRealTimers();
+	});
 });

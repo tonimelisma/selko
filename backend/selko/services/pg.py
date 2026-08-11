@@ -163,10 +163,20 @@ class WorkListener:
             dsn=self.config.supabase_db_url,
             statement_cache_size=0,
             timeout=getattr(self.config, "pg_connect_timeout_seconds", 10) or 10,
+            # H3: without this, an execute() on a dead-but-open socket in
+            # _heartbeat_loop can block indefinitely, hanging before it ever
+            # reaches the wait_for(..., timeout=10.0) meant to detect exactly
+            # that — the detector was behind the hang it exists to catch.
+            command_timeout=getattr(self.config, "pg_command_timeout_seconds", 30) or 30,
             # Identifiable for the H3 dead-socket drill: the spec terminates
             # the listener backend via pg_stat_activity.application_name.
             server_settings={"application_name": "selko-worker"},
         )
+        # H3: this connection sits idle for minutes between heartbeats — the
+        # one most likely to need keepalives — but plain connect() has no
+        # init= hook like the pool does, so it must be applied by hand.
+        keepalive = max(int(getattr(self.config, "pg_keepalive_seconds", 60) or 60), 10)
+        await _enable_tcp_keepalives(keepalive)(self._conn)
         await self._conn.add_listener(self.CHANNEL, self._on_notify)
         self._connected = True
         logger.info("WorkListener: LISTEN %s established", self.CHANNEL)
@@ -207,17 +217,38 @@ class WorkListener:
                     exc, self._reconnects, backoff,
                 )
                 await self._teardown_connection()
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, 60.0)
-                try:
-                    await self._connect()
-                    # A dropped socket may have lost notifications. Wake every
-                    # work type so the next drain reconciles from the database,
-                    # which is the durable source of truth.
-                    for event in self._events.values():
-                        event.set()
-                except Exception as reconnect_exc:
-                    logger.error("WorkListener: reconnect failed: %s", reconnect_exc)
+                backoff = await self._reconnect_loop(backoff)
+
+    async def _reconnect_loop(self, backoff: float) -> float:
+        """Retry _connect() on the backoff schedule until it succeeds or the
+        listener is stopping. Returns the backoff to use for the next
+        unrelated failure — 1.0 (reset) on success, or the last computed
+        value if stopped mid-retry.
+
+        D3 secondary: a failed reconnect used to fall through to the top of
+        _heartbeat_loop, which waits the full `interval` (default 120s)
+        before trying again — behind, not on, the backoff schedule. Retrying
+        here keeps a failed reconnect on the same 1s/2s/4s.../60s schedule as
+        every other failure.
+        """
+        while not self._stopping:
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 60.0)
+            try:
+                await self._connect()
+                # A dropped socket may have lost notifications. Wake every
+                # work type so the next drain reconciles from the database,
+                # which is the durable source of truth.
+                for event in self._events.values():
+                    event.set()
+                return 1.0
+            except Exception as reconnect_exc:
+                self._reconnects += 1
+                logger.error(
+                    "WorkListener: reconnect failed (reconnect #%d, next backoff %.0fs): %s",
+                    self._reconnects, backoff, reconnect_exc,
+                )
+        return backoff
 
     async def _teardown_connection(self) -> None:
         if self._conn is not None:
