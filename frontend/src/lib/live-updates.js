@@ -18,6 +18,11 @@ let trailingRefresh = new Map();
 let inFlight = new Map();
 let listeners = new Map(); // resource -> Set<callback>
 let connectionStatus = 'disconnected';
+// F1.1 (D1): must live at module scope, not inside start() — a rejoin calls
+// start() again, and a locally-declared counter re-zeroes on every attempt,
+// which is why the backoff never advanced past its first step.
+let rejoinAttempts = 0;
+let intentionalStop = false;
 
 /**
  * @typedef {{resource: string, operation: string, entity_id?: string, occurred_at: string}} LiveInvalidation
@@ -58,6 +63,7 @@ export function subscribe(resource, callback) {
 	};
 }
 
+/** @param {string} resource @param {LiveInvalidation} inv */
 function emit(resource, inv) {
 	const set = listeners.get(resource);
 	if (!set) return;
@@ -70,6 +76,7 @@ function emit(resource, inv) {
 	}
 }
 
+/** @param {string} resource @param {LiveInvalidation} inv */
 function scheduleRefresh(resource, inv) {
 	// Debounce per resource + coalesce burst
 	if (inFlight.get(resource)) {
@@ -115,9 +122,12 @@ export function catchUp() {
 	}
 }
 
+/** @param {unknown} payload */
 function handleInvalidate(payload) {
 	// payload is {resource, operation, entity_id, occurred_at}
-	const inv = payload?.payload || payload;
+	/** @type {LiveInvalidation & {payload?: LiveInvalidation}} */
+	const message = /** @type {LiveInvalidation & {payload?: LiveInvalidation}} */ (payload);
+	const inv = message?.payload || message;
 	if (!inv || !inv.resource) return;
 	const allowed = new Set(['events', 'event_sources', 'emails', 'integrations']);
 	if (!allowed.has(inv.resource)) return;
@@ -135,6 +145,7 @@ export async function start(uid) {
 	if (!uid) return;
 	if (userId === uid && channel) return;
 	await stop();
+	intentionalStop = false;
 	userId = uid;
 	connectionStatus = 'connecting';
 
@@ -155,7 +166,6 @@ export async function start(uid) {
 		handleInvalidate(payload);
 	});
 
-	let rejoinAttempts = 0;
 	channel.subscribe((status) => {
 		connectionStatus = status;
 		console.debug('[live-updates] channel status', status);
@@ -165,15 +175,26 @@ export async function start(uid) {
 			return;
 		}
 		if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+			// A deliberate stop() (sign-out, layout teardown) must not schedule
+			// a rejoin — only an unexpected drop should self-heal.
+			if (intentionalStop) return;
 			// A private channel that fails authorization will not self-heal.
 			// Rejoin with backoff and catch up from the database on success —
 			// the database is the source of truth, the channel is a hint.
 			const delay = Math.min(1000 * 2 ** rejoinAttempts, 60000);
-			rejoinAttempts += 1;
+		const nextRejoinAttempts = rejoinAttempts + 1;
+		rejoinAttempts = nextRejoinAttempts;
 			const uid = userId;
 			setTimeout(() => {
 				if (!uid) return;
-				stop().then(() => start(uid));
+				stop()
+					.then(() => start(uid))
+					.then(() => {
+						rejoinAttempts = nextRejoinAttempts;
+					})
+					.catch((error) => {
+						console.warn('[live-updates] rejoin failed', error);
+					});
 			}, delay);
 		}
 	});
@@ -183,6 +204,8 @@ export async function start(uid) {
  * Stop and remove the channel. Idempotent.
  */
 export async function stop() {
+	intentionalStop = true;
+	rejoinAttempts = 0;
 	if (channel) {
 		try {
 			await supabase.removeChannel(channel);
@@ -221,4 +244,6 @@ export function __resetForTests() {
 	inFlight.clear();
 	listeners.clear();
 	connectionStatus = 'disconnected';
+	rejoinAttempts = 0;
+	intentionalStop = false;
 }
