@@ -24,20 +24,17 @@ PR opened/updated
 All tests pass -> PR ready for review (no deployment)
 ```
 
-### On Push to Main (local is the gate; CI is a bonus)
+### On Push to Main (Tier 2 is local; CI is a bonus)
 
 ```
 Code merged to main (via merge-and-cleanup.sh — never waits on CI)
     |
-    +-- Local gate you already ran: uv run pytest, frontend unit, assert-schema-code-compat --linked
+    +-- Tier 1 already ran before merge: ./scripts/verify.sh backend
     |
     +-- Bonus if minutes exist: GitHub runs same tests + bonus deploy/integration (may never run)
     |
-    +-- You deploy staging locally when ready (never automatic):
-        |-- 1. ./scripts/assert-schema-code-compat.sh --linked (migrations before code — R5 gate; exits 1 without --linked and on any verification failure, blocking the deploy)
-        |-- 2. supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push
-        |-- 3. Render auto-deploys on main push (GitHub integration)
-        |-- 4. Verify: GET /health/ingestion, /health/egress, scripts/smoke-ingestion.py
+    +-- You verify staging locally after merge (never via CI):
+        |-- ./scripts/verify.sh staging
 ```
 
 ### To Production (always local; never gh workflow run)
@@ -94,14 +91,14 @@ Configure at: Repository -> Settings -> Secrets and variables -> Actions
 
 ### Local Development
 - Uses `.env` file with `TEST_USER_EMAIL=test@selko.local`
-- Manual deployment (`supabase db push`, `fly deploy`)
+- Manual deployment and verification (`./scripts/verify.sh staging`)
 - Local Supabase via `supabase start`
-- Development-marked integration tests run locally as part of the DoD
+- Unit and local integration tests run via `./scripts/verify.sh backend` as the Tier 1 DoD gate
 
 ### GitHub Actions
 - Uses GitHub Secrets mapped to environment variables
-- Automatic deployment on main push (staging only)
-- Integration tests run against staging Supabase after deployment
+- May run mocked/unit checks, but Actions minutes are not funded and workflows may never run
+- The `deploy-staging` and `integration-tests-staging` jobs are not the live path; Tier 2 runs locally
 
 ## Deployment Commands
 
@@ -152,9 +149,14 @@ git push origin v1.0.0
 
 ## Merge Workflow
 
-### CI is never a gate, never funded — local is the gate
+### CI is never a gate, never funded — local tiers are the gate
 
-We will never buy GitHub minutes. Merges use `merge-and-cleanup.sh` and never wait on CI — CI may be out of minutes, queued forever, or absent. CI on the merge commit is a bonus safety net; if it never runs, that's expected. If it does run and fails, fix forward.
+We will never buy GitHub minutes. Verification is two local tiers: Tier 1
+(`./scripts/verify.sh backend`) before merge and Tier 2
+(`./scripts/verify.sh staging`) immediately after merge. Merges use
+`merge-and-cleanup.sh` and never wait on CI — CI may be out of minutes, queued
+forever, or absent. CI on the merge commit is a bonus safety net; if it never
+runs, that's expected. If it does run and fails, fix forward.
 
 ### Default: merge-and-cleanup.sh
 
@@ -180,7 +182,7 @@ It never blocks on CI. Run it as your final step — the worktree is gone afterw
 
 > **Note:** Auto-merge via branch protection requires GitHub Pro for private repos, so these scripts drive the merge instead.
 
-Required PR checks (when CI runs): `unit-tests`, `android-unit-tests`, `frontend-unit-tests`
+Required PR checks (when CI runs): `unit-tests`, `android-unit-tests`, `frontend-unit-tests`. These are bonus checks; the local tiers are authoritative.
 
 ### Troubleshooting
 
