@@ -81,6 +81,9 @@ jobs:
       - name: Set up Python
         run: uv python install 3.14
 
+      - name: Prepare test environment
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: |
           uv sync --extra test
