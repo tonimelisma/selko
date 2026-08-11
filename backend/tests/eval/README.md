@@ -116,9 +116,21 @@ uv run python -m backend.tests.eval.run_eval --all
 # Intentional nondeterminism study (side replica; does not overwrite canonical)
 uv run python -m backend.tests.eval.run_eval --fixture invitations/birthday_party_kids_01 --replicate 1
 
+# Report superseded prompt-contract artifacts without deleting anything
+./scripts/prune-eval-results.sh --dry-run
+
+# Keep the current prompt hash plus one superseded hash, then delete candidates
+./scripts/prune-eval-results.sh --apply --keep-superseded 1
+
 # Clear all cached results
 uv run python -m backend.tests.eval.run_eval --clear-cache
 ```
+
+`prune-eval-results.sh` is dry-run by default. It keeps the current
+operation-specific prompt contract and the requested number of most recent
+superseded prompt hashes for each provider/model/thinking/fixture group. It
+also follows score artifacts back to their inference identity. Artifacts with
+missing identity metadata are retained rather than guessed at.
 
 ### Viewing Results
 
