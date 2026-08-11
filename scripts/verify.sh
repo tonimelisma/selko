@@ -19,6 +19,7 @@ require_local_supabase() {
 }
 
 verify_backend() {
+  ./scripts/check-migration-order.sh main
   require_local_supabase
   supabase db reset
   uv run pytest backend/tests/ -m "not integration"
