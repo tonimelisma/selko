@@ -315,7 +315,7 @@ jobs:
         run: |
           health_url="${STAGING_API_BASE_URL%/}/health"
           for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error --output /dev/null "$health_url"; then
+            if curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --output /dev/null "$health_url"; then
               exit 0
             fi
             [[ "$attempt" -lt 30 ]] || exit 1
@@ -325,8 +325,8 @@ jobs:
       - name: Check staging health surfaces
         if: inputs.staging_action == 'deploy'
         run: |
-          curl --fail --silent --show-error https://selko.onrender.com/health/ingestion
-          curl --fail --silent --show-error https://selko.onrender.com/health/egress
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health/ingestion
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health/egress
 
       - name: Install uv
         if: inputs.staging_action == 'deploy'
