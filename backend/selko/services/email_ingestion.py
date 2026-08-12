@@ -387,21 +387,21 @@ class EmailIngestionRepository:
         user_id: str,
         email_payload: dict[str, Any],
         descriptors: Iterable[dict[str, Any]],
+        calendar_components: Iterable[dict[str, Any]] | None = None,
     ) -> str:
-        """Atomically upsert the email row and its attachment descriptors.
+        """Atomically upsert the email row, its attachment descriptors, and calendar components.
 
-        One SQL call commits both writes in a single transaction so the
-        readiness gate (``claim_unprocessed_email``) never observes an email
-        row whose attachment descriptors have not been written yet — the race
-        that let an LLM worker claim an email before its attachment rows
-        existed, causing silent flaky extraction.
+        One SQL call commits all writes in a single transaction so the
+        readiness gate never observes an email row whose descriptors or
+        components have not been written yet. R3 extends this with
+        p_calendar_components.
         """
         import json
 
         try:
             email_id = await self.pg_pool.fetchval(
-                "SELECT public.save_email_with_attachment_descriptors($1::uuid, $2::jsonb, $3::jsonb)",
-                user_id, json.dumps(email_payload), json.dumps(list(descriptors)),
+                "SELECT public.save_email_with_attachment_descriptors($1::uuid, $2::jsonb, $3::jsonb, $4::jsonb)",
+                user_id, json.dumps(email_payload), json.dumps(list(descriptors)), json.dumps(list(calendar_components or [])),
             )
         except Exception as exc:
             raise EmailIngestionError(f"Failed to save email with attachment descriptors: {exc}") from exc

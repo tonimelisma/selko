@@ -248,6 +248,7 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
                 "mime_type": "text/plain",
                 "size_bytes": 1,
             }],
+            [],
         ),
         "enqueue_email_event_resolution": (
             context.email_id,
