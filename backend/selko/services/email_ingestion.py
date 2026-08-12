@@ -31,6 +31,28 @@ MAX_PAGE_ITEMS = 100
 KNOWN_ID_QUERY_CHUNK = 200
 
 
+def _normalize_provider_page(items: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize provider identity fields before encoding the JSONB payload.
+
+    The database contract stores provider message and folder identifiers as
+    text.  Some provider/client adapters return UUID objects for identifiers
+    that originated in a database row, so normalize those two boundary fields
+    explicitly instead of letting ``json.dumps`` fail on a valid identity
+    page.
+    """
+    page = []
+    for item in items:
+        normalized = dict(item)
+        if normalized.get("provider_message_id") is not None:
+            normalized["provider_message_id"] = str(normalized["provider_message_id"])
+        if "provider_folder_ids" in normalized:
+            normalized["provider_folder_ids"] = [
+                str(folder_id) for folder_id in (normalized["provider_folder_ids"] or [])
+            ]
+        page.append(normalized)
+    return page
+
+
 @dataclass(frozen=True)
 class EmailErrorClassification:
     """Typed outcome of classifying an email ingestion failure.
@@ -279,7 +301,7 @@ class EmailIngestionRepository:
         """Persist one bounded provider page before exposing its cursor."""
         import json
 
-        page = list(items)
+        page = _normalize_provider_page(items)
         if len(page) > MAX_PAGE_ITEMS:
             raise ValueError(f"provider page exceeds {MAX_PAGE_ITEMS} identities")
         try:
