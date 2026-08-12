@@ -28,13 +28,28 @@
 	import InlineActionError from '$lib/components/InlineActionError.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
 	import * as liveUpdates from '$lib/live-updates.js';
+	import {
+		createLaneOrder,
+		seedLaneOrder,
+		reconcileLaneOrder,
+		sortLaneEvents
+	} from '$lib/review-queue-order.js';
+	import DispositionedCard from '$lib/components/DispositionedCard.svelte';
+	import { flip } from 'svelte/animate';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
 	/** @type {any[]} */
 	let events = $state([]);
 	let isLoadingIntegrations = $state(true);
-	let isLoadingEvents = $state(false);
+	let hasEventSnapshot = $state(false);
+	let isInitialEventsLoad = $state(false);
+	let isRefreshingEvents = $state(false);
+	let refreshError = $state('');
+	let refreshSequence = $state(0);
+	let refreshQueued = $state(false);
+	/** @type {Map<string, { event: any, kind: 'accept'|'reject', lane: string }>} */
+	let dispositions = $state(new Map());
 	let error = $state('');
 	let oauthError = $state('');
 	let bulkError = $state('');
@@ -44,10 +59,14 @@
 	let senderErrors = $state(new Map());
 	let integrationLoadFailed = $state(false);
 	let notification = $state('');
+	let liveAnnouncement = $state('');
 	let processingEvents = $state(new Set());
-	/** Preserve sender-group positions while rows are removed during this review session. */
-	let newSenderOrder = $state(new Map());
-	let changeSenderOrder = $state(new Map());
+	// Lane orders — session-stable ranks, never renumbered
+	let newLaneOrder = $state(createLaneOrder());
+	let changeLaneOrder = $state(createLaneOrder());
+	// Derived from lane orders for grouping (stable)
+	let newSenderOrder = $derived(newLaneOrder.senderRank);
+	let changeSenderOrder = $derived(changeLaneOrder.senderRank);
 	/** @type {{events: any[], timer: ReturnType<typeof setTimeout>} | null} */
 	let rejectedUndo = $state(null);
 	let undoingReject = $state(false);
@@ -70,15 +89,8 @@
 		});
 	}
 
-	/** @param {any[]} list */
-	function captureSenderOrder(list) {
-		const order = new Map();
-		for (const event of list) {
-			const { senderKey } = senderForEvent(event);
-			if (!order.has(senderKey)) order.set(senderKey, order.size);
-		}
-		return order;
-	}
+	// captureSenderOrder is now handled by seedLaneOrder/reconcileLaneOrder in review-queue-order.js
+	// Kept for backwards compat if referenced, but new code uses LaneOrder.
 
 	/** @param {any[]} list @param {Map<any, any>} stableOrder */
 	function groupBySender(list, stableOrder) {
@@ -151,24 +163,36 @@
 		clearRejectUndoTimer();
 		rejectedUndo = null;
 		undoingReject = true;
-		// Optimistically reinsert events in chronological order
+		// Clear dispositions for undone events so loadEvents does not filter them
+		if (dispositions.size > 0) {
+			let cleared = false;
+			for (const ev of toRestore) {
+				if (dispositions.has(ev.id)) { dispositions.delete(ev.id); cleared = true; }
+			}
+			if (cleared) dispositions = new Map(dispositions);
+		}
+		// Optimistically reinsert events in stable order (retain original rank for Undo)
 		const idsInEvents = new Set(events.map((e) => e.id));
 		const toReinsert = toRestore.filter((e) => !idsInEvents.has(e.id));
 		if (toReinsert.length > 0) {
-			events = [...events, ...toReinsert].sort(
-				(a, b) => new Date(a.start_datetime || 0).getTime() - new Date(b.start_datetime || 0).getTime()
-			);
-			// Ensure sender order contains restored senders for stable grouping
+			events = [...events, ...toReinsert];
+			// Re-apply stable lane sorting so Undo restores exact position
+			const newEvents_undo = events.filter((e) => e.status === 'pending_review');
+			const changeEvents_undo = events.filter((e) => e.status === 'pending_change');
+			events = [...sortLaneEvents(newEvents_undo, newLaneOrder, senderForEvent), ...sortLaneEvents(changeEvents_undo, changeLaneOrder, senderForEvent)];
+			// Ensure lane orders contain restored senders/events for stable grouping (retain rank)
 			for (const ev of toReinsert) {
 				const { senderKey } = senderForEvent(ev);
-				if (ev.status === 'pending_change') {
-					if (!changeSenderOrder.has(senderKey)) changeSenderOrder.set(senderKey, changeSenderOrder.size);
-				} else {
-					if (!newSenderOrder.has(senderKey)) newSenderOrder.set(senderKey, newSenderOrder.size);
+				const lane = ev.status === 'pending_change' ? changeLaneOrder : newLaneOrder;
+				if (!lane.senderRank.has(senderKey)) {
+					lane.senderRank.set(senderKey, lane.nextSenderRank++);
+				}
+				if (!lane.eventRank.has(ev.id)) {
+					lane.eventRank.set(ev.id, lane.nextEventRank++);
 				}
 			}
-			newSenderOrder = new Map(newSenderOrder);
-			changeSenderOrder = new Map(changeSenderOrder);
+			newLaneOrder = { ...newLaneOrder, senderRank: new Map(newLaneOrder.senderRank), eventRank: new Map(newLaneOrder.eventRank) };
+			changeLaneOrder = { ...changeLaneOrder, senderRank: new Map(changeLaneOrder.senderRank), eventRank: new Map(changeLaneOrder.eventRank) };
 		}
 		let hadError = false;
 		for (const ev of toRestore) {
@@ -250,22 +274,77 @@
 	}
 
 	async function loadEvents() {
-		isLoadingEvents = true;
-		error = '';
-		const result = await fetchPendingEventsWithSources();
-		if (result.error) {
-			error = result.error.message;
+		const seq = ++refreshSequence;
+		const isFirst = !hasEventSnapshot;
+		if (isFirst) {
+			isInitialEventsLoad = true;
 		} else {
-			const loadedEvents = result.data;
-			newSenderOrder = captureSenderOrder(
-				loadedEvents.filter((event) => event.status === 'pending_review')
-			);
-			changeSenderOrder = captureSenderOrder(
-				loadedEvents.filter((event) => event.status === 'pending_change')
-			);
-			events = loadedEvents;
+			if (isRefreshingEvents) {
+				refreshQueued = true;
+				return;
+			}
+			isRefreshingEvents = true;
 		}
-		isLoadingEvents = false;
+		error = '';
+		refreshError = '';
+		const result = await fetchPendingEventsWithSources();
+		// Ignore stale responses (out-of-order)
+		if (seq !== refreshSequence) return;
+		if (result.error) {
+			if (isFirst) {
+				error = result.error.message;
+				isInitialEventsLoad = false;
+			} else {
+				refreshError = result.error.message;
+				isRefreshingEvents = false;
+			}
+			return;
+		}
+		let loadedEvents = result.data;
+		// Do not reinsert dispositions that are still pending server confirmation
+		if (dispositions.size > 0) {
+			const dispIds = new Set(dispositions.keys());
+			loadedEvents = loadedEvents.filter((e) => !dispIds.has(e.id));
+		}
+		const newLoaded = loadedEvents.filter((e) => e.status === 'pending_review');
+		const changeLoaded = loadedEvents.filter((e) => e.status === 'pending_change');
+		if (!hasEventSnapshot) {
+			newLaneOrder = seedLaneOrder(newLoaded, senderForEvent);
+			changeLaneOrder = seedLaneOrder(changeLoaded, senderForEvent);
+			hasEventSnapshot = true;
+		} else {
+			const prevNew = events.filter((e) => e.status === 'pending_review');
+			const prevChange = events.filter((e) => e.status === 'pending_change');
+			reconcileLaneOrder(newLaneOrder, prevNew, newLoaded, senderForEvent);
+			reconcileLaneOrder(changeLaneOrder, prevChange, changeLoaded, senderForEvent);
+			// Trigger reactivity — maps were mutated
+			newLaneOrder = { ...newLaneOrder, senderRank: new Map(newLaneOrder.senderRank), eventRank: new Map(newLaneOrder.eventRank) };
+			changeLaneOrder = { ...changeLaneOrder, senderRank: new Map(changeLaneOrder.senderRank), eventRank: new Map(changeLaneOrder.eventRank) };
+		}
+		// Apply stable sort before setting events so UI never shows reshuffled order
+		const sortedNew = sortLaneEvents(newLoaded, newLaneOrder, senderForEvent);
+		const sortedChange = sortLaneEvents(changeLoaded, changeLaneOrder, senderForEvent);
+		// Recombine: keep original server group membership but sorted within lane
+		events = [...sortedNew, ...sortedChange];
+		isInitialEventsLoad = false;
+		isRefreshingEvents = false;
+		if (refreshQueued) {
+			refreshQueued = false;
+			// One trailing refresh after coalesced invalidations during mutation
+			setTimeout(() => loadEvents(), 0);
+		}
+		// Clear dispositions that are now confirmed absent from server
+		if (dispositions.size > 0) {
+			const stillPresent = new Set(loadedEvents.map((e) => e.id));
+			let changed = false;
+			for (const id of dispositions.keys()) {
+				if (!stillPresent.has(id)) {
+					dispositions.delete(id);
+					changed = true;
+				}
+			}
+			if (changed) dispositions = new Map(dispositions);
+		}
 	}
 
 	/** @param {any} event */
@@ -277,16 +356,19 @@
 		if (processingEvents.has(event.id)) return;
 		setEventError(event.id, '');
 		processingEvents = new Set([...processingEvents, event.id]);
+		dispositions = new Map(dispositions).set(event.id, { event, kind: 'accept', lane: 'pending_review' });
 		const previous = events;
-		// Optimistic remove so the card does not linger while the request is in flight
 		events = events.filter((e) => e.id !== event.id);
 		try {
 			const { error: updateError } = await updateEventStatus(event.id, 'approved');
 			if (updateError) {
 				events = previous;
+				dispositions = new Map([...dispositions].filter(([k]) => k !== event.id));
 				setEventError(event.id, updateError.message);
 				return;
 			}
+			liveAnnouncement = `Accepted. ${events.length} remaining.`;
+			setTimeout(() => (liveAnnouncement = ''), 3000);
 		} finally {
 			const next = new Set(processingEvents);
 			next.delete(event.id);
@@ -299,15 +381,19 @@
 		if (processingEvents.has(event.id)) return;
 		setEventError(event.id, '');
 		processingEvents = new Set([...processingEvents, event.id]);
+		dispositions = new Map(dispositions).set(event.id, { event, kind: 'reject', lane: 'pending_review' });
 		const previous = events;
 		events = events.filter((e) => e.id !== event.id);
 		try {
 			const { error: updateError } = await updateEventStatus(event.id, 'rejected');
 			if (updateError) {
 				events = previous;
+				dispositions = new Map([...dispositions].filter(([k]) => k !== event.id));
 				setEventError(event.id, updateError.message);
 				return;
 			}
+			liveAnnouncement = `Rejected. ${events.length} remaining.`;
+			setTimeout(() => (liveAnnouncement = ''), 3000);
 			showRejectUndo([event]);
 		} finally {
 			const next = new Set(processingEvents);
@@ -541,7 +627,7 @@
 		onconnect={handleConnect}
 		onauthorize={handleAuthorize}
 	/>
-{:else if isLoadingEvents}
+{:else if !hasEventSnapshot && isInitialEventsLoad}
 	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]">
 		<div class="space-y-4" aria-busy="true" aria-live="polite">
 			<span class="sr-only">{$_('common.loadingEvents')}</span>
@@ -562,7 +648,17 @@
 		<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
 	</div>
 {:else}
-	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]">
+	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]" aria-busy={isRefreshingEvents ? 'true' : 'false'}>
+		{#if refreshError}
+			<div class="alert alert-warning mb-4" role="alert">
+				<span>{refreshError}</span>
+				<button class="btn btn-ghost btn-xs" onclick={() => loadEvents()}>Retry</button>
+			</div>
+		{/if}
+		{#if isRefreshingEvents}
+			<div class="sr-only" aria-live="polite">Refreshing</div>
+		{/if}
+		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{liveAnnouncement}</div>
 		<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
 		<PageHeader title={$_('nav.review')} subtitle={$_('home.subtitle')}>
 			{#snippet children()}
@@ -597,14 +693,20 @@
 									handleAutoApproveSender(senderKey, senderGroup.events)}
 							/>
 							{#each senderGroup.events as event (event.id)}
-								<EventCard
-									{event}
-									error={eventErrors.get(event.id) || ''}
-									isProcessing={processingEvents.has(event.id)}
-									canApprove={calendarConnected}
-									onapprove={handleApproveNew}
-									onreject={handleRejectNew}
-								/>
+								<div animate:flip={{ duration: 180 }}>
+									<DispositionedCard {event} kind={dispositions.get(event.id)?.kind}>
+										{#snippet children()}
+										<EventCard
+											{event}
+											error={eventErrors.get(event.id) || ''}
+											isProcessing={processingEvents.has(event.id)}
+											canApprove={calendarConnected}
+											onapprove={handleApproveNew}
+											onreject={handleRejectNew}
+										/>
+										{/snippet}
+									</DispositionedCard>
+								</div>
 							{/each}
 						</div>
 					{/each}
@@ -637,14 +739,20 @@
 									handleAutoApproveSender(senderKey, senderGroup.events)}
 							/>
 							{#each senderGroup.events as event (event.id)}
-								<ChangeCard
-									{event}
-									error={eventErrors.get(event.id) || ''}
-									isProcessing={processingEvents.has(event.id)}
-									canApprove={calendarConnected}
-									onapprove={handleApproveChange}
-									onreject={handleRejectChange}
-								/>
+								<div animate:flip={{ duration: 180 }}>
+									<DispositionedCard {event} kind={dispositions.get(event.id)?.kind}>
+										{#snippet children()}
+										<ChangeCard
+											{event}
+											error={eventErrors.get(event.id) || ''}
+											isProcessing={processingEvents.has(event.id)}
+											canApprove={calendarConnected}
+											onapprove={handleApproveChange}
+											onreject={handleRejectChange}
+										/>
+										{/snippet}
+									</DispositionedCard>
+								</div>
 							{/each}
 						</div>
 					{/each}
