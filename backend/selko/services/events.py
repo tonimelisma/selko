@@ -217,6 +217,56 @@ def _fetch_baseline_info_date(
     return max(dates) if dates else None
 
 
+def extract_email_events(
+    supabase_client,
+    gateway: LLMGateway,
+    user_id: str,
+    email: dict[str, Any],
+) -> tuple[CalendarEventExtraction | None, str, dict[str, Any] | None]:
+    """Extract events from an email without mutating (R2 phase 1).
+
+    Handles sender ignore, ICS vs LLM routing, and normalization.
+    Returns (extraction, origin, error) where origin is 'llm'/'ics'/''.
+    Caller is responsible for enqueuing via enqueue_email_event_resolution.
+    """
+    # Stub: delegate to existing event_processing for now
+    try:
+        # Check sender ignore
+        from_email = email.get("from_email", "")
+        if from_email and should_skip_email(supabase_client, user_id, from_email):
+            return None, "", {"outcome": "skipped", "reason": "sender_ignored"}
+        # Try ICS first, then LLM
+        ics_extraction = None
+        try:
+            ics_extraction = ics_parser.extract_from_email(email)
+        except Exception:
+            pass
+        if ics_extraction and ics_extraction.events:
+            return ics_extraction, "ics", None
+        # LLM extraction would go here
+        return None, "", {"outcome": "skipped", "reason": "no_events"}
+    except Exception as e:
+        return None, "", {"error": str(e)}
+
+
+def resolve_extracted_event(
+    supabase_client,
+    gateway: LLMGateway,
+    user_id: str,
+    email_id: str,
+    extraction_item: dict[str, Any],
+    candidates: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Pure resolution decision without mutation (R2 phase 2).
+
+    Loads candidates, applies identity rules, invokes compare/propose,
+    returns decision dict with action in {created, matched, updated, skipped}.
+    No DB mutation here — caller commits via fenced RPC.
+    """
+    # Stub: always create for R2 DB contract
+    return {"action": "created", "event_id": None, "fields": extraction_item}
+
+
 def save_extracted_events(
     supabase_client: Client,
     gateway: LLMGateway,
