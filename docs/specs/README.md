@@ -4,7 +4,14 @@ Implementation specifications for planned or in-progress features.
 
 ## Active plans
 
-Status as of 2026-08-10.
+Status as of 2026-08-11.
+
+- [Review Queue Integrity](review-queue-integrity.md) — **planned, nothing
+  implemented.** Fixes the web Review reshuffle without page reloads, adds
+  accessible disposition animation, replaces racy concurrent event persistence
+  with parallel extraction plus fenced per-user resolution, retains structured
+  cancellation identity instead of skipping it, and defines a dry-run-first
+  repair for the known duplicate/cancelled production rows. Increments R1–R5.
 
 - [Foundation integrity](foundation-integrity.md) — **planned, nothing implemented.**
   The next plan to pick up. Written after reviewing the C1–C9 batch: every defect
