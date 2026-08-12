@@ -502,7 +502,9 @@ async def claim_pending_email(
     try:
         row = await pool.fetchrow("SELECT * FROM public.claim_unprocessed_email($1, $2)", worker_id, lock_duration_seconds)
         if row:
-            email = dict(row)
+            from selko.services.pg import _normalize_pg_row
+
+            email = _normalize_pg_row(dict(row))
             subject = email.get("subject", "(no subject)")[:50]
             logger.info(
                 f"Worker {worker_id} claimed email {email['id']}: {subject} "

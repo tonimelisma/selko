@@ -357,7 +357,7 @@ class LLMGateway:
         Returns:
             Self for method chaining.
         """
-        self.user_id = user_id
+        self.user_id = str(user_id) if user_id is not None else None  # type: ignore[assignment]
         return self
 
     def for_email(self, email_id: str) -> "LLMGateway":
@@ -369,7 +369,7 @@ class LLMGateway:
         Returns:
             Self for method chaining.
         """
-        self.email_id = email_id
+        self.email_id = str(email_id) if email_id is not None else None  # type: ignore[assignment]
         return self
 
     def call(

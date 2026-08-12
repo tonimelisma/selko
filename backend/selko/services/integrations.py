@@ -351,7 +351,11 @@ async def claim_integration_recovery(
             "SELECT * FROM public.claim_integration_recovery($1, $2)",
             worker_id, lock_seconds,
         )
-        return dict(row) if row else None
+        if row is None:
+            return None
+        from selko.services.pg import _normalize_pg_row
+
+        return _normalize_pg_row(dict(row))
     except Exception as e:
         raise IntegrationError(f"Failed to claim integration recovery: {e}") from e
 
