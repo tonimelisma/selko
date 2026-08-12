@@ -260,6 +260,7 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
         "claim_email_event_resolution": ("schema-contract-worker", 60),
         "heartbeat_email_event_resolution": (context.user_id, context.email_id, "schema-contract-worker", 1, 60),
         "fail_email_event_resolution": (context.user_id, context.email_id, "schema-contract-worker", 1, "test_error", 60),
+        "commit_email_event_resolution_item": (context.user_id, context.email_id, 0, "schema-contract-worker", 1, context.event_id, "created"),
         "set_email_folder_preference": (context.folder_id, True),
         "unlock_expired_integration_recoveries": (),
         "unlock_expired_photo_locks": (),

@@ -198,3 +198,50 @@ GRANT EXECUTE ON FUNCTION public.fail_email_event_resolution(uuid, uuid, text, b
 
 COMMENT ON TABLE public.email_event_resolutions IS 'Staged extractions awaiting fenced per-user resolution (R2)';
 COMMENT ON TABLE public.event_resolution_lanes IS 'One lane per user with generation-fenced lease (R2)';
+
+-- RPC: commit_email_event_resolution_item (fenced per-item commit)
+CREATE OR REPLACE FUNCTION public.commit_email_event_resolution_item(
+  p_user_id uuid,
+  p_email_id uuid,
+  p_item_index integer,
+  p_owner text,
+  p_generation bigint,
+  p_resolved_event_id uuid,
+  p_action text
+) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_updated int;
+BEGIN
+  -- Fence: lane must still be owned by this worker/generation and not expired
+  PERFORM 1 FROM public.event_resolution_lanes
+  WHERE user_id = p_user_id AND active_email_id = p_email_id AND lease_owner = p_owner AND lease_generation = p_generation AND lease_expires_at > now();
+  IF NOT FOUND THEN RETURN false; END IF;
+
+  -- Lock item
+  PERFORM 1 FROM public.email_event_resolution_items
+  WHERE resolution_email_id = p_email_id AND item_index = p_item_index FOR UPDATE;
+  IF NOT FOUND THEN RETURN false; END IF;
+
+  -- Idempotent if already completed
+  PERFORM 1 FROM public.email_event_resolution_items
+  WHERE resolution_email_id = p_email_id AND item_index = p_item_index AND status = 'completed';
+  IF FOUND THEN RETURN true; END IF;
+
+  UPDATE public.email_event_resolution_items
+  SET status = 'completed', resolved_event_id = p_resolved_event_id, resolution_action = p_action, completed_at = now()
+  WHERE resolution_email_id = p_email_id AND item_index = p_item_index;
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated = 0 THEN RETURN false; END IF;
+
+  -- If all items completed, mark resolution and email terminal and release lane
+  PERFORM 1 FROM public.email_event_resolution_items
+  WHERE resolution_email_id = p_email_id AND status = 'pending';
+  IF NOT FOUND THEN
+    UPDATE public.email_event_resolutions SET status = 'completed', completed_at = now(), updated_at = now() WHERE email_id = p_email_id;
+    UPDATE public.emails SET processing_status = 'processed' WHERE id = p_email_id;
+    UPDATE public.event_resolution_lanes SET active_email_id = NULL, lease_owner = NULL, lease_expires_at = NULL, updated_at = now() WHERE user_id = p_user_id;
+  END IF;
+  RETURN true;
+END; $$;
+REVOKE ALL ON FUNCTION public.commit_email_event_resolution_item(uuid, uuid, integer, text, bigint, uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.commit_email_event_resolution_item(uuid, uuid, integer, text, bigint, uuid, text) TO service_role;
