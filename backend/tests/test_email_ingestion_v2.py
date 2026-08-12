@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -64,6 +65,33 @@ def test_ingestion_error_codes_are_stable_and_details_redacted():
 
     assert safe_error_code(exc) == "provider_message_missing"
     assert safe_error_detail(exc) == "provider operation failed"
+
+
+def test_upsert_discovered_normalizes_uuid_provider_identifiers(mock_config, fake_pg_pool):
+    """Provider identity JSONB must accept UUID-backed database identifiers."""
+    fake_pg_pool.rows.append({
+        "provider_ids_seen": 1,
+        "inserted_count": 1,
+        "existing_count": 0,
+    })
+    repository = EmailIngestionRepository(mock_config, fake_pg_pool)
+    claim = SyncClaim("integration-1", "user-1", "gmail", "run-1", "incremental")
+    message_id = uuid4()
+    folder_id = uuid4()
+
+    result = asyncio.run(repository.upsert_discovered(
+        claim,
+        [{
+            "provider_message_id": message_id,
+            "provider_folder_ids": [folder_id],
+            "change_kind": "upsert",
+        }],
+    ))
+
+    payload = fake_pg_pool.calls[0][1][2]
+    assert result["inserted_count"] == 1
+    assert f'"provider_message_id": "{message_id}"' in payload
+    assert f'"provider_folder_ids": ["{folder_id}"]' in payload
 
 
 def test_outlook_unsupported_video_attachment_is_terminal_without_provider_call(mock_config, fake_pg_pool):
