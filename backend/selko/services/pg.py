@@ -25,6 +25,33 @@ logger = logging.getLogger(__name__)
 class ConfigurationError(RuntimeError):
     pass
 
+
+def _normalize_pg_row(row: dict) -> dict:
+    """Return a JSON-safe copy of an asyncpg row.
+
+    asyncpg returns PostgreSQL ``uuid`` columns as :class:`uuid.UUID` and
+    ``timestamptz`` as :class:`datetime.datetime`. Any row that can reach a
+    ``json.dumps``/``jsonb`` boundary must not carry those objects — they are
+    not JSON serializable. This helper is the single boundary: every
+    ``fetchrow`` → ``dict`` that can become a JSON payload routes through it.
+
+    The fix is not ``json.dumps(..., default=str)`` — that would silently
+    mask the next leak (e.g. an accidental ``bytes``). Fail-closed at the
+    boundary, not at the encoder.
+    """
+    import uuid
+    from datetime import datetime
+
+    out: dict = {}
+    for key, value in row.items():
+        if isinstance(value, uuid.UUID):
+            out[key] = str(value)
+        elif isinstance(value, datetime):
+            out[key] = value.isoformat()
+        else:
+            out[key] = value
+    return out
+
 def assert_session_mode_url(url: str) -> None:
     """Refuse anything that cannot carry LISTEN/NOTIFY (H1, H4).
 
