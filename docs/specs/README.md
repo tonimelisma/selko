@@ -4,7 +4,9 @@ Implementation specifications for planned or in-progress features.
 
 ## Active plans
 
-Status as of 2026-08-11.
+Status as of 2026-08-12.
+
+- [Production email ingestion discovery — 2026-08-12](production-email-ingestion-discovery-20260812.md) — **discovery complete; acquisition fix not implemented.** PRs #299–#301 restored production discovery, but the first real post-deploy acquisition pass still sends 10 newly discovered items to `retry` because asyncpg UUIDs cross into a JSON payload. Use this discovery plan as the gate for the next source increment; do not call production healthy until acquisition completes.
 
 - [Review Queue Integrity](review-queue-integrity.md) — **planned, nothing
   implemented.** Fixes the web Review reshuffle without page reloads, adds
