@@ -58,10 +58,10 @@ class TestParseOutlookMessage:
             "snippet": "Preview",
             "provider_labels": ["UNREAD", "IMPORTANT", "STARRED"],
             "has_attachments": True,
-            "body_html": None,
             "body_text": "Plain text body",
             "is_calendar_invite": False,
         }
+        assert "body_html" not in result
 
     def test_omits_empty_recipients_and_html_body(self):
         result = parse_outlook_message(
@@ -73,7 +73,7 @@ class TestParseOutlookMessage:
         )
 
         assert result["to_emails"] is None
-        assert result["body_html"] is None
+        assert "body_html" not in result
         assert "body_text" not in result
 
     def test_flags_event_message_request_as_calendar_invite(self):
