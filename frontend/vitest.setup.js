@@ -47,3 +47,11 @@ export const updated = {
 beforeEach(() => {
 	vi.clearAllMocks();
 });
+
+// Polyfill for svelte animate:flip in jsdom (Web Animations API)
+if (typeof Element !== 'undefined' && !Element.prototype.getAnimations) {
+	Element.prototype.getAnimations = function () { return []; };
+}
+if (typeof Element !== 'undefined' && !Element.prototype.animate) {
+	Element.prototype.animate = function () { return { finished: Promise.resolve(), cancel() {}, play() {}, pause() {} }; };
+}
