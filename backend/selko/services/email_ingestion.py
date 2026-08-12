@@ -350,6 +350,15 @@ class EmailIngestionRepository:
         return known
 
     async def claim_item(self, worker_id: str) -> dict[str, Any] | None:
+        """Claim one durable ingestion item, returning string UUIDs.
+
+        asyncpg returns PG ``uuid`` columns as :class:`uuid.UUID`; callers that
+        build a ``jsonb`` payload (e.g. ``save_email_with_attachment_descriptors``
+        via :meth:`EmailIngestionWorker.acquire_item`) would otherwise fail at
+        ``json.dumps`` with ``TypeError: Object of type UUID is not JSON
+        serializable``. Normalization happens here at the repository boundary
+        so every consumer receives the declared ``str`` contract.
+        """
         try:
             row = await self.pg_pool.fetchrow(
                 "SELECT * FROM public.claim_email_ingestion_item($1, $2)",
@@ -357,7 +366,11 @@ class EmailIngestionRepository:
             )
         except Exception as exc:
             raise EmailIngestionError(f"Failed to claim email ingestion item: {exc}") from exc
-        return dict(row) if row else None
+        if row is None:
+            return None
+        from selko.services.pg import _normalize_pg_row
+
+        return _normalize_pg_row(dict(row))
 
     async def complete_item(self, item_id: str, worker_id: str, email_id: str) -> bool:
         try:
@@ -433,6 +446,12 @@ class EmailIngestionRepository:
         return row is not None
 
     async def claim_attachment(self, worker_id: str) -> dict[str, Any] | None:
+        """Claim one pending attachment, returning string UUIDs.
+
+        Same boundary as :meth:`claim_item` — defensive even though the current
+        attachment path does not ``json.dumps`` the row. A future log or payload
+        change must not reintroduce the class.
+        """
         try:
             row = await self.pg_pool.fetchrow(
                 "SELECT * FROM public.claim_email_attachment($1, $2)",
@@ -440,7 +459,11 @@ class EmailIngestionRepository:
             )
         except Exception as exc:
             raise EmailIngestionError(f"Failed to claim email attachment: {exc}") from exc
-        return dict(row) if row else None
+        if row is None:
+            return None
+        from selko.services.pg import _normalize_pg_row
+
+        return _normalize_pg_row(dict(row))
 
     async def finish_attachment(self, attachment_id: str, worker_id: str, status: str, error_code: str | None = None) -> bool:
         try:

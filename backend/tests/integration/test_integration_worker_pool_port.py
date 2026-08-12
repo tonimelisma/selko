@@ -278,10 +278,70 @@ class TestRepositoryOverPool:
         )
         attachment = await repo.claim_attachment("c2-probe-worker-6")
         assert attachment is not None
+        # Defensive: claim_attachment now returns string UUIDs so any
+        # future jsonb/log path is safe — prove the contract.
+        import json as _json
+        _json.dumps(attachment)
+        assert isinstance(attachment["id"], str)
+        assert isinstance(attachment["email_id"], str)
         finished = await repo.finish_attachment(
             attachment["id"], "c2-probe-worker-6", "unsupported"
         )
         assert finished is True
+
+    async def test_claim_item_save_roundtrip_is_json_safe(
+        self, pg_pool, development_config, synced_integration
+    ):
+        """Claimed items must be JSON-safe for acquisition's atomic save.
+
+        This is the real-DB proof that the repository boundary prevents the
+        prod TypeError: Object of type UUID is not JSON serializable. The
+        fake-pool unit test proves the boundary with synthetic UUIDs; this
+        proves it with an actual asyncpg uuid → str conversion and a live
+        save_email_with_attachment_descriptors RPC.
+        """
+        from selko.services.email_ingestion import EmailIngestionRepository
+
+        repo = EmailIngestionRepository(development_config, pg_pool)
+        claim = await repo.claim_due_sync("c2-probe-worker-save")
+        assert claim is not None
+        message_id = f"c2-save-{uuid4()}"
+        await repo.upsert_discovered(
+            claim, [{
+                "provider_message_id": message_id,
+                "provider_folder_ids": ["INBOX"],
+                "change_kind": "upsert",
+            }],
+        )
+        item = await repo.claim_item("c2-probe-worker-save")
+        assert item is not None
+        # Every UUID column that crosses to JSON must be str, not UUID.
+        assert isinstance(item["id"], str)
+        assert isinstance(item["integration_id"], str)
+        assert isinstance(item["user_id"], str)
+        # email_id is None on insert, stays None.
+        assert item["email_id"] is None
+        # The worker payload that previously raised must now serialize.
+        import json as _json2
+        _json2.dumps({"integration_id": item["integration_id"], "user_id": item["user_id"]})
+
+        # The atomic save must succeed with the claimed string IDs — this is
+        # what prod was failing on (json.dumps inside save).
+        email_id = await repo.save_email_with_attachment_descriptors(
+            item["user_id"],
+            {
+                "email_provider": item["provider"],
+                "provider_message_id": item["provider_message_id"],
+                "subject": "json-safe acquisition probe",
+                "user_id": item["user_id"],
+                "integration_id": item["integration_id"],
+            },
+            [],
+        )
+        assert email_id
+        completed = await repo.complete_item(item["id"], "c2-probe-worker-save", email_id)
+        assert completed is True
+        await repo.complete_sync(claim, "c2-probe-worker-save")
 
 
 class TestLooseWorkerFunctionsOverPool:
