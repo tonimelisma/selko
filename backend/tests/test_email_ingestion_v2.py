@@ -60,6 +60,29 @@ def test_expired_sync_claim_uses_durable_rpc_and_returns_run(mock_config, fake_p
     assert args == ("worker-1", mock_config.email_lease_seconds)
 
 
+def test_sync_claim_normalizes_asyncpg_uuid_ids(mock_config, fake_pg_pool):
+    """Claims expose string IDs to PostgREST-backed provider helpers."""
+    integration_id = uuid4()
+    user_id = uuid4()
+    run_id = uuid4()
+    fake_pg_pool.rows.append({
+        "integration_id": integration_id,
+        "user_id": user_id,
+        "provider": "gmail",
+        "run_id": run_id,
+        "run_kind": "incremental",
+        "lease_expires_at": datetime.now(timezone.utc),
+    })
+
+    claim = asyncio.run(
+        EmailIngestionRepository(mock_config, fake_pg_pool).claim_due_sync("worker-1")
+    )
+
+    assert claim.integration_id == str(integration_id)
+    assert claim.user_id == str(user_id)
+    assert claim.run_id == str(run_id)
+
+
 def test_ingestion_error_codes_are_stable_and_details_redacted():
     exc = ProviderMessageMissingError("Authorization: Bearer secret-token")
 
