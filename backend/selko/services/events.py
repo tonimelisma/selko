@@ -1698,7 +1698,9 @@ async def claim_approved_event_for_sync(
     try:
         row = await pool.fetchrow("SELECT * FROM public.claim_approved_event($1, $2)", worker_id, lock_duration_seconds)
         if row:
-            event = dict(row)
+            from selko.services.pg import _normalize_pg_row
+
+            event = _normalize_pg_row(dict(row))
             title = event.get("title", "(no title)")[:50]
             logger.info(
                 f"Worker {worker_id} claimed event {event['id']}: {title} "
