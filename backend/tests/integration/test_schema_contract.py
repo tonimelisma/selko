@@ -30,6 +30,7 @@ class ContractContext:
 # Trigger-only functions are exercised by test_live_triggers_for_every_table.
 TRIGGER_ONLY_FUNCTIONS = {
     "ensure_email_sync_state",
+    "ensure_event_resolution_lane",
     "handle_new_user",
     "notify_work_available",
     "reset_skipped_emails_for_sender_rule",
@@ -248,6 +249,18 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
                 "size_bytes": 1,
             }],
         ),
+        "enqueue_email_event_resolution": (
+            context.email_id,
+            context.user_id,
+            [{"title": "schema contract event", "start_datetime": "2026-08-13T10:00:00Z"}],
+            f"hash-{context.email_id}",
+            "llm",
+            "pending_review",
+        ),
+        "claim_email_event_resolution": ("schema-contract-worker", 60),
+        "heartbeat_email_event_resolution": (context.user_id, context.email_id, "schema-contract-worker", 1, 60),
+        "fail_email_event_resolution": (context.user_id, context.email_id, "schema-contract-worker", 1, "test_error", 60),
+        "commit_email_event_resolution_item": (context.user_id, context.email_id, 0, "schema-contract-worker", 1, context.event_id, "created"),
         "set_email_folder_preference": (context.folder_id, True),
         "unlock_expired_integration_recoveries": (),
         "unlock_expired_photo_locks": (),
@@ -284,7 +297,7 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
         encoded_args = [
             json.dumps(value)
             if isinstance(value, (dict, list))
-            and name in {"save_email_with_attachment_descriptors", "upsert_discovered_email_items"}
+            and name in {"save_email_with_attachment_descriptors", "upsert_discovered_email_items", "enqueue_email_event_resolution"}
             else value
             for value in args
         ]
