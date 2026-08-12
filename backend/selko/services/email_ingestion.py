@@ -218,6 +218,19 @@ class SyncClaim:
     run_kind: str
     lease_expires_at: str | None = None
 
+    def __post_init__(self) -> None:
+        """Keep database UUIDs out of JSON-bound service-role payloads.
+
+        asyncpg returns PostgreSQL UUID columns as ``uuid.UUID`` instances,
+        while the worker passes these IDs to PostgREST-backed folder and
+        integration helpers. Normalize at the repository boundary so every
+        downstream caller receives the declared string contract.
+        """
+        for field in ("integration_id", "user_id", "run_id"):
+            value = getattr(self, field)
+            if not isinstance(value, str):
+                object.__setattr__(self, field, str(value))
+
 
 class EmailIngestionRepository:
     """Small service-role repository around the v2 coordination RPCs.
