@@ -1,6 +1,7 @@
 """Regression coverage for durable polling email ingestion boundaries."""
 
 import asyncio
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -506,6 +507,40 @@ def _sync_claim():
         run_id="run-1",
         run_kind="incremental",
     )
+
+
+@pytest.mark.parametrize("provider", ["gmail", "outlook"])
+@pytest.mark.asyncio
+async def test_discover_dispatch_awaits_provider_discovery(mock_config, fake_pg_pool, provider):
+    """The public discovery dispatcher must return provider totals, not a coroutine."""
+    worker = EmailIngestionWorker(MagicMock(), mock_config, "worker-1", pg_pool=fake_pg_pool)
+    claim = replace(_sync_claim(), provider=provider)
+    expected = {"provider_ids_seen": 2, "items_inserted": 1, "items_existing": 1}
+
+    with patch.object(worker, f"_discover_{provider}", new=AsyncMock(return_value=expected)) as discover:
+        result = await worker.discover(claim)
+
+    assert result == expected
+    discover.assert_awaited_once_with(claim)
+
+
+@pytest.mark.parametrize("provider", ["gmail", "outlook"])
+@pytest.mark.asyncio
+async def test_reconcile_dispatch_awaits_provider_discovery(mock_config, fake_pg_pool, provider):
+    """Reconciliation must use the same awaited provider-dispatch contract."""
+    worker = EmailIngestionWorker(MagicMock(), mock_config, "worker-1", pg_pool=fake_pg_pool)
+    claim = replace(_sync_claim(), provider=provider)
+    expected = {"provider_ids_seen": 3, "items_inserted": 2, "items_existing": 1}
+
+    with patch.object(
+        worker,
+        f"_discover_{provider}",
+        new=AsyncMock(return_value=expected),
+    ) as discover:
+        result = await worker.reconcile(claim, lookback_days=14)
+
+    assert result == expected
+    discover.assert_awaited_once_with(claim, lookback_days=14)
 
 
 def test_outlook_deleted_folder_is_removed_without_blocking_later_folders(mock_config):

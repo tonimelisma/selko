@@ -263,9 +263,9 @@ class EmailIngestionWorker:
 
     async def discover(self, claim: SyncClaim) -> dict[str, int]:
         if claim.provider == "gmail":
-            return self._discover_gmail(claim)
+            return await self._discover_gmail(claim)
         elif claim.provider == "outlook":
-            return self._discover_outlook(claim)
+            return await self._discover_outlook(claim)
         else:
             raise ValueError(f"Unsupported email provider: {claim.provider}")
 
@@ -633,9 +633,9 @@ class EmailIngestionWorker:
     async def reconcile(self, claim: SyncClaim, lookback_days: int) -> dict[str, int]:
         """Run cursorless reconciliation; normal cursor state is untouched."""
         if claim.provider == "gmail":
-            return self._discover_gmail(claim, lookback_days=lookback_days)
+            return await self._discover_gmail(claim, lookback_days=lookback_days)
         elif claim.provider == "outlook":
-            return self._discover_outlook(claim, lookback_days=lookback_days)
+            return await self._discover_outlook(claim, lookback_days=lookback_days)
         return {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
 
     async def run_acquisition_once(self) -> bool:

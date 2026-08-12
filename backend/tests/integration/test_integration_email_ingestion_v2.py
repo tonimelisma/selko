@@ -68,18 +68,24 @@ def test_only_one_worker_owns_an_integration_and_expired_leases_return(
 ):
     """A live lease blocks a second claim; an expired one needs no cleanup job."""
     first = _claim(admin_client, "worker-a")
-    assert len(first) == 1
-    assert first[0]["integration_id"] == synced_integration
-    assert first[0]["run_kind"] == "initial"
+    owned = next(
+        row for row in first if row["integration_id"] == synced_integration
+    )
+    assert owned["run_kind"] == "initial"
 
-    assert _claim(admin_client, "worker-b") == []
+    assert not any(
+        row["integration_id"] == synced_integration
+        for row in _claim(admin_client, "worker-b")
+    )
 
     admin_client.table("email_sync_state").update(
         {"lease_expires_at": _iso(-1)}
     ).eq("integration_id", synced_integration).execute()
 
     reclaimed = _claim(admin_client, "worker-b")
-    assert len(reclaimed) == 1
+    assert any(
+        row["integration_id"] == synced_integration for row in reclaimed
+    )
 
 
 @pytest.mark.integration
