@@ -117,6 +117,97 @@ def test_upsert_discovered_normalizes_uuid_provider_identifiers(mock_config, fak
     assert f'"provider_folder_ids": ["{folder_id}"]' in payload
 
 
+def test_claim_item_normalizes_asyncpg_uuid_ids(mock_config, fake_pg_pool):
+    """Claimed ingestion items expose string UUIDs so acquisition can json-encode.
+
+    asyncpg returns PG uuid columns as uuid.UUID; EmailIngestionWorker
+    copies integration_id/user_id into the email payload and calls
+    save_email_with_attachment_descriptors which does json.dumps. Without
+    normalization that raises TypeError and classifies as unknown/ retry.
+    """
+    import json
+
+    item_id = uuid4()
+    integration_id = uuid4()
+    user_id = uuid4()
+    email_id = uuid4()
+    fake_pg_pool.rows.append({
+        "id": item_id,
+        "integration_id": integration_id,
+        "user_id": user_id,
+        "provider": "gmail",
+        "provider_message_id": "msg-123",
+        "provider_folder_ids": ["INBOX"],
+        "change_kind": "upsert",
+        "email_id": email_id,
+        "attempts": 1,
+        "max_attempts": 8,
+        "acquisition_status": "pending",
+        "lease_owner": None,
+        "lease_expires_at": None,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+    item = asyncio.run(EmailIngestionRepository(mock_config, fake_pg_pool).claim_item("worker-1"))
+
+    assert item is not None
+    assert item["id"] == str(item_id)
+    assert item["integration_id"] == str(integration_id)
+    assert item["user_id"] == str(user_id)
+    assert item["email_id"] == str(email_id)
+    # Defensive: created_at datetime also normalized, but primary proof is UUIDs.
+    assert isinstance(item["created_at"], str)
+    # The worker payload that previously raised must now be JSON-safe.
+    json.dumps({"integration_id": item["integration_id"], "user_id": item["user_id"]})
+
+    # Null email_id stays None, not "None".
+    fake_pg_pool.rows.append({
+        "id": uuid4(),
+        "integration_id": uuid4(),
+        "user_id": uuid4(),
+        "provider": "outlook",
+        "provider_message_id": "msg-456",
+        "provider_folder_ids": ["INBOX"],
+        "change_kind": "upsert",
+        "email_id": None,
+        "attempts": 1,
+        "max_attempts": 8,
+        "acquisition_status": "pending",
+    })
+    item2 = asyncio.run(EmailIngestionRepository(mock_config, fake_pg_pool).claim_item("worker-1"))
+    assert item2["email_id"] is None
+
+
+def test_claim_attachment_normalizes_asyncpg_uuid_ids(mock_config, fake_pg_pool):
+    """Claimed attachments expose string UUIDs (defensive — same class)."""
+    import json
+
+    att_id = uuid4()
+    email_id = uuid4()
+    user_id = uuid4()
+    fake_pg_pool.rows.append({
+        "id": att_id,
+        "email_id": email_id,
+        "user_id": user_id,
+        "provider_attachment_id": "att-123",
+        "filename": "doc.pdf",
+        "mime_type": "application/pdf",
+        "ingestion_status": "pending",
+        "attempts": 1,
+        "max_attempts": 8,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+    row = asyncio.run(EmailIngestionRepository(mock_config, fake_pg_pool).claim_attachment("worker-1"))
+
+    assert row is not None
+    assert row["id"] == str(att_id)
+    assert row["email_id"] == str(email_id)
+    assert row["user_id"] == str(user_id)
+    assert isinstance(row["created_at"], str)
+    json.dumps(row)
+
+
 def test_outlook_unsupported_video_attachment_is_terminal_without_provider_call(mock_config, fake_pg_pool):
     worker = EmailIngestionWorker(MagicMock(), mock_config, "attachment-worker")
     attachment = {"mime_type": "video/mp4", "filename": "clip.mp4"}
