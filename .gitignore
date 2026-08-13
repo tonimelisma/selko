@@ -47,3 +47,8 @@ test-results/
 # MCP tool artifacts
 .playwright-mcp/
 .xcodebuildmcp/
+
+# Agent scratch plans. Durable plans belong in docs/specs/ where they are
+# indexed and status-checked; an untracked plan goes stale invisibly (the
+# 2026-08-12 acquisition plan still said "no code was edited" after it shipped).
+.agents/
