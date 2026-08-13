@@ -73,6 +73,9 @@ EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
     ("emails", "processing_status"): {"pending", "processing", "processed", "failed", "skipped"},
     ("event_sources", "source_origin"): {"email", "google_calendar", "google_photos"},
     ("event_sources", "source_type"): {"new_invitation", "update", "cancellation", "reminder", "unknown"},
+    ("event_identity_hints", "kind"): {"ical_uid", "provider_thread", "join_url", "management_url"},
+    ("event_identity_hints", "strength"): {"authoritative", "supporting"},
+    ("event_repair_audit", "action"): {"merge_duplicate_group", "merge_source", "cancel_event", "mark_source_resolved"},
     ("events", "calendar_sync_action"): {"upsert", "cancel"},
     ("events", "importance"): {"action_required", "fyi"},
     ("events", "status"): {
@@ -325,6 +328,7 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
         "reprocess_email": (context.user_id, context.email_id),
         "request_email_sync_now": (context.gmail_integration_id,),
         "requeue_calendar_recovery_batch": (context.recovery_id, worker, 10, 1),
+        "queue_event_cancellation": (context.event_id, context.user_id),
         "save_email_with_attachment_descriptors": (
             context.user_id,
             {

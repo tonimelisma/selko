@@ -142,6 +142,51 @@ Email attachment metadata.
 
 **RLS Policies:** Users manage own attachments only.
 
+### `email_calendar_components`
+
+Provider-neutral, content-free calendar component metadata captured during email
+acquisition. The service role is the only writer/reader; raw UIDs and calendar
+payloads are never stored here.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Component ID |
+| `email_id` / `user_id` | uuid, FK | Owning email and user |
+| `component_index` | integer | Stable VEVENT order within the email |
+| `method` | text | iCalendar method or normalized provider method |
+| `uid_hash` | text, nullable | SHA-256 of normalized iCalendar UID |
+| `recurrence_id` / `recurrence_range` | text, nullable | RFC 5545 recurrence identity |
+| `sequence` | integer, nullable | Provider revision sequence |
+| `dtstamp` | timestamptz, nullable | Provider revision timestamp |
+| `component_status` | text, nullable | Structured component status |
+| `start_datetime` / `end_datetime` | timestamptz, nullable | Structured component dates |
+
+**RLS Policies:** Enabled in the creation migration; direct `anon` and
+`authenticated` access is revoked. Components are replaced only when a new
+non-empty parse is supplied, so reconciliation cannot erase a prior parse.
+
+### `event_identity_hints`
+
+Content-free hashes used by the deterministic identity ladder. Hints are
+written only by the fenced `commit_email_extraction` RPC in the same
+transaction as the event/source mutation.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Hint ID |
+| `user_id` / `event_id` | uuid, FK | Owning user and survivor event |
+| `source_email_id` | uuid, nullable | Email that supplied the hint |
+| `kind` | text | `ical_uid`, `provider_thread`, `join_url`, or `management_url` |
+| `value_hash` | text | SHA-256 canonical identity hash; raw values are never stored |
+| `recurrence_id` | text | Recurrence identity, empty for non-occurrences |
+| `strength` | text | `authoritative` for iCalendar UID, otherwise `supporting` |
+| `sequence` / `dtstamp` | integer / timestamptz | Revision ordering for authoritative hints |
+| `created_at` | timestamptz | Auto-set |
+
+**RLS Policies:** Enabled and service-role-only. Lookup is indexed by
+`(user_id, kind, value_hash, recurrence_id)`; the same lookup set participates
+in the commit fingerprint fence.
+
 ### `user_calendar_settings`
 
 Per-user calendar defaults and all-day materialization preference.
