@@ -49,11 +49,22 @@ vi.mock('$lib/stores.js', () => ({
 
 // Mock Supabase
 const mockSignOut = vi.fn();
+const mockChannel = {
+	on: vi.fn(() => mockChannel),
+	subscribe: vi.fn((callback) => {
+		callback('SUBSCRIBED');
+		return mockChannel;
+	})
+};
 vi.mock('$lib/supabase.js', () => ({
 	supabase: {
 		auth: {
-			signOut: (...args) => mockSignOut(...args)
-		}
+			signOut: (...args) => mockSignOut(...args),
+			getSession: vi.fn().mockResolvedValue({ data: { session: null } })
+		},
+		realtime: { setAuth: vi.fn().mockResolvedValue(undefined) },
+		channel: vi.fn(() => mockChannel),
+		removeChannel: vi.fn().mockResolvedValue(undefined)
 	}
 }));
 
@@ -121,6 +132,7 @@ describe('App Layout', () => {
 			expect(screen.getAllByText('History').length).toBeGreaterThan(0);
 			expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
 		});
+		await waitFor(() => expect(mockChannel.subscribe).toHaveBeenCalled());
 	});
 
 	it('renders logout in the desktop sidebar and a sticky mobile header', async () => {

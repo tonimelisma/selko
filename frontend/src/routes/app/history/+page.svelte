@@ -99,7 +99,9 @@
 		return groups;
 	});
 
-	onMount(async () => {
+	onMount(() => {
+		let cleanup = () => {};
+		void (async () => {
 		await Promise.all([loadEvents(), loadEmailHistory()]);
 
 		const unsubEvents = liveUpdates.subscribe('events', async () => {
@@ -123,11 +125,13 @@
 			if (!result.error && result.data) emailHistory = result.data;
 		});
 
-		return () => {
+		cleanup = () => {
 			unsubEvents();
 			unsubSources();
 			unsubEmails();
 		};
+		})();
+		return () => cleanup();
 	});
 
 	onDestroy(() => {

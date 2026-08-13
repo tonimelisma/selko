@@ -14,6 +14,7 @@
 	let isLoading = $state(true);
 
 	onMount(() => {
+		/** @type {string | null} */
 		let currentUid = null;
 		const unsubLoading = loading.subscribe((v) => {
 			isLoading = v;
