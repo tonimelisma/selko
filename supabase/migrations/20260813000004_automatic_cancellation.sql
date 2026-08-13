@@ -6,7 +6,10 @@ ALTER TABLE public.events ADD COLUMN IF NOT EXISTS calendar_work_generation bigi
 
 ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_status_check;
 ALTER TABLE public.events ADD CONSTRAINT events_status_check
-  CHECK (status IN ('pending_review','pending_change','approved','rejected','cancelled','cancel_queued'));
+  CHECK (status IN (
+    'pending_review','pending_change','approved','rejected','cancelled',
+    'cancel_queued','syncing','synced','sync_failed'
+  ));
 
 -- Extend email_event_resolutions for cancellation
 ALTER TABLE public.email_event_resolutions DROP CONSTRAINT IF EXISTS email_event_resolutions_extraction_origin_check;
