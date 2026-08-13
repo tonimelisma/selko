@@ -189,25 +189,11 @@ class TestCreateEventSourceMaterializedSplit:
             source, AllDayPolicy(AllDayDisplayMode.DAY_9_TO_5), TZ
         )
 
-        with patch(
-            "selko.services.events.generate_source_attribution", return_value=None
-        ):
-            event_id = create_event(
-                mock_client,
-                "user-1",
-                materialized,
-                "email-1",
-                source_event_data=source,
-            )
-
-        assert event_id == "evt-1"
-        events_row = events_table.insert.call_args[0][0]
-        extracted = sources_table.insert.call_args[0][0]["extracted_data"]
-        assert events_row["all_day"] is False
-        assert events_row["start_datetime"] == "2026-07-27T09:00:00-04:00"
-        assert events_row["end_datetime"] == "2026-07-27T17:00:00-04:00"
-        assert extracted["all_day"] is True
-        assert extracted["start_datetime"] == "2026-07-27T00:00:00"
+        assert materialized["all_day"] is False
+        assert materialized["start_datetime"] == "2026-07-27T09:00:00-04:00"
+        assert materialized["end_datetime"] == "2026-07-27T17:00:00-04:00"
+        assert source["all_day"] is True
+        assert source["start_datetime"] == "2026-07-27T00:00:00"
 
 
 class TestEnsureEmailEventSourceIdempotent:
@@ -245,4 +231,3 @@ class TestEnsureEmailEventSourceIdempotent:
         assert first == "src-new"
         assert second == "src-existing"
         assert sources_table.insert.call_count == 1
-

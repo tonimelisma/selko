@@ -42,7 +42,9 @@ class TestHealthEndpoints:
         response = test_client.get("/health")
 
         assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
+        body = response.json()
+        assert body["status"] == "ok"
+        assert "resolution" in body
 
     def test_health_db_check(self, test_client):
         """GET /health/db returns connected status."""

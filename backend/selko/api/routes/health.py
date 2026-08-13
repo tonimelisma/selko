@@ -1,6 +1,7 @@
 """Health check endpoints."""
 
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -15,13 +16,46 @@ from selko.api.schemas.common import (
     HealthResponse,
     error_detail,
 )
-from selko.config import Config
+from selko.config import Config, load_config
 from selko.services.auth import get_service_client
 from selko.services.egress import egress_snapshot
+from selko.services.resolution_metrics import resolution_metrics
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["health"])
+
+
+def _pending_email_metrics() -> dict[str, int | None]:
+    """Return queue age gauges without exposing email identity or content."""
+    try:
+        client = get_service_client(load_config())
+        result = (
+            client.table("emails")
+            .select("created_at", count="exact")
+            .eq("processing_status", "pending")
+            .order("created_at")
+            .limit(1)
+            .execute()
+        )
+        pending = getattr(result, "count", None)
+        if pending is None:
+            pending = len(result.data or [])
+        oldest_age = None
+        if result.data:
+            created_at = result.data[0].get("created_at")
+            if created_at:
+                created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                oldest_age = max(0, int((datetime.now(timezone.utc) - created).total_seconds()))
+        return {
+            "pending_emails": int(pending or 0),
+            "oldest_pending_age_seconds": oldest_age,
+        }
+    except Exception:
+        logger.exception("Resolution queue health snapshot failed")
+        return {"pending_emails": None, "oldest_pending_age_seconds": None}
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -30,7 +64,9 @@ async def health_check() -> HealthResponse:
 
     Returns 200 OK if the API is running.
     """
-    return HealthResponse(status="ok")
+    resolution = resolution_metrics.snapshot()
+    resolution.update(_pending_email_metrics())
+    return HealthResponse(status="ok", resolution=resolution)
 
 
 @router.get("/health/db", response_model=HealthDbResponse)
