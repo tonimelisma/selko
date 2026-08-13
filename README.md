@@ -98,9 +98,9 @@ registry also supports Anthropic and OpenAI models.
 The end-to-end Email → Review → Google Calendar journey is in production.
 Current work is focused on recovery and immediacy: automatically catching up
 after an OAuth reconnection and delivering live cross-client updates without a
-manual refresh. See the implementation plans for
-[OAuth reconnect catch-up](docs/specs/oauth-reconnect-catch-up.md) and
-[live UI updates](docs/specs/live-ui-updates.md).
+manual refresh. Realtime Broadcast invalidation is shipped on web, iOS and
+Android; the remaining OAuth reconnect work is tracked in
+[OAuth reconnect catch-up](docs/specs/oauth-reconnect-catch-up.md).
 
 ## Architecture
 

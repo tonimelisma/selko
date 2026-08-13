@@ -2,7 +2,7 @@
 
 Shared conventions for the Selko web app. The cross-platform tokens live in
 [`docs/brand-guide.md`](../brand-guide.md); the complete implementation brief is
-[`docs/specs/warmth-design-system.md`](../specs/warmth-design-system.md).
+[`docs/brand-guide.md`](../brand-guide.md) and `design/tokens.json`.
 
 **Tech stack:** SvelteKit 2 + Svelte 5 + Tailwind/DaisyUI 5.
 

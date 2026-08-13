@@ -4,7 +4,7 @@
 review-fix migration `20260802000006`; the recovery UI projection (section 4)
 shipped with it. Email half is delivered by the polling-ingestion-v2 trigger.
 Remaining from the delivery sequence: live invalidation wiring (step 6, built
-on `live-ui-updates.md`), reviewed legacy production repair (step 7), staging
+on the Realtime invalidation shipped in #270–#272), reviewed legacy production repair (step 7), staging
 fault injection (step 8), and production rollout (step 9).
 
 The **email half is done**. The `integrations_ensure_email_sync_state` trigger
@@ -311,9 +311,8 @@ The app remains usable while recovery runs:
 - A recovery error appears beside the affected connection, not in a page-level
   banner.
 
-The live-update design in
-[`live-ui-updates.md`](live-ui-updates.md) refreshes these counters without a
-manual page reload.
+The Realtime Broadcast invalidation shipped in #270–#272 (hardened by #284,
+#285) refreshes these counters without a manual page reload.
 
 ## 5. Legacy production repair
 
@@ -399,7 +398,7 @@ the specific eval before shipping.
 3. Email recovery orchestration and completion hooks.
 4. Calendar active-integration claim gate and bounded recovery batches.
 5. Recovery UI projection on web, iOS, and Android.
-6. Live invalidation wiring from `live-ui-updates.md`.
+6. Live invalidation wiring on the #270–#272 Broadcast channel.
 7. Reviewed legacy production repair.
 8. Staging fault injection: expired Gmail, Outlook, and Calendar tokens; worker
    crash; repeated callback; provider 5xx.
