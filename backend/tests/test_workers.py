@@ -525,7 +525,6 @@ class TestEmailProcessWorker:
                 new_callable=AsyncMock,
                 return_value={"num_events": 1, "num_new": 1, "num_updated": 0},
             ) as mock_proc,
-            patch("selko.workers.pool.complete_email_processing", new=AsyncMock()) as mock_complete,
             patch("selko.workers.pool.circuit_breaker") as mock_cb,
             patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
         ):
@@ -538,7 +537,6 @@ class TestEmailProcessWorker:
         mock_wait_for.assert_called_once()
         assert mock_wait_for.call_args.kwargs["timeout"] == 30
         mock_proc.assert_called_once()
-        mock_complete.assert_awaited_once_with(fake_pg_pool, "e1")
         mock_cb.record_success.assert_called_with("llm")
 
     @pytest.mark.asyncio
@@ -559,7 +557,6 @@ class TestEmailProcessWorker:
                     "num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True,
                 },
             ),
-            patch("selko.workers.pool.complete_email_processing", new=AsyncMock()) as mock_complete,
             patch("selko.workers.pool.circuit_breaker"),
             patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
         ):
@@ -569,7 +566,6 @@ class TestEmailProcessWorker:
             mock_wait_for.side_effect = _run
             await pool._process_email(mock_client, "worker-1", email)
 
-        mock_complete.assert_not_awaited()
 
 
 # ===========================================================================
@@ -1031,7 +1027,6 @@ class TestEmailProcessWorker:
                 new_callable=AsyncMock,
                 return_value={"num_events": 1, "num_new": 1, "num_updated": 0},
             ) as mock_proc,
-            patch("selko.workers.pool.complete_email_processing", new=AsyncMock()) as mock_complete,
             patch("selko.workers.pool.circuit_breaker") as mock_cb,
             patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
         ):
@@ -1044,7 +1039,6 @@ class TestEmailProcessWorker:
         mock_wait_for.assert_called_once()
         assert mock_wait_for.call_args.kwargs["timeout"] == 30
         mock_proc.assert_called_once()
-        mock_complete.assert_awaited_once_with(fake_pg_pool, "e1")
         mock_cb.record_success.assert_called_with("llm")
 
     @pytest.mark.asyncio
@@ -1065,7 +1059,6 @@ class TestEmailProcessWorker:
                     "num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True,
                 },
             ),
-            patch("selko.workers.pool.complete_email_processing", new=AsyncMock()) as mock_complete,
             patch("selko.workers.pool.circuit_breaker"),
             patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
         ):
@@ -1075,7 +1068,6 @@ class TestEmailProcessWorker:
             mock_wait_for.side_effect = _run
             await pool._process_email(mock_client, "worker-1", email)
 
-        mock_complete.assert_not_awaited()
 
 
 # ===========================================================================

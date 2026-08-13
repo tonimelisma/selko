@@ -17,7 +17,7 @@ class TestEventProcessingMocked:
     """
 
     def test_process_email_creates_event_mocked(
-        self, authenticated_client, test_user_id, mock_llm_gateway
+        self, authenticated_client, admin_client, test_user_id, mock_llm_gateway
     ):
         """Test that processing an email creates event records (mocked LLM)."""
         # Create a test email
@@ -34,13 +34,20 @@ class TestEventProcessingMocked:
         
         result = authenticated_client.table("emails").insert(email_data).execute()
         email_id = result.data[0]["id"]
+        admin_client.table("emails").update({
+            "processing_status": "processing",
+            "locked_by": "direct-test-worker",
+            "lock_generation": 1,
+        }).eq("id", email_id).execute()
+        email_row = admin_client.table("emails").select("*").eq("id", email_id).single().execute().data
         
         # Process email with mocked LLM
         processing_result = events.process_email_for_events(
-            authenticated_client,
+            admin_client,
             mock_llm_gateway,
             email_id,
-            test_user_id
+            test_user_id,
+            email_row=email_row,
         )
         
         # Verify events were created
@@ -58,7 +65,7 @@ class TestEventProcessingMocked:
         assert mock_llm_gateway._mock_provider.generate.called
 
     def test_process_email_no_events_mocked(
-        self, authenticated_client, test_user_id, mock_llm_no_events
+        self, authenticated_client, admin_client, test_user_id, mock_llm_no_events
     ):
         """Test processing email that has no events (mocked LLM)."""
         email_data = {
@@ -74,13 +81,20 @@ class TestEventProcessingMocked:
         
         result = authenticated_client.table("emails").insert(email_data).execute()
         email_id = result.data[0]["id"]
+        admin_client.table("emails").update({
+            "processing_status": "processing",
+            "locked_by": "direct-test-worker",
+            "lock_generation": 1,
+        }).eq("id", email_id).execute()
+        email_row = admin_client.table("emails").select("*").eq("id", email_id).single().execute().data
         
         # Process email
         processing_result = events.process_email_for_events(
-            authenticated_client,
+            admin_client,
             mock_llm_no_events,
             email_id,
-            test_user_id
+            test_user_id,
+            email_row=email_row,
         )
         
         # Should process successfully with no events
@@ -95,7 +109,7 @@ class TestEventProcessingMocked:
         assert email_result.data["processing_status"] == "processed"
 
     def test_process_email_sender_ignored_mocked(
-        self, authenticated_client, test_user_id, mock_llm_gateway, clean_sender_rules
+        self, authenticated_client, admin_client, test_user_id, mock_llm_gateway, clean_sender_rules
     ):
         """Test that ignored senders are skipped (mocked LLM)."""
         # Create ignore rule
@@ -119,13 +133,20 @@ class TestEventProcessingMocked:
         
         result = authenticated_client.table("emails").insert(email_data).execute()
         email_id = result.data[0]["id"]
+        admin_client.table("emails").update({
+            "processing_status": "processing",
+            "locked_by": "direct-test-worker",
+            "lock_generation": 1,
+        }).eq("id", email_id).execute()
+        email_row = admin_client.table("emails").select("*").eq("id", email_id).single().execute().data
         
         # Process email
         processing_result = events.process_email_for_events(
-            authenticated_client,
+            admin_client,
             mock_llm_gateway,
             email_id,
-            test_user_id
+            test_user_id,
+            email_row=email_row,
         )
         
         # Should be skipped

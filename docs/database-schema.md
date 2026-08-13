@@ -108,6 +108,7 @@ Synced Gmail and Outlook messages with status-based worker claiming.
 | `processed_at` | timestamptz | When processing completed |
 | `locked_until` | timestamptz | Worker lock expiration |
 | `locked_by` | text | Worker ID that claimed this email |
+| `lock_generation` | bigint | Monotonic lease generation; extraction commits are rejected when it is stale |
 | `attempts` | integer | Number of processing attempts (default: 0) |
 | `max_attempts` | integer | Maximum attempts before permanent failure (default: 3) |
 | `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry (60s * 2^attempts, max 1h) |
@@ -428,6 +429,26 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 | `claim_integration_recovery(worker_id, lock_seconds)` | Atomically claim the next `pending` recovery generation (`FOR UPDATE SKIP LOCKED`), also reclaiming `processing` rows whose lock expired (crashed-worker self-heal) |
 
 ### Unlock Functions
+
+### Extraction commit contract
+
+`commit_email_extraction(email_id, worker_id, generation, decisions, terminal)`
+is service-role only. It locks the email row, rejects a stale `(locked_by,
+lock_generation)` pair without mutation, applies the full decision array in one
+transaction, and then clears the lease. Each decision has the pinned minimum
+shape:
+
+```json
+{
+  "action": "create|update|noop",
+  "event_id": "uuid|null",
+  "fields": {},
+  "source": {"email_id": "uuid", "extracted_data": {}}
+}
+```
+
+The source object may carry the existing source type, snapshot, change set, and
+Google Calendar metadata needed by the New and Changes lanes.
 
 | Function | Description |
 |----------|-------------|
