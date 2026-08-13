@@ -130,6 +130,11 @@ jobs:
   assert-schema-code-compat:
     name: Assert Schema/Code Compat (R5)
     runs-on: ubuntu-latest
+    # An apply-migrations dispatch intentionally changes staging in a parallel
+    # job. Running this pre-apply check at the same time creates a false red
+    # when the checked-out migration has not landed remotely yet. The manual
+    # staging job performs the same gate immediately after the apply.
+    if: github.event_name != 'workflow_dispatch' || inputs.staging_action != 'apply-migrations'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -281,6 +286,13 @@ jobs:
         run: |
           supabase db push --dry-run
           supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
+
+      - name: Verify migration gate after apply
+        if: inputs.staging_action == 'apply-migrations'
+        run: ./scripts/assert-schema-code-compat.sh --linked
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
