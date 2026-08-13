@@ -255,13 +255,17 @@ violation. A strict encoder failing is the signal.
 
 ### Open items
 
-- [ ] **Confirm the 10 `retry`/`unknown` items completed.** They were created
-      03:10 UTC on 2026-08-12 with `next_retry_at` ~03:26, after #302 deployed.
-      Nobody has verified the ledger since. Query production before treating
-      this incident as closed.
-- [ ] **Decide the 12 historical `database_transient` dead letters.** Oldest
-      2026-08-11 15:36; they predate this rollout. They have been carried as
-      "reported separately" across three documents without a decision. Choose
-      one, in writing, here: repair under a dry-run-first script, requeue after
-      establishing the original failure cannot recur, or accept as permanently
-      dead with the reason and the user impact.
+- [x] **Confirm the 10 `retry`/`unknown` items completed or reached a terminal
+      provider outcome (verified 2026-08-13 UTC).** Production showed 7
+      `completed` items and 3 `removed` items in the 03:00–04:00 UTC cohort;
+      none remained `retry`, `processing`, or `dead_letter`. The three removed
+      rows have no `email_id`, which is the expected terminal result when the
+      provider message disappeared before acquisition (see the idempotent
+      revival migration). No user email was lost from this cohort.
+- [x] **Decide the 12 historical `database_transient` dead letters (verified
+      2026-08-13 UTC).** The production query returned zero rows matching
+      `acquisition_status='dead_letter' AND last_error_code='database_transient'`
+      after `20260812000002_revive_database_transient_dead_letters.sql` ran.
+      Decision: the durable repair migration requeued them under the corrected
+      JSON-safe claim boundary; any provider-deleted item was allowed to become
+      the terminal `removed` state. No further production repair is required.
