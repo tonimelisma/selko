@@ -10,12 +10,12 @@ approval.
 
 **Two corrections from the 2026-08-12 review of the R1–R5 batch:**
 
-- **F9 is not done.** It merged `scripts/prune-eval-results.sh` (#291) and the
-  script was never run. Tracked eval results have grown from the 13 008 files /
-  161 MB this document records as D6 to **14 228 files / 161 MB**, with `.git`
-  at 138 MB. D6 is open. `stub-rollback-and-gate-repair.md` G6 runs it and adds
-  a ceiling check. A merged script that was never executed is exactly the class
-  of claim §1 says this repository must stop making.
+- **F9 is complete for the working tree, with residual history debt.** G6 ran
+  `scripts/prune-eval-results.sh --apply`: tracked working-tree results went
+  from **14,666 files / 161M** to **13,364 files / 142M**, reclaiming
+  **17,565,946 bytes**. The pre-commit hook now rejects more than 14,000
+  tracked result files. No history rewrite was attempted; the existing Git
+  pack remains accepted D6 debt until the cache moves out of Git.
 - **F4 has a blind spot, and it cost a night.** The contract enumerates
   `SECURITY DEFINER` functions. Status values written by *Python* — such as
   `mark_email_status(..., 'skipped')` and `complete_event_sync`'s

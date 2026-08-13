@@ -23,6 +23,18 @@ FRONTEND_CHANGED=false
 IOS_CHANGED=false
 ANDROID_CHANGED=false
 
+# Keep tracked evaluation artifacts bounded. The current retained baseline is
+# above the original 2,000-file suggestion because the content-addressed
+# inference and score caches are intentionally tracked; 14,000 is the agreed
+# ceiling until the cache is migrated out of git.
+EVAL_RESULT_CEILING=14000
+EVAL_RESULT_COUNT=$(git ls-files 'backend/tests/eval/results/**' | wc -l | tr -d ' ')
+if [ "$EVAL_RESULT_COUNT" -gt "$EVAL_RESULT_CEILING" ]; then
+    echo "ERROR: tracked eval results ($EVAL_RESULT_COUNT) exceed ceiling ($EVAL_RESULT_CEILING)" >&2
+    echo "Run ./scripts/prune-eval-results.sh --apply before committing." >&2
+    exit 1
+fi
+
 for file in $STAGED_FILES; do
     case "$file" in
         backend/*.py|cli/*.py)
