@@ -23,6 +23,7 @@ from selko.services.event_diff import (
 )
 from selko.services.calendar_policy import materialize_all_day_event
 from selko.services.civil_time import ensure_aware, resolve_zone
+from selko.services.event_identity import IdentityHint, build_hints
 from selko.services.llm_gateway import LLMGateway
 from selko.services.retry_utils import calculate_retry_delay
 from selko.services.resolution_fingerprint import candidate_fingerprint
@@ -51,6 +52,8 @@ class CandidateWindow:
     window_start: str
     window_end: str
     fingerprint: str
+    hint_keys: tuple[str, ...] = ()
+    hint_fingerprint: Optional[str] = None
 
 
 @dataclass
@@ -61,6 +64,7 @@ class EventMatch:
     baseline: dict[str, Any]
     gcal_raw: Optional[dict[str, Any]] = None
     candidate_window: Optional[CandidateWindow] = None
+    stale_authoritative: bool = False
 
     @property
     def is_gcal(self) -> bool:
@@ -108,14 +112,18 @@ def _commit_email_extraction(
     return result
 
 
-def _window_fields(window: Optional[CandidateWindow]) -> dict[str, str]:
+def _window_fields(window: Optional[CandidateWindow]) -> dict[str, Any]:
     if window is None:
         return {}
-    return {
+    fields: dict[str, Any] = {
         "window_start": window.window_start,
         "window_end": window.window_end,
         "expected_fingerprint": window.fingerprint,
     }
+    if window.hint_keys:
+        fields["hint_keys"] = list(window.hint_keys)
+        fields["expected_hint_fingerprint"] = window.hint_fingerprint or ""
+    return fields
 
 
 def mark_email_status(
@@ -281,6 +289,55 @@ def _fetch_baseline_info_date(
     return max(dates) if dates else None
 
 
+def _load_identity_context(
+    supabase_client: Client,
+    email_id: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Load only metadata needed to derive content-free identity hints."""
+    email: dict[str, Any] = {}
+    components: list[dict[str, Any]] = []
+    try:
+        result = supabase_client.table("emails").select(
+            "email_provider,thread_id,subject,body_text,body_html"
+        ).eq("id", email_id).limit(1).execute()
+        if isinstance(result.data, list) and result.data:
+            email = result.data[0] or {}
+        elif isinstance(result.data, dict):
+            email = result.data
+    except Exception as exc:
+        logger.debug("Could not load email identity metadata (%s)", type(exc).__name__)
+    try:
+        result = supabase_client.table("email_calendar_components").select(
+            "component_index,uid_hash,recurrence_id,sequence,dtstamp"
+        ).eq("email_id", email_id).order("component_index").execute()
+        if isinstance(result.data, list):
+            components = [row for row in result.data if isinstance(row, dict)]
+    except Exception as exc:
+        logger.debug("Could not load calendar identity components (%s)", type(exc).__name__)
+    return email, components
+
+
+def _identity_hints_for_event(
+    email: dict[str, Any],
+    components: list[dict[str, Any]],
+    event_index: int,
+    event_data: dict[str, Any],
+) -> list[IdentityHint]:
+    component = components[event_index] if event_index < len(components) else None
+    return build_hints(
+        provider=email.get("email_provider"),
+        thread_id=email.get("thread_id"),
+        calendar_components=[component] if component else [],
+        event_values=(
+            event_data.get("location"),
+            event_data.get("description"),
+            email.get("subject"),
+            email.get("body_text"),
+            email.get("body_html"),
+        ),
+    )
+
+
 def save_extracted_events(
     supabase_client: Client,
     gateway: LLMGateway,
@@ -321,6 +378,9 @@ def save_extracted_events(
     num_new = 0
     num_updated = 0
     decisions: list[dict[str, Any]] = []
+    identity_email, identity_components = _load_identity_context(
+        supabase_client, email_id
+    )
     # Load timezone + all-day policy once per email (lean; no GCal list).
     all_day_policy, user_timezone = calendars.get_all_day_policy_and_timezone(
         supabase_client, user_id
@@ -339,7 +399,7 @@ def save_extracted_events(
         now = current_time.astimezone(user_tz)
     cutoff = now - timedelta(hours=24)
 
-    for event in extraction.events:
+    for event_index, event in enumerate(extraction.events):
         source_event_data = normalize_event_data(
             event, user_timezone=user_timezone, treat_as_civil=treat_as_civil
         )
@@ -366,10 +426,14 @@ def save_extracted_events(
             except (ValueError, TypeError):
                 pass
 
+        identity_hints = _identity_hints_for_event(
+            identity_email, identity_components, event_index, event_data
+        )
         resolution = find_matching_event(
             supabase_client, gateway, user_id, event_data,
             user_timezone=user_timezone,
             with_window=True,
+            identity_hints=identity_hints,
         )
         if isinstance(resolution, tuple):
             match, candidate_window = resolution
@@ -377,12 +441,22 @@ def save_extracted_events(
             match = resolution
             candidate_window = getattr(match, "candidate_window", None)
 
+        if match is not None and match.stale_authoritative:
+            logger.info(
+                "Stale authoritative calendar identity is an audited no-op for event %s",
+                event_data.get("title"),
+            )
+            continue
+
+        hint_payload = [hint.as_payload() for hint in identity_hints]
+
         if match is None:
             decisions.append({
                 "action": "create",
                 "event_id": None,
                 "fields": {**event_data, "status": initial_status},
                 **_window_fields(candidate_window),
+                "hints": hint_payload,
                 "source": {
                     "email_id": email_id,
                     "extracted_data": source_event_data,
@@ -477,6 +551,7 @@ def save_extracted_events(
                     "google_calendar_event_id": match.gcal_id,
                 },
                 **_window_fields(candidate_window),
+                "hints": hint_payload,
                 "source": {
                     **source,
                     "extra_sources": [{
@@ -492,12 +567,13 @@ def save_extracted_events(
             decisions.append({
                 "action": "create",
                 "event_id": None,
-                "fields": {
+                    "fields": {
                     **match.baseline,
                     "status": "pending_change",
                     "google_calendar_event_id": match.gcal_id,
                 },
                 **_window_fields(candidate_window),
+                "hints": hint_payload,
                 "source": {
                     **source,
                     "extra_sources": [{
@@ -515,6 +591,7 @@ def save_extracted_events(
                 "event_id": match.match_id,
                 "fields": proposed_fields,
                 **_window_fields(candidate_window),
+                "hints": hint_payload,
                 "source": source,
             })
         elif auto_apply:
@@ -524,6 +601,7 @@ def save_extracted_events(
                 "event_id": match.match_id,
                 "fields": {**applied, "status": "approved"},
                 **_window_fields(candidate_window),
+                "hints": hint_payload,
                 "source": {**source, "replace_pending_proposal": True},
             })
         else:
@@ -532,6 +610,7 @@ def save_extracted_events(
                 "event_id": match.match_id,
                 "fields": {"status": "pending_change"},
                 **_window_fields(candidate_window),
+                "hints": hint_payload,
                 "source": {**source, "replace_pending_proposal": True},
             })
         num_updated += 1
@@ -755,6 +834,158 @@ def process_email_for_events(
         raise EventsError(f"Failed to process email for events: {e}") from e
 
 
+def _identity_key(hint: IdentityHint) -> str:
+    return f"{hint.kind}|{hint.value_hash}|{hint.recurrence_id}"
+
+
+def _event_baseline(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "title": row.get("title"),
+        "start_datetime": row.get("start_datetime"),
+        "end_datetime": row.get("end_datetime"),
+        "all_day": row.get("all_day", False),
+        "location": row.get("location"),
+        "description": row.get("description"),
+        "importance": row.get("importance"),
+        "status": row.get("status"),
+    }
+
+
+def _load_identity_candidates(
+    supabase_client: Client,
+    user_id: str,
+    hints: list[IdentityHint],
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, dict[str, Any]], str, tuple[str, ...]]:
+    """Load hint rows and their events, returning a CAS fingerprint."""
+    rows_by_key: dict[str, list[dict[str, Any]]] = {}
+    keys = tuple(sorted({_identity_key(hint) for hint in hints}))
+    for hint in hints:
+        key = _identity_key(hint)
+        try:
+            result = supabase_client.table("event_identity_hints").select(
+                "event_id,kind,value_hash,recurrence_id,strength,sequence,dtstamp"
+            ).eq("user_id", user_id).eq("kind", hint.kind).eq(
+                "value_hash", hint.value_hash
+            ).eq("recurrence_id", hint.recurrence_id).execute()
+            rows = result.data if isinstance(result.data, list) else []
+            rows_by_key[key] = [row for row in rows if isinstance(row, dict)]
+        except Exception as exc:
+            logger.debug("Could not load identity candidates (%s)", type(exc).__name__)
+            rows_by_key[key] = []
+
+    event_ids = sorted({row.get("event_id") for rows in rows_by_key.values() for row in rows if row.get("event_id")})
+    events_by_id: dict[str, dict[str, Any]] = {}
+    if event_ids:
+        try:
+            result = supabase_client.table("events").select("*").eq(
+                "user_id", user_id
+            ).in_("id", event_ids).execute()
+            events_by_id = {
+                str(row["id"]): row
+                for row in (result.data or [])
+                if isinstance(row, dict) and row.get("id")
+            }
+        except Exception as exc:
+            logger.debug("Could not load identity event candidates (%s)", type(exc).__name__)
+    fingerprint = candidate_fingerprint(list(events_by_id.values()))
+    return rows_by_key, events_by_id, fingerprint, keys
+
+
+def _times_match(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    try:
+        return (
+            datetime.fromisoformat(str(left.get("start_datetime")).replace("Z", "+00:00"))
+            == datetime.fromisoformat(str(right.get("start_datetime")).replace("Z", "+00:00"))
+            and datetime.fromisoformat(str(left.get("end_datetime")).replace("Z", "+00:00"))
+            == datetime.fromisoformat(str(right.get("end_datetime")).replace("Z", "+00:00"))
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def _identity_match(
+    rows_by_key: dict[str, list[dict[str, Any]]],
+    events_by_id: dict[str, dict[str, Any]],
+    hints: list[IdentityHint],
+    event_data: dict[str, Any],
+    candidate_window: CandidateWindow,
+) -> EventMatch | None:
+    """Apply authoritative, exact-supporting, then two-signal matching."""
+    authoritative = [hint for hint in hints if hint.kind == "ical_uid"]
+    for hint in authoritative:
+        rows = rows_by_key.get(_identity_key(hint), [])
+        event_ids = {str(row.get("event_id")) for row in rows if row.get("event_id") in events_by_id}
+        if len(event_ids) != 1:
+            continue
+        event_id = next(iter(event_ids))
+        row = next(row for row in rows if str(row.get("event_id")) == event_id)
+        current_sequence = int(row.get("sequence") or 0)
+        incoming_sequence = int(hint.sequence or 0)
+        current_dtstamp = str(row.get("dtstamp") or "")
+        incoming_dtstamp = str(hint.dtstamp or "")
+        stale = incoming_sequence < current_sequence or (
+            incoming_sequence == current_sequence
+            and bool(current_dtstamp)
+            and bool(incoming_dtstamp)
+            and incoming_dtstamp <= current_dtstamp
+        )
+        return EventMatch(
+            match_id=event_id,
+            baseline=_event_baseline(events_by_id[event_id]),
+            candidate_window=candidate_window,
+            stale_authoritative=stale,
+        )
+
+    supporting_by_event: dict[str, set[str]] = {}
+    for hint in hints:
+        if hint.kind == "ical_uid":
+            continue
+        for row in rows_by_key.get(_identity_key(hint), []):
+            event_id = str(row.get("event_id"))
+            if event_id in events_by_id:
+                supporting_by_event.setdefault(event_id, set()).add(hint.kind)
+
+    join_hints = [hint for hint in hints if hint.kind == "join_url"]
+    for hint in join_hints:
+        for row in rows_by_key.get(_identity_key(hint), []):
+            event_id = str(row.get("event_id"))
+            candidate = events_by_id.get(event_id)
+            if candidate and _times_match(event_data, candidate):
+                return EventMatch(
+                    match_id=event_id,
+                    baseline=_event_baseline(candidate),
+                    candidate_window=candidate_window,
+                )
+
+    # Two supporting signals are a bounded LLM candidate set, not an automatic
+    # merge.  The caller passes only signal labels, never hashes or raw values.
+    return None
+
+
+def _strong_identity_candidates(
+    rows_by_key: dict[str, list[dict[str, Any]]],
+    events_by_id: dict[str, dict[str, Any]],
+    hints: list[IdentityHint],
+) -> list[dict[str, Any]]:
+    supporting_by_event: dict[str, set[str]] = {}
+    for hint in hints:
+        if hint.kind == "ical_uid":
+            continue
+        for row in rows_by_key.get(_identity_key(hint), []):
+            event_id = str(row.get("event_id"))
+            if event_id in events_by_id:
+                supporting_by_event.setdefault(event_id, set()).add(hint.kind)
+    return [
+        {
+            **_event_baseline(events_by_id[event_id]),
+            "id": event_id,
+            "_identity_signals": sorted(kinds),
+        }
+        for event_id, kinds in supporting_by_event.items()
+        if len(kinds) >= 2
+    ]
+
+
 def find_matching_event(
     supabase_client: Client,
     gateway: LLMGateway,
@@ -763,6 +994,7 @@ def find_matching_event(
     user_timezone: Optional[str] = None,
     *,
     with_window: bool = False,
+    identity_hints: Optional[list[IdentityHint]] = None,
 ) -> Optional[EventMatch] | tuple[Optional[EventMatch], CandidateWindow | None]:
     """Find if event matches any existing events (date-based + LLM).
 
@@ -794,10 +1026,15 @@ def find_matching_event(
     ).execute()
 
     candidates: list[dict[str, Any]] = list(result.data) if result.data else []
+    identity_rows, identity_events, hint_fingerprint, hint_keys = _load_identity_candidates(
+        supabase_client, user_id, identity_hints or []
+    )
     candidate_window = CandidateWindow(
         window_start=time_min,
         window_end=time_max,
         fingerprint=candidate_fingerprint(candidates),
+        hint_keys=hint_keys,
+        hint_fingerprint=hint_fingerprint if hint_keys else None,
     )
 
     def resolved(match: Optional[EventMatch]):
@@ -806,6 +1043,35 @@ def find_matching_event(
     candidate_by_id: dict[str, dict[str, Any]] = {
         c["id"]: c for c in candidates if c.get("id")
     }
+
+    identity_match = _identity_match(
+        identity_rows,
+        identity_events,
+        identity_hints or [],
+        event_data,
+        candidate_window,
+    )
+    if identity_match is not None:
+        return resolved(identity_match)
+
+    strong_candidates = _strong_identity_candidates(
+        identity_rows, identity_events, identity_hints or []
+    )
+    if len(strong_candidates) == 1:
+        try:
+            matched_id = event_processing.compare_events(
+                gateway, event_data, strong_candidates
+            )
+        except Exception as exc:
+            logger.warning("Strong identity comparison failed (%s)", type(exc).__name__)
+            matched_id = None
+        if matched_id == strong_candidates[0]["id"]:
+            candidate = strong_candidates[0]
+            return resolved(EventMatch(
+                match_id=matched_id,
+                baseline=_event_baseline(candidate),
+                candidate_window=candidate_window,
+            ))
 
     try:
         gcal_events = calendars.fetch_calendar_events_for_date_range(
