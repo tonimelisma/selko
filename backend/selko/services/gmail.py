@@ -3,6 +3,8 @@
 Handles Gmail OAuth flow and API interactions.
 """
 
+import base64
+import binascii
 import logging
 import time
 from datetime import datetime, timedelta, timezone
@@ -279,6 +281,26 @@ def extract_attachments(email: dict) -> list[dict]:
 
     logger.debug(f"Extracted {len(attachments)} attachments from message {email.get('id')}")
     return attachments
+
+
+def extract_inline_calendar_parts(email: dict) -> list[bytes]:
+    """Return inline ``text/calendar`` MIME bodies from a full Gmail message."""
+    payloads: list[bytes] = []
+
+    def _walk(part: dict) -> None:
+        if str(part.get("mimeType", "")).lower() == "text/calendar":
+            data = (part.get("body") or {}).get("data")
+            if data:
+                try:
+                    padding = "=" * (-len(data) % 4)
+                    payloads.append(base64.urlsafe_b64decode(data + padding))
+                except (ValueError, binascii.Error):
+                    logger.warning("Malformed inline calendar body ignored")
+        for nested in part.get("parts", []):
+            _walk(nested)
+
+    _walk(email.get("payload", {}))
+    return payloads
 
 
 # Map MIME image subtypes to file extensions
