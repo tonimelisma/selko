@@ -25,6 +25,7 @@ from selko.services.calendar_policy import materialize_all_day_event
 from selko.services.civil_time import ensure_aware, resolve_zone
 from selko.services.llm_gateway import LLMGateway
 from selko.services.retry_utils import calculate_retry_delay
+from selko.services.resolution_fingerprint import candidate_fingerprint
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,22 @@ class EventsError(Exception):
     pass
 
 
+class ResolutionConflictExhausted(EventsError):
+    """Raised after repeated candidate-band conflicts."""
+
+
+MAX_RESOLUTION_ATTEMPTS = 3
+
+
+@dataclass(frozen=True)
+class CandidateWindow:
+    """The exact local-day candidate band seen by a resolver."""
+
+    window_start: str
+    window_end: str
+    fingerprint: str
+
+
 @dataclass
 class EventMatch:
     """A dedup match against a local Selko event or Google Calendar event."""
@@ -42,6 +59,7 @@ class EventMatch:
     match_id: str
     baseline: dict[str, Any]
     gcal_raw: Optional[dict[str, Any]] = None
+    candidate_window: Optional[CandidateWindow] = None
 
     @property
     def is_gcal(self) -> bool:
@@ -86,6 +104,16 @@ def _commit_email_extraction(
             lock_generation,
         )
     return result
+
+
+def _window_fields(window: Optional[CandidateWindow]) -> dict[str, str]:
+    if window is None:
+        return {}
+    return {
+        "window_start": window.window_start,
+        "window_end": window.window_end,
+        "expected_fingerprint": window.fingerprint,
+    }
 
 
 def mark_email_status(
@@ -265,6 +293,7 @@ def save_extracted_events(
     locked_by: str = "",
     lock_generation: int = 0,
     commit_result: Optional[dict[str, Any]] = None,
+    _attempt: int = 0,
 ) -> tuple[int, int]:
     """Deduplicate and persist extracted events into New or Changes lanes.
 
@@ -335,16 +364,23 @@ def save_extracted_events(
             except (ValueError, TypeError):
                 pass
 
-        match = find_matching_event(
+        resolution = find_matching_event(
             supabase_client, gateway, user_id, event_data,
             user_timezone=user_timezone,
+            with_window=True,
         )
+        if isinstance(resolution, tuple):
+            match, candidate_window = resolution
+        else:
+            match = resolution
+            candidate_window = getattr(match, "candidate_window", None)
 
         if match is None:
             decisions.append({
                 "action": "create",
                 "event_id": None,
                 "fields": {**event_data, "status": initial_status},
+                **_window_fields(candidate_window),
                 "source": {
                     "email_id": email_id,
                     "extracted_data": source_event_data,
@@ -438,6 +474,7 @@ def save_extracted_events(
                     "status": "approved",
                     "google_calendar_event_id": match.gcal_id,
                 },
+                **_window_fields(candidate_window),
                 "source": {
                     **source,
                     "extra_sources": [{
@@ -458,6 +495,7 @@ def save_extracted_events(
                     "status": "pending_change",
                     "google_calendar_event_id": match.gcal_id,
                 },
+                **_window_fields(candidate_window),
                 "source": {
                     **source,
                     "extra_sources": [{
@@ -474,6 +512,7 @@ def save_extracted_events(
                 "action": "update",
                 "event_id": match.match_id,
                 "fields": proposed_fields,
+                **_window_fields(candidate_window),
                 "source": source,
             })
         elif auto_apply:
@@ -482,6 +521,7 @@ def save_extracted_events(
                 "action": "update",
                 "event_id": match.match_id,
                 "fields": {**applied, "status": "approved"},
+                **_window_fields(candidate_window),
                 "source": {**source, "replace_pending_proposal": True},
             })
         else:
@@ -489,6 +529,7 @@ def save_extracted_events(
                 "action": "update",
                 "event_id": match.match_id,
                 "fields": {"status": "pending_change"},
+                **_window_fields(candidate_window),
                 "source": {**source, "replace_pending_proposal": True},
             })
         num_updated += 1
@@ -500,6 +541,34 @@ def save_extracted_events(
         lock_generation,
         decisions,
     )
+    if outcome.get("conflict"):
+        if _attempt + 1 >= MAX_RESOLUTION_ATTEMPTS:
+            raise ResolutionConflictExhausted(
+                f"Resolution conflicts exhausted for email {email_id}"
+            )
+        logger.info(
+            "Resolution conflict for email %s; recomputing (attempt %s/%s)",
+            email_id,
+            _attempt + 1,
+            MAX_RESOLUTION_ATTEMPTS,
+        )
+        if commit_result is not None:
+            commit_result.clear()
+        return save_extracted_events(
+            supabase_client,
+            gateway,
+            user_id,
+            email_id,
+            extraction,
+            initial_status=initial_status,
+            current_time=current_time,
+            treat_as_civil=treat_as_civil,
+            email_date_sent=email_date_sent,
+            locked_by=locked_by,
+            lock_generation=lock_generation,
+            commit_result=commit_result,
+            _attempt=_attempt + 1,
+        )
     if commit_result is not None:
         commit_result.update(outcome)
     return num_new, num_updated
@@ -685,7 +754,9 @@ def find_matching_event(
     user_id: str,
     event_data: dict[str, Any],
     user_timezone: Optional[str] = None,
-) -> Optional[EventMatch]:
+    *,
+    with_window: bool = False,
+) -> Optional[EventMatch] | tuple[Optional[EventMatch], CandidateWindow | None]:
     """Find if event matches any existing events (date-based + LLM).
 
     Checks both local Selko events and the user's Google Calendar.
@@ -696,11 +767,11 @@ def find_matching_event(
 
     start_dt = event_data.get("start_datetime")
     if not start_dt:
-        return None
+        return (None, None) if with_window else None
 
     start_aware = ensure_aware(start_dt, user_timezone)
     if start_aware is None:
-        return None
+        return (None, None) if with_window else None
     local_day = start_aware.astimezone(resolve_zone(user_timezone)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
@@ -716,6 +787,15 @@ def find_matching_event(
     ).execute()
 
     candidates: list[dict[str, Any]] = list(result.data) if result.data else []
+    candidate_window = CandidateWindow(
+        window_start=time_min,
+        window_end=time_max,
+        fingerprint=candidate_fingerprint(candidates),
+    )
+
+    def resolved(match: Optional[EventMatch]):
+        return (match, candidate_window) if with_window else match
+
     candidate_by_id: dict[str, dict[str, Any]] = {
         c["id"]: c for c in candidates if c.get("id")
     }
@@ -755,7 +835,7 @@ def find_matching_event(
         logger.warning(f"GCal read-back failed during dedup, continuing with local only: {e}")
 
     if not candidates:
-        return None
+        return resolved(None)
 
     try:
         matched_id = event_processing.compare_events(
@@ -765,10 +845,10 @@ def find_matching_event(
         )
     except Exception as e:
         logger.warning(f"LLM comparison failed, no match: {e}")
-        return None
+        return resolved(None)
 
     if not matched_id:
-        return None
+        return resolved(None)
 
     candidate = candidate_by_id.get(matched_id)
     if not candidate:
@@ -779,7 +859,7 @@ def find_matching_event(
                 break
     if not candidate:
         logger.warning(f"Matched id {matched_id} not found in candidates")
-        return None
+        return resolved(None)
 
     if matched_id.startswith("gcal:"):
         gcal_id = candidate.get("_gcal_id") or matched_id[5:]
@@ -790,7 +870,7 @@ def find_matching_event(
         ).order("created_at").limit(1).execute()
         if existing.data:
             row = existing.data[0]
-            return EventMatch(
+            return resolved(EventMatch(
                 match_id=row["id"],
                 baseline={
                     "title": row.get("title"),
@@ -802,7 +882,8 @@ def find_matching_event(
                     "importance": row.get("importance"),
                     "status": row.get("status"),
                 },
-            )
+                candidate_window=candidate_window,
+            ))
 
         baseline = candidate.get("_baseline") or {
             "title": candidate.get("title"),
@@ -813,11 +894,12 @@ def find_matching_event(
             "all_day": False,
             "status": "synced",
         }
-        return EventMatch(
+        return resolved(EventMatch(
             match_id=matched_id,
             baseline=baseline,
             gcal_raw=candidate.get("_gcal_raw"),
-        )
+            candidate_window=candidate_window,
+        ))
 
     baseline = {
         "title": candidate.get("title"),
@@ -829,7 +911,11 @@ def find_matching_event(
         "importance": candidate.get("importance"),
         "status": candidate.get("status"),
     }
-    return EventMatch(match_id=matched_id, baseline=baseline)
+    return resolved(EventMatch(
+        match_id=matched_id,
+        baseline=baseline,
+        candidate_window=candidate_window,
+    ))
 
 
 def ensure_email_event_source(

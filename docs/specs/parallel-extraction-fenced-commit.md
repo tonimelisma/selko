@@ -1,6 +1,6 @@
 # Parallel Extraction, Fenced Commit
 
-**Status:** P1 implemented in this increment; P2–P4 remain planned.
+**Status:** P1 and P2 implemented in this increment; P3–P4 remain planned.
 
 **Written:** 2026-08-12.
 
@@ -272,8 +272,10 @@ class CandidateWindow:
 ```
 
 Compute the fingerprint in Python **with the identical rule the RPC uses** —
-`md5` over `id:updated_at` joined by `,`, ordered by `id`. Put the rule in one
-shared place and reference it from both sides, or the two will drift.
+`md5` over `id:updated_at` joined by `,`, ordered by `id`, with UTC timestamps
+rendered as `YYYY-MM-DDTHH:MM:SS.USZ`. The canonical Python formatter lives in
+`services/resolution_fingerprint.py`; the SQL formatter is pinned in the
+migration and guarded by an integration test.
 
 > Fingerprint local `events` rows only. Google Calendar candidates are excluded
 > and this is deliberate (§2.5).
@@ -289,7 +291,9 @@ before applying **any** of them, and returns
 ```
 
 on the first mismatch, mutating nothing. All-or-nothing keeps a multi-event
-email consistent.
+email consistent. A transaction-scoped advisory key for `(user, window)` makes
+the check a real concurrent CAS without holding anything during extraction or
+LLM I/O.
 
 #### P2.3 Python — the retry loop
 
