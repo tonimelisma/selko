@@ -26,6 +26,7 @@ from selko.services.email_ingestion import (
     safe_error_code,
 )
 from selko.services.emails import parse_gmail_message
+from selko.services.ics_parser import parse_calendar_components
 import selko.services.gmail as gmail  # 8a: module import keeps patch target stable
 
 from selko.services.gmail import (
@@ -693,6 +694,19 @@ class EmailIngestionWorker:
             parsed = parse_gmail_message(message)
             parsed["integration_id"] = item["integration_id"]
             parsed["provider_folder_ids"] = item.get("provider_folder_ids") or parsed.get("provider_folder_ids") or []
+            calendar_payloads = gmail.extract_inline_calendar_parts(message)
+            for calendar_attachment in extract_attachments(message):
+                mime_type = (calendar_attachment.get("mime_type") or "").lower()
+                filename = (calendar_attachment.get("filename") or "").lower()
+                if mime_type == "text/calendar" or filename.endswith(".ics"):
+                    calendar_payloads.append(
+                        download_gmail_attachment(
+                            build_service(credentials),
+                            item["provider_message_id"],
+                            calendar_attachment["attachment_id"],
+                        )
+                    )
+            calendar_components = parse_calendar_components(calendar_payloads)
             descriptors = [
                 {
                     "provider_attachment_id": d.get("attachment_id"),
@@ -710,6 +724,7 @@ class EmailIngestionWorker:
             parsed = parse_outlook_message(message)
             parsed["integration_id"] = item["integration_id"]
             parsed["provider_folder_ids"] = item.get("provider_folder_ids") or parsed.get("provider_folder_ids") or []
+            calendar_components = parsed.pop("calendar_components", [])
             descriptors = [
                 {
                     "provider_attachment_id": d.get("id"),
@@ -729,7 +744,7 @@ class EmailIngestionWorker:
         # multi-round-trip window in which an LLM worker could claim the email
         # with zero attachment rows, causing silent flaky extraction.
         email_id = await self.repository.save_email_with_attachment_descriptors(
-            item["user_id"], parsed, descriptors
+            item["user_id"], parsed, descriptors, calendar_components
         )
         return email_id
 

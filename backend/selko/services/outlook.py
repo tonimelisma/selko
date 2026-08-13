@@ -8,6 +8,7 @@ messages so the downstream email and event-processing pipeline is shared.
 from __future__ import annotations
 
 import logging
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -512,6 +513,9 @@ def parse_outlook_message(
         "has_attachments": bool(msg.get("hasAttachments")),
         "is_calendar_invite": "eventmessage" in str(msg.get("@odata.type", "")).lower(),
     }
+    component = _outlook_calendar_component(msg)
+    if component:
+        result["calendar_components"] = [component]
     if body.get("contentType") == "text" and body.get("content"):
         result["body_text"] = body["content"]
     resolved_folder_id = folder_id or msg.get("parentFolderId")
@@ -520,3 +524,38 @@ def parse_outlook_message(
     if result["is_calendar_invite"]:
         mark_parsed_as_calendar_invite(result)
     return result
+
+
+def _outlook_calendar_component(msg: dict[str, Any]) -> dict[str, Any] | None:
+    """Map Graph meeting metadata into the same component contract as iCal."""
+    meeting_type = str(msg.get("meetingMessageType") or "").strip().lower()
+    uid = str(msg.get("iCalUId") or "").strip() or None
+    if not meeting_type and not uid and not msg.get("start") and not msg.get("end"):
+        return None
+    method = "CANCEL" if meeting_type in {"meetingcancelled", "meetingcancellation"} else "REQUEST"
+    if meeting_type in {"meetingreply", "meetingaccept", "meetingtentative", "meetingdeclined"}:
+        method = "REPLY"
+
+    def graph_datetime(value: Any) -> str | None:
+        raw = value.get("dateTime") if isinstance(value, dict) else value
+        if not raw:
+            return None
+        try:
+            parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        except ValueError:
+            return None
+
+    return {
+        "method": method,
+        "uid_hash": hashlib.sha256(uid.encode("utf-8")).hexdigest() if uid else None,
+        "recurrence_id": None,
+        "recurrence_range": None,
+        "sequence": int(msg.get("sequenceNumber") or 0),
+        "dtstamp": graph_datetime(msg.get("lastModifiedDateTime")),
+        "component_status": "CANCELLED" if method == "CANCEL" else None,
+        "start_datetime": graph_datetime(msg.get("start")),
+        "end_datetime": graph_datetime(msg.get("end")),
+    }

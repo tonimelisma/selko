@@ -1,6 +1,6 @@
 # Calendar Identity and Cancellation
 
-**Status:** Planned; nothing implemented.
+**Status:** C1 implemented in this increment; C2–C3 remain planned.
 
 **Written:** 2026-08-12.
 

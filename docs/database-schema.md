@@ -284,6 +284,16 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 
 **RLS Policies:** Users manage own event sources only (via `events.user_id`).
 
+### `email_calendar_components`
+
+Opaque, provider-neutral VEVENT correlation data captured during email
+acquisition. `uid_hash` is a SHA-256 hash of the trimmed UID; raw calendar
+identifiers and component content are not stored.
+
+**RLS:** Enabled; service-role only.
+
+**Unique Constraint:** `(email_id, component_index)`.
+
 ### `event_repair_audit`
 
 Service-only, append-only audit rows for the reviewed duplicate/cancellation

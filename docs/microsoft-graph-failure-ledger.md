@@ -1,5 +1,11 @@
 # Microsoft Graph Failure Ledger
 
+Calendar meeting metadata is captured during Outlook acquisition. The
+`meetingMessageType` cancellation class, `iCalUId` hash, sequence, modified
+timestamp, and associated dates are written to the service-only calendar
+component ledger. A cancellation without an associated event remains a
+structured component without a UID; it does not fabricate identity.
+
 Durable record of Microsoft Graph and Graph-adjacent production failures seen
 by Selko. Read this ledger before changing Outlook or OneDrive retry, cursor,
 attachment, or authentication behavior. Add an entry whenever a new production

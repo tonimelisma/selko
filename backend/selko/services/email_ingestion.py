@@ -387,6 +387,7 @@ class EmailIngestionRepository:
         user_id: str,
         email_payload: dict[str, Any],
         descriptors: Iterable[dict[str, Any]],
+        calendar_components: Iterable[dict[str, Any]] = (),
     ) -> str:
         """Atomically upsert the email row and its attachment descriptors.
 
@@ -398,8 +399,11 @@ class EmailIngestionRepository:
 
         try:
             email_id = await self.pg_pool.fetchval(
-                "SELECT public.save_email_with_attachment_descriptors($1::uuid, $2::jsonb, $3::jsonb)",
-                user_id, json.dumps(email_payload), json.dumps(list(descriptors)),
+                "SELECT public.save_email_with_attachment_descriptors($1::uuid, $2::jsonb, $3::jsonb, $4::jsonb)",
+                user_id,
+                json.dumps(email_payload),
+                json.dumps(list(descriptors)),
+                json.dumps(list(calendar_components)),
             )
         except Exception as exc:
             raise EmailIngestionError(f"Failed to save email with attachment descriptors: {exc}") from exc

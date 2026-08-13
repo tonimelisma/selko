@@ -5,6 +5,7 @@ extraction entirely for emails with structured calendar data.
 """
 
 import logging
+import hashlib
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -15,6 +16,76 @@ from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 logger = logging.getLogger(__name__)
 
 INVITE_METHODS = {"REQUEST", "REPLY", "CANCEL", "COUNTER", "DECLINECOUNTER"}
+
+
+def parse_calendar_components(payloads: list[bytes]) -> list[dict[str, Any]]:
+    """Extract provider-neutral, content-free correlation fields from VEVENTs.
+
+    A malformed calendar part is isolated to that part and logged without its
+    content.  The caller can still classify the surrounding email as an
+    invitation and continue acquisition.
+    """
+    components: list[dict[str, Any]] = []
+    for payload in payloads:
+        try:
+            calendar = icalendar.Calendar.from_ical(payload)
+        except Exception as exc:
+            logger.warning("Malformed calendar component ignored (%s)", type(exc).__name__)
+            continue
+        calendar_method = _ical_text(calendar.get("METHOD"))
+        for vevent in calendar.walk():
+            if vevent.name != "VEVENT":
+                continue
+            try:
+                components.append(_component_from_vevent(vevent, calendar_method))
+            except Exception as exc:
+                logger.warning("Malformed VEVENT ignored (%s)", type(exc).__name__)
+    return components
+
+
+def _ical_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    return str(value).strip() or None
+
+
+def _component_from_vevent(vevent: icalendar.Event, calendar_method: str | None) -> dict[str, Any]:
+    uid = _ical_text(vevent.get("UID"))
+    recurrence = vevent.get("RECURRENCE-ID")
+    recurrence_id = _canonical_ical_value(recurrence.dt) if recurrence else None
+    recurrence_range = None
+    if recurrence:
+        raw_range = str(recurrence.params.get("RANGE", "")).upper()
+        if raw_range in {"THISANDFUTURE", ""}:
+            recurrence_range = raw_range or None
+    sequence_raw = _ical_text(vevent.get("SEQUENCE"))
+    try:
+        sequence = int(sequence_raw) if sequence_raw is not None else 0
+    except ValueError:
+        sequence = 0
+    return {
+        "method": (_ical_text(vevent.get("METHOD")) or calendar_method or "UNKNOWN").upper(),
+        "uid_hash": hashlib.sha256(uid.strip().encode("utf-8")).hexdigest() if uid else None,
+        "recurrence_id": recurrence_id,
+        "recurrence_range": recurrence_range,
+        "sequence": sequence,
+        "dtstamp": _canonical_ical_value(vevent.get("DTSTAMP").dt) if vevent.get("DTSTAMP") else None,
+        "component_status": (_ical_text(vevent.get("STATUS")) or "").upper() or None,
+        "start_datetime": _canonical_ical_value(vevent.get("DTSTART").dt) if vevent.get("DTSTART") else None,
+        "end_datetime": _canonical_ical_value(vevent.get("DTEND").dt) if vevent.get("DTEND") else None,
+    }
+
+
+def _canonical_ical_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value).strip() or None
 
 
 def detect_invite_method(attachments: list[dict[str, Any]]) -> Optional[str]:

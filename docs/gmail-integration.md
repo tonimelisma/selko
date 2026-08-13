@@ -1,5 +1,11 @@
 # **Comprehensive Architectural Specification: Real-Time Gmail Synchronization and Data Extraction Backend**
 
+Calendar MIME parts are parsed during acquisition. Inline `text/calendar` and
+`.ics` attachments preserve each VEVENT's method, UID hash, recurrence
+identity, sequence, timestamp, status, and dates in the service-only
+`email_calendar_components` table. Malformed parts are isolated and logged
+without provider content; the email continues through normal invite handling.
+
 ## **1\. Executive Summary**
 
 The integration of backend systems with Gmail for the purpose of real-time monitoring, classification, and data extraction represents a complex engineering challenge that intersects distributed messaging, secure authentication, and granular API resource management. The requirement to monitor "authorized users' gmail accounts" implies a multi-tenant architecture where the backend must maintain persistent, secure connections to disparate mailboxes, responding to events such as message arrival, status changes (read/unread), and folder routing with minimal latency. While traditional polling models provided the foundation for early email integrations, modern requirements for "near real-time" performance necessitate an event-driven architecture utilizing Google Cloud Pub/Sub in conjunction with the Gmail REST API.  
