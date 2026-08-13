@@ -63,14 +63,21 @@ Emails are stored with `processing_status='pending'`. Workers claim them directl
 # Worker claims next pending email
 email = await claim_pending_email(worker_id)  # Uses FOR UPDATE SKIP LOCKED
 
-# Worker processes
+# Worker processes; the claim increments lock_generation on every lease.
 await process_email(email)
 
-# Worker updates status
-complete_email_processing(email_id)  # Sets status='processed'
+# The fenced extraction RPC commits all event/source decisions and sets the
+# terminal email status in the same transaction.
+commit_email_extraction(email_id, worker_id, lock_generation, decisions, "processed")
 ```
 
 **Email statuses**: `pending` → `processing` → `processed` / `failed` / `skipped`
+
+Each extracted-event decision includes the local-day candidate window and its
+fingerprint. The RPC rechecks the MD5 of sorted `id:updated_at` rows under a
+short transaction-scoped advisory key. A changed band returns a conflict with
+no writes; Python rereads and recomputes up to three times. The advisory key is
+never held during provider or LLM I/O, so extraction remains parallel.
 
 ### 2. Event Sync (status-based)
 
