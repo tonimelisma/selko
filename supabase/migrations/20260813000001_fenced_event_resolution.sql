@@ -4,7 +4,11 @@
 
 ALTER TABLE public.emails DROP CONSTRAINT IF EXISTS emails_processing_status_check;
 ALTER TABLE public.emails ADD CONSTRAINT emails_processing_status_check
-  CHECK (processing_status IN ('pending','processing','resolving','processed','failed'));
+  -- Preserve the legacy terminal state while later migrations repair the
+  -- domain. Production already contains sender-rule/calendar rows marked
+  -- `skipped`, so narrowing here would make the migration chain fail before
+  -- `20260814000003_fix_emails_status_skipped.sql` can run.
+  CHECK (processing_status IN ('pending','processing','resolving','processed','failed','skipped'));
 
 CREATE TABLE public.email_event_resolutions (
   email_id uuid PRIMARY KEY REFERENCES public.emails(id) ON DELETE CASCADE,
