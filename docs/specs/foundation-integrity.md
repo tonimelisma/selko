@@ -1,12 +1,33 @@
 # Foundation Integrity — make the repo's claims verifiable, then deploy
 
-**Status:** Partially implemented (updated 2026-08-11). F1–F7 and F9 are merged
-in PRs #287–#294. F4 now enforces live function, trigger, RLS, and privilege
-contracts against a reset database. F6 provides the migration-order guard, and
-F7 provides the fail-closed staging verifier; staging execution, worker drill,
-and 24-hour soak remain pending because they require staging access and an
-operator-run cutover. F8 production cutover remains blocked on those checks and
-explicit operator approval.
+**Status:** Partially implemented (corrected 2026-08-12). F1–F7 merged in
+PRs #287–#294. F4 enforces live function, trigger, RLS and privilege contracts
+against a reset database; F6 provides the migration-order guard; F7 provides the
+fail-closed staging verifier. Staging execution, the worker drill and the
+24-hour soak remain pending — they require staging access and an operator-run
+cutover. F8 production cutover remains blocked on those and on explicit operator
+approval.
+
+**Two corrections from the 2026-08-12 review of the R1–R5 batch:**
+
+- **F9 is not done.** It merged `scripts/prune-eval-results.sh` (#291) and the
+  script was never run. Tracked eval results have grown from the 13 008 files /
+  161 MB this document records as D6 to **14 228 files / 161 MB**, with `.git`
+  at 138 MB. D6 is open. `stub-rollback-and-gate-repair.md` G6 runs it and adds
+  a ceiling check. A merged script that was never executed is exactly the class
+  of claim §1 says this repository must stop making.
+- **F4 has a blind spot, and it cost a night.** The contract enumerates
+  `SECURITY DEFINER` functions. Status values written by *Python* — such as
+  `mark_email_status(..., 'skipped')` and `complete_event_sync`'s
+  `status = 'synced'` — are outside it. R2 and R4 each truncated a live CHECK
+  domain and removed a value Python writes; both passed F4 and both needed an
+  emergency repair migration the same night (#312).
+  `stub-rollback-and-gate-repair.md` G2 closes it by pinning every enumerated
+  text domain.
+
+**The gate this plan built is currently red on `main`** — see
+`stub-rollback-and-gate-repair.md` D-GATE.1 and D-GATE.2. Four increments
+merged over it. Repairing that is G3.
 **Written:** 2026-08-10, after reviewing the C1–C9 batch (#279–#286 + `0654d4fe`).
 **Audience:** a developer new to this codebase. Every increment names the file,
 the line, the failing test to write first, and the exact command that proves it

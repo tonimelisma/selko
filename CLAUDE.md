@@ -155,6 +155,20 @@ work. Fix forward. Never let a second increment merge on top of a red staging.
   `WorkListener.start()` was a stub that reported healthy — all with a green
   test suite. If you add a code path behind a flag or an injected dependency,
   add a test that asserts the dependency actually reaches the call.
+- **Unreachable code fails the build.** A new module under `backend/selko/`
+  must be transitively importable from `selko.api` or `selko.worker_app`
+  (`backend/tests/test_reachability.py`). This rule exists because the call-site
+  rule above was stated three times and broken three times: direct-pg Inc3–5,
+  and then `workers/event_resolution.py` (#307), which merged as "fenced
+  per-user event resolution" with zero call sites and a green gate. Mocks cannot
+  notice a module nobody imports; an import graph can.
+- **Never narrow a CHECK constraint without checking its writers.** Enumerated
+  text domains are pinned in
+  `backend/tests/integration/test_schema_contract.py::EXPECTED_CHECK_DOMAINS`.
+  R2 dropped `'skipped'` from `emails.processing_status` and R4 dropped
+  `'syncing'/'synced'/'sync_failed'` from `events.status`; both writers are
+  Python, so no `SECURITY DEFINER` contract saw them, and both needed an
+  emergency repair migration the same night (#312).
 - **SQL that has never been executed has not been tested.** A migration is not
   done because it applies cleanly. It is done when a test has called the
   function it defines or fired the trigger it creates, against a real database.
@@ -371,12 +385,15 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **Microsoft Graph failure ledger** | `docs/microsoft-graph-failure-ledger.md` | Before changing Graph request/retry/resync behavior or after any production Graph failure |
 | **OAuth reconnect catch-up** | `docs/specs/oauth-reconnect-catch-up.md` | When implementing automatic email/calendar recovery after OAuth reauthorization |
 | **Egress & work scheduling** | `docs/specs/egress-and-work-scheduling.md` | Before changing worker scheduling, claim loops, or anything that polls; and when investigating bandwidth or egress cost |
-| **Foundation integrity** | `docs/specs/foundation-integrity.md` | **Read before starting new work.** The current active plan: builds a real execution gate (integration tests against local Postgres) because the mocked-only DoD gate is why broken SQL, unreachable code and a non-functional schema gate all shipped green. Carries the six open defects (D1–D6) from the C1–C9 review and the production cutover |
+| **Foundation integrity** | `docs/specs/foundation-integrity.md` | Read after the stub-rollback plan above. Builds a real execution gate (integration tests against local Postgres) because the mocked-only DoD gate is why broken SQL, unreachable code and a non-functional schema gate all shipped green. Carries the six open defects (D1–D6) from the C1–C9 review and the production cutover |
 | **Direct-PG completion & live-UI hardening** | `docs/specs/direct-pg-completion-and-live-ui-hardening.md` | **Read before touching the pg pool, `WorkListener`, ingestion concurrency, or Realtime live updates.** Direct-pg increments 3–5 shipped as unreachable code; this spec completes them and fixes Realtime auth expiry and Broadcast fan-out |
 | **Ingestion & recovery hardening** | `docs/specs/ingestion-recovery-hardening.md` | Before the ingestion production cutover, and when touching provider error classification, ingestion loop supervision, the attachment readiness race, or ingestion observability |
 | **Live UI updates** | `docs/specs/live-ui-updates.md` | When implementing cross-platform Realtime invalidation, lifecycle catch-up, or refresh behavior |
 | **Review-list quality fixes** | `docs/specs/review-list-quality-fixes.md` | When fixing event dedup, sender ignore, calendar-invite handling, update proposals, or all-day display |
-| **Review queue integrity** | `docs/specs/review-queue-integrity.md` | Before changing web Review ordering/animation, email-to-event resolution concurrency, identity-based dedup/reschedules, cancellation disposition, or the known production repair |
+| **Stub rollback and gate repair** | `docs/specs/stub-rollback-and-gate-repair.md` | **Read before starting any work.** The current next increment. Both Tier 1 gates are red on `main`; G1–G4 must land before anything else merges. Carries the full defect register for the R1–R5 batch |
+| **Parallel extraction, fenced commit** | `docs/specs/parallel-extraction-fenced-commit.md` | Before touching worker concurrency, `save_extracted_events`, or how extracted events are persisted. Extraction stays parallel; the commit is fenced on the candidate band it was computed against. Replaces review-queue-integrity R2 |
+| **Calendar identity and cancellation** | `docs/specs/calendar-identity-and-cancellation.md` | Before touching iCalendar parsing, event identity/dedup, or cancellation. Replaces review-queue-integrity R3–R4 |
+| **Review queue integrity** | `docs/specs/review-queue-integrity.md` | Normative requirements for web Review (§5), identity (§7), cancellation (§8) and the production repair (§9). Decisions 6–7 stand; **§6's fenced-lane mechanism is superseded** — see parallel-extraction-fenced-commit |
 | **Cross-platform Review accessibility** | `docs/specs/cross-platform-review-accessibility.md` | When changing Review width/columns, grouped action styling, button labels/targets, or Review/Event Detail accessibility on web, iOS, or Android |
 | **Review action contrast & sizing** | `docs/specs/review-action-contrast-and-sizing.md` | Before touching peer action colours, button sizing/reflow, or the Accept/Edit/Reject group on any platform. Supersedes decisions 5, 8 and 11 of the spec above |
 | **Calendar policy + LLM fallback** | `docs/specs/calendar-policy-llm-fallback-and-incremental-evals.md` | When changing all-day materialization, primary/fallback LLM routing, or incremental eval identity |

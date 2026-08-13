@@ -1,108 +1,182 @@
 # Specs
 
-Implementation specifications for planned or in-progress features.
+Implementation specifications for planned, in-progress and shipped features.
 
-## Active plans
+**Status as of 2026-08-12.** Rewritten after the R1–R5 review found this index
+contradicting the repository on two entries and omitting five files entirely.
+**Every file in this directory is now listed below with an explicit call.**
 
-Status as of 2026-08-12.
+---
 
-- [Production email ingestion discovery — 2026-08-12](production-email-ingestion-discovery-20260812.md) — **discovery complete; acquisition fix not implemented.** PRs #299–#301 restored production discovery, but the first real post-deploy acquisition pass still sends 10 newly discovered items to `retry` because asyncpg UUIDs cross into a JSON payload. Use this discovery plan as the gate for the next source increment; do not call production healthy until acquisition completes.
+## The status rule
 
-- [Review Queue Integrity](review-queue-integrity.md) — **planned, nothing
-  implemented.** Fixes the web Review reshuffle without page reloads, adds
-  accessible disposition animation, replaces racy concurrent event persistence
-  with parallel extraction plus fenced per-user resolution, retains structured
-  cancellation identity instead of skipping it, and defines a dry-run-first
-  repair for the known duplicate/cancelled production rows. Increments R1–R5.
+Four statuses, and the evidence for each is mechanical, not editorial:
 
-- [Foundation integrity](foundation-integrity.md) — **planned, nothing implemented.**
-  The next plan to pick up. Written after reviewing the C1–C9 batch: every defect
-  that batch repaired shares one cause — the DoD gate (`pytest -m "not integration"`)
-  never executes the system, so SQL is never run, the asyncpg pool is never opened
-  and triggers never fire. Builds a real execution gate (`scripts/verify.sh`),
-  adds schema contract tests that make the `20260809000001`/`20260809000003` class
-  of defect structurally unrepeatable, fixes the defects the review found
-  (D1–D8), and closes the 96-commit / 21-migration production gap. Increments F1–F9.
-  **Establishes two verification tiers, neither of them CI** — Tier 1 local
-  (pre-merge, real Postgres), Tier 2 staging (post-merge, real Supavisor/Render/
-  OAuth/egress) — because local Supabase has no Supavisor and therefore cannot
-  reach the pooler hypotheses at all (D8). **Start with F1.4 (D7): `.env.test`
-  and `.env.production` have no `SUPABASE_DB_URL` while `.env.production` sets
-  `ENABLE_BACKGROUND_PROCESSING=true`, so deploying `main` today hard-fails the
-  API at startup.**
-- [Post-Cutover Reliability and Scale](post-cutover-reliability-and-scale.md) — **implemented R1-R9 (#248-#251 + 8b94c53a, de9694eb, 766961d1, 9b14e0ca, a6d8d0c4) — counted health, Gmail batch, unified nudge, heartbeat+anti-starve, cutover gate, observability, recovery, drills, config tidy.** Gate before `ENABLE_BACKGROUND_PROCESSING=true` satisfied.
-- [Ingestion & recovery hardening](ingestion-recovery-hardening.md) — **built and merged (PRs #241–#247 + Aug 6 egress arch A, inc 1–10).** The history now; remaining open Finding 30 (rollback asserted, never rehearsed) and the health/efficiency residue are carried forward to the post-cutover plan above.
-- [Polling Email Ingestion v2](polling-email-ingestion-v2.md) — **built and
-  merged (#231–#235), awaiting production cutover.** Durable polling is now the
-  only ingestion path; the legacy `email_fetch` poller, APScheduler job and
-  implementation flag are gone. See its "Production cutover runbook" and "Open
-  items after cutover" sections — production Outlook has been suppressed by a
-  stuck timer row since 2026-07-31 with ~456 messages outstanding. Ordered cutover now lives in [Cutover Verification](cutover-verification-20260807.md); do not use this file's duplicated runbook section.
-- [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) — **backend delivered
-  (#236–#239 + review-fix migration) and UI projection delivered on web, iOS,
-  and Android.** Remaining: live invalidation wiring (via `live-ui-updates.md`),
-  reviewed legacy production repair, staging fault injection, and production
-  rollout.
-- [Egress and Work Scheduling](egress-and-work-scheduling.md) — **built and merged (egress arch A, 1.5 M → ~3k RPCs/day).** Busy-wait removed via single scheduler + drain-then-sleep + in-process nudge; duplicate email owner and parked photo polls removed; egress meter + `/health/egress` shipped. Remaining soft spots (dual idle model, 5 s floor invisibility, dead `num_workers`) carried forward to the post-cutover plan.
-- [Cutover Verification](cutover-verification-20260807.md) — **verified locally,
-  not deployed.** Ordered checklist (migrations → code → flag last); the sole
-  ordered gate — the two other duplicated runbook sections now point here.
-  **The gap has grown:** its line 28 records prod at code `a50e1e4e` / schema
-  `20260803000002`; `main` is now **96 commits and 21 migrations** ahead. Its
-  line 3 also states prod must stay `ENABLE_BACKGROUND_PROCESSING=false`, while
-  `.env.production:31` says `true` — reconcile before cutover. Execute via
-  [foundation-integrity.md](foundation-integrity.md) F7–F8, not directly.
-- [Direct-PG completion and live-UI hardening](direct-pg-completion-and-live-ui-hardening.md)
-  — **implemented (C1–C9: #279–#286 + 0654d4fe).** Remediation of the Aug 6–9
-  batch: the asyncpg session-pooler pool is mandatory at startup, the whole
-  worker coordination surface runs over it with the PostgREST twins deleted,
-  the LISTEN/NOTIFY WorkListener is live, executor concurrency is real on all
-  four paths, the dead code/config is purged, all three clients refresh
-  realtime auth / catch up / rejoin, Broadcast fan-out collapses to one
-  message per transaction, and the R5 schema gate compares versions instead of
-  counts. **Six defects found reviewing this batch are open** — see
-  [foundation-integrity.md](foundation-integrity.md) §2 (D1–D6). Notably the R5
-  gate still cannot fail: it greps all 14-digit versions out of
-  `supabase migration list`, which includes the *local* column, so a local-only
-  migration reads as applied (D2).
-- [Live UI updates](live-ui-updates.md) — **implemented — web #270, iOS #271,
-  Android #272**, hardened by C6 #284 (auth refresh, lifecycle catch-up,
-  terminal-channel rejoin) and C7 #285 (per-transaction fan-out collapse).
-  **Open:** the web rejoin backoff never advances past 1 s because
-  `rejoinAttempts` is re-declared by each `start()` call, so an unauthorized
-  private channel retries at 1 Hz forever; iOS and Android are correct. See
-  [foundation-integrity.md](foundation-integrity.md) D1.
-- [Photo surface removal](photo-surface-removal.md) — **implemented in #201 (2026-07-13).** Connect surfaces removed; photo-source rendering retained (see spec for restoration).
-- [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md)
-  — **implemented in #273 (2026-08-09).** One solid AAA peer-action construction per theme, intrinsic row never stacks.
-- [Cross-platform Review layout and action accessibility](cross-platform-review-accessibility.md)
-  — **implemented**, except canonical Android screenshots, which are blocked by
-  a repeatable Pixel_8 emulator crash after APK install. Decisions 5, 8 and 11
-  are superseded by the contrast/sizing spec above.
-- [OneDrive photo ingestion](onedrive-photo-ingestion.md) — **parked
-  (2026-07-13)** on cost/value. Do not re-propose without new information.
+| Status | Requires |
+|---|---|
+| **Planned** | Nothing merged. |
+| **Partially implemented** | Some increments merged. The entry **names each increment individually**. A batch is never summarised in aggregate — that is how "#306–#312 delivered R2–R5" became true-sounding and false. |
+| **Implemented** | Every increment merged, **and** a test executes each new code path against a real database or a real browser, **and** the reachability guard covers every new module, **and** the durable docs are updated. |
+| **Superseded** | Another spec, named and linked, owns the outcome now. |
+
+**An increment is not done because its PR merged. It is done when something
+that would fail if it were absent, passes.**
+
+---
+
+## Read this first
+
+- [**Stub rollback and gate repair**](stub-rollback-and-gate-repair.md) —
+  **Planned. This is the next increment; nothing else may merge before its
+  G1–G4.** Both Tier 1 gates are red on `main` (`verify.sh backend` exits 1 on
+  an order-dependent integration test; `verify.sh frontend` exits 1 on a flaky
+  timeout with three unhandled rejections). G1 removes the R2–R5 stub-ware and
+  the five undeployed empty tables. G2 pins every CHECK-constraint domain — the
+  class-killer for the two constraint truncations R2 and R4 shipped through a
+  green gate. G3 makes the integration suite order-independent and decouples
+  Tier 1 from a live Google token. G4 fails the build on unreachable modules.
+  G5 fixes eight R1 frontend defects. G6 corrects the record and prunes 161 MB
+  of eval artifacts. G7 retires the stale ingestion incident record. Carries
+  the full 17-defect register.
+
+---
+
+## Active — in dependency order
+
+1. [**Stub rollback and gate repair**](stub-rollback-and-gate-repair.md) —
+   **Planned.** G1–G7. Blocks everything below.
+
+2. [**Parallel extraction, fenced commit**](parallel-extraction-fenced-commit.md) —
+   **Planned.** P1–P4. Replaces `review-queue-integrity.md` R2 while **upholding
+   its decisions 6 and 7**: extraction stays parallel within a user and across
+   users, and every resolution write stays fenced. The duplicate race is closed
+   by optimistic concurrency on the region that actually needs it — the commit
+   re-checks the `(user_id, local_day)` candidate band its decision was
+   computed against, and recomputes if it changed. One column, one RPC, no new
+   tables, no second worker. P4 carries the one-time production duplicate
+   repair. **Depends on G1–G4.**
+
+3. [**Calendar identity and cancellation**](calendar-identity-and-cancellation.md) —
+   **Planned.** C1–C3. Replaces `review-queue-integrity.md` R3 and R4. Each
+   increment is a vertical slice — parser, canonicalizer, table, matcher, test
+   — because R3 and R4 failed by shipping schema without its writer.
+   **Depends on P1–P3 in production.**
+
+4. [**Foundation integrity**](foundation-integrity.md) — **Partially
+   implemented.** F1–F7 merged (#287–#294). F4's schema contract tests and F6's
+   migration-order guard are the most valuable assets in the repository.
+   **Open:** F7b staging worker drill and 24-hour soak; F8 production cutover;
+   and F9, which merged `prune-eval-results.sh` but was never run — tracked
+   eval results grew to 14 228 files / 161 MB, so D6 is open. Also records F4's
+   blind spot, found by this review and closed by G2: the contract enumerates
+   `SECURITY DEFINER` functions, so a status value written from Python is
+   invisible to it.
+
+5. [**Review Queue Integrity**](review-queue-integrity.md) — **Partially
+   implemented and partly superseded.** R1 partially implemented (#305) with
+   eight open defects, repaired by G5. R2–R5 not implemented and superseded as
+   above. **§1, §3, §5, §7, §8 and §9 remain the normative requirement text**
+   for the successor plans; only §6's mechanism is superseded, and it carries a
+   banner saying so.
+
+6. [**Cutover Verification**](cutover-verification-20260807.md) — **Verified
+   locally, not deployed.** The single ordered cutover checklist (migrations →
+   code → flag last). **Its recorded baseline is stale** — line 28 says
+   production is at `a50e1e4e` / schema `20260803000002`; production is
+   actually at `a9dab19b` with 80 migrations, and `main` carries 89. Refresh
+   the baseline as the first step of `foundation-integrity.md` F8, and execute
+   through F7–F8, never directly. Keep — it is the only ordered runbook.
+
+7. [**OAuth reconnect catch-up**](oauth-reconnect-catch-up.md) — **Partially
+   implemented.** Backend (#236–#239 + review-fix migration) and UI projection
+   on web, iOS and Android are delivered. **Open:** reviewed legacy production
+   repair, staging fault injection, production rollout. `calendar-identity-and-
+   cancellation.md` C3 adds `cancel_queued` to its recovery sets.
+
+---
+
+## Retiring — do not treat as active
+
+- [**Production email ingestion discovery — 2026-08-12**](production-email-ingestion-discovery-20260812.md)
+  — **Resolved; being retired by G7.** This is an incident record, not a plan,
+  and by the rules below it does not belong in this directory. Its
+  "Next implementation increment" describes a fix that **shipped the same day**
+  as #302 (`_normalize_pg_row` in `services/pg.py`) and #304, with the unit and
+  real-database regression tests it asked for — so the document reads as open
+  when it is not. G7 folds it into `docs/microsoft-graph-failure-ledger.md`,
+  verifies the 10 retry items actually completed, and forces a written decision
+  on the 12 historical `database_transient` dead letters, which have been
+  carried as "reported separately" across three documents without anyone
+  choosing.
+
+---
+
+## Implemented — kept for history
+
+Do not re-derive decisions from these; check the code. Every one of the five
+files previously missing from this index is now listed.
+
+| Spec | Shipped in |
+|---|---|
+| [Direct-PG completion and live-UI hardening](direct-pg-completion-and-live-ui-hardening.md) | C1–C9 (#279–#286 + `0654d4fe`). Follow-on defects D1–D6 tracked in `foundation-integrity.md` §2. |
+| [Live UI updates](live-ui-updates.md) | web #270, iOS #271, Android #272; hardened by #284, #285. **Known residue:** a single channel failure can emit both `CLOSED` and `CHANNEL_ERROR`, scheduling two rejoins. Add a bounded-attempt cap next time this file is opened. |
+| [Direct Postgres work transport](direct-postgres-work-transport.md) | Inc0–6 (#262–#269). |
+| [Post-cutover reliability and scale](post-cutover-reliability-and-scale.md) | R1–R9. |
+| [Ingestion & recovery hardening](ingestion-recovery-hardening.md) | #241–#247 + Aug 6 egress work. |
+| [Polling email ingestion v2](polling-email-ingestion-v2.md) | #231–#235. Durable polling is the only ingestion path. **Its duplicated cutover runbook section is superseded** — use `cutover-verification-20260807.md`. |
+| [Outlook email support](outlook-email-support.md) | Implemented. Reference behaviour now lives in `docs/gmail-integration.md` and `docs/microsoft-graph-failure-ledger.md`. |
+| [Reliable email ingestion fix-forward](reliable-email-ingestion-fix-forward.md) | Implemented (2026-07-12). Largely subsumed by polling v2 above; kept only as the record of why cursors and folder inclusion work the way they do. |
+| [Review-list quality fixes](review-list-quality-fixes.md) | Implemented through #194. **Partly superseded:** its "Interaction with existing events" trade-off assumed the user's calendar is the source of truth for cancellations. `review-queue-integrity.md` decision 10 overrides that for pending Review rows; `calendar-identity-and-cancellation.md` C3 implements the override. |
+| [Calendar policy, LLM fallback and incremental evals](calendar-policy-llm-fallback-and-incremental-evals.md) | WS1–WS7. Stage A/B full spend recorded as provisional in its own header — that caveat is still open and belongs to whoever next changes model routing. |
+| [Warmth design system](warmth-design-system.md) | Implemented. Canonical tokens are `design/tokens.json` and `docs/brand-guide.md`; treat those as the source of truth over this file. |
+| [Egress and work scheduling](egress-and-work-scheduling.md) | 1.5 M → ~3 k RPCs/day. |
+| [Review action contrast, sizing and grouping](review-action-contrast-and-sizing.md) | #273. |
+| [Cross-platform Review layout and action accessibility](cross-platform-review-accessibility.md) | Implemented except canonical Android screenshots, blocked by a repeatable Pixel_8 emulator crash after APK install. Decisions 5, 8 and 11 superseded by the contrast/sizing spec. |
+| [Photo surface removal](photo-surface-removal.md) | #201. |
+
+## Parked
+
+- [OneDrive photo ingestion](onedrive-photo-ingestion.md) — parked 2026-07-13
+  on cost/value. Do not re-propose without new information.
+
+---
+
+## Nothing was deleted, and why
+
+Every implemented spec is retained: they carry the *reasoning* behind decisions
+the code cannot express, and several are still cited as normative by active
+plans. The two files that genuinely do not belong here are handled explicitly
+rather than left to rot — the ingestion incident record moves to the failure
+ledger under G7, and R2–R5's superseded mechanism carries an in-file banner so
+a reader cannot start building it by accident.
+
+The failure mode this directory has to avoid is not too many files. It is a
+file whose header says something the repository does not.
+
+---
 
 ## What belongs here
 
-- **Specs / implementation plans** — a detailed, step-by-step design for a feature
-  that hasn't been built yet (or is being built). Written to be handed to a developer
-  who then implements it. Concrete: file paths, function signatures, SQL, edge cases.
+**Specs / implementation plans** — a detailed, step-by-step design for something
+not yet built, written to be handed to a developer. Concrete: file paths,
+function signatures, SQL, edge cases, and the test that must fail first.
 
-## What does NOT belong here
+## What does not
 
-- **Reference docs** (how a shipped feature works today) go in `docs/` — e.g.
+- **Reference docs** (how a shipped feature works today) go in `docs/` —
   `docs/gmail-integration.md`, `docs/database-schema.md`.
-- **Product requirements / architecture** live in the root `PRD_ARCH.md`.
+- **Incident and postmortem records** go in the relevant ledger, e.g.
+  `docs/microsoft-graph-failure-ledger.md`.
+- **Product requirements and architecture** live in the root `PRD_ARCH.md`.
 
 ## Lifecycle
 
 1. Write the spec here and get it reviewed.
-2. Implement it (following the worktree + PR workflow in `CLAUDE.md`).
-3. Once shipped, fold the durable "how it works" parts into the relevant `docs/`
-   reference file and update `docs/database-schema.md` / `CLAUDE.md` as needed.
-   The spec can then be marked **Implemented** (keep it for history) rather than
-   duplicating reference docs.
+2. Implement it (worktree + PR workflow in `CLAUDE.md`).
+3. Fold the durable "how it works" parts into `docs/`, update
+   `docs/database-schema.md` and `CLAUDE.md`, then mark the spec
+   **Implemented** against the rule at the top of this file.
 
 ## Naming
 
-`docs/specs/<feature-slug>.md` — e.g. `outlook-email-support.md`.
+`docs/specs/<feature-slug>.md`.

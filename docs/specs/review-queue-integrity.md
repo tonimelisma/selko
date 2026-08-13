@@ -1,6 +1,27 @@
 # Review Queue Integrity
 
-**Status:** Planned; nothing implemented.
+**Status:** Partially implemented, and partly superseded. Corrected 2026-08-12
+after reviewing what PRs #305–#312 actually delivered. Per increment:
+
+| Increment | Status | Where it lives now |
+|---|---|---|
+| **R1** — stable animated web queue | **Partially implemented** (#305). Ordering helper, lane state and disposition wrapper are real. Eight defects, two of them high severity, and eight of the fourteen required tests are missing. | Repaired by [`stub-rollback-and-gate-repair.md`](stub-rollback-and-gate-repair.md) **G5** (defects D-R1.1 … D-R1.8). |
+| **R2** — staged, fenced event resolution | **Not implemented.** #306–#308 merged three tables, six RPCs and a worker that nothing instantiates. The duplicate-event race this plan exists to fix is untouched. Objects dropped by G1. | **Superseded by** [`parallel-extraction-fenced-commit.md`](parallel-extraction-fenced-commit.md). |
+| **R3** — identity-aware correlation | **Not implemented.** #309 merged two permanently empty tables. No canonicalizer, no provider parsing, no ladder. Objects dropped by G1. | **Superseded by** [`calendar-identity-and-cancellation.md`](calendar-identity-and-cancellation.md) C1–C2. |
+| **R4** — automatic cancellation | **Not implemented.** #310 merged 50 lines of DDL and no behaviour, and truncated two live CHECK constraints (repaired by #312). | **Superseded by** [`calendar-identity-and-cancellation.md`](calendar-identity-and-cancellation.md) C3. |
+| **R5** — reviewed data repair | **Not implemented.** #311 merged a script that opens no database connection and exits 0 from `--apply`. Deleted by G1. | **Superseded by** [`parallel-extraction-fenced-commit.md`](parallel-extraction-fenced-commit.md) P4. |
+
+**This document remains normative for its requirements.** §1 (outcomes), §3
+(decisions), §5 (web Review), §7 (identity), §8 (cancellation) and §9 (repair)
+are correct and are the requirement text the successor plans build against.
+**Decisions 6 and 7 in particular are upheld, not overridden** — extraction
+stays parallel and every resolution write stays fenced.
+
+What changed is only the §6 *mechanism*. Fenced per-user lanes — three tables,
+six RPCs, a second queue and a second worker — are replaced by optimistic
+concurrency on the read-modify-write window that actually needs it: the commit
+re-checks the `(user_id, local_day)` candidate set it was computed against, and
+recomputes if it changed. See `parallel-extraction-fenced-commit.md` §2.
 
 **Scope:** Web Review stability and disposition animation, durable email-to-event
 resolution, duplicate prevention, cancellation handling, and a one-time repair
@@ -344,6 +365,30 @@ Do not test animation with real sleeps. Inject/export duration and use fake
 timers plus `outroend` or a test callback.
 
 ## 6. Workstream B — durable extraction and fenced resolution
+
+> **SUPERSEDED — do not build this section.** The *outcome* (§1.4: two emails
+> about the same event cannot create two events) still stands. The *mechanism*
+> below — `email_event_resolutions`, `email_event_resolution_items`,
+> `event_resolution_lanes` and their six RPCs — was built in #306–#308, wired to
+> nothing, and dropped again by `stub-rollback-and-gate-repair.md` G1.
+>
+> Build [`parallel-extraction-fenced-commit.md`](parallel-extraction-fenced-commit.md)
+> instead. **§6.1's goal is right and is kept**: extraction stays parallel and
+> resolution is serialized. What §6.2–§6.4 get wrong is the granularity. The
+> section serializes *the whole email* behind a per-user lane, when the only
+> region that must be atomic is the read-modify-write inside
+> `find_matching_event → create_event` — one `(user_id, local_day)` candidate
+> band, per extracted event.
+>
+> Because that region contains an LLM call, it cannot be locked (§3.1 is right
+> about that). It can, however, be committed *optimistically*: read and compute
+> unlocked, then commit only if the candidate band is unchanged, and recompute
+> if it is not. That needs no staging table, no lane, no second worker, and no
+> queue — and unlike a lane it does not serialize two emails about different
+> days.
+>
+> §6.5 (timeout and shutdown) survives intact as
+> `parallel-extraction-fenced-commit.md` §2.4 and P1.
 
 ### 6.1 Why two stages
 
