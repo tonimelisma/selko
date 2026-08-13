@@ -2,7 +2,10 @@
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+import ast
 import json
+from pathlib import Path
+import re
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -38,6 +41,96 @@ TRIGGER_ONLY_FUNCTIONS = {
     "trg_events_broadcast",
     "trg_integrations_broadcast",
 }
+
+
+# Every enumerated CHECK domain in public is pinned here. Adding a value is a
+# one-line edit, while removing one requires checking every writer first.
+EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
+    ("action_history", "action_type"): {"create", "update", "delete"},
+    ("action_history", "entity_type"): {"event", "sender_rule"},
+    ("attachments", "ingestion_status"): {
+        "pending", "processing", "stored", "unsupported", "retry", "dead_letter",
+    },
+    ("calendar_sync_log", "action"): {"created", "updated", "deleted"},
+    ("email_folders", "classification_decision"): {"include", "exclude", "uncertain"},
+    ("email_folders", "folder_kind"): {"label", "folder"},
+    ("email_folders", "provider"): {"gmail", "outlook"},
+    ("email_ingestion_items", "acquisition_status"): {
+        "pending", "processing", "completed", "retry", "dead_letter", "removed",
+    },
+    ("email_ingestion_items", "change_kind"): {"upsert", "membership_change", "removed"},
+    ("email_ingestion_items", "provider"): {"gmail", "outlook"},
+    ("email_sync_runs", "provider"): {"gmail", "outlook"},
+    ("email_sync_runs", "run_kind"): {
+        "initial", "incremental", "daily_reconcile", "weekly_reconcile", "manual_repair",
+    },
+    ("email_sync_runs", "status"): {"running", "completed", "failed", "abandoned"},
+    ("email_sync_state", "provider"): {"gmail", "outlook"},
+    ("emails", "processing_outcome"): {
+        "no_event", "event_matched", "event_created", "event_updated",
+        "event_created_and_updated", "event_cancelled", "calendar_invite",
+    },
+    ("emails", "processing_status"): {"pending", "processing", "processed", "failed", "skipped"},
+    ("event_sources", "source_origin"): {"email", "google_calendar", "google_photos"},
+    ("event_sources", "source_type"): {"new_invitation", "update", "cancellation", "reminder", "unknown"},
+    ("events", "calendar_sync_action"): {"upsert", "cancel"},
+    ("events", "importance"): {"action_required", "fyi"},
+    ("events", "status"): {
+        "pending_review", "pending_change", "approved", "rejected", "cancelled",
+        "cancel_queued", "syncing", "synced", "sync_failed",
+    },
+    ("events", "sync_failure_code"): {
+        "oauth_required", "oauth_scope_required", "provider_transient", "rate_limited",
+        "invalid_event", "permission_denied", "unknown",
+    },
+    ("graph_api_failures", "graph_surface"): {"outlook_mail", "onedrive"},
+    ("integration_recoveries", "reason"): {"initial_connection", "reauthorization"},
+    ("integration_recoveries", "status"): {
+        "pending", "processing", "waiting", "completed", "completed_with_errors",
+        "failed", "superseded",
+    },
+    ("operational_incidents", "severity"): {"warning", "critical"},
+    ("operational_incidents", "status"): {"open", "resolved"},
+    ("photos", "processing_status"): {"pending", "processing", "processed", "failed", "skipped"},
+    ("scheduled_tasks", "status"): {"pending", "processing", "completed", "failed"},
+    ("scheduled_tasks", "task_type"): {"photo_fetch", "email_fetch"},
+    ("sender_rules", "action"): {"auto_approve", "ignore"},
+    ("user_calendar_settings", "all_day_display_mode"): {
+        "all_day", "day_9_to_5", "morning_8_to_9", "custom",
+    },
+}
+
+
+def _status_literals_in_write(node: ast.AST) -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+
+    def inspect_mapping(mapping: ast.Dict) -> None:
+        for key, value in zip(mapping.keys, mapping.values):
+            if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
+                continue
+            if key.value not in {"processing_status", "status", "acquisition_status", "ingestion_status", "sync_status"}:
+                continue
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                found.append((key.value, value.value))
+
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call) or not isinstance(child.func, ast.Attribute):
+            continue
+        if child.func.attr in {"insert", "update", "upsert"}:
+            for argument in child.args:
+                if isinstance(argument, ast.Dict):
+                    inspect_mapping(argument)
+        elif child.func.attr == "eq" and len(child.args) >= 2:
+            key, value = child.args[:2]
+            if (
+                isinstance(key, ast.Constant)
+                and isinstance(key.value, str)
+                and key.value in {"processing_status", "status", "acquisition_status", "ingestion_status", "sync_status"}
+                and isinstance(value, ast.Constant)
+                and isinstance(value.value, str)
+            ):
+                found.append((key.value, value.value))
+    return found
 
 
 async def _seed_context(conn) -> ContractContext:
@@ -447,3 +540,55 @@ async def _exercise_calendar_settings_triggers(conn, context):
 
 async def _exercise_user_triggers(conn, context):
     await conn.execute("UPDATE public.users SET display_name = 'updated trigger user' WHERE id = $1", context.user_id)
+
+
+@pytest.mark.asyncio
+async def test_check_constraint_domains_are_pinned(pg_pool):
+    rows = await pg_pool.fetch(
+        """
+        SELECT rel.relname AS table_name,
+               att.attname AS column_name,
+               pg_get_constraintdef(con.oid) AS definition
+        FROM pg_constraint con
+        JOIN pg_class rel ON rel.oid = con.conrelid
+        JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+        JOIN unnest(con.conkey) AS k(attnum) ON true
+        JOIN pg_attribute att ON att.attrelid = rel.oid AND att.attnum = k.attnum
+        WHERE nsp.nspname = 'public'
+          AND con.contype = 'c'
+          AND pg_get_constraintdef(con.oid) LIKE '%ANY (ARRAY[%'
+        ORDER BY 1, 2
+        """
+    )
+    actual = {
+        (row["table_name"], row["column_name"]): set(re.findall(r"'([^']*)'::text", row["definition"]))
+        for row in rows
+    }
+    assert set(actual) == set(EXPECTED_CHECK_DOMAINS), (
+        f"missing={sorted(set(EXPECTED_CHECK_DOMAINS) - set(actual))}, "
+        f"unexpected={sorted(set(actual) - set(EXPECTED_CHECK_DOMAINS))}"
+    )
+    assert actual == EXPECTED_CHECK_DOMAINS
+
+
+@pytest.mark.asyncio
+async def test_status_literals_in_python_are_permitted():
+    allowed_by_column: dict[str, set[str]] = {}
+    for (_, column), values in EXPECTED_CHECK_DOMAINS.items():
+        allowed_by_column.setdefault(column, set()).update(values)
+    # integrations.status is a PostgreSQL enum rather than a CHECK domain.
+    allowed_by_column["status"].update({"active", "expired", "revoked", "error"})
+
+    backend_root = Path(__file__).resolve().parents[2]
+    writers: list[tuple[Path, str, str]] = []
+    for source_path in sorted((backend_root / "selko").rglob("*.py")):
+        tree = ast.parse(source_path.read_text(), filename=str(source_path))
+        for key, value in _status_literals_in_write(tree):
+            writers.append((source_path, key, value))
+
+    violations = [
+        f"{path}:{key}={value!r}"
+        for path, key, value in writers
+        if value not in allowed_by_column.get(key, set())
+    ]
+    assert not violations, "status literals are outside their pinned domains: " + ", ".join(violations)
