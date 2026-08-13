@@ -284,6 +284,15 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 
 **RLS Policies:** Users manage own event sources only (via `events.user_id`).
 
+### `event_repair_audit`
+
+Service-only, append-only audit rows for the reviewed duplicate/cancellation
+repair tool. It stores UUIDs, action, reason, actor, and content-free
+pre-change hashes/counts; it does not store email or event content.
+
+**RLS:** Enabled; all access is revoked from `anon` and `authenticated` and
+granted to `service_role` only.
+
 ### `sender_rules`
 
 Per-user rules for handling emails from specific senders or domains.

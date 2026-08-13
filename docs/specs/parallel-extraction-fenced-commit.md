@@ -1,6 +1,8 @@
 # Parallel Extraction, Fenced Commit
 
-**Status:** P1 and P2 implemented in this increment; P3–P4 remain planned.
+**Status:** P1–P3 are implemented. P4's guarded repair tooling is implemented;
+the production repair itself remains intentionally unapplied pending the
+documented seven-day production observation and explicit operator approval.
 
 **Written:** 2026-08-12.
 
