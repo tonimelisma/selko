@@ -60,6 +60,21 @@ def _make_extraction(events=None, events_found=True):
     )
 
 
+@pytest.fixture(autouse=True)
+def stub_fenced_commit_for_legacy_unit_cases(monkeypatch):
+    """Keep legacy matching tests independent of the database RPC contract.
+
+    Integration tests exercise the real function.  These cases are focused on
+    normalization, matching, and decision counts, so they provide the same
+    successful RPC response a claimed test email would receive.
+    """
+    def fake_commit(client, email_id, locked_by, lock_generation, decisions, terminal="processed"):
+        client._extraction_decisions = decisions
+        return {"fenced": False, "applied": len(decisions), "event_ids": []}
+
+    monkeypatch.setattr("selko.services.events._commit_email_extraction", fake_commit)
+
+
 class TestMarkEmailStatus:
     """Tests for mark_email_status helper."""
 
@@ -216,7 +231,7 @@ class TestSaveExtractedEvents:
 
         assert num_new == 1
         assert num_updated == 0
-        mock_create.assert_called_once()
+        assert mock_client._extraction_decisions[0]["action"] == "create"
 
     def test_skips_event_with_null_start_datetime(self):
         """Regression: events with no start_datetime must not be created or matched."""
@@ -309,10 +324,11 @@ class TestSaveExtractedEvents:
                 mock_client, mock_gateway, "user-1", "email-1", extraction, current_time=FIXED_NOW
             )
 
-        # Source truth stays in extracted_data arg; min-duration is applied on change_set
-        source_data = mock_gcal.call_args[0][2]
+        # Source truth stays in extracted_data; min-duration is applied on change_set
+        decision = mock_client._extraction_decisions[0]
+        source_data = decision["source"]["extracted_data"]
         assert source_data["all_day"] is False  # extraction default is timed
-        applied_change_set = mock_gcal.call_args[0][6]
+        applied_change_set = EventChangeSet.model_validate(decision["source"]["change_set"])
         start_after = next(
             c.after for c in applied_change_set.changes if c.field == "start_datetime"
         )
@@ -364,8 +380,9 @@ class TestSaveExtractedEvents:
 
         assert num_new == 0
         assert num_updated == 1
-        mock_gcal.assert_called_once()
-        assert mock_gcal.call_args[0][4] == "abc-123"
+        decision = mock_client._extraction_decisions[0]
+        assert decision["action"] == "create"
+        assert decision["fields"]["google_calendar_event_id"] == "abc-123"
 
     def test_proposes_local_change_when_material(self):
         from selko.services.event_diff import EventChangeSet, FieldChange
@@ -405,7 +422,7 @@ class TestSaveExtractedEvents:
 
         assert num_new == 0
         assert num_updated == 1
-        mock_propose.assert_called_once()
+        assert mock_client._extraction_decisions[0]["action"] == "update"
 
     def test_passes_recency_context_to_propose_event_update(self):
         """Regression: the email's date_sent and the matched event's newest
@@ -603,7 +620,7 @@ class TestSaveExtractedEvents:
 
         assert num_new == 1
         assert num_updated == 0
-        mock_create.assert_called_once()
+        assert mock_client._extraction_decisions[0]["action"] == "create"
 
     def test_keeps_timezone_aware_events_inside_cutoff_window(self):
         mock_client = MagicMock()
@@ -626,7 +643,7 @@ class TestSaveExtractedEvents:
 
         assert num_new == 1
         assert num_updated == 0
-        mock_create.assert_called_once()
+        assert mock_client._extraction_decisions[0]["action"] == "create"
 
 class TestProcessEmailPipeline:
     """Tests for the slimmed-down process_email_for_events orchestrator."""
@@ -1046,8 +1063,8 @@ class TestPastEventFiltering:
         # Only the future event should be created
         assert num_new == 1
         assert num_updated == 0
-        mock_create.assert_called_once()
-        created_data = mock_create.call_args[0][2]
+        assert len(mock_client._extraction_decisions) == 1
+        created_data = mock_client._extraction_decisions[0]["fields"]
         assert created_data["title"] == "Future Event"
 
     def test_keeps_recent_past_events(self):
@@ -1070,7 +1087,7 @@ class TestPastEventFiltering:
             )
 
         assert num_new == 1
-        mock_create.assert_called_once()
+        assert len(mock_client._extraction_decisions) == 1
 
 
 class TestFetchBaselineInfoDate:

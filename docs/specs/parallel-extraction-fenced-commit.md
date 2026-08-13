@@ -1,6 +1,6 @@
 # Parallel Extraction, Fenced Commit
 
-**Status:** Planned; nothing implemented.
+**Status:** P1 implemented in this increment; P2–P4 remain planned.
 
 **Written:** 2026-08-12.
 
@@ -13,7 +13,7 @@ fenced)**. What it discards is R2's *mechanism*: three tables, six RPCs, a
 second queue and a second worker.
 
 **Depends on:** [`stub-rollback-and-gate-repair.md`](stub-rollback-and-gate-repair.md)
-G1–G4. Do not start P1 until the gate is green three times consecutively.
+G1–G4, which are merged and were green three times consecutively before P1.
 
 ---
 

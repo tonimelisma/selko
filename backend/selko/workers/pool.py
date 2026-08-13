@@ -31,7 +31,6 @@ from selko.services.integrations import IntegrationError, claim_integration_reco
 from selko.services.emails import (
     EmailError,
     claim_pending_email,
-    complete_email_processing,
     fail_email_processing,
 )
 from selko.services.events import (
@@ -481,11 +480,10 @@ class WorkerPool:
                 process_email(client, self.config, email),
                 timeout=self.config.email_processing_timeout,
             )
-            # Sender-ignored and calendar-invite emails are already left in a
-            # terminal "skipped" state by process_email_for_events; don't
-            # overwrite that back to "processed".
-            if not (result or {}).get("skipped"):
-                await complete_email_processing(self.pg_pool, email_id)
+            # The extraction RPC terminalizes the email atomically with its
+            # event decisions.  A fenced outcome is normal: a replacement
+            # worker owns the lease and this timed-out/zombie worker must not
+            # retry or overwrite it.
             logger.info(f"{worker_id}: Completed email {email_id}")
             circuit_breaker.record_success("llm")
 

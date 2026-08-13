@@ -54,6 +54,40 @@ class EventMatch:
         return None
 
 
+def _commit_email_extraction(
+    supabase_client: Client,
+    email_id: str,
+    locked_by: str,
+    lock_generation: int,
+    decisions: list[dict[str, Any]],
+    terminal: str = "processed",
+) -> dict[str, Any]:
+    """Commit one extraction envelope through the lease-fenced RPC."""
+    response = supabase_client.rpc(
+        "commit_email_extraction",
+        {
+            "p_email_id": email_id,
+            "p_worker_id": locked_by,
+            "p_generation": lock_generation,
+            "p_decisions": decisions,
+            "p_terminal": terminal,
+        },
+    ).execute()
+    result = response.data
+    if isinstance(result, list):
+        result = result[0] if result else {}
+    if not isinstance(result, dict):
+        raise EventsError("commit_email_extraction returned an invalid result")
+    if result.get("fenced"):
+        logger.warning(
+            "Extraction commit fenced for email %s (worker=%s generation=%s)",
+            email_id,
+            locked_by,
+            lock_generation,
+        )
+    return result
+
+
 def mark_email_status(
     supabase_client: Client,
     email_id: str,
@@ -228,6 +262,9 @@ def save_extracted_events(
     *,
     treat_as_civil: bool = True,
     email_date_sent: Optional[str] = None,
+    locked_by: str = "",
+    lock_generation: int = 0,
+    commit_result: Optional[dict[str, Any]] = None,
 ) -> tuple[int, int]:
     """Deduplicate and persist extracted events into New or Changes lanes.
 
@@ -252,6 +289,7 @@ def save_extracted_events(
     """
     num_new = 0
     num_updated = 0
+    decisions: list[dict[str, Any]] = []
     # Load timezone + all-day policy once per email (lean; no GCal list).
     all_day_policy, user_timezone = calendars.get_all_day_policy_and_timezone(
         supabase_client, user_id
@@ -303,14 +341,16 @@ def save_extracted_events(
         )
 
         if match is None:
-            create_event(
-                supabase_client,
-                user_id,
-                event_data,
-                email_id,
-                initial_status=initial_status,
-                source_event_data=source_event_data,
-            )
+            decisions.append({
+                "action": "create",
+                "event_id": None,
+                "fields": {**event_data, "status": initial_status},
+                "source": {
+                    "email_id": email_id,
+                    "extracted_data": source_event_data,
+                    "source_type": "new_invitation",
+                },
+            })
             num_new += 1
             continue
 
@@ -379,91 +419,89 @@ def save_extracted_events(
                 if change.field == "end_datetime":
                     change.after = fixed_end
 
-        # extracted_data keeps LLM source truth; change_set carries materialized deltas
-        source_proposal = source_event_data
+        # extracted_data keeps LLM source truth; change_set carries materialized deltas.
+        source = {
+            "email_id": email_id,
+            "extracted_data": source_event_data,
+            "source_type": source_type,
+            "event_snapshot_before": match.baseline,
+            "change_set": change_set.model_dump_jsonable(),
+        }
 
-        if auto_apply:
-            if match.is_gcal:
-                event_id = create_pending_change_from_gcal(
-                    supabase_client,
-                    user_id,
-                    source_proposal,
-                    email_id,
-                    match.gcal_id or "",
-                    match.baseline,
-                    change_set,
-                    source_type=source_type,
-                )
-                apply_pending_change(supabase_client, event_id)
-            else:
-                # Collapse: if baseline not yet in calendar (pending_review), just update it
-                if match.baseline.get("status") == "pending_review":
-                    # Merge better info into the single suggested event
-                    if proposed_fields:
-                        supabase_client.table("events").update(proposed_fields).eq("id", match.match_id).execute()
-                    ensure_email_event_source(
-                        supabase_client,
-                        event_id=match.match_id,
-                        email_id=email_id,
-                        extracted_data=source_proposal,
-                        source_type=source_type,
-                    )
-                    # Refresh attribution
-                    attribution = generate_source_attribution(supabase_client, match.match_id)
-                    if attribution:
-                        supabase_client.table("events").update({"source_attribution": attribution}).eq("id", match.match_id).execute()
-                else:
-                    propose_local_change(
-                        supabase_client,
-                        match.match_id,
-                        source_proposal,
-                        email_id,
-                        change_set,
-                        source_type=source_type,
-                    )
-                    apply_pending_change(supabase_client, match.match_id)
-            num_updated += 1
-            continue
-
-        if match.is_gcal:
-            create_pending_change_from_gcal(
-                supabase_client,
-                user_id,
-                source_proposal,
-                email_id,
-                match.gcal_id or "",
-                match.baseline,
-                change_set,
-                source_type=source_type,
-            )
-            num_updated += 1
+        if auto_apply and match.is_gcal:
+            applied = apply_asserted_fields(match.baseline, proposed_fields)
+            decisions.append({
+                "action": "create",
+                "event_id": None,
+                "fields": {
+                    **applied,
+                    "status": "approved",
+                    "google_calendar_event_id": match.gcal_id,
+                },
+                "source": {
+                    **source,
+                    "extra_sources": [{
+                        "source_origin": "google_calendar",
+                        "google_calendar_source_event_id": match.gcal_id,
+                        "source_type": source_type,
+                        "extracted_data": {"google_calendar_event_id": match.gcal_id},
+                        "change_set": change_set.model_dump_jsonable(),
+                    }],
+                },
+            })
+        elif match.is_gcal:
+            decisions.append({
+                "action": "create",
+                "event_id": None,
+                "fields": {
+                    **match.baseline,
+                    "status": "pending_change",
+                    "google_calendar_event_id": match.gcal_id,
+                },
+                "source": {
+                    **source,
+                    "extra_sources": [{
+                        "source_origin": "google_calendar",
+                        "google_calendar_source_event_id": match.gcal_id,
+                        "source_type": source_type,
+                        "extracted_data": {"google_calendar_event_id": match.gcal_id},
+                        "change_set": change_set.model_dump_jsonable(),
+                    }],
+                },
+            })
+        elif match.baseline.get("status") == "pending_review":
+            decisions.append({
+                "action": "update",
+                "event_id": match.match_id,
+                "fields": proposed_fields,
+                "source": source,
+            })
+        elif auto_apply:
+            applied = apply_asserted_fields(match.baseline, proposed_fields)
+            decisions.append({
+                "action": "update",
+                "event_id": match.match_id,
+                "fields": {**applied, "status": "approved"},
+                "source": {**source, "replace_pending_proposal": True},
+            })
         else:
-            # Collapse pending_review: better info collapses into one suggested event
-            if match.baseline.get("status") == "pending_review":
-                if proposed_fields:
-                    supabase_client.table("events").update(proposed_fields).eq("id", match.match_id).execute()
-                ensure_email_event_source(
-                    supabase_client,
-                    event_id=match.match_id,
-                    email_id=email_id,
-                    extracted_data=source_proposal,
-                    source_type=source_type,
-                )
-                attribution = generate_source_attribution(supabase_client, match.match_id)
-                if attribution:
-                    supabase_client.table("events").update({"source_attribution": attribution}).eq("id", match.match_id).execute()
-                num_updated += 1
-            else:
-                propose_local_change(
-                    supabase_client,
-                    match.match_id,
-                    source_proposal,
-                    email_id,
-                    change_set,
-                    source_type=source_type,
-                )
-                num_updated += 1
+            decisions.append({
+                "action": "update",
+                "event_id": match.match_id,
+                "fields": {"status": "pending_change"},
+                "source": {**source, "replace_pending_proposal": True},
+            })
+        num_updated += 1
 
+    outcome = _commit_email_extraction(
+        supabase_client,
+        email_id,
+        locked_by,
+        lock_generation,
+        decisions,
+    )
+    if commit_result is not None:
+        commit_result.update(outcome)
     return num_new, num_updated
 
 
@@ -496,6 +534,8 @@ def process_email_for_events(
         EventsError: If processing fails.
     """
     gateway.for_user(user_id).for_email(email_id)
+    locked_by = str((email_row or {}).get("locked_by") or "")
+    lock_generation = int((email_row or {}).get("lock_generation") or 0)
 
     try:
         mark_email_status(supabase_client, email_id, "processing")
@@ -515,6 +555,11 @@ def process_email_for_events(
 
         if rule_action == "ignore":
             logger.info(f"Sender {sender_email} is ignored, skipping event extraction")
+            commit = _commit_email_extraction(
+                supabase_client, email_id, locked_by, lock_generation, [], "skipped"
+            )
+            if commit.get("fenced"):
+                return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True, "fenced": True}
             mark_email_status(supabase_client, email_id, "skipped")
             return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
 
@@ -530,6 +575,12 @@ def process_email_for_events(
         invite_method = ics_parser.detect_invite_method(attachments)
         if email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVITE_METHODS:
             result = {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
+            commit = _commit_email_extraction(
+                supabase_client, email_id, locked_by, lock_generation, [], "skipped"
+            )
+            if commit.get("fenced"):
+                result["fenced"] = True
+                return result
             mark_email_status(
                 supabase_client, email_id, "skipped",
                 outcome="calendar_invite",
@@ -552,6 +603,12 @@ def process_email_for_events(
         if not extraction.events_found or not extraction.events:
             logger.info("No events found in email")
             result = {"num_events": 0, "num_new": 0, "num_updated": 0}
+            commit = _commit_email_extraction(
+                supabase_client, email_id, locked_by, lock_generation, [], "processed"
+            )
+            if commit.get("fenced"):
+                result["fenced"] = True
+                return result
             mark_email_status(
                 supabase_client,
                 email_id,
@@ -561,12 +618,23 @@ def process_email_for_events(
             )
             return result
 
+        commit_result: dict[str, Any] = {}
         num_new, num_updated = save_extracted_events(
             supabase_client, gateway, user_id, email_id, extraction,
             initial_status=initial_status,
             treat_as_civil=not from_ics,
             email_date_sent=email_metadata.get("date_sent"),
+            locked_by=locked_by,
+            lock_generation=lock_generation,
+            commit_result=commit_result,
         )
+        if commit_result.get("fenced"):
+            return {
+                "num_events": len(extraction.events),
+                "num_new": 0,
+                "num_updated": 0,
+                "fenced": True,
+            }
 
         if num_new and num_updated:
             outcome = "event_created_and_updated"
