@@ -7,6 +7,60 @@ import pytest
 from selko.services import events, event_processing
 
 
+def _seed_event(client, user_id, event_data, email_id, status="pending_review"):
+    """Seed event/source rows directly from the test boundary.
+
+    Production event creation is owned by ``commit_email_extraction``; tests
+    that exercise undo/attribution seed their starting state explicitly.
+    """
+    row = {
+        "user_id": user_id,
+        "title": event_data.get("title"),
+        "start_datetime": event_data.get("start_datetime"),
+        "end_datetime": event_data.get("end_datetime"),
+        "all_day": event_data.get("all_day", False),
+        "location": event_data.get("location"),
+        "description": event_data.get("description"),
+        "importance": event_data.get("importance", "action_required"),
+        "status": status,
+    }
+    event_id = client.table("events").insert(row).execute().data[0]["id"]
+    client.table("event_sources").insert({
+        "event_id": event_id,
+        "email_id": email_id,
+        "source_origin": "email",
+        "source_type": "new_invitation",
+        "extracted_data": event_data,
+        "event_snapshot_before": None,
+    }).execute()
+    attribution = events.generate_source_attribution(client, event_id)
+    if attribution:
+        client.table("events").update({"source_attribution": attribution}).eq(
+            "id", event_id
+        ).execute()
+    return event_id
+
+
+def _seed_event_update(client, event_id, email_id, updated_data):
+    existing = client.table("events").select("*").eq("id", event_id).single().execute().data
+    snapshot = {
+        key: existing.get(key)
+        for key in (
+            "title", "start_datetime", "end_datetime", "all_day",
+            "location", "description", "importance", "status",
+        )
+    }
+    client.table("events").update(updated_data).eq("id", event_id).execute()
+    client.table("event_sources").insert({
+        "event_id": event_id,
+        "email_id": email_id,
+        "source_origin": "email",
+        "source_type": "update",
+        "extracted_data": updated_data,
+        "event_snapshot_before": snapshot,
+    }).execute()
+
+
 @pytest.mark.integration
 @pytest.mark.development
 class TestEventProcessingMocked:
@@ -374,12 +428,7 @@ class TestEventSources:
             "source_quote": "Test quote from email",
         }
         
-        event_id = events.create_event(
-            authenticated_client,
-            test_user_id,
-            event_data,
-            email_id
-        )
+        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
         
         # Verify event_source was created
         sources = authenticated_client.table("event_sources").select("*").eq(
@@ -414,12 +463,7 @@ class TestEventSources:
             "source_quote": "Quote from email",
         }
         
-        event_id = events.create_event(
-            authenticated_client,
-            test_user_id,
-            event_data,
-            email_id
-        )
+        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
         
         # Check attribution was generated
         event = authenticated_client.table("events").select("*").eq(
@@ -463,12 +507,7 @@ class TestEventUndoRedo:
             "source_quote": "Initial meeting invite",
         }
 
-        event_id = events.create_event(
-            authenticated_client,
-            test_user_id,
-            initial_event_data,
-            email_id
-        )
+        event_id = _seed_event(authenticated_client, test_user_id, initial_event_data, email_id)
 
         # Create second email with update
         email_data_2 = {
@@ -493,14 +532,7 @@ class TestEventUndoRedo:
             "description": "Updated description",
         }
 
-        events.update_event(
-            authenticated_client,
-            mock_llm_gateway,
-            event_id,
-            updated_data,
-            email_id_2,
-            "update"
-        )
+        _seed_event_update(authenticated_client, event_id, email_id_2, updated_data)
 
         # Verify event was updated
         updated_event = authenticated_client.table("events").select("*").eq(
@@ -566,12 +598,7 @@ class TestEventUndoRedo:
             "description": "Celebration",
         }
 
-        event_id = events.create_event(
-            authenticated_client,
-            test_user_id,
-            event_data,
-            email_id
-        )
+        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
 
         # Create second email
         email_data_2 = {
@@ -596,14 +623,7 @@ class TestEventUndoRedo:
             "description": "Location updated",
         }
 
-        events.update_event(
-            authenticated_client,
-            mock_llm_gateway,
-            event_id,
-            updated_data,
-            email_id_2,
-            "update"
-        )
+        _seed_event_update(authenticated_client, event_id, email_id_2, updated_data)
 
         # Get update source
         sources = authenticated_client.table("event_sources").select("*").eq(
@@ -653,12 +673,7 @@ class TestEventUndoRedo:
             "start_datetime": "2026-04-01T10:00:00Z",
         }
 
-        event_id = events.create_event(
-            authenticated_client,
-            test_user_id,
-            event_data,
-            email_id
-        )
+        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
 
         # Get the source (new_invitation - no snapshot)
         sources = authenticated_client.table("event_sources").select("*").eq(
@@ -696,12 +711,7 @@ class TestEventUndoRedo:
             "start_datetime": "2026-04-10T14:00:00Z",
         }
 
-        event_id = events.create_event(
-            authenticated_client,
-            test_user_id,
-            event_data,
-            email_id_1
-        )
+        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id_1)
 
         # Create second email
         email_data_2 = {
@@ -724,14 +734,7 @@ class TestEventUndoRedo:
             "start_datetime": "2026-04-10T15:00:00Z",
         }
 
-        events.update_event(
-            authenticated_client,
-            mock_llm_gateway,
-            event_id,
-            updated_data,
-            email_id_2,
-            "update"
-        )
+        _seed_event_update(authenticated_client, event_id, email_id_2, updated_data)
 
         # Get attribution - should include both senders
         attribution_before = events.generate_source_attribution(authenticated_client, event_id)

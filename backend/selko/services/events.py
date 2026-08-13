@@ -26,6 +26,7 @@ from selko.services.civil_time import ensure_aware, resolve_zone
 from selko.services.llm_gateway import LLMGateway
 from selko.services.retry_utils import calculate_retry_delay
 from selko.services.resolution_fingerprint import candidate_fingerprint
+from selko.services.resolution_metrics import resolution_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,7 @@ def _commit_email_extraction(
     if not isinstance(result, dict):
         raise EventsError("commit_email_extraction returned an invalid result")
     if result.get("fenced"):
+        resolution_metrics.record_fenced_write()
         logger.warning(
             "Extraction commit fenced for email %s (worker=%s generation=%s)",
             email_id,
@@ -542,7 +544,10 @@ def save_extracted_events(
         decisions,
     )
     if outcome.get("conflict"):
+        resolution_metrics.record_conflict()
         if _attempt + 1 >= MAX_RESOLUTION_ATTEMPTS:
+            resolution_metrics.record_retries_per_email(MAX_RESOLUTION_ATTEMPTS)
+            resolution_metrics.record_conflict_exhaustion()
             raise ResolutionConflictExhausted(
                 f"Resolution conflicts exhausted for email {email_id}"
             )
@@ -571,6 +576,8 @@ def save_extracted_events(
         )
     if commit_result is not None:
         commit_result.update(outcome)
+    if _attempt:
+        resolution_metrics.record_retries_per_email(_attempt)
     return num_new, num_updated
 
 
@@ -998,7 +1005,7 @@ def create_event(
     if recurrence_rule:
         insert_data["recurrence_rule"] = recurrence_rule
 
-    event_result = supabase_client.table("events").insert(insert_data).execute()
+    raise EventsError("create_event was removed; use commit_email_extraction")
 
     event_id = event_result.data[0]["id"]
 
@@ -1036,18 +1043,8 @@ def create_event_from_gcal_match(
     Prefer ``create_pending_change_from_gcal`` for the Changes-lane pipeline.
     This helper remains for tests and callers that need a direct adopt insert.
     """
-    event_result = supabase_client.table("events").insert({
-        "user_id": user_id,
-        "title": event_data.get("title"),
-        "start_datetime": event_data.get("start_datetime"),
-        "end_datetime": event_data.get("end_datetime"),
-        "all_day": event_data.get("all_day", False),
-        "location": event_data.get("location"),
-        "description": event_data.get("description"),
-        "importance": event_data.get("importance", "action_required"),
-        "status": initial_status,
-        "google_calendar_event_id": gcal_event_id,
-    }).execute()
+    raise EventsError("create_event_from_gcal_match was removed; use commit_email_extraction")
+    event_result = None
 
     event_id = event_result.data[0]["id"]
 
@@ -1094,18 +1091,8 @@ def create_pending_change_from_gcal(
     Canonical fields are the calendar baseline. Proposed deltas live on
     event_sources.change_set / extracted_data until apply_pending_change.
     """
-    event_result = supabase_client.table("events").insert({
-        "user_id": user_id,
-        "title": baseline.get("title"),
-        "start_datetime": baseline.get("start_datetime"),
-        "end_datetime": baseline.get("end_datetime"),
-        "all_day": baseline.get("all_day", False),
-        "location": baseline.get("location"),
-        "description": baseline.get("description"),
-        "importance": baseline.get("importance", "action_required"),
-        "status": "pending_change",
-        "google_calendar_event_id": gcal_event_id,
-    }).execute()
+    raise EventsError("create_pending_change_from_gcal was removed; use commit_email_extraction")
+    event_result = None
 
     event_id = event_result.data[0]["id"]
 
@@ -1512,6 +1499,8 @@ def update_event(
         email_id: UUID of source email.
         source_type: Type of source (update, cancellation, etc).
     """
+    raise EventsError("update_event was removed; use commit_email_extraction")
+
     # Fetch current event
     result = supabase_client.table("events").select("*").eq("id", event_id).single().execute()
     existing_event = result.data

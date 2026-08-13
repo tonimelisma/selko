@@ -1047,13 +1047,9 @@ class TestAutoApproveSenderRule:
         assert "auto_approved" not in result
 
     def test_create_event_with_initial_status(self):
-        """create_event() passes initial_status to the Supabase insert call."""
+        """The removed direct event writer cannot be called by old code."""
         mock_client = MagicMock()
-        mock_client.table.return_value.insert.return_value.execute.return_value = MagicMock(
-            data=[{"id": "event-123"}]
-        )
-
-        with patch("selko.services.events.generate_source_attribution", return_value="From test"):
+        with pytest.raises(EventsError, match="removed"):
             create_event(
                 mock_client, "user-1",
                 {"title": "Test Event", "start_datetime": "2026-03-15T14:00:00",
@@ -1062,10 +1058,6 @@ class TestAutoApproveSenderRule:
                 initial_status="approved",
             )
 
-        # The first insert call is for the events table
-        first_insert_data = mock_client.table.return_value.insert.call_args_list[0][0][0]
-        assert first_insert_data["status"] == "approved"
-        assert first_insert_data["title"] == "Test Event"
 
 
 class TestPastEventFiltering:

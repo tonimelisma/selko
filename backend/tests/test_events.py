@@ -651,20 +651,10 @@ class TestCreateEventFromGCalMatch:
             "start_datetime": "2026-03-15T14:00:00Z",
         }
 
-        result = create_event_from_gcal_match(
-            mock_client, "user-123", event_data, "email-456", "gcal-abc"
-        )
-
-        assert result == "new-event-id"
-
-        # Verify event was created with GCal ID
-        first_insert = mock_table.insert.call_args_list[0][0][0]
-        assert first_insert["google_calendar_event_id"] == "gcal-abc"
-        assert first_insert["status"] == "pending_review"
-
-        # Verify two event_sources were created (GCal + email)
-        insert_calls = mock_table.insert.call_args_list
-        assert len(insert_calls) >= 3  # event + 2 sources
+        with pytest.raises(EventsError, match="removed"):
+            create_event_from_gcal_match(
+                mock_client, "user-123", event_data, "email-456", "gcal-abc"
+            )
 
 
 class TestUpdateEventResync:
@@ -716,12 +706,9 @@ class TestUpdateEventResync:
             "location": "Room B",
             "description": "Updated weekly sync",
         }):
-            update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
+            with pytest.raises(EventsError, match="removed"):
+                update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
 
-        # Verify update included status=approved and sync_attempts=0
-        first_update = mock_table.update.call_args_list[0][0][0]
-        assert first_update["status"] == "approved"
-        assert first_update["sync_attempts"] == 0
 
     def test_preserves_pending_review(self):
         """Test that updating a pending_review event doesn't change status."""
@@ -765,11 +752,9 @@ class TestUpdateEventResync:
             "location": "Room B",
             "description": "Updated",
         }):
-            update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
+            with pytest.raises(EventsError, match="removed"):
+                update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
 
-        # Verify update did NOT include status change
-        first_update = mock_table.update.call_args_list[0][0][0]
-        assert "status" not in first_update
 
 
 class TestGenerateAttributionWithCalendarSource:

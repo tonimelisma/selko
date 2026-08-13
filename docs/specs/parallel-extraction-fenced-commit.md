@@ -341,6 +341,9 @@ failing.
 **Branch:** `chore/resolution-observability`
 **Depends on:** P2.
 
+**Status:** Implemented in this increment. P4 remains blocked until P1–P3
+have been deployed and observed in production for seven days.
+
 1. **Delete**, do not deprecate, anything P1/P2 made dead — the direct
    PostgREST writes in `events.py`, and any partial-write recovery that existed
    only because the write was not atomic. `CLAUDE.md`: *"an operation has

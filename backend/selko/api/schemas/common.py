@@ -88,6 +88,7 @@ class HealthResponse(BaseModel):
     """Health check response."""
 
     status: str
+    resolution: dict[str, object] = {}
 
 
 class HealthDbResponse(BaseModel):

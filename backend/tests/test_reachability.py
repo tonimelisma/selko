@@ -20,9 +20,6 @@ DELIBERATELY_UNREACHABLE: dict[str, str] = {
     "selko.workers.photo_fetch": (
         "owner=photo-ingestion; Google Photos ingestion is parked and disabled"
     ),
-    "selko.workers.photo_process": (
-        "owner=photo-ingestion; Google Photos ingestion is parked and disabled"
-    ),
 }
 
 
