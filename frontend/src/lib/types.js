@@ -48,7 +48,7 @@
  */
 
 /**
- * @typedef {'no_event' | 'event_matched' | 'event_created' | 'event_updated' | 'event_created_and_updated' | 'event_cancelled'} EmailProcessingOutcome
+ * @typedef {'no_event' | 'event_matched' | 'event_created' | 'event_updated' | 'event_created_and_updated' | 'event_cancelled' | 'cancellation_unmatched' | 'cancellation_ambiguous' | 'calendar_invite'} EmailProcessingOutcome
  */
 
 /**
@@ -85,7 +85,7 @@
  */
 
 /**
- * @typedef {'pending_review' | 'pending_change' | 'approved' | 'syncing' | 'synced' | 'sync_failed' | 'cancelled' | 'rejected'} EventStatus
+ * @typedef {'pending_review' | 'pending_change' | 'approved' | 'syncing' | 'synced' | 'sync_failed' | 'cancel_queued' | 'cancelled' | 'rejected'} EventStatus
  */
 
 /**

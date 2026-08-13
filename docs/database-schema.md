@@ -222,7 +222,7 @@ Calendar events with status-based worker claiming for sync.
 | `location` | text | Event location |
 | `description` | text | Event description |
 | `source_attribution` | text | Natural English attribution |
-| `status` | text | `pending_review`, `pending_change`, `approved`, `syncing`, `synced`, `sync_failed`, `cancelled`, `rejected` |
+| `status` | text | `pending_review`, `pending_change`, `approved`, `cancel_queued`, `syncing`, `synced`, `sync_failed`, `cancelled`, `rejected` |
 | `google_calendar_event_id` | text | Google Calendar event ID after sync |
 | `synced_at` | timestamptz | When synced to calendar |
 | `locked_until` | timestamptz | Worker lock expiration |
@@ -231,9 +231,9 @@ Calendar events with status-based worker claiming for sync.
 | `max_sync_attempts` | integer | Maximum sync attempts (default: 3) |
 | `sync_error` | text | Last sync error message |
 | `sync_failure_code` | text, nullable | Typed classification of the last sync failure: `oauth_required`, `oauth_scope_required`, `provider_transient`, `rate_limited`, `invalid_event`, `permission_denied`, `unknown`. Control flow branches on this, never on `sync_error` text. Cleared on successful sync. |
-| `calendar_sync_action` | text, nullable | Worker-owned calendar intent: `upsert` or `cancel`; no producer until `calendar-identity-and-cancellation.md` C3. |
-| `calendar_work_generation` | bigint | Monotonic generation fencing calendar work; no producer until `calendar-identity-and-cancellation.md` C3. |
-| `cancel_queued` | boolean | Whether cancellation work is queued for the event; no producer until `calendar-identity-and-cancellation.md` C3. |
+| `calendar_sync_action` | text, nullable | Worker-owned calendar intent: `upsert` or `cancel`. Cancellation transitions set `cancel` before queueing provider deletion. |
+| `calendar_work_generation` | bigint | Monotonic generation fencing calendar work. A transition into `cancel_queued` increments it so stale upserts cannot restore a cancelled event. |
+| `cancel_queued` | boolean | Legacy compatibility flag; the authoritative queue state is `status='cancel_queued'` plus `calendar_sync_action='cancel'`. |
 | `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry sync |
 | `dead_letter_reason` | text, nullable | Reason for permanent sync failure |
 | `dead_letter_at` | timestamptz, nullable | When the event sync was abandoned |
@@ -525,7 +525,7 @@ returns `conflict: true` and applies nothing.
 |----------|-------------|
 | `unlock_expired_email_locks()` | Reset expired email locks to pending |
 | `unlock_expired_photo_locks()` | Reset expired photo locks to pending |
-| `unlock_expired_event_locks()` | Reset expired event locks to approved |
+| `unlock_expired_event_locks()` | Reset expired event locks to `cancel_queued` for cancellation work or `approved` for upserts |
 | `unlock_expired_scheduled_tasks()` | Reset expired scheduled task locks |
 | `unlock_expired_integration_recoveries()` | Return crashed-worker recovery claims to `pending` |
 
@@ -534,8 +534,20 @@ returns `conflict: true` and applies nothing.
 | Function | Description |
 |----------|-------------|
 | `complete_integration_reauthorization(...)` | Service-role only. Atomically upserts OAuth credentials and (for `google_calendar`) supersedes any in-flight recovery generation and schedules a new `pending` one. Preserves an existing refresh token when the provider omits a replacement. |
-| `requeue_calendar_recovery_batch(recovery_id, worker_id, batch_size, max_batches)` | Service-role only. Tags a claimed recovery's OAuth-blocked `approved` events with `recovery_id` and advances its status. Events resync through the normal approved-event queue; returns -1 if the claim was lost. |
-| `refresh_waiting_calendar_recoveries(batch_size)` | Service-role only. Recomputes progress for `waiting` recoveries and finalizes ones whose tagged events all reached a terminal state. |
+| `requeue_calendar_recovery_batch(recovery_id, worker_id, batch_size, max_batches)` | Service-role only. Tags a claimed recovery's OAuth-blocked `approved` or `cancel_queued` events with `recovery_id` and advances its status. Events resync through the normal worker queue; returns -1 if the claim was lost. |
+| `refresh_waiting_calendar_recoveries(batch_size)` | Service-role only. Recomputes progress for `waiting` recoveries and finalizes ones whose tagged upserts or cancellations all reached a terminal state. |
+
+### Worker-owned cancellation
+
+The email pipeline classifies structured `METHOD:CANCEL` messages and strong
+unstructured cancellations. A safe match never creates a row: an event with a
+provider identity becomes `cancel_queued`/`cancel`, while a local-only event
+becomes terminal `cancelled`. Unmatched and ambiguous cancellations are stored
+only as email processing outcomes (`cancellation_unmatched` or
+`cancellation_ambiguous`). The calendar worker calls the provider delete
+operation, then completes the fenced transition to `cancelled`; retries,
+OAuth parking, quota deferral, and expired locks preserve the cancellation
+action. `apply_pending_change()` does not perform provider I/O.
 
 ### Usage Summary
 

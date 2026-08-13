@@ -644,7 +644,11 @@ def _find_calendar_event_by_selko_id(
 
 
 def sync_event_to_calendar(
-    supabase_client: Client, user_id: str, event_id: str
+    supabase_client: Client,
+    user_id: str,
+    event_id: str,
+    *,
+    write_local_state: bool = True,
 ) -> str:
     """Write event to Google Calendar with invitees (idempotent).
 
@@ -715,13 +719,15 @@ def sync_event_to_calendar(
                 google_event_id = created_event["id"]
                 action = "created"
 
-        # Update event record in database
-        supabase_client.table("events").update({
-            "google_calendar_event_id": google_event_id,
-            "status": "synced",
-            "synced_at": datetime.now(timezone.utc).isoformat(),
-            "sync_error": None,
-        }).eq("id", event_id).execute()
+        # The durable worker owns the local transition. Direct callers retain
+        # the historical behavior for non-worker maintenance flows.
+        if write_local_state:
+            supabase_client.table("events").update({
+                "google_calendar_event_id": google_event_id,
+                "status": "synced",
+                "synced_at": datetime.now(timezone.utc).isoformat(),
+                "sync_error": None,
+            }).eq("id", event_id).execute()
 
         # Log the sync operation
         _log_sync(
@@ -937,73 +943,48 @@ def update_calendar_event(
         raise CalendarsError(f"Failed to update calendar event: {e}") from e
 
 
-def cancel_calendar_event(
+def cancel_event_to_calendar(
     supabase_client: Client, user_id: str, event_id: str
 ) -> None:
-    """Prefix title with 'CANCELLED: ' in calendar.
+    """Apply the existing non-destructive cancellation representation remotely.
 
-    Args:
-        supabase_client: Authenticated Supabase client.
-        user_id: UUID of user.
-        event_id: UUID of event to cancel.
-
-    Raises:
-        CalendarsError: If cancellation fails.
+    Provider I/O is worker-owned. The local ``cancel_queued`` -> ``cancelled``
+    transition is completed by the worker with an owner/generation fence.
     """
     try:
-        # Fetch event
         event_result = supabase_client.table("events").select("*").eq(
             "id", event_id
         ).single().execute()
-        event = event_result.data
-
-        # Update title with CANCELLED prefix
-        title = event.get("title", "")
-        if not title.startswith("CANCELLED: "):
-            title = f"CANCELLED: {title}"
-
-            # Update local DB
-            supabase_client.table("events").update({
-                "title": title,
-                "status": "cancelled",
-            }).eq("id", event_id).execute()
-
-        # Update calendar if synced
+        event = event_result.data or {}
         google_event_id = event.get("google_calendar_event_id")
-        if google_event_id:
-            creds = get_credentials(supabase_client, user_id, "google_calendar")
-            if not creds:
-                logger.warning("No credentials to update calendar event")
-                return
+        if not google_event_id:
+            logger.info("Event %s has no remote calendar copy; cancellation is local-only", event_id)
+            return
 
-            settings = get_calendar_settings(supabase_client, user_id)
-            calendar_id = settings.get("target_calendar_id") or "primary"
-
-            service = build("calendar", "v3", credentials=creds)
-
-            try:
-                existing_event = service.events().get(
-                    calendarId=calendar_id,
-                    eventId=google_event_id
-                ).execute()
-
-                existing_event["summary"] = title
-
-                service.events().update(
-                    calendarId=calendar_id,
-                    eventId=google_event_id,
-                    body=existing_event
-                ).execute()
-            except HttpError as e:
-                if e.resp.status == 404:
-                    logger.warning(f"Calendar event {google_event_id} already deleted")
-                else:
-                    raise
-
-        logger.info(f"Cancelled event {event_id}")
-
-    except Exception as e:
-        raise CalendarsError(f"Failed to cancel event: {e}") from e
+        service, calendar_id = _calendar_service_for_user(supabase_client, user_id)
+        try:
+            existing_event = service.events().get(
+                calendarId=calendar_id,
+                eventId=google_event_id,
+            ).execute()
+            title = str(event.get("title") or existing_event.get("summary") or "")
+            if not title.startswith("CANCELLED: "):
+                existing_event["summary"] = f"CANCELLED: {title}"
+            service.events().update(
+                calendarId=calendar_id,
+                eventId=google_event_id,
+                body=existing_event,
+            ).execute()
+        except HttpError as exc:
+            if getattr(exc.resp, "status", None) == 404:
+                logger.info("Calendar event %s already deleted", google_event_id)
+            else:
+                raise
+        logger.info("Applied cancellation to calendar event %s", event_id)
+    except CalendarsError:
+        raise
+    except Exception as exc:
+        raise CalendarsError(f"Failed to cancel event in calendar: {exc}") from exc
 
 
 def _strip_selko_footer(description: str | None) -> str:

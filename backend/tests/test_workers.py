@@ -287,7 +287,7 @@ class TestSingleTransportWiring:
         pool = WorkerPool(fake_pg_pool, fake_work_listener)
         pool.config = load_config()
         await pool._process_any_work("test-worker")
-        assert any("claim_approved_event" in sql for sql, _ in fake_pg_pool.calls)
+        assert any("claim_calendar_work" in sql for sql, _ in fake_pg_pool.calls)
 
     def test_no_worker_module_retains_a_postgrest_fallback(self):
         """Rule 4 regression: one implementation per operation, no branches."""
@@ -679,6 +679,52 @@ class TestCalendarSyncWorker:
         complete.assert_awaited_once_with(fake_pg_pool, "ev1", "google-1")
 
     @pytest.mark.asyncio
+    async def test_worker_cancels_calendar_event_with_fenced_completion(
+        self, mock_config, fake_pg_pool, fake_work_listener
+    ):
+        """Cancellation uses provider delete and never the upsert path."""
+        pool = WorkerPool(fake_pg_pool, fake_work_listener)
+        pool.config = mock_config
+        mock_client = MagicMock()
+        event = {
+            "id": "ev-cancel",
+            "user_id": "u1",
+            "title": "Meeting",
+            "google_calendar_event_id": "google-cancel-1",
+            "calendar_sync_action": "cancel",
+            "calendar_work_generation": 4,
+            "locked_by": "worker-1",
+            "sync_attempts": 1,
+        }
+        quota_result = MagicMock(allowed=True)
+
+        with (
+            patch("selko.workers.pool.QuotaService") as quota_service,
+            patch(
+                "selko.workers.calendar_sync.cancel_event",
+                new_callable=AsyncMock,
+            ) as cancel,
+            patch(
+                "selko.workers.calendar_sync.sync_event",
+                new_callable=AsyncMock,
+            ) as sync,
+            patch(
+                "selko.workers.pool.complete_event_cancellation",
+                new=AsyncMock(return_value=True),
+            ) as complete,
+            patch("selko.workers.pool.circuit_breaker"),
+        ):
+            quota_service.return_value.check_and_increment.return_value = quota_result
+            await pool._process_event_sync(mock_client, "worker-1", event)
+
+        quota_service.return_value.check_and_increment.assert_called_once_with(
+            "u1", "calendar_syncs"
+        )
+        cancel.assert_awaited_once_with(mock_client, mock_config, event)
+        complete.assert_awaited_once_with(fake_pg_pool, "ev-cancel", "worker-1", 4)
+        sync.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_worker_defers_without_writing_when_calendar_quota_is_exhausted(
         self, mock_config, fake_pg_pool, fake_work_listener
     ):
@@ -816,7 +862,7 @@ class TestSingleTransportWiring:
         pool = WorkerPool(fake_pg_pool, fake_work_listener)
         pool.config = load_config()
         await pool._process_any_work("test-worker")
-        assert any("claim_approved_event" in sql for sql, _ in fake_pg_pool.calls)
+        assert any("claim_calendar_work" in sql for sql, _ in fake_pg_pool.calls)
 
     def test_no_worker_module_retains_a_postgrest_fallback(self):
         """Rule 4 regression: one implementation per operation, no branches."""

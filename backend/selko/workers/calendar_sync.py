@@ -15,7 +15,11 @@ from typing import Any
 from supabase import Client
 
 from selko.config import Config
-from selko.services.calendars import sync_event_to_calendar, CalendarsError
+from selko.services.calendars import (
+    cancel_event_to_calendar,
+    sync_event_to_calendar,
+    CalendarsError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +54,30 @@ async def sync_event(
     # Sync to Google Calendar using the calendars service (off event loop)
     try:
         google_event_id = await asyncio.to_thread(
-            sync_event_to_calendar, client, user_id, event_id
+            sync_event_to_calendar, client, user_id, event_id,
+            write_local_state=False,
         )
         logger.info(f"Synced event {event_id} to Google Calendar: {google_event_id}")
         return google_event_id
     except CalendarsError as e:
         logger.error(f"Failed to sync event {event_id} to Google Calendar: {e}")
+        raise
+
+
+async def cancel_event(
+    client: Client,
+    config: Config,
+    event: dict[str, Any],
+) -> None:
+    """Apply a queued cancellation through the calendar worker only."""
+    del config
+    event_id = event["id"]
+    user_id = event["user_id"]
+    logger.info("Cancelling event %s in Google Calendar", event_id)
+    try:
+        await asyncio.to_thread(cancel_event_to_calendar, client, user_id, event_id)
+    except CalendarsError as exc:
+        logger.error("Failed to cancel event %s in Google Calendar: %s", event_id, exc)
         raise
 
 

@@ -69,6 +69,7 @@ EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
     ("emails", "processing_outcome"): {
         "no_event", "event_matched", "event_created", "event_updated",
         "event_created_and_updated", "event_cancelled", "calendar_invite",
+        "cancellation_unmatched", "cancellation_ambiguous",
     },
     ("emails", "processing_status"): {"pending", "processing", "processed", "failed", "skipped"},
     ("event_sources", "source_origin"): {"email", "google_calendar", "google_photos"},
@@ -347,9 +348,9 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
             }],
         ),
         "claim_calendar_work": ("schema-contract-worker", 60),
-        "claim_approved_event": ("schema-contract-worker", 60),
         "set_email_folder_preference": (context.folder_id, True),
         "unlock_expired_integration_recoveries": (),
+        "unlock_expired_event_locks": (),
         "unlock_expired_photo_locks": (),
         "upsert_discovered_email_items": (
             context.gmail_integration_id,

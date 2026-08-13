@@ -94,4 +94,24 @@ class HistoryScreenTest {
         val bounds = undo.getUnclippedBoundsInRoot()
         assert(bounds.bottom - bounds.top >= 48.dp)
     }
+
+    @Test
+    fun historyScreen_showsCancellationQueuedWithoutUndo() {
+        coEvery { eventRepository.fetchActivityEvents(any(), any()) } returns EventResult.Success(listOf(
+            CalendarEvent(
+                id = "event-cancel", userId = "user-1", title = "Cancelled meeting",
+                status = EventStatus.CANCEL_QUEUED,
+                updatedAt = kotlin.time.Instant.parse("2026-07-18T12:00:00Z")
+            )
+        ))
+        composeTestRule.setContent {
+            SelkoTheme {
+                HistoryScreen(HistoryViewModel(application, eventRepository, integrationRepository, backendApiClient))
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Cancellation queued").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Undo").assertDoesNotExist()
+    }
 }

@@ -32,6 +32,8 @@ class EmailResponse(BaseModel):
         "event_updated",
         "event_created_and_updated",
         "event_cancelled",
+        "cancellation_unmatched",
+        "cancellation_ambiguous",
     ] | None = None
     processing_explanation: str | None = None
     processing_result: dict | None = None

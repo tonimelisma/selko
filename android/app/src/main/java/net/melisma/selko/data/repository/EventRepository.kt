@@ -31,6 +31,7 @@ class EventRepository(
         EventStatus.SYNCING -> "syncing"
         EventStatus.SYNCED -> "synced"
         EventStatus.SYNC_FAILED -> "sync_failed"
+        EventStatus.CANCEL_QUEUED -> "cancel_queued"
         EventStatus.CANCELLED -> "cancelled"
         EventStatus.REJECTED -> "rejected"
     }
