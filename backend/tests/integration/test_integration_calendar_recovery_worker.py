@@ -19,6 +19,12 @@ from selko.services.integrations import (
 )
 
 
+@pytest.fixture
+def test_user_id(isolated_user):
+    """Use a throwaway user for recovery claim/lease tests."""
+    return isolated_user["id"]
+
+
 @pytest.fixture(autouse=True)
 def _cleanup(admin_client, test_user_id):
     def _clear():
