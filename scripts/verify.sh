@@ -64,6 +64,8 @@ verify_backend() {
   skip_count="$(grep -oE '[0-9]+ skipped' "$integration_log" | tail -1 | awk '{print $1}')"
   skip_count="${skip_count:-0}"
   echo "Backend integration summary: seed=${integration_seed} skipped=${skip_count}"
+  trap - RETURN
+  rm -f "$integration_log"
 }
 
 verify_frontend() {
