@@ -13,7 +13,9 @@ from zoneinfo import ZoneInfo
 
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.services.events import (
+    CandidateWindow,
     EventsError,
+    ResolutionConflictExhausted,
     create_event,
     mark_email_status,
     normalize_event_data,
@@ -232,6 +234,39 @@ class TestSaveExtractedEvents:
         assert num_new == 1
         assert num_updated == 0
         assert mock_client._extraction_decisions[0]["action"] == "create"
+
+    def test_retries_resolution_after_candidate_conflict(self, monkeypatch):
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        extraction = _make_extraction(events=[_make_calendar_event()])
+        window = CandidateWindow(
+            window_start="2031-06-03T00:00:00Z",
+            window_end="2031-06-04T00:00:00Z",
+            fingerprint="empty",
+        )
+        commit_calls = []
+
+        def conflict_commit(*args, **kwargs):
+            commit_calls.append(args[4])
+            return {"fenced": False, "conflict": True, "conflicting_indexes": [0]}
+
+        monkeypatch.setattr("selko.services.events._commit_email_extraction", conflict_commit)
+        with patch("selko.services.events.find_matching_event", return_value=(None, window)), \
+             patch(
+                 "selko.services.calendars.get_all_day_policy_and_timezone",
+                 return_value=(False, TEST_TIMEZONE),
+             ), \
+             pytest.raises(ResolutionConflictExhausted):
+            save_extracted_events(
+                mock_client,
+                mock_gateway,
+                "user-1",
+                "email-1",
+                extraction,
+                current_time=FIXED_NOW,
+            )
+
+        assert len(commit_calls) == 3
 
     def test_skips_event_with_null_start_datetime(self):
         """Regression: events with no start_datetime must not be created or matched."""

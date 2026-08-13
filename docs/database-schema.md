@@ -450,6 +450,13 @@ shape:
 The source object may carry the existing source type, snapshot, change set, and
 Google Calendar metadata needed by the New and Changes lanes.
 
+Writing decisions also carry `window_start`, `window_end`, and
+`expected_fingerprint`. The fingerprint is the MD5 of comma-joined
+`id:updated_at` entries sorted by event UUID, with timestamps rendered in UTC
+as `YYYY-MM-DDTHH:MM:SS.USZ`. The RPC rechecks that exact local-day band under
+a short transaction-scoped advisory key before mutating anything; a mismatch
+returns `conflict: true` and applies nothing.
+
 | Function | Description |
 |----------|-------------|
 | `unlock_expired_email_locks()` | Reset expired email locks to pending |
