@@ -299,6 +299,33 @@ class TestSingleTransportWiring:
             text = path.read_text()
             assert not banned.search(text), f"{path} still branches on transport"
 
+    def test_event_writes_go_through_commit_rpc(self):
+        """No active service or worker may insert directly into ``events``."""
+        import ast
+        from pathlib import Path
+
+        offenders = []
+        for path in Path("backend/selko").rglob("*.py"):
+            if "/services/" not in str(path) and "/workers/" not in str(path):
+                continue
+            tree = ast.parse(path.read_text(), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                    continue
+                if node.func.attr != "insert" or not node.func.value.args:
+                    continue
+                table_call = node.func.value.func
+                if not isinstance(table_call, ast.Attribute) or table_call.attr != "table":
+                    continue
+                if (
+                    node.func.value.args
+                    and isinstance(node.func.value.args[0], ast.Constant)
+                    and node.func.value.args[0].value == "events"
+                ):
+                    offenders.append(f"{path}:{node.lineno}")
+
+        assert not offenders, "direct events inserts remain: " + ", ".join(offenders)
+
 
 class TestProcessIntegrationRecovery:
     """Tests for the calendar OAuth reconnect recovery polling step."""
@@ -1288,3 +1315,31 @@ def test_no_compat_shims_in_workers():
     for path in pathlib.Path("backend/selko/workers").rglob("*.py"):
         text = path.read_text()
         assert not banned.search(text), f"{path} still carries a compat shim"
+
+
+def test_event_writes_go_through_commit_rpc():
+    """No active service or worker may insert directly into ``events``."""
+    import ast
+    from pathlib import Path
+
+    offenders = []
+    for path in Path("backend/selko").rglob("*.py"):
+        if "/services/" not in str(path) and "/workers/" not in str(path):
+            continue
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+            if node.func.attr != "insert" or not isinstance(node.func.value, ast.Call):
+                continue
+            table_call = node.func.value.func
+            if not isinstance(table_call, ast.Attribute) or table_call.attr != "table":
+                continue
+            if (
+                node.func.value.args
+                and isinstance(node.func.value.args[0], ast.Constant)
+                and node.func.value.args[0].value == "events"
+            ):
+                offenders.append(f"{path}:{node.lineno}")
+
+    assert not offenders, "direct events inserts remain: " + ", ".join(offenders)
