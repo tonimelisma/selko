@@ -300,6 +300,7 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
         "claim_integration_recovery": (worker, 60),
         "claim_pending_photo": (worker, 60),
         "claim_unprocessed_email": (worker, 60),
+        "commit_email_extraction": (context.email_id, worker, 1, [], "processed"),
         "complete_email_ingestion_item": (context.ingestion_item_id, worker, context.email_id),
         "complete_email_sync": (context.gmail_integration_id, context.sync_run_id, worker, 60, False),
         "complete_integration_reauthorization": (
@@ -379,7 +380,11 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
         encoded_args = [
             json.dumps(value)
             if isinstance(value, (dict, list))
-            and name in {"save_email_with_attachment_descriptors", "upsert_discovered_email_items"}
+                and name in {
+                    "commit_email_extraction",
+                    "save_email_with_attachment_descriptors",
+                    "upsert_discovered_email_items",
+                }
             else value
             for value in args
         ]
