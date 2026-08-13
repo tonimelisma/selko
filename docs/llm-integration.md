@@ -22,7 +22,7 @@ LLM_FALLBACK_MODEL=qwen3.7-flash
 LLM_FALLBACK_THINKING=low
 ```
 
-> **Photo-library status:** Google Photos/OneDrive library ingestion is dormant while photo ingestion is parked; see [`docs/specs/onedrive-photo-ingestion.md`](specs/onedrive-photo-ingestion.md). The multimodal/image-processing material below describes the active email-attachment pipeline and remains applicable to email attachments.
+> **Photo-library status:** Google Photos/OneDrive library ingestion is dormant while photo ingestion is parked; see [`docs/backlog.md`](backlog.md). The multimodal/image-processing material below describes the active email-attachment pipeline and remains applicable to email attachments.
 
 ### Current registry models (preferred low/minimal thinking each)
 
@@ -44,8 +44,9 @@ See `backend/selko/services/llm_provider.py` for the full `MODEL_SPECS` / `MODEL
 LLM extractions `all_day: true` events remain source truth in
 `event_sources.extracted_data`. A single user preference
 (`user_calendar_settings.all_day_display_mode`) materializes the `events` row
-as all-day or a timed window. See
-`docs/specs/calendar-policy-llm-fallback-and-incremental-evals.md`.
+as all-day or a timed window. The materialization rules and the
+primary/fallback model routing they depend on are described above and in
+`backend/selko/services/calendar_policy.py`.
 
 ## Gemini-Specific Setup
 

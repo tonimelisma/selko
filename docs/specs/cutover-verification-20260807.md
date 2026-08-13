@@ -3,9 +3,10 @@
 **Status:** verified locally, not deployed. `ENABLE_BACKGROUND_PROCESSING=false` stays.
 **Branch:** `main` at `7ee04d6e` + this commit. No prod deploy until you explicitly approve.
 
-This is the operational checklist from `ingestion-recovery-hardening.md` inc 10 and
-`egress-and-work-scheduling.md` inc 6 + `polling-email-ingestion-v2.md` production
-cutover runbook. It is the gate before the flag is ever flipped.
+This is the operational checklist consolidated from the ingestion-hardening
+(#241–#247), egress-scheduling and polling-v2 (#231–#235) cutover runbooks, all
+of which are now shipped. **This file is the single ordered gate** before the
+flag is ever flipped.
 
 ## What was built (locally verified, not yet in prod)
 
@@ -30,7 +31,8 @@ Do not flip the flag via Render env alone. Follow the ordered cutover below.
 
 ## Ordered cutover (must be migrations first, code second, flag last)
 
-Per `egress-and-work-scheduling.md` Ordering constraint and `polling-email-ingestion-v2.md`:
+Ordering constraint (migrations first, code second, flag last) carried from the
+egress-scheduling and polling-v2 work:
 
 1. **No CI minutes will ever be bought — CI is a bonus, not required.** `workflow_dispatch`/`gh workflow run test.yml` will stay queued or absent; do not wait on it.
 2. **Staging token:** `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging, copies working → stale; if both stale, re-auth one side then re-sync). Do not ask to reauth when one side is working.

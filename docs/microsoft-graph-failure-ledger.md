@@ -170,7 +170,8 @@ with Microsoft support without storing private request data.
   persist intermediate next-link progress durably, enumerate to completion,
   reconcile IDs, then commit the new delta link.
 - **Source:** [driveItem delta](https://learn.microsoft.com/en-us/graph/api/driveitem-delta?view=graph-rest-1.0).
-- **Status:** Planned in `docs/specs/onedrive-photo-ingestion.md`; not implemented.
+- **Status:** Not implemented. Photo-library ingestion is parked — see
+  [`docs/backlog.md`](backlog.md).
 
 ### GRAPH-007: Unsupported attachment MIME failed Outlook mailbox sync
 
@@ -216,3 +217,51 @@ Primary sources:
 - [Microsoft Graph throttling](https://learn.microsoft.com/en-us/graph/throttling)
 - [OneDrive driveItem delta](https://learn.microsoft.com/en-us/graph/api/driveitem-delta?view=graph-rest-1.0)
 - [Get attachment](https://learn.microsoft.com/en-us/graph/api/attachment-get?view=graph-rest-1.0)
+
+---
+
+## Incident — production ingestion rollout, 2026-08-11/12
+
+Retired here from `docs/specs/production-email-ingestion-discovery-20260812.md`,
+which was a discovery record, not a plan. Full original text:
+`git show 837f830e:docs/specs/production-email-ingestion-discovery-20260812.md`.
+
+### What happened
+
+The durable-polling rollout reached production and the discovery half failed,
+then the acquisition half failed for a second instance of the same class of bug:
+an `asyncpg`-native value crossing into a JSON-bound contract without
+normalization. `asyncpg` returns PostgreSQL `uuid` columns as `uuid.UUID`
+objects; `json.dumps` cannot serialize them, so the failure surfaced as
+`acquisition_status='retry'` with `last_error_code='unknown'`.
+
+Each fix patched one call site, so the class recurred one layer later:
+
+| Fix | Boundary repaired |
+|---|---|
+| #299 | Gmail/Outlook discovery dispatches were not awaited |
+| #300 | `_normalize_provider_page()` — provider message/folder IDs before `json.dumps(page)` |
+| #301 | `SyncClaim.__post_init__` — `integration_id`/`user_id`/`run_id` |
+| #302 | `_normalize_pg_row()` in `services/pg.py`, applied at `claim_item()` and `claim_attachment()` |
+| #304 | Remaining pg claim boundaries and LLM gateway ids |
+
+### The durable rule
+
+**Rows that leave `pg_pool` as Python dicts must be JSON-safe at the repository
+boundary.** `services/pg.py::_normalize_pg_row()` is that boundary; new claim
+methods route through it. Do **not** reach for `json.dumps(..., default=str)` —
+it converts a leaked `UUID` or `bytes` silently and hides the contract
+violation. A strict encoder failing is the signal.
+
+### Open items
+
+- [ ] **Confirm the 10 `retry`/`unknown` items completed.** They were created
+      03:10 UTC on 2026-08-12 with `next_retry_at` ~03:26, after #302 deployed.
+      Nobody has verified the ledger since. Query production before treating
+      this incident as closed.
+- [ ] **Decide the 12 historical `database_transient` dead letters.** Oldest
+      2026-08-11 15:36; they predate this rollout. They have been carried as
+      "reported separately" across three documents without a decision. Choose
+      one, in writing, here: repair under a dry-run-first script, requeue after
+      establishing the original failure cannot recur, or accept as permanently
+      dead with the reason and the user impact.

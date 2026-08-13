@@ -2,9 +2,26 @@
 
 Future enhancements for Selko, documented for prioritization.
 
-## Photo Library Ingestion (Parked)
+## Photo Library Ingestion (Parked — do not re-propose without new information)
 
-Photo-library ingestion is parked because Google Photos library-wide read access was revoked. The restoration design, including a future OneDrive path, lives in [`docs/specs/onedrive-photo-ingestion.md`](specs/onedrive-photo-ingestion.md).
+Parked 2026-07-13 on cost/value, after Google Photos library-wide read access was
+revoked. **Do not re-propose until the cost/value picture changes.**
+
+What is still true in the codebase:
+
+- The `photos` schema and the `google_photos` integration-provider enum value are
+  deliberately retained. Do not drop them.
+- Connect surfaces were removed in #201; photo-*source* rendering was kept, so an
+  existing photo-sourced event still displays correctly.
+
+The full OneDrive ingestion design and the #201 surface-removal/restoration
+procedure were retired from `docs/specs/` once parked, because a parked design is
+not an unfinished plan. Both are recoverable from git:
+
+```bash
+git show 837f830e:docs/specs/onedrive-photo-ingestion.md
+git show 837f830e:docs/specs/photo-surface-removal.md
+```
 
 ## Embedded Images in Emails
 

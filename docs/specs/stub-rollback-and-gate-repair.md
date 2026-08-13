@@ -850,17 +850,49 @@ reviewed for desktop/mobile × light/dark × populated/feedback/empty.
    `events.calendar_sync_action` / `calendar_work_generation` /
    `cancel_queued`. Add them to `docs/database-schema.md` with a note that they
    have no producer until `calendar-identity-and-cancellation.md` C3.
-3. **Rewrite `docs/specs/README.md` (D-DOC.2).** Use the status rule in §6.
-4. **Delete `.agents/plans/2026-08-12-acquisition-uuid-boundary.md`.** Its
-   content shipped as #302/#304; the untracked file now contradicts the
-   repository by saying *"no code was edited."*
+3. ~~**Rewrite `docs/specs/README.md` (D-DOC.2).**~~ **Done 2026-08-12.** The
+   index is now an execution-order table of unfinished plans only. Seventeen
+   finished or parked specs were deleted, their durable content folded into
+   `docs/` reference files, `docs/backlog.md` and the Graph failure ledger
+   first. The lifecycle rule now ends in *delete*, not *mark Implemented and
+   keep* — that rule contradicted the directory's own definition of what
+   belongs in it and had grown it to twenty files.
+4. ~~**Delete `.agents/plans/…`.**~~ **Done 2026-08-12** — `.agents/` is
+   gitignored, with the reason recorded in `.gitignore`: durable plans belong
+   in `docs/specs/` where status is checked, and an untracked plan goes stale
+   invisibly. That file still said *"no code was edited"* after its content
+   shipped as #302/#304.
 5. **Update `CLAUDE.md`** — add the reachability rule from G4 next to the
    existing call-sites rule, and add this file plus the two successor plans to
    the Reference Index.
 
 ---
 
-### G7 — Retire the ingestion incident record and own its residue
+### G7 — Close out the ingestion incident
+
+**Done on 2026-08-12, except the two production checks below**, which need
+production ledger access. The incident record was folded into
+`docs/microsoft-graph-failure-ledger.md` (§"Incident — production ingestion
+rollout, 2026-08-11/12") and the spec file deleted; the durable rule —
+*rows leaving `pg_pool` as Python dicts must be JSON-safe at the repository
+boundary, and never via `json.dumps(default=str)`* — is recorded there.
+
+Remaining, tracked as open checkboxes in the ledger:
+
+1. **Confirm the 10 `retry`/`unknown` items completed.** They were created
+   03:10 UTC on 2026-08-12 with `next_retry_at` ~03:26, after #302 deployed.
+   Nobody has verified since. If they did not complete, this is an open
+   production defect and becomes the increment before
+   `parallel-extraction-fenced-commit.md` P1.
+2. **Decide the 12 historical `database_transient` dead letters.** Choose one,
+   in writing, in the ledger: repair under a dry-run-first script (the pattern
+   in P4), requeue after establishing the original failure cannot recur, or
+   accept as permanently dead with the reason and the user impact.
+   *"Reported separately" is not one of the three.* It is what has been said
+   three times already.
+
+<details>
+<summary>Original G7 scope, superseded by the work above</summary>
 
 **Branch:** direct to `main` for the docs move; a source branch only if step 3
 turns out to need code.
@@ -891,6 +923,8 @@ that the work is done.
 
    "Reported separately" is not one of the three. It is what has been said
    three times already.
+
+</details>
 
 ---
 

@@ -79,10 +79,10 @@ event for each sender, so the list appears to reshuffle. The existing test,
 optimistic removal but not the post-mutation Realtime snapshot. It therefore
 passes while the user-visible bug remains.
 
-This also conflicts with the approved contract in
-`docs/specs/live-ui-updates.md`: new cards must not move the user's current
-content, and a new sender group must append without reordering existing groups
-until a deliberate refresh boundary.
+This also conflicts with the live-update contract approved and shipped in
+#270–#272: new cards must not move the user's current content, and a new sender
+group must append without reordering existing groups until a deliberate refresh
+boundary.
 
 ### 2.2 Duplicate events
 
@@ -123,8 +123,8 @@ The current ingestion path intentionally suppresses calendar messages:
 - `process_email_for_events()` skips every method in `INVITE_METHODS`, including
   `CANCEL`.
 
-That behavior came from `docs/specs/review-list-quality-fixes.md`, which assumed
-the user's calendar would be the source of truth for invite updates and
+That behavior came from the review-list quality work shipped through #194, which
+assumed the user's calendar would be the source of truth for invite updates and
 cancellations. The production examples disprove that assumption for Selko
 suggestions still in Review: a pending Selko row has not been written to Google
 Calendar, so calendar read-back cannot remove it.
@@ -186,8 +186,9 @@ new implementation must not call it from email processing.
 12. **No production content in tests.** Build anonymized fixtures that preserve
     the relationships, not names, URLs, or wording.
 
-Decision 10 supersedes only the cancellation portion of
-`review-list-quality-fixes.md`'s “Interaction with existing events” trade-off.
+Decision 10 supersedes only the cancellation portion of #194's “Interaction with
+existing events” trade-off — the assumption that Google Calendar read-back can
+remove a suggestion Selko never wrote there.
 REQUEST, REPLY, COUNTER, and DECLINECOUNTER remain skipped unless a later,
 separately approved plan changes them.
 

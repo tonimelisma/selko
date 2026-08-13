@@ -3,7 +3,7 @@
 The definitive visual reference for Selko. The machine-readable source of truth
 is [`design/tokens.json`](../design/tokens.json); platform tests must fail when
 an implementation drifts from it. The detailed build specification is
-[`docs/specs/warmth-design-system.md`](specs/warmth-design-system.md).
+`design/tokens.json`, which is the canonical cross-platform token contract.
 
 ## Personality
 

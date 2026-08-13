@@ -34,9 +34,11 @@ the line, the failing test to write first, and the exact command that proves it
 is done. If you hit something undecided while implementing, that is a defect in
 this spec — stop and fix the spec first.
 
-**Supersedes nothing.** It completes
-[`direct-pg-completion-and-live-ui-hardening.md`](direct-pg-completion-and-live-ui-hardening.md)
-and unblocks [`cutover-verification-20260807.md`](cutover-verification-20260807.md).
+**Supersedes nothing.** It completes the direct-PG and live-UI hardening batch
+(C1–C9, #279–#286 + `0654d4fe`) and unblocks
+[`cutover-verification-20260807.md`](cutover-verification-20260807.md). §2 below
+carries that batch's six follow-on defects, D1–D6, in full — nothing needs to be
+read outside this file.
 
 ---
 
