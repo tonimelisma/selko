@@ -44,6 +44,18 @@ def service_client(config: Config) -> Client:
     return get_service_client(config)
 
 
+@pytest.fixture
+def test_user_id(isolated_user):
+    """Use a throwaway user so worker claim batches cannot cross tests."""
+    return isolated_user["id"]
+
+
+@pytest.fixture
+def authenticated_client(service_client):
+    """Worker tests use service-role writes for their isolated user."""
+    return service_client
+
+
 @pytest.fixture(autouse=True)
 def cleanup_test_data(service_client: Client, test_user_id: str):
     """Clean up all test data before and after each test."""
@@ -101,7 +113,7 @@ class TestEmailStatusBasedClaiming:
             "provider_message_id": f"claim-test-{uuid4().hex[:8]}",
             "subject": "Test Email for Claiming",
             "from_email": "test@example.com",
-            "date_sent": "2026-05-15T12:00:00Z",
+            "date_sent": "2000-01-01T00:00:00Z",
             "snippet": "Test content",
             "provider_labels": ["INBOX"],
             "processing_status": "pending",
@@ -129,6 +141,7 @@ class TestEmailStatusBasedClaiming:
             "provider_message_id": f"complete-test-{uuid4().hex[:8]}",
             "subject": "Test Email",
             "from_email": "test@example.com",
+            "date_sent": "2000-01-01T00:00:00Z",
             "processing_status": "pending",
             "provider_labels": ["INBOX"],
         }
@@ -160,6 +173,7 @@ class TestEmailStatusBasedClaiming:
             "provider_message_id": f"fail-test-{uuid4().hex[:8]}",
             "subject": "Test Email",
             "from_email": "test@example.com",
+            "date_sent": "2000-01-01T00:00:00Z",
             "processing_status": "pending",
             "provider_labels": ["INBOX"],
             "max_attempts": 3,
@@ -196,6 +210,8 @@ class TestEmailStatusBasedClaiming:
             "provider_message_id": f"concurrent-test-{uuid4().hex[:8]}",
             "subject": "Test Email",
             "from_email": "test@example.com",
+            # Keep this row ahead of unrelated global queue work.
+            "date_sent": "2000-01-01T00:00:00Z",
             "processing_status": "pending",
             "provider_labels": ["INBOX"],
         }
@@ -221,6 +237,9 @@ class TestEmailStatusBasedClaiming:
             "provider_message_id": provider_message_id,
             "subject": "Test Email",
             "from_email": "test@example.com",
+            # The claim RPC is intentionally global and oldest-first; make
+            # this test's row win even when another isolated test left work.
+            "date_sent": "2000-01-01T00:00:00Z",
             "processing_status": "pending",
             "provider_labels": ["INBOX"],
         }
@@ -550,7 +569,7 @@ class TestEmailProcessWorker:
             "subject": "Birthday Party Invitation",
             "from_email": "friend@example.com",
             "from_name": "Best Friend",
-            "date_sent": "2026-05-15T12:00:00Z",
+            "date_sent": "2000-01-01T00:00:00Z",
             "snippet": "You're invited to Jake's birthday party on May 20th at 2pm!",
             "provider_labels": ["INBOX"],
             "processing_status": "pending",
@@ -610,6 +629,7 @@ class TestWorkerConcurrency:
                 "provider_message_id": f"multi-test-{uuid4().hex[:8]}",
                 "subject": f"Test Email {i}",
                 "from_email": "test@example.com",
+                "date_sent": "2000-01-01T00:00:00Z",
                 "processing_status": "pending",
                 "provider_labels": ["INBOX"],
             }

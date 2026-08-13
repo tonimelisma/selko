@@ -61,6 +61,12 @@ def _claim(admin_client, worker_id):
     return result.data or []
 
 
+def _claim_for(admin_client, worker_id, integration_id):
+    rows = [row for row in _claim(admin_client, worker_id) if row["integration_id"] == integration_id]
+    assert len(rows) == 1, f"expected exactly one claim for {integration_id}, got {rows!r}"
+    return rows[0]
+
+
 @pytest.mark.integration
 @pytest.mark.development
 def test_only_one_worker_owns_an_integration_and_expired_leases_return(
@@ -68,9 +74,9 @@ def test_only_one_worker_owns_an_integration_and_expired_leases_return(
 ):
     """A live lease blocks a second claim; an expired one needs no cleanup job."""
     first = _claim(admin_client, "worker-a")
-    owned = next(
-        row for row in first if row["integration_id"] == synced_integration
-    )
+    owned_rows = [row for row in first if row["integration_id"] == synced_integration]
+    assert len(owned_rows) == 1, f"expected exactly one claim for {synced_integration}, got {owned_rows!r}"
+    owned = owned_rows[0]
     assert owned["run_kind"] == "initial"
 
     assert not any(
@@ -94,7 +100,7 @@ def test_heartbeat_and_completion_require_matching_ownership(
     admin_client, synced_integration
 ):
     """Ownership checks stop a stale worker from mutating a reassigned lease."""
-    claim = _claim(admin_client, "worker-a")[0]
+    claim = _claim_for(admin_client, "worker-a", synced_integration)
 
     assert admin_client.rpc("heartbeat_email_sync", {
         "p_integration_id": synced_integration,
@@ -134,7 +140,7 @@ def test_failure_backoff_grows_and_stays_capped(admin_client, synced_integration
         admin_client.table("email_sync_state").update(
             {"next_poll_at": _iso(-60), "lease_owner": None, "lease_expires_at": None}
         ).eq("integration_id", synced_integration).execute()
-        claim = _claim(admin_client, "worker-a")[0]
+        claim = _claim_for(admin_client, "worker-a", synced_integration)
         admin_client.rpc("fail_email_sync", {
             "p_integration_id": synced_integration,
             "p_run_id": claim["run_id"],
@@ -161,7 +167,7 @@ def test_failure_backoff_grows_and_stays_capped(admin_client, synced_integration
 def test_discovery_page_write_records_run_counters(admin_client, synced_integration):
     """Regression: the provider_ids_seen out-parameter shadowed the run column,
     which made every discovery page write fail with an ambiguous reference."""
-    claim = _claim(admin_client, "worker-a")[0]
+    claim = _claim_for(admin_client, "worker-a", synced_integration)
 
     result = admin_client.rpc("upsert_discovered_email_items", {
         "p_integration_id": synced_integration,
@@ -188,7 +194,7 @@ def test_identity_upsert_unions_folders_and_protects_completed_items(
     admin_client, synced_integration
 ):
     """Reconciliation overlap must not duplicate or requeue finished work."""
-    claim = _claim(admin_client, "worker-a")[0]
+    claim = _claim_for(admin_client, "worker-a", synced_integration)
     payload = {
         "p_integration_id": synced_integration,
         "p_run_id": claim["run_id"],
@@ -233,7 +239,7 @@ def test_cursor_advances_only_when_discovery_supplies_one(
     admin_client.table("integrations").update(
         {"sync_cursor": "history-999"}
     ).eq("id", synced_integration).execute()
-    claim = _claim(admin_client, "worker-a")[0]
+    claim = _claim_for(admin_client, "worker-a", synced_integration)
 
     admin_client.rpc("upsert_discovered_email_items", {
         "p_integration_id": synced_integration,
@@ -279,8 +285,12 @@ def test_newly_connected_integration_becomes_pollable(admin_client, temp_user):
     assert state["provider"] == "gmail"
     assert datetime.fromisoformat(state["next_poll_at"]) <= datetime.now(timezone.utc)
 
-    claimed = _claim(admin_client, "worker-a")
-    assert any(row["integration_id"] == integration_id for row in claimed)
+    # The claim RPC is a bounded global oldest-first batch. Make this newly
+    # connected account deterministic and assert its own row was claimed.
+    admin_client.table("email_sync_state").update(
+        {"next_poll_at": "2000-01-01T00:00:00+00:00"}
+    ).eq("integration_id", integration_id).execute()
+    _claim_for(admin_client, "worker-a", integration_id)
 
     admin_client.table("integrations").delete().eq("id", integration_id).execute()
 

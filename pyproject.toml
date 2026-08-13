@@ -27,4 +27,5 @@ members = ["backend", "cli"]
 dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-randomly>=4.0",
 ]

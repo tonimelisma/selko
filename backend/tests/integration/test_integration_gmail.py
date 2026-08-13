@@ -4,6 +4,8 @@ All tests use real Gmail API with seeded OAuth tokens.
 Development tests use local Supabase, staging tests use cloud Supabase.
 """
 
+import os
+
 import pytest
 
 from selko.services.gmail import (
@@ -111,6 +113,10 @@ class TestGmailStaging:
 
 @pytest.mark.integration
 @pytest.mark.development
+@pytest.mark.skipif(
+    os.getenv("SELKO_SKIP_REAL_GMAIL") == "1",
+    reason="staging Gmail token unavailable; real-Gmail development tests skipped",
+)
 class TestGmailDevelopment:
     """Test Gmail service with local Supabase + real Gmail API.
 

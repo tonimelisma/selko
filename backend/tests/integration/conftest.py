@@ -179,6 +179,18 @@ def temp_user(config):
 
 
 @pytest.fixture(scope="function")
+def isolated_user(temp_user):
+    """A throwaway user for tests that exercise global claim/lease queues.
+
+    Claim RPCs return bounded batches over the whole database. Using the
+    shared development user lets one test's due work consume another test's
+    batch, so queue tests must own their user and all of its rows.
+    """
+    user_id, email, password = temp_user
+    return {"id": user_id, "email": email, "password": password}
+
+
+@pytest.fixture(scope="function")
 def temp_user_client(config, temp_user):
     """Get authenticated client for temporary user.
     

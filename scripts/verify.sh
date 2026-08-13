@@ -41,7 +41,10 @@ create_user(
   # staging -> development copy rather than the bidirectional sync command,
   # which intentionally refuses when the source access token is near expiry.
   # The CLI and imported implementation both refuse production.
-  uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+  if ! uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail; then
+    echo "WARN: no live Gmail token; real-Gmail tests will skip. Gate continues." >&2
+    export SELKO_SKIP_REAL_GMAIL=1
+  fi
 }
 
 verify_backend() {
@@ -50,7 +53,17 @@ verify_backend() {
   supabase db reset
   prepare_local_integration_fixtures
   uv run pytest backend/tests/ -m "not integration"
-  uv run pytest backend/tests/integration/ -m "not staging" -v --tb=short
+  local integration_seed="${PYTEST_RANDOMLY_SEED:-$RANDOM}"
+  local integration_log
+  integration_log="$(mktemp)"
+  trap 'rm -f "$integration_log"' RETURN
+  echo "Running backend integration tests with random seed ${integration_seed}"
+  uv run pytest backend/tests/integration/ -m "not staging" -v --tb=short \
+    --randomly-seed="${integration_seed}" 2>&1 | tee "$integration_log"
+  local skip_count
+  skip_count="$(grep -oE '[0-9]+ skipped' "$integration_log" | tail -1 | awk '{print $1}')"
+  skip_count="${skip_count:-0}"
+  echo "Backend integration summary: seed=${integration_seed} skipped=${skip_count}"
 }
 
 verify_frontend() {
