@@ -151,8 +151,9 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 
 **Instructions:**
 1. Analyze the email content and any attachments (including PDFs, images, calendars)
-2. Extract ALL calendar events mentioned — meetings, appointments, parties, closures, themed days, deadlines, etc.
-3. For each event, extract:
+2. Set cancellation_detected=true only when the email is an organizer/provider cancellation of an existing calendar event. Set it false for RSVP declines, counter-proposals, subscription/account cancellations, or generic use of the word cancel.
+3. Extract ALL calendar events mentioned — meetings, appointments, parties, closures, themed days, deadlines, etc.
+4. For each event, extract:
    - Title: clear, descriptive event name
    - Start date/time as a LOCAL wall-clock time in {user_timezone}
    - End date/time as a LOCAL wall-clock time in {user_timezone} (if mentioned)
@@ -178,6 +179,7 @@ def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
 
 **Important:**
 - If NO calendar events are found, set events_found=false and return empty events list
+- A cancellation may have no usable event details; still set cancellation_detected=true so the system records an unmatched cancellation instead of creating a new event.
 - Parse dates carefully using the current date as context
 - Extract ALL events including themed days and informational items — classify them as "fyi"
 - For PDFs: extract events from calendar grids, flyers, and schedules
@@ -343,6 +345,7 @@ def extract_calendar_events(
             sender_email=email_metadata.get("from_email", ""),
             events_found=llm_result.events_found,
             events=llm_result.events,
+            cancellation_detected=llm_result.cancellation_detected,
         )
         return result
 

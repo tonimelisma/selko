@@ -159,7 +159,7 @@ export async function fetchActivityEvents(options = {}) {
 			.select('*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))', {
 				count: 'exact'
 			})
-			.in('status', ['approved', 'synced', 'sync_failed', 'rejected', 'cancelled'])
+			.in('status', ['approved', 'synced', 'sync_failed', 'rejected', 'cancel_queued', 'cancelled'])
 			.order('updated_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 		if (error) throw error;

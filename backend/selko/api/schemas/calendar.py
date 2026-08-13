@@ -73,6 +73,14 @@ class EventExtractionResponse(BaseModel):
     events: list[CalendarEvent] = Field(
         default_factory=list, description="List of extracted calendar events"
     )
+    cancellation_detected: bool = Field(
+        default=False,
+        description=(
+            "Whether the email explicitly cancels an existing event. Set true "
+            "only for an organizer/provider cancellation, never for an RSVP "
+            "decline or a generic account cancellation."
+        ),
+    )
 
     model_config = {"json_schema_extra": {"title": "EventExtractionResponse"}}
 
@@ -95,6 +103,7 @@ class CalendarEventExtraction(BaseModel):
     events: list[CalendarEvent] = Field(
         default_factory=list, description="List of extracted calendar events"
     )
+    cancellation_detected: bool = Field(default=False)
     raw_reasoning: Optional[str] = Field(
         None, description="Optional LLM reasoning process (for debugging)"
     )

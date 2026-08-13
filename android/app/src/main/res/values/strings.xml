@@ -140,6 +140,7 @@
     <string name="history_status_approved">Approved, waiting to sync</string>
     <string name="history_status_synced">Synced to Google Calendar</string>
     <string name="history_status_sync_failed">Sync failed</string>
+    <string name="history_status_cancel_queued">Cancellation queued</string>
     <string name="history_status_rejected">Rejected</string>
     <string name="history_status_cancelled">Cancelled</string>
     <string name="history_unknown_date">Unknown Date</string>

@@ -216,10 +216,11 @@ describe('events service', () => {
 			expect(mockFrom).toHaveBeenCalledWith('events');
 			expect(mockQuery.in).toHaveBeenCalledWith('status', [
 				'approved',
-				'synced',
-				'sync_failed',
-				'rejected',
-				'cancelled'
+					'synced',
+					'sync_failed',
+					'rejected',
+					'cancel_queued',
+					'cancelled'
 			]);
 			expect(mockQuery.order).toHaveBeenCalledWith('updated_at', { ascending: false });
 			expect(mockQuery.range).toHaveBeenCalledWith(0, 19);

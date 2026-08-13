@@ -375,7 +375,7 @@ By adopting the **Push-Sync architecture**, the system minimizes latency and quo
 
 *(The sections above are general Gmail API research; this appendix documents Selko's actual, current behavior for both Gmail and Outlook.)*
 
-Calendar invitation emails (Google/Outlook meeting requests, updates, RSVPs, cancellations) are never surfaced as Selko suggestions — the user's email client and its calendar already own them. Plain "add to calendar" `.ics` files (RFC 5545 `METHOD:PUBLISH` or no `METHOD`) are not invites and still extract normally.
+Calendar invitation emails (Google/Outlook meeting requests, updates, RSVPs, cancellations) are not surfaced as ordinary Selko suggestions. Requests, replies, counters, and declines remain skipped because the provider calendar owns those actions. Organizer cancellations are processed through Selko's cancellation state machine: a safe match is automatically terminal or queued for the worker-owned provider delete, while unmatched or ambiguous messages remain an auditable History outcome. Plain "add to calendar" `.ics` files (RFC 5545 `METHOD:PUBLISH` or no `METHOD`) still extract normally.
 
 **Detection is structural, not subject-line based, and happens at ingestion (fetch time) with a process-time backstop:**
 
@@ -384,7 +384,7 @@ Calendar invitation emails (Google/Outlook meeting requests, updates, RSVPs, can
 
 **Flagged emails are stored pre-skipped**, via a shared `mark_parsed_as_calendar_invite()` helper (`emails.py`) called from both parse paths: `processing_status='skipped'`, `processing_outcome='calendar_invite'`, with an explanation. Because `save_emails` upserts the parsed dict as-is and `claim_unprocessed_email` only claims `'pending'` rows, these emails are never queued for LLM processing.
 
-**A process-time backstop** in `process_email_for_events` (`events.py`) — using `ics_parser.detect_invite_method()` on the stored `.ics` attachment plus the `is_calendar_invite` column — catches the cases ingest-time detection can't: the `reprocess_email` RPC resetting an invite back to `pending`, a Gmail `.ics` whose METHOD was only readable from the stored attachment, and emails ingested before this feature shipped. It marks the email `skipped` (matching the ingest-time marking) with the same `calendar_invite` outcome, and the LLM gateway is never invoked.
+**A process-time backstop** in `process_email_for_events` (`events.py`) — using `ics_parser.detect_invite_method()` on the stored `.ics` attachment plus the `is_calendar_invite` column — catches the cases ingest-time detection can't: the `reprocess_email` RPC resetting an invite back to `pending`, a Gmail `.ics` whose METHOD was only readable from the stored attachment, and emails ingested before this feature shipped. It routes organizer cancellations into cancellation handling and marks other invite methods `skipped` with the `calendar_invite` outcome; the LLM gateway is never invoked for those non-cancellation methods.
 
 **In History**, invites appear as skipped-with-reason (`history.emailCalendarInvite`) — never as a silent gap — so the row is both the audit trail and the recovery path if detection ever misfires.
 

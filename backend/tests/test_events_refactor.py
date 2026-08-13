@@ -16,6 +16,7 @@ from selko.services.events import (
     CandidateWindow,
     EventsError,
     ResolutionConflictExhausted,
+    apply_pending_change,
     create_event,
     mark_email_status,
     normalize_event_data,
@@ -27,6 +28,38 @@ from selko.services.events import (
 TEST_TIMEZONE = "America/New_York"
 TEST_ZONE = ZoneInfo(TEST_TIMEZONE)
 FIXED_NOW = datetime(2026, 4, 9, 12, 0, tzinfo=TEST_ZONE)
+
+
+class TestApplyPendingChange:
+    def test_cancellation_is_local_state_only_and_preserves_title(self, monkeypatch):
+        event = {
+            "id": "event-1",
+            "title": "Original title",
+            "status": "pending_change",
+            "google_calendar_event_id": "google-event-1",
+            "importance": "action_required",
+        }
+        client = MagicMock()
+        client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = event
+        monkeypatch.setattr(
+            "selko.services.events._latest_pending_change_source",
+            lambda _client, _event_id: {
+                "source_type": "cancellation",
+                "extracted_data": {"title": "Changed by cancellation email"},
+            },
+        )
+        provider_delete = MagicMock()
+        monkeypatch.setattr(
+            "selko.services.calendars.cancel_event_to_calendar",
+            provider_delete,
+        )
+
+        result = apply_pending_change(client, "event-1")
+
+        assert result["title"] == "Original title"
+        assert result["status"] == "cancel_queued"
+        assert result["calendar_sync_action"] == "cancel"
+        provider_delete.assert_not_called()
 
 
 # --- Helpers for building mock objects ---

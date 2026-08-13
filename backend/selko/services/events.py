@@ -65,6 +65,7 @@ class EventMatch:
     gcal_raw: Optional[dict[str, Any]] = None
     candidate_window: Optional[CandidateWindow] = None
     stale_authoritative: bool = False
+    ambiguous: bool = False
 
     @property
     def is_gcal(self) -> bool:
@@ -352,6 +353,7 @@ def save_extracted_events(
     locked_by: str = "",
     lock_generation: int = 0,
     commit_result: Optional[dict[str, Any]] = None,
+    cancellation_mode: bool = False,
     _attempt: int = 0,
 ) -> tuple[int, int]:
     """Deduplicate and persist extracted events into New or Changes lanes.
@@ -377,6 +379,7 @@ def save_extracted_events(
     """
     num_new = 0
     num_updated = 0
+    cancellation_outcomes: list[str] = []
     decisions: list[dict[str, Any]] = []
     identity_email, identity_components = _load_identity_context(
         supabase_client, email_id
@@ -408,7 +411,7 @@ def save_extracted_events(
             source_event_data, all_day_policy, user_timezone
         )
 
-        if not event_data.get("start_datetime"):
+        if not event_data.get("start_datetime") and not cancellation_mode:
             logger.info(
                 "Skipping event with no start_datetime: %s", event_data.get("title")
             )
@@ -420,7 +423,7 @@ def save_extracted_events(
                 start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                 if start_dt.tzinfo is None:
                     start_dt = start_dt.replace(tzinfo=user_tz)
-                if start_dt < cutoff:
+                if start_dt < cutoff and not cancellation_mode:
                     logger.info(f"Skipping past event: {event_data.get('title')} ({start_str})")
                     continue
             except (ValueError, TypeError):
@@ -434,6 +437,7 @@ def save_extracted_events(
             user_timezone=user_timezone,
             with_window=True,
             identity_hints=identity_hints,
+            strict_identity=cancellation_mode,
         )
         if isinstance(resolution, tuple):
             match, candidate_window = resolution
@@ -441,14 +445,73 @@ def save_extracted_events(
             match = resolution
             candidate_window = getattr(match, "candidate_window", None)
 
+        if cancellation_mode and match is not None and match.ambiguous:
+            cancellation_outcomes.append("cancellation_ambiguous")
+            continue
+
         if match is not None and match.stale_authoritative:
             logger.info(
                 "Stale authoritative calendar identity is an audited no-op for event %s",
                 event_data.get("title"),
             )
+            if cancellation_mode:
+                cancellation_outcomes.append("cancellation_unmatched")
             continue
 
         hint_payload = [hint.as_payload() for hint in identity_hints]
+
+        if cancellation_mode:
+            # A provider-only event has no Selko queue row or fenced owner. It
+            # is safe to audit as unmatched, but never create a local shadow
+            # row merely to gain permission to delete someone else's event.
+            if match is not None and match.is_gcal:
+                cancellation_outcomes.append("cancellation_unmatched")
+                continue
+            if match is None:
+                cancellation_outcomes.append("cancellation_unmatched")
+                continue
+
+            status = str(match.baseline.get("status") or "")
+            if status == "rejected":
+                next_status = "rejected"
+                next_action = match.baseline.get("calendar_sync_action", "upsert")
+            elif status in {"synced", "syncing", "sync_failed", "approved", "cancel_queued"}:
+                next_status = "cancel_queued"
+                next_action = "cancel"
+            else:
+                next_status = "cancelled"
+                next_action = match.baseline.get("calendar_sync_action", "upsert")
+
+            decisions.append({
+                "action": "update",
+                "event_id": match.match_id,
+                "fields": {
+                    "status": next_status,
+                    "calendar_sync_action": next_action,
+                },
+                **_window_fields(candidate_window),
+                "hints": hint_payload,
+                "source": {
+                    "email_id": email_id,
+                    "extracted_data": source_event_data,
+                    "source_type": "cancellation",
+                    "event_snapshot_before": match.baseline,
+                    "change_set": {
+                        "kind": "cancellation",
+                        "changes": [{
+                            "field": "status",
+                            "before": status,
+                            "after": next_status,
+                            "reason": "organizer cancellation",
+                        }],
+                        "reasoning": "Structured or strong cancellation matched an existing event.",
+                    },
+                    "replace_pending_proposal": True,
+                },
+            })
+            num_updated += 1
+            cancellation_outcomes.append("event_cancelled")
+            continue
 
         if match is None:
             decisions.append({
@@ -651,10 +714,13 @@ def save_extracted_events(
             locked_by=locked_by,
             lock_generation=lock_generation,
             commit_result=commit_result,
+            cancellation_mode=cancellation_mode,
             _attempt=_attempt + 1,
         )
     if commit_result is not None:
         commit_result.update(outcome)
+        if cancellation_outcomes:
+            commit_result["cancellation_outcomes"] = cancellation_outcomes
     if _attempt:
         resolution_metrics.record_retries_per_email(_attempt)
     return num_new, num_updated
@@ -725,10 +791,26 @@ def process_email_for_events(
         else:
             initial_status = "pending_review"
 
-        # Calendar invitation emails (meeting requests, updates, RSVPs, cancellations)
-        # are already handled by the user's email client and calendar. Skip entirely.
+        # Calendar invitation emails (meeting requests, updates, RSVPs) are
+        # already handled by the user's email client and calendar. Organizer
+        # cancellations are the exception: they enter the cancellation state
+        # machine so a known event is terminalized or queued for the worker.
         invite_method = ics_parser.detect_invite_method(attachments)
-        if email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVITE_METHODS:
+        structured_cancellation = invite_method == "CANCEL"
+        if not structured_cancellation and email_metadata.get("is_calendar_invite"):
+            try:
+                component_result = supabase_client.table("email_calendar_components").select(
+                    "method"
+                ).eq("email_id", email_id).eq("method", "CANCEL").limit(1).execute()
+                structured_cancellation = isinstance(component_result.data, list) and bool(
+                    component_result.data
+                )
+            except Exception:
+                logger.debug("Could not inspect structured cancellation components for %s", email_id)
+        if (
+            not structured_cancellation
+            and (email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVITE_METHODS)
+        ):
             result = {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
             commit = _commit_email_extraction(
                 supabase_client, email_id, locked_by, lock_generation, [], "skipped"
@@ -749,12 +831,15 @@ def process_email_for_events(
         from_ics = bool(ics_extraction and ics_extraction.events)
         if from_ics:
             extraction = ics_extraction
+            if structured_cancellation:
+                extraction = extraction.model_copy(update={"cancellation_detected": True})
             logger.info(f"Parsed {len(extraction.events)} events from .ics (skipped LLM)")
         else:
             extraction = event_processing.extract_calendar_events(
                 gateway, email_text, email_metadata, attachments, config=config,
             )
 
+        cancellation_mode = structured_cancellation or extraction.cancellation_detected
         if not extraction.events_found or not extraction.events:
             logger.info("No events found in email")
             result = {"num_events": 0, "num_new": 0, "num_updated": 0}
@@ -768,7 +853,11 @@ def process_email_for_events(
                 supabase_client,
                 email_id,
                 "processed",
-                outcome="no_event",
+                outcome="cancellation_unmatched" if cancellation_mode else "no_event",
+                explanation=(
+                    "Cancellation did not contain enough identity to match an event."
+                    if cancellation_mode else None
+                ),
                 result=result,
             )
             return result
@@ -782,6 +871,7 @@ def process_email_for_events(
             locked_by=locked_by,
             lock_generation=lock_generation,
             commit_result=commit_result,
+            cancellation_mode=cancellation_mode,
         )
         if commit_result.get("fenced"):
             return {
@@ -791,7 +881,14 @@ def process_email_for_events(
                 "fenced": True,
             }
 
-        if num_new and num_updated:
+        cancellation_outcomes = commit_result.get("cancellation_outcomes", [])
+        if "event_cancelled" in cancellation_outcomes:
+            outcome = "event_cancelled"
+        elif "cancellation_ambiguous" in cancellation_outcomes:
+            outcome = "cancellation_ambiguous"
+        elif "cancellation_unmatched" in cancellation_outcomes:
+            outcome = "cancellation_unmatched"
+        elif num_new and num_updated:
             outcome = "event_created_and_updated"
         elif num_new:
             outcome = "event_created"
@@ -848,6 +945,9 @@ def _event_baseline(row: dict[str, Any]) -> dict[str, Any]:
         "description": row.get("description"),
         "importance": row.get("importance"),
         "status": row.get("status"),
+        "calendar_sync_action": row.get("calendar_sync_action", "upsert"),
+        "calendar_work_generation": row.get("calendar_work_generation", 0),
+        "google_calendar_event_id": row.get("google_calendar_event_id"),
     }
 
 
@@ -909,12 +1009,20 @@ def _identity_match(
     hints: list[IdentityHint],
     event_data: dict[str, Any],
     candidate_window: CandidateWindow,
+    strict_identity: bool = False,
 ) -> EventMatch | None:
     """Apply authoritative, exact-supporting, then two-signal matching."""
     authoritative = [hint for hint in hints if hint.kind == "ical_uid"]
     for hint in authoritative:
         rows = rows_by_key.get(_identity_key(hint), [])
         event_ids = {str(row.get("event_id")) for row in rows if row.get("event_id") in events_by_id}
+        if strict_identity and len(event_ids) > 1:
+            return EventMatch(
+                match_id="",
+                baseline={},
+                candidate_window=candidate_window,
+                ambiguous=True,
+            )
         if len(event_ids) != 1:
             continue
         event_id = next(iter(event_ids))
@@ -995,6 +1103,7 @@ def find_matching_event(
     *,
     with_window: bool = False,
     identity_hints: Optional[list[IdentityHint]] = None,
+    strict_identity: bool = False,
 ) -> Optional[EventMatch] | tuple[Optional[EventMatch], CandidateWindow | None]:
     """Find if event matches any existing events (date-based + LLM).
 
@@ -1004,18 +1113,25 @@ def find_matching_event(
     if user_timezone is None:
         user_timezone = get_user_timezone(supabase_client, user_id)
 
+    identity_hints = identity_hints or []
     start_dt = event_data.get("start_datetime")
-    if not start_dt:
+    if start_dt:
+        start_aware = ensure_aware(start_dt, user_timezone)
+        if start_aware is None:
+            return (None, None) if with_window else None
+        local_day = start_aware.astimezone(resolve_zone(user_timezone)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        time_min = local_day.astimezone(timezone.utc).isoformat()
+        time_max = (local_day + timedelta(days=1)).astimezone(timezone.utc).isoformat()
+    elif identity_hints:
+        # Structured cancellations can contain only an authoritative UID. Use
+        # an explicit bounded identity-only read set so the same RPC fence
+        # still covers the lookup instead of silently falling back to a create.
+        time_min = "1970-01-01T00:00:00+00:00"
+        time_max = "2100-01-01T00:00:00+00:00"
+    else:
         return (None, None) if with_window else None
-
-    start_aware = ensure_aware(start_dt, user_timezone)
-    if start_aware is None:
-        return (None, None) if with_window else None
-    local_day = start_aware.astimezone(resolve_zone(user_timezone)).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
-    time_min = local_day.astimezone(timezone.utc).isoformat()
-    time_max = (local_day + timedelta(days=1)).astimezone(timezone.utc).isoformat()
 
     result = supabase_client.table("events").select("*").eq(
         "user_id", user_id
@@ -1027,7 +1143,7 @@ def find_matching_event(
 
     candidates: list[dict[str, Any]] = list(result.data) if result.data else []
     identity_rows, identity_events, hint_fingerprint, hint_keys = _load_identity_candidates(
-        supabase_client, user_id, identity_hints or []
+        supabase_client, user_id, identity_hints
     )
     candidate_window = CandidateWindow(
         window_start=time_min,
@@ -1047,16 +1163,24 @@ def find_matching_event(
     identity_match = _identity_match(
         identity_rows,
         identity_events,
-        identity_hints or [],
+        identity_hints,
         event_data,
         candidate_window,
+        strict_identity=strict_identity,
     )
     if identity_match is not None:
         return resolved(identity_match)
 
     strong_candidates = _strong_identity_candidates(
-        identity_rows, identity_events, identity_hints or []
+        identity_rows, identity_events, identity_hints
     )
+    if strict_identity and len(strong_candidates) > 1:
+        return resolved(EventMatch(
+            match_id="",
+            baseline={},
+            candidate_window=candidate_window,
+            ambiguous=True,
+        ))
     if len(strong_candidates) == 1:
         try:
             matched_id = event_processing.compare_events(
@@ -1072,6 +1196,9 @@ def find_matching_event(
                 baseline=_event_baseline(candidate),
                 candidate_window=candidate_window,
             ))
+
+    if strict_identity:
+        return resolved(None)
 
     try:
         gcal_events = calendars.fetch_calendar_events_for_date_range(
@@ -1491,7 +1618,7 @@ def _latest_pending_change_source(
 
 
 def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, Any]:
-    """Apply the latest pending change proposal and mark event approved.
+    """Apply the latest pending change proposal without provider I/O.
 
     Prefers ``change_set`` after-values so source-truth ``extracted_data``
     (which may still say ``all_day=true``) cannot undo all-day materialization.
@@ -1549,10 +1676,19 @@ def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, An
                 }
 
     merged = apply_asserted_fields(event, proposed_fields)
-    if source.get("source_type") == "cancellation":
-        merged["title"] = merged.get("title") or event.get("title")
-        if merged.get("title") and not str(merged["title"]).startswith("CANCELLED:"):
-            merged["title"] = f"CANCELLED: {merged['title']}"
+    is_cancellation = source.get("source_type") == "cancellation"
+    if is_cancellation:
+        # Cancellation is a state transition, not a title rewrite.  A
+        # provider delete is performed later by the calendar worker.
+        merged["title"] = event.get("title")
+
+    if is_cancellation:
+        has_provider_event = bool(event.get("google_calendar_event_id"))
+        next_status = "cancel_queued" if has_provider_event else "cancelled"
+        next_action = "cancel"
+    else:
+        next_status = "approved"
+        next_action = event.get("calendar_sync_action", "upsert")
 
     update_fields = {
         "title": merged.get("title"),
@@ -1562,7 +1698,8 @@ def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, An
         "location": merged.get("location"),
         "description": merged.get("description"),
         "importance": merged.get("importance", event.get("importance", "action_required")),
-        "status": "approved",
+        "status": next_status,
+        "calendar_sync_action": next_action,
         "sync_attempts": 0,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -2087,7 +2224,7 @@ async def claim_approved_event_for_sync(
     worker_id: str,
     lock_duration_seconds: int = 300,
 ) -> Optional[dict[str, Any]]:
-    """Atomically claim the next approved event for calendar sync.
+    """Atomically claim the next calendar work item for calendar sync.
 
     Uses PostgreSQL FOR UPDATE SKIP LOCKED to safely claim events without
     conflicts between multiple workers. Runs over the asyncpg session pooler —
@@ -2105,7 +2242,7 @@ async def claim_approved_event_for_sync(
         EventsError: If claim operation fails.
     """
     try:
-        row = await pool.fetchrow("SELECT * FROM public.claim_approved_event($1, $2)", worker_id, lock_duration_seconds)
+        row = await pool.fetchrow("SELECT * FROM public.claim_calendar_work($1, $2)", worker_id, lock_duration_seconds)
         if row:
             from selko.services.pg import _normalize_pg_row
 
@@ -2121,7 +2258,13 @@ async def claim_approved_event_for_sync(
         raise EventsError(f"Failed to claim approved event: {e}") from e
 
 
-async def complete_event_sync(pool, event_id: str, google_event_id: str) -> None:
+async def complete_event_sync(
+    pool,
+    event_id: str,
+    google_event_id: str,
+    worker_id: str | None = None,
+    generation: int | None = None,
+) -> bool:
     """Mark event as synced successfully and clear the lock.
 
     Args:
@@ -2133,18 +2276,52 @@ async def complete_event_sync(pool, event_id: str, google_event_id: str) -> None
         EventsError: If update fails.
     """
     try:
-        await pool.execute(
+        guard = ""
+        args: list[Any] = [event_id, google_event_id, datetime.now(timezone.utc)]
+        if worker_id is not None and generation is not None:
+            guard = " AND status = 'syncing' AND locked_by = $4 AND calendar_work_generation = $5"
+            args.extend([worker_id, generation])
+        result = await pool.execute(
             "UPDATE public.events"
             " SET status = 'synced', google_calendar_event_id = $2,"
             " synced_at = $3, sync_error = NULL, sync_failure_code = NULL,"
             " locked_by = NULL, locked_until = NULL"
-            " WHERE id = $1",
-            event_id, google_event_id, datetime.now(timezone.utc),
+            " WHERE id = $1" + guard,
+            *args,
         )
+        if result == "UPDATE 0":
+            logger.warning("Ignoring stale upsert completion for event %s", event_id)
+            return False
         logger.info(f"Completed sync for event {event_id} -> {google_event_id}")
+        return True
 
     except Exception as e:
         raise EventsError(f"Failed to complete event sync: {e}") from e
+
+
+async def complete_event_cancellation(
+    pool,
+    event_id: str,
+    worker_id: str,
+    generation: int,
+) -> bool:
+    """Commit a worker-owned cancellation only if its lease is still current."""
+    try:
+        result = await pool.execute(
+            "UPDATE public.events"
+            " SET status = 'cancelled', sync_error = NULL, sync_failure_code = NULL,"
+            " locked_by = NULL, locked_until = NULL"
+            " WHERE id = $1 AND status = 'syncing' AND calendar_sync_action = 'cancel'"
+            " AND locked_by = $2 AND calendar_work_generation = $3",
+            event_id, worker_id, generation,
+        )
+        if result == "UPDATE 0":
+            logger.warning("Ignoring stale cancellation completion for event %s", event_id)
+            return False
+        logger.info("Completed cancellation for event %s", event_id)
+        return True
+    except Exception as e:
+        raise EventsError(f"Failed to complete event cancellation: {e}") from e
 
 
 async def defer_event_sync_for_quota(
@@ -2152,6 +2329,8 @@ async def defer_event_sync_for_quota(
     event_id: str,
     sync_attempts: int,
     next_retry_at: str,
+    worker_id: str | None = None,
+    generation: int | None = None,
 ) -> None:
     """Release a claimed event until the daily calendar quota resets.
 
@@ -2160,13 +2339,18 @@ async def defer_event_sync_for_quota(
     the lock and schedule the next claim for the quota reset.
     """
     try:
+        guard = ""
+        args: list[Any] = [max(0, sync_attempts - 1), next_retry_at, event_id]
+        if worker_id is not None and generation is not None:
+            guard = " AND status = 'syncing' AND locked_by = $4 AND calendar_work_generation = $5"
+            args.extend([worker_id, generation])
         await pool.execute(
             "UPDATE public.events"
-            " SET status = 'approved', sync_attempts = $2,"
+            " SET status = CASE WHEN calendar_sync_action = 'cancel' THEN 'cancel_queued' ELSE 'approved' END, sync_attempts = $1,"
             " sync_error = 'Daily calendar sync quota exceeded',"
-            " locked_by = NULL, locked_until = NULL, next_retry_at = $3"
-            " WHERE id = $1",
-            event_id, max(0, sync_attempts - 1), next_retry_at,
+            " locked_by = NULL, locked_until = NULL, next_retry_at = $2"
+            " WHERE id = $3" + guard,
+            *args,
         )
         logger.warning(
             "Deferred event %s until calendar quota resets at %s",
@@ -2183,6 +2367,8 @@ async def park_event_for_oauth_reauth(
     sync_attempts: int,
     sync_failure_code: str,
     user_message: str,
+    worker_id: str | None = None,
+    generation: int | None = None,
 ) -> None:
     """Return a claimed event to approved after an OAuth-blocked sync.
 
@@ -2195,13 +2381,18 @@ async def park_event_for_oauth_reauth(
     reconnect recovery flow) once the user reauthorizes.
     """
     try:
+        guard = ""
+        args: list[Any] = [max(0, sync_attempts - 1), user_message, sync_failure_code, event_id]
+        if worker_id is not None and generation is not None:
+            guard = " AND status = 'syncing' AND locked_by = $5 AND calendar_work_generation = $6"
+            args.extend([worker_id, generation])
         await pool.execute(
             "UPDATE public.events"
-            " SET status = 'approved', sync_attempts = $2, sync_error = $3,"
-            " sync_failure_code = $4, locked_by = NULL, locked_until = NULL,"
+            " SET status = CASE WHEN calendar_sync_action = 'cancel' THEN 'cancel_queued' ELSE 'approved' END, sync_attempts = $1, sync_error = $2,"
+            " sync_failure_code = $3, locked_by = NULL, locked_until = NULL,"
             " next_retry_at = NULL, dead_letter_reason = NULL, dead_letter_at = NULL"
-            " WHERE id = $1",
-            event_id, max(0, sync_attempts - 1), user_message, sync_failure_code,
+            " WHERE id = $4" + guard,
+            *args,
         )
         logger.warning(
             "Parked event %s for %s reauthorization", event_id, sync_failure_code
@@ -2214,6 +2405,8 @@ async def fail_event_sync(
     pool,
     event_id: str,
     error: str,
+    worker_id: str | None = None,
+    generation: int | None = None,
 ) -> None:
     """Mark event sync as failed.
 
@@ -2230,7 +2423,7 @@ async def fail_event_sync(
     """
     try:
         row = await pool.fetchrow(
-            "SELECT sync_attempts, max_sync_attempts FROM public.events WHERE id = $1",
+            "SELECT sync_attempts, max_sync_attempts, calendar_sync_action FROM public.events WHERE id = $1",
             event_id,
         )
         if row is None:
@@ -2238,16 +2431,22 @@ async def fail_event_sync(
         sync_attempts = row["sync_attempts"]
         max_sync_attempts = row["max_sync_attempts"]
         should_retry = sync_attempts < max_sync_attempts
+        retry_status = "cancel_queued" if row.get("calendar_sync_action") == "cancel" else "approved"
+        guard = ""
 
         if should_retry:
             delay, next_retry_at = calculate_retry_delay(sync_attempts)
             next_retry_dt = datetime.fromisoformat(next_retry_at.replace("Z", "+00:00"))
+            args: list[Any] = [retry_status, error, next_retry_dt, event_id]
+            if worker_id is not None and generation is not None:
+                guard = " AND status = 'syncing' AND locked_by = $5 AND calendar_work_generation = $6"
+                args.extend([worker_id, generation])
             await pool.execute(
                 "UPDATE public.events"
-                " SET status = 'approved', sync_error = $2, locked_by = NULL,"
+                " SET status = $1, sync_error = $2, locked_by = NULL,"
                 " locked_until = NULL, next_retry_at = $3"
-                " WHERE id = $1",
-                event_id, error, next_retry_dt,
+                " WHERE id = $4" + guard,
+                *args,
             )
             logger.warning(
                 f"Event {event_id} sync failed "
@@ -2255,12 +2454,16 @@ async def fail_event_sync(
                 f"Will retry in {delay}s."
             )
         else:
+            args = [event_id, error, datetime.now(timezone.utc)]
+            if worker_id is not None and generation is not None:
+                guard = " AND status = 'syncing' AND locked_by = $4 AND calendar_work_generation = $5"
+                args.extend([worker_id, generation])
             await pool.execute(
                 "UPDATE public.events"
                 " SET status = 'sync_failed', sync_error = $2, locked_by = NULL,"
                 " locked_until = NULL, dead_letter_reason = $2, dead_letter_at = $3"
-                " WHERE id = $1",
-                event_id, error, datetime.now(timezone.utc),
+                " WHERE id = $1" + guard,
+                *args,
             )
             logger.error(
                 f"Event {event_id} sync failed permanently "

@@ -99,6 +99,30 @@ describe('History Page', () => {
 		});
 	});
 
+	it('shows cancellation status without an undo action', async () => {
+		const now = new Date();
+		mockFetchActivityEvents.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-cancel',
+					title: 'Cancelled meeting',
+					status: 'cancel_queued',
+					updated_at: now.toISOString(),
+					event_sources: []
+				}
+			],
+			count: 1,
+			error: null
+		});
+
+		render(HistoryPage);
+
+		await waitFor(() => {
+			expect(screen.getByText('Cancellation queued')).toBeInTheDocument();
+		});
+		expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+	});
+
 	it('shows undo button for synced events', async () => {
 		const now = new Date();
 		mockFetchActivityEvents.mockResolvedValue({

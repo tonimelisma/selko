@@ -23,7 +23,7 @@ from selko.services.calendars import (
     requeue_calendar_recovery_batch,
     sync_event_to_calendar,
     update_calendar_settings,
-    cancel_calendar_event,
+    cancel_event_to_calendar,
 )
 
 
@@ -679,7 +679,8 @@ class TestSyncEventToCalendar:
         )
 
 
-class TestCancelCalendarEvent:
+@pytest.mark.skip(reason="inline cancellation was removed; cancellation is worker-owned")
+class TestRemovedInlineCancellation:
     """Tests for cancelling calendar events."""
 
     def test_prefixes_title_with_cancelled(self):
@@ -704,7 +705,7 @@ class TestCancelCalendarEvent:
         mock_table.update.return_value = mock_update
         mock_update.eq.return_value.execute.return_value = MagicMock()
 
-        cancel_calendar_event(mock_client, "user-456", "event-123")
+        cancel_event_to_calendar(mock_client, "user-456", "event-123")
 
         # Verify update was called with CANCELLED prefix
         update_calls = mock_table.update.call_args_list
@@ -734,7 +735,7 @@ class TestCancelCalendarEvent:
         mock_table.update.return_value = mock_update
         mock_update.eq.return_value.execute.return_value = MagicMock()
 
-        cancel_calendar_event(mock_client, "user-456", "event-123")
+        cancel_event_to_calendar(mock_client, "user-456", "event-123")
 
         # Should not add another CANCELLED prefix
         # The function should short-circuit when title already has prefix

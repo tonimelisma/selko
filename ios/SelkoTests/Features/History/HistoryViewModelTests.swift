@@ -81,6 +81,34 @@ struct HistoryViewModelTests {
     }
 
     @Test
+    func loadIncludesCancellationQueuedEvents() async throws {
+        let mockEventService = MockEventService()
+        let event = CalendarEvent(
+            id: UUID(),
+            userId: UUID(),
+            title: "Cancelled meeting",
+            startDatetime: Date(),
+            endDatetime: Date().addingTimeInterval(3600),
+            allDay: false,
+            location: nil,
+            description: nil,
+            sourceAttribution: nil,
+            status: .cancelQueued,
+            googleCalendarEventId: UUID().uuidString,
+            syncedAt: Date(),
+            createdAt: Date(),
+            updatedAt: Date(),
+            eventSources: nil
+        )
+        mockEventService.fetchActivityEventsResult = .success([event])
+
+        let viewModel = HistoryViewModel(eventService: mockEventService)
+        await viewModel.load()
+
+        #expect(viewModel.dateGroups.flatMap(\.events).first?.status == .cancelQueued)
+    }
+
+    @Test
     func loadMoreAppendsPagination() async throws {
         // Given
         let mockEventService = MockEventService()

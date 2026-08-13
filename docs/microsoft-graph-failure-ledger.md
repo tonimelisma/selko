@@ -4,7 +4,10 @@ Calendar meeting metadata is captured during Outlook acquisition. The
 `meetingMessageType` cancellation class, `iCalUId` hash, sequence, modified
 timestamp, and associated dates are written to the service-only calendar
 component ledger. A cancellation without an associated event remains a
-structured component without a UID; it does not fabricate identity.
+structured component without a UID; it does not fabricate identity. A safe
+match is routed to the worker-owned calendar cancellation path; an unmatched
+or ambiguous cancellation remains an auditable email outcome and never calls
+Graph Calendar directly from email processing.
 
 Durable record of Microsoft Graph and Graph-adjacent production failures seen
 by Selko. Read this ledger before changing Outlook or OneDrive retry, cursor,

@@ -36,6 +36,7 @@ from selko.services.emails import (
 from selko.services.events import (
     EventsError,
     claim_approved_event_for_sync,
+    complete_event_cancellation,
     complete_event_sync,
     defer_event_sync_for_quota,
     fail_event_sync,
@@ -517,40 +518,64 @@ class WorkerPool:
             worker_id: Unique identifier for this worker.
             event: The claimed event record.
         """
-        from selko.workers.calendar_sync import sync_event
+        from selko.workers.calendar_sync import cancel_event, sync_event
 
         event_id = event["id"]
         title = event.get("title", "(no title)")[:50]
 
         logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
+        is_cancellation = event.get("calendar_sync_action") == "cancel"
+        generation = int(event.get("calendar_work_generation") or 0)
+        fenced_claim = "calendar_work_generation" in event or "locked_by" in event
 
         try:
             quota_result = QuotaService(client).check_and_increment(
                 event["user_id"], "calendar_syncs"
             )
             if not quota_result.allowed:
-                await defer_event_sync_for_quota(
-                    self.pg_pool,
-                    event_id,
-                    event["sync_attempts"],
-                    quota_result.resets_at,
-                )
+                defer_args = [
+                    self.pg_pool, event_id, event["sync_attempts"], quota_result.resets_at
+                ]
+                if fenced_claim:
+                    defer_args.extend([worker_id, generation])
+                await defer_event_sync_for_quota(*defer_args)
                 return
 
-            google_event_id = await asyncio.wait_for(
-                sync_event(client, self.config, event),
-                timeout=self.config.event_sync_timeout,
-            )
-            await complete_event_sync(self.pg_pool, event_id, google_event_id)
-            logger.info(f"{worker_id}: Completed event sync {event_id}")
+            if is_cancellation:
+                await asyncio.wait_for(
+                    cancel_event(client, self.config, event),
+                    timeout=self.config.event_sync_timeout,
+                )
+                if fenced_claim:
+                    await complete_event_cancellation(
+                        self.pg_pool, event_id, worker_id, generation
+                    )
+                logger.info(f"{worker_id}: Completed event cancellation {event_id}")
+            else:
+                google_event_id = await asyncio.wait_for(
+                    sync_event(client, self.config, event),
+                    timeout=self.config.event_sync_timeout,
+                )
+                if fenced_claim:
+                    await complete_event_sync(
+                        self.pg_pool, event_id, google_event_id, worker_id, generation
+                    )
+                else:
+                    await complete_event_sync(self.pg_pool, event_id, google_event_id)
+                logger.info(f"{worker_id}: Completed event sync {event_id}")
             circuit_breaker.record_success("google_calendar")
 
         except asyncio.TimeoutError:
-            error_msg = f"Event sync timed out after {self.config.event_sync_timeout}s"
+            error_msg = f"Event {'cancellation' if is_cancellation else 'sync'} timed out after {self.config.event_sync_timeout}s"
             circuit_breaker.record_failure("google_calendar")
             logger.error(f"{worker_id}: {error_msg} for event {event_id}")
             try:
-                await fail_event_sync(self.pg_pool, event_id, error_msg)
+                if fenced_claim:
+                    await fail_event_sync(
+                        self.pg_pool, event_id, error_msg, worker_id, generation
+                    )
+                else:
+                    await fail_event_sync(self.pg_pool, event_id, error_msg)
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")
 
@@ -569,14 +594,22 @@ class WorkerPool:
                     # park it so it resumes automatically once the user
                     # reauthorizes, instead of burning retries toward
                     # dead-letter.
-                    await park_event_for_oauth_reauth(
+                    park_args = [
                         self.pg_pool,
                         event_id,
                         event["sync_attempts"],
                         classification.code,
                         classification.user_message,
-                    )
+                    ]
+                    if fenced_claim:
+                        park_args.extend([worker_id, generation])
+                    await park_event_for_oauth_reauth(*park_args)
                 else:
-                    await fail_event_sync(self.pg_pool, event_id, str(e))
+                    if fenced_claim:
+                        await fail_event_sync(
+                            self.pg_pool, event_id, str(e), worker_id, generation
+                        )
+                    else:
+                        await fail_event_sync(self.pg_pool, event_id, str(e))
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")

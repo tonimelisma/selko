@@ -12,6 +12,7 @@ enum class EventStatus {
     @SerialName("syncing") SYNCING,
     @SerialName("synced") SYNCED,
     @SerialName("sync_failed") SYNC_FAILED,
+    @SerialName("cancel_queued") CANCEL_QUEUED,
     @SerialName("cancelled") CANCELLED,
     @SerialName("rejected") REJECTED
 }

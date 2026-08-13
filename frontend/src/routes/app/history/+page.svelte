@@ -216,6 +216,8 @@
 			event_updated: $_('history.emailEventUpdated'),
 			event_created_and_updated: $_('history.emailEventCreatedAndUpdated'),
 			event_cancelled: $_('history.emailEventCancelled'),
+			cancellation_unmatched: $_('history.emailCancellationUnmatched'),
+			cancellation_ambiguous: $_('history.emailCancellationAmbiguous'),
 			event_matched: $_('history.emailEventMatched'),
 			calendar_invite: $_('history.emailCalendarInvite')
 		};
@@ -413,6 +415,7 @@
 			approved: $_('history.statusApproved'),
 			synced: $_('history.statusSynced'),
 			sync_failed: $_('history.statusSyncFailed'),
+			cancel_queued: $_('history.statusCancelQueued'),
 			rejected: $_('history.statusRejected'),
 			cancelled: $_('history.statusCancelled')
 		};

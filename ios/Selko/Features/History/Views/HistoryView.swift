@@ -160,7 +160,7 @@ struct HistoryRowView: View {
                 .buttonStyle(.selko(.tertiary))
                 .foregroundStyle(Color.selkoWarningText)
                 .accessibilityIdentifier("retryButton")
-            } else if event.status != .cancelled && event.status != .pendingReview {
+            } else if event.status != .cancelled && event.status != .cancelQueued && event.status != .pendingReview {
                 Button {
                     onUndo()
                 } label: {
@@ -182,6 +182,8 @@ struct HistoryRowView: View {
             SelkoStatusIndicator(text: "Synced", systemImage: "checkmark.circle", tone: .success)
         case .syncFailed:
             SelkoStatusIndicator(text: "Failed", systemImage: "exclamationmark.circle", tone: .warning)
+        case .cancelQueued:
+            SelkoStatusIndicator(text: "Cancellation queued", systemImage: "clock", tone: .warning)
         case .rejected:
             SelkoStatusIndicator(text: "Rejected", systemImage: "xmark.circle", tone: .error)
         case .cancelled:
