@@ -504,6 +504,9 @@ def compare_events(
    - Location: {candidate.get('location', 'Not specified')}
    - Description: {candidate.get('description', '')}
 """
+        signals = candidate.get("_identity_signals") or []
+        if signals:
+            prompt += "   - Correlated identity signals: " + ", ".join(signals) + "\n"
 
     prompt += """
 **Question:** Is the new event the same as any of the existing events?
