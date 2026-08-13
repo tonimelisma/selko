@@ -390,7 +390,6 @@ def test_atomic_save_blocks_llm_claim_until_attachment_descriptors_settle(
         "p_user_id": user_id,
         "p_email": email_payload,
         "p_descriptors": descriptors,
-        "p_calendar_components": [],
     }).execute().data
 
     # The RPC's own data shape is a scalar uuid; tolerate the list shape too.

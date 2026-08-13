@@ -12,7 +12,9 @@ usage() {
 }
 
 require_local_supabase() {
-  if ! supabase status >/dev/null 2>&1; then
+  # JSON status reports the core services' health without treating disabled
+  # optional services (pooler/imgproxy) as a failed local database.
+  if ! supabase status -o json >/dev/null 2>&1; then
     echo "ERROR: Local Supabase is not running. Start it with: supabase start" >&2
     exit 1
   fi
