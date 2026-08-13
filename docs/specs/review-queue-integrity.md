@@ -7,8 +7,8 @@ after reviewing what PRs #305–#312 actually delivered. Per increment:
 |---|---|---|
 | **R1** — stable animated web queue | **Partially implemented** (#305). Ordering helper, lane state and disposition wrapper are real. Eight defects, two of them high severity, and eight of the fourteen required tests are missing. | Repaired by [`stub-rollback-and-gate-repair.md`](stub-rollback-and-gate-repair.md) **G5** (defects D-R1.1 … D-R1.8). |
 | **R2** — staged, fenced event resolution | **Not implemented.** #306–#308 merged three tables, six RPCs and a worker that nothing instantiates. The duplicate-event race this plan exists to fix is untouched. Objects dropped by G1. | **Superseded by** [`parallel-extraction-fenced-commit.md`](parallel-extraction-fenced-commit.md). |
-| **R3** — identity-aware correlation | **Not implemented.** #309 merged two permanently empty tables. No canonicalizer, no provider parsing, no ladder. Objects dropped by G1. | **Superseded by** [`calendar-identity-and-cancellation.md`](calendar-identity-and-cancellation.md) C1–C2. |
-| **R4** — automatic cancellation | **Not implemented.** #310 merged 50 lines of DDL and no behaviour, and truncated two live CHECK constraints (repaired by #312). | **Superseded by** [`calendar-identity-and-cancellation.md`](calendar-identity-and-cancellation.md) C3. |
+| **R3** — identity-aware correlation | Implemented by C1–C2. | **Superseded by** [`calendar-identity-and-cancellation.md`](calendar-identity-and-cancellation.md) C1–C2. |
+| **R4** — automatic cancellation | Implemented by C3. | **Superseded by** [`calendar-identity-and-cancellation.md`](calendar-identity-and-cancellation.md) C3. |
 | **R5** — reviewed data repair | **Not implemented.** #311 merged a script that opens no database connection and exits 0 from `--apply`. Deleted by G1. | **Superseded by** [`parallel-extraction-fenced-commit.md`](parallel-extraction-fenced-commit.md) P4. |
 
 **This document remains normative for its requirements.** §1 (outcomes), §3

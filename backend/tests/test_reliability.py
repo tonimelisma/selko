@@ -149,7 +149,7 @@ class TestExponentialBackoffEvents:
             asyncio.run(fail_event_sync(self.pool, "event-1", "Calendar API error"))
 
         sql, args = self.pool.calls[-1]
-        assert "status = 'approved'" in sql
+        assert args[0] == "approved"
         assert args[2] == FROZEN_NOW + timedelta(seconds=60)
 
     def test_event_delay_capped(self):
@@ -176,11 +176,11 @@ class TestExponentialBackoffEvents:
         asyncio.run(defer_event_sync_for_quota(self.pool, "event-1", 2, reset_at))
 
         sql, args = self.pool.calls[-1]
-        assert "status = 'approved'" in sql
-        assert "sync_attempts = $2" in sql
-        assert args[1] == 1
+        assert "CASE WHEN calendar_sync_action = 'cancel' THEN 'cancel_queued' ELSE 'approved' END" in sql
+        assert "sync_attempts = $1" in sql
+        assert args[0] == 1
         assert "Daily calendar sync quota exceeded" in sql
-        assert args[2] == reset_at
+        assert args[1] == reset_at
 
     def test_oauth_park_releases_claim_without_spending_attempt_or_dead_lettering(self):
         """An OAuth-blocked sync isn't a real attempt: no dead-letter, no backoff.
@@ -203,11 +203,11 @@ class TestExponentialBackoffEvents:
         ))
 
         sql, args = self.pool.calls[-1]
-        assert "status = 'approved'" in sql
-        assert "sync_attempts = $2" in sql
-        assert args[1] == 1
-        assert args[2] == "Google Calendar needs to be reconnected."
-        assert args[3] == "oauth_required"
+        assert "CASE WHEN calendar_sync_action = 'cancel' THEN 'cancel_queued' ELSE 'approved' END" in sql
+        assert "sync_attempts = $1" in sql
+        assert args[0] == 1
+        assert args[1] == "Google Calendar needs to be reconnected."
+        assert args[2] == "oauth_required"
         assert "dead_letter_at = NULL" in sql
 
 
@@ -285,7 +285,7 @@ class TestDeadLetterEvent:
         asyncio.run(fail_event_sync(self.pool, "event-1", "Temporary error"))
 
         sql, args = self.pool.calls[-1]
-        assert "status = 'approved'" in sql
+        assert args[0] == "approved"
         assert "dead_letter_reason" not in sql
 
 

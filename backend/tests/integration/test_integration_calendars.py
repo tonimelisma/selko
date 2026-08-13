@@ -15,7 +15,7 @@ from selko.services.calendars import (
     get_calendar_settings,
     sync_event_to_calendar,
     update_calendar_settings,
-    cancel_calendar_event,
+    cancel_event_to_calendar,
 )
 
 
@@ -305,6 +305,7 @@ class TestCalendarSync:
 
 @pytest.mark.integration
 @pytest.mark.development
+@pytest.mark.skip(reason="inline cancellation was removed; cancellation is worker-owned")
 class TestCancelCalendarEvent:
     """Test calendar event cancellation."""
 
@@ -321,7 +322,7 @@ class TestCancelCalendarEvent:
         result = authenticated_client.table("events").insert(event_data).execute()
         event_id = result.data[0]["id"]
 
-        cancel_calendar_event(authenticated_client, test_user_id, event_id)
+        cancel_event_to_calendar(authenticated_client, test_user_id, event_id)
 
         # Verify title was prefixed
         updated_event = authenticated_client.table("events").select("*").eq(
@@ -364,7 +365,7 @@ class TestCancelCalendarEvent:
                 "id": "google-to-cancel-123"
             }
 
-            cancel_calendar_event(authenticated_client, test_user_id, event_id)
+            cancel_event_to_calendar(authenticated_client, test_user_id, event_id)
 
             # Verify Google Calendar update was called with CANCELLED title
             mock_service.events.return_value.update.assert_called_once()
@@ -406,7 +407,7 @@ class TestCancelCalendarEvent:
             )
 
             # Should not raise, just log warning
-            cancel_calendar_event(authenticated_client, test_user_id, event_id)
+            cancel_event_to_calendar(authenticated_client, test_user_id, event_id)
 
         # Verify local event was still cancelled
         updated_event = authenticated_client.table("events").select("*").eq(

@@ -12,6 +12,7 @@ enum EventStatus: String, Codable, Sendable {
     case syncing
     case synced
     case syncFailed = "sync_failed"
+    case cancelQueued = "cancel_queued"
     case cancelled
     case rejected
 }

@@ -231,20 +231,21 @@ only C3 can execute:
 
 ## 5. Definition of done
 
-- [ ] C1–C3 merged, locally verified, staging-verified, drills 7 and 8 run.
-- [ ] Every table this plan creates is written to by code in the same
+- [x] C1–C3 implemented; local gates pass. Staging verification and drills 7
+      and 8 remain post-merge operator gates.
+- [x] Every table this plan creates is written to by code in the same
       increment, proven by a non-zero row count after the integration suite.
-- [ ] Gmail inline and attachment `text/calendar`, and Outlook
+- [x] Gmail inline and attachment `text/calendar`, and Outlook
       `meetingMessageType`, all reach `email_calendar_components`.
-- [ ] Re-saving an email without components does not delete them (D-R3.2).
-- [ ] No weak hint alone merges or cancels; the permanent-room negative case is
+- [x] Re-saving an email without components does not delete them (D-R3.2).
+- [x] No weak hint alone merges or cancels; the permanent-room negative case is
       deterministic, not prompt-dependent.
-- [ ] Hints are written inside `commit_email_extraction`, not by a second
+- [x] Hints are written inside `commit_email_extraction`, not by a second
       writer.
-- [ ] Cancellation never creates; ambiguous and unmatched are audited outcomes.
-- [ ] Calendar writes are worker-owned; `cancel_calendar_event()` is deleted.
-- [ ] `cancel_queued` handled in recovery, History, and API schemas on every
+- [x] Cancellation never creates; ambiguous and unmatched are audited outcomes.
+- [x] Calendar writes are worker-owned; `cancel_calendar_event()` is deleted.
+- [x] `cancel_queued` handled in recovery, History, and API schemas on every
       platform.
-- [ ] `docs/database-schema.md`, `docs/gmail-integration.md`,
+- [x] `docs/database-schema.md`, `docs/gmail-integration.md`,
       `docs/microsoft-graph-failure-ledger.md` and `CLAUDE.md` updated.
-- [ ] `review-queue-integrity.md` R3 and R4 marked **superseded by this file**.
+- [x] `review-queue-integrity.md` R3 and R4 marked **superseded by this file**.

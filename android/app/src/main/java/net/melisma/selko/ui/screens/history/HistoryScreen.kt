@@ -247,6 +247,7 @@ private fun StatusIcon(status: EventStatus) {
         EventStatus.APPROVED -> Icons.Filled.CheckCircle to MaterialTheme.colorScheme.primary
         EventStatus.SYNCED -> Icons.Filled.CheckCircle to SelkoTheme.colors.success
         EventStatus.SYNC_FAILED -> Icons.Filled.Error to MaterialTheme.colorScheme.error
+        EventStatus.CANCEL_QUEUED -> Icons.Filled.Refresh to MaterialTheme.colorScheme.error
         EventStatus.REJECTED -> Icons.Filled.Cancel to MaterialTheme.colorScheme.onSurfaceVariant
         EventStatus.CANCELLED -> Icons.Filled.Cancel to MaterialTheme.colorScheme.onSurfaceVariant
         else -> Icons.Filled.History to MaterialTheme.colorScheme.onSurfaceVariant
@@ -264,6 +265,7 @@ private fun getStatusDescription(event: CalendarEvent, resources: Resources): St
         EventStatus.APPROVED -> resources.getString(R.string.history_status_approved)
         EventStatus.SYNCED -> resources.getString(R.string.history_status_synced)
         EventStatus.SYNC_FAILED -> resources.getString(R.string.history_status_sync_failed)
+        EventStatus.CANCEL_QUEUED -> resources.getString(R.string.history_status_cancel_queued)
         EventStatus.REJECTED -> resources.getString(R.string.history_status_rejected)
         EventStatus.CANCELLED -> resources.getString(R.string.history_status_cancelled)
         else -> event.status.name

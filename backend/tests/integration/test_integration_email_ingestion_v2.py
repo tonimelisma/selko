@@ -67,10 +67,33 @@ def _claim_for(admin_client, worker_id, integration_id):
     return rows[0]
 
 
+@pytest.fixture
+def isolated_due_claim_queue(admin_client, synced_integration):
+    """Keep unrelated due rows from consuming this global one-row claim."""
+    rows = admin_client.table("email_sync_state").select(
+        "integration_id,next_poll_at"
+    ).execute().data or []
+    deferred = [
+        row for row in rows if row["integration_id"] != synced_integration
+    ]
+    for row in deferred:
+        admin_client.table("email_sync_state").update(
+            {"next_poll_at": _iso(3600)}
+        ).eq("integration_id", row["integration_id"]).execute()
+
+    try:
+        yield
+    finally:
+        for row in deferred:
+            admin_client.table("email_sync_state").update(
+                {"next_poll_at": row["next_poll_at"]}
+            ).eq("integration_id", row["integration_id"]).execute()
+
+
 @pytest.mark.integration
 @pytest.mark.development
 def test_only_one_worker_owns_an_integration_and_expired_leases_return(
-    admin_client, synced_integration
+    admin_client, synced_integration, isolated_due_claim_queue
 ):
     """A live lease blocks a second claim; an expired one needs no cleanup job."""
     first = _claim(admin_client, "worker-a")
