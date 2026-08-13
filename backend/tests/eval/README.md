@@ -132,6 +132,13 @@ superseded prompt hashes for each provider/model/thinking/fixture group. It
 also follows score artifacts back to their inference identity. Artifacts with
 missing identity metadata are retained rather than guessed at.
 
+Retention is a merge prerequisite, not an occasional cleanup: run the dry run
+before changing prompt contracts and apply it after reviewing the candidate
+list. The repository pre-commit hook rejects more than 14,000 tracked files
+under `results/`; this ceiling is intentionally above the current retained
+baseline because inference and score caches remain content-addressed and
+tracked until they can move out of Git.
+
 ### Viewing Results
 
 ```bash

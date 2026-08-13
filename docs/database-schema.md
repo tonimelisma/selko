@@ -185,6 +185,9 @@ Calendar events with status-based worker claiming for sync.
 | `max_sync_attempts` | integer | Maximum sync attempts (default: 3) |
 | `sync_error` | text | Last sync error message |
 | `sync_failure_code` | text, nullable | Typed classification of the last sync failure: `oauth_required`, `oauth_scope_required`, `provider_transient`, `rate_limited`, `invalid_event`, `permission_denied`, `unknown`. Control flow branches on this, never on `sync_error` text. Cleared on successful sync. |
+| `calendar_sync_action` | text, nullable | Worker-owned calendar intent: `upsert` or `cancel`; no producer until `calendar-identity-and-cancellation.md` C3. |
+| `calendar_work_generation` | bigint | Monotonic generation fencing calendar work; no producer until `calendar-identity-and-cancellation.md` C3. |
+| `cancel_queued` | boolean | Whether cancellation work is queued for the event; no producer until `calendar-identity-and-cancellation.md` C3. |
 | `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry sync |
 | `dead_letter_reason` | text, nullable | Reason for permanent sync failure |
 | `dead_letter_at` | timestamptz, nullable | When the event sync was abandoned |
