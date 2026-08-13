@@ -113,7 +113,7 @@ class TestEmailStatusBasedClaiming:
             "provider_message_id": f"claim-test-{uuid4().hex[:8]}",
             "subject": "Test Email for Claiming",
             "from_email": "test@example.com",
-            "date_sent": "2000-01-01T00:00:00Z",
+            "date_sent": "1900-01-01T00:00:00Z",
             "snippet": "Test content",
             "provider_labels": ["INBOX"],
             "processing_status": "pending",
@@ -211,20 +211,31 @@ class TestEmailStatusBasedClaiming:
             "subject": "Test Email",
             "from_email": "test@example.com",
             # Keep this row ahead of unrelated global queue work.
-            "date_sent": "2000-01-01T00:00:00Z",
+            "date_sent": "1900-01-01T00:00:00Z",
             "processing_status": "pending",
             "provider_labels": ["INBOX"],
         }
 
-        authenticated_client.table("emails").insert(email_data).execute()
+        result = authenticated_client.table("emails").insert(email_data).execute()
+        email_id = result.data[0]["id"]
 
-        # Worker 1 claims it
-        claimed_1 = await claim_pending_email(pg_pool, "worker-1")
+        # The claim RPC is global. Consume unrelated rows until this test's
+        # row is the one under test, then assert the ownership property.
+        claimed_1 = None
+        for _ in range(20):
+            candidate = await claim_pending_email(pg_pool, "worker-1")
+            if candidate is None:
+                break
+            if str(candidate["id"]) == email_id:
+                claimed_1 = candidate
+                break
+            await complete_email_processing(pg_pool, str(candidate["id"]))
         assert claimed_1 is not None
 
-        # Worker 2 tries to claim - should get None (only one email exists)
+        # Worker 2 must not claim the same email, even if another global row
+        # is available in the bounded queue.
         claimed_2 = await claim_pending_email(pg_pool, "worker-2")
-        assert claimed_2 is None
+        assert claimed_2 is None or str(claimed_2["id"]) != email_id
 
     async def test_email_lock_expiry_recovery(
         self, service_client, authenticated_client, test_user_id, pg_pool
