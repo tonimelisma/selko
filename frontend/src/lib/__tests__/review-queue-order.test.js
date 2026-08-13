@@ -6,6 +6,7 @@ import {
 	sortLaneEvents
 } from '../review-queue-order.js';
 
+/** @param {any} e */
 function senderForEvent(e) {
 	return { senderKey: e.sender, senderName: e.sender };
 }
@@ -38,7 +39,7 @@ describe('review-queue-order', () => {
 			{ id: 'a2', sender: 'alice@x.com' },
 			{ id: 'b1', sender: 'bob@x.com' }
 		];
-		reconcileLaneOrder(order, initial, afterRealtime, senderForEvent);
+		reconcileLaneOrder(order, afterRealtime, senderForEvent);
 		// Alice should still be before Bob even though her earliest is gone
 		expect(order.senderRank.get('alice@x.com')).toBe(0);
 		expect(order.senderRank.get('bob@x.com')).toBe(1);
@@ -57,7 +58,7 @@ describe('review-queue-order', () => {
 			{ id: 'b1', sender: 'bob@x.com' },
 			{ id: 'a2', sender: 'alice@x.com' } // new for alice
 		];
-		reconcileLaneOrder(order, initial, after, senderForEvent);
+		reconcileLaneOrder(order, after, senderForEvent);
 		const sorted = sortLaneEvents(after, order, senderForEvent);
 		// Within alice, a1 (rank 0) before a2 (rank 2); bob (sender rank 1) interleaves between?
 		// Actually sorted by senderRank first: alice group (0) before bob (1)
@@ -74,7 +75,7 @@ describe('review-queue-order', () => {
 			{ id: 'a1', sender: 'alice@x.com', start_datetime: '2026-08-11T10:00:00Z' },
 			{ id: 'c1', sender: 'carol@x.com', start_datetime: '2026-08-10T09:00:00Z' } // older but new sender
 		];
-		reconcileLaneOrder(order, initial, after, senderForEvent);
+		reconcileLaneOrder(order, after, senderForEvent);
 		const sorted = sortLaneEvents(after, order, senderForEvent);
 		expect(sorted.map((e) => e.id)).toEqual(['a1', 'c1']); // carol appends, not sorted by date
 	});
@@ -86,7 +87,7 @@ describe('review-queue-order', () => {
 		];
 		const order = seedLaneOrder(initial, senderForEvent);
 		const after = [{ id: 'a2', sender: 'alice@x.com' }];
-		reconcileLaneOrder(order, initial, after, senderForEvent);
+		reconcileLaneOrder(order, after, senderForEvent);
 		// a1 rank retained
 		expect(order.eventRank.has('a1')).toBe(true);
 		// Undo reinserts a1 — should sort back to original position

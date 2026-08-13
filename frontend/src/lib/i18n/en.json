@@ -59,6 +59,12 @@
     "eventRejected": "Event rejected",
     "eventsRejected": "{count} events rejected"
   },
+  "review": {
+    "acceptedLabel": "Accepted",
+    "rejectedLabel": "Rejected",
+    "accepted": "Accepted. {count} remaining in this lane.",
+    "rejected": "Rejected. {count} remaining in this lane."
+  },
   "events": {
     "editEvent": "Edit Event",
     "backToReview": "Back to Review",

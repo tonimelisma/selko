@@ -66,12 +66,11 @@ export function seedLaneOrder(events, senderForEvent) {
  * 7. Ties use server array index only during initial seeding; never Date during reconciliation.
  *
  * @param {LaneOrder} order
- * @param {any[]} previousEvents - events previously in this lane (membership before refresh)
  * @param {any[]} loadedEvents - fresh server snapshot for this lane
  * @param {(event: any) => {senderKey: string}} senderForEvent
  * @returns {LaneOrder} mutated order (same reference for svelte reactivity via new Map assignment)
  */
-export function reconcileLaneOrder(order, previousEvents, loadedEvents, senderForEvent) {
+export function reconcileLaneOrder(order, loadedEvents, senderForEvent) {
 	// For each loaded event, ensure sender and event have ranks; new senders append.
 	for (const event of loadedEvents) {
 		const { senderKey } = senderForEvent(event);
