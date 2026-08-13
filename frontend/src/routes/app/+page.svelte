@@ -215,7 +215,9 @@
 		}
 	}
 
-	onMount(async () => {
+	onMount(() => {
+		let cleanup = () => {};
+		void (async () => {
 		const params = new URLSearchParams(window.location.search);
 		const oauth = params.get('oauth');
 		if (oauth === 'success') {
@@ -246,15 +248,17 @@
 			await loadIntegrations();
 		});
 
-		return () => {
+		cleanup = () => {
 			unsubEvents();
 			unsubSources();
 			unsubIntegrations();
 			clearRejectUndoTimer();
 		};
+		})();
+		return () => cleanup();
+	});
 
 	onDestroy(() => clearRejectUndoTimer());
-	});
 
 	async function loadIntegrations() {
 		isLoadingIntegrations = true;
@@ -274,76 +278,68 @@
 	}
 
 	async function loadEvents() {
-		const seq = ++refreshSequence;
 		const isFirst = !hasEventSnapshot;
+		if (!isFirst && isRefreshingEvents) {
+			refreshQueued = true;
+			return;
+		}
+		const seq = ++refreshSequence;
 		if (isFirst) {
 			isInitialEventsLoad = true;
 		} else {
-			if (isRefreshingEvents) {
-				refreshQueued = true;
-				return;
-			}
 			isRefreshingEvents = true;
 		}
 		error = '';
 		refreshError = '';
-		const result = await fetchPendingEventsWithSources();
-		// Ignore stale responses (out-of-order)
-		if (seq !== refreshSequence) return;
-		if (result.error) {
-			if (isFirst) {
-				error = result.error.message;
-				isInitialEventsLoad = false;
-			} else {
-				refreshError = result.error.message;
-				isRefreshingEvents = false;
+		try {
+			const result = await fetchPendingEventsWithSources();
+			// Ignore stale responses and drop only their data. The current request
+			// remains responsible for the loading flags and queued refresh.
+			if (seq !== refreshSequence) return;
+			if (result.error) {
+				if (isFirst) error = result.error.message;
+				else refreshError = result.error.message;
+				return;
 			}
-			return;
-		}
-		let loadedEvents = result.data;
-		// Do not reinsert dispositions that are still pending server confirmation
-		if (dispositions.size > 0) {
-			const dispIds = new Set(dispositions.keys());
-			loadedEvents = loadedEvents.filter((e) => !dispIds.has(e.id));
-		}
-		const newLoaded = loadedEvents.filter((e) => e.status === 'pending_review');
-		const changeLoaded = loadedEvents.filter((e) => e.status === 'pending_change');
-		if (!hasEventSnapshot) {
-			newLaneOrder = seedLaneOrder(newLoaded, senderForEvent);
-			changeLaneOrder = seedLaneOrder(changeLoaded, senderForEvent);
-			hasEventSnapshot = true;
-		} else {
-			const prevNew = events.filter((e) => e.status === 'pending_review');
-			const prevChange = events.filter((e) => e.status === 'pending_change');
-			reconcileLaneOrder(newLaneOrder, prevNew, newLoaded, senderForEvent);
-			reconcileLaneOrder(changeLaneOrder, prevChange, changeLoaded, senderForEvent);
-			// Trigger reactivity — maps were mutated
-			newLaneOrder = { ...newLaneOrder, senderRank: new Map(newLaneOrder.senderRank), eventRank: new Map(newLaneOrder.eventRank) };
-			changeLaneOrder = { ...changeLaneOrder, senderRank: new Map(changeLaneOrder.senderRank), eventRank: new Map(changeLaneOrder.eventRank) };
-		}
-		// Apply stable sort before setting events so UI never shows reshuffled order
-		const sortedNew = sortLaneEvents(newLoaded, newLaneOrder, senderForEvent);
-		const sortedChange = sortLaneEvents(changeLoaded, changeLaneOrder, senderForEvent);
-		// Recombine: keep original server group membership but sorted within lane
-		events = [...sortedNew, ...sortedChange];
-		isInitialEventsLoad = false;
-		isRefreshingEvents = false;
-		if (refreshQueued) {
-			refreshQueued = false;
-			// One trailing refresh after coalesced invalidations during mutation
-			setTimeout(() => loadEvents(), 0);
-		}
-		// Clear dispositions that are now confirmed absent from server
-		if (dispositions.size > 0) {
-			const stillPresent = new Set(loadedEvents.map((e) => e.id));
+			const serverEvents = result.data;
+			const serverIds = new Set(serverEvents.map((event) => event.id));
+			// Do not reinsert dispositions that are still pending server confirmation.
+			const dispositionIds = new Set(dispositions.keys());
+			const loadedEvents = serverEvents.filter((event) => !dispositionIds.has(event.id));
+			const newLoaded = loadedEvents.filter((event) => event.status === 'pending_review');
+			const changeLoaded = loadedEvents.filter((event) => event.status === 'pending_change');
+			if (!hasEventSnapshot) {
+				newLaneOrder = seedLaneOrder(newLoaded, senderForEvent);
+				changeLaneOrder = seedLaneOrder(changeLoaded, senderForEvent);
+				hasEventSnapshot = true;
+			} else {
+				reconcileLaneOrder(newLaneOrder, newLoaded, senderForEvent);
+				reconcileLaneOrder(changeLaneOrder, changeLoaded, senderForEvent);
+				// Trigger reactivity — maps were mutated.
+				newLaneOrder = { ...newLaneOrder, senderRank: new Map(newLaneOrder.senderRank), eventRank: new Map(newLaneOrder.eventRank) };
+				changeLaneOrder = { ...changeLaneOrder, senderRank: new Map(changeLaneOrder.senderRank), eventRank: new Map(changeLaneOrder.eventRank) };
+			}
+			const sortedNew = sortLaneEvents(newLoaded, newLaneOrder, senderForEvent);
+			const sortedChange = sortLaneEvents(changeLoaded, changeLaneOrder, senderForEvent);
+			events = [...sortedNew, ...sortedChange];
+
+			// Tombstones are based on the unfiltered server snapshot. A
+			// dispositioned row still returned by the server is not confirmed gone.
 			let changed = false;
 			for (const id of dispositions.keys()) {
-				if (!stillPresent.has(id)) {
+				if (!serverIds.has(id)) {
 					dispositions.delete(id);
 					changed = true;
 				}
 			}
 			if (changed) dispositions = new Map(dispositions);
+		} finally {
+			if (isFirst) isInitialEventsLoad = false;
+			else if (seq === refreshSequence) isRefreshingEvents = false;
+			if (seq === refreshSequence && refreshQueued) {
+				refreshQueued = false;
+				queueMicrotask(() => loadEvents());
+			}
 		}
 	}
 
@@ -367,7 +363,7 @@
 				setEventError(event.id, updateError.message);
 				return;
 			}
-			liveAnnouncement = `Accepted. ${events.length} remaining.`;
+			liveAnnouncement = $_('review.accepted', { values: { count: newEvents.length } });
 			setTimeout(() => (liveAnnouncement = ''), 3000);
 		} finally {
 			const next = new Set(processingEvents);
@@ -392,7 +388,7 @@
 				setEventError(event.id, updateError.message);
 				return;
 			}
-			liveAnnouncement = `Rejected. ${events.length} remaining.`;
+			liveAnnouncement = $_('review.rejected', { values: { count: newEvents.length } });
 			setTimeout(() => (liveAnnouncement = ''), 3000);
 			showRejectUndo([event]);
 		} finally {
@@ -420,6 +416,7 @@
 				setEventError(event.id, applyError.message);
 				return;
 			}
+			liveAnnouncement = $_('review.accepted', { values: { count: changeEvents.length } });
 		} finally {
 			const next = new Set(processingEvents);
 			next.delete(event.id);
@@ -441,6 +438,7 @@
 				setEventError(event.id, rejectError.message);
 				return;
 			}
+			liveAnnouncement = $_('review.rejected', { values: { count: changeEvents.length } });
 			showRejectUndo([event]);
 		} finally {
 			const next = new Set(processingEvents);
@@ -645,7 +643,9 @@
 {:else if events.length === 0}
 	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]">
 		<ConnectionRecovery integrations={integrationsList} onauthorize={handleAuthorize} />
-		<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
+		<div tabindex="-1" data-review-empty-focus>
+			<EmptyState heading={$_('home.allCaughtUp')} description={$_('home.allCaughtUpDescription')} />
+		</div>
 	</div>
 {:else}
 	<div class="review-surface mx-auto w-full max-w-[var(--review-max-width)] px-[var(--screen-gutter)]" aria-busy={isRefreshingEvents ? 'true' : 'false'}>

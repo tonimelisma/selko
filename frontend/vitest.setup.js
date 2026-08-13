@@ -48,7 +48,8 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 
-// Polyfill for svelte animate:flip in jsdom (Web Animations API)
+// animation is stubbed here; motion assertions must use `outroend`, never
+// `getAnimations()`.
 if (typeof Element !== 'undefined' && !Element.prototype.getAnimations) {
 	Element.prototype.getAnimations = function () { return []; };
 }

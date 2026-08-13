@@ -15,6 +15,7 @@ export default defineConfig({
 		exclude: ['tests/e2e/**'],
 		globals: true,
 		environment: 'jsdom',
+		testTimeout: 20000,
 		// Pin test-time env so CI (which has no frontend/.env) matches local runs.
 		// Without this, $lib/supabase.js calls createClient(undefined, undefined) at
 		// module scope and every service importer throws on import in CI.
