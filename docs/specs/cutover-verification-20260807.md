@@ -34,12 +34,12 @@ Do not flip the flag via Render env alone. Follow the ordered cutover below.
 Ordering constraint (migrations first, code second, flag last) carried from the
 egress-scheduling and polling-v2 work:
 
-1. **No CI minutes will ever be bought — CI is a bonus, not required.** `workflow_dispatch`/`gh workflow run test.yml` will stay queued or absent; do not wait on it.
+1. **No CI minutes will ever be bought for test gating.** Local verification remains authoritative. The dependency-free production deployment job is the exception because it owns the secret Render hooks; wait only for that job, not unrelated test jobs.
 2. **Staging token:** `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging, copies working → stale; if both stale, re-auth one side then re-sync). Do not ask to reauth when one side is working.
 3. **Staging deploy (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push` (dry-run then push). Render deploys on main push. `gh workflow run test.yml` to staging is a bonus only — never required.
 4. **Staging drills:** `./scripts/drill-lease-recovery.sh` (local Supabase) and staging full-path.
 5. **Prod migrations (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref khahcozfbnpykspvatrg && supabase db push --dry-run` (review 11) then `supabase db push`.
-6. **Prod code:** tag/push for Render (`git tag -a v1.0.0 -m "Release 1.0.0" && git push origin v1.0.0`) or Render dashboard Deploy — never `gh workflow run test.yml` (needs minutes we will never buy; if it does run, it's a bonus). Requires your approval, never auto.
+6. **Prod code:** after explicit approval and the local production migration gate, run `gh workflow run test.yml -f staging_action=none -f deploy_production=true`. The dependency-free production job owns both secret Render hooks. Do not wait for unrelated test jobs after that deploy job succeeds.
 7. **Flag:** set `ENABLE_BACKGROUND_PROCESSING=true` only after steps 5-6 and health below.
 
 ## Local DoD (gate, not CI — CI is out of minutes)
@@ -66,8 +66,6 @@ No integration tests run by default (`-m "not integration"` gate per AGENTS.md);
 
 `email_fetch.py` was deleted in #234 before v2 ever ran in prod, so rollback is `git revert` of the five v2 PRs plus four migrations. No v2 state is destroyed — tables, leases, discovered identities persist, so a later re-cutover resumes. Verify this claim on staging before prod cutover (currently an assertion, not a tested property per hardening finding 30).
 
-## Explicit non-deploy
+## Historical non-deploy record
 
-Per your instruction, **prod stays `ENABLE_BACKGROUND_PROCESSING=false`**. This commit does not trigger a deploy, does not set the flag, and does not wait on CI. When you are ready to deploy, run the local push above yourself — `gh workflow run test.yml` is deprecated and needs minutes we will never buy. The last sentence per AGENTS.md must be the question, not the action.
-
-Should I deploy this to production?
+The original 2026-08-07 increment intentionally stopped before production. That historical stop is superseded for future deployment mechanics by ordered-cutover step 6 above; production still requires explicit user approval.

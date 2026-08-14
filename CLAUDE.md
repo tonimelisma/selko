@@ -191,7 +191,7 @@ not authorize unrelated production-data mutations.
 - [ ] The scoped tests above pass locally — **local tests are the gate, not CI**
 - [ ] Commit (conventional format), push, `gh pr create`
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges and does full cleanup: deletes remote + local branch, fast-forwards `main`, removes the worktree, prunes. **Does not wait on CI.**
-- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **the last sentence of your final report MUST be: "Should I deploy this to production?"** Never deploy to prod without an explicit yes. Once the user says yes, deploy; a previously disclosed staging failure does not require another confirmation. Follow the local production migration and tag/push path in `docs/ci-cd.md`.
+- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **the last sentence of your final report MUST be: "Should I deploy this to production?"** Never deploy to prod without an explicit yes. Once the user says yes, deploy; a previously disclosed staging failure does not require another confirmation. Apply production migrations locally, then dispatch `test.yml` with `staging_action=none` and `deploy_production=true`; that explicit job owns the secret Render hooks.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
@@ -212,7 +212,7 @@ If CI does run and fails, fix forward:
 2. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, re-auth one side then re-run `--sync`, then re-trigger *only if minutes exist — otherwise ignore and proceed locally*.
 3. **Code issue** — follow-up PR.
 
-Prod deploy never requires `gh workflow run test.yml`. Staging/prod `supabase db push` is done locally from your machine after `./scripts/assert-schema-code-compat.sh` (R5 gate) — see `docs/ci-cd.md` “Deploys without CI”. `./scripts/poll-and-merge.sh` is deprecated; CI polling is optional and never blocks a merge or a prod cutover.
+Production migrations are pushed locally after `./scripts/assert-schema-code-compat.sh` (R5 gate). Production code is deployed with `gh workflow run test.yml -f staging_action=none -f deploy_production=true`, because the secret Render hooks live in that explicit, dependency-free job. Do not wait for unrelated test jobs after the production deploy job succeeds. `./scripts/poll-and-merge.sh` is deprecated.
 
 ### Worktree Cleanup Rules
 

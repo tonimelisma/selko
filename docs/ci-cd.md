@@ -37,16 +37,17 @@ Code merged to main (via merge-and-cleanup.sh — never waits on CI)
         |-- ./scripts/verify.sh staging
 ```
 
-### To Production (always local; never gh workflow run)
+### To Production (local migration, explicit Render workflow)
 
 ```
-You decide to cut prod (no CI required)
+You explicitly approve a production deployment
     |
     +-- Gate: ./scripts/assert-schema-code-compat.sh --linked
     |-- 1. supabase link --project-ref khahcozfbnpykspvatrg && supabase db push  (--dry-run first, review 11)
-    |-- 2. Render deploy: push tag or Render dashboard Deploy (auto on main/tag)
+    |-- 2. Render deploy: gh workflow run test.yml -f staging_action=none -f deploy_production=true
     |-- 3. Verify: GET /health/ingestion == ok, /health/egress, Sentry synthetic, dead-letter 0
-Do not use: gh workflow run test.yml (requires minutes we will never buy; if it does run it's a bonus, not required)
+The production deploy job has no dependencies. Once it triggers both secret Render hooks successfully,
+do not wait for unrelated test jobs in the same workflow run.
 ```
 
 ## Critical Deployment Principle: Atomic Updates
@@ -146,18 +147,14 @@ supabase db push
 
 ### Production still requires explicit approval
 
-An AI agent must **ask** before any prod deploy — the last sentence of its DoD report is "Should I deploy this to production?" — and only proceed on an explicit yes. When you say yes, the agent runs the local push above, not `gh workflow run test.yml`.
+An AI agent must **ask** before any prod deploy — the last sentence of its DoD report is "Should I deploy this to production?" — and only proceed on an explicit yes. Once you say yes, a disclosed staging failure does not create another approval gate.
 
 ```bash
-# Preferred: local push (no minutes)
+# Apply and verify production migrations locally.
 ./scripts/assert-schema-code-compat.sh --linked
 supabase link --project-ref khahcozfbnpykspvatrg && supabase db push
-# then tag/push for Render:
-git tag -a v1.0.0 -m "Release 1.0.0"
-git push origin v1.0.0
-
-# The manual workflow's `deploy_production` checkbox is an explicit operator
-# gate; a generic workflow dispatch cannot deploy production.
+# Trigger the dependency-free job that owns the secret Render hooks.
+gh workflow run test.yml -f staging_action=none -f deploy_production=true
 ```
 
 ## Merge Workflow
