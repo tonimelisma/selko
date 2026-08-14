@@ -238,23 +238,20 @@ class IngestionRuntime:
     def health_snapshot(self) -> dict[str, Any]:
         """One-shot ingestion health for ``GET /health/ingestion``.
 
-        Combines the live task state from ``status()`` with a small set of
-        service-role DB aggregates: due/lease/pending/dead-letter/open-incident
-        counts plus the oldest scheduled poll. Computes a single ``status``
-        string:
-
-          * ``down``     — any managed task is not alive
-          * ``degraded`` — any dead letters, any open email-sync incidents, or
-            the oldest pending poll is past the warning SLO
-          * ``ok``       — otherwise
+        Combines the live task state from ``status()`` with one service-role
+        RPC, ``health_work_state``: ready/processing/stale/unclaimable email
+        counts, stale sync runs, due/lease/pending/dead-letter/open-incident
+        counts, and the oldest scheduled poll. That RPC's own ``status``
+        already reflects DB-side degradation; this method only adds the
+        process-local ``down`` case, since only Python knows task aliveness.
+        ``down`` beats ``degraded``.
 
         Safe codes only; never payloads, addresses, message ids or tokens. The
-        DB calls are best-effort: a transient failure degrades to ``unknown``
+        DB call is best-effort: a transient failure degrades to ``unknown``
         counts rather than failing the route.
 
-        R1: counted RPCs — one call, no Python sum() over a truncated
-        response. At 100k rows the old sum() truncated at 1000 and reported
-        ok while dead.
+        S1.4: one counted RPC — no Python sum() over a truncated response. At
+        100k rows the old sum() truncated at 1000 and reported ok while dead.
         """
         snapshot = {
             "status": "ok",
@@ -268,42 +265,38 @@ class IngestionRuntime:
             "items_dead_letter": None,
             "attachments_dead_letter": None,
             "open_incidents": None,
+            "ready_emails": None,
+            "processing_emails": None,
+            "stale_processing_emails": None,
+            "unclaimable_emails": None,
+            "stale_sync_runs": None,
         }
         try:
-            # R1: two counted RPCs — fixed cost regardless of scale
-            dead = self.client.rpc("health_dead_letter_counts").execute()
-            dead_row = (getattr(dead, "data", None) or [None])[0] if isinstance(getattr(dead, "data", None), list) else getattr(dead, "data", None)
-            if isinstance(dead_row, dict):
-                snapshot["items_pending"] = int(dead_row.get("items_pending") or 0)
-                snapshot["items_dead_letter"] = int(dead_row.get("items_dead_letter") or 0)
-                snapshot["attachments_dead_letter"] = int(dead_row.get("attachments_dead_letter") or 0)
-            else:
-                # Fallback for PostgREST shape where RETURNS TABLE is list[dict]
-                dl = getattr(dead, "data", None) or []
-                if dl and isinstance(dl[0], dict):
-                    snapshot["items_pending"] = int(dl[0].get("items_pending") or 0)
-                    snapshot["items_dead_letter"] = int(dl[0].get("items_dead_letter") or 0)
-                    snapshot["attachments_dead_letter"] = int(dl[0].get("attachments_dead_letter") or 0)
-
-            slo = self.client.rpc(
-                "health_poll_slo",
+            result = self.client.rpc(
+                "health_work_state",
                 {"p_warning_seconds": int(self.config.email_health_warning_seconds or 1800)},
             ).execute()
-            slo_row = (getattr(slo, "data", None) or [None])[0] if isinstance(getattr(slo, "data", None), list) else getattr(slo, "data", None)
-            if isinstance(slo_row, dict):
-                snapshot["integrations_due"] = int(slo_row.get("integrations_due") or 0)
-                snapshot["leases_held"] = int(slo_row.get("leases_held") or 0)
-                snapshot["oldest_next_poll_seconds"] = int(slo_row.get("oldest_next_poll_seconds") or 0) if slo_row.get("oldest_next_poll_seconds") is not None else None
-                snapshot["open_incidents"] = int(slo_row.get("open_incidents") or 0)
-            else:
-                sl = getattr(slo, "data", None) or []
-                if sl and isinstance(sl[0], dict):
-                    snapshot["integrations_due"] = int(sl[0].get("integrations_due") or 0)
-                    snapshot["leases_held"] = int(sl[0].get("leases_held") or 0)
-                    snapshot["oldest_next_poll_seconds"] = int(sl[0].get("oldest_next_poll_seconds") or 0) if sl[0].get("oldest_next_poll_seconds") is not None else None
-                    snapshot["open_incidents"] = int(sl[0].get("open_incidents") or 0)
+            data = getattr(result, "data", None)
+            row = (data or [None])[0] if isinstance(data, list) else data
+            if not isinstance(row, dict):
+                raise ValueError("health_work_state returned no row")
+
+            oldest = row.get("oldest_next_poll_seconds")
+            snapshot["integrations_due"] = int(row.get("integrations_due") or 0)
+            snapshot["leases_held"] = int(row.get("leases_held") or 0)
+            snapshot["oldest_next_poll_seconds"] = int(oldest) if oldest is not None else None
+            snapshot["open_incidents"] = int(row.get("open_incidents") or 0)
+            snapshot["items_pending"] = int(row.get("items_pending") or 0)
+            snapshot["items_dead_letter"] = int(row.get("items_dead_letter") or 0)
+            snapshot["attachments_dead_letter"] = int(row.get("attachments_dead_letter") or 0)
+            snapshot["ready_emails"] = int(row.get("ready_emails") or 0)
+            snapshot["processing_emails"] = int(row.get("processing_emails") or 0)
+            snapshot["stale_processing_emails"] = int(row.get("stale_processing_emails") or 0)
+            snapshot["unclaimable_emails"] = int(row.get("unclaimable_emails") or 0)
+            snapshot["stale_sync_runs"] = int(row.get("stale_sync_runs") or 0)
+            db_degraded = row.get("status") != "ok"
         except Exception:
-            logger.exception("Ingestion health snapshot DB queries failed")
+            logger.exception("Ingestion health snapshot DB query failed")
             snapshot["status"] = "degraded"
             return snapshot
 
@@ -311,19 +304,8 @@ class IngestionRuntime:
         alive = all(t["alive"] for t in snapshot["tasks"])
         if not alive:
             snapshot["status"] = "down"
-        else:
-            degraded = (
-                (snapshot["items_dead_letter"] or 0) > 0
-                or (snapshot["attachments_dead_letter"] or 0) > 0
-                or (snapshot["open_incidents"] or 0) > 0
-            )
-            if (
-                snapshot["oldest_next_poll_seconds"] is not None
-                and snapshot["oldest_next_poll_seconds"] > self.config.email_health_warning_seconds
-            ):
-                degraded = True
-            if degraded:
-                snapshot["status"] = "degraded"
+        elif db_degraded:
+            snapshot["status"] = "degraded"
         return snapshot
 
 

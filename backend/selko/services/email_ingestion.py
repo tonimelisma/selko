@@ -216,6 +216,7 @@ class SyncClaim:
     provider: str
     run_id: str
     run_kind: str
+    lease_generation: int = 0
     lease_expires_at: str | None = None
 
     def __post_init__(self) -> None:
@@ -264,25 +265,25 @@ class EmailIngestionRepository:
             raise EmailIngestionError(f"Failed to claim due email reconciliation: {exc}") from exc
         return SyncClaim(**dict(row)) if row else None
 
-    async def heartbeat_sync(self, integration_id: str, worker_id: str) -> bool:
+    async def heartbeat_sync(self, integration_id: str, worker_id: str, generation: int) -> bool:
         try:
             val = await self.pg_pool.fetchval(
-                "SELECT public.heartbeat_email_sync($1, $2, $3)",
-                integration_id, worker_id, self.config.email_lease_seconds,
+                "SELECT public.heartbeat_email_sync($1, $2, $3, $4)",
+                integration_id, worker_id, generation, self.config.email_lease_seconds,
             )
         except Exception as exc:
             raise EmailIngestionError(f"Failed to heartbeat email sync: {exc}") from exc
         return bool(val)
 
-    async def require_heartbeat(self, integration_id: str, worker_id: str) -> None:
-        if not await self.heartbeat_sync(integration_id, worker_id):
+    async def require_heartbeat(self, integration_id: str, worker_id: str, generation: int) -> None:
+        if not await self.heartbeat_sync(integration_id, worker_id, generation):
             raise LeaseLostError("email sync lease is no longer owned")
 
     async def complete_sync(self, claim: SyncClaim, worker_id: str, *, reconciled: bool = False) -> bool:
         try:
             val = await self.pg_pool.fetchval(
-                "SELECT public.complete_email_sync($1, $2, $3, $4, $5)",
-                claim.integration_id, claim.run_id, worker_id,
+                "SELECT public.complete_email_sync($1, $2, $3, $4, $5, $6)",
+                claim.integration_id, claim.run_id, worker_id, claim.lease_generation,
                 self.config.email_poll_interval_seconds, reconciled,
             )
         except Exception as exc:
@@ -293,8 +294,8 @@ class EmailIngestionRepository:
         classification = classify_email_error(exc)
         try:
             val = await self.pg_pool.fetchval(
-                "SELECT public.fail_email_sync($1, $2, $3, $4, $5, $6, $7, $8)",
-                claim.integration_id, claim.run_id, worker_id,
+                "SELECT public.fail_email_sync($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                claim.integration_id, claim.run_id, worker_id, claim.lease_generation,
                 classification.code, safe_error_detail(exc),
                 self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
                 classification.auth_failure,

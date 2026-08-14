@@ -338,24 +338,24 @@ class EmailIngestionWorker:
         # not outlive the 900s lease before the first upsert.
         replacement_cursor = None
         if lookback_days is not None or not cursor:
-            await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+            await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
             replacement_cursor = get_user_profile(service).get("historyId")
             query = build_initial_sync_query(days=lookback_days or 14)
             identities = [row.get("id") for row in list_message_ids(service, query=query) if row.get("id")]
-            await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+            await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
             next_cursor = None if lookback_days is not None else replacement_cursor
         else:
             try:
-                await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+                await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
                 identities, next_cursor = fetch_history_message_ids(service, cursor)
-                await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+                await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
             except GmailHistoryExpiredError:
                 # Capture the replacement history boundary before the bounded
                 # listing so new mail arriving during reconciliation is not lost.
-                await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+                await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
                 replacement_cursor = get_user_profile(service).get("historyId")
                 identities = [row.get("id") for row in list_message_ids(service, query=build_initial_sync_query()) if row.get("id")]
-                await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+                await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
                 next_cursor = None if lookback_days is not None else replacement_cursor
 
         # 6b: incremental polls are already O(delta) and are never bounded here.
@@ -384,12 +384,12 @@ class EmailIngestionWorker:
                 "change_kind": "upsert" if _eligible_gmail_metadata(metadata, excluded) else "removed",
             })
             if len(discovered) >= 100:
-                await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+                await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
                 page = await self.repository.upsert_discovered(claim, discovered)
                 _accumulate_page_totals(totals, page)
                 discovered = []
         if discovered or next_cursor or lookback_days is not None:
-            await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+            await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
             page = await self.repository.upsert_discovered(claim, discovered, cursor=next_cursor)
             _accumulate_page_totals(totals, page)
         return totals
@@ -463,7 +463,7 @@ class EmailIngestionWorker:
 
     async def _discover_outlook(self, claim: SyncClaim, *, lookback_days: int | None = None) -> dict[str, int]:
         totals = {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
-        await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+        await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
         self._outlook_token(claim.user_id)
 
         def list_folders(token: str):
@@ -487,7 +487,7 @@ class EmailIngestionWorker:
             _folders_due = True
         if _folders_due:
             discovered = self._outlook_call(claim.user_id, list_folders)
-            await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+            await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
             upsert_discovered_folders(
                 self.client,
                 user_id=claim.user_id,
@@ -570,7 +570,7 @@ class EmailIngestionWorker:
                         for change in page if change.get("id")
                     ]
                     is_last = page_index == len(pages) - 1
-                    await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+                    await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
                     page_totals = await self.repository.upsert_discovered(
                         claim,
                         items,
@@ -581,7 +581,7 @@ class EmailIngestionWorker:
                 if not pages and cursor:
                     # An empty delta page can still be the completed page that
                     # carries the new opaque delta link.
-                    await self.repository.require_heartbeat(claim.integration_id, self.worker_id)
+                    await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
                     page_totals = await self.repository.upsert_discovered(
                         claim, [], cursor=cursor, folder_id=folder["id"]
                     )
