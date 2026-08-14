@@ -473,6 +473,7 @@ class WorkerPool:
 
         email_id = email["id"]
         subject = email.get("subject", "(no subject)")[:50]
+        generation = int(email.get("lock_generation") or 0)
 
         logger.info(f"{worker_id}: Processing email {email_id}: {subject}")
 
@@ -493,7 +494,10 @@ class WorkerPool:
             circuit_breaker.record_failure("llm")
             logger.error(f"{worker_id}: {error_msg} for email {email_id}")
             try:
-                await fail_email_processing(self.pg_pool, email_id, error_msg)
+                await fail_email_processing(
+                    self.pg_pool, email_id, worker_id, generation, error_msg,
+                    self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
+                )
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark email as failed: {fail_error}")
 
@@ -501,7 +505,10 @@ class WorkerPool:
             circuit_breaker.record_failure("llm")
             logger.error(f"{worker_id}: Email {email_id} failed: {e}", exc_info=True)
             try:
-                await fail_email_processing(self.pg_pool, email_id, str(e))
+                await fail_email_processing(
+                    self.pg_pool, email_id, worker_id, generation, str(e),
+                    self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
+                )
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark email as failed: {fail_error}")
 

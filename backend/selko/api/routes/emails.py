@@ -57,6 +57,14 @@ async def reprocess_email(
             "p_email_id": email_id,
         }).execute()
     except PostgrestAPIError as exc:
+        if "email_actively_leased" in (getattr(exc, "message", None) or str(exc)):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=error_detail(
+                    ErrorCode.INVALID_REQUEST,
+                    "This email is already pending or being processed",
+                ),
+            ) from exc
         logger.error("Failed to reprocess email %s: %s", email_id, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

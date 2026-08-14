@@ -486,7 +486,8 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 
 | Function | Description |
 |----------|-------------|
-| `claim_unprocessed_email(worker_id, lock_duration)` | Atomically claim next pending email, oldest `date_sent` first (`NULLS LAST`, then `created_at`) — bulk scans ingest newest-first, so claiming oldest-sent-first avoids an older email "updating" an event already created from a newer one |
+| `claim_unprocessed_email(worker_id, lock_duration)` | First opportunistically reclaims one expired `processing` lease elsewhere in the table (retries it if attempts remain, otherwise terminates it as `failed`/`lease_expired_at_limit`), then atomically claims next pending email, oldest `date_sent` first (`NULLS LAST`, then `created_at`) — bulk scans ingest newest-first, so claiming oldest-sent-first avoids an older email "updating" an event already created from a newer one. A `pending` row is invariant-guaranteed claimable: `attempts < max_attempts`, no owner, no unexpired lock (`emails_pending_is_claimable_check`) |
+| `fail_email_processing(email_id, worker_id, generation, error_code, error_detail, retry_base_seconds, retry_max_seconds)` | Service-role only. Fenced retry-or-terminate transition for a claimed email; a stale `(worker_id, generation)` is a no-op (`fenced: true`) so a replacement worker's claim is never overwritten |
 | `claim_pending_photo(worker_id, lock_duration)` | Atomically claim next pending photo |
 | `claim_approved_event(worker_id, lock_duration)` | Atomically claim next approved event (requires an active `google_calendar` integration for the event's user; respects `next_retry_at`) |
 | `claim_next_scheduled_task(task_types, worker_id, lock_duration)` | Atomically claim next scheduled task |
@@ -523,7 +524,7 @@ returns `conflict: true` and applies nothing.
 
 | Function | Description |
 |----------|-------------|
-| `unlock_expired_email_locks()` | Reset expired email locks to pending |
+| `unlock_expired_email_locks()` | Startup-only recovery sweep (not a periodic sweeper): resets expired email locks to pending when attempts remain, terminates exhausted ones as `failed`/`lease_expired_at_limit` — CHECK-safe by construction |
 | `unlock_expired_photo_locks()` | Reset expired photo locks to pending |
 | `unlock_expired_event_locks()` | Reset expired event locks to `cancel_queued` for cancellation work or `approved` for upserts |
 | `unlock_expired_scheduled_tasks()` | Reset expired scheduled task locks |
@@ -598,6 +599,24 @@ The coordination RPCs are `claim_due_email_sync`,
 `fail_email_ingestion_item`, `claim_email_attachment`, and
 `finish_email_attachment`. All are service-role functions with a fixed search
 path and expired-lease recovery during claims.
+
+`email_sync_state.lease_generation` and `email_sync_runs.lease_generation`
+generation-fence the whole claim → heartbeat → complete/fail sequence: a claim
+first marks any still-`running` run for that integration `abandoned` (a
+crashed worker never completed/failed its run), then issues a new generation.
+`heartbeat_email_sync`, `complete_email_sync`, and `fail_email_sync` all
+require the caller's `(worker_id, generation)` to still match, so a stale
+worker's call is a safe no-op rather than corrupting a reassigned lease. A
+partial unique index (`email_sync_runs_one_running_per_integration`) makes "at
+most one running run per integration" a database invariant, not a convention.
+
+`health_work_state(warning_seconds)` is the single counted health RPC:
+ready/processing/stale-processing/unclaimable email counts (predicates pinned
+to `claim_unprocessed_email` in `test_schema_contract.py`), stale sync runs,
+ingestion/attachment dead-letter and pending counts, due integrations, the
+oldest overdue poll, and open incidents — plus its own computed `status`
+(`ok`/`degraded`). `/health` and `/health/ingestion` both read it; `/health`
+no longer hard-codes `ok`.
 
 Reconciliation passes a NULL cursor, so `upsert_discovered_email_items` leaves
 `integrations.sync_cursor` and per-folder cursors untouched during a

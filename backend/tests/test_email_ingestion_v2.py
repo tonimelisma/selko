@@ -979,8 +979,8 @@ def test_missing_credentials_are_classified_as_auth_and_expire_the_integration(m
 
     sql, args = fake_pg_pool.calls[0]
     assert "fail_email_sync" in sql
-    assert args[3] == "provider_auth_expired"
-    assert args[7] is True
+    assert args[4] == "provider_auth_expired"
+    assert args[8] is True
 
 
 # --- Error classification regression table (top-up increment 2) -------------
@@ -1137,8 +1137,8 @@ def test_gmail_401_during_discovery_expires_the_integration(mock_config, fake_pg
 
     sql, args = fake_pg_pool.calls[0]
     assert "fail_email_sync" in sql
-    assert args[3] == "provider_auth_expired"
-    assert args[7] is True
+    assert args[4] == "provider_auth_expired"
+    assert args[8] is True
 
 
 def test_run_acquisition_once_does_not_mark_terminal_on_code(mock_config, fake_pg_pool):

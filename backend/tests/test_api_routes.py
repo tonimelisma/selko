@@ -324,6 +324,34 @@ class TestRequestValidation:
 # ===========================================================================
 
 
+class TestReprocessEmail:
+    """S1: reprocess_email now raises `email_actively_leased` for a row with
+    a live processing lease instead of silently returning no rows."""
+
+    def test_actively_leased_email_returns_409(self, test_client, mock_client):
+        from postgrest.exceptions import APIError
+
+        mock_client.rpc.return_value.execute.side_effect = APIError(
+            {"message": "email_actively_leased", "code": "P0001"}
+        )
+
+        resp = test_client.post("/emails/some-email-id/reprocess")
+
+        assert resp.status_code == 409
+        assert "already pending or being processed" in resp.json()["detail"]["detail"]
+
+    def test_other_database_error_returns_500(self, test_client, mock_client):
+        from postgrest.exceptions import APIError
+
+        mock_client.rpc.return_value.execute.side_effect = APIError(
+            {"message": "connection refused", "code": "08006"}
+        )
+
+        resp = test_client.post("/emails/some-email-id/reprocess")
+
+        assert resp.status_code == 500
+
+
 class TestNotFoundResponses:
     """Tests for 404 when resources don't exist."""
 

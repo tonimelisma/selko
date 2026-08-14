@@ -120,7 +120,7 @@ class TestRepositoryOverPool:
         assert claim is not None
         assert str(claim.integration_id) == synced_integration
 
-        await repo.require_heartbeat(claim.integration_id, "c2-probe-worker")
+        await repo.require_heartbeat(claim.integration_id, "c2-probe-worker", claim.lease_generation)
         completed = await repo.complete_sync(claim, "c2-probe-worker")
         assert completed is True
 

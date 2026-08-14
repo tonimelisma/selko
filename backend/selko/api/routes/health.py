@@ -26,6 +26,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 
+def _work_state_status() -> str:
+    """Top-level ``/health`` status, driven by the same roll-up the workers
+    use to claim work — never hard-coded ``ok``.
+
+    Best-effort: an unreachable database degrades the status rather than
+    failing the route, matching ``_pending_email_metrics`` below.
+    """
+    try:
+        cfg = load_config()
+        client = get_service_client(cfg)
+        result = client.rpc(
+            "health_work_state",
+            {"p_warning_seconds": int(cfg.email_health_warning_seconds or 1800)},
+        ).execute()
+        data = getattr(result, "data", None)
+        row = (data or [None])[0] if isinstance(data, list) else data
+        if not isinstance(row, dict):
+            return "degraded"
+        return "ok" if row.get("status") == "ok" else "degraded"
+    except Exception:
+        logger.exception("Work state health check failed")
+        return "degraded"
+
+
 def _pending_email_metrics() -> dict[str, int | None]:
     """Return queue age gauges without exposing email identity or content."""
     try:
@@ -66,7 +90,7 @@ async def health_check() -> HealthResponse:
     """
     resolution = resolution_metrics.snapshot()
     resolution.update(_pending_email_metrics())
-    return HealthResponse(status="ok", resolution=resolution)
+    return HealthResponse(status=_work_state_status(), resolution=resolution)
 
 
 @router.get("/health/db", response_model=HealthDbResponse)
@@ -101,8 +125,8 @@ async def health_db_check(
 async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
     """Live ingestion health — the surface Render's health check should watch.
 
-    ``/health`` returns ``ok`` unconditionally; this route reflects the actual
-    state of the durable polling runtime: per-task alive/restart state, due /
+    ``/health`` shares the same ``health_work_state`` roll-up but has no task
+    supervision of its own; this route adds per-task alive/restart state, due /
     lease / pending / dead-letter counts, and open email-sync incidents.
     ``down`` when any task is not alive; ``degraded`` on dead letters, open
     incidents, or the oldest pending poll past the warning SLO; otherwise ``ok``.
@@ -154,6 +178,11 @@ async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
         items_dead_letter=snapshot.get("items_dead_letter"),
         attachments_dead_letter=snapshot.get("attachments_dead_letter"),
         open_incidents=snapshot.get("open_incidents"),
+        ready_emails=snapshot.get("ready_emails"),
+        processing_emails=snapshot.get("processing_emails"),
+        stale_processing_emails=snapshot.get("stale_processing_emails"),
+        unclaimable_emails=snapshot.get("unclaimable_emails"),
+        stale_sync_runs=snapshot.get("stale_sync_runs"),
     )
 
 

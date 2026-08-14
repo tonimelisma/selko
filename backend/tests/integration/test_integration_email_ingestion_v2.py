@@ -128,12 +128,14 @@ def test_heartbeat_and_completion_require_matching_ownership(
     assert admin_client.rpc("heartbeat_email_sync", {
         "p_integration_id": synced_integration,
         "p_worker_id": "worker-a",
+        "p_generation": claim["lease_generation"],
         "p_lease_seconds": 900,
     }).execute().data is True
 
     assert admin_client.rpc("heartbeat_email_sync", {
         "p_integration_id": synced_integration,
         "p_worker_id": "worker-b",
+        "p_generation": claim["lease_generation"],
         "p_lease_seconds": 900,
     }).execute().data is False
 
@@ -141,6 +143,7 @@ def test_heartbeat_and_completion_require_matching_ownership(
         "p_integration_id": synced_integration,
         "p_run_id": claim["run_id"],
         "p_worker_id": "worker-b",
+        "p_generation": claim["lease_generation"],
         "p_poll_interval_seconds": 300,
         "p_reconciled": False,
     }).execute().data is False
@@ -149,6 +152,7 @@ def test_heartbeat_and_completion_require_matching_ownership(
         "p_integration_id": synced_integration,
         "p_run_id": claim["run_id"],
         "p_worker_id": "worker-a",
+        "p_generation": claim["lease_generation"],
         "p_poll_interval_seconds": 300,
         "p_reconciled": False,
     }).execute().data is True
@@ -168,6 +172,7 @@ def test_failure_backoff_grows_and_stays_capped(admin_client, synced_integration
             "p_integration_id": synced_integration,
             "p_run_id": claim["run_id"],
             "p_worker_id": "worker-a",
+            "p_generation": claim["lease_generation"],
             "p_error_code": "provider_transient",
             "p_error_detail": "transient",
             "p_retry_base_seconds": 60,

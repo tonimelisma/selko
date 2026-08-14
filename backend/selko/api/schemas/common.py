@@ -126,6 +126,11 @@ class HealthIngestionResponse(BaseModel):
     items_dead_letter: int | None = None
     attachments_dead_letter: int | None = None
     open_incidents: int | None = None
+    ready_emails: int | None = None
+    processing_emails: int | None = None
+    stale_processing_emails: int | None = None
+    unclaimable_emails: int | None = None
+    stale_sync_runs: int | None = None
     listener: dict | None = None
 
 

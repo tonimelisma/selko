@@ -48,87 +48,77 @@ def freeze_retry_clock(now: datetime = FROZEN_NOW):
 # ===========================================================================
 
 
-def _email_pool(pool, attempts: int, max_attempts: int):
-    """Queue the attempts row for the SELECT and record the UPDATE."""
-    pool.rows.append({"attempts": attempts, "max_attempts": max_attempts})
-    return pool
+class TestFencedFailEmailProcessing:
+    """S1: exponential backoff and dead-lettering now happen inside the
+    ``fail_email_processing`` SQL RPC (see the ``20260823000001`` migration);
+    this Python wrapper just calls it and interprets the returned outcome.
+    Backoff growth/capping is covered against real Postgres by
+    ``test_integration_email_state_machine.py``.
+    """
 
-
-def _last_update_args(pool) -> tuple:
-    """Args of the last UPDATE executed against the pool."""
-    for sql, args in reversed(pool.calls):
-        if "UPDATE" in sql:
-            return args
-    raise AssertionError("no UPDATE call recorded")
-
-
-class TestExponentialBackoff:
     @pytest.fixture(autouse=True)
     def pool(self, fake_pg_pool):
         self.pool = fake_pg_pool
 
-    """Tests for exponential backoff calculation in fail_email_processing."""
-
-    def test_first_retry_delay_60s(self):
-        """First retry (attempt 1) should have 60s delay."""
+    def test_calls_fenced_rpc_with_worker_and_generation(self):
         import asyncio
+        import json
 
         from selko.services.emails import fail_email_processing
 
-        pool = _email_pool(self.pool, attempts=1, max_attempts=3)
-        with freeze_retry_clock():
-            asyncio.run(fail_email_processing(pool, "email-1", "test error"))
+        self.pool.rows.append(json.dumps({"fenced": False, "status": "pending", "attempts": 1}))
+        asyncio.run(fail_email_processing(
+            self.pool, "email-1", "worker-a", 3, "test error", 60, 1800,
+        ))
 
-        sql, args = pool.calls[-1]
-        assert "processing_status = 'pending'" in sql
-        assert "next_retry_at = $3" in sql
-        assert args[2] == FROZEN_NOW + timedelta(seconds=60)
+        sql, args = self.pool.calls[-1]
+        assert "public.fail_email_processing(" in sql
+        assert args == ("email-1", "worker-a", 3, "test error", "test error", 60, 1800)
 
-    def test_second_retry_delay_120s(self):
-        """Second retry (attempt 2) should have 120s delay."""
+    def test_pending_outcome_is_returned(self):
         import asyncio
+        import json
 
         from selko.services.emails import fail_email_processing
 
-        pool = _email_pool(self.pool, attempts=2, max_attempts=3)
-        with freeze_retry_clock():
-            asyncio.run(fail_email_processing(pool, "email-1", "test error"))
+        self.pool.rows.append(json.dumps({
+            "fenced": False, "status": "pending", "attempts": 1,
+            "next_retry_at": "2026-04-09T12:01:00+00:00",
+        }))
+        outcome = asyncio.run(fail_email_processing(
+            self.pool, "email-1", "worker-a", 1, "transient", 60, 1800,
+        ))
 
-        sql, args = pool.calls[-1]
-        assert "processing_status = 'pending'" in sql
-        assert args[2] == FROZEN_NOW + timedelta(seconds=120)
+        assert outcome["status"] == "pending"
+        assert outcome["fenced"] is False
 
-    def test_delay_capped_at_3600s(self):
-        """Delay should be capped at 3600s (1 hour) for high attempt counts."""
+    def test_terminal_outcome_is_returned(self):
         import asyncio
+        import json
 
         from selko.services.emails import fail_email_processing
 
-        # Attempt 7 would be 60 * 2^6 = 3840, but should be capped at 3600
-        pool = _email_pool(self.pool, attempts=7, max_attempts=10)
-        with freeze_retry_clock():
-            asyncio.run(fail_email_processing(pool, "email-1", "test error"))
+        self.pool.rows.append(json.dumps({"fenced": False, "status": "failed", "attempts": 3}))
+        outcome = asyncio.run(fail_email_processing(
+            self.pool, "email-1", "worker-a", 1, "permanent", 60, 1800,
+        ))
 
-        sql, args = pool.calls[-1]
-        assert args[2] == FROZEN_NOW + timedelta(seconds=3600)
+        assert outcome["status"] == "failed"
 
-    def test_backoff_doubles_each_attempt(self):
-        """Verify delay doubles exactly with each attempt until the cap."""
+    def test_fenced_outcome_is_returned_without_raising(self):
+        """A stale (worker, generation) must not raise — a replacement worker
+        already owns the row."""
         import asyncio
+        import json
 
         from selko.services.emails import fail_email_processing
 
-        delays = []
-        for attempt in [1, 2, 3, 4]:
-            pool = _email_pool(self.pool, attempts=attempt, max_attempts=5)
-            with freeze_retry_clock():
-                asyncio.run(fail_email_processing(pool, f"email-{attempt}", "test error"))
-            sql, args = pool.calls[-1]
-            delays.append(int((args[2] - FROZEN_NOW).total_seconds()))
-            self.pool.calls.clear()
-            self.pool.rows.clear()
+        self.pool.rows.append(json.dumps({"fenced": True, "status": "processing"}))
+        outcome = asyncio.run(fail_email_processing(
+            self.pool, "email-1", "stale-worker", 1, "too late", 60, 1800,
+        ))
 
-        assert delays == [60, 120, 240, 480]
+        assert outcome["fenced"] is True
 
 
 class TestExponentialBackoffEvents:
@@ -217,41 +207,9 @@ class TestExponentialBackoffEvents:
 
 
 class TestDeadLetterEmail:
-    @pytest.fixture(autouse=True)
-    def pool(self, fake_pg_pool):
-        self.pool = fake_pg_pool
-
-    """Tests for dead letter fields when max attempts exceeded for emails."""
-
-    def test_dead_letter_on_max_attempts(self):
-        """When max attempts exceeded, dead_letter fields should be set."""
-        import asyncio
-
-        from selko.services.emails import fail_email_processing
-
-        self.pool.rows.append({"attempts": 3, "max_attempts": 3})
-        asyncio.run(fail_email_processing(self.pool, "email-1", "Permanent failure"))
-
-        sql, args = self.pool.calls[-1]
-        assert "processing_status = 'failed'" in sql
-        assert "dead_letter_reason = $2" in sql
-        assert "dead_letter_at = $3" in sql
-        # Should NOT have next_retry_at
-        assert "next_retry_at" not in sql
-
-    def test_no_dead_letter_on_retry(self):
-        """When retries remain, dead_letter fields should NOT be set."""
-        import asyncio
-
-        from selko.services.emails import fail_email_processing
-
-        self.pool.rows.append({"attempts": 1, "max_attempts": 3})
-        asyncio.run(fail_email_processing(self.pool, "email-1", "Transient failure"))
-
-        sql, args = self.pool.calls[-1]
-        assert "processing_status = 'pending'" in sql
-        assert "dead_letter_reason" not in sql
-        assert "dead_letter_at" not in sql
+    """S1: dead-letter vs retry is now decided inside the SQL RPC (see
+    ``TestFencedFailEmailProcessing``); real dead-lettering-at-limit coverage
+    lives in ``test_integration_email_state_machine.py``."""
 
 
 class TestDeadLetterEvent:
