@@ -3,7 +3,7 @@
 **Unfinished plans only, in the order they are executed.** Nothing here is
 finished. If a plan is done, it does not live here.
 
-Status as of 2026-08-12.
+Status as of 2026-08-13.
 
 ---
 
@@ -17,24 +17,19 @@ declares a dependency on has landed.
 | 1 | [Stub rollback and gate repair](stub-rollback-and-gate-repair.md) | G1–G7 | Completed; retained as the gate-repair record | G1–G7 merged; staging access remains an operator check |
 | 2 | [Parallel extraction, fenced commit](parallel-extraction-fenced-commit.md) | P1–P4 | P1–P3 implemented; P4 repair tooling implemented, production apply awaits seven-day observation and approval | G1–G4 merged, gate green ×3 |
 | 3 | [Calendar identity and cancellation](calendar-identity-and-cancellation.md) | C1–C3 | C1–C3 implemented; staging drills and production observation remain operator gates | P1–P3 verified in production |
-| 4 | [Foundation integrity](foundation-integrity.md) | F7b, F8, F9 open | Partially implemented | F7b needs staging access; F8 needs operator approval |
-| 5 | [Cutover verification](cutover-verification-20260807.md) | Ordered checklist | Verified locally, not deployed | Executed *through* F7–F8, never directly |
-| 6 | [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) | Steps 7–9 open | Partially implemented | Independent; C3 adds `cancel_queued` to its recovery sets |
+| 4 | [State ownership and deterministic recovery](state-ownership-and-deterministic-recovery.md) | S1–S5 | Planned | P1–P3 and C1–C3 implemented; production incident repaired and audited |
+| 5 | [Foundation integrity](foundation-integrity.md) | F7b, F8, F9 open | Partially implemented | F7b needs staging access; F8 needs operator approval |
+| 6 | [Cutover verification](cutover-verification-20260807.md) | Ordered checklist | Verified locally, not deployed | Executed *through* F7–F8, never directly |
+| 7 | [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) | Steps 7–9 open | Partially implemented | Independent; C3 adds `cancel_queued` to its recovery sets |
 | — | [Review queue integrity](review-queue-integrity.md) | R1 open | Partially implemented **and normative** | Not scheduled on its own — see below |
 
-### 1 · Stub rollback and gate repair — **the next increment**
+### 1 · Stub rollback and gate repair — completed record
 
-Both Tier 1 gates are red on `main`, and four increments merged over that red.
-G1 removes the R2–R5 stub-ware and the five undeployed empty tables. G2 pins
-every enumerated CHECK domain — the class-killer for the two constraint
-truncations R2 and R4 shipped through a green gate. G3 makes the integration
-suite order-independent and decouples Tier 1 from a live Google token. G4 fails
-the build on unreachable modules. G5 fixes eight R1 frontend defects. G6
-corrects the record and prunes 161 MB of eval artifacts. G7 closes out the
-ingestion incident. Carries the full 17-defect register with file and line.
-
-**G1 → G2 → G3 → G4 in that order.** G5 and G6 may run in parallel after G3.
-Consider doing G3 before G1 so G1's gate result is trustworthy.
+G1–G7 removed the R2–R5 stub-ware, pinned enumerated CHECK domains, repaired
+the real-database gate, enforced module reachability, fixed the R1 frontend
+defects, pruned eval artifacts, and closed the ingestion incident. Its remaining
+staging-access checks belong to Foundation Integrity; do not reopen this plan
+as an implementation queue.
 
 ### 2 · Parallel extraction, fenced commit
 
@@ -52,6 +47,16 @@ Replaces `review-queue-integrity.md` R3 and R4 as three vertical slices —
 parser, canonicalizer, table, matcher, test — under one rule: *a schema object
 and the code that fills it land in the same increment.* That rule is why R3 and
 R4 failed.
+
+### 4 · State ownership and deterministic recovery
+
+Separates email work, provider-discovery runs, event review, change proposals,
+calendar delivery, and provenance into explicit state owners. It follows the
+production repair that found an orphaned Changes card, unclaimable pending
+emails, and a stale running audit row while health still reported ok. The plan
+uses expand–migrate–contract: S1 fixes claimability and health; S2 makes every
+Calendar mutation worker-owned; S3 makes proposals first-class; S4 migrates all
+clients; S5 deletes compatibility state and dead mutators.
 
 ### 7 · Review queue integrity — normative, not scheduled
 
