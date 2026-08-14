@@ -264,7 +264,9 @@ def do_seed(config):
             "all_day": True,
             "location": "TechCorp HQ, Building 5, Conference Room A",
             "description": "Full-day offsite to plan Q2 roadmap. Lunch will be provided.",
-            "status": "pending_change",
+            # Enter pending_change only after its active proposal is inserted.
+            # The database invariant intentionally rejects orphan lane rows.
+            "status": "synced",
             "importance": "action_required",
             "updated_at": (now - timedelta(minutes=60)).isoformat(),
             "source_attribution": "From email: Q2 Planning Offsite Details",
@@ -412,6 +414,10 @@ def do_seed(config):
 
     result = admin.table("event_sources").insert(event_sources_data).execute()
     print(f"  Inserted {len(result.data)} event sources")
+
+    admin.table("events").update({"status": "pending_change"}).eq(
+        "id", event_ids["Q2 Planning Offsite"]
+    ).execute()
 
     # Step 7: Insert user_calendar_settings
     print("Inserting calendar settings...")

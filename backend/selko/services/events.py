@@ -1703,7 +1703,20 @@ def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, An
         "sync_attempts": 0,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    supabase_client.table("events").update(update_fields).eq("id", event_id).execute()
+    supabase_client.rpc("apply_pending_event_change", {
+        "p_event_id": event_id,
+        "p_user_id": event["user_id"],
+        "p_source_id": source["id"],
+        "p_title": update_fields["title"],
+        "p_start_datetime": update_fields["start_datetime"],
+        "p_end_datetime": update_fields["end_datetime"],
+        "p_all_day": update_fields["all_day"],
+        "p_location": update_fields["location"],
+        "p_description": update_fields["description"],
+        "p_importance": update_fields["importance"],
+        "p_next_status": update_fields["status"],
+        "p_calendar_sync_action": update_fields["calendar_sync_action"],
+    }).execute()
     logger.info(f"Applied pending change on event {event_id}")
     return update_fields
 
@@ -1719,6 +1732,8 @@ def reject_pending_change(supabase_client: Client, event_id: str) -> str:
     event = event_result.data
 
     source = _latest_pending_change_source(supabase_client, event_id)
+    if not source:
+        raise EventsError(f"No pending change proposal for event {event_id}")
     snapshot = (source or {}).get("event_snapshot_before") if source else None
 
     # GCal-only adopt that never left pending_change: delete the row
@@ -1742,14 +1757,22 @@ def reject_pending_change(supabase_client: Client, event_id: str) -> str:
     )
 
     if gcal_only_proposal or created_as_change_only:
-        supabase_client.table("events").delete().eq("id", event_id).execute()
+        supabase_client.rpc("reject_pending_event_change", {
+            "p_event_id": event_id,
+            "p_user_id": event["user_id"],
+            "p_source_id": source["id"],
+            "p_delete_event": True,
+            "p_restore_status": "approved",
+            "p_title": event.get("title"),
+            "p_start_datetime": event.get("start_datetime"),
+            "p_end_datetime": event.get("end_datetime"),
+            "p_all_day": event.get("all_day", False),
+            "p_location": event.get("location"),
+            "p_description": event.get("description"),
+            "p_importance": event.get("importance", "action_required"),
+        }).execute()
         logger.info(f"Deleted GCal pending_change event {event_id} on reject")
         return "deleted"
-
-    if source:
-        supabase_client.table("event_sources").update({
-            "is_undone": True
-        }).eq("id", source["id"]).execute()
 
     restore_status = "synced" if event.get("google_calendar_event_id") else "approved"
     if snapshot and snapshot.get("status") in {
@@ -1757,9 +1780,14 @@ def reject_pending_change(supabase_client: Client, event_id: str) -> str:
     }:
         restore_status = snapshot["status"]
 
-    restore_fields: dict[str, Any] = {
-        "status": restore_status,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+    restored_event = {
+        "title": event.get("title"),
+        "start_datetime": event.get("start_datetime"),
+        "end_datetime": event.get("end_datetime"),
+        "all_day": event.get("all_day", False),
+        "location": event.get("location"),
+        "description": event.get("description"),
+        "importance": event.get("importance", "action_required"),
     }
     if snapshot:
         for key in (
@@ -1767,9 +1795,22 @@ def reject_pending_change(supabase_client: Client, event_id: str) -> str:
             "location", "description", "importance",
         ):
             if key in snapshot:
-                restore_fields[key] = snapshot[key]
+                restored_event[key] = snapshot[key]
 
-    supabase_client.table("events").update(restore_fields).eq("id", event_id).execute()
+    supabase_client.rpc("reject_pending_event_change", {
+        "p_event_id": event_id,
+        "p_user_id": event["user_id"],
+        "p_source_id": source["id"],
+        "p_delete_event": False,
+        "p_restore_status": restore_status,
+        "p_title": restored_event["title"],
+        "p_start_datetime": restored_event["start_datetime"],
+        "p_end_datetime": restored_event["end_datetime"],
+        "p_all_day": restored_event["all_day"],
+        "p_location": restored_event["location"],
+        "p_description": restored_event["description"],
+        "p_importance": restored_event["importance"],
+    }).execute()
     logger.info(f"Rejected pending change on event {event_id} → {restore_status}")
     return restore_status
 
