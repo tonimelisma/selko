@@ -21,6 +21,7 @@ from selko.services.events import (
     mark_email_status,
     normalize_event_data,
     process_email_for_events,
+    reject_pending_change,
     save_extracted_events,
     should_skip_email,
 )
@@ -34,6 +35,7 @@ class TestApplyPendingChange:
     def test_cancellation_is_local_state_only_and_preserves_title(self, monkeypatch):
         event = {
             "id": "event-1",
+            "user_id": "user-1",
             "title": "Original title",
             "status": "pending_change",
             "google_calendar_event_id": "google-event-1",
@@ -44,6 +46,7 @@ class TestApplyPendingChange:
         monkeypatch.setattr(
             "selko.services.events._latest_pending_change_source",
             lambda _client, _event_id: {
+                "id": "source-1",
                 "source_type": "cancellation",
                 "extracted_data": {"title": "Changed by cancellation email"},
             },
@@ -59,7 +62,82 @@ class TestApplyPendingChange:
         assert result["title"] == "Original title"
         assert result["status"] == "cancel_queued"
         assert result["calendar_sync_action"] == "cancel"
+        rpc_name, rpc_params = client.rpc.call_args.args
+        assert rpc_name == "apply_pending_event_change"
+        assert rpc_params["p_event_id"] == "event-1"
+        assert rpc_params["p_user_id"] == "user-1"
+        assert rpc_params["p_source_id"] == "source-1"
+        assert rpc_params["p_next_status"] == "cancel_queued"
+        assert rpc_params["p_calendar_sync_action"] == "cancel"
         provider_delete.assert_not_called()
+
+
+class TestRejectPendingChange:
+    def test_refuses_an_orphaned_pending_change(self, monkeypatch):
+        event = {
+            "id": "event-1",
+            "user_id": "user-1",
+            "title": "Orphaned proposal",
+            "status": "pending_change",
+        }
+        client = MagicMock()
+        client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = event
+        monkeypatch.setattr(
+            "selko.services.events._latest_pending_change_source",
+            lambda _client, _event_id: None,
+        )
+
+        with pytest.raises(EventsError, match="No pending change proposal"):
+            reject_pending_change(client, "event-1")
+
+        client.rpc.assert_not_called()
+
+    def test_rejects_and_restores_through_one_database_rpc(self, monkeypatch):
+        event = {
+            "id": "event-1",
+            "user_id": "user-1",
+            "title": "Current title",
+            "status": "pending_change",
+            "google_calendar_event_id": "google-1",
+            "synced_at": "2026-01-01T00:00:00Z",
+            "all_day": False,
+            "importance": "action_required",
+        }
+        source = {
+            "id": "source-1",
+            "source_type": "update",
+            "event_snapshot_before": {
+                "title": "Original title",
+                "status": "synced",
+                "all_day": False,
+            },
+        }
+        event_table = MagicMock()
+        event_table.select.return_value.eq.return_value.single.return_value.execute.return_value.data = event
+        source_table = MagicMock()
+        source_table.select.return_value.eq.return_value.execute.return_value.data = [
+            {"source_type": "update"}
+        ]
+        client = MagicMock()
+        client.table.side_effect = lambda name: (
+            event_table if name == "events" else source_table
+        )
+        monkeypatch.setattr(
+            "selko.services.events._latest_pending_change_source",
+            lambda _client, _event_id: source,
+        )
+
+        result = reject_pending_change(client, "event-1")
+
+        assert result == "synced"
+        rpc_name, rpc_params = client.rpc.call_args.args
+        assert rpc_name == "reject_pending_event_change"
+        assert rpc_params["p_source_id"] == "source-1"
+        assert rpc_params["p_delete_event"] is False
+        assert rpc_params["p_restore_status"] == "synced"
+        assert rpc_params["p_title"] == "Original title"
+        source_table.update.assert_not_called()
+        event_table.update.assert_not_called()
 
 
 # --- Helpers for building mock objects ---

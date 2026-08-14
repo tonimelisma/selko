@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 import ast
+import asyncpg
 import json
 from pathlib import Path
 import re
@@ -32,6 +33,7 @@ class ContractContext:
 
 # Trigger-only functions are exercised by test_live_triggers_for_every_table.
 TRIGGER_ONLY_FUNCTIONS = {
+    "enforce_pending_change_proposal",
     "ensure_email_sync_state",
     "handle_new_user",
     "notify_work_available",
@@ -295,6 +297,20 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
     worker = "schema-contract-worker"
     now = datetime.now(timezone.utc)
     return {
+        "apply_pending_event_change": (
+            context.event_id,
+            context.user_id,
+            context.attachment_id,
+            "applied contract event",
+            now,
+            now + timedelta(hours=1),
+            False,
+            "contract location",
+            "contract description",
+            "action_required",
+            "approved",
+            "upsert",
+        ),
         "broadcast_user_ui_change": (context.user_id, "events", "updated", context.event_id),
         "check_and_increment_quota": (context.user_id, "llm_calls", 1),
         "claim_due_email_reconciliation": (worker, 60),
@@ -327,6 +343,20 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
         "reconcile_outlook_email_folders": (context.outlook_integration_id, []),
         "refresh_waiting_calendar_recoveries": (10,),
         "reprocess_email": (context.user_id, context.email_id),
+        "reject_pending_event_change": (
+            context.event_id,
+            context.user_id,
+            context.attachment_id,
+            False,
+            "approved",
+            "rejected contract event",
+            now,
+            now + timedelta(hours=1),
+            False,
+            "contract location",
+            "contract description",
+            "action_required",
+        ),
         "request_email_sync_now": (context.gmail_integration_id,),
         "requeue_calendar_recovery_batch": (context.recovery_id, worker, 10, 1),
         "queue_event_cancellation": (context.event_id, context.user_id),
@@ -382,6 +412,24 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
     )
 
     for name, args in contracts.items():
+        if name in {"apply_pending_event_change", "reject_pending_event_change"}:
+            await conn.execute(
+                """
+                INSERT INTO public.event_sources
+                    (id, event_id, email_id, source_type, extracted_data,
+                     change_set, is_undone)
+                VALUES ($1, $2, $3, 'update', '{}'::jsonb,
+                        '{"kind":"material_update","changes":[]}'::jsonb, false)
+                ON CONFLICT (id) DO UPDATE SET is_undone = false
+                """,
+                context.attachment_id,
+                context.event_id,
+                context.email_id,
+            )
+            await conn.execute(
+                "UPDATE public.events SET status = 'pending_change' WHERE id = $1",
+                context.event_id,
+            )
         encoded_args = [
             json.dumps(value)
             if isinstance(value, (dict, list))
@@ -550,6 +598,111 @@ async def _exercise_calendar_settings_triggers(conn, context):
 
 async def _exercise_user_triggers(conn, context):
     await conn.execute("UPDATE public.users SET display_name = 'updated trigger user' WHERE id = $1", context.user_id)
+
+
+@pytest.mark.asyncio
+async def test_pending_change_requires_an_active_proposal(contract_connection):
+    conn, context = contract_connection
+    savepoint = conn.transaction()
+    await savepoint.start()
+    try:
+        await conn.execute(
+            "UPDATE public.events SET status = 'pending_change' WHERE id = $1",
+            context.event_id,
+        )
+        with pytest.raises(
+            asyncpg.CheckViolationError,
+            match="requires an active proposal",
+        ):
+            await conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
+    finally:
+        await savepoint.rollback()
+
+
+@pytest.mark.asyncio
+async def test_active_proposal_cannot_be_undone_without_leaving_pending_change(
+    contract_connection,
+):
+    conn, context = contract_connection
+    source_id = uuid4()
+    await conn.execute(
+        """
+        INSERT INTO public.event_sources
+            (id, event_id, email_id, source_type, extracted_data, change_set)
+        VALUES ($1, $2, $3, 'update', '{}'::jsonb,
+                '{"kind":"material_update","changes":[]}'::jsonb)
+        """,
+        source_id,
+        context.event_id,
+        context.email_id,
+    )
+    await conn.execute(
+        "UPDATE public.events SET status = 'pending_change' WHERE id = $1",
+        context.event_id,
+    )
+
+    savepoint = conn.transaction()
+    await savepoint.start()
+    try:
+        await conn.execute(
+            "UPDATE public.event_sources SET is_undone = true WHERE id = $1",
+            source_id,
+        )
+        with pytest.raises(
+            asyncpg.CheckViolationError,
+            match="requires an active proposal",
+        ):
+            await conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
+    finally:
+        await savepoint.rollback()
+
+
+@pytest.mark.asyncio
+async def test_reject_pending_change_is_one_atomic_transition(contract_connection):
+    conn, context = contract_connection
+    source_id = uuid4()
+    await conn.execute(
+        """
+        INSERT INTO public.event_sources
+            (id, event_id, email_id, source_type, extracted_data,
+             event_snapshot_before, change_set)
+        VALUES ($1, $2, $3, 'update', '{}'::jsonb,
+                '{"status":"approved","title":"before"}'::jsonb,
+                '{"kind":"material_update","changes":[]}'::jsonb)
+        """,
+        source_id,
+        context.event_id,
+        context.email_id,
+    )
+    await conn.execute(
+        "UPDATE public.events SET status = 'pending_change' WHERE id = $1",
+        context.event_id,
+    )
+
+    result = await conn.fetchval(
+        """
+        SELECT public.reject_pending_event_change(
+            $1, $2, $3, false, 'approved', 'before', NULL, NULL,
+            false, NULL, NULL, 'action_required'
+        )
+        """,
+        context.event_id,
+        context.user_id,
+        source_id,
+    )
+    await conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
+
+    if isinstance(result, str):
+        result = json.loads(result)
+    assert result["status"] == "approved"
+    assert await conn.fetchval(
+        "SELECT is_undone FROM public.event_sources WHERE id = $1",
+        source_id,
+    ) is True
+    assert await conn.fetchval(
+        "SELECT status FROM public.events WHERE id = $1",
+        context.event_id,
+    ) == "approved"
 
 
 @pytest.mark.asyncio

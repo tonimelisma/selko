@@ -35,19 +35,24 @@
 		sortLaneEvents
 	} from '$lib/review-queue-order.js';
 	import DispositionedCard from '$lib/components/DispositionedCard.svelte';
-	import { flip } from 'svelte/animate';
+	import { translateOnlyFlip } from '$lib/translate-only-flip.js';
 
 	/** @type {any[]} */
 	let integrationsList = $state([]);
 	/** @type {any[]} */
 	let events = $state([]);
 	let isLoadingIntegrations = $state(true);
+	let hasIntegrationSnapshot = $state(false);
+	let isRefreshingIntegrations = $state(false);
+	let integrationRefreshQueued = $state(false);
 	let hasEventSnapshot = $state(false);
 	let isInitialEventsLoad = $state(false);
 	let isRefreshingEvents = $state(false);
 	let refreshError = $state('');
 	let refreshSequence = $state(0);
 	let refreshQueued = $state(false);
+	/** @type {ReturnType<typeof setTimeout> | null} */
+	let eventRefreshTimer = null;
 	/** @type {Map<string, { event: any, kind: 'accept'|'reject', lane: string }>} */
 	let dispositions = $state(new Map());
 	let error = $state('');
@@ -138,6 +143,23 @@
 
 	function clearRejectUndoTimer() {
 		if (rejectedUndo?.timer) clearTimeout(rejectedUndo.timer);
+	}
+
+	function clearEventRefreshTimer() {
+		if (eventRefreshTimer) clearTimeout(eventRefreshTimer);
+		eventRefreshTimer = null;
+	}
+
+	function requestEventRefresh() {
+		clearEventRefreshTimer();
+		eventRefreshTimer = setTimeout(() => {
+			eventRefreshTimer = null;
+			if (processingEvents.size === 0) {
+				void loadEvents();
+			} else {
+				requestEventRefresh();
+			}
+		}, 150);
 	}
 
 	function dismissRejectUndo() {
@@ -233,17 +255,8 @@
 			await loadIntegrations();
 
 		// Live UI: subscribe to invalidations for events/event_sources/integrations
-		const unsubEvents = liveUpdates.subscribe('events', async () => {
-			if (processingEvents.size === 0) {
-				await loadEvents();
-			} else {
-				// Defer refresh until optimistic mutations complete — preserve optimistic removals
-				setTimeout(() => { if (processingEvents.size === 0) loadEvents(); }, 500);
-			}
-		});
-		const unsubSources = liveUpdates.subscribe('event_sources', async () => {
-			if (processingEvents.size === 0) await loadEvents();
-		});
+		const unsubEvents = liveUpdates.subscribe('events', requestEventRefresh);
+		const unsubSources = liveUpdates.subscribe('event_sources', requestEventRefresh);
 		const unsubIntegrations = liveUpdates.subscribe('integrations', async () => {
 			await loadIntegrations();
 		});
@@ -252,6 +265,7 @@
 			unsubEvents();
 			unsubSources();
 			unsubIntegrations();
+			clearEventRefreshTimer();
 			clearRejectUndoTimer();
 		};
 		})();
@@ -261,20 +275,39 @@
 	onDestroy(() => clearRejectUndoTimer());
 
 	async function loadIntegrations() {
-		isLoadingIntegrations = true;
-		integrationLoadFailed = false;
-		const result = await fetchIntegrations();
-		if (result.error) {
-			error = result.error.message;
-			integrationLoadFailed = true;
-			isLoadingIntegrations = false;
+		const isFirst = !hasIntegrationSnapshot;
+		if (!isFirst && isRefreshingIntegrations) {
+			integrationRefreshQueued = true;
 			return;
-		} else {
-			integrationsList = result.data;
 		}
-		isLoadingIntegrations = false;
-
-		await loadEvents();
+		if (isFirst) {
+			isLoadingIntegrations = true;
+			integrationLoadFailed = false;
+		} else {
+			isRefreshingIntegrations = true;
+		}
+		try {
+			const result = await fetchIntegrations();
+			if (result.error) {
+				if (isFirst) {
+					error = result.error.message;
+					integrationLoadFailed = true;
+				} else {
+					refreshError = result.error.message;
+				}
+				return;
+			}
+			integrationsList = result.data;
+			hasIntegrationSnapshot = true;
+			if (isFirst) await loadEvents();
+		} finally {
+			if (isFirst) isLoadingIntegrations = false;
+			else isRefreshingIntegrations = false;
+			if (integrationRefreshQueued) {
+				integrationRefreshQueued = false;
+				queueMicrotask(() => loadIntegrations());
+			}
+		}
 	}
 
 	async function loadEvents() {
@@ -693,7 +726,7 @@
 									handleAutoApproveSender(senderKey, senderGroup.events)}
 							/>
 							{#each senderGroup.events as event (event.id)}
-								<div animate:flip={{ duration: 180 }}>
+								<div animate:translateOnlyFlip={{ duration: 180 }}>
 									<DispositionedCard {event} kind={dispositions.get(event.id)?.kind}>
 										{#snippet children()}
 										<EventCard
@@ -739,7 +772,7 @@
 									handleAutoApproveSender(senderKey, senderGroup.events)}
 							/>
 							{#each senderGroup.events as event (event.id)}
-								<div animate:flip={{ duration: 180 }}>
+								<div animate:translateOnlyFlip={{ duration: 180 }}>
 									<DispositionedCard {event} kind={dispositions.get(event.id)?.kind}>
 										{#snippet children()}
 										<ChangeCard
