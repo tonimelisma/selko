@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 const mockFetchIntegrations = vi.fn();
 const mockFetchPendingEventsWithSources = vi.fn();
 const mockUpdateEventStatus = vi.fn();
+const mockLiveUpdateCallbacks = new Map();
 
 vi.mock('$lib/services/integrations.js', () => ({
 	fetchIntegrations: (...args) => mockFetchIntegrations(...args),
@@ -17,6 +18,19 @@ vi.mock('$lib/services/events.js', () => ({
 	fetchPendingEventsWithSources: (...args) => mockFetchPendingEventsWithSources(...args),
 	updateEventStatus: (...args) => mockUpdateEventStatus(...args)
 }));
+
+vi.mock('$lib/live-updates.js', () => ({
+	subscribe: (resource, callback) => {
+		if (!mockLiveUpdateCallbacks.has(resource)) mockLiveUpdateCallbacks.set(resource, new Set());
+		mockLiveUpdateCallbacks.get(resource).add(callback);
+		return () => mockLiveUpdateCallbacks.get(resource)?.delete(callback);
+	}
+}));
+
+async function emitLiveUpdate(resource) {
+	const callbacks = [...(mockLiveUpdateCallbacks.get(resource) || [])];
+	await Promise.all(callbacks.map((callback) => callback({ resource, operation: 'UPDATE' })));
+}
 
 const mockCreateSenderRule = vi.fn();
 const mockIgnoreSenderRetroactive = vi.fn();
@@ -48,6 +62,7 @@ const { default: AppPage } = await import('../+page.svelte');
 describe('Review Queue (App Page)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockLiveUpdateCallbacks.clear();
 		mockSyncEventToCalendar.mockResolvedValue({ data: null, error: null });
 		mockFetchPendingEventsWithSources.mockResolvedValue({ data: [], error: null });
 		mockUndoHistoryEvent.mockResolvedValue({ data: { event_id: 'evt-1', status: 'pending_review' }, error: null });
@@ -208,6 +223,58 @@ describe('Review Queue (App Page)', () => {
 			expect(screen.getByText('Team Meeting')).toBeInTheDocument();
 			expect(screen.getByText('Boss')).toBeInTheDocument();
 		});
+	});
+
+	it('keeps the current event list visible during a background integration refresh', async () => {
+		const integrations = [
+			{ id: '1', provider: 'gmail', status: 'active' },
+			{ id: '2', provider: 'google_calendar', status: 'active' }
+		];
+		mockFetchIntegrations.mockResolvedValueOnce({ data: integrations, error: null });
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-stable',
+					title: 'Stable during refresh',
+					start_datetime: '2027-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: []
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+		await waitFor(() => expect(screen.getByText('Stable during refresh')).toBeInTheDocument());
+
+		mockFetchIntegrations.mockReturnValueOnce(new Promise(() => {}));
+		void emitLiveUpdate('integrations');
+
+		expect(screen.getByText('Stable during refresh')).toBeInTheDocument();
+		expect(document.querySelector('.loading.loading-spinner')).toBeNull();
+		expect(mockFetchPendingEventsWithSources).toHaveBeenCalledTimes(1);
+	});
+
+	it('coalesces event and event-source invalidations into one list refresh', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: '1', provider: 'gmail', status: 'active' },
+				{ id: '2', provider: 'google_calendar', status: 'active' }
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({ data: [], error: null });
+
+		render(AppPage);
+		await waitFor(() => expect(screen.getByText('All caught up!')).toBeInTheDocument());
+		expect(mockFetchPendingEventsWithSources).toHaveBeenCalledTimes(1);
+
+		vi.useFakeTimers();
+		void emitLiveUpdate('events');
+		void emitLiveUpdate('event_sources');
+		await vi.advanceTimersByTimeAsync(150);
+		expect(mockFetchPendingEventsWithSources).toHaveBeenCalledTimes(2);
+		vi.useRealTimers();
 	});
 
 	it('shows error when integration fetch fails', async () => {

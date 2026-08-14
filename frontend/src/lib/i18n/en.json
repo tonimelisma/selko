@@ -63,7 +63,8 @@
     "acceptedLabel": "Accepted",
     "rejectedLabel": "Rejected",
     "accepted": "Accepted. {count} remaining in this lane.",
-    "rejected": "Rejected. {count} remaining in this lane."
+    "rejected": "Rejected. {count} remaining in this lane.",
+    "changeProposalUnavailable": "Change details are unavailable. This proposal cannot be accepted or rejected until it is repaired."
   },
   "events": {
     "editEvent": "Edit Event",
