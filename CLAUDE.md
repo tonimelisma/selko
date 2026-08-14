@@ -125,6 +125,10 @@ Tier 2 covers:
 
 **A red Tier 2 run is the top-priority next increment**, ahead of new feature
 work. Fix forward. Never let a second increment merge on top of a red staging.
+An explicit user instruction to deploy to production after the Tier 2 gap has
+been disclosed is an operator waiver for that deployment: report the waiver,
+then proceed without another staging detour or approval loop. The waiver does
+not authorize unrelated production-data mutations.
 
 ### 1. Scope your change
 
@@ -187,7 +191,7 @@ work. Fix forward. Never let a second increment merge on top of a red staging.
 - [ ] The scoped tests above pass locally — **local tests are the gate, not CI**
 - [ ] Commit (conventional format), push, `gh pr create`
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges and does full cleanup: deletes remote + local branch, fast-forwards `main`, removes the worktree, prunes. **Does not wait on CI.**
-- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **the last sentence of your final report MUST be: "Should I deploy this to production?"** Never deploy to prod without an explicit yes. (Prod deploy = `gh workflow run test.yml`; see `docs/ci-cd.md`.)
+- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **the last sentence of your final report MUST be: "Should I deploy this to production?"** Never deploy to prod without an explicit yes. Once the user says yes, deploy; a previously disclosed staging failure does not require another confirmation. Follow the local production migration and tag/push path in `docs/ci-cd.md`.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
