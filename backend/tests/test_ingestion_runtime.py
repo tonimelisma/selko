@@ -367,53 +367,57 @@ def test_health_evaluator_survives_an_evaluate_once_exception(mock_config):
     asyncio.run(run_under())
 
 
+def _work_state_row(
+    *, items_dead_letter=0, attachments_dead_letter=0, items_pending=0,
+    integrations_due=0, leases_held=0, oldest_next_poll_seconds=0, open_incidents=0,
+    ready_emails=0, processing_emails=0, stale_processing_emails=0,
+    unclaimable_emails=0, stale_sync_runs=0,
+):
+    degraded = (
+        stale_processing_emails > 0 or unclaimable_emails > 0 or stale_sync_runs > 0
+        or items_dead_letter > 0 or attachments_dead_letter > 0 or open_incidents > 0
+    )
+    return {
+        "status": "degraded" if degraded else "ok",
+        "ready_emails": ready_emails,
+        "processing_emails": processing_emails,
+        "stale_processing_emails": stale_processing_emails,
+        "unclaimable_emails": unclaimable_emails,
+        "stale_sync_runs": stale_sync_runs,
+        "items_pending": items_pending,
+        "items_dead_letter": items_dead_letter,
+        "attachments_dead_letter": attachments_dead_letter,
+        "integrations_due": integrations_due,
+        "leases_held": leases_held,
+        "oldest_next_poll_seconds": oldest_next_poll_seconds,
+        "open_incidents": open_incidents,
+    }
+
+
 def _state_table_client(*, states, items=None, attachments=None, incidents=None):
-    """A MagicMock client whose health RPCs return counted values. Used to
+    """A MagicMock client whose health RPC returns a counted row. Used to
     drive health_snapshot() without a real database.
 
-    R1: health_snapshot() now uses counted RPCs (no 1000-row truncation).
-    This helper drives those RPCs directly; the old table-sum path is removed.
+    S1.4: health_snapshot() now uses one counted RPC (no 1000-row
+    truncation, no Python sum()).
     """
     client = MagicMock()
 
-    # Count dead letters + pending (one RPC)
     items_dead = sum(1 for _, s in (items or []) if s == "dead_letter")
     items_pending = sum(1 for _, s in (items or []) if s in ("pending", "retry", "processing"))
     attachments_dead = sum(1 for _, s in (attachments or []) if s == "dead_letter")
 
-    # SLO: integrations_due is not derivable from the thin `states` tuples
-    # since prior tests treat any supplied `states` as one past-due integration.
-    # For R1 we keep the same test semantics: len(states) counts as an SLO input
-    # and the DL pending/dead counts are via RPCs. We simulate the SLO RPC
-    # from the same `states` list, treating a far-future next_poll_at as 0 due.
-    # If any state's next_poll_at is in the past (test injects future 2099),
-    # due=0 — matching prior assertions.
-    # Keep logic trivial: if states contains at least one entry with far future,
-    # oldest is negative huge → oldest_next_poll_seconds will be 0 under new RPC
-    # (since min(next_poll_at) is far future, now - min is negative → GREATEST(0,...)=0).
-    # For tests this is equivalent to "not degraded on poll SLO".
-    def _slo_payload():
-        # Synthesize from states: only matters that due==0 and open_incidents==len(incidents)
-        # and leases_held==0 for the test inputs.
-        return {
-            "integrations_due": 0,
-            "leases_held": 0,
-            "oldest_next_poll_seconds": 0,
-            "open_incidents": len(incidents or []),
-        }
+    row = _work_state_row(
+        items_dead_letter=items_dead,
+        attachments_dead_letter=attachments_dead,
+        items_pending=items_pending,
+        open_incidents=len(incidents or []),
+    )
 
     def rpc(name, params=None):
         handle = MagicMock()
-        if name == "health_dead_letter_counts":
-            handle.execute.return_value = MagicMock(
-                data=[{
-                    "items_dead_letter": items_dead,
-                    "attachments_dead_letter": attachments_dead,
-                    "items_pending": items_pending,
-                }]
-            )
-        elif name == "health_poll_slo":
-            handle.execute.return_value = MagicMock(data=[_slo_payload()])
+        if name == "health_work_state":
+            handle.execute.return_value = MagicMock(data=[row])
         else:
             handle.execute.return_value = MagicMock(data=[])
         return handle
@@ -438,26 +442,20 @@ def _state_table_client(*, states, items=None, attachments=None, incidents=None)
 def _state_table_client_with_counts(*, items_dead_letter=0, attachments_dead_letter=0, items_pending=0, integrations_due=0, leases_held=0, oldest_next_poll_seconds=0, open_incidents=0):
     """Direct counted helper for truncation regression test."""
     client = MagicMock()
+    row = _work_state_row(
+        items_dead_letter=items_dead_letter,
+        attachments_dead_letter=attachments_dead_letter,
+        items_pending=items_pending,
+        integrations_due=integrations_due,
+        leases_held=leases_held,
+        oldest_next_poll_seconds=oldest_next_poll_seconds,
+        open_incidents=open_incidents,
+    )
 
     def rpc(name, params=None):
         handle = MagicMock()
-        if name == "health_dead_letter_counts":
-            handle.execute.return_value = MagicMock(
-                data=[{
-                    "items_dead_letter": items_dead_letter,
-                    "attachments_dead_letter": attachments_dead_letter,
-                    "items_pending": items_pending,
-                }]
-            )
-        elif name == "health_poll_slo":
-            handle.execute.return_value = MagicMock(
-                data=[{
-                    "integrations_due": integrations_due,
-                    "leases_held": leases_held,
-                    "oldest_next_poll_seconds": oldest_next_poll_seconds,
-                    "open_incidents": open_incidents,
-                }]
-            )
+        if name == "health_work_state":
+            handle.execute.return_value = MagicMock(data=[row])
         else:
             handle.execute.return_value = MagicMock(data=[])
         return handle
@@ -612,9 +610,9 @@ def test_health_snapshot_counts_1500_dead_letters_without_truncation(mock_config
             snap = runtime.health_snapshot()
             assert snap["status"] == "degraded"
             assert snap["items_dead_letter"] == 1500
-            # Also ensure the snapshot was driven via RPC, not via truncated table
-            assert client.rpc.call_count == 2
-            assert client.rpc.call_args_list[0][0][0] == "health_dead_letter_counts"
+            # Also ensure the snapshot was driven via one RPC, not a truncated table
+            assert client.rpc.call_count == 1
+            assert client.rpc.call_args_list[0][0][0] == "health_work_state"
         finally:
             await runtime.stop()
 

@@ -4,6 +4,7 @@ Handles email parsing and database storage.
 """
 
 import base64
+import json
 import logging
 import math
 import re
@@ -24,7 +25,6 @@ from selko.services.gmail import (
     get_credentials,
 )
 from selko.services.attachments import AttachmentError, process_attachment, store_image_content
-from selko.services.retry_utils import calculate_retry_delay
 from selko.services.email_images import extract_data_uri_images, extract_linked_images
 from selko.services.ics_parser import INVITE_METHODS
 
@@ -544,64 +544,61 @@ async def complete_email_processing(pool, email_id: str) -> None:
 async def fail_email_processing(
     pool,
     email_id: str,
+    worker_id: str,
+    generation: int,
     error: str,
-) -> None:
-    """Mark email processing as failed.
+    retry_base_seconds: int,
+    retry_max_seconds: int,
+) -> dict[str, Any]:
+    """Fenced retry-or-terminate transition for a claimed email.
 
-    If attempts < max_attempts, sets status back to 'pending' for retry.
-    Otherwise, sets status to 'failed' permanently.
+    Delegates the retry-vs-terminal decision and the row mutation to the
+    ``fail_email_processing`` SQL RPC in one transaction. Only the
+    ``(worker_id, generation)`` that currently owns the row's lease may
+    transition it; a stale caller's request is a no-op (``fenced: true`` in
+    the returned dict) so a replacement worker's claim is never overwritten.
 
     Args:
         pool: asyncpg session-pooler pool.
         email_id: UUID of email that failed processing.
+        worker_id: Identifier of the worker that holds the claim.
+        generation: Lease generation the worker claimed (``lock_generation``).
         error: Error message to store.
+        retry_base_seconds: Base delay for exponential backoff.
+        retry_max_seconds: Cap for exponential backoff.
+
+    Returns:
+        The RPC's ``{fenced, status, attempts, next_retry_at?}`` result.
 
     Raises:
-        EmailError: If update fails.
+        EmailError: If the RPC call fails.
     """
     try:
-        row = await pool.fetchrow(
-            "SELECT attempts, max_attempts FROM public.emails WHERE id = $1",
-            email_id,
+        raw = await pool.fetchval(
+            "SELECT public.fail_email_processing($1, $2, $3, $4, $5, $6, $7)",
+            email_id, worker_id, generation, error, error,
+            retry_base_seconds, retry_max_seconds,
         )
-        if row is None:
-            raise EmailError(f"Email {email_id} not found")
-        attempts = row["attempts"]
-        max_attempts = row["max_attempts"]
-        should_retry = attempts < max_attempts
-
-        if should_retry:
-            delay, next_retry_at = calculate_retry_delay(attempts)
-            next_retry_dt = datetime.fromisoformat(next_retry_at.replace("Z", "+00:00"))
-            await pool.execute(
-                "UPDATE public.emails"
-                " SET processing_status = 'pending', processing_error = $2,"
-                " locked_by = NULL, locked_until = NULL, next_retry_at = $3"
-                " WHERE id = $1",
-                email_id, error, next_retry_dt,
+        outcome = json.loads(raw) if isinstance(raw, str) else (raw or {})
+        if outcome.get("fenced"):
+            logger.warning(
+                f"Email {email_id} failure ignored: worker {worker_id} "
+                f"generation {generation} no longer owns the lease"
             )
+        elif outcome.get("status") == "pending":
             logger.warning(
                 f"Email {email_id} processing failed "
-                f"(attempt {attempts}/{max_attempts}): {error}. "
-                f"Will retry in {delay}s."
+                f"(attempt {outcome.get('attempts')}): {error}. "
+                f"Will retry at {outcome.get('next_retry_at')}."
             )
         else:
-            await pool.execute(
-                "UPDATE public.emails"
-                " SET processing_status = 'failed', processing_error = $2,"
-                " locked_by = NULL, locked_until = NULL,"
-                " dead_letter_reason = $2, dead_letter_at = $3"
-                " WHERE id = $1",
-                email_id, error, datetime.now(timezone.utc),
-            )
             logger.error(
                 f"Email {email_id} processing failed permanently "
-                f"after {attempts} attempts: {error}. "
+                f"after {outcome.get('attempts')} attempts: {error}. "
                 f"Moved to dead letter."
             )
+        return outcome
 
-    except EmailError:
-        raise
     except Exception as e:
         raise EmailError(f"Failed to mark email as failed: {e}") from e
 

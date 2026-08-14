@@ -183,8 +183,11 @@ class TestEmailStatusBasedClaiming:
         email_id = result.data[0]["id"]
 
         # Claim and fail
-        await claim_pending_email(pg_pool, "worker-1")
-        await fail_email_processing(pg_pool, email_id, "Test error")
+        claimed = await claim_pending_email(pg_pool, "worker-1")
+        await fail_email_processing(
+            pg_pool, email_id, "worker-1", claimed["lock_generation"],
+            "Test error", 60, 1800,
+        )
 
         # Should be back to pending for retry
         email = authenticated_client.table("emails").select("*").eq(
