@@ -112,10 +112,47 @@ def unauthed_app(mock_config):
 class TestHealthEndpoints:
     """Tests for /health and /health/db."""
 
-    def test_health_ok(self, test_client):
-        resp = test_client.get("/health")
+    def test_health_ok(self, test_client, mock_config):
+        """S1: /health's status is driven by health_work_state, not
+        hard-coded — mock the RPC so this stays a real unit test (no live
+        Supabase needed), matching this file's stated contract."""
+        mock_sb = MagicMock()
+        mock_sb.rpc.return_value.execute.return_value = MagicMock(
+            data=[{"status": "ok"}]
+        )
+        mock_sb.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+            data=[], count=0
+        )
+        with patch(
+            "selko.api.routes.health.get_service_client", return_value=mock_sb
+        ):
+            resp = test_client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
+
+    def test_health_degraded_when_work_state_reports_degraded(self, test_client, mock_config):
+        mock_sb = MagicMock()
+        mock_sb.rpc.return_value.execute.return_value = MagicMock(
+            data=[{"status": "degraded"}]
+        )
+        mock_sb.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+            data=[], count=0
+        )
+        with patch(
+            "selko.api.routes.health.get_service_client", return_value=mock_sb
+        ):
+            resp = test_client.get("/health")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "degraded"
+
+    def test_health_degrades_when_work_state_unreachable(self, test_client, mock_config):
+        with patch(
+            "selko.api.routes.health.get_service_client",
+            side_effect=Exception("connection refused"),
+        ):
+            resp = test_client.get("/health")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "degraded"
 
     def test_health_db_connected(self, test_client, mock_config):
         """The probe uses the service role; `anon` has no table privileges."""
