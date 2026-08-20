@@ -626,7 +626,7 @@ most one running run per integration" a database invariant, not a convention.
 ready/processing/stale-processing/unclaimable email counts (predicates pinned
 to `claim_unprocessed_email` in `test_schema_contract.py`), stale sync runs,
 ingestion/attachment dead-letter and pending counts, due integrations, the
-oldest overdue poll, and open incidents — plus its own computed `status`
+oldest overdue poll for active integrations, and open incidents — plus its own computed `status`
 (`ok`/`degraded`). `/health` and `/health/ingestion` both read it; `/health`
 no longer hard-codes `ok`.
 

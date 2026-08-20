@@ -292,6 +292,31 @@ class TestDurableEmailStateMachine:
         assert result["processing_emails"] >= 1
         assert result["stale_processing_emails"] == 0
 
+    def test_health_ignores_expired_integration_poll_age(self, admin_client, synced_integration):
+        """Expired integrations are not eligible work and cannot degrade health."""
+        before = admin_client.rpc("health_work_state", {
+            "p_warning_seconds": 60,
+        }).execute().data
+
+        admin_client.table("integrations").update({"status": "expired"}).eq(
+            "id", synced_integration
+        ).execute()
+        admin_client.table("email_sync_state").update({
+            "next_poll_at": "2000-01-01T00:00:00+00:00",
+        }).eq("integration_id", synced_integration).execute()
+
+        after = admin_client.rpc("health_work_state", {
+            "p_warning_seconds": 60,
+        }).execute().data
+
+        assert after["status"] == before["status"]
+        if before["oldest_next_poll_seconds"] is None:
+            assert after["oldest_next_poll_seconds"] is None
+        else:
+            # Allow the few seconds spent making the second RPC call, but not
+            # the 26-year-old expired cursor inserted above.
+            assert after["oldest_next_poll_seconds"] <= before["oldest_next_poll_seconds"] + 5
+
 
 @pytest.mark.integration
 @pytest.mark.development
