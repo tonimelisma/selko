@@ -33,7 +33,10 @@ class ContractContext:
 
 # Trigger-only functions are exercised by test_live_triggers_for_every_table.
 TRIGGER_ONLY_FUNCTIONS = {
+    "calendar_work_item_owner_check",
     "enforce_pending_change_proposal",
+    "events_legacy_calendar_enqueue_compat",
+    "events_review_status_compat",
     "ensure_email_sync_state",
     "handle_new_user",
     "notify_work_available",
@@ -52,6 +55,10 @@ EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
     ("action_history", "entity_type"): {"event", "sender_rule"},
     ("attachments", "ingestion_status"): {
         "pending", "processing", "stored", "unsupported", "retry", "dead_letter",
+    },
+    ("calendar_work_items", "action"): {"upsert", "cancel"},
+    ("calendar_work_items", "status"): {
+        "pending", "processing", "succeeded", "failed", "blocked", "superseded",
     },
     ("calendar_sync_log", "action"): {"created", "updated", "deleted"},
     ("email_folders", "classification_decision"): {"include", "exclude", "uncertain"},
@@ -80,6 +87,7 @@ EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
     ("event_identity_hints", "strength"): {"authoritative", "supporting"},
     ("event_repair_audit", "action"): {"merge_duplicate_group", "merge_source", "cancel_event", "mark_source_resolved"},
     ("events", "calendar_sync_action"): {"upsert", "cancel"},
+    ("events", "review_status"): {"pending_review", "active", "rejected", "cancelled"},
     ("events", "importance"): {"action_required", "fyi"},
     ("events", "status"): {
         "pending_review", "pending_change", "approved", "rejected", "cancelled",
@@ -297,6 +305,10 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
     worker = "schema-contract-worker"
     now = datetime.now(timezone.utc)
     return {
+        "_enqueue_calendar_work": (
+            context.event_id, context.user_id, "upsert",
+            {"title": "schema contract event"}, None, False, "approved",
+        ),
         "apply_pending_event_change": (
             context.event_id,
             context.user_id,
@@ -359,6 +371,12 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
         ),
         "request_email_sync_now": (context.gmail_integration_id,),
         "requeue_calendar_recovery_batch": (context.recovery_id, worker, 10, 1),
+        "undo_event_and_enqueue_calendar_work": (
+            context.event_id, context.user_id, None, {}, None, None, None, False,
+        ),
+        "unsync_event_and_enqueue_calendar_work": (
+            context.event_id, context.user_id, None, False,
+        ),
         "queue_event_cancellation": (context.event_id, context.user_id),
         "save_email_with_attachment_descriptors": (
             context.user_id,
@@ -378,6 +396,14 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
             }],
         ),
         "claim_calendar_work": ("schema-contract-worker", 60),
+        "claim_calendar_work_item": ("schema-contract-worker", 60),
+        "complete_calendar_work": (context.event_id, worker, 1, "schema-contract-google", None),
+        "defer_calendar_work": (context.event_id, worker, 1, now + timedelta(minutes=5), "probe"),
+        "enqueue_calendar_work": (
+            context.event_id, context.user_id, "upsert", {"title": "schema contract event"}, None, False,
+        ),
+        "fail_calendar_work": (context.event_id, worker, 1, "schema_contract", "probe", True),
+        "heartbeat_calendar_work": (context.event_id, worker, 1, 60),
         "set_email_folder_preference": (context.folder_id, True),
         "unlock_expired_integration_recoveries": (),
         "unlock_expired_event_locks": (),
@@ -426,6 +452,15 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
                 context.event_id,
                 context.email_id,
             )
+        if name == "unsync_event_and_enqueue_calendar_work":
+            await conn.execute(
+                """
+                UPDATE public.events
+                SET status = 'synced', google_calendar_event_id = 'contract-google-event'
+                WHERE id = $1
+                """,
+                context.event_id,
+            )
             await conn.execute(
                 "UPDATE public.events SET status = 'pending_change' WHERE id = $1",
                 context.event_id,
@@ -434,8 +469,12 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
             json.dumps(value)
             if isinstance(value, (dict, list))
                 and name in {
+                    "_enqueue_calendar_work",
                     "commit_email_extraction",
+                    "enqueue_calendar_work",
                     "save_email_with_attachment_descriptors",
+                    "undo_event_and_enqueue_calendar_work",
+                    "unsync_event_and_enqueue_calendar_work",
                     "upsert_discovered_email_items",
                 }
             else value
@@ -495,6 +534,7 @@ async def test_live_triggers_for_every_triggered_table(contract_connection):
     )
     fixtures = {
         "attachments": _exercise_attachment_triggers,
+        "calendar_work_items": _exercise_calendar_work_item_triggers,
         "email_ingestion_items": _exercise_ingestion_item_triggers,
         "emails": _exercise_email_triggers,
         "event_sources": _exercise_event_source_triggers,
@@ -513,6 +553,22 @@ async def test_live_triggers_for_every_triggered_table(contract_connection):
     )
     for table_name in sorted(actual_tables):
         await fixtures[table_name](conn, context)
+
+
+async def _exercise_calendar_work_item_triggers(conn, context):
+    item_id = uuid4()
+    await conn.execute(
+        """
+        INSERT INTO public.calendar_work_items
+            (id, event_id, user_id, action, generation, desired_event)
+        VALUES ($1, $2, $3, 'upsert', 1, '{"title":"trigger probe"}'::jsonb)
+        """,
+        item_id, context.event_id, context.user_id,
+    )
+    await conn.execute(
+        "UPDATE public.calendar_work_items SET failure_detail = 'trigger probe' WHERE id = $1",
+        item_id,
+    )
 
 
 async def _exercise_attachment_triggers(conn, context):
