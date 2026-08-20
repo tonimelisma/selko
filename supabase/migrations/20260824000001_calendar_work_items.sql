@@ -50,7 +50,11 @@ CREATE INDEX IF NOT EXISTS calendar_work_items_user_idx
     ON public.calendar_work_items(user_id, created_at DESC);
 
 ALTER TABLE public.events
-    ADD COLUMN IF NOT EXISTS review_status text;
+    ADD COLUMN IF NOT EXISTS review_status text NOT NULL DEFAULT 'pending_review';
+
+ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_review_status_check;
+ALTER TABLE public.events ADD CONSTRAINT events_review_status_check
+    CHECK (review_status IN ('pending_review', 'active', 'rejected', 'cancelled'));
 
 UPDATE public.events
 SET review_status = CASE status
@@ -58,15 +62,7 @@ SET review_status = CASE status
     WHEN 'rejected' THEN 'rejected'
     WHEN 'cancelled' THEN 'cancelled'
     ELSE 'active'
-END
-WHERE review_status IS NULL;
-
-ALTER TABLE public.events
-    ALTER COLUMN review_status SET DEFAULT 'pending_review',
-    ALTER COLUMN review_status SET NOT NULL;
-ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_review_status_check;
-ALTER TABLE public.events ADD CONSTRAINT events_review_status_check
-    CHECK (review_status IN ('pending_review', 'active', 'rejected', 'cancelled'));
+END;
 
 CREATE OR REPLACE FUNCTION public.calendar_work_item_owner_check()
 RETURNS trigger
