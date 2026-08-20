@@ -43,7 +43,7 @@ final class HistoryViewModel {
         liveUpdateTask = Task { [weak self] in
             guard let self else { return }
             for await inv in liveUpdateService.stream {
-                if inv.resource == "events" || inv.resource == "event_sources" || inv.resource == "emails" {
+                if ["events", "event_sources", "event_change_proposals", "calendar_work_items", "emails"].contains(inv.resource) {
                     if self.processingEventIds.isEmpty {
                         await self.refreshForLiveUpdate()
                     }

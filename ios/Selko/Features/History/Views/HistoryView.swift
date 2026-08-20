@@ -194,7 +194,7 @@ struct HistoryRowView: View {
     }
 
     private var isChanged: Bool {
-        event.eventSources?.contains { $0.sourceType == .update || $0.sourceType == .cancellation } ?? false
+        event.eventChangeProposals?.contains { $0.status == .applied } ?? false
     }
 
 }

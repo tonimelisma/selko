@@ -45,7 +45,7 @@ class LiveUpdateRepository(
     // cannot interleave launches and let a stale debounce job emit.
     private val debounceMutex = Mutex()
 
-    private val allowedResources = setOf("events", "event_sources", "emails", "integrations")
+    private val allowedResources = setOf("events", "event_sources", "event_change_proposals", "calendar_work_items", "emails", "integrations")
 
     fun start(userId: String) {
         if (currentUserId == userId && channelJob != null) return

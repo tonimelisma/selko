@@ -116,10 +116,13 @@
 				totalCount = result.count || totalCount;
 			}
 		});
-		const unsubSources = liveUpdates.subscribe('event_sources', async () => {
+	const refreshActivity = async () => {
 			const result = await fetchActivityEvents({ limit: Math.max(20, events.length), offset: 0 });
 			if (!result.error && result.data) events = result.data;
-		});
+		};
+		const unsubSources = liveUpdates.subscribe('event_sources', refreshActivity);
+		const unsubProposals = liveUpdates.subscribe('event_change_proposals', refreshActivity);
+		const unsubCalendarWork = liveUpdates.subscribe('calendar_work_items', refreshActivity);
 		const unsubEmails = liveUpdates.subscribe('emails', async () => {
 			const result = await fetchEmailHistory({ limit: Math.max(20, emailHistory.length), offset: 0 });
 			if (!result.error && result.data) emailHistory = result.data;
@@ -128,6 +131,8 @@
 		cleanup = () => {
 			unsubEvents();
 			unsubSources();
+			unsubProposals();
+			unsubCalendarWork();
 			unsubEmails();
 		};
 		})();
@@ -346,33 +351,6 @@
 		}
 	}
 
-	/** @param {any} event */
-	function isChangeEvent(event) {
-		const sources = event.event_sources || [];
-		return sources.some(
-			/** @param {any} s */
-			(s) =>
-				!s.is_undone &&
-				(s.source_type === 'update' || s.source_type === 'cancellation') &&
-				s.change_set
-		);
-	}
-
-	/** @param {any} event */
-	function getChangeSet(event) {
-		const sources = event.event_sources || [];
-		for (const source of sources) {
-			if (
-				!source.is_undone &&
-				(source.source_type === 'update' || source.source_type === 'cancellation') &&
-				source.change_set
-			) {
-				return source.change_set;
-			}
-		}
-		return null;
-	}
-
 	/** @param {string} field */
 	function fieldLabel(field) {
 		/** @type {Record<string, string>} */
@@ -395,7 +373,11 @@
 
 	/** @param {any} event */
 	function getChangeSummary(event) {
-		const changeSet = getChangeSet(event);
+		const proposal = (event.event_change_proposals || []).find(
+			/** @param {any} item */
+			(item) => item.status === 'applied'
+		);
+		const changeSet = proposal?.change_set;
 		if (!changeSet?.changes?.length) return '';
 		return changeSet.changes
 			.map(
@@ -406,8 +388,26 @@
 	}
 
 	/** @param {any} event */
+	function hasAppliedProposal(event) {
+		return (event.event_change_proposals || []).some(
+			/** @param {any} proposal */
+			(proposal) => proposal.status === 'applied'
+		);
+	}
+
+	/** @param {any} event */
 	function getActionDescription(event) {
-		if (isChangeEvent(event)) {
+		const proposals = event.event_change_proposals || [];
+		if (proposals.some(
+			/** @param {any} proposal */
+			(proposal) => proposal.status === 'closed_legacy'
+		)) {
+			return $_('history.statusChanged');
+		}
+		if (proposals.some(
+			/** @param {any} proposal */
+			(proposal) => proposal.status === 'applied'
+		)) {
 			return $_('history.actionChangeApplied');
 		}
 		/** @type {Record<string, string>} */
@@ -617,7 +617,7 @@
 								<div class="flex items-center gap-2 flex-wrap">
 									<span class="font-medium text-sm">{event.title}</span>
 									<StatusBadge status={event.status} />
-									{#if isChangeEvent(event)}
+									{#if hasAppliedProposal(event)}
 										<StateTag kind="changed" label={$_('home.changesSection')} />
 									{:else}
 										<StateTag kind="new" label={$_('home.newSection')} />
@@ -630,7 +630,7 @@
 										<span>- {getSourceInfo(event)}</span>
 									{/if}
 								</div>
-								{#if isChangeEvent(event) && getChangeSummary(event)}
+								{#if hasAppliedProposal(event) && getChangeSummary(event)}
 									<p class="text-xs text-base-content/70 mt-1">
 										{$_('history.changeSummary', { values: { summary: getChangeSummary(event) } })}
 									</p>

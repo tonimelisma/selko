@@ -135,6 +135,7 @@
     "unknownSender": "Unknown",
     "actionNewEvent": "New event",
     "actionChangeApplied": "Change applied",
+    "statusChanged": "Historical change",
     "changeSummary": "Changed: {summary}",
     "emailHistory": "Emails processed",
     "emailProcessed": "Processed",
