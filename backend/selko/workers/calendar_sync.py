@@ -56,6 +56,8 @@ async def sync_event(
         google_event_id = await asyncio.to_thread(
             sync_event_to_calendar, client, user_id, event_id,
             write_local_state=False,
+            expected_provider_revision=event.get("expected_provider_revision"),
+            force_overwrite=bool(event.get("force_overwrite")),
         )
         logger.info(f"Synced event {event_id} to Google Calendar: {google_event_id}")
         return google_event_id
@@ -75,7 +77,16 @@ async def cancel_event(
     user_id = event["user_id"]
     logger.info("Cancelling event %s in Google Calendar", event_id)
     try:
-        await asyncio.to_thread(cancel_event_to_calendar, client, user_id, event_id)
+        desired = event.get("calendar_work_desired_event") or {}
+        await asyncio.to_thread(
+            cancel_event_to_calendar,
+            client,
+            user_id,
+            event_id,
+            expected_provider_revision=event.get("expected_provider_revision"),
+            force_overwrite=bool(event.get("force_overwrite")),
+            delete_remote=bool(desired.get("delete_remote")),
+        )
     except CalendarsError as exc:
         logger.error("Failed to cancel event %s in Google Calendar: %s", event_id, exc)
         raise

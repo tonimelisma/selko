@@ -462,7 +462,7 @@ class TestServiceRoleOAuthRoutes:
         mock_client.table.return_value.update.assert_not_called()
 
     def test_event_sync_requeues_sync_failed_event_for_worker(
-        self, test_client, mock_client
+        self, test_client, mock_client, mock_service_client
     ):
         """Explicit retry restores a fresh worker attempt budget."""
         event_id = "00000000-0000-0000-0000-000000000001"
@@ -487,17 +487,25 @@ class TestServiceRoleOAuthRoutes:
 
         assert response.status_code == 200
         assert response.json()["status"] == "approved"
-        mock_client.table.return_value.update.assert_called_once_with(
+        mock_service_client.rpc.assert_called_once_with(
+            "enqueue_calendar_work",
             {
-                "status": "approved",
-                "sync_attempts": 0,
-                "sync_error": None,
-                "locked_by": None,
-                "locked_until": None,
-                "next_retry_at": None,
-                "dead_letter_reason": None,
-                "dead_letter_at": None,
-            }
+                "p_event_id": event_id,
+                "p_user_id": "test-user-id",
+                "p_action": "upsert",
+                "p_desired_event": {
+                    "title": None,
+                    "start_datetime": None,
+                    "end_datetime": None,
+                    "all_day": None,
+                    "location": None,
+                    "description": None,
+                    "importance": None,
+                    "source_attribution": None,
+                },
+                "p_expected_provider_revision": None,
+                "p_force_overwrite": False,
+            },
         )
 
     def test_email_sync_uses_service_role_client(
@@ -542,6 +550,40 @@ class TestServiceRoleOAuthRoutes:
 
         resp = test_client.post("/events/00000000-0000-0000-0000-000000000001/unsync")
         assert resp.status_code == 404
+
+    def test_event_unsync_queues_worker_deletion(
+        self, test_client, mock_client, mock_service_client
+    ):
+        """Unsync must enqueue provider deletion instead of calling Google directly."""
+        event_id = "00000000-0000-0000-0000-000000000001"
+        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
+            data={
+                "user_id": "test-user-id",
+                "status": "synced",
+                "google_calendar_event_id": "google-event-1",
+            }
+        )
+
+        with patch(
+            "selko.api.routes.events.get_calendar_event",
+            return_value={"etag": '"etag-1"'},
+        ):
+            response = test_client.post(f"/events/{event_id}/unsync")
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "event_id": event_id,
+            "status": "pending_review",
+        }
+        mock_service_client.rpc.assert_called_once_with(
+            "unsync_event_and_enqueue_calendar_work",
+            {
+                "p_event_id": event_id,
+                "p_user_id": "test-user-id",
+                "p_expected_provider_revision": '"etag-1"',
+                "p_force_overwrite": False,
+            },
+        )
 
 
 # ===========================================================================

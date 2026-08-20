@@ -1825,13 +1825,15 @@ def undo_history_event(
     """Undo a History action: return New or Changes to the review queue.
 
     - Applied change (update/cancellation source with snapshot) → restore
-      snapshot, PATCH Google Calendar back to that state when synced, set
+      snapshot and queue a worker-owned compensation when synced, set
       ``pending_change``.
-    - New event approval/rejection → DELETE Google Calendar event when
-      synced, clear sync fields, set ``pending_review``.
+    - New event approval/rejection → queue worker-owned removal when synced,
+      clear sync fields on completion, and set ``pending_review``.
 
     If the live Google Calendar event diverged from Selko's last write and
-    ``force`` is False, raises ``calendars.CalendarDivergedError``.
+    ``force`` is False, raises ``calendars.CalendarDivergedError``. Provider
+    mutation is never performed here; the calendar worker owns the queued
+    compensation.
 
     Args:
         supabase_client: Authenticated Supabase client.
@@ -1846,6 +1848,7 @@ def undo_history_event(
         "id", event_id
     ).single().execute()
     event = event_result.data
+    owner_id = user_id or event.get("user_id")
 
     sources = supabase_client.table("event_sources").select("*").eq(
         "event_id", event_id
@@ -1860,19 +1863,24 @@ def undo_history_event(
             break
 
     google_event_id = event.get("google_calendar_event_id")
+    provider_exists = bool(google_event_id)
+    expected_provider_revision: str | None = None
     if google_event_id:
         if not user_id:
             raise EventsError(
                 "user_id is required to undo a calendar-synced event"
             )
-        # Drift check (skipped when force=True; 404 is not divergence)
-        calendars.assert_calendar_not_diverged(
-            supabase_client,
-            user_id,
-            event_id,
-            google_event_id,
-            force=force,
-        )
+        # Read the provider state outside the database transaction. The worker
+        # will revalidate this revision immediately before writing.
+        live = calendars.get_calendar_event(supabase_client, user_id, google_event_id)
+        if live is not None:
+            expected_provider_revision = live.get("etag") or live.get("updated")
+            if not force:
+                calendars.assert_calendar_not_diverged(
+                    supabase_client, user_id, event_id, google_event_id, force=False
+                )
+        else:
+            provider_exists = False
 
     if change_source:
         snapshot = change_source["event_snapshot_before"]
@@ -1886,38 +1894,41 @@ def undo_history_event(
         ):
             if key in snapshot:
                 restore_fields[key] = snapshot[key]
+        if google_event_id and not provider_exists:
+            restore_fields["google_calendar_event_id"] = None
+            restore_fields["synced_at"] = None
 
-        if google_event_id and user_id:
-            live = calendars.get_calendar_event(
-                supabase_client, user_id, google_event_id
-            )
-            if live is None:
-                restore_fields["google_calendar_event_id"] = None
-                restore_fields["synced_at"] = None
-            else:
-                calendars.restore_calendar_event_from_selko_fields(
-                    supabase_client,
-                    user_id,
-                    event_id,
-                    {k: v for k, v in restore_fields.items() if k != "status"},
-                )
-
-        supabase_client.table("events").update(restore_fields).eq(
-            "id", event_id
-        ).execute()
+        desired_event = {
+            key: value for key, value in restore_fields.items() if key != "status"
+        }
+        result = supabase_client.rpc("undo_event_and_enqueue_calendar_work", {
+            "p_event_id": event_id,
+            "p_user_id": owner_id,
+            "p_change_source_id": change_source["id"],
+            "p_restore_fields": desired_event,
+            "p_action": "upsert" if provider_exists else None,
+            "p_desired_event": desired_event if provider_exists else None,
+            "p_expected_provider_revision": expected_provider_revision,
+            "p_force_overwrite": force,
+        }).execute()
+        if not result.data:
+            raise EventsError(f"Undo enqueue returned no result for event {event_id}")
         logger.info(f"Undid applied change on event {event_id} → pending_change")
         return "pending_change"
 
     # New approval / rejection undo
-    if google_event_id and user_id:
-        calendars.delete_calendar_event_only(
-            supabase_client, user_id, event_id
-        )
-
-    supabase_client.table("events").update({
-        "status": "pending_review",
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", event_id).execute()
+    result = supabase_client.rpc("undo_event_and_enqueue_calendar_work", {
+        "p_event_id": event_id,
+        "p_user_id": owner_id,
+        "p_change_source_id": None,
+        "p_restore_fields": {},
+        "p_action": "cancel" if provider_exists else None,
+        "p_desired_event": None,
+        "p_expected_provider_revision": expected_provider_revision,
+        "p_force_overwrite": force,
+    }).execute()
+    if not result.data:
+        raise EventsError(f"Undo enqueue returned no result for event {event_id}")
     logger.info(f"Undid history event {event_id} → pending_review")
     return "pending_review"
 
@@ -2265,38 +2276,71 @@ async def claim_approved_event_for_sync(
     worker_id: str,
     lock_duration_seconds: int = 300,
 ) -> Optional[dict[str, Any]]:
-    """Atomically claim the next calendar work item for calendar sync.
-
-    Uses PostgreSQL FOR UPDATE SKIP LOCKED to safely claim events without
-    conflicts between multiple workers. Runs over the asyncpg session pooler —
-    there is one implementation, no PostgREST twin.
-
-    Args:
-        pool: asyncpg session-pooler pool.
-        worker_id: Unique identifier for this worker process.
-        lock_duration_seconds: How long to hold the lock (default: 5 minutes).
-
-    Returns:
-        Event dict if claimed, None if no approved events available.
-
-    Raises:
-        EventsError: If claim operation fails.
-    """
+    """Claim one authoritative calendar work item and return its event view."""
     try:
-        row = await pool.fetchrow("SELECT * FROM public.claim_calendar_work($1, $2)", worker_id, lock_duration_seconds)
-        if row:
+        item_row = await pool.fetchrow(
+            "SELECT * FROM public.claim_calendar_work_item($1, $2)",
+            worker_id,
+            lock_duration_seconds,
+        )
+        if item_row:
             from selko.services.pg import _normalize_pg_row
 
-            event = _normalize_pg_row(dict(row))
+            item = _normalize_pg_row(dict(item_row))
+            event_row = await pool.fetchrow(
+                "SELECT * FROM public.events WHERE id = $1", item["event_id"]
+            )
+            if event_row is None:
+                raise EventsError(f"Calendar work item {item['id']} has no event")
+            event = _normalize_pg_row(dict(event_row))
+            event["calendar_work_item_id"] = str(item["id"])
+            event["calendar_work_generation"] = int(item["generation"])
+            event["calendar_sync_action"] = item["action"]
+            event["sync_attempts"] = item["attempts"]
+            event["max_sync_attempts"] = item["max_attempts"]
+            event["expected_provider_revision"] = item.get("expected_provider_revision")
+            event["force_overwrite"] = bool(item.get("force_overwrite"))
+            event["calendar_work_desired_event"] = item.get("desired_event")
             title = event.get("title", "(no title)")[:50]
             logger.info(
-                f"Worker {worker_id} claimed event {event['id']}: {title} "
-                f"(attempt {event.get('sync_attempts', 0)}/{event.get('max_sync_attempts', 0)})"
+                "Worker %s claimed event %s: %s (attempt %s/%s)",
+                worker_id,
+                event["id"],
+                title,
+                event.get("sync_attempts", 0),
+                event.get("max_sync_attempts", 0),
             )
             return event
         return None
     except Exception as e:
         raise EventsError(f"Failed to claim approved event: {e}") from e
+
+
+async def _resolve_calendar_work_item(
+    pool,
+    identifier: str,
+    worker_id: str | None,
+    generation: int | None,
+) -> dict[str, Any] | None:
+    """Resolve an item id, or a legacy event id, to the current work item."""
+    if worker_id is None or generation is None:
+        row = await pool.fetchrow(
+            "SELECT * FROM public.calendar_work_items "
+            "WHERE (id = $1 OR event_id = $1) AND status = 'processing' "
+            "ORDER BY generation DESC LIMIT 1",
+            identifier,
+        )
+    else:
+        row = await pool.fetchrow(
+            "SELECT * FROM public.calendar_work_items "
+            "WHERE (id = $1 OR event_id = $1) AND status = 'processing' "
+            "AND locked_by = $2 AND generation = $3 "
+            "ORDER BY generation DESC LIMIT 1",
+            identifier,
+            worker_id,
+            generation,
+        )
+    return dict(row) if row else None
 
 
 async def complete_event_sync(
@@ -2306,35 +2350,21 @@ async def complete_event_sync(
     worker_id: str | None = None,
     generation: int | None = None,
 ) -> bool:
-    """Mark event as synced successfully and clear the lock.
-
-    Args:
-        pool: asyncpg session-pooler pool.
-        event_id: UUID of event to mark as synced.
-        google_event_id: ID of the created Google Calendar event.
-
-    Raises:
-        EventsError: If update fails.
-    """
+    """Complete an upsert through the calendar work-item RPC."""
     try:
-        guard = ""
-        args: list[Any] = [event_id, google_event_id, datetime.now(timezone.utc)]
-        if worker_id is not None and generation is not None:
-            guard = " AND status = 'syncing' AND locked_by = $4 AND calendar_work_generation = $5"
-            args.extend([worker_id, generation])
-        result = await pool.execute(
-            "UPDATE public.events"
-            " SET status = 'synced', google_calendar_event_id = $2,"
-            " synced_at = $3, sync_error = NULL, sync_failure_code = NULL,"
-            " locked_by = NULL, locked_until = NULL"
-            " WHERE id = $1" + guard,
-            *args,
-        )
-        if result == "UPDATE 0":
+        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        if item is None:
             logger.warning("Ignoring stale upsert completion for event %s", event_id)
             return False
-        logger.info(f"Completed sync for event {event_id} -> {google_event_id}")
-        return True
+        result = await pool.fetchval(
+            "SELECT public.complete_calendar_work($1, $2, $3, $4, $5)",
+            item["id"],
+            worker_id or item.get("locked_by"),
+            generation if generation is not None else int(item["generation"]),
+            google_event_id,
+            None,
+        )
+        return bool(result)
 
     except Exception as e:
         raise EventsError(f"Failed to complete event sync: {e}") from e
@@ -2346,21 +2376,21 @@ async def complete_event_cancellation(
     worker_id: str,
     generation: int,
 ) -> bool:
-    """Commit a worker-owned cancellation only if its lease is still current."""
+    """Complete a cancellation through the calendar work-item RPC."""
     try:
-        result = await pool.execute(
-            "UPDATE public.events"
-            " SET status = 'cancelled', sync_error = NULL, sync_failure_code = NULL,"
-            " locked_by = NULL, locked_until = NULL"
-            " WHERE id = $1 AND status = 'syncing' AND calendar_sync_action = 'cancel'"
-            " AND locked_by = $2 AND calendar_work_generation = $3",
-            event_id, worker_id, generation,
-        )
-        if result == "UPDATE 0":
+        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        if item is None:
             logger.warning("Ignoring stale cancellation completion for event %s", event_id)
             return False
-        logger.info("Completed cancellation for event %s", event_id)
-        return True
+        result = await pool.fetchval(
+            "SELECT public.complete_calendar_work($1, $2, $3, $4, $5)",
+            item["id"],
+            worker_id,
+            generation,
+            item.get("provider_event_id"),
+            None,
+        )
+        return bool(result)
     except Exception as e:
         raise EventsError(f"Failed to complete event cancellation: {e}") from e
 
@@ -2380,18 +2410,16 @@ async def defer_event_sync_for_quota(
     the lock and schedule the next claim for the quota reset.
     """
     try:
-        guard = ""
-        args: list[Any] = [max(0, sync_attempts - 1), next_retry_at, event_id]
-        if worker_id is not None and generation is not None:
-            guard = " AND status = 'syncing' AND locked_by = $4 AND calendar_work_generation = $5"
-            args.extend([worker_id, generation])
-        await pool.execute(
-            "UPDATE public.events"
-            " SET status = CASE WHEN calendar_sync_action = 'cancel' THEN 'cancel_queued' ELSE 'approved' END, sync_attempts = $1,"
-            " sync_error = 'Daily calendar sync quota exceeded',"
-            " locked_by = NULL, locked_until = NULL, next_retry_at = $2"
-            " WHERE id = $3" + guard,
-            *args,
+        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        if item is None:
+            return
+        await pool.fetchval(
+            "SELECT public.defer_calendar_work($1, $2, $3, $4, $5)",
+            item["id"],
+            worker_id or item.get("locked_by"),
+            generation if generation is not None else int(item["generation"]),
+            next_retry_at,
+            "Daily calendar sync quota exceeded",
         )
         logger.warning(
             "Deferred event %s until calendar quota resets at %s",
@@ -2422,18 +2450,17 @@ async def park_event_for_oauth_reauth(
     reconnect recovery flow) once the user reauthorizes.
     """
     try:
-        guard = ""
-        args: list[Any] = [max(0, sync_attempts - 1), user_message, sync_failure_code, event_id]
-        if worker_id is not None and generation is not None:
-            guard = " AND status = 'syncing' AND locked_by = $5 AND calendar_work_generation = $6"
-            args.extend([worker_id, generation])
-        await pool.execute(
-            "UPDATE public.events"
-            " SET status = CASE WHEN calendar_sync_action = 'cancel' THEN 'cancel_queued' ELSE 'approved' END, sync_attempts = $1, sync_error = $2,"
-            " sync_failure_code = $3, locked_by = NULL, locked_until = NULL,"
-            " next_retry_at = NULL, dead_letter_reason = NULL, dead_letter_at = NULL"
-            " WHERE id = $4" + guard,
-            *args,
+        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        if item is None:
+            return
+        await pool.fetchval(
+            "SELECT public.fail_calendar_work($1, $2, $3, $4, $5, $6)",
+            item["id"],
+            worker_id or item.get("locked_by"),
+            generation if generation is not None else int(item["generation"]),
+            sync_failure_code,
+            user_message,
+            False,
         )
         logger.warning(
             "Parked event %s for %s reauthorization", event_id, sync_failure_code
@@ -2463,54 +2490,20 @@ async def fail_event_sync(
         EventsError: If update fails.
     """
     try:
-        row = await pool.fetchrow(
-            "SELECT sync_attempts, max_sync_attempts, calendar_sync_action FROM public.events WHERE id = $1",
-            event_id,
+        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        if item is None:
+            logger.warning("Ignoring stale calendar failure for %s", event_id)
+            return
+        result = await pool.fetchval(
+            "SELECT public.fail_calendar_work($1, $2, $3, $4, $5, $6)",
+            item["id"],
+            worker_id or item.get("locked_by"),
+            generation if generation is not None else int(item["generation"]),
+            "calendar_sync_failed",
+            error,
+            True,
         )
-        if row is None:
-            raise EventsError(f"Event {event_id} not found")
-        sync_attempts = row["sync_attempts"]
-        max_sync_attempts = row["max_sync_attempts"]
-        should_retry = sync_attempts < max_sync_attempts
-        retry_status = "cancel_queued" if row.get("calendar_sync_action") == "cancel" else "approved"
-        guard = ""
-
-        if should_retry:
-            delay, next_retry_at = calculate_retry_delay(sync_attempts)
-            next_retry_dt = datetime.fromisoformat(next_retry_at.replace("Z", "+00:00"))
-            args: list[Any] = [retry_status, error, next_retry_dt, event_id]
-            if worker_id is not None and generation is not None:
-                guard = " AND status = 'syncing' AND locked_by = $5 AND calendar_work_generation = $6"
-                args.extend([worker_id, generation])
-            await pool.execute(
-                "UPDATE public.events"
-                " SET status = $1, sync_error = $2, locked_by = NULL,"
-                " locked_until = NULL, next_retry_at = $3"
-                " WHERE id = $4" + guard,
-                *args,
-            )
-            logger.warning(
-                f"Event {event_id} sync failed "
-                f"(attempt {sync_attempts}/{max_sync_attempts}): {error}. "
-                f"Will retry in {delay}s."
-            )
-        else:
-            args = [event_id, error, datetime.now(timezone.utc)]
-            if worker_id is not None and generation is not None:
-                guard = " AND status = 'syncing' AND locked_by = $4 AND calendar_work_generation = $5"
-                args.extend([worker_id, generation])
-            await pool.execute(
-                "UPDATE public.events"
-                " SET status = 'sync_failed', sync_error = $2, locked_by = NULL,"
-                " locked_until = NULL, dead_letter_reason = $2, dead_letter_at = $3"
-                " WHERE id = $1" + guard,
-                *args,
-            )
-            logger.error(
-                f"Event {event_id} sync failed permanently "
-                f"after {sync_attempts} attempts: {error}. "
-                f"Moved to dead letter."
-            )
+        logger.warning("Calendar work failure for %s: %s", event_id, result)
 
     except EventsError:
         raise
@@ -2533,7 +2526,12 @@ async def unlock_expired_event_locks(pool) -> int:
         EventsError: If unlock fails.
     """
     try:
-        count = await pool.fetchval("SELECT public.unlock_expired_event_locks()")
+        # Claim-time recovery owns mutation. The next claim_calendar_work_item
+        # call reclaims expired work atomically without a periodic sweeper.
+        count = await pool.fetchval(
+            "SELECT count(*) FROM public.calendar_work_items "
+            "WHERE status = 'processing' AND locked_until < now()"
+        )
 
         if count:
             logger.warning(f"Unlocked {count} expired event sync locks")

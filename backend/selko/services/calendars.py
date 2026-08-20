@@ -649,6 +649,8 @@ def sync_event_to_calendar(
     event_id: str,
     *,
     write_local_state: bool = True,
+    expected_provider_revision: str | None = None,
+    force_overwrite: bool = False,
 ) -> str:
     """Write event to Google Calendar with invitees (idempotent).
 
@@ -696,6 +698,17 @@ def sync_event_to_calendar(
         existing_google_id = event.get("google_calendar_event_id")
 
         if existing_google_id:
+            if expected_provider_revision and not force_overwrite:
+                observed = service.events().get(
+                    calendarId=calendar_id, eventId=existing_google_id
+                ).execute()
+                observed_revision = observed.get("etag") or observed.get("updated")
+                if observed_revision != expected_provider_revision:
+                    raise CalendarDivergedError(
+                        "Google Calendar changed after Selko queued this write.",
+                        changed_fields=["provider_revision"],
+                        google_event_url=observed.get("htmlLink"),
+                    )
             # Event was previously synced - try to update or recreate
             google_event_id, action = _update_or_recreate_calendar_event(
                 service, calendar_id, existing_google_id, calendar_event
@@ -767,12 +780,13 @@ def sync_event_to_calendar(
                 "sync_failure_code": classification.code,
             }
 
-        try:
-            supabase_client.table("events").update(update_payload).eq(
-                "id", event_id
-            ).execute()
-        except Exception as update_error:
-            logger.warning(f"Failed to update event after sync failure: {update_error}")
+        if write_local_state:
+            try:
+                supabase_client.table("events").update(update_payload).eq(
+                    "id", event_id
+                ).execute()
+            except Exception as update_error:
+                logger.warning(f"Failed to update event after sync failure: {update_error}")
 
         raise CalendarsError(
             f"Failed to sync event to calendar: {e}", classification=classification
@@ -944,9 +958,15 @@ def update_calendar_event(
 
 
 def cancel_event_to_calendar(
-    supabase_client: Client, user_id: str, event_id: str
+    supabase_client: Client,
+    user_id: str,
+    event_id: str,
+    *,
+    expected_provider_revision: str | None = None,
+    force_overwrite: bool = False,
+    delete_remote: bool = False,
 ) -> None:
-    """Apply the existing non-destructive cancellation representation remotely.
+    """Apply a queued cancellation or remote deletion.
 
     Provider I/O is worker-owned. The local ``cancel_queued`` -> ``cancelled``
     transition is completed by the worker with an owner/generation fence.
@@ -967,19 +987,44 @@ def cancel_event_to_calendar(
                 calendarId=calendar_id,
                 eventId=google_event_id,
             ).execute()
-            title = str(event.get("title") or existing_event.get("summary") or "")
-            if not title.startswith("CANCELLED: "):
-                existing_event["summary"] = f"CANCELLED: {title}"
-            service.events().update(
-                calendarId=calendar_id,
-                eventId=google_event_id,
-                body=existing_event,
-            ).execute()
+            observed_revision = existing_event.get("etag") or existing_event.get("updated")
+            if expected_provider_revision and not force_overwrite and observed_revision != expected_provider_revision:
+                raise CalendarDivergedError(
+                    "Google Calendar changed after Selko queued this cancellation.",
+                    changed_fields=["provider_revision"],
+                    google_event_url=existing_event.get("htmlLink"),
+                )
+            if delete_remote:
+                service.events().delete(
+                    calendarId=calendar_id,
+                    eventId=google_event_id,
+                ).execute()
+                action = "deleted"
+            else:
+                title = str(event.get("title") or existing_event.get("summary") or "")
+                if not title.startswith("CANCELLED: "):
+                    existing_event["summary"] = f"CANCELLED: {title}"
+                service.events().update(
+                    calendarId=calendar_id,
+                    eventId=google_event_id,
+                    body=existing_event,
+                ).execute()
+                action = "cancelled"
         except HttpError as exc:
             if getattr(exc.resp, "status", None) == 404:
                 logger.info("Calendar event %s already deleted", google_event_id)
+                action = "deleted" if delete_remote else "cancelled"
             else:
                 raise
+        _log_sync(
+            supabase_client,
+            user_id,
+            event_id,
+            google_event_id,
+            action,
+            {"deleted_google_event_id": google_event_id}
+            if delete_remote else {"cancelled_google_event_id": google_event_id},
+        )
         logger.info("Applied cancellation to calendar event %s", event_id)
     except CalendarsError:
         raise

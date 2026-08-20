@@ -528,6 +528,7 @@ class WorkerPool:
         from selko.workers.calendar_sync import cancel_event, sync_event
 
         event_id = event["id"]
+        work_item_id = event.get("calendar_work_item_id", event_id)
         title = event.get("title", "(no title)")[:50]
 
         logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
@@ -541,7 +542,7 @@ class WorkerPool:
             )
             if not quota_result.allowed:
                 defer_args = [
-                    self.pg_pool, event_id, event["sync_attempts"], quota_result.resets_at
+                    self.pg_pool, work_item_id, event["sync_attempts"], quota_result.resets_at
                 ]
                 if fenced_claim:
                     defer_args.extend([worker_id, generation])
@@ -555,7 +556,7 @@ class WorkerPool:
                 )
                 if fenced_claim:
                     await complete_event_cancellation(
-                        self.pg_pool, event_id, worker_id, generation
+                        self.pg_pool, work_item_id, worker_id, generation
                     )
                 logger.info(f"{worker_id}: Completed event cancellation {event_id}")
             else:
@@ -565,10 +566,10 @@ class WorkerPool:
                 )
                 if fenced_claim:
                     await complete_event_sync(
-                        self.pg_pool, event_id, google_event_id, worker_id, generation
+                        self.pg_pool, work_item_id, google_event_id, worker_id, generation
                     )
                 else:
-                    await complete_event_sync(self.pg_pool, event_id, google_event_id)
+                    await complete_event_sync(self.pg_pool, work_item_id, google_event_id)
                 logger.info(f"{worker_id}: Completed event sync {event_id}")
             circuit_breaker.record_success("google_calendar")
 
@@ -579,10 +580,10 @@ class WorkerPool:
             try:
                 if fenced_claim:
                     await fail_event_sync(
-                        self.pg_pool, event_id, error_msg, worker_id, generation
+                        self.pg_pool, work_item_id, error_msg, worker_id, generation
                     )
                 else:
-                    await fail_event_sync(self.pg_pool, event_id, error_msg)
+                    await fail_event_sync(self.pg_pool, work_item_id, error_msg)
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")
 
@@ -603,7 +604,7 @@ class WorkerPool:
                     # dead-letter.
                     park_args = [
                         self.pg_pool,
-                        event_id,
+                        work_item_id,
                         event["sync_attempts"],
                         classification.code,
                         classification.user_message,
@@ -614,9 +615,9 @@ class WorkerPool:
                 else:
                     if fenced_claim:
                         await fail_event_sync(
-                            self.pg_pool, event_id, str(e), worker_id, generation
+                            self.pg_pool, work_item_id, str(e), worker_id, generation
                         )
                     else:
-                        await fail_event_sync(self.pg_pool, event_id, str(e))
+                        await fail_event_sync(self.pg_pool, work_item_id, str(e))
             except Exception as fail_error:
                 logger.error(f"{worker_id}: Failed to mark event sync as failed: {fail_error}")

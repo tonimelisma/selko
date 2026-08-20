@@ -1,6 +1,7 @@
 # State Ownership and Deterministic Recovery
 
-**Status:** Planned.
+**Status:** S1 implemented; S2 implemented in this increment. S3–S5 remain
+open.
 
 **Written:** 2026-08-13, after repairing a production Changes card whose
 `events.status = 'pending_change'` row had no active proposal, then auditing
@@ -20,6 +21,16 @@ do not invent a new state or compatibility path in code.
   C1–C3. Identity matching and worker-owned cancellation remain authoritative.
 - `20260822000001_pending_change_invariant.sql`. Its deferred constraint and
   atomic apply/reject RPCs are the safety floor, not the final model.
+
+**S2 delivery:** `calendar_work_items` is now the durable owner of every
+Google Calendar write. The queue migration preserves the legacy event
+projection during the transition, fences claim/heartbeat/complete/fail/defer
+by `(item_id, worker_id, generation)`, records desired payloads and provider
+revisions, and routes approval, cancellation, retry, History undo, and
+`/unsync` through worker-owned work. Provider divergence blocks the work item;
+it is never silently overwritten. Real-Postgres integration coverage is in
+`backend/tests/integration/test_integration_calendar_work_items.py`; the
+schema contract exercises the new RPCs and trigger.
 
 **Does not authorize:** a production deploy, a broad replay of historical
 failed emails, or a semantic production-data repair. Each production deploy

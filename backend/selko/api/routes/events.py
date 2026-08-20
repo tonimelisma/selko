@@ -28,7 +28,7 @@ from selko.api.schemas.events import (
 from selko.services.calendars import (
     CalendarDivergedError,
     CalendarsError,
-    delete_calendar_event,
+    get_calendar_event,
 )
 from selko.services.events import (
     EventsError,
@@ -46,6 +46,7 @@ router = APIRouter(prefix="/events", tags=["events"])
 async def sync_event(
     event_id: UUID,
     client: Annotated[Client, Depends(get_authenticated_client)],
+    service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> CalendarSyncResponse:
     """Queue an approved or previously failed event for calendar sync.
@@ -69,7 +70,9 @@ async def sync_event(
     try:
         # Verify ownership and status - use maybe_single for graceful 404
         response_fields = (
-            "user_id, status, synced_at, google_calendar_event_id"
+            "user_id, status, synced_at, google_calendar_event_id, title, "
+            "start_datetime, end_datetime, all_day, location, description, "
+            "importance, source_attribution, calendar_sync_action"
         )
         event_result = (
             client.table("events")
@@ -106,24 +109,21 @@ async def sync_event(
             # A dead-lettered event has exhausted its worker attempt budget.
             # Explicit user retry grants a fresh budget and lets the worker
             # reconcile any ambiguous prior Google insert before creating.
-            (
-                client.table("events")
-                .update(
-                    {
-                        "status": "approved",
-                        "sync_attempts": 0,
-                        "sync_error": None,
-                        "locked_by": None,
-                        "locked_until": None,
-                        "next_retry_at": None,
-                        "dead_letter_reason": None,
-                        "dead_letter_at": None,
-                    }
+            desired_event = {
+                key: event_result.data.get(key)
+                for key in (
+                    "title", "start_datetime", "end_datetime", "all_day",
+                    "location", "description", "importance", "source_attribution",
                 )
-                .eq("id", str(event_id))
-                .eq("status", "sync_failed")
-                .execute()
-            )
+            }
+            service_client.rpc("enqueue_calendar_work", {
+                "p_event_id": str(event_id),
+                "p_user_id": user.id,
+                "p_action": event_result.data.get("calendar_sync_action") or "upsert",
+                "p_desired_event": desired_event,
+                "p_expected_provider_revision": None,
+                "p_force_overwrite": False,
+            }).execute()
 
         # Nudge the calendar scheduler immediately — user is waiting for sync.
         # This is the in-process wake for egress inc 5 (arch A). If the pool is
@@ -172,11 +172,11 @@ async def unsync_event(
     service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventUnsyncResponse:
-    """Remove a synced event from Google Calendar and revert to pending_review.
+    """Queue removal of a synced event from Google Calendar.
 
-    Deletes the event from the user's Google Calendar and clears the sync
-    fields. The event is reverted to pending_review status so the user can
-    re-approve and re-sync if desired.
+    The calendar worker owns the provider deletion. The event is immediately
+    represented as pending review while the durable work item records the
+    deletion and its provider-revision fence.
 
     Args:
         event_id: UUID of the event to unsync.
@@ -191,8 +191,11 @@ async def unsync_event(
         500: Calendar unsync failed.
     """
     try:
-        # Verify ownership and status
-        event_result = client.table("events").select("user_id, status").eq(
+        # Verify ownership and status, and capture the provider identity for
+        # the service-only queue RPC.
+        event_result = client.table("events").select(
+            "user_id, status, google_calendar_event_id"
+        ).eq(
             "id", str(event_id)
         ).maybe_single().execute()
 
@@ -218,8 +221,27 @@ async def unsync_event(
                 ),
             )
 
-        # Delete from Google Calendar and revert status
-        delete_calendar_event(service_client, user.id, str(event_id))
+        live_event = get_calendar_event(
+            service_client, user.id, event_result.data["google_calendar_event_id"]
+        )
+        expected_provider_revision = (
+            live_event.get("etag") or live_event.get("updated")
+            if live_event else None
+        )
+        service_client.rpc("unsync_event_and_enqueue_calendar_work", {
+            "p_event_id": str(event_id),
+            "p_user_id": user.id,
+            "p_expected_provider_revision": expected_provider_revision,
+            "p_force_overwrite": False,
+        }).execute()
+
+        try:
+            from selko.api.app import worker_pool as _pool
+
+            if _pool is not None:
+                _pool.nudge()
+        except Exception:
+            pass
 
         return EventUnsyncResponse(
             event_id=str(event_id),
