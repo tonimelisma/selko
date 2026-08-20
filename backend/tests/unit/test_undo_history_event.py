@@ -51,22 +51,25 @@ def _mock_event_and_sources(mock_client, event, sources):
 
 
 class TestUndoHistoryEventCalendar:
-    def test_new_synced_deletes_calendar(self):
+    def test_new_synced_queues_calendar_delete(self):
         mock_client = MagicMock()
         _mock_event_and_sources(mock_client, _event_row(), sources=[])
 
         with patch(
             "selko.services.events.calendars.assert_calendar_not_diverged"
         ) as mock_assert, patch(
-            "selko.services.events.calendars.delete_calendar_event_only"
-        ) as mock_delete:
+            "selko.services.events.calendars.get_calendar_event",
+            return_value={"etag": "v1"},
+        ):
             status = undo_history_event(
                 mock_client, "event-123", "user-456", force=False
             )
 
         assert status == "pending_review"
         mock_assert.assert_called_once()
-        mock_delete.assert_called_once_with(mock_client, "user-456", "event-123")
+        params = mock_client.rpc.call_args.args[1]
+        assert mock_client.rpc.call_args.args[0] == "undo_event_and_enqueue_calendar_work"
+        assert params["p_action"] == "cancel"
 
     def test_diverged_without_force_raises(self):
         mock_client = MagicMock()
@@ -75,30 +78,32 @@ class TestUndoHistoryEventCalendar:
         with patch(
             "selko.services.events.calendars.assert_calendar_not_diverged",
             side_effect=CalendarDivergedError("edited", ["title"]),
+        ), patch(
+            "selko.services.events.calendars.get_calendar_event",
+            return_value={"etag": "v1"},
         ):
             with pytest.raises(CalendarDivergedError):
                 undo_history_event(
                     mock_client, "event-123", "user-456", force=False
                 )
 
-    def test_diverged_with_force_deletes(self):
+    def test_diverged_with_force_queues_delete(self):
         mock_client = MagicMock()
         _mock_event_and_sources(mock_client, _event_row(), sources=[])
 
         with patch(
             "selko.services.events.calendars.assert_calendar_not_diverged"
         ) as mock_assert, patch(
-            "selko.services.events.calendars.delete_calendar_event_only"
-        ) as mock_delete:
+            "selko.services.events.calendars.get_calendar_event",
+            return_value={"etag": "v1"},
+        ):
             status = undo_history_event(
                 mock_client, "event-123", "user-456", force=True
             )
 
         assert status == "pending_review"
-        mock_assert.assert_called_once_with(
-            mock_client, "user-456", "event-123", "gcal-abc", force=True
-        )
-        mock_delete.assert_called_once()
+        mock_assert.assert_not_called()
+        assert mock_client.rpc.call_args.args[1]["p_force_overwrite"] is True
 
     def test_applied_change_restores_calendar(self):
         mock_client = MagicMock()
@@ -124,17 +129,16 @@ class TestUndoHistoryEventCalendar:
             "selko.services.events.calendars.assert_calendar_not_diverged"
         ), patch(
             "selko.services.events.calendars.get_calendar_event",
-            return_value={"id": "gcal-abc"},
-        ), patch(
-            "selko.services.events.calendars.restore_calendar_event_from_selko_fields"
-        ) as mock_restore:
+            return_value={"id": "gcal-abc", "etag": "v1"},
+        ):
             status = undo_history_event(
                 mock_client, "event-123", "user-456", force=False
             )
 
         assert status == "pending_change"
-        mock_restore.assert_called_once()
-        restored = mock_restore.call_args[0][3]
+        params = mock_client.rpc.call_args.args[1]
+        assert params["p_action"] == "upsert"
+        restored = params["p_restore_fields"]
         assert restored["title"] == "Old Title"
 
     def test_gcal_404_clears_sync_on_change_undo(self):
@@ -162,22 +166,14 @@ class TestUndoHistoryEventCalendar:
         ), patch(
             "selko.services.events.calendars.get_calendar_event",
             return_value=None,
-        ), patch(
-            "selko.services.events.calendars.restore_calendar_event_from_selko_fields"
-        ) as mock_restore:
+        ):
             status = undo_history_event(
                 mock_client, "event-123", "user-456", force=False
             )
 
         assert status == "pending_change"
-        mock_restore.assert_not_called()
-        # Final events.update should clear google id
-        update_calls = [
-            c for c in mock_client.table.return_value.update.call_args_list
-        ]
-        # table is side_effect so inspect via call tracking on MagicMock differently
-        # Ensure we didn't try to restore
-        assert mock_restore.call_count == 0
+        params = mock_client.rpc.call_args.args[1]
+        assert params["p_action"] is None
 
     def test_unsynced_local_only(self):
         mock_client = MagicMock()
@@ -187,15 +183,10 @@ class TestUndoHistoryEventCalendar:
             sources=[],
         )
 
-        with patch(
-            "selko.services.events.calendars.delete_calendar_event_only"
-        ) as mock_delete:
-            status = undo_history_event(
-                mock_client, "event-123", "user-456", force=False
-            )
+        status = undo_history_event(mock_client, "event-123", "user-456", force=False)
 
         assert status == "pending_review"
-        mock_delete.assert_not_called()
+        assert mock_client.rpc.call_args.args[1]["p_action"] is None
 
     def test_synced_requires_user_id(self):
         mock_client = MagicMock()
