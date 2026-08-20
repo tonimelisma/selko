@@ -4,8 +4,10 @@
 > rollout; current state ownership is defined in `CLAUDE.md` and the S5
 > migration.
 
-**Status:** Planned; nothing implemented. **This is the next increment. Nothing
-else may merge before G1–G4 are done.**
+**Status:** Completed gate-repair record. G1–G7 are merged. The remaining
+staging and production operator gates are tracked by
+[`foundation-integrity.md`](foundation-integrity.md), not this historical
+record.
 
 **Written:** 2026-08-12, after reviewing the R1–R5 batch (#305–#312).
 
@@ -874,26 +876,15 @@ reviewed for desktop/mobile × light/dark × populated/feedback/empty.
 
 ### G7 — Close out the ingestion incident
 
-**Done on 2026-08-12, except the two production checks below**, which need
-production ledger access. The incident record was folded into
+**Done on 2026-08-12.** The incident record was folded into
 `docs/microsoft-graph-failure-ledger.md` (§"Incident — production ingestion
 rollout, 2026-08-11/12") and the spec file deleted; the durable rule —
 *rows leaving `pg_pool` as Python dicts must be JSON-safe at the repository
-boundary, and never via `json.dumps(default=str)`* — is recorded there.
-
-Remaining, tracked as open checkboxes in the ledger:
-
-1. **Confirm the 10 `retry`/`unknown` items completed.** They were created
-   03:10 UTC on 2026-08-12 with `next_retry_at` ~03:26, after #302 deployed.
-   Nobody has verified since. If they did not complete, this is an open
-   production defect and becomes the increment before
-   `parallel-extraction-fenced-commit.md` P1.
-2. **Decide the 12 historical `database_transient` dead letters.** Choose one,
-   in writing, in the ledger: repair under a dry-run-first script (the pattern
-   in P4), requeue after establishing the original failure cannot recur, or
-   accept as permanently dead with the reason and the user impact.
-   *"Reported separately" is not one of the three.* It is what has been said
-   three times already.
+boundary, and never via `json.dumps(default=str)`* — is recorded there. The
+two production checks were verified and closed in that ledger on 2026-08-13:
+the 10 retry/unknown items reached terminal outcomes, and the 12 historical
+database-transient dead letters were requeued by the repair migration with no
+remaining matching rows.
 
 <details>
 <summary>Original G7 scope, superseded by the work above</summary>

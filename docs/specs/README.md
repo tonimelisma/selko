@@ -60,9 +60,9 @@ S5 deletes compatibility state and dead mutators.
 
 ### 7 · Review queue integrity — normative, not scheduled
 
-R1 is partially implemented with eight open defects, and those are repaired by
-**G5**, not by this file. R2–R5 are unimplemented and superseded by plans 2 and
-3. The file stays because **§1, §3, §5, §7, §8 and §9 are the normative
+R1's eight defects were repaired by **G5**, not by this file. R2–R5 are
+unimplemented and superseded by plans 2 and 3. The file stays because **§1,
+§3, §5, §7, §8 and §9 are the normative
 requirement text** those plans build against; only §6's mechanism is superseded,
 and it carries an in-file banner so nobody starts building it.
 

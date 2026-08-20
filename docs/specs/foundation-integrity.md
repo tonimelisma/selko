@@ -1,12 +1,13 @@
 # Foundation Integrity — make the repo's claims verifiable, then deploy
 
-**Status:** Partially implemented (corrected 2026-08-12). F1–F7 merged in
+**Status:** Partially implemented (corrected 2026-08-20). F1–F7a merged in
 PRs #287–#294. F4 enforces live function, trigger, RLS and privilege contracts
-against a reset database; F6 provides the migration-order guard; F7 provides the
-fail-closed staging verifier. Staging execution, the worker drill and the
-24-hour soak remain pending — they require staging access and an operator-run
-cutover. F8 production cutover remains blocked on those and on explicit operator
-approval.
+against a reset database; F6 provides the migration-order guard; F7a provides
+the fail-closed staging verifier, including explicit health assertions. Base
+staging execution has run, but F7b's worker-on configuration, pooler drills,
+24-hour soak, and rollback rehearsal remain pending — they require staging
+access and an operator-run cutover. F8 production cutover remains blocked on
+those and on explicit operator approval.
 
 **Two corrections from the 2026-08-12 review of the R1–R5 batch:**
 
