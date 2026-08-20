@@ -957,6 +957,10 @@ processed real email through the worker path for 24 h with
 infrastructure; the rollback has been performed and undone at least once; and
 the measured egress figure is recorded.
 
+The manual GitHub staging workflow has the equivalent `require_workers=true`
+input. The default remains false for the F7a base deployment, where workers
+are intentionally still off.
+
 ---
 
 ### F8 — Production cutover
