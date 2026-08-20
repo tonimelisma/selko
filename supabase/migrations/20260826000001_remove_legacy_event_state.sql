@@ -5,6 +5,41 @@
 -- columns and event-level calendar queue columns are deliberately removed so
 -- a new caller cannot silently revive either legacy state machine.
 
+-- S2 backfilled work that was still runnable, but intentionally left
+-- terminal sync_failed rows untouched. Preserve those rows as terminal work
+-- history before the event-level retry/error columns are removed.
+INSERT INTO public.calendar_work_items (
+    event_id, user_id, action, generation, status, desired_event,
+    provider_event_id, attempts, max_attempts, failure_code, failure_detail,
+    created_at, updated_at, completed_at
+)
+SELECT
+    e.id,
+    e.user_id,
+    e.calendar_sync_action,
+    GREATEST(e.calendar_work_generation, 1),
+    'failed',
+    CASE WHEN e.calendar_sync_action = 'cancel' THEN NULL ELSE jsonb_build_object(
+        'title', e.title, 'start_datetime', e.start_datetime,
+        'end_datetime', e.end_datetime, 'all_day', e.all_day,
+        'location', e.location, 'description', e.description,
+        'importance', e.importance, 'source_attribution', e.source_attribution
+    ) END,
+    e.google_calendar_event_id,
+    e.sync_attempts,
+    e.max_sync_attempts,
+    e.sync_failure_code,
+    e.sync_error,
+    e.updated_at,
+    e.updated_at,
+    COALESCE(e.dead_letter_at, e.updated_at)
+FROM public.events e
+WHERE e.status = 'sync_failed'
+  AND NOT EXISTS (
+      SELECT 1 FROM public.calendar_work_items w
+      WHERE w.event_id = e.id
+  );
+
 DO $$
 DECLARE
     v_bad integer;

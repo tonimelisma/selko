@@ -19,6 +19,8 @@ def _function_names(path: Path) -> set[str]:
 
 def test_s5_migration_removes_legacy_event_and_source_columns() -> None:
     sql = MIGRATION.read_text(encoding="utf-8")
+    assert "WHERE e.status = 'sync_failed'" in sql
+    assert "Preserve those rows as terminal work" in sql
     for column in (
         "change_set",
         "event_snapshot_before",
