@@ -4,7 +4,8 @@
 > owner is `calendar_work_items`; event-level queue columns described below
 > were removed by S5.
 
-**Status:** C1 and C2 implemented in this increment; C3 remains planned.
+**Status:** C1–C3 implemented. Staging verification remains an operator gate;
+production observation remains required before the record can be retired.
 
 **Written:** 2026-08-12.
 
