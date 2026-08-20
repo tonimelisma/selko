@@ -249,7 +249,6 @@
   },
   "status": {
     "pending": "Pending",
-    "pendingChange": "Pending change",
     "approved": "Approved",
     "syncing": "Syncing",
     "synced": "Synced",

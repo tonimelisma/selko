@@ -7,16 +7,14 @@ describe('resolveEventSender', () => {
 			event_sources: [
 				{
 					source_origin: 'google_calendar',
-					emails: null,
-					is_undone: false
+					emails: null
 				},
 				{
 					source_origin: 'email',
 					emails: {
 						from_name: 'Cara De Jong',
 						from_email: 'Cara@streetsmarts.cc'
-					},
-					is_undone: false
+					}
 				}
 			]
 		};
@@ -29,7 +27,7 @@ describe('resolveEventSender', () => {
 
 	it('uses google photos label when only photo source', () => {
 		const event = {
-			event_sources: [{ source_origin: 'google_photos', is_undone: false }]
+			event_sources: [{ source_origin: 'google_photos' }]
 		};
 		const resolved = resolveEventSender(event, { googlePhotos: 'Google Photos' });
 		expect(resolved.senderKey).toBe('google_photos');
@@ -39,28 +37,23 @@ describe('resolveEventSender', () => {
 
 	it('uses google calendar label when only calendar source', () => {
 		const event = {
-			event_sources: [{ source_origin: 'google_calendar', is_undone: false }]
+			event_sources: [{ source_origin: 'google_calendar' }]
 		};
 		const resolved = resolveEventSender(event, { googleCalendar: 'Google Calendar' });
 		expect(resolved.senderKey).toBe('google_calendar');
 		expect(resolved.senderName).toBe('Google Calendar');
 	});
 
-	it('ignores undone email sources', () => {
+	it('uses the email provenance source when present', () => {
 		const event = {
 			event_sources: [
 				{
 					source_origin: 'email',
-					is_undone: true,
 					emails: { from_email: 'old@example.com', from_name: 'Old' }
-				},
-				{
-					source_origin: 'google_calendar',
-					is_undone: false
 				}
 			]
 		};
 		const resolved = resolveEventSender(event, { googleCalendar: 'Google Calendar' });
-		expect(resolved.senderKey).toBe('google_calendar');
+		expect(resolved.senderKey).toBe('old@example.com');
 	});
 });

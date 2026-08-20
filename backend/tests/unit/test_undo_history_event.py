@@ -151,7 +151,7 @@ class TestUndoHistoryEventCalendar:
                 mock_client, "event-123", "user-456", force=False
             )
 
-        assert status == "pending_change"
+        assert status == "active"
         params = mock_client.rpc.call_args.args[1]
         assert mock_client.rpc.call_args.args[0] == "reopen_event_change_proposal"
         assert params["p_action"] == "upsert"
@@ -188,7 +188,7 @@ class TestUndoHistoryEventCalendar:
                 mock_client, "event-123", "user-456", force=False
             )
 
-        assert status == "pending_change"
+        assert status == "active"
         params = mock_client.rpc.call_args.args[1]
         assert mock_client.rpc.call_args.args[0] == "reopen_event_change_proposal"
         assert params["p_action"] is None

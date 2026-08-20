@@ -2,7 +2,6 @@ package net.melisma.selko.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 import kotlin.time.Instant
 
 @Serializable
@@ -54,9 +53,6 @@ data class EventSource(
     @SerialName("source_origin") val sourceOrigin: SourceOrigin = SourceOrigin.EMAIL,
     @SerialName("source_type") val sourceType: SourceType = SourceType.UNKNOWN,
     @SerialName("extracted_data") val extractedData: ExtractedData? = null,
-    @SerialName("event_snapshot_before") val eventSnapshotBefore: JsonObject? = null,
-    @SerialName("change_set") val changeSet: EventChangeSet? = null,
-    @SerialName("is_undone") val isUndone: Boolean = false,
     @SerialName("created_at") val createdAt: Instant? = null,
     // Joined email data
     val emails: Email? = null

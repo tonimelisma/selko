@@ -300,7 +300,9 @@ class TestCalendarSync:
         ).single().execute()
 
         assert updated_event.data["status"] == "approved"
-        assert updated_event.data["sync_failure_code"] == "oauth_required"
+        # The provider adapter reports the auth failure; work-item failure
+        # state is written only by the worker's fenced transition.
+        assert "sync_failure_code" not in updated_event.data
 
 
 @pytest.mark.integration

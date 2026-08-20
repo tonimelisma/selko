@@ -385,7 +385,7 @@ final class ReviewQueueViewModel {
 
     /// Prefer email authorship over calendar/photo provenance rows.
     static func resolveSender(for event: CalendarEvent) -> (name: String, email: String) {
-        let sources = (event.eventSources ?? []).filter { !$0.isUndone }
+        let sources = event.eventSources ?? []
 
         if let emailSource = sources.first(where: {
             $0.sourceOrigin == .email

@@ -85,7 +85,7 @@
  */
 
 /**
- * @typedef {'pending_review' | 'pending_change' | 'approved' | 'syncing' | 'synced' | 'sync_failed' | 'cancel_queued' | 'cancelled' | 'rejected'} EventStatus
+ * @typedef {'pending_review' | 'approved' | 'syncing' | 'synced' | 'sync_failed' | 'cancel_queued' | 'cancelled' | 'rejected'} EventStatus
  */
 
 /**
@@ -229,8 +229,6 @@
  * @property {SourceOrigin} source_origin - Source type: email, google_calendar, or google_photos
  * @property {SourceType} source_type
  * @property {ExtractedData} [extracted_data]
- * @property {Object} [event_snapshot_before]
- * @property {boolean} is_undone
  * @property {string} created_at
  * @property {Email} [emails] - Joined email data
  */

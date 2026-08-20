@@ -228,7 +228,6 @@ async def process_email(
             client.table("event_sources")
             .select("event_id")
             .eq("email_id", email_id)
-            .eq("is_undone", False)
             .execute()
         )
 
@@ -335,7 +334,6 @@ async def batch_process_emails(
                     client.table("event_sources")
                     .select("event_id")
                     .eq("email_id", email_id)
-                    .eq("is_undone", False)
                     .execute()
                 )
 
