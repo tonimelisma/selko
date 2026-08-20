@@ -34,7 +34,8 @@ class ContractContext:
 # Trigger-only functions are exercised by test_live_triggers_for_every_table.
 TRIGGER_ONLY_FUNCTIONS = {
     "calendar_work_item_owner_check",
-    "enforce_pending_change_proposal",
+    "enforce_event_change_proposal_invariant",
+    "mirror_event_source_proposal",
     "events_legacy_calendar_enqueue_compat",
     "events_review_status_compat",
     "ensure_email_sync_state",
@@ -83,9 +84,11 @@ EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
     ("emails", "processing_status"): {"pending", "processing", "processed", "failed", "skipped"},
     ("event_sources", "source_origin"): {"email", "google_calendar", "google_photos"},
     ("event_sources", "source_type"): {"new_invitation", "update", "cancellation", "reminder", "unknown"},
+    ("event_change_proposals", "kind"): {"material_update", "cancellation"},
+    ("event_change_proposals", "status"): {"pending", "applied", "rejected", "superseded", "closed_legacy"},
     ("event_identity_hints", "kind"): {"ical_uid", "provider_thread", "join_url", "management_url"},
     ("event_identity_hints", "strength"): {"authoritative", "supporting"},
-    ("event_repair_audit", "action"): {"merge_duplicate_group", "merge_source", "cancel_event", "mark_source_resolved"},
+    ("event_repair_audit", "action"): {"merge_duplicate_group", "merge_source", "cancel_event", "resolve_proposal"},
     ("events", "calendar_sync_action"): {"upsert", "cancel"},
     ("events", "review_status"): {"pending_review", "active", "rejected", "cancelled"},
     ("events", "importance"): {"action_required", "fyi"},
@@ -323,6 +326,21 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
             "approved",
             "upsert",
         ),
+        "apply_event_change_proposal": (
+            context.event_id,
+            context.user_id,
+            context.attachment_id,
+            None,
+            "applied contract event",
+            now,
+            now + timedelta(hours=1),
+            False,
+            "contract location",
+            "contract description",
+            "action_required",
+            "approved",
+            "upsert",
+        ),
         "broadcast_user_ui_change": (context.user_id, "events", "updated", context.event_id),
         "check_and_increment_quota": (context.user_id, "llm_calls", 1),
         "claim_due_email_reconciliation": (worker, 60),
@@ -368,6 +386,32 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
             "contract location",
             "contract description",
             "action_required",
+        ),
+        "reject_event_change_proposal": (
+            context.event_id,
+            context.user_id,
+            context.attachment_id,
+            None,
+            False,
+            "approved",
+            "rejected contract event",
+            now,
+            now + timedelta(hours=1),
+            False,
+            "contract location",
+            "contract description",
+            "action_required",
+            "user_rejected",
+        ),
+        "reopen_event_change_proposal": (
+            context.event_id,
+            context.user_id,
+            context.attachment_id,
+            None,
+            None,
+            None,
+            None,
+            False,
         ),
         "request_email_sync_now": (context.gmail_integration_id,),
         "requeue_calendar_recovery_batch": (context.recovery_id, worker, 10, 1),
@@ -438,14 +482,21 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
     )
 
     for name, args in contracts.items():
-        if name in {"apply_pending_event_change", "reject_pending_event_change"}:
+        if name in {
+            "apply_pending_event_change",
+            "reject_pending_event_change",
+            "apply_event_change_proposal",
+            "reject_event_change_proposal",
+            "reopen_event_change_proposal",
+        }:
             await conn.execute(
                 """
                 INSERT INTO public.event_sources
                     (id, event_id, email_id, source_type, extracted_data,
-                     change_set, is_undone)
+                     event_snapshot_before, change_set, is_undone)
                 VALUES ($1, $2, $3, 'update', '{}'::jsonb,
-                        '{"kind":"material_update","changes":[]}'::jsonb, false)
+                        '{"status":"approved","title":"before"}'::jsonb,
+                        '{"kind":"material_update","changes":[{"field":"title","before":"before","after":"after"}]}'::jsonb, false)
                 ON CONFLICT (id) DO UPDATE SET is_undone = false
                 """,
                 context.attachment_id,
@@ -461,9 +512,23 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
                 """,
                 context.event_id,
             )
-            await conn.execute(
-                "UPDATE public.events SET status = 'pending_change' WHERE id = $1",
-                context.event_id,
+            if name == "reopen_event_change_proposal":
+                await conn.execute("UPDATE public.events SET status = 'approved' WHERE id = $1", context.event_id)
+                await conn.execute(
+                    "UPDATE public.event_change_proposals SET status = 'applied', resolution_reason = 'contract' WHERE source_id = $1",
+                    context.attachment_id,
+                )
+            else:
+                await conn.execute("UPDATE public.events SET status = 'pending_change' WHERE id = $1", context.event_id)
+                await conn.execute(
+                    "UPDATE public.event_change_proposals SET status = 'pending', resolution_reason = NULL WHERE source_id = $1",
+                    context.attachment_id,
+                )
+        call_args = list(args)
+        if name in {"apply_event_change_proposal", "reject_event_change_proposal", "reopen_event_change_proposal"}:
+            call_args[2] = await conn.fetchval(
+                "SELECT id FROM public.event_change_proposals WHERE source_id = $1",
+                context.attachment_id,
             )
         encoded_args = [
             json.dumps(value)
@@ -478,9 +543,9 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
                     "upsert_discovered_email_items",
                 }
             else value
-            for value in args
+            for value in call_args
         ]
-        placeholders = ", ".join(f"${index}" for index in range(1, len(args) + 1))
+        placeholders = ", ".join(f"${index}" for index in range(1, len(call_args) + 1))
         try:
             await conn.fetch(f"SELECT * FROM public.{name}({placeholders})", *encoded_args)
         except Exception as exc:
@@ -537,6 +602,7 @@ async def test_live_triggers_for_every_triggered_table(contract_connection):
         "calendar_work_items": _exercise_calendar_work_item_triggers,
         "email_ingestion_items": _exercise_ingestion_item_triggers,
         "emails": _exercise_email_triggers,
+        "event_change_proposals": _exercise_event_change_proposal_triggers,
         "event_sources": _exercise_event_source_triggers,
         "events": _exercise_event_triggers,
         "global_limits": _exercise_global_limit_triggers,
@@ -607,6 +673,29 @@ async def _exercise_event_source_triggers(conn, context):
     await conn.execute("UPDATE public.event_sources SET extracted_data = '{\"updated\": true}'::jsonb WHERE id = $1", row_id)
 
 
+async def _exercise_event_change_proposal_triggers(conn, context):
+    source_id = uuid4()
+    await conn.execute(
+        """
+        INSERT INTO public.event_sources
+            (id, event_id, email_id, source_type, extracted_data,
+             event_snapshot_before, change_set)
+        VALUES ($1, $2, $3, 'update', '{}'::jsonb,
+                '{"status":"approved","title":"trigger before"}'::jsonb,
+                '{"kind":"material_update","changes":[{"field":"title","before":"trigger before","after":"trigger after"}]}'::jsonb)
+        """,
+        source_id, context.event_id, context.email_id,
+    )
+    proposal_id = await conn.fetchval(
+        "SELECT id FROM public.event_change_proposals WHERE source_id = $1",
+        source_id,
+    )
+    await conn.execute(
+        "UPDATE public.event_change_proposals SET status = 'closed_legacy', resolution_reason = 'trigger probe' WHERE id = $1",
+        proposal_id,
+    )
+
+
 async def _exercise_event_triggers(conn, context):
     row_id = uuid4()
     await conn.execute(
@@ -668,7 +757,7 @@ async def test_pending_change_requires_an_active_proposal(contract_connection):
         )
         with pytest.raises(
             asyncpg.CheckViolationError,
-            match="requires an active proposal",
+            match="requires exactly one pending change proposal",
         ):
             await conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
     finally:
@@ -706,7 +795,7 @@ async def test_active_proposal_cannot_be_undone_without_leaving_pending_change(
         )
         with pytest.raises(
             asyncpg.CheckViolationError,
-            match="requires an active proposal",
+            match="requires exactly one pending change proposal",
         ):
             await conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
     finally:
@@ -733,6 +822,10 @@ async def test_reject_pending_change_is_one_atomic_transition(contract_connectio
     await conn.execute(
         "UPDATE public.events SET status = 'pending_change' WHERE id = $1",
         context.event_id,
+    )
+    await conn.execute(
+        "UPDATE public.event_change_proposals SET status = 'pending', resolution_reason = NULL WHERE source_id = $1",
+        source_id,
     )
 
     result = await conn.fetchval(

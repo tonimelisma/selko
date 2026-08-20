@@ -1604,17 +1604,31 @@ def propose_local_change(
     )
 
 
-def _latest_pending_change_source(
+def _latest_pending_change_proposal(
     supabase_client: Client, event_id: str
 ) -> Optional[dict[str, Any]]:
-    result = supabase_client.table("event_sources").select("*").eq(
+    """Return the owned proposal and its source enrichment.
+
+    ``event_change_proposals`` is authoritative.  The source row is fetched
+    only by the proposal's foreign key to display the compatibility email
+    metadata; no source query is allowed to select a proposal.
+    """
+    result = supabase_client.table("event_change_proposals").select("*").eq(
         "event_id", event_id
-    ).in_("source_type", ["update", "cancellation"]).eq(
-        "is_undone", False
-    ).order("created_at", desc=True).limit(1).execute()
-    if result.data:
-        return result.data[0]
-    return None
+    ).eq("status", "pending").maybe_single().execute()
+    proposal = result.data if result is not None and isinstance(result.data, dict) else None
+    if not proposal:
+        return None
+    source_result = supabase_client.table("event_sources").select("*").eq(
+        "id", proposal["source_id"]
+    ).maybe_single().execute()
+    source = source_result.data if source_result is not None and isinstance(source_result.data, dict) else None
+    if not source:
+        raise EventsError(
+            f"Proposal {proposal['id']} is missing its compatibility source"
+        )
+    proposal["source"] = source
+    return proposal
 
 
 def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, Any]:
@@ -1629,54 +1643,17 @@ def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, An
     ).single().execute()
     event = event_result.data
 
-    source = _latest_pending_change_source(supabase_client, event_id)
-    if not source:
+    proposal = _latest_pending_change_proposal(supabase_client, event_id)
+    if not proposal:
         raise EventsError(f"No pending change proposal for event {event_id}")
-
-    # Prefer the email source sibling when the latest row is GCal metadata-only
-    if source.get("source_origin") == "google_calendar" and not source.get("change_set"):
-        email_sources = supabase_client.table("event_sources").select("*").eq(
-            "event_id", event_id
-        ).eq("source_origin", "email").eq("is_undone", False).order(
-            "created_at", desc=True
-        ).limit(1).execute()
-        if email_sources.data:
-            source = email_sources.data[0]
+    source = proposal["source"]
 
     proposed_fields: dict[str, Any] = {}
-    change_set_raw = source.get("change_set")
-    if change_set_raw:
-        change_set = EventChangeSet.model_validate(change_set_raw)
-        proposed_fields = proposed_fields_from_change_set(event, change_set)
-    else:
-        proposed = source.get("extracted_data") or {}
-        proposed_fields = {
-            k: v for k, v in proposed.items()
-            if k in {
-                "title", "start_datetime", "end_datetime", "all_day",
-                "location", "description", "importance", "status", "recurrence_rule",
-            }
-        }
-        if not proposed_fields and source.get("source_origin") == "google_calendar":
-            email_sources = supabase_client.table("event_sources").select("*").eq(
-                "event_id", event_id
-            ).eq("source_origin", "email").eq("is_undone", False).order(
-                "created_at", desc=True
-            ).limit(1).execute()
-            if email_sources.data:
-                source = email_sources.data[0]
-                proposed = source.get("extracted_data") or {}
-                proposed_fields = {
-                    k: v for k, v in proposed.items()
-                    if k in {
-                        "title", "start_datetime", "end_datetime", "all_day",
-                        "location", "description", "importance", "status",
-                        "recurrence_rule",
-                    }
-                }
+    change_set = EventChangeSet.model_validate(proposal["change_set"])
+    proposed_fields = proposed_fields_from_change_set(event, change_set)
 
     merged = apply_asserted_fields(event, proposed_fields)
-    is_cancellation = source.get("source_type") == "cancellation"
+    is_cancellation = proposal.get("kind") == "cancellation"
     if is_cancellation:
         # Cancellation is a state transition, not a title rewrite.  A
         # provider delete is performed later by the calendar worker.
@@ -1703,10 +1680,11 @@ def apply_pending_change(supabase_client: Client, event_id: str) -> dict[str, An
         "sync_attempts": 0,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    supabase_client.rpc("apply_pending_event_change", {
+    supabase_client.rpc("apply_event_change_proposal", {
         "p_event_id": event_id,
         "p_user_id": event["user_id"],
-        "p_source_id": source["id"],
+        "p_proposal_id": proposal["id"],
+        "p_expected_hash": None,
         "p_title": update_fields["title"],
         "p_start_datetime": update_fields["start_datetime"],
         "p_end_datetime": update_fields["end_datetime"],
@@ -1731,10 +1709,11 @@ def reject_pending_change(supabase_client: Client, event_id: str) -> str:
     ).single().execute()
     event = event_result.data
 
-    source = _latest_pending_change_source(supabase_client, event_id)
-    if not source:
+    proposal = _latest_pending_change_proposal(supabase_client, event_id)
+    if not proposal:
         raise EventsError(f"No pending change proposal for event {event_id}")
-    snapshot = (source or {}).get("event_snapshot_before") if source else None
+    source = proposal["source"]
+    snapshot = proposal.get("event_snapshot_before")
 
     # GCal-only adopt that never left pending_change: delete the row
     created_as_change_only = (
@@ -1757,10 +1736,12 @@ def reject_pending_change(supabase_client: Client, event_id: str) -> str:
     )
 
     if gcal_only_proposal or created_as_change_only:
-        supabase_client.rpc("reject_pending_event_change", {
+        supabase_client.rpc("reject_event_change_proposal", {
             "p_event_id": event_id,
             "p_user_id": event["user_id"],
-            "p_source_id": source["id"],
+            "p_proposal_id": proposal["id"],
+            "p_expected_hash": None,
+            "p_resolution_reason": "user_rejected",
             "p_delete_event": True,
             "p_restore_status": "approved",
             "p_title": event.get("title"),
@@ -1797,10 +1778,12 @@ def reject_pending_change(supabase_client: Client, event_id: str) -> str:
             if key in snapshot:
                 restored_event[key] = snapshot[key]
 
-    supabase_client.rpc("reject_pending_event_change", {
+    supabase_client.rpc("reject_event_change_proposal", {
         "p_event_id": event_id,
         "p_user_id": event["user_id"],
-        "p_source_id": source["id"],
+        "p_proposal_id": proposal["id"],
+        "p_expected_hash": None,
+        "p_resolution_reason": "user_rejected",
         "p_delete_event": False,
         "p_restore_status": restore_status,
         "p_title": restored_event["title"],
@@ -1850,17 +1833,16 @@ def undo_history_event(
     event = event_result.data
     owner_id = user_id or event.get("user_id")
 
-    sources = supabase_client.table("event_sources").select("*").eq(
-        "event_id", event_id
-    ).eq("is_undone", False).order("created_at", desc=True).execute()
-
-    change_source = None
-    for src in sources.data or []:
-        if src.get("source_type") in ("update", "cancellation") and src.get(
-            "event_snapshot_before"
-        ):
-            change_source = src
-            break
+    proposal_result = supabase_client.table("event_change_proposals").select(
+        "*"
+    ).eq("event_id", event_id).eq("status", "applied").order(
+        "resolved_at", desc=True
+    ).limit(1).maybe_single().execute()
+    change_proposal = (
+        proposal_result.data
+        if proposal_result is not None and isinstance(proposal_result.data, dict)
+        else None
+    )
 
     google_event_id = event.get("google_calendar_event_id")
     provider_exists = bool(google_event_id)
@@ -1882,8 +1864,8 @@ def undo_history_event(
         else:
             provider_exists = False
 
-    if change_source:
-        snapshot = change_source["event_snapshot_before"]
+    if change_proposal:
+        snapshot = change_proposal["event_snapshot_before"]
         restore_fields: dict[str, Any] = {
             "status": "pending_change",
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -1901,11 +1883,11 @@ def undo_history_event(
         desired_event = {
             key: value for key, value in restore_fields.items() if key != "status"
         }
-        result = supabase_client.rpc("undo_event_and_enqueue_calendar_work", {
+        result = supabase_client.rpc("reopen_event_change_proposal", {
             "p_event_id": event_id,
             "p_user_id": owner_id,
-            "p_change_source_id": change_source["id"],
-            "p_restore_fields": desired_event,
+            "p_proposal_id": change_proposal["id"],
+            "p_expected_hash": None,
             "p_action": "upsert" if provider_exists else None,
             "p_desired_event": desired_event if provider_exists else None,
             "p_expected_provider_revision": expected_provider_revision,

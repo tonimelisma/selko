@@ -1,7 +1,6 @@
 # State Ownership and Deterministic Recovery
 
-**Status:** S1 implemented; S2 implemented in this increment. S3–S5 remain
-open.
+**Status:** S1–S3 implemented; S4–S5 remain open.
 
 **Written:** 2026-08-13, after repairing a production Changes card whose
 `events.status = 'pending_change'` row had no active proposal, then auditing
@@ -31,6 +30,16 @@ revisions, and routes approval, cancellation, retry, History undo, and
 it is never silently overwritten. Real-Postgres integration coverage is in
 `backend/tests/integration/test_integration_calendar_work_items.py`; the
 schema contract exercises the new RPCs and trigger.
+
+**S3 delivery:** `event_change_proposals` is now the authoritative owner of
+update/cancellation lifecycle. The migration backfills only complete legacy
+rows and aborts ambiguous `pending_change` events with identifiers/counts;
+proposal apply, reject, reopen, and closed-legacy repair resolution are
+service-only, fingerprint-fenced RPCs. `event_sources` remains readable by
+owners as provenance and mirrors proposal fields only for deployed-client
+compatibility. Python review transitions select a typed proposal ID and the
+repair manifest no longer accepts the retired source-resolution action. Real
+Postgres coverage is in `backend/tests/integration/test_integration_event_change_proposals.py`.
 
 **Does not authorize:** a production deploy, a broad replay of historical
 failed emails, or a semantic production-data repair. Each production deploy
