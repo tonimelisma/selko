@@ -4,7 +4,10 @@
 	import { fetchIntegrations } from '$lib/services/integrations.js';
 	import {
 		fetchPendingEventsWithSources,
-		updateEventStatus
+		updateEventStatus,
+		isNewReviewEvent,
+		isChangeReviewEvent,
+		pendingEventProposal
 	} from '$lib/services/events.js';
 	import { createSenderRule, ignoreSenderRetroactive } from '$lib/services/sender-rules.js';
 	import {
@@ -82,8 +85,8 @@
 	let calendarConnected = $derived(gcalIntegration?.status === 'active');
 	let firstRun = $derived(integrationsList.length === 0);
 
-	let newEvents = $derived(events.filter((e) => e.status === 'pending_review'));
-	let changeEvents = $derived(events.filter((e) => e.status === 'pending_change'));
+	let newEvents = $derived(events.filter(isNewReviewEvent));
+	let changeEvents = $derived(events.filter(isChangeReviewEvent));
 
 	/** @param {any} event */
 	function senderForEvent(event) {
@@ -199,13 +202,13 @@
 		if (toReinsert.length > 0) {
 			events = [...events, ...toReinsert];
 			// Re-apply stable lane sorting so Undo restores exact position
-			const newEvents_undo = events.filter((e) => e.status === 'pending_review');
-			const changeEvents_undo = events.filter((e) => e.status === 'pending_change');
+			const newEvents_undo = events.filter(isNewReviewEvent);
+			const changeEvents_undo = events.filter(isChangeReviewEvent);
 			events = [...sortLaneEvents(newEvents_undo, newLaneOrder, senderForEvent), ...sortLaneEvents(changeEvents_undo, changeLaneOrder, senderForEvent)];
 			// Ensure lane orders contain restored senders/events for stable grouping (retain rank)
 			for (const ev of toReinsert) {
 				const { senderKey } = senderForEvent(ev);
-				const lane = ev.status === 'pending_change' ? changeLaneOrder : newLaneOrder;
+				const lane = isChangeReviewEvent(ev) ? changeLaneOrder : newLaneOrder;
 				if (!lane.senderRank.has(senderKey)) {
 					lane.senderRank.set(senderKey, lane.nextSenderRank++);
 				}
@@ -257,6 +260,8 @@
 		// Live UI: subscribe to invalidations for events/event_sources/integrations
 		const unsubEvents = liveUpdates.subscribe('events', requestEventRefresh);
 		const unsubSources = liveUpdates.subscribe('event_sources', requestEventRefresh);
+		const unsubProposals = liveUpdates.subscribe('event_change_proposals', requestEventRefresh);
+		const unsubCalendarWork = liveUpdates.subscribe('calendar_work_items', requestEventRefresh);
 		const unsubIntegrations = liveUpdates.subscribe('integrations', async () => {
 			await loadIntegrations();
 		});
@@ -264,6 +269,8 @@
 		cleanup = () => {
 			unsubEvents();
 			unsubSources();
+			unsubProposals();
+			unsubCalendarWork();
 			unsubIntegrations();
 			clearEventRefreshTimer();
 			clearRejectUndoTimer();
@@ -339,8 +346,8 @@
 			// Do not reinsert dispositions that are still pending server confirmation.
 			const dispositionIds = new Set(dispositions.keys());
 			const loadedEvents = serverEvents.filter((event) => !dispositionIds.has(event.id));
-			const newLoaded = loadedEvents.filter((event) => event.status === 'pending_review');
-			const changeLoaded = loadedEvents.filter((event) => event.status === 'pending_change');
+			const newLoaded = loadedEvents.filter(isNewReviewEvent);
+			const changeLoaded = loadedEvents.filter(isChangeReviewEvent);
 			if (!hasEventSnapshot) {
 				newLaneOrder = seedLaneOrder(newLoaded, senderForEvent);
 				changeLaneOrder = seedLaneOrder(changeLoaded, senderForEvent);
@@ -593,7 +600,7 @@
 			return;
 		}
 		for (const event of eventsList) {
-			if (event.status === 'pending_change') {
+			if (isChangeReviewEvent(event)) {
 				await handleApproveChange(event);
 			} else {
 				await handleApproveNew(event);
@@ -777,6 +784,7 @@
 										{#snippet children()}
 										<ChangeCard
 											{event}
+											proposal={pendingEventProposal(event)}
 											error={eventErrors.get(event.id) || ''}
 											isProcessing={processingEvents.has(event.id)}
 											canApprove={calendarConnected}

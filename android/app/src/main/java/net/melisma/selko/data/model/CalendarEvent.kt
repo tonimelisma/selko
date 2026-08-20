@@ -18,6 +18,14 @@ enum class EventStatus {
 }
 
 @Serializable
+enum class EventReviewStatus {
+    @SerialName("pending_review") PENDING_REVIEW,
+    @SerialName("active") ACTIVE,
+    @SerialName("rejected") REJECTED,
+    @SerialName("cancelled") CANCELLED
+}
+
+@Serializable
 data class CalendarEvent(
     val id: String,
     @SerialName("user_id") val userId: String,
@@ -29,18 +37,32 @@ data class CalendarEvent(
     val description: String? = null,
     @SerialName("source_attribution") val sourceAttribution: String? = null,
     val status: EventStatus = EventStatus.PENDING_REVIEW,
+    @SerialName("review_status") val reviewStatus: EventReviewStatus? = null,
     @SerialName("google_calendar_event_id") val googleCalendarEventId: String? = null,
     @SerialName("synced_at") val syncedAt: Instant? = null,
     @SerialName("created_at") val createdAt: Instant? = null,
     @SerialName("updated_at") val updatedAt: Instant? = null,
     // Joined data when fetching with sources
-    @SerialName("event_sources") val eventSources: List<EventSource>? = null
+    @SerialName("event_sources") val eventSources: List<EventSource>? = null,
+    @SerialName("event_change_proposals") val eventChangeProposals: List<EventChangeProposal>? = null,
+    @SerialName("calendar_work_items") val calendarWorkItems: List<CalendarWorkItem>? = null
 ) {
     val isPending: Boolean
-        get() = status == EventStatus.PENDING_REVIEW || status == EventStatus.PENDING_CHANGE
+        get() = isNewReview || isPendingChange
 
     val isPendingChange: Boolean
-        get() = status == EventStatus.PENDING_CHANGE
+        get() = eventChangeProposals?.any { it.status == EventChangeProposalStatus.PENDING }
+            ?: (status == EventStatus.PENDING_CHANGE)
+
+    val isNewReview: Boolean
+        get() = reviewStatus == EventReviewStatus.PENDING_REVIEW ||
+            (reviewStatus == null && status == EventStatus.PENDING_REVIEW)
+
+    val hasAppliedProposal: Boolean
+        get() = eventChangeProposals?.any { it.status == EventChangeProposalStatus.APPLIED } == true
+
+    val hasClosedLegacyProposal: Boolean
+        get() = eventChangeProposals?.any { it.status == EventChangeProposalStatus.CLOSED_LEGACY } == true
 
     val isSynced: Boolean
         get() = status == EventStatus.SYNCED

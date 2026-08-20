@@ -88,14 +88,15 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
         let nowStr = isoFormatter.string(from: now)
         let orFilter = "end_datetime.gte.\(nowStr),and(end_datetime.is.null,start_datetime.gte.\(nowStr)),and(end_datetime.is.null,start_datetime.is.null)"
         let events: [CalendarEvent] = try await supabase.from("events")
-            .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")
-            .in("status", values: ["pending_review", "pending_change"])
+            .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)")
+            .in("review_status", values: ["pending_review", "active"])
             .or(orFilter)
             .order("start_datetime")
             .execute()
             .value
 
         return events.filter { event in
+            guard event.isPending else { return false }
             guard let effective = event.endDatetime ?? event.startDatetime else { return true }
             return effective >= now
         }
@@ -103,14 +104,14 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
 
     func fetchActivityEvents(limit: Int = 20, offset: Int = 0) async throws -> [CalendarEvent] {
         let events: [CalendarEvent] = try await supabase.from("events")
-            .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")
-            .in("status", values: ["approved", "synced", "sync_failed", "rejected", "cancelled"])
+            .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)")
+            .in("review_status", values: ["active", "rejected", "cancelled"])
             .order("updated_at", ascending: false)
             .range(from: offset, to: offset + limit - 1)
             .execute()
             .value
 
-        return events
+        return events.filter { !$0.isPendingChange }
     }
 
     func fetchEvents(
@@ -158,7 +159,7 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
 
     func getEventWithSources(id: UUID) async throws -> CalendarEvent {
         let event: CalendarEvent = try await supabase.from("events")
-            .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")
+            .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)")
             .eq("id", value: id)
             .single()
             .execute()

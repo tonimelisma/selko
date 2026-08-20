@@ -15,17 +15,16 @@ describe('ChangeCard', () => {
 	it('shows field-level proposal details when an active proposal exists', () => {
 		render(ChangeCard, {
 			props: {
+				proposal: {
+					id: 'proposal-1',
+					kind: 'material_update',
+					status: 'pending',
+					change_set: {
+						changes: [{ field: 'location', before: 'Old place', after: 'New place' }]
+					}
+				},
 				event: {
 					...baseEvent,
-					event_sources: [
-						{
-							source_type: 'update',
-							is_undone: false,
-							change_set: {
-								changes: [{ field: 'location', before: 'Old place', after: 'New place' }]
-							}
-						}
-					]
 				}
 			}
 		});

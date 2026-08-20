@@ -32,9 +32,6 @@ export {
 // Event source operations (undo/redo)
 export {
 	fetchEventSources,
-	undoSourceContribution,
-	redoSourceContribution,
-	getActiveSourceCount
 } from './event-sources.js';
 
 // Integration operations

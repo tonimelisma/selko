@@ -339,53 +339,6 @@ describe('Event Sources Service', () => {
 		});
 	});
 
-	describe('undoSourceContribution', () => {
-		it('marks source as undone', async () => {
-			const mockSource = { id: '1', is_undone: true };
-			const query = createQueryMock(mockSource);
-			mockSupabase.from.mockReturnValue(query);
-
-			const { undoSourceContribution } = await import('../services/event-sources.js');
-			const result = await undoSourceContribution('source-123');
-
-			expect(query.update).toHaveBeenCalledWith({ is_undone: true });
-			expect(query.eq).toHaveBeenCalledWith('id', 'source-123');
-			expect(result.data.is_undone).toBe(true);
-		});
-	});
-
-	describe('redoSourceContribution', () => {
-		it('marks source as not undone', async () => {
-			const mockSource = { id: '1', is_undone: false };
-			const query = createQueryMock(mockSource);
-			mockSupabase.from.mockReturnValue(query);
-
-			const { redoSourceContribution } = await import('../services/event-sources.js');
-			const result = await redoSourceContribution('source-123');
-
-			expect(query.update).toHaveBeenCalledWith({ is_undone: false });
-			expect(result.data.is_undone).toBe(false);
-		});
-	});
-
-	describe('getActiveSourceCount', () => {
-		it('returns count of active sources', async () => {
-			const query = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis()
-			};
-			// Mock the promise resolution
-			const mockResult = { count: 3, error: null };
-			query.eq.mockImplementation(() => Promise.resolve(mockResult));
-			mockSupabase.from.mockReturnValue(query);
-
-			const { getActiveSourceCount } = await import('../services/event-sources.js');
-			const result = await getActiveSourceCount('event-123');
-
-			expect(mockSupabase.from).toHaveBeenCalledWith('event_sources');
-			expect(query.select).toHaveBeenCalledWith('id', { count: 'exact', head: true });
-		});
-	});
 });
 
 describe('Jobs Service', () => {

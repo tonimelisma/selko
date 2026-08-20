@@ -180,8 +180,16 @@ private fun HistoryEventItem(
             headlineContent = {
                 Column {
                     SelkoStateTag(
-                        text = if (event.isPendingChange) "Changed" else "New",
-                        role = if (event.isPendingChange) SelkoTagRole.Changed else SelkoTagRole.New
+                        text = when {
+                            event.hasClosedLegacyProposal -> "History"
+                            event.hasAppliedProposal -> "Changed"
+                            else -> "New"
+                        },
+                        role = when {
+                            event.hasClosedLegacyProposal -> SelkoTagRole.Neutral
+                            event.hasAppliedProposal -> SelkoTagRole.Changed
+                            else -> SelkoTagRole.New
+                        }
                     )
                     Text(text = event.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }

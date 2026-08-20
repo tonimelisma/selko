@@ -4,9 +4,8 @@
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { _ } from 'svelte-i18n';
-	import { getEvent, updateEvent, updateEventStatus } from '$lib/services/events.js';
+	import { getEvent, updateEvent, updateEventStatus, isNewReviewEvent } from '$lib/services/events.js';
 	import { undoHistoryEvent } from '$lib/api/backend.js';
-	import { fetchEventSources } from '$lib/services/event-sources.js';
 	import { getEmail } from '$lib/services/emails.js';
 	import { fetchAttachments } from '$lib/services/attachments.js';
 	import { fetchIntegrations } from '$lib/services/integrations.js';
@@ -95,9 +94,8 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 		isLoading = true;
 		error = '';
 
-		const [eventResult, sourcesResult, integrationsResult] = await Promise.all([
+		const [eventResult, integrationsResult] = await Promise.all([
 			getEvent(eventId),
-			fetchEventSources(eventId),
 			fetchIntegrations()
 		]);
 
@@ -108,7 +106,7 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 		}
 
 		event = eventResult.data;
-		sources = sourcesResult.data || [];
+		sources = eventResult.data?.event_sources || [];
 		integrations = integrationsResult.data || [];
 		if (integrationsResult.error) {
 			error = integrationsResult.error.message;
@@ -469,7 +467,7 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 			</form>
 
 			<!-- Desktop action buttons -->
-			{#if event.status === 'pending_review'}
+			{#if isNewReviewEvent(event)}
 				<div class="peer-action-wrap mt-6 hidden lg:block">
 					<div class="peer-action-group" data-peer-count="2">
 						<button class="btn peer-action peer-action-destructive" onclick={handleReject} disabled={isActing} aria-label={`${$_('events.reject')} ${event.title}`} aria-busy={isActing}>
@@ -507,7 +505,7 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 		</div>
 	{/if}
 	<!-- Mobile fixed bottom action bar -->
-	{#if event.status === 'pending_review'}
+	{#if isNewReviewEvent(event)}
 		<div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-surface p-4 lg:hidden">
 			<div class="peer-action-wrap mx-auto w-full max-w-[var(--review-max-width)]">
 				<div class="peer-action-group" data-peer-count="2">

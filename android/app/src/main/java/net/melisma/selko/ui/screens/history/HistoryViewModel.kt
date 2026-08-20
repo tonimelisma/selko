@@ -63,7 +63,7 @@ class HistoryViewModel(
         liveUpdateJob?.cancel()
         liveUpdateJob = viewModelScope.launch {
             repo.invalidations.collect { inv ->
-                if (inv.resource in setOf("events", "event_sources", "emails")) {
+                if (inv.resource in setOf("events", "event_sources", "event_change_proposals", "calendar_work_items", "emails")) {
                     if (_uiState.value.processingEventIds.isEmpty()) {
                         refreshForLiveUpdate()
                     }

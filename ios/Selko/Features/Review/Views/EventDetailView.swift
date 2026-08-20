@@ -66,7 +66,7 @@ struct EventDetailView: View {
             .navigationTitle("Event Detail")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
-                if let event = viewModel.event, event.status == .pendingReview || event.status == .pendingChange {
+                if let event = viewModel.event, event.isPending {
                     if !viewModel.showUndoToast {
                         SelkoPeerActionGroup {
                             Button(role: .destructive) {
@@ -266,6 +266,10 @@ struct EventDetailView: View {
 
     private var sourceDisclosure: some View {
         Group {
+            if let proposals = viewModel.event?.eventChangeProposals,
+               proposals.contains(where: { $0.status == .pending }) {
+                proposalSummary
+            }
             if let sources = viewModel.event?.eventSources, !sources.isEmpty {
                 DisclosureGroup(sourceSectionTitle) {
                     VStack(spacing: 12) {
@@ -297,6 +301,25 @@ struct EventDetailView: View {
     }
 
     // MARK: - Source Helpers
+
+    @ViewBuilder
+    private var proposalSummary: some View {
+        if let proposal = viewModel.event?.eventChangeProposals?.first(where: { $0.status == .pending }) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(proposal.kind == .cancellation ? "Cancellation proposed" : "Change proposed")
+                    .font(SelkoTypography.title)
+                ForEach(proposal.changeSet.changes ?? [], id: \.field) { change in
+                    Text("\(change.field): \(change.before ?? "None") → \(change.after ?? "None")")
+                        .font(SelkoTypography.caption)
+                        .foregroundStyle(Color.selkoMuted)
+                }
+            }
+            .padding()
+            .background(Color.selkoSubtle)
+            .clipShape(SelkoShape.card)
+            .padding(.horizontal)
+        }
+    }
 
     /// Returns the appropriate section title based on the primary source origin.
     private var sourceSectionTitle: String {

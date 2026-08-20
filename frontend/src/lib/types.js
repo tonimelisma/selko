@@ -89,6 +89,64 @@
  */
 
 /**
+ * @typedef {'pending_review' | 'active' | 'rejected' | 'cancelled'} EventReviewStatus
+ */
+
+/**
+ * @typedef {'pending' | 'applied' | 'rejected' | 'superseded' | 'closed_legacy'} EventChangeProposalStatus
+ */
+
+/**
+ * @typedef {'material_update' | 'cancellation'} EventChangeProposalKind
+ */
+
+/**
+ * @typedef {Object} EventChangeProposal
+ * @property {string} id
+ * @property {string} event_id
+ * @property {string} user_id
+ * @property {string} source_id
+ * @property {EventChangeProposalKind} kind
+ * @property {EventChangeProposalStatus} status
+ * @property {Object} change_set
+ * @property {Object} event_snapshot_before
+ * @property {string|null} [resolution_reason]
+ * @property {string} created_at
+ * @property {string|null} [resolved_at]
+ * @property {string} updated_at
+ */
+
+/**
+ * @typedef {'upsert' | 'cancel'} CalendarWorkAction
+ */
+
+/**
+ * @typedef {'pending' | 'processing' | 'succeeded' | 'failed' | 'blocked' | 'superseded'} CalendarWorkStatus
+ */
+
+/**
+ * @typedef {Object} CalendarWorkItem
+ * @property {string} id
+ * @property {string} event_id
+ * @property {string} user_id
+ * @property {CalendarWorkAction} action
+ * @property {number} generation
+ * @property {CalendarWorkStatus} status
+ * @property {Object|null} [desired_event]
+ * @property {string|null} [provider_event_id]
+ * @property {string|null} [expected_provider_revision]
+ * @property {boolean} force_overwrite
+ * @property {number} attempts
+ * @property {number} max_attempts
+ * @property {string|null} [next_retry_at]
+ * @property {string|null} [failure_code]
+ * @property {string|null} [failure_detail]
+ * @property {string} created_at
+ * @property {string} updated_at
+ * @property {string|null} [completed_at]
+ */
+
+/**
  * @typedef {'action_required' | 'fyi'} EventImportance
  */
 
@@ -107,8 +165,12 @@
  * @property {EventStatus} status
  * @property {string} [google_calendar_event_id]
  * @property {string} [synced_at]
+ * @property {EventReviewStatus} review_status
  * @property {string} created_at
  * @property {string} updated_at
+ * @property {EventSource[]} [event_sources]
+ * @property {EventChangeProposal[]} [event_change_proposals]
+ * @property {CalendarWorkItem[]} [calendar_work_items]
  */
 
 /**

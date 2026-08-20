@@ -110,7 +110,7 @@ class EventRepository(
     suspend fun getEventWithSources(eventId: String): EventResult<CalendarEvent> {
         return try {
             val event = supabaseClient.from("events")
-                .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")) {
+                .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)")) {
                     filter {
                         eq("id", eventId)
                     }
@@ -178,9 +178,9 @@ class EventRepository(
             val now = kotlin.time.Clock.System.now()
             val nowStr = now.toString()
             val events = supabaseClient.from("events")
-                .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")) {
+                .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)")) {
                     filter {
-                        isIn("status", listOf("pending_review", "pending_change"))
+                        isIn("review_status", listOf("pending_review", "active"))
                         or {
                             gte("end_datetime", nowStr)
                             gte("start_datetime", nowStr)
@@ -193,7 +193,7 @@ class EventRepository(
                 val effective = event.endDatetime ?: event.startDatetime ?: return@filter true
                 effective >= now
             }
-            EventResult.Success(filtered)
+            EventResult.Success(filtered.filter { it.isPending })
         } catch (e: Exception) {
             EventResult.Error(e.message ?: "Failed to fetch pending events with sources")
         }
@@ -202,15 +202,15 @@ class EventRepository(
     suspend fun fetchActivityEvents(limit: Int = 20, offset: Int = 0): EventResult<List<CalendarEvent>> {
         return try {
             val events = supabaseClient.from("events")
-                .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))")) {
+                .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)")) {
                     filter {
-                        isIn("status", listOf("approved", "synced", "sync_failed", "rejected", "cancelled"))
+                        isIn("review_status", listOf("active", "rejected", "cancelled"))
                     }
                     order("updated_at", Order.DESCENDING)
                     range(offset.toLong(), (offset + limit - 1).toLong())
                 }
                 .decodeList<CalendarEvent>()
-            EventResult.Success(events)
+            EventResult.Success(events.filter { !it.isPendingChange })
         } catch (e: Exception) {
             EventResult.Error(e.message ?: "Failed to fetch activity events")
         }

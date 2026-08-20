@@ -43,7 +43,7 @@ struct EventCardView: View {
                         .foregroundStyle(Color.selkoInk)
                         .lineLimit(2)
                         .accessibilityIdentifier("eventTitle")
-                    SelkoStateTag(kind: event.status == .pendingChange ? .changed : .new)
+                    SelkoStateTag(kind: event.isPendingChange ? .changed : .new)
                 }
 
                 if let startDatetime = event.startDatetime {

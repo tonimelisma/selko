@@ -106,7 +106,7 @@ final class LiveUpdateService: ObservableObject {
         // Realtime V2 payload is {payload: {resource, operation, entity_id, occurred_at}, event: "invalidate"}
         let payload = (message["payload"] as? JSONObject) ?? message
         guard let resource = payload["resource"] as? String,
-              Set(["events", "event_sources", "emails", "integrations"]).contains(resource) else { return }
+              Set(["events", "event_sources", "event_change_proposals", "calendar_work_items", "emails", "integrations"]).contains(resource) else { return }
         let op = payload["operation"] as? String ?? "UPDATE"
         let eidStr = payload["entity_id"] as? String
         let eid = eidStr.flatMap { UUID(uuidString: $0) }
@@ -144,7 +144,7 @@ final class LiveUpdateService: ObservableObject {
     // resource. Unlike start(), this does not short-circuit when the channel
     // already exists — the database snapshot is the source of truth.
     func catchUp() async {
-        for resource in ["events", "event_sources", "integrations", "emails"] {
+        for resource in ["events", "event_sources", "event_change_proposals", "calendar_work_items", "integrations", "emails"] {
             await debounceAndEmit(LiveInvalidation(resource: resource, operation: "CATCHUP", entityId: nil, occurredAt: Date()))
         }
     }

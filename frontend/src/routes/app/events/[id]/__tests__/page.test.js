@@ -35,7 +35,8 @@ const mockUpdateEventStatus = vi.fn();
 vi.mock('$lib/services/events.js', () => ({
 	getEvent: (...args) => mockGetEvent(...args),
 	updateEvent: (...args) => mockUpdateEvent(...args),
-	updateEventStatus: (...args) => mockUpdateEventStatus(...args)
+ updateEventStatus: (...args) => mockUpdateEventStatus(...args),
+ isNewReviewEvent: (event) => event.review_status === 'pending_review' || event.status === 'pending_review'
 }));
 
 const mockFetchEventSources = vi.fn();
@@ -88,7 +89,18 @@ const mockEvent = {
 describe('Event Detail Page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockGetEvent.mockResolvedValue({ data: mockEvent, error: null });
+		mockGetEvent.mockResolvedValue({
+			data: {
+				...mockEvent,
+				event_sources: [{
+					id: 'src-1',
+					event_id: 'evt-1',
+					email_id: 'email-1',
+					emails: { id: 'email-1', subject: 'Meeting', from_email: 'boss@co.com' }
+				}]
+			},
+			error: null
+		});
 		mockFetchEventSources.mockResolvedValue({
 			data: [
 				{

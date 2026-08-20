@@ -88,7 +88,7 @@ class ReviewQueueViewModel(
         liveUpdateJob?.cancel()
         liveUpdateJob = viewModelScope.launch {
             repo.invalidations.collect { inv ->
-                if (inv.resource in setOf("events", "event_sources", "integrations")) {
+                if (inv.resource in setOf("events", "event_sources", "event_change_proposals", "calendar_work_items", "integrations")) {
                     if (_uiState.value.processingEventIds.isEmpty()) {
                         checkIntegrations()
                     }
