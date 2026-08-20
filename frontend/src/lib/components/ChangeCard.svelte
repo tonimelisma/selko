@@ -4,19 +4,7 @@
 	import StateTag from './StateTag.svelte';
 	import InlineActionError from './InlineActionError.svelte';
 
-	let { event, error = '', isProcessing = false, canApprove = true, onapprove, onreject } = $props();
-
-	/** @param {any} item */
-	function getChangeSet(item) {
-		const sources = item.event_sources || [];
-		return sources.find(
-			/** @param {any} source */
-			(source) => source?.change_set && !source.is_undone && (source.source_type === 'update' || source.source_type === 'cancellation')
-		)?.change_set || sources.find(
-			/** @param {any} source */
-			(source) => source?.change_set && !source.is_undone
-		)?.change_set || null;
-	}
+	let { event, proposal = null, error = '', isProcessing = false, canApprove = true, onapprove, onreject } = $props();
 
 	/** @param {string} field */
 	function fieldLabel(field) {
@@ -30,9 +18,9 @@
 		return formatChangeValue(value, $_('events.none'));
 	}
 
-	let activeProposal = $derived(getChangeSet(event));
-	let changes = $derived(activeProposal?.changes || []);
-	let proposalAvailable = $derived(Boolean(activeProposal && changes.length > 0));
+	let activeProposal = $derived(proposal?.status === 'pending' ? proposal : null);
+	let changes = $derived(activeProposal?.change_set?.changes || []);
+	let proposalAvailable = $derived(Boolean(activeProposal && (changes.length > 0 || activeProposal.kind === 'cancellation')));
 	let dateParts = $derived(() => {
 		if (!event.start_datetime) return { month: '', day: '' };
 		const date = new Date(event.start_datetime);

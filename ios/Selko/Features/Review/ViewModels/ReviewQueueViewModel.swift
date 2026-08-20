@@ -78,7 +78,7 @@ final class ReviewQueueViewModel {
         liveUpdateTask = Task { [weak self] in
             guard let self else { return }
             for await inv in liveUpdateService.stream {
-                if inv.resource == "events" || inv.resource == "event_sources" || inv.resource == "integrations" {
+                if ["events", "event_sources", "event_change_proposals", "calendar_work_items", "integrations"].contains(inv.resource) {
                     if self.processingEventIds.isEmpty {
                         await self.load()
                     }

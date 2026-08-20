@@ -16,7 +16,10 @@ vi.mock('$lib/services/integrations.js', () => ({
 
 vi.mock('$lib/services/events.js', () => ({
 	fetchPendingEventsWithSources: (...args) => mockFetchPendingEventsWithSources(...args),
-	updateEventStatus: (...args) => mockUpdateEventStatus(...args)
+	updateEventStatus: (...args) => mockUpdateEventStatus(...args),
+	isNewReviewEvent: (event) => event.review_status === 'pending_review' || event.status === 'pending_review',
+	isChangeReviewEvent: (event) => (event.event_change_proposals || []).some((proposal) => proposal.status === 'pending'),
+	pendingEventProposal: (event) => (event.event_change_proposals || []).find((proposal) => proposal.status === 'pending') || null
 }));
 
 vi.mock('$lib/live-updates.js', () => ({

@@ -129,7 +129,7 @@ function handleInvalidate(payload) {
 	const message = /** @type {LiveInvalidation & {payload?: LiveInvalidation}} */ (payload);
 	const inv = message?.payload || message;
 	if (!inv || !inv.resource) return;
-	const allowed = new Set(['events', 'event_sources', 'emails', 'integrations']);
+	const allowed = new Set(['events', 'event_sources', 'event_change_proposals', 'calendar_work_items', 'emails', 'integrations']);
 	if (!allowed.has(inv.resource)) return;
 	console.debug('[live-updates] invalidate', inv);
 	scheduleRefresh(inv.resource, inv);

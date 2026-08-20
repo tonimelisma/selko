@@ -78,16 +78,16 @@ class LiveUpdateRepositoryTest {
     }
 
     @Test
-    fun `catchUp emits all four resources`() = runTest {
+    fun `catchUp emits all event resources`() = runTest {
         val repo = makeRepository()
         repo.invalidations.test {
             repo.catchUp()
             val resources = mutableSetOf<String>()
-            repeat(4) {
+            repeat(6) {
                 resources.add(awaitItem().resource)
             }
-            assertEquals(setOf("events", "event_sources", "emails", "integrations"), resources)
-            assertTrue(resources.size == 4)
+            assertEquals(setOf("events", "event_sources", "event_change_proposals", "calendar_work_items", "emails", "integrations"), resources)
+            assertTrue(resources.size == 6)
             cancelAndIgnoreRemainingEvents()
         }
     }

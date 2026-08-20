@@ -6,6 +6,31 @@ import { parseSupabaseError } from '$lib/errors.js';
  * @typedef {import('$lib/types.js').EventStatus} EventStatus
  */
 
+const EVENT_RELATIONS = `*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, event_snapshot_before, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, desired_event, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)`;
+
+/** @param {any} event */
+export function pendingEventProposal(event) {
+	return (event?.event_change_proposals || []).find(
+		/** @param {any} proposal */
+		(proposal) => proposal?.status === 'pending'
+	) || null;
+}
+
+/** @param {any} event */
+export function isNewReviewEvent(event) {
+	return event?.review_status === 'pending_review' || (!event?.review_status && event?.status === 'pending_review');
+}
+
+/** @param {any} event */
+export function isChangeReviewEvent(event) {
+	return Boolean(pendingEventProposal(event));
+}
+
+/** @param {any} event */
+export function isHistoryEvent(event) {
+	return !isNewReviewEvent(event) && !isChangeReviewEvent(event);
+}
+
 /**
  * @typedef {Object} FetchEventsOptions
  * @property {number} [limit=50] - Maximum number of events to fetch
@@ -85,7 +110,7 @@ export async function fetchEvents(options = {}) {
  */
 export async function getEvent(eventId) {
 	try {
-		const { data, error } = await supabase.from('events').select('*').eq('id', eventId).single();
+		const { data, error } = await supabase.from('events').select(EVENT_RELATIONS).eq('id', eventId).single();
 
 		if (error) throw error;
 
@@ -127,13 +152,14 @@ export async function fetchPendingEventsWithSources() {
 		const nowIso = new Date().toISOString();
 		const { data: events, error: eventsError } = await supabase
 			.from('events')
-			.select('*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))')
-			.in('status', ['pending_review', 'pending_change'])
+			.select(EVENT_RELATIONS)
+			.in('review_status', ['pending_review', 'active'])
 			.or(`end_datetime.gte.${nowIso},and(end_datetime.is.null,start_datetime.gte.${nowIso}),and(end_datetime.is.null,start_datetime.is.null)`)
 			.order('start_datetime', { ascending: true });
 		if (eventsError) throw eventsError;
 		const now = new Date(nowIso);
 		const filtered = (events ?? []).filter((event) => {
+			if (!isNewReviewEvent(event) && !isChangeReviewEvent(event)) return false;
 			const raw = event.end_datetime || event.start_datetime;
 			if (!raw) return true;
 			return new Date(raw) >= now;
@@ -156,14 +182,14 @@ export async function fetchActivityEvents(options = {}) {
 	try {
 		const { data, error, count } = await supabase
 			.from('events')
-			.select('*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))', {
+			.select(EVENT_RELATIONS, {
 				count: 'exact'
 			})
-			.in('status', ['approved', 'synced', 'sync_failed', 'rejected', 'cancel_queued', 'cancelled'])
+			.in('review_status', ['active', 'rejected', 'cancelled'])
 			.order('updated_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 		if (error) throw error;
-		return { data: data ?? [], count, error: null };
+		return { data: (data ?? []).filter(isHistoryEvent), count, error: null };
 	} catch (error) {
 		return { data: [], count: null, error: parseSupabaseError(error) };
 	}

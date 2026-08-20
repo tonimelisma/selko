@@ -110,10 +110,9 @@ describe('events service', () => {
 			const result = await fetchPendingEventsWithSources();
 
 			expect(mockFrom).toHaveBeenCalledWith('events');
-			expect(mockQuery.select).toHaveBeenCalledWith(
-				'*, event_sources(*, emails(id, subject, from_email, from_name, date_sent))'
-			);
-			expect(mockQuery.in).toHaveBeenCalledWith('status', ['pending_review', 'pending_change']);
+			expect(mockQuery.select.mock.calls[0][0]).toContain('event_change_proposals');
+			expect(mockQuery.select.mock.calls[0][0]).toContain('calendar_work_items');
+			expect(mockQuery.in).toHaveBeenCalledWith('review_status', ['pending_review', 'active']);
 			expect(mockQuery.order).toHaveBeenCalledWith('start_datetime', { ascending: true });
 			expect(result.data).toEqual(eventsWithSources);
 			expect(result.error).toBeNull();
@@ -214,14 +213,7 @@ describe('events service', () => {
 			const result = await fetchActivityEvents();
 
 			expect(mockFrom).toHaveBeenCalledWith('events');
-			expect(mockQuery.in).toHaveBeenCalledWith('status', [
-				'approved',
-					'synced',
-					'sync_failed',
-					'rejected',
-					'cancel_queued',
-					'cancelled'
-			]);
+			expect(mockQuery.in).toHaveBeenCalledWith('review_status', ['active', 'rejected', 'cancelled']);
 			expect(mockQuery.order).toHaveBeenCalledWith('updated_at', { ascending: false });
 			expect(mockQuery.range).toHaveBeenCalledWith(0, 19);
 			expect(result.data).toEqual(activityEvents);
@@ -374,7 +366,7 @@ describe('events service', () => {
 			const result = await getEvent(mockEvents[0].id);
 
 			expect(mockFrom).toHaveBeenCalledWith('events');
-			expect(mockQuery.select).toHaveBeenCalledWith('*');
+			expect(mockQuery.select.mock.calls[0][0]).toContain('event_change_proposals');
 			expect(mockQuery.eq).toHaveBeenCalledWith('id', mockEvents[0].id);
 			expect(result.data).toEqual(mockEvents[0]);
 			expect(result.error).toBeNull();
