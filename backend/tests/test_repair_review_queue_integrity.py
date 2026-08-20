@@ -102,6 +102,41 @@ def test_manifest_rejects_ambiguous_cancellation(tmp_path) -> None:
         _load_manifest(str(path))
 
 
+def test_manifest_resolves_a_proposal_by_id_and_hash(tmp_path) -> None:
+    manifest = {
+        "version": 1,
+        "user_id": "22222222-2222-2222-2222-222222222222",
+        "actions": [{
+            "action": "resolve_proposal",
+            "event_id": "11111111-1111-1111-1111-111111111111",
+            "proposal_id": "33333333-3333-3333-3333-333333333333",
+            "reason": "historical_proposal_cleanup",
+            "expected_proposal_hash": "0" * 64,
+        }],
+    }
+    path = tmp_path / "proposal-manifest.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    user_id, actions = _load_manifest(str(path))
+    assert user_id == manifest["user_id"]
+    assert actions[0].kind == "resolve_proposal"
+
+
+def test_manifest_rejects_legacy_source_resolution(tmp_path) -> None:
+    manifest = {
+        "version": 1,
+        "user_id": "22222222-2222-2222-2222-222222222222",
+        "actions": [{
+            "action": "mark_source_resolved",
+            "source_id": "33333333-3333-3333-3333-333333333333",
+            "expected_source_hash": "0" * 64,
+        }],
+    }
+    path = tmp_path / "legacy-manifest.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(RepairError, match="not supported"):
+        _load_manifest(str(path))
+
+
 def test_apply_requires_production_and_all_operator_guards() -> None:
     args = Namespace(
         environment="staging",

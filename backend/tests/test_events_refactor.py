@@ -44,11 +44,20 @@ class TestApplyPendingChange:
         client = MagicMock()
         client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = event
         monkeypatch.setattr(
-            "selko.services.events._latest_pending_change_source",
+            "selko.services.events._latest_pending_change_proposal",
             lambda _client, _event_id: {
-                "id": "source-1",
-                "source_type": "cancellation",
-                "extracted_data": {"title": "Changed by cancellation email"},
+                "id": "proposal-1",
+                "source_id": "source-1",
+                "kind": "cancellation",
+                "change_set": {
+                    "kind": "cancellation",
+                    "changes": [],
+                },
+                "event_snapshot_before": {"title": "Original title"},
+                "source": {
+                    "id": "source-1",
+                    "source_type": "cancellation",
+                },
             },
         )
         provider_delete = MagicMock()
@@ -63,10 +72,10 @@ class TestApplyPendingChange:
         assert result["status"] == "cancel_queued"
         assert result["calendar_sync_action"] == "cancel"
         rpc_name, rpc_params = client.rpc.call_args.args
-        assert rpc_name == "apply_pending_event_change"
+        assert rpc_name == "apply_event_change_proposal"
         assert rpc_params["p_event_id"] == "event-1"
         assert rpc_params["p_user_id"] == "user-1"
-        assert rpc_params["p_source_id"] == "source-1"
+        assert rpc_params["p_proposal_id"] == "proposal-1"
         assert rpc_params["p_next_status"] == "cancel_queued"
         assert rpc_params["p_calendar_sync_action"] == "cancel"
         provider_delete.assert_not_called()
@@ -83,7 +92,7 @@ class TestRejectPendingChange:
         client = MagicMock()
         client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = event
         monkeypatch.setattr(
-            "selko.services.events._latest_pending_change_source",
+            "selko.services.events._latest_pending_change_proposal",
             lambda _client, _event_id: None,
         )
 
@@ -123,16 +132,26 @@ class TestRejectPendingChange:
             event_table if name == "events" else source_table
         )
         monkeypatch.setattr(
-            "selko.services.events._latest_pending_change_source",
-            lambda _client, _event_id: source,
+            "selko.services.events._latest_pending_change_proposal",
+            lambda _client, _event_id: {
+                "id": "proposal-1",
+                "source_id": "source-1",
+                "kind": "material_update",
+                "change_set": {
+                    "kind": "material_update",
+                    "changes": [],
+                },
+                "event_snapshot_before": source["event_snapshot_before"],
+                "source": source,
+            },
         )
 
         result = reject_pending_change(client, "event-1")
 
         assert result == "synced"
         rpc_name, rpc_params = client.rpc.call_args.args
-        assert rpc_name == "reject_pending_event_change"
-        assert rpc_params["p_source_id"] == "source-1"
+        assert rpc_name == "reject_event_change_proposal"
+        assert rpc_params["p_proposal_id"] == "proposal-1"
         assert rpc_params["p_delete_event"] is False
         assert rpc_params["p_restore_status"] == "synced"
         assert rpc_params["p_title"] == "Original title"

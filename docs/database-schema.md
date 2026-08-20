@@ -327,7 +327,33 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 - Email sources require `email_id`; calendar sources require `google_calendar_source_event_id`
 - Partial unique indexes: `(event_id, email_id)` for email sources, `(event_id, google_calendar_source_event_id)` for calendar sources
 
-**RLS Policies:** Users manage own event sources only (via `events.user_id`).
+**RLS Policies:** Authenticated users may select own event sources only (via
+`events.user_id`). Service-owned RPCs are the only writers; `is_undone`,
+`change_set`, and `event_snapshot_before` are compatibility mirrors for
+deployed clients.
+
+### `event_change_proposals`
+
+Authoritative lifecycle for update and cancellation proposals. A proposal is
+selected by its own UUID and never reconstructed by choosing the latest
+`event_sources` row.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid, PK | Proposal ID |
+| `event_id` / `user_id` | uuid, FK | Event and owner |
+| `source_id` | uuid, unique FK | Compatibility provenance source; deletion is restricted |
+| `kind` | text | `material_update` or `cancellation` |
+| `status` | text | `pending`, `applied`, `rejected`, `superseded`, `closed_legacy` |
+| `change_set` | jsonb | Non-empty reversible field-diff envelope |
+| `event_snapshot_before` | jsonb | Non-empty reversible Selko snapshot |
+| `resolution_reason` | text, nullable | Safe transition/audit reason |
+| lifecycle timestamps | timestamptz | Created, resolved, and updated times |
+
+**RLS Policies:** Owners may select their proposals; service role only may
+mutate them. A partial unique index permits at most one pending proposal per
+event. Apply, reject, reopen, and repair resolution are service-only atomic
+RPCs.
 
 ### `email_calendar_components`
 

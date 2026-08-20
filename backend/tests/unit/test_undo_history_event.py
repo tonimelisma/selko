@@ -32,6 +32,20 @@ def _mock_event_and_sources(mock_client, event, sources):
     event_result.data = event
     sources_result = MagicMock()
     sources_result.data = sources
+    proposal_result = MagicMock()
+    proposal_result.data = (
+        {
+            "id": "proposal-1",
+            "event_id": event["id"],
+            "source_id": sources[0]["id"],
+            "kind": "material_update",
+            "status": "applied",
+            "change_set": {"kind": "material_update", "changes": []},
+            "event_snapshot_before": sources[0]["event_snapshot_before"],
+        }
+        if sources
+        else None
+    )
 
     def table_side_effect(name):
         table = MagicMock()
@@ -44,6 +58,8 @@ def _mock_event_and_sources(mock_client, event, sources):
             table.select.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value = (
                 sources_result
             )
+        elif name == "event_change_proposals":
+            table.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.maybe_single.return_value.execute.return_value = proposal_result
         return table
 
     mock_client.table.side_effect = table_side_effect
@@ -137,8 +153,9 @@ class TestUndoHistoryEventCalendar:
 
         assert status == "pending_change"
         params = mock_client.rpc.call_args.args[1]
+        assert mock_client.rpc.call_args.args[0] == "reopen_event_change_proposal"
         assert params["p_action"] == "upsert"
-        restored = params["p_restore_fields"]
+        restored = params["p_desired_event"]
         assert restored["title"] == "Old Title"
 
     def test_gcal_404_clears_sync_on_change_undo(self):
@@ -173,6 +190,7 @@ class TestUndoHistoryEventCalendar:
 
         assert status == "pending_change"
         params = mock_client.rpc.call_args.args[1]
+        assert mock_client.rpc.call_args.args[0] == "reopen_event_change_proposal"
         assert params["p_action"] is None
 
     def test_unsynced_local_only(self):

@@ -290,6 +290,7 @@ def _get_owned_event(client: Client, user_id: str, event_id: UUID) -> dict:
 async def apply_change(
     event_id: UUID,
     client: Annotated[Client, Depends(get_authenticated_client)],
+    service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventChangeResponse:
     """Apply a pending_change proposal and mark the event approved."""
@@ -303,7 +304,7 @@ async def apply_change(
             ),
         )
     try:
-        apply_pending_change(client, str(event_id))
+        apply_pending_change(service_client, str(event_id))
         # Nudge calendar scheduler for the newly approved event (egress inc 5).
         try:
             from selko.api.app import worker_pool as _pool
@@ -324,6 +325,7 @@ async def apply_change(
 async def reject_change(
     event_id: UUID,
     client: Annotated[Client, Depends(get_authenticated_client)],
+    service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventChangeResponse:
     """Discard a pending_change proposal."""
@@ -337,7 +339,7 @@ async def reject_change(
             ),
         )
     try:
-        status = reject_pending_change(client, str(event_id))
+        status = reject_pending_change(service_client, str(event_id))
         return EventChangeResponse(event_id=str(event_id), status=status)
     except EventsError as e:
         raise HTTPException(
