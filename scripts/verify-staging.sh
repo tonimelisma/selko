@@ -55,6 +55,8 @@ for attempt in $(seq 1 30); do
   [[ "$attempt" -lt 30 ]] || fail "staging health did not become ready"
   sleep 10
 done
+health_json=$(curl --fail --silent --show-error "$health_url")
+printf '%s\n' "$health_json" | ./scripts/assert-staging-health.sh root
 ingestion_json=$(curl --fail --silent --show-error "$ingestion_url")
 egress_json=$(curl --fail --silent --show-error "$egress_url")
 printf '%s\n' "$ingestion_json"
