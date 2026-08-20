@@ -27,8 +27,6 @@ import { parseSupabaseError } from '$lib/errors.js';
  * @property {SourceOrigin} source_origin - Source type: email, google_calendar, or google_photos
  * @property {SourceType} source_type
  * @property {ExtractedData} [extracted_data]
- * @property {Object} [event_snapshot_before]
- * @property {boolean} is_undone
  * @property {string} created_at
  * @property {Object} [emails] - Joined email data
  */

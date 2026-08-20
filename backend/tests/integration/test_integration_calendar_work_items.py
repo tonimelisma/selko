@@ -106,7 +106,7 @@ async def test_new_enqueue_supersedes_old_and_stale_completion_is_fenced(
     first_id = first["id"] if isinstance(first, dict) else first[0]["id"]
     claimed = await claim_approved_event_for_sync(pg_pool, "old-worker")
     assert claimed is not None
-    generation = int(claimed["calendar_work_generation"])
+    generation = int(claimed["calendar_work_item_generation"])
 
     second = admin_client.rpc("enqueue_calendar_work", {
         "p_event_id": event_id, "p_user_id": user_id, "p_action": "cancel",
@@ -118,10 +118,10 @@ async def test_new_enqueue_supersedes_old_and_stale_completion_is_fenced(
     assert await complete_event_sync(
         pg_pool, first_id, "stale-google-event", "old-worker", generation
     ) is False
-    row = admin_client.table("events").select(
-        "status,calendar_sync_action"
-    ).eq("id", event_id).single().execute().data
-    assert row == {"status": "cancel_queued", "calendar_sync_action": "cancel"}
+    row = admin_client.table("calendar_work_items").select(
+        "status,action,generation"
+    ).eq("id", second_id).single().execute().data
+    assert row == {"status": "pending", "action": "cancel", "generation": 2}
 
 
 @pytest.mark.asyncio
@@ -155,7 +155,9 @@ async def test_expired_processing_item_is_reclaimable(
     reclaimed = await claim_approved_event_for_sync(pg_pool, "reclaimer", 60)
     assert reclaimed is not None
     assert reclaimed["calendar_work_item_id"] == str(item_id)
-    assert reclaimed["locked_by"] == "reclaimer"
+    assert admin_client.table("calendar_work_items").select("locked_by").eq(
+        "id", item_id
+    ).single().execute().data["locked_by"] == "reclaimer"
 
 
 @pytest.mark.asyncio
@@ -191,7 +193,7 @@ async def test_unsync_is_worker_owned_and_clears_remote_identity_on_completion(
 
     claimed = await claim_approved_event_for_sync(pg_pool, "unsync-worker")
     assert claimed is not None
-    assert claimed["calendar_sync_action"] == "cancel"
+    assert claimed["calendar_work_item_action"] == "cancel"
     assert claimed["calendar_work_desired_event"] == {"delete_remote": True}
 
     assert await complete_event_cancellation(

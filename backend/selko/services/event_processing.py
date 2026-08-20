@@ -860,9 +860,6 @@ def generate_source_attribution(sources: list[dict[str, Any]]) -> str:
     updates = []
 
     for source in sorted(sources, key=lambda s: s.get("created_at", "")):
-        if source.get("is_undone"):
-            continue
-
         if source.get("source_type") == "new_invitation" and not original:
             original = source
         elif source.get("source_type") in ["update", "cancellation"]:

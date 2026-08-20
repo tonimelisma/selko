@@ -222,21 +222,10 @@ Calendar events with status-based worker claiming for sync.
 | `location` | text | Event location |
 | `description` | text | Event description |
 | `source_attribution` | text | Natural English attribution |
-| `status` | text | `pending_review`, `pending_change`, `approved`, `cancel_queued`, `syncing`, `synced`, `sync_failed`, `cancelled`, `rejected` |
+| `status` | text | `pending_review`, `approved`, `cancel_queued`, `syncing`, `synced`, `sync_failed`, `cancelled`, `rejected` |
+| `review_status` | text | Review lane ownership: `pending_review`, `active`, `rejected`, or `cancelled`. Changes are represented by a pending `event_change_proposals` row, never by `status`. |
 | `google_calendar_event_id` | text | Google Calendar event ID after sync |
 | `synced_at` | timestamptz | When synced to calendar |
-| `locked_until` | timestamptz | Worker lock expiration |
-| `locked_by` | text | Worker ID that claimed this event |
-| `sync_attempts` | integer | Number of sync attempts (default: 0) |
-| `max_sync_attempts` | integer | Maximum sync attempts (default: 3) |
-| `sync_error` | text | Last sync error message |
-| `sync_failure_code` | text, nullable | Typed classification of the last sync failure: `oauth_required`, `oauth_scope_required`, `provider_transient`, `rate_limited`, `invalid_event`, `permission_denied`, `unknown`. Control flow branches on this, never on `sync_error` text. Cleared on successful sync. |
-| `calendar_sync_action` | text, nullable | Worker-owned calendar intent: `upsert` or `cancel`. Cancellation transitions set `cancel` before queueing provider deletion. |
-| `calendar_work_generation` | bigint | Monotonic generation fencing calendar work. A transition into `cancel_queued` increments it so stale upserts cannot restore a cancelled event. |
-| `cancel_queued` | boolean | Legacy compatibility flag; the authoritative queue state is `status='cancel_queued'` plus `calendar_sync_action='cancel'`. |
-| `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry sync |
-| `dead_letter_reason` | text, nullable | Reason for permanent sync failure |
-| `dead_letter_at` | timestamptz, nullable | When the event sync was abandoned |
 | `recovery_id` | uuid, FK nullable | `integration_recoveries.id` of the generation that requeued this event (audit only; progress counting). `ON DELETE SET NULL`. |
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
@@ -318,8 +307,6 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 | `source_origin` | text | `email`, `google_calendar`, or `google_photos` |
 | `google_calendar_source_event_id` | text, nullable | Google Calendar event ID (required for calendar sources) |
 | `extracted_data` | jsonb | Raw extraction data from source |
-| `event_snapshot_before` | jsonb, nullable | Event fields before an update (undo) |
-| `change_set` | jsonb, nullable | Structured field diffs for Changes lane / History |
 | `created_at` | timestamptz | Auto-set |
 
 **Constraints:**
@@ -328,9 +315,8 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 - Partial unique indexes: `(event_id, email_id)` for email sources, `(event_id, google_calendar_source_event_id)` for calendar sources
 
 **RLS Policies:** Authenticated users may select own event sources only (via
-`events.user_id`). Service-owned RPCs are the only writers; `is_undone`,
-`change_set`, and `event_snapshot_before` are compatibility mirrors for
-deployed clients.
+`events.user_id`). Service-owned RPCs are the only writers. Proposal payloads
+and undo snapshots live in `event_change_proposals`, not in provenance rows.
 
 ### `event_change_proposals`
 
@@ -342,7 +328,7 @@ selected by its own UUID and never reconstructed by choosing the latest
 |--------|------|-------------|
 | `id` | uuid, PK | Proposal ID |
 | `event_id` / `user_id` | uuid, FK | Event and owner |
-| `source_id` | uuid, unique FK | Compatibility provenance source; deletion is restricted |
+| `source_id` | uuid, unique FK | Provenance source; deletion is restricted |
 | `kind` | text | `material_update` or `cancellation` |
 | `status` | text | `pending`, `applied`, `rejected`, `superseded`, `closed_legacy` |
 | `change_set` | jsonb | Non-empty reversible field-diff envelope |
@@ -515,7 +501,7 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 | `claim_unprocessed_email(worker_id, lock_duration)` | First opportunistically reclaims one expired `processing` lease elsewhere in the table (retries it if attempts remain, otherwise terminates it as `failed`/`lease_expired_at_limit`), then atomically claims next pending email, oldest `date_sent` first (`NULLS LAST`, then `created_at`) — bulk scans ingest newest-first, so claiming oldest-sent-first avoids an older email "updating" an event already created from a newer one. A `pending` row is invariant-guaranteed claimable: `attempts < max_attempts`, no owner, no unexpired lock (`emails_pending_is_claimable_check`) |
 | `fail_email_processing(email_id, worker_id, generation, error_code, error_detail, retry_base_seconds, retry_max_seconds)` | Service-role only. Fenced retry-or-terminate transition for a claimed email; a stale `(worker_id, generation)` is a no-op (`fenced: true`) so a replacement worker's claim is never overwritten |
 | `claim_pending_photo(worker_id, lock_duration)` | Atomically claim next pending photo |
-| `claim_approved_event(worker_id, lock_duration)` | Atomically claim next approved event (requires an active `google_calendar` integration for the event's user; respects `next_retry_at`) |
+| `claim_calendar_work_item(worker_id, lease_seconds)` | Atomically claim the next calendar work item with an active provider integration and fence its lease |
 | `claim_next_scheduled_task(task_types, worker_id, lock_duration)` | Atomically claim next scheduled task |
 | `claim_integration_recovery(worker_id, lock_seconds)` | Atomically claim the next `pending` recovery generation (`FOR UPDATE SKIP LOCKED`), also reclaiming `processing` rows whose lock expired (crashed-worker self-heal) |
 
@@ -572,9 +558,9 @@ provider identity becomes `cancel_queued`/`cancel`, while a local-only event
 becomes terminal `cancelled`. Unmatched and ambiguous cancellations are stored
 only as email processing outcomes (`cancellation_unmatched` or
 `cancellation_ambiguous`). The calendar worker calls the provider delete
-operation, then completes the fenced transition to `cancelled`; retries,
-OAuth parking, quota deferral, and expired locks preserve the cancellation
-action. `apply_pending_change()` does not perform provider I/O.
+operation, then completes the fenced `calendar_work_items` transition to
+`cancelled`; retries, OAuth parking, quota deferral, and expired locks remain
+item state. Proposal RPCs do not perform provider I/O.
 
 ### Usage Summary
 
@@ -586,7 +572,7 @@ action. `apply_pending_change()` does not perform provider I/O.
 
 | Function | Description |
 |----------|-------------|
-| `ignore_sender_and_reject_pending(p_sender_email, p_sender_domain)` | Retroactive, atomic sender ignore: upserts the `ignore` rule, rejects `pending_review` events with a non-undone email source from that sender (New lane), and discards `pending_change` proposals whose active update/cancellation source is from that sender — restoring the event's pre-proposal snapshot (mirrors `selko.services.events.reject_pending_change`). Returns `{rejected_new, discarded_changes}`. `SECURITY INVOKER`, granted to `authenticated`. |
+| `ignore_sender_and_reject_pending(p_sender_email, p_sender_domain)` | Retroactive, atomic sender ignore: upserts the `ignore` rule, rejects `pending_review` events sourced by that sender, and rejects active proposals whose provenance source is from that sender. Returns `{rejected_new, discarded_changes}`. `SECURITY INVOKER`, granted to `authenticated`. |
 
 ## Supabase Storage
 

@@ -45,7 +45,7 @@ def _cleanup(admin_client, test_user_id):
     _clear()
 
 
-def _make_blocked_event(admin_client, user_id, sync_failure_code="oauth_required"):
+def _make_blocked_event(admin_client, user_id, failure_code="oauth_required"):
     result = (
         admin_client.table("events")
         .insert({
@@ -53,11 +53,21 @@ def _make_blocked_event(admin_client, user_id, sync_failure_code="oauth_required
             "title": "Recovery worker test event",
             "start_datetime": "2026-05-01T14:00:00Z",
             "status": "approved",
-            "sync_failure_code": sync_failure_code,
         })
         .execute()
     )
-    return result.data[0]["id"]
+    event_id = result.data[0]["id"]
+    admin_client.rpc("enqueue_calendar_work", {
+        "p_event_id": event_id,
+        "p_user_id": user_id,
+        "p_action": "upsert",
+        "p_desired_event": {"title": "Recovery worker test event"},
+    }).execute()
+    if failure_code is not None:
+        admin_client.table("calendar_work_items").update({
+            "failure_code": failure_code,
+        }).eq("event_id", event_id).execute()
+    return event_id
 
 
 async def _create_and_claim_recovery(admin_client, user_id, pg_pool):
@@ -79,12 +89,8 @@ async def _create_and_claim_recovery(admin_client, user_id, pg_pool):
 class TestRequeueCalendarRecoveryBatch:
     async def test_tags_only_oauth_blocked_approved_events(self, admin_client, test_user_id, pg_pool):
         oauth_event_id = _make_blocked_event(admin_client, test_user_id, "oauth_required")
-        scope_event_id = _make_blocked_event(
-            admin_client, test_user_id, "oauth_scope_required"
-        )
-        untouched_event_id = _make_blocked_event(
-            admin_client, test_user_id, "permission_denied"
-        )
+        scope_event_id = _make_blocked_event(admin_client, test_user_id, "oauth_scope_required")
+        untouched_event_id = _make_blocked_event(admin_client, test_user_id, "permission_denied")
         no_code_event_id = _make_blocked_event(admin_client, test_user_id, None)
 
         recovery = await _create_and_claim_recovery(admin_client, test_user_id, pg_pool)

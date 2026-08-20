@@ -243,8 +243,6 @@ struct ReviewQueueViewModelTests {
             sourceOrigin: .googleCalendar,
             sourceType: .update,
             extractedData: nil,
-            changeSet: nil,
-            isUndone: false,
             createdAt: Date(),
             emails: nil
         )
@@ -259,7 +257,7 @@ struct ReviewQueueViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .pendingChange,
+            status: .synced,
             googleCalendarEventId: "gcal-1",
             syncedAt: nil,
             createdAt: Date(),
@@ -289,7 +287,7 @@ struct ReviewQueueViewModelTests {
         viewModel.integrations = [integration(.googleCalendar)]
         let source = EventSource(
             id: UUID(), eventId: event.id, emailId: UUID(), sourceOrigin: .email, sourceType: .newInvitation,
-            extractedData: nil, changeSet: nil, isUndone: false, createdAt: Date(),
+            extractedData: nil, createdAt: Date(),
             emails: Email(id: UUID(), userId: nil, integrationId: nil, emailProvider: "gmail", providerMessageId: "m", threadId: "t", subject: "Hi", fromEmail: "a@b.com", fromName: "A", toEmails: nil, dateSent: Date(), snippet: nil, providerLabels: nil, isSpam: false, isTrash: false, isPromotions: false, isSocial: false, isUpdates: false, isForums: false, isPrimary: true, isImportant: false, isStarred: false, isUnread: true, hasAttachments: false, createdAt: Date())
         )
         var eventWithSource = event

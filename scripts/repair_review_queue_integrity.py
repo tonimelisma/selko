@@ -16,7 +16,7 @@ import hashlib
 import json
 import sys
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -33,7 +33,6 @@ ALLOWED_ACTIONS = {
 }
 ALLOWED_MERGE_STATUSES = {
     "pending_review",
-    "pending_change",
     "approved",
     "synced",
     "sync_failed",
@@ -63,9 +62,6 @@ SOURCE_HASH_FIELDS = (
     "source_origin",
     "source_type",
     "extracted_data",
-    "event_snapshot_before",
-    "change_set",
-    "is_undone",
     "created_at",
 )
 
@@ -233,9 +229,22 @@ async def _active_source_locks(conn: asyncpg.Connection, event_ids: list[str]) -
     return [str(row["id"]) for row in rows]
 
 
-def _event_is_locked(row: dict[str, Any]) -> bool:
-    locked_until = row.get("locked_until")
-    return bool(row.get("locked_by") and locked_until and locked_until > datetime.now(locked_until.tzinfo or timezone.utc))
+async def _active_calendar_work_locks(conn: asyncpg.Connection, event_ids: list[str]) -> list[str]:
+    if not event_ids:
+        return []
+    rows = await conn.fetch(
+        """
+        SELECT event_id
+        FROM public.calendar_work_items
+        WHERE event_id = ANY($1::uuid[])
+          AND status = 'processing'
+          AND locked_by IS NOT NULL
+          AND locked_until > now()
+        ORDER BY event_id
+        """,
+        event_ids,
+    )
+    return [str(row["event_id"]) for row in rows]
 
 
 async def _check_merge(action: RepairAction, events: dict[str, dict[str, Any]], user_id: str, conn: asyncpg.Connection) -> list[str]:
@@ -249,8 +258,6 @@ async def _check_merge(action: RepairAction, events: dict[str, dict[str, Any]], 
         failures.append(f"event {survivor_id} field hash changed")
     if survivor["status"] not in ALLOWED_MERGE_STATUSES:
         failures.append(f"survivor {survivor_id} has disallowed status {survivor['status']}")
-    if _event_is_locked(survivor):
-        failures.append(f"event {survivor_id} has an active worker lock")
     for duplicate_id in duplicate_ids:
         duplicate = events[duplicate_id]
         if duplicate_id == survivor_id:
@@ -259,18 +266,18 @@ async def _check_merge(action: RepairAction, events: dict[str, dict[str, Any]], 
             failures.append(f"event {duplicate_id} field hash changed")
         if duplicate["status"] not in ALLOWED_MERGE_STATUSES:
             failures.append(f"duplicate {duplicate_id} has disallowed status {duplicate['status']}")
-        if _event_is_locked(duplicate):
-            failures.append(f"event {duplicate_id} has an active worker lock")
         if duplicate["google_calendar_event_id"] and survivor["google_calendar_event_id"] not in (None, duplicate["google_calendar_event_id"]):
             failures.append(f"duplicate {duplicate_id} has a conflicting calendar identity")
     locked = await _active_source_locks(conn, [survivor_id, *duplicate_ids])
     failures.extend(f"event {event_id} has an active email worker lock" for event_id in locked)
+    locked = await _active_calendar_work_locks(conn, [survivor_id, *duplicate_ids])
+    failures.extend(f"event {event_id} has an active calendar work lock" for event_id in locked)
     # The merge code explicitly reconciles same-email conflicts before moving
     # rows, so a unique(event_id,email_id) violation cannot be silent.
     return failures
 
 
-async def _check_cancel(action: RepairAction, events: dict[str, dict[str, Any]]) -> list[str]:
+async def _check_cancel(action: RepairAction, events: dict[str, dict[str, Any]], conn: asyncpg.Connection) -> list[str]:
     payload = action.payload
     row = events[payload["event_id"]]
     failures: list[str] = []
@@ -278,8 +285,8 @@ async def _check_cancel(action: RepairAction, events: dict[str, dict[str, Any]])
         failures.append(f"event {payload['event_id']} field hash changed")
     if row["status"] in {"cancelled", "rejected", "syncing"}:
         failures.append(f"event {payload['event_id']} cannot be cancelled from status {row['status']}")
-    if _event_is_locked(row):
-        failures.append(f"event {payload['event_id']} has an active worker lock")
+    if await _active_calendar_work_locks(conn, [payload["event_id"]]):
+        failures.append(f"event {payload['event_id']} has an active calendar work lock")
     return failures
 
 
@@ -328,7 +335,7 @@ async def _preconditions(conn: asyncpg.Connection, user_id: str, actions: list[R
         if action.kind == "merge_duplicate_group":
             failures.extend(await _check_merge(action, events, user_id, conn))
         elif action.kind == "cancel_event":
-            failures.extend(await _check_cancel(action, events))
+            failures.extend(await _check_cancel(action, events, conn))
         else:
             proposal, source_failures = await _check_proposal(action, proposal_rows, conn)
             failures.extend(source_failures)
@@ -358,7 +365,7 @@ async def _regenerate_attribution(conn: asyncpg.Connection, event_id: str) -> No
 
     rows = await conn.fetch(
         """
-        SELECT s.source_type, s.is_undone, s.created_at,
+        SELECT s.source_type, s.created_at,
                m.from_email, m.from_name, m.date_sent
         FROM public.event_sources s
         LEFT JOIN public.emails m ON m.id = s.email_id
@@ -394,7 +401,7 @@ async def _merge(conn: asyncpg.Connection, user_id: str, action: RepairAction, e
                 moved += 1
                 continue
             def richness(row: dict[str, Any]) -> tuple[int, int, str]:
-                return (int(not row["is_undone"]), len(json.dumps(row.get("extracted_data") or {}, sort_keys=True)), str(row.get("created_at") or ""))
+                return (len(json.dumps(row.get("extracted_data") or {}, sort_keys=True)), str(row.get("created_at") or ""))
             winner, loser = (source, existing) if richness(source) > richness(existing) else (existing, source)
             await _audit(conn, user_id, survivor_id, "merge_source", "duplicate_event_merge", {
                 "survivor_source_id": str(existing["id"]),
@@ -439,11 +446,10 @@ async def _apply(conn: asyncpg.Connection, user_id: str, actions: list[RepairAct
             await _audit(conn, user_id, event_id, "cancel_event", action.payload["reason"], {
                 "event_id": event_id,
                 "before_status": before["status"],
-                "before_calendar_sync_action": before.get("calendar_sync_action"),
-                "before_calendar_work_generation": before.get("calendar_work_generation"),
+                "before_work_item_table": "calendar_work_items",
             })
             changed += 1
-            reverse_ops.append({"action": "restore_event_state", "event_id": event_id, "before_status": before["status"], "before_calendar_sync_action": before.get("calendar_sync_action"), "before_calendar_work_generation": before.get("calendar_work_generation")})
+            reverse_ops.append({"action": "restore_event_state", "event_id": event_id, "before_status": before["status"]})
         else:
             proposal_id = action.payload["proposal_id"]
             proposal = proposals[proposal_id]
@@ -502,7 +508,7 @@ async def _run(args: argparse.Namespace) -> int:
         # those locks to make the inspection coherent.
         async with conn.transaction(isolation="serializable"):
             if not actions:
-                rows = await conn.fetch("SELECT id, user_id, status FROM public.events WHERE status IN ('pending_review', 'pending_change') ORDER BY id LIMIT 1000")
+                rows = await conn.fetch("SELECT id, user_id, status, review_status FROM public.events WHERE review_status IN ('pending_review', 'active') ORDER BY id LIMIT 1000")
                 print(f"DRY-RUN candidates={len(rows)}")
                 for row in rows:
                     print(f"event id={row['id']} user_id={row['user_id']} status={row['status']}")

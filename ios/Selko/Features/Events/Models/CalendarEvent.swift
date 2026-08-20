@@ -7,7 +7,6 @@ import Foundation
 
 enum EventStatus: String, Codable, Sendable {
     case pendingReview = "pending_review"
-    case pendingChange = "pending_change"
     case approved
     case syncing
     case synced
@@ -111,7 +110,6 @@ struct CalendarEvent: Identifiable, Codable, Sendable, Equatable {
 
     var isPendingChange: Bool {
         eventChangeProposals?.contains { $0.status == .pending } == true
-            || (eventChangeProposals == nil && status == .pendingChange)
     }
 
     var isNewReview: Bool {

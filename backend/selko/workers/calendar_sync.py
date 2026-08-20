@@ -55,7 +55,6 @@ async def sync_event(
     try:
         google_event_id = await asyncio.to_thread(
             sync_event_to_calendar, client, user_id, event_id,
-            write_local_state=False,
             expected_provider_revision=event.get("expected_provider_revision"),
             force_overwrite=bool(event.get("force_overwrite")),
         )
@@ -90,59 +89,3 @@ async def cancel_event(
     except CalendarsError as exc:
         logger.error("Failed to cancel event %s in Google Calendar: %s", event_id, exc)
         raise
-
-
-# Keep old function signature for backwards compatibility with existing tests
-async def process_calendar_sync_job(
-    client: Client,
-    config: Config,
-    job_id: str,
-    payload: dict[str, Any],
-) -> None:
-    """Legacy function for processing calendar_sync jobs.
-
-    This function is kept for backwards compatibility during the transition.
-    New code should use sync_event() directly.
-
-    Args:
-        client: Supabase client (with service role).
-        config: Application configuration.
-        job_id: UUID of the job being processed (unused in new architecture).
-        payload: Job payload with {event_id: str}.
-
-    Raises:
-        CalendarsError: If sync fails.
-    """
-    event_id = payload.get("event_id")
-
-    if not event_id:
-        raise ValueError("Missing event_id in payload")
-
-    logger.info(f"Syncing event {event_id} to Google Calendar")
-
-    # Fetch event from database
-    try:
-        event_result = client.table("events").select(
-            "*"
-        ).eq("id", event_id).single().execute()
-
-        event = event_result.data
-
-        if event["status"] != "approved":
-            logger.warning(
-                f"Event {event_id} is not approved (status: {event['status']}), "
-                "skipping calendar sync"
-            )
-            return
-
-    except Exception as e:
-        raise ValueError(f"Failed to fetch event {event_id}: {e}") from e
-
-    # Sync to Google Calendar
-    google_event_id = await sync_event(client, config, event)
-
-    # Update event status (legacy - new architecture handles this in pool.py)
-    client.table("events").update({
-        "status": "synced",
-        "google_calendar_event_id": google_event_id,
-    }).eq("id", event_id).execute()

@@ -21,8 +21,8 @@ Each spec follows a consistent template:
 
 Home screen of the app. Two review lanes grouped by sender:
 
-1. **New** — events to add to the calendar (`pending_review`)
-2. **Changes** — proposed updates to events already on the calendar (`pending_change`), showing field-level before → after diffs from `event_sources.change_set`
+1. **New** — events to add to the calendar (`review_status='pending_review'`)
+2. **Changes** — proposed updates to active events (`review_status='active'` with a pending `event_change_proposals` row), showing field-level before → after diffs from `event_change_proposals.change_set`
 
 Only a true first run (zero integration records) replaces this screen with
 onboarding. Returning-user connection failures appear in a contextual recovery
@@ -386,7 +386,7 @@ await updateEventStatus(eventId, 'rejected')
 
 ### Purpose
 
-Timeline of all actions — user approvals of **New** events and applied **Changes** (with field-level diffs from `change_set`). Every entry has an Undo button that returns the item to the matching Review lane (`pending_review` or `pending_change`).
+Timeline of all actions — user approvals of **New** events and applied **Changes** (with field-level diffs from proposal `change_set`). Every entry has an Undo button that returns the item to the matching Review lane (`pending_review` or an active event with a pending proposal).
 
 History is retained forever. Undo is available forever.
 
@@ -492,7 +492,7 @@ Note: A dedicated activity log table may be needed for richer history (especiall
 
 - **Undo (approved/synced event)**: immediately reverts status to `pending_review`, deletes from Google Calendar (pre-Selko state = no event), returns event to Review Queue with original AI-extracted values. No confirmation modal on the happy path.
 - **Undo (rejected event)**: returns event to `pending_review`, appears in Review Queue again with original AI-extracted values.
-- **Undo (applied change)**: restores Selko fields from `event_snapshot_before`, PATCHes Google Calendar back to that state (keeps the calendar event), sets `pending_change`.
+- **Undo (applied change)**: restores Selko fields from the proposal snapshot, queues any required provider write, and returns the proposal to `pending` with the event remaining `review_status='active'`.
 - **Undo when GCal was edited after Selko synced**: blocked with `CALENDAR_DIVERGED` (409). UI offers **Force Undo**, which applies the same pre-Selko calendar revert and overwrites the user's GCal edits.
 - **Retry (sync failure)**: re-triggers `syncEventToCalendar()`.
 - **Load More**: fetches next page, appends to list.

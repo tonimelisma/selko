@@ -34,7 +34,6 @@ class EventSourceResponse(BaseModel):
     email_date: datetime
     source_type: str  # new_invitation, update, cancellation, reminder
     source_quote: str  # Verbatim quote from email (collapsible in UI)
-    is_undone: bool
     created_at: datetime
 
 
@@ -132,7 +131,7 @@ class EventUndoResponse(BaseModel):
     """Result of undoing a History action back to a review lane."""
 
     event_id: str
-    status: Literal["pending_review", "pending_change"]
+    status: Literal["pending_review", "active"]
 
 
 class EventActionResponse(BaseModel):

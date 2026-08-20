@@ -26,7 +26,6 @@ class EventRepository(
 ) {
     private fun statusToString(status: EventStatus): String = when (status) {
         EventStatus.PENDING_REVIEW -> "pending_review"
-        EventStatus.PENDING_CHANGE -> "pending_change"
         EventStatus.APPROVED -> "approved"
         EventStatus.SYNCING -> "syncing"
         EventStatus.SYNCED -> "synced"
@@ -43,7 +42,7 @@ class EventRepository(
             val events = supabaseClient.from("events")
                 .select {
                     filter {
-                        isIn("status", listOf("pending_review", "pending_change"))
+                        isIn("review_status", listOf("pending_review", "active"))
                         or {
                             gte("end_datetime", nowStr)
                             gte("start_datetime", nowStr)

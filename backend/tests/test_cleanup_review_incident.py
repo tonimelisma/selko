@@ -20,8 +20,8 @@ _spec.loader.exec_module(cleanup_script)
 find_orphaned_outlook_email_ids = cleanup_script.find_orphaned_outlook_email_ids
 fetch_all_rows = cleanup_script.fetch_all_rows
 group_duplicate_pending_events = cleanup_script.group_duplicate_pending_events
-pending_change_has_orphaned_email_source = (
-    cleanup_script.pending_change_has_orphaned_email_source
+pending_proposal_has_orphaned_email_source = (
+    cleanup_script.pending_proposal_has_orphaned_email_source
 )
 
 
@@ -55,7 +55,7 @@ class TestPendingChangeOrphanDetection:
             {"id": "gcal", "source_type": "update", "email_id": None},
         ]
 
-        assert pending_change_has_orphaned_email_source(sources, {"orphan"})
+        assert pending_proposal_has_orphaned_email_source(sources, {"orphan"})
 
     def test_ignores_non_proposal_or_non_orphaned_email_sources(self):
         sources = [
@@ -63,7 +63,7 @@ class TestPendingChangeOrphanDetection:
             {"source_type": "update", "email_id": "kept"},
         ]
 
-        assert not pending_change_has_orphaned_email_source(sources, {"orphan"})
+        assert not pending_proposal_has_orphaned_email_source(sources, {"orphan"})
 
 
 class TestFindOrphanedOutlookEmailIds:

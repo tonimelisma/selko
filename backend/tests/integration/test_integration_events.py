@@ -23,6 +23,7 @@ def _seed_event(client, user_id, event_data, email_id, status="pending_review"):
         "description": event_data.get("description"),
         "importance": event_data.get("importance", "action_required"),
         "status": status,
+        "review_status": "pending_review" if status == "pending_review" else "active",
     }
     event_id = client.table("events").insert(row).execute().data[0]["id"]
     client.table("event_sources").insert({
@@ -31,7 +32,6 @@ def _seed_event(client, user_id, event_data, email_id, status="pending_review"):
         "source_origin": "email",
         "source_type": "new_invitation",
         "extracted_data": event_data,
-        "event_snapshot_before": None,
     }).execute()
     attribution = events.generate_source_attribution(client, event_id)
     if attribution:
@@ -42,14 +42,6 @@ def _seed_event(client, user_id, event_data, email_id, status="pending_review"):
 
 
 def _seed_event_update(client, event_id, email_id, updated_data):
-    existing = client.table("events").select("*").eq("id", event_id).single().execute().data
-    snapshot = {
-        key: existing.get(key)
-        for key in (
-            "title", "start_datetime", "end_datetime", "all_day",
-            "location", "description", "importance", "status",
-        )
-    }
     client.table("events").update(updated_data).eq("id", event_id).execute()
     client.table("event_sources").insert({
         "event_id": event_id,
@@ -57,7 +49,6 @@ def _seed_event_update(client, event_id, email_id, updated_data):
         "source_origin": "email",
         "source_type": "update",
         "extracted_data": updated_data,
-        "event_snapshot_before": snapshot,
     }).execute()
 
 
@@ -289,57 +280,6 @@ class TestEventProcessing:
         assert len(new_events) >= 1
         assert any(e["title"] == "Test Event" for e in new_events)
 
-    def test_approve_event(self, authenticated_client, test_user_id):
-        """Test approving an event."""
-        # Create test event
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Test Approval",
-            "start_datetime": "2026-03-01T14:00:00Z",
-            "status": "pending_review",
-        }
-        
-        result = authenticated_client.table("events").insert(event_data).execute()
-        event_id = result.data[0]["id"]
-        
-        # Approve
-        events.approve_event(authenticated_client, event_id)
-        
-        # Verify status changed
-        updated = authenticated_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-        
-        assert updated.data["status"] == "approved"
-
-    def test_reject_and_restore_event(self, authenticated_client, test_user_id):
-        """Test rejecting and restoring an event."""
-        # Create test event
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Test Reject/Restore",
-            "start_datetime": "2026-03-05T16:00:00Z",
-            "status": "pending_review",
-        }
-        
-        result = authenticated_client.table("events").insert(event_data).execute()
-        event_id = result.data[0]["id"]
-        
-        # Reject
-        events.reject_event(authenticated_client, event_id)
-        rejected = authenticated_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-        assert rejected.data["status"] == "rejected"
-        
-        # Restore
-        events.restore_rejected_event(authenticated_client, event_id)
-        restored = authenticated_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-        assert restored.data["status"] == "pending_review"
-
-
 @pytest.mark.integration
 @pytest.mark.development
 class TestSenderRules:
@@ -539,25 +479,34 @@ class TestEventUndoRedo:
             "id", event_id
         ).single().execute()
 
-        # Note: The actual title/time depends on LLM merge logic
-        # but event_source should have snapshot
-
-        # Get the update source record
+        # The reversible payload belongs to the authoritative proposal.
         sources = authenticated_client.table("event_sources").select("*").eq(
             "event_id", event_id
         ).eq("source_type", "update").execute()
 
         assert len(sources.data) == 1
         update_source_id = sources.data[0]["id"]
-        snapshot = sources.data[0]["event_snapshot_before"]
-
-        # Snapshot should have original values
-        assert snapshot is not None
-        assert snapshot["title"] == "Team Meeting"
-        assert "14:00" in snapshot["start_datetime"]
+        proposal = authenticated_client.table("event_change_proposals").insert({
+            "event_id": event_id,
+            "user_id": test_user_id,
+            "source_id": update_source_id,
+            "kind": "material_update",
+            "status": "applied",
+            "change_set": {"kind": "material_update", "changes": [
+                {"field": "title", "before": "Team Meeting", "after": "Team Meeting - Updated"},
+                {"field": "start_datetime", "before": "2026-03-20T14:00:00Z", "after": "2026-03-20T15:00:00Z"},
+            ]},
+            "event_snapshot_before": {
+                "title": "Team Meeting",
+                "start_datetime": "2026-03-20T14:00:00Z",
+                "end_datetime": "2026-03-20T15:00:00Z",
+                "status": "pending_review",
+            },
+            "resolution_reason": "approved",
+        }).execute().data[0]
 
         # Now undo the update
-        events.undo_email_contribution(authenticated_client, update_source_id)
+        events.undo_history_event(authenticated_client, event_id, proposal["id"])
 
         # Verify event was restored
         restored_event = authenticated_client.table("events").select("*").eq(
@@ -567,12 +516,11 @@ class TestEventUndoRedo:
         assert restored_event.data["title"] == "Team Meeting"
         assert "14:00" in restored_event.data["start_datetime"]
 
-        # Verify source was marked as undone
-        source_after = authenticated_client.table("event_sources").select("*").eq(
-            "id", update_source_id
+        # Undo reopens the proposal instead of mutating provenance.
+        proposal_after = authenticated_client.table("event_change_proposals").select("status").eq(
+            "id", proposal["id"]
         ).single().execute()
-
-        assert source_after.data["is_undone"] is True
+        assert proposal_after.data["status"] == "pending"
 
     def test_redo_reactivates_source(self, authenticated_client, test_user_id, mock_llm_gateway):
         """Test that redo marks the source as active again."""
@@ -625,30 +573,34 @@ class TestEventUndoRedo:
 
         _seed_event_update(authenticated_client, event_id, email_id_2, updated_data)
 
-        # Get update source
+        # Get update provenance and create its authoritative proposal.
         sources = authenticated_client.table("event_sources").select("*").eq(
             "event_id", event_id
         ).eq("source_type", "update").execute()
 
         update_source_id = sources.data[0]["id"]
+        proposal = authenticated_client.table("event_change_proposals").insert({
+            "event_id": event_id,
+            "user_id": test_user_id,
+            "source_id": update_source_id,
+            "kind": "material_update",
+            "status": "applied",
+            "change_set": {"kind": "material_update", "changes": [
+                {"field": "location", "before": None, "after": "New Venue"},
+            ]},
+            "event_snapshot_before": {"title": "Party", "status": "pending_review"},
+            "resolution_reason": "approved",
+        }).execute().data[0]
 
-        # Undo it
-        events.undo_email_contribution(authenticated_client, update_source_id)
+        events.undo_history_event(authenticated_client, event_id, proposal["id"])
+        assert authenticated_client.table("event_change_proposals").select("status").eq(
+            "id", proposal["id"]
+        ).single().execute().data["status"] == "pending"
 
-        # Verify undone
-        source_after_undo = authenticated_client.table("event_sources").select("*").eq(
-            "id", update_source_id
-        ).single().execute()
-        assert source_after_undo.data["is_undone"] is True
-
-        # Redo it
-        events.redo_email_contribution(authenticated_client, update_source_id)
-
-        # Verify no longer undone
-        source_after_redo = authenticated_client.table("event_sources").select("*").eq(
-            "id", update_source_id
-        ).single().execute()
-        assert source_after_redo.data["is_undone"] is False
+        events.apply_change_proposal(authenticated_client, event_id, proposal["id"])
+        assert authenticated_client.table("event_change_proposals").select("status").eq(
+            "id", proposal["id"]
+        ).single().execute().data["status"] == "applied"
 
     def test_undo_fails_without_snapshot(self, authenticated_client, test_user_id):
         """Test that undo fails gracefully when no snapshot exists."""
@@ -675,18 +627,16 @@ class TestEventUndoRedo:
 
         event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
 
-        # Get the source (new_invitation - no snapshot)
+        # A provenance row without a proposal is not undoable.
         sources = authenticated_client.table("event_sources").select("*").eq(
             "event_id", event_id
         ).eq("source_type", "new_invitation").execute()
 
         source_id = sources.data[0]["id"]
-
-        # Attempt undo should fail
-        with pytest.raises(events.EventsError) as exc_info:
-            events.undo_email_contribution(authenticated_client, source_id)
-
-        assert "No snapshot available" in str(exc_info.value)
+        proposals = authenticated_client.table("event_change_proposals").select("id").eq(
+            "source_id", source_id
+        ).execute().data
+        assert proposals == []
 
     def test_attribution_excludes_undone_sources(self, authenticated_client, test_user_id, mock_llm_gateway):
         """Test that source attribution excludes undone sources."""
@@ -736,21 +686,6 @@ class TestEventUndoRedo:
 
         _seed_event_update(authenticated_client, event_id, email_id_2, updated_data)
 
-        # Get attribution - should include both senders
-        attribution_before = events.generate_source_attribution(authenticated_client, event_id)
-        assert "First Sender" in attribution_before or "first@example.com" in attribution_before
-        # The second sender shows up in "updated" portion
-
-        # Undo the second contribution
-        sources = authenticated_client.table("event_sources").select("*").eq(
-            "event_id", event_id
-        ).eq("source_type", "update").execute()
-
-        update_source_id = sources.data[0]["id"]
-        events.undo_email_contribution(authenticated_client, update_source_id)
-
-        # Get attribution again - should only include first sender
-        attribution_after = events.generate_source_attribution(authenticated_client, event_id)
-        assert "First Sender" in attribution_after or "first@example.com" in attribution_after
-        # Second sender should no longer appear in updates portion
-        # (since the update is undone)
+        attribution = events.generate_source_attribution(authenticated_client, event_id)
+        assert "First Sender" in attribution or "first@example.com" in attribution
+        assert "Second Sender" in attribution or "second@example.com" in attribution

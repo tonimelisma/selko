@@ -1,5 +1,9 @@
 # Calendar Identity and Cancellation
 
+> Historical requirements record. The current cancellation and delivery
+> owner is `calendar_work_items`; event-level queue columns described below
+> were removed by S5.
+
 **Status:** C1 and C2 implemented in this increment; C3 remains planned.
 
 **Written:** 2026-08-12.

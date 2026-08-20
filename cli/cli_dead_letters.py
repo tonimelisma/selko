@@ -90,16 +90,15 @@ def _list_dead_photos(client) -> list:
 
 
 def _list_dead_events(client) -> list:
-    """Fetch dead-lettered events."""
+    """Fetch terminal calendar work items with their event titles."""
     result = (
-        client.table("events")
+        client.table("calendar_work_items")
         .select(
-            "id, title, status, sync_error, dead_letter_reason, "
-            "dead_letter_at, sync_attempts, max_sync_attempts"
+            "id, event_id, status, failure_code, failure_detail, "
+            "attempts, max_attempts, updated_at, events(title)"
         )
-        .eq("status", "sync_failed")
-        .not_.is_("dead_letter_at", "null")
-        .order("dead_letter_at", desc=True)
+        .in_("status", ["failed", "blocked"])
+        .order("updated_at", desc=True)
         .limit(50)
         .execute()
     )
@@ -178,10 +177,10 @@ def _display_events_table(events: list) -> None:
     for event in events:
         table.add_row(
             event["id"][:8],
-            _truncate(event.get("title"), 35),
-            _truncate(event.get("dead_letter_reason"), 30),
-            f"{event.get('sync_attempts', 0)}/{event.get('max_sync_attempts', 3)}",
-            (event.get("dead_letter_at") or "")[:19],
+            _truncate((event.get("events") or {}).get("title"), 35),
+            _truncate(event.get("failure_detail") or event.get("failure_code"), 30),
+            f"{event.get('attempts', 0)}/{event.get('max_attempts', 3)}",
+            (event.get("updated_at") or "")[:19],
         )
 
     console.print(table)
@@ -242,7 +241,7 @@ def inspect(
     client = get_authenticated_client(config)
 
     # Map singular type to table name
-    table_map = {"email": "emails", "photo": "photos", "event": "events"}
+    table_map = {"email": "emails", "photo": "photos", "event": "calendar_work_items"}
     table_name = table_map[item_type]
 
     # Resolve partial ID
@@ -309,7 +308,7 @@ def retry(
     if item_type == "event":
         result = (
             client.table(table_name)
-            .select("id, title, status, dead_letter_at")
+            .select("id, event_id, status, failure_code, failure_detail, events(title)")
             .eq("id", full_id)
             .single()
             .execute()
@@ -336,7 +335,11 @@ def retry(
         console.print(f"[red]Item not found: {full_id}[/red]")
         raise typer.Exit(1)
 
-    if not record.get("dead_letter_at"):
+    if item_type == "event":
+        if record.get("status") not in {"failed", "blocked"}:
+            console.print(f"[yellow]Work item {full_id[:8]} is not terminal[/yellow]")
+            raise typer.Exit(1)
+    elif not record.get("dead_letter_at"):
         console.print(f"[yellow]Item {full_id[:8]} is not dead-lettered[/yellow]")
         raise typer.Exit(1)
 
@@ -346,7 +349,7 @@ def retry(
     elif item_type == "photo":
         label = record.get("filename", "Unknown")
     else:
-        label = record.get("title", "Untitled")
+        label = (record.get("events") or {}).get("title", "Untitled")
 
     console.print(f"[bold]Retry {item_type}:[/bold] {label}")
     console.print(f"[dim]ID: {full_id}[/dim]")
@@ -370,18 +373,12 @@ def retry(
             }
         ).eq("id", full_id).execute()
     elif item_type == "event":
-        client.table(table_name).update(
-            {
-                "status": "approved",
-                "dead_letter_at": None,
-                "dead_letter_reason": None,
-                "sync_error": None,
-                "locked_by": None,
-                "locked_until": None,
-                "next_retry_at": None,
-                "sync_attempts": 0,
-            }
-        ).eq("id", full_id).execute()
+        console.print(
+            "[yellow]Calendar work items are service-owned. Retry this event "
+            "from the event detail/API so the worker-owned enqueue transition "
+            "can be fenced correctly.[/yellow]"
+        )
+        raise typer.Exit(2)
 
     console.print(f"[green]Reset {item_type} {full_id[:8]} for reprocessing[/green]")
     console.print("[dim]The item will be picked up by the next worker cycle.[/dim]")

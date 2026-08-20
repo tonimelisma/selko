@@ -15,7 +15,7 @@ export function resolveEventSender(event, labels = {}) {
 
 	/** @type {any[]} */
 	const rawSources = event?.event_sources || [];
-	const sources = rawSources.filter(/** @param {any} s */ (s) => !s?.is_undone);
+	const sources = rawSources;
 
 	const emailSource = sources.find(
 		/** @param {any} s */

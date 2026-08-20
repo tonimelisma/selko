@@ -264,9 +264,9 @@ def do_seed(config):
             "all_day": True,
             "location": "TechCorp HQ, Building 5, Conference Room A",
             "description": "Full-day offsite to plan Q2 roadmap. Lunch will be provided.",
-            # Enter pending_change only after its active proposal is inserted.
-            # The database invariant intentionally rejects orphan lane rows.
+            # Changes are represented by an active proposal, not an event status.
             "status": "synced",
+            "review_status": "active",
             "importance": "action_required",
             "updated_at": (now - timedelta(minutes=60)).isoformat(),
             "source_attribution": "From email: Q2 Planning Offsite Details",
@@ -323,7 +323,6 @@ def do_seed(config):
             "description": "Weekly yoga class.",
             "status": "sync_failed",
             "importance": "action_required",
-            "sync_error": "Failed to connect to Google Calendar API",
             "updated_at": (now - timedelta(hours=6)).isoformat(),
             "source_attribution": "",
         },
@@ -378,24 +377,6 @@ def do_seed(config):
                 "location": "TechCorp HQ, Building 3, Conference Room B",
                 "start_datetime": make_dt(7, 9),
             },
-            "event_snapshot_before": {
-                "title": "Q2 Planning Offsite",
-                "location": "TechCorp HQ, Building 5, Conference Room A",
-                "start_datetime": make_dt(7, 9),
-                "status": "synced",
-            },
-            "change_set": {
-                "kind": "material_update",
-                "changes": [
-                    {
-                        "field": "location",
-                        "before": "TechCorp HQ, Building 5, Conference Room A",
-                        "after": "TechCorp HQ, Building 3, Conference Room B",
-                        "reason": "Room moved to Building 3",
-                    }
-                ],
-                "reasoning": "Email updates the offsite location",
-            },
         },
         {
             "event_id": event_ids["Dentist - Dr. Martinez"],
@@ -415,9 +396,82 @@ def do_seed(config):
     result = admin.table("event_sources").insert(event_sources_data).execute()
     print(f"  Inserted {len(result.data)} event sources")
 
-    admin.table("events").update({"status": "pending_change"}).eq(
-        "id", event_ids["Q2 Planning Offsite"]
-    ).execute()
+    q2_source = next(
+        row for row in result.data
+        if row["event_id"] == event_ids["Q2 Planning Offsite"]
+    )
+    admin.table("event_change_proposals").insert({
+        "event_id": event_ids["Q2 Planning Offsite"],
+        "user_id": user_id,
+        "source_id": q2_source["id"],
+        "kind": "material_update",
+        "status": "pending",
+        "event_snapshot_before": {
+            "title": "Q2 Planning Offsite",
+            "location": "TechCorp HQ, Building 5, Conference Room A",
+            "start_datetime": make_dt(7, 9),
+            "status": "synced",
+        },
+        "change_set": {
+            "kind": "material_update",
+            "changes": [{
+                "field": "location",
+                "before": "TechCorp HQ, Building 5, Conference Room A",
+                "after": "TechCorp HQ, Building 3, Conference Room B",
+                "reason": "Room moved to Building 3",
+            }],
+            "reasoning": "Email updates the offsite location",
+        },
+    }).execute()
+
+    admin.table("calendar_work_items").insert([
+        {
+            "event_id": event_ids["Q2 Planning Offsite"],
+            "user_id": user_id,
+            "action": "upsert",
+            "generation": 1,
+            "status": "succeeded",
+            "desired_event": {"title": "Q2 Planning Offsite"},
+            "attempts": 1,
+            "max_attempts": 3,
+            "completed_at": (now - timedelta(minutes=55)).isoformat(),
+        },
+        {
+            "event_id": event_ids["Dentist - Dr. Martinez"],
+            "user_id": user_id,
+            "action": "upsert",
+            "generation": 1,
+            "status": "succeeded",
+            "desired_event": {"title": "Dentist - Dr. Martinez"},
+            "provider_event_id": "fake_gcal_id_1",
+            "attempts": 1,
+            "max_attempts": 3,
+            "completed_at": (now - timedelta(hours=1)).isoformat(),
+        },
+        {
+            "event_id": event_ids["Team Standup"],
+            "user_id": user_id,
+            "action": "upsert",
+            "generation": 1,
+            "status": "pending",
+            "desired_event": {"title": "Team Standup"},
+            "attempts": 0,
+            "max_attempts": 3,
+        },
+        {
+            "event_id": event_ids["Yoga Class"],
+            "user_id": user_id,
+            "action": "upsert",
+            "generation": 1,
+            "status": "failed",
+            "desired_event": {"title": "Yoga Class"},
+            "attempts": 3,
+            "max_attempts": 3,
+            "failure_code": "provider_transient",
+            "failure_detail": "Failed to connect to Google Calendar API",
+            "completed_at": (now - timedelta(hours=6)).isoformat(),
+        },
+    ]).execute()
 
     # Step 7: Insert user_calendar_settings
     print("Inserting calendar settings...")

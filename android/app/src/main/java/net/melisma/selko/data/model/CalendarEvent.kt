@@ -7,7 +7,6 @@ import kotlin.time.Instant
 @Serializable
 enum class EventStatus {
     @SerialName("pending_review") PENDING_REVIEW,
-    @SerialName("pending_change") PENDING_CHANGE,
     @SerialName("approved") APPROVED,
     @SerialName("syncing") SYNCING,
     @SerialName("synced") SYNCED,
@@ -51,8 +50,7 @@ data class CalendarEvent(
         get() = isNewReview || isPendingChange
 
     val isPendingChange: Boolean
-        get() = eventChangeProposals?.any { it.status == EventChangeProposalStatus.PENDING }
-            ?: (status == EventStatus.PENDING_CHANGE)
+        get() = eventChangeProposals?.any { it.status == EventChangeProposalStatus.PENDING } == true
 
     val isNewReview: Boolean
         get() = reviewStatus == EventReviewStatus.PENDING_REVIEW ||

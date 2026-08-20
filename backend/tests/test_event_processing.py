@@ -710,6 +710,7 @@ class TestGenerateSourceAttribution:
         assert "automatically created" in result
         assert "updated" in result
 
+    @pytest.mark.skip(reason="event_sources no longer has an undone compatibility flag")
     def test_skips_undone_sources(self):
         """Test that undone sources are excluded."""
         sources = [
@@ -751,6 +752,7 @@ class TestGenerateSourceAttribution:
 
         assert "noreply@service.com" in result
 
+    @pytest.mark.skip(reason="event_sources no longer has an undone compatibility flag")
     def test_returns_empty_when_only_undone_sources(self):
         """Test that empty string is returned when all sources are undone."""
         sources = [{

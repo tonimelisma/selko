@@ -32,8 +32,8 @@ from selko.services.calendars import (
 )
 from selko.services.events import (
     EventsError,
-    apply_pending_change,
-    reject_pending_change,
+    apply_change_proposal,
+    reject_change_proposal,
     undo_history_event,
 )
 
@@ -72,7 +72,7 @@ async def sync_event(
         response_fields = (
             "user_id, status, synced_at, google_calendar_event_id, title, "
             "start_datetime, end_datetime, all_day, location, description, "
-            "importance, source_attribution, calendar_sync_action"
+            "importance, source_attribution"
         )
         event_result = (
             client.table("events")
@@ -119,7 +119,7 @@ async def sync_event(
             service_client.rpc("enqueue_calendar_work", {
                 "p_event_id": str(event_id),
                 "p_user_id": user.id,
-                "p_action": event_result.data.get("calendar_sync_action") or "upsert",
+                "p_action": "upsert",
                 "p_desired_event": desired_event,
                 "p_expected_provider_revision": None,
                 "p_force_overwrite": False,
@@ -270,7 +270,7 @@ async def unsync_event(
 
 
 def _get_owned_event(client: Client, user_id: str, event_id: UUID) -> dict:
-    event_result = client.table("events").select("user_id, status").eq(
+    event_result = client.table("events").select("user_id, status, review_status").eq(
         "id", str(event_id)
     ).maybe_single().execute()
     if event_result is None or event_result.data is None:
@@ -286,6 +286,24 @@ def _get_owned_event(client: Client, user_id: str, event_id: UUID) -> dict:
     return event_result.data
 
 
+def _get_owned_pending_proposal(client: Client, user_id: str, event_id: UUID) -> dict:
+    result = (
+        client.table("event_change_proposals")
+        .select("id, event_id, user_id, status")
+        .eq("event_id", str(event_id))
+        .eq("user_id", user_id)
+        .eq("status", "pending")
+        .maybe_single()
+        .execute()
+    )
+    if result is None or result.data is None:
+        raise HTTPException(
+            status_code=400,
+            detail=error_detail(ErrorCode.INVALID_REQUEST, "Event has no pending change proposal"),
+        )
+    return result.data
+
+
 @router.post("/{event_id}/apply-change", response_model=EventChangeResponse)
 async def apply_change(
     event_id: UUID,
@@ -293,18 +311,11 @@ async def apply_change(
     service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventChangeResponse:
-    """Apply a pending_change proposal and mark the event approved."""
-    event = _get_owned_event(client, user.id, event_id)
-    if event["status"] != "pending_change":
-        raise HTTPException(
-            status_code=400,
-            detail=error_detail(
-                ErrorCode.INVALID_REQUEST,
-                f"Event must be pending_change (current status: {event['status']})",
-            ),
-        )
+    """Apply the event's authoritative pending change proposal."""
+    _get_owned_event(client, user.id, event_id)
+    proposal = _get_owned_pending_proposal(client, user.id, event_id)
     try:
-        apply_pending_change(service_client, str(event_id))
+        applied = apply_change_proposal(service_client, str(event_id), proposal["id"])
         # Nudge calendar scheduler for the newly approved event (egress inc 5).
         try:
             from selko.api.app import worker_pool as _pool
@@ -313,7 +324,7 @@ async def apply_change(
                 _pool.nudge()
         except Exception:
             pass
-        return EventChangeResponse(event_id=str(event_id), status="approved")
+        return EventChangeResponse(event_id=str(event_id), status=applied["status"])
     except EventsError as e:
         raise HTTPException(
             status_code=400,
@@ -328,18 +339,11 @@ async def reject_change(
     service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventChangeResponse:
-    """Discard a pending_change proposal."""
-    event = _get_owned_event(client, user.id, event_id)
-    if event["status"] != "pending_change":
-        raise HTTPException(
-            status_code=400,
-            detail=error_detail(
-                ErrorCode.INVALID_REQUEST,
-                f"Event must be pending_change (current status: {event['status']})",
-            ),
-        )
+    """Reject the event's authoritative pending change proposal."""
+    _get_owned_event(client, user.id, event_id)
+    proposal = _get_owned_pending_proposal(client, user.id, event_id)
     try:
-        status = reject_pending_change(service_client, str(event_id))
+        status = reject_change_proposal(service_client, str(event_id), proposal["id"])
         return EventChangeResponse(event_id=str(event_id), status=status)
     except EventsError as e:
         raise HTTPException(

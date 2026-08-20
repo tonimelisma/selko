@@ -1,5 +1,9 @@
 # Stub Rollback and Gate Repair
 
+> Historical gate-repair record. It documents the pre-S5 compatibility
+> rollout; current state ownership is defined in `CLAUDE.md` and the S5
+> migration.
+
 **Status:** Planned; nothing implemented. **This is the next increment. Nothing
 else may merge before G1–G4 are done.**
 

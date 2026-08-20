@@ -736,7 +736,9 @@ class TestCalendarSyncWorker:
             "id": "ev1",
             "user_id": "u1",
             "title": "Meeting",
-            "sync_attempts": 2,
+            "calendar_work_item_action": "upsert",
+            "calendar_work_item_generation": 1,
+            "calendar_work_item_attempts": 2,
         }
         quota_result = MagicMock(
             allowed=False,
@@ -760,6 +762,8 @@ class TestCalendarSyncWorker:
             "ev1",
             2,
             "2026-08-01T00:00:00+00:00",
+            "worker-1",
+            1,
         )
         sync.assert_not_awaited()
         complete.assert_not_awaited()
@@ -783,7 +787,9 @@ class TestCalendarSyncWorker:
             "id": "ev1",
             "user_id": "u1",
             "title": "Meeting",
-            "sync_attempts": 1,
+            "calendar_work_item_action": "upsert",
+            "calendar_work_item_generation": 1,
+            "calendar_work_item_attempts": 1,
         }
         quota_result = MagicMock(allowed=True)
 
@@ -809,6 +815,8 @@ class TestCalendarSyncWorker:
             1,
             "oauth_required",
             "Google Calendar needs to be reconnected.",
+            "worker-1",
+            1,
         )
         fail.assert_not_awaited()
         cb.record_failure.assert_not_called()
@@ -1238,7 +1246,9 @@ class TestCalendarSyncWorker:
             "id": "ev1",
             "user_id": "u1",
             "title": "Meeting",
-            "sync_attempts": 2,
+            "calendar_work_item_action": "upsert",
+            "calendar_work_item_generation": 1,
+            "calendar_work_item_attempts": 2,
         }
         quota_result = MagicMock(
             allowed=False,
@@ -1262,6 +1272,8 @@ class TestCalendarSyncWorker:
             "ev1",
             2,
             "2026-08-01T00:00:00+00:00",
+            "worker-1",
+            1,
         )
         sync.assert_not_awaited()
         complete.assert_not_awaited()
@@ -1285,7 +1297,9 @@ class TestCalendarSyncWorker:
             "id": "ev1",
             "user_id": "u1",
             "title": "Meeting",
-            "sync_attempts": 1,
+            "calendar_work_item_action": "upsert",
+            "calendar_work_item_generation": 1,
+            "calendar_work_item_attempts": 1,
         }
         quota_result = MagicMock(allowed=True)
 
@@ -1311,6 +1325,8 @@ class TestCalendarSyncWorker:
             1,
             "oauth_required",
             "Google Calendar needs to be reconnected.",
+            "worker-1",
+            1,
         )
         fail.assert_not_awaited()
         cb.record_failure.assert_not_called()
