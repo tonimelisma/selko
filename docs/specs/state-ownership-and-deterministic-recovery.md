@@ -5,9 +5,11 @@
 > calendar queue columns describe the pre-S5 compatibility phases, not current
 > interfaces. See `CLAUDE.md` and `docs/database-schema.md` for the live model.
 
-**Status:** S1–S5 implemented in the current revision; S5 still requires the
-real-Postgres/staging gate and operator production-observation gate before this
-record can be retired.
+**Status:** S1–S5 implemented in the current revision. The post-merge staging
+migration, deploy, health, and integration gates passed on 2026-08-20; the
+local real-Postgres gate remains unavailable in this environment, and the
+operator production-observation/cutover gate remains before this record can be
+retired.
 
 **Written:** 2026-08-13, after repairing a production Changes card whose
 `events.status = 'pending_change'` row had no active proposal, then auditing
