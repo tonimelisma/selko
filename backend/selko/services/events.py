@@ -1869,7 +1869,6 @@ async def complete_event_cancellation(
 async def defer_event_sync_for_quota(
     pool,
     event_id: str,
-    sync_attempts: int,
     next_retry_at: str,
     worker_id: str | None = None,
     generation: int | None = None,
@@ -1904,7 +1903,6 @@ async def defer_event_sync_for_quota(
 async def park_event_for_oauth_reauth(
     pool,
     event_id: str,
-    sync_attempts: int,
     sync_failure_code: str,
     user_message: str,
     worker_id: str | None = None,
