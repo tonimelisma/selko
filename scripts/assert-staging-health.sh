@@ -11,6 +11,10 @@ set -euo pipefail
 
 surface="${1:-}"
 case "$surface" in
+  root)
+    filter='(.status == "ok")'
+    failure="staging API health status is not ok"
+    ;;
   ingestion)
     filter='
       (.status == "ok") and
@@ -25,7 +29,7 @@ case "$surface" in
     failure="staging egress health does not prove the asyncpg worker transport is active"
     ;;
   *)
-    echo "ERROR: expected health surface 'ingestion' or 'egress'" >&2
+    echo "ERROR: expected health surface 'root', 'ingestion', or 'egress'" >&2
     exit 2
     ;;
 esac
