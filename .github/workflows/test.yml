@@ -28,6 +28,11 @@ on:
         required: true
         type: boolean
         default: false
+      require_workers:
+        description: "Require staging background workers, listener, and asyncpg transport"
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   changes:
@@ -340,8 +345,16 @@ jobs:
       - name: Check staging health surfaces
         if: inputs.staging_action == 'deploy'
         run: |
-          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health/ingestion
-          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health/egress
+          health_json=$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health)
+          printf '%s\n' "$health_json" | ./scripts/assert-staging-health.sh root
+          ingestion_json=$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health/ingestion)
+          egress_json=$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health/egress)
+          printf '%s\n' "$ingestion_json"
+          printf '%s\n' "$egress_json"
+          if [[ "${{ inputs.require_workers }}" == "true" ]]; then
+            printf '%s\n' "$ingestion_json" | ./scripts/assert-staging-health.sh ingestion
+            printf '%s\n' "$egress_json" | ./scripts/assert-staging-health.sh egress
+          fi
 
       - name: Install uv
         if: inputs.staging_action == 'deploy'
