@@ -542,7 +542,7 @@ class WorkerPool:
             )
             if not quota_result.allowed:
                 defer_args = [
-                    self.pg_pool, work_item_id, event["calendar_work_item_attempts"], quota_result.resets_at
+                    self.pg_pool, work_item_id, quota_result.resets_at
                 ]
                 if fenced_claim:
                     defer_args.extend([worker_id, generation])
@@ -605,7 +605,6 @@ class WorkerPool:
                     park_args = [
                         self.pg_pool,
                         work_item_id,
-                        event["calendar_work_item_attempts"],
                         classification.code,
                         classification.user_message,
                     ]
