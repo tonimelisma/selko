@@ -174,7 +174,7 @@ class TestExponentialBackoffEvents:
         reset_at = "2026-04-10T00:00:00+00:00"
 
         self.queue_processing_item()
-        asyncio.run(defer_event_sync_for_quota(self.pool, "event-1", 2, reset_at))
+        asyncio.run(defer_event_sync_for_quota(self.pool, "event-1", reset_at))
 
         sql, args = self.pool.calls[-1]
         assert "public.defer_calendar_work(" in sql
@@ -199,7 +199,6 @@ class TestExponentialBackoffEvents:
         asyncio.run(park_event_for_oauth_reauth(
             self.pool,
             "event-1",
-            2,
             "oauth_required",
             "Google Calendar needs to be reconnected.",
         ))

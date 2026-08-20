@@ -760,7 +760,6 @@ class TestCalendarSyncWorker:
         defer.assert_awaited_once_with(
             fake_pg_pool,
             "ev1",
-            2,
             "2026-08-01T00:00:00+00:00",
             "worker-1",
             1,
@@ -812,7 +811,6 @@ class TestCalendarSyncWorker:
         park.assert_awaited_once_with(
             fake_pg_pool,
             "ev1",
-            1,
             "oauth_required",
             "Google Calendar needs to be reconnected.",
             "worker-1",
@@ -1270,7 +1268,6 @@ class TestCalendarSyncWorker:
         defer.assert_awaited_once_with(
             fake_pg_pool,
             "ev1",
-            2,
             "2026-08-01T00:00:00+00:00",
             "worker-1",
             1,
@@ -1322,7 +1319,6 @@ class TestCalendarSyncWorker:
         park.assert_awaited_once_with(
             fake_pg_pool,
             "ev1",
-            1,
             "oauth_required",
             "Google Calendar needs to be reconnected.",
             "worker-1",

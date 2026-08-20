@@ -59,5 +59,5 @@ def test_s5_removes_dead_direct_event_mutators() -> None:
 def test_calendar_worker_pool_uses_work_item_state() -> None:
     worker_pool = (ROOT / "backend/selko/workers/pool.py").read_text(encoding="utf-8")
     assert "calendar_work_item_generation" in worker_pool
-    assert "calendar_work_item_attempts" in worker_pool
+    assert 'event["calendar_work_item_attempts"]' not in worker_pool
     assert "calendar_sync_action" not in worker_pool
