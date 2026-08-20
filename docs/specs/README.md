@@ -18,10 +18,10 @@ declares a dependency on has landed.
 | 2 | [Parallel extraction, fenced commit](parallel-extraction-fenced-commit.md) | P1–P4 | P1–P3 implemented; P4 repair tooling implemented, production apply awaits seven-day observation and approval | G1–G4 merged, gate green ×3 |
 | 3 | [Calendar identity and cancellation](calendar-identity-and-cancellation.md) | C1–C3 | C1–C3 implemented; staging verification and production observation remain operator gates | P1–P3 verified in production |
 | 4 | [State ownership and deterministic recovery](state-ownership-and-deterministic-recovery.md) | S1–S5 | Implemented; staging migration/deploy/health/integration verification passed; local real-Postgres and production-observation gates remain | P1–P3 and C1–C3 implemented; production incident repaired and audited |
-| 5 | [Foundation integrity](foundation-integrity.md) | F7b, F8, F9 open | Partially implemented | F7b needs staging access; F8 needs operator approval |
+| 5 | [Foundation integrity](foundation-integrity.md) | F7b, F8 open; F9 complete with accepted history debt | Partially implemented | F7b needs staging access; F8 needs operator approval |
 | 6 | [Cutover verification](cutover-verification-20260807.md) | Ordered checklist | Verified locally, not deployed | Executed *through* F7–F8, never directly |
 | 7 | [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) | Steps 7–9 open | Partially implemented | Independent; C3 adds `cancel_queued` to its recovery sets |
-| — | [Review queue integrity](review-queue-integrity.md) | R1 open | Partially implemented **and normative** | Not scheduled on its own — see below |
+| — | [Review queue integrity](review-queue-integrity.md) | R1 defects repaired by G5; remaining text is normative | Not an implementation queue | R2–R5 superseded by plans 2 and 3 |
 
 ### 1 · Stub rollback and gate repair — completed record
 
