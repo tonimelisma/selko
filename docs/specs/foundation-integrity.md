@@ -26,9 +26,10 @@ those and on explicit operator approval.
   `stub-rollback-and-gate-repair.md` G2 closes it by pinning every enumerated
   text domain.
 
-**The gate this plan built is currently red on `main`** — see
-`stub-rollback-and-gate-repair.md` D-GATE.1 and D-GATE.2. Four increments
-merged over it. Repairing that is G3.
+The gate-repair diagnosis above is historical: D-GATE.1 and D-GATE.2 were
+repaired by G3, and the resulting G1–G7 record is merged. The remaining red
+evidence is operational rather than an unimplemented gate: the local real-
+Postgres run requires Docker, and F7b requires staging worker configuration.
 **Written:** 2026-08-10, after reviewing the C1–C9 batch (#279–#286 + `0654d4fe`).
 **Audience:** a developer new to this codebase. Every increment names the file,
 the line, the failing test to write first, and the exact command that proves it
