@@ -132,16 +132,16 @@ complete_scheduled_task(task_id)
 | `attempts` | integer | Number of processing attempts |
 | `max_attempts` | integer | Maximum attempts (default: 3) |
 
-### Claiming Columns (events table)
+### Calendar Work Items (`calendar_work_items` table)
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `status` | text | Includes `syncing` state during sync |
-| `locked_until` | timestamptz | Lock expiration time |
-| `locked_by` | text | Worker ID that claimed this event |
-| `sync_attempts` | integer | Number of sync attempts |
-| `max_sync_attempts` | integer | Maximum sync attempts (default: 3) |
-| `sync_error` | text | Last sync error message |
+| `status` | text | `pending`, `processing`, `succeeded`, `failed`, `blocked`, or `superseded` |
+| `action` | text | `upsert` or `cancel` |
+| `generation` | bigint | Monotonic provider-write fence |
+| `locked_until` / `locked_by` | timestamptz / text | Crash-safe worker lease |
+| `attempts` / `max_attempts` | integer | Retry budget |
+| `failure_code` / `failure_detail` | text | Typed failure and operator detail |
 
 ### Scheduled Tasks Table
 
@@ -223,10 +223,11 @@ SELECT id, subject, processing_status, attempts, locked_by
 FROM emails
 WHERE processing_status = 'pending';
 
--- Approved events awaiting calendar sync
-SELECT id, title, status, sync_attempts, locked_by
-FROM events
-WHERE status = 'approved';
+-- Calendar work awaiting or undergoing provider sync
+SELECT id, event_id, action, status, attempts, max_attempts, locked_by
+FROM calendar_work_items
+WHERE status IN ('pending', 'processing')
+ORDER BY created_at;
 
 -- Pending scheduled tasks
 SELECT id, task_type, status, scheduled_at

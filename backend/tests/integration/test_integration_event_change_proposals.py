@@ -32,7 +32,8 @@ def _event(admin_client, user_id: str, title: str = "proposal event") -> str:
         "title": title,
         "start_datetime": "2026-09-01T14:00:00Z",
         "end_datetime": "2026-09-01T15:00:00Z",
-        "status": "pending_review",
+        "status": "synced",
+        "review_status": "active",
     }).execute().data[0]["id"]
 
 
@@ -42,8 +43,6 @@ def _source(admin_client, event_id: str, email_id: str, before: str = "before", 
         "email_id": email_id,
         "source_type": "update",
         "extracted_data": {"title": after},
-        "event_snapshot_before": _snapshot(before),
-        "change_set": _change_set(before, after),
     }).execute().data[0]["id"]
 
 
@@ -60,16 +59,15 @@ async def test_proposal_is_authoritative_and_apply_reject_reopen_are_atomic(
     }).execute().data[0]["id"]
     event_id = _event(admin_client, user_id)
     source_id = _source(admin_client, event_id, email_id)
-    proposal = admin_client.table("event_change_proposals").select(
-        "id,status,source_id,kind"
-    ).eq("source_id", source_id).single().execute().data
-    assert proposal["status"] == "applied"
-    assert proposal["kind"] == "material_update"
-
-    admin_client.table("events").update({"status": "pending_change"}).eq("id", event_id).execute()
-    admin_client.table("event_change_proposals").update({
-        "status": "pending", "resolution_reason": None,
-    }).eq("id", proposal["id"]).execute()
+    proposal = admin_client.table("event_change_proposals").insert({
+        "event_id": event_id,
+        "user_id": user_id,
+        "source_id": source_id,
+        "kind": "material_update",
+        "status": "pending",
+        "change_set": _change_set(),
+        "event_snapshot_before": _snapshot(),
+    }).execute().data[0]
     applied = admin_client.rpc("apply_event_change_proposal", {
         "p_event_id": event_id,
         "p_user_id": user_id,
@@ -96,10 +94,10 @@ async def test_proposal_is_authoritative_and_apply_reject_reopen_are_atomic(
         "p_proposal_id": proposal["id"],
         "p_expected_hash": None,
     }).execute().data
-    assert reopened["status"] == "pending_change"
-    assert admin_client.table("events").select("status").eq(
+    assert reopened["status"] == "active"
+    assert admin_client.table("events").select("status,review_status").eq(
         "id", event_id
-    ).single().execute().data["status"] == "pending_change"
+    ).single().execute().data == {"status": "approved", "review_status": "active"}
 
 
 @pytest.mark.asyncio
@@ -114,25 +112,39 @@ async def test_new_proposal_supersedes_only_the_previous_pending_proposal(
     }).execute().data[0]["id"]
     event_id = _event(admin_client, user_id, "replacement")
     first_source = _source(admin_client, event_id, email_id, "one", "two")
-    admin_client.table("events").update({"status": "pending_change"}).eq("id", event_id).execute()
-    first = admin_client.table("event_change_proposals").select("id").eq(
-        "source_id", first_source
-    ).single().execute().data["id"]
-    admin_client.table("event_change_proposals").update({
-        "status": "pending", "resolution_reason": None,
-    }).eq("id", first).execute()
+    first = admin_client.table("event_change_proposals").insert({
+        "event_id": event_id,
+        "user_id": user_id,
+        "source_id": first_source,
+        "kind": "material_update",
+        "status": "pending",
+        "change_set": _change_set("one", "two"),
+        "event_snapshot_before": _snapshot("one"),
+    }).execute().data[0]
 
     second_email_id = admin_client.table("emails").insert({
         "user_id": user_id,
         "email_provider": "gmail",
         "provider_message_id": "s3-proposal-replace-2",
     }).execute().data[0]["id"]
+    admin_client.table("event_change_proposals").update({
+        "status": "superseded", "resolution_reason": "superseded_by_newer_proposal",
+    }).eq("id", first["id"]).execute()
     second_source = _source(admin_client, event_id, second_email_id, "two", "three")
+    admin_client.table("event_change_proposals").insert({
+        "event_id": event_id,
+        "user_id": user_id,
+        "source_id": second_source,
+        "kind": "material_update",
+        "status": "pending",
+        "change_set": _change_set("two", "three"),
+        "event_snapshot_before": _snapshot("two"),
+    }).execute()
     rows = admin_client.table("event_change_proposals").select(
         "id,status,source_id"
     ).eq("event_id", event_id).execute().data
     by_id = {row["id"]: row for row in rows}
-    assert by_id[first]["status"] == "superseded"
+    assert by_id[first["id"]]["status"] == "superseded"
     second = next(row for row in rows if row["source_id"] == second_source)
     assert second["status"] == "pending"
     assert sum(row["status"] == "pending" for row in rows) == 1

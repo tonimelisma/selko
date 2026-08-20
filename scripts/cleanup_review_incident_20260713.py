@@ -13,8 +13,8 @@ For every user with an Outlook integration, this script:
   1. Finds "orphaned" Outlook emails — provider_folder_ids non-empty, but
      every entry is missing from the user's current email_folders.
   2. Rejects pending_review events whose non-undone email sources are ALL
-     orphaned, and discards pending_change proposals whose active proposal's
-     email source is orphaned (via selko.services.events.reject_pending_change,
+     orphaned, and discards active event proposals whose provenance source is
+     email source is orphaned (via selko.services.events.reject_change_proposal,
      reusing the real undo/restore logic rather than reimplementing it).
   3. Neutralizes the orphaned emails (processing_status='skipped') so nothing
      reprocesses them.
@@ -42,7 +42,7 @@ from rich.table import Table
 
 from selko.config import load_config
 from selko.services.auth import get_service_client
-from selko.services.events import reject_pending_change
+from selko.services.events import reject_change_proposal
 
 console = Console()
 PAGE_SIZE = 1000
@@ -71,10 +71,10 @@ def fetch_all_rows(
         offset += page_size
 
 
-def pending_change_has_orphaned_email_source(
+def pending_proposal_has_orphaned_email_source(
     sources: list[dict[str, Any]], orphaned_email_ids: set[str]
 ) -> bool:
-    """Whether an active proposal has an orphaned email source.
+    """Whether a proposal's active provenance has an orphaned email source.
 
     Google Calendar proposal siblings have no email_id, so the latest source
     row alone is not authoritative. Inspect the active email sibling(s).
@@ -161,33 +161,45 @@ def cleanup_user(client, user_id: str, apply: bool) -> dict[str, int]:
     if orphaned_email_ids:
         event_rows = fetch_all_rows(
             lambda: client.table("events")
-            .select("id, status")
+            .select("id, status, review_status")
             .eq("user_id", user_id)
-            .in_("status", ["pending_review", "pending_change"])
+            .in_("review_status", ["pending_review", "active"])
         )
         for event in event_rows:
             sources = fetch_all_rows(
                 lambda: client.table("event_sources")
                 .select("id, email_id, source_type, created_at")
                 .eq("event_id", event["id"])
-                .eq("is_undone", False)
             )
             email_sources = [s for s in sources if s.get("email_id")]
 
-            if event["status"] == "pending_review":
+            if event["review_status"] == "pending_review":
                 if email_sources and all(
                     s["email_id"] in orphaned_set for s in email_sources
                 ):
                     summary["rejected_new_events"] += 1
                     if apply:
-                        client.table("events").update({"status": "rejected"}).eq(
+                        client.table("events").update({"status": "rejected", "review_status": "rejected"}).eq(
                             "id", event["id"]
                         ).execute()
-            else:  # pending_change
-                if pending_change_has_orphaned_email_source(sources, orphaned_set):
+            else:  # active event with a pending authoritative proposal
+                proposal = (
+                    client.table("event_change_proposals")
+                    .select("id, source_id")
+                    .eq("event_id", event["id"])
+                    .eq("status", "pending")
+                    .maybe_single()
+                    .execute()
+                )
+                proposal_source_id = (proposal.data or {}).get("source_id")
+                proposal_source = next(
+                    (source for source in sources if source.get("id") == proposal_source_id),
+                    None,
+                )
+                if proposal_source and proposal_source.get("email_id") in orphaned_set:
                     summary["discarded_pending_changes"] += 1
                     if apply:
-                        reject_pending_change(client, event["id"])
+                        reject_change_proposal(client, event["id"], proposal.data["id"])
 
         if apply:
             client.table("emails").update(
@@ -204,14 +216,14 @@ def cleanup_user(client, user_id: str, apply: bool) -> dict[str, int]:
         lambda: client.table("events")
         .select("id, title, start_datetime, created_at")
         .eq("user_id", user_id)
-        .eq("status", "pending_review")
+        .eq("review_status", "pending_review")
     )
     duplicates = group_duplicate_pending_events(pending_review_rows)
     summary["duplicate_groups"] = len(duplicates)
     for _keep_id, reject_ids in duplicates:
         summary["duplicate_events_rejected"] += len(reject_ids)
         if apply:
-            client.table("events").update({"status": "rejected"}).in_(
+            client.table("events").update({"status": "rejected", "review_status": "rejected"}).in_(
                 "id", reject_ids
             ).execute()
 

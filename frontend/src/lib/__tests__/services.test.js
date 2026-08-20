@@ -322,7 +322,6 @@ describe('Event Sources Service', () => {
 					event_id: 'event-123',
 					email_id: 'email-456',
 					source_type: 'new_invitation',
-					is_undone: false,
 					emails: { id: 'email-456', subject: 'Meeting invite' }
 				}
 			];

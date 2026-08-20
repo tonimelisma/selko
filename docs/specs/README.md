@@ -17,7 +17,7 @@ declares a dependency on has landed.
 | 1 | [Stub rollback and gate repair](stub-rollback-and-gate-repair.md) | G1–G7 | Completed; retained as the gate-repair record | G1–G7 merged; staging access remains an operator check |
 | 2 | [Parallel extraction, fenced commit](parallel-extraction-fenced-commit.md) | P1–P4 | P1–P3 implemented; P4 repair tooling implemented, production apply awaits seven-day observation and approval | G1–G4 merged, gate green ×3 |
 | 3 | [Calendar identity and cancellation](calendar-identity-and-cancellation.md) | C1–C3 | C1–C3 implemented; staging drills and production observation remain operator gates | P1–P3 verified in production |
-| 4 | [State ownership and deterministic recovery](state-ownership-and-deterministic-recovery.md) | S1–S5 | S1–S3 implemented; S4–S5 open | P1–P3 and C1–C3 implemented; production incident repaired and audited |
+| 4 | [State ownership and deterministic recovery](state-ownership-and-deterministic-recovery.md) | S1–S5 | Implemented in current revision; real-Postgres/staging and production-observation gates remain | P1–P3 and C1–C3 implemented; production incident repaired and audited |
 | 5 | [Foundation integrity](foundation-integrity.md) | F7b, F8, F9 open | Partially implemented | F7b needs staging access; F8 needs operator approval |
 | 6 | [Cutover verification](cutover-verification-20260807.md) | Ordered checklist | Verified locally, not deployed | Executed *through* F7–F8, never directly |
 | 7 | [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) | Steps 7–9 open | Partially implemented | Independent; C3 adds `cancel_queued` to its recovery sets |

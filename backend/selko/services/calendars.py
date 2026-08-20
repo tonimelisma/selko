@@ -28,7 +28,7 @@ class CalendarFailureClassification:
     """Typed outcome of classifying a calendar sync failure.
 
     Attributes:
-        code: One of the ``events.sync_failure_code`` vocabulary values.
+        code: One of the ``calendar_work_items.failure_code`` vocabulary values.
         retryable: Whether the normal sync-attempt retry/backoff applies.
         counts_toward_circuit_breaker: Whether this failure reflects provider
             health (and should trip the shared ``google_calendar`` circuit)
@@ -161,10 +161,8 @@ async def requeue_calendar_recovery_batch(
     """Tag one claimed recovery generation's OAuth-blocked events.
 
     Pure bookkeeping (docs/specs/oauth-reconnect-catch-up.md section 3): the
-    tagged events are already ``approved`` with ``sync_attempts`` preserved,
-    so they become eligible for the normal calendar sync worker the moment
-    ``claim_approved_event`` sees the integration active again. Tagging only
-    exists to give the UI a recovery-scoped progress count.
+    tagged calendar work items retain their retry state and become eligible
+    for the normal calendar worker when the integration is active again.
 
     Args:
         pool: asyncpg session-pooler pool.
@@ -648,7 +646,6 @@ def sync_event_to_calendar(
     user_id: str,
     event_id: str,
     *,
-    write_local_state: bool = True,
     expected_provider_revision: str | None = None,
     force_overwrite: bool = False,
 ) -> str:
@@ -732,16 +729,6 @@ def sync_event_to_calendar(
                 google_event_id = created_event["id"]
                 action = "created"
 
-        # The durable worker owns the local transition. Direct callers retain
-        # the historical behavior for non-worker maintenance flows.
-        if write_local_state:
-            supabase_client.table("events").update({
-                "google_calendar_event_id": google_event_id,
-                "status": "synced",
-                "synced_at": datetime.now(timezone.utc).isoformat(),
-                "sync_error": None,
-            }).eq("id", event_id).execute()
-
         # Log the sync operation
         _log_sync(
             supabase_client,
@@ -769,24 +756,9 @@ def sync_event_to_calendar(
             # sync isn't a real attempt against the user's calendar, so it
             # must not be dead-lettered or count toward the shared circuit
             # breaker. Only tag the classification here for observability.
-            update_payload: dict[str, Any] = {
-                "sync_failure_code": classification.code,
-                "sync_error": classification.user_message,
-            }
+            update_payload: dict[str, Any] = {}
         else:
-            update_payload = {
-                "status": "sync_failed",
-                "sync_error": str(e),
-                "sync_failure_code": classification.code,
-            }
-
-        if write_local_state:
-            try:
-                supabase_client.table("events").update(update_payload).eq(
-                    "id", event_id
-                ).execute()
-            except Exception as update_error:
-                logger.warning(f"Failed to update event after sync failure: {update_error}")
+            update_payload = {}
 
         raise CalendarsError(
             f"Failed to sync event to calendar: {e}", classification=classification
@@ -1227,127 +1199,3 @@ def assert_calendar_not_diverged(
             differences=_calendar_event_differences(live, snapshot, fields),
             google_event_url=live.get("htmlLink"),
         )
-
-
-def delete_calendar_event_only(
-    supabase_client: Client, user_id: str, event_id: str
-) -> None:
-    """Delete the remote GCal event and clear local sync fields (no status change).
-
-    404 on Google Calendar is treated as success. Caller owns event status.
-    """
-    try:
-        event_result = supabase_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-        event = event_result.data
-
-        google_event_id = event.get("google_calendar_event_id")
-        if not google_event_id:
-            raise CalendarsError("Event is not synced to Google Calendar")
-
-        service, calendar_id = _calendar_service_for_user(supabase_client, user_id)
-
-        try:
-            service.events().delete(
-                calendarId=calendar_id, eventId=google_event_id
-            ).execute()
-        except HttpError as e:
-            if e.resp.status == 404:
-                logger.warning(
-                    f"Calendar event {google_event_id} already deleted from Google Calendar"
-                )
-            else:
-                raise
-
-        supabase_client.table("events").update({
-            "google_calendar_event_id": None,
-            "synced_at": None,
-        }).eq("id", event_id).execute()
-
-        _log_sync(
-            supabase_client,
-            user_id,
-            event_id,
-            google_event_id,
-            "deleted",
-            {"deleted_google_event_id": google_event_id},
-        )
-
-        logger.info(f"Deleted calendar event for {event_id} (sync fields cleared)")
-
-    except CalendarsError:
-        raise
-    except Exception as e:
-        raise CalendarsError(f"Failed to delete calendar event: {e}") from e
-
-
-def restore_calendar_event_from_selko_fields(
-    supabase_client: Client,
-    user_id: str,
-    event_id: str,
-    selko_fields: dict[str, Any],
-) -> None:
-    """PATCH the live GCal event to match restored Selko fields (keep google id)."""
-    try:
-        event_result = supabase_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-        event = event_result.data
-
-        google_event_id = event.get("google_calendar_event_id")
-        if not google_event_id:
-            raise CalendarsError("Event is not synced to Google Calendar")
-
-        # Merge restored fields onto the current event row for body build
-        merged = {**event, **selko_fields, "id": event_id}
-        settings = get_calendar_settings(supabase_client, user_id)
-        calendar_event = _build_calendar_event_body(merged, settings)
-
-        service, calendar_id = _calendar_service_for_user(supabase_client, user_id)
-        google_event_id, action = _update_or_recreate_calendar_event(
-            service, calendar_id, google_event_id, calendar_event
-        )
-
-        # If recreate issued a new id, persist it
-        if google_event_id != event.get("google_calendar_event_id"):
-            supabase_client.table("events").update({
-                "google_calendar_event_id": google_event_id,
-                "synced_at": datetime.now(timezone.utc).isoformat(),
-            }).eq("id", event_id).execute()
-        else:
-            supabase_client.table("events").update({
-                "synced_at": datetime.now(timezone.utc).isoformat(),
-            }).eq("id", event_id).execute()
-
-        _log_sync(
-            supabase_client,
-            user_id,
-            event_id,
-            google_event_id,
-            action,
-            calendar_event,
-        )
-        logger.info(
-            f"Restored calendar event for {event_id} from Selko snapshot ({action})"
-        )
-
-    except CalendarsError:
-        raise
-    except Exception as e:
-        raise CalendarsError(f"Failed to restore calendar event: {e}") from e
-
-
-def delete_calendar_event(
-    supabase_client: Client, user_id: str, event_id: str
-) -> None:
-    """Delete event from Google Calendar and revert local status to pending_review.
-
-    Used by ``/unsync``. History Undo should call ``delete_calendar_event_only``
-    instead so it can set the correct review-lane status.
-    """
-    delete_calendar_event_only(supabase_client, user_id, event_id)
-    supabase_client.table("events").update({
-        "status": "pending_review",
-    }).eq("id", event_id).execute()
-    logger.info(f"Unsynced event {event_id}, reverted to pending_review")

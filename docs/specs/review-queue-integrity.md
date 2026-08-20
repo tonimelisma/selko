@@ -1,5 +1,9 @@
 # Review Queue Integrity
 
+> Historical requirements record. The compatibility state machines described
+> here were retired by S5; the live review and delivery owners are documented
+> in `CLAUDE.md` and `docs/database-schema.md`.
+
 **Status:** Partially implemented, and partly superseded. Corrected 2026-08-12
 after reviewing what PRs #305–#312 actually delivered. Per increment:
 

@@ -95,6 +95,12 @@ def approved_event(admin_client, temp_user):
         "end_datetime": _iso(7200),
         "status": "approved",
     }).execute()
+    admin_client.rpc("enqueue_calendar_work", {
+        "p_event_id": event_id,
+        "p_user_id": user_id,
+        "p_action": "upsert",
+        "p_desired_event": {"title": "C2 probe event"},
+    }).execute()
     # claim_approved_event picks the OLDEST updated_at row; make ours the
     # oldest so a leftover approved event from another suite cannot win.
     admin_client.table("events").update(
@@ -360,7 +366,13 @@ class TestLooseWorkerFunctionsOverPool:
         )
         assert event is not None
         assert str(event["id"]) == approved_event
-        await complete_event_sync(pg_pool, approved_event, "google-c2-probe")
+        await complete_event_sync(
+            pg_pool,
+            approved_event,
+            "google-c2-probe",
+            "c2-probe-worker-7",
+            int(event["calendar_work_item_generation"]),
+        )
 
     async def test_event_fail_retries_then_dead_letters(
         self, pg_pool, approved_event
@@ -371,9 +383,15 @@ class TestLooseWorkerFunctionsOverPool:
             pg_pool, "c2-probe-worker-8", lock_duration_seconds=120
         )
         assert event is not None
-        await fail_event_sync(pg_pool, approved_event, "transient probe")
+        await fail_event_sync(
+            pg_pool,
+            approved_event,
+            "transient probe",
+            "c2-probe-worker-8",
+            int(event["calendar_work_item_generation"]),
+        )
         row = await pg_pool.fetchrow(
-            "SELECT status, sync_attempts FROM public.events WHERE id = $1",
+            "SELECT status FROM public.events WHERE id = $1",
             approved_event,
         )
         assert row["status"] == "approved"

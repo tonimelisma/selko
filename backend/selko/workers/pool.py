@@ -532,9 +532,9 @@ class WorkerPool:
         title = event.get("title", "(no title)")[:50]
 
         logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
-        is_cancellation = event.get("calendar_sync_action") == "cancel"
-        generation = int(event.get("calendar_work_generation") or 0)
-        fenced_claim = "calendar_work_generation" in event or "locked_by" in event
+        is_cancellation = event.get("calendar_work_item_action") == "cancel"
+        generation = int(event.get("calendar_work_item_generation") or 0)
+        fenced_claim = "calendar_work_item_generation" in event
 
         try:
             quota_result = QuotaService(client).check_and_increment(
@@ -542,7 +542,7 @@ class WorkerPool:
             )
             if not quota_result.allowed:
                 defer_args = [
-                    self.pg_pool, work_item_id, event["sync_attempts"], quota_result.resets_at
+                    self.pg_pool, work_item_id, event["calendar_work_item_attempts"], quota_result.resets_at
                 ]
                 if fenced_claim:
                     defer_args.extend([worker_id, generation])
@@ -605,7 +605,7 @@ class WorkerPool:
                     park_args = [
                         self.pg_pool,
                         work_item_id,
-                        event["sync_attempts"],
+                        event["calendar_work_item_attempts"],
                         classification.code,
                         classification.user_message,
                     ]

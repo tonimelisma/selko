@@ -71,7 +71,7 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
         let orFilter = "end_datetime.gte.\(nowStr),and(end_datetime.is.null,start_datetime.gte.\(nowStr)),and(end_datetime.is.null,start_datetime.is.null)"
         let events: [CalendarEvent] = try await supabase.from("events")
             .select()
-            .in("status", values: ["pending_review", "pending_change"])
+            .in("review_status", values: ["pending_review", "active"])
             .or(orFilter)
             .order("start_datetime")
             .execute()

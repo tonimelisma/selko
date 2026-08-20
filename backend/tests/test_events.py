@@ -11,12 +11,8 @@ import pytest
 from selko.services.events import (
     EventsError,
     check_sender_rules,
-    create_event_from_gcal_match,
     find_matching_event,
     generate_source_attribution,
-    update_event,
-    undo_email_contribution,
-    redo_email_contribution,
 )
 
 
@@ -263,7 +259,7 @@ class TestGenerateSourceAttribution:
 
         mock_result = MagicMock()
         mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
 
         attribution = generate_source_attribution(mock_client, "event-123")
 
@@ -284,7 +280,7 @@ class TestGenerateSourceAttribution:
                 "date_sent": "2026-01-25T13:30:00Z",
             }
         }]
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
 
         attribution = generate_source_attribution(mock_client, "event-123")
 
@@ -292,6 +288,7 @@ class TestGenerateSourceAttribution:
         assert "January" in attribution or "Jan" in attribution
         assert "automatically created" in attribution
 
+    @pytest.mark.skip(reason="event_sources is provenance-only; undo is now a proposal decision")
     def test_skips_undone_sources(self):
         """Test that undone sources are excluded from attribution."""
         mock_client = MagicMock()
@@ -320,7 +317,7 @@ class TestGenerateSourceAttribution:
                 }
             }
         ]
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
 
         attribution = generate_source_attribution(mock_client, "event-123")
 
@@ -329,6 +326,7 @@ class TestGenerateSourceAttribution:
         assert "Old Sender" not in attribution
 
 
+@pytest.mark.skip(reason="legacy event_source undo API removed in S5")
 class TestUndoEmailContribution:
     """Tests for undo functionality."""
 
@@ -396,6 +394,7 @@ class TestUndoEmailContribution:
         assert mock_table.update.called
 
 
+@pytest.mark.skip(reason="legacy event_source redo API removed in S5")
 class TestRedoEmailContribution:
     """Tests for redo functionality."""
 
@@ -621,6 +620,7 @@ class TestFindMatchingEventGCal:
         assert result.baseline["title"] == "Team Meeting"
 
 
+@pytest.mark.skip(reason="legacy direct event creation API removed in S5")
 class TestCreateEventFromGCalMatch:
     """Tests for creating events from GCal matches."""
 
@@ -657,6 +657,7 @@ class TestCreateEventFromGCalMatch:
             )
 
 
+@pytest.mark.skip(reason="legacy direct event update API removed in S5")
 class TestUpdateEventResync:
     """Tests for re-sync logic in update_event."""
 
@@ -772,7 +773,7 @@ class TestGenerateAttributionWithCalendarSource:
             "is_undone": False,
             "emails": None,  # No email for calendar sources
         }]
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
+        mock_client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
 
         attribution = generate_source_attribution(mock_client, "event-123")
 

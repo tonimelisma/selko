@@ -190,7 +190,7 @@ class ReviewQueueViewModel(
 
     /** Prefer email authorship over calendar/photo provenance rows. */
     private fun resolveSender(event: CalendarEvent): Pair<String, String> {
-        val sources = event.eventSources?.filter { !it.isUndone }.orEmpty()
+        val sources = event.eventSources.orEmpty()
 
         val emailSource = sources.firstOrNull { source ->
             source.sourceOrigin == SourceOrigin.EMAIL &&

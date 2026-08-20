@@ -1,5 +1,9 @@
 # OAuth Reconnect Catch-Up
 
+> Historical requirements record. Calendar failure and retry state now lives
+> in `calendar_work_items`; references to event-level sync columns below are
+> retained only to explain the migration history.
+
 **Status:** Delivered. Backend (sections 1–3) shipped in #236–#239 plus the
 review-fix migration `20260802000006`; the recovery UI projection (section 4)
 shipped with it. Email half is delivered by the polling-ingestion-v2 trigger.

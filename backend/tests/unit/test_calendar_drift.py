@@ -9,7 +9,6 @@ from selko.services.calendars import (
     CalendarDivergedError,
     calendar_event_diverged,
     assert_calendar_not_diverged,
-    delete_calendar_event_only,
 )
 
 
@@ -188,42 +187,3 @@ class TestAssertCalendarNotDiverged:
             }
         ]
         assert exc.value.google_event_url == live["htmlLink"]
-
-
-class TestDeleteCalendarEventOnly:
-    def test_clears_sync_fields_without_status(self):
-        mock_client = MagicMock()
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "google_calendar_event_id": "google-event-abc",
-        }
-
-        with patch("selko.services.calendars.get_credentials") as mock_creds, \
-             patch("selko.services.calendars.build") as mock_build, \
-             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
-
-            mock_creds.return_value = MagicMock()
-            mock_settings.return_value = {
-                "target_calendar_id": "primary",
-                "default_invitees": None,
-                "timezone": "America/New_York",
-            }
-            mock_service = MagicMock()
-            mock_build.return_value = mock_service
-            mock_service.events.return_value.delete.return_value.execute.return_value = None
-
-            mock_table = MagicMock()
-            mock_client.table.return_value = mock_table
-            mock_table.select.return_value.eq.return_value.single.return_value.execute.return_value = (
-                mock_event_result
-            )
-            mock_table.update.return_value.eq.return_value.execute.return_value = MagicMock()
-            mock_table.insert.return_value.execute.return_value = MagicMock()
-
-            delete_calendar_event_only(mock_client, "user-456", "event-123")
-
-            update_data = mock_table.update.call_args_list[0][0][0]
-            assert update_data["google_calendar_event_id"] is None
-            assert update_data["synced_at"] is None
-            assert "status" not in update_data

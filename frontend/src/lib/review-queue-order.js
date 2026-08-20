@@ -2,7 +2,7 @@
  * Review queue stable ordering — session-persistent ranks.
  * Implements docs/specs/review-queue-integrity.md §5.1.
  *
- * One LaneOrder per lane (pending_review, pending_change). Ranks increase
+ * One LaneOrder per lane (pending_review, active-with-pending-proposal). Ranks increase
  * monotonically for the mounted session, never renumber after removal, and
  * retain removed event ranks for Undo.
  *

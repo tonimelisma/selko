@@ -8,7 +8,7 @@ const baseEvent = {
 	id: 'evt-change',
 	title: 'Changed event',
 	start_datetime: '2027-01-20T14:00:00Z',
-	status: 'pending_change'
+	review_status: 'active'
 };
 
 describe('ChangeCard', () => {
@@ -34,7 +34,7 @@ describe('ChangeCard', () => {
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 	});
 
-	it('fails closed when pending_change has no active proposal', async () => {
+	it('fails closed when an active event has no proposal', async () => {
 		const user = userEvent.setup();
 		const onapprove = vi.fn();
 		const onreject = vi.fn();
@@ -42,15 +42,7 @@ describe('ChangeCard', () => {
 			props: {
 				event: {
 					...baseEvent,
-					event_sources: [
-						{
-							source_type: 'update',
-							is_undone: true,
-							change_set: {
-								changes: [{ field: 'location', before: 'Old place', after: 'New place' }]
-							}
-						}
-					]
+					 event_change_proposals: []
 				},
 				onapprove,
 				onreject

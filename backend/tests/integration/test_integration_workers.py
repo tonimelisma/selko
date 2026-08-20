@@ -77,14 +77,10 @@ def cleanup_test_data(service_client: Client, test_user_id: str):
     except Exception as e:
         logger.warning(f"Failed to reset pending emails: {e}")
 
-    # Reset any approved/syncing events to synced to avoid test pollution
+    # Remove calendar work items so claims cannot cross test boundaries.
     try:
-        service_client.table("events").update({
-            "status": "synced",
-            "locked_by": None,
-            "locked_until": None,
-        }).eq("user_id", test_user_id).in_(
-            "status", ["approved", "syncing"]
+        service_client.table("calendar_work_items").delete().eq(
+            "user_id", test_user_id
         ).execute()
     except Exception as e:
         logger.warning(f"Failed to reset approved events: {e}")
@@ -317,6 +313,12 @@ class TestEventStatusBasedClaiming:
 
         result = authenticated_client.table("events").insert(event_data).execute()
         event_id = result.data[0]["id"]
+        authenticated_client.rpc("enqueue_calendar_work", {
+            "p_event_id": event_id,
+            "p_user_id": test_user_id,
+            "p_action": "upsert",
+            "p_desired_event": {"title": event_data["title"]},
+        }).execute()
 
         # Claim the event
         claimed = await claim_approved_event_for_sync(pg_pool, "test-worker-1")
@@ -324,8 +326,8 @@ class TestEventStatusBasedClaiming:
         assert claimed is not None
         assert str(claimed["id"]) == event_id
         assert claimed["status"] == "syncing"
-        assert claimed["locked_by"] == "test-worker-1"
-        assert claimed["sync_attempts"] == 1
+        assert claimed["calendar_work_item_action"] == "upsert"
+        assert claimed["calendar_work_item_attempts"] == 1
 
     async def test_complete_event_sync_updates_status(
         self, service_client, authenticated_client, test_user_id, pg_pool
@@ -337,16 +339,27 @@ class TestEventStatusBasedClaiming:
             "title": "Test Event",
             "start_datetime": "2026-05-01T14:00:00Z",
             "status": "approved",
-            "sync_failure_code": "oauth_required",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
         event_id = result.data[0]["id"]
+        authenticated_client.rpc("enqueue_calendar_work", {
+            "p_event_id": event_id,
+            "p_user_id": test_user_id,
+            "p_action": "upsert",
+            "p_desired_event": {"title": event_data["title"]},
+        }).execute()
 
-        await claim_approved_event_for_sync(pg_pool, "test-worker")
+        claimed = await claim_approved_event_for_sync(pg_pool, "test-worker")
 
         # Complete sync
-        await complete_event_sync(pg_pool, event_id, "google-event-123")
+        await complete_event_sync(
+            pg_pool,
+            event_id,
+            "google-event-123",
+            "test-worker",
+            int(claimed["calendar_work_item_generation"]),
+        )
 
         # Verify status
         event = authenticated_client.table("events").select("*").eq(
@@ -356,28 +369,37 @@ class TestEventStatusBasedClaiming:
         assert event.data["status"] == "synced"
         assert event.data["google_calendar_event_id"] == "google-event-123"
         assert event.data["synced_at"] is not None
-        assert event.data["locked_by"] is None
-        assert event.data["sync_failure_code"] is None
 
     async def test_fail_event_sync_with_retry(
         self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that failing event sync allows retry."""
-        # Create event with max_sync_attempts=3
+        # The work item owns the retry budget.
         event_data = {
             "user_id": test_user_id,
             "title": "Test Event",
             "start_datetime": "2026-05-01T14:00:00Z",
             "status": "approved",
-            "max_sync_attempts": 3,
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
         event_id = result.data[0]["id"]
+        authenticated_client.rpc("enqueue_calendar_work", {
+            "p_event_id": event_id,
+            "p_user_id": test_user_id,
+            "p_action": "upsert",
+            "p_desired_event": {"title": event_data["title"]},
+        }).execute()
 
         # Claim and fail
-        await claim_approved_event_for_sync(pg_pool, "worker-1")
-        await fail_event_sync(pg_pool, event_id, "Test sync error")
+        claimed = await claim_approved_event_for_sync(pg_pool, "worker-1")
+        await fail_event_sync(
+            pg_pool,
+            event_id,
+            "Test sync error",
+            "worker-1",
+            int(claimed["calendar_work_item_generation"]),
+        )
 
         # Should be back to approved for retry
         event = authenticated_client.table("events").select("*").eq(
@@ -385,8 +407,13 @@ class TestEventStatusBasedClaiming:
         ).single().execute()
 
         assert event.data["status"] == "approved"
-        assert event.data["sync_error"] == "Test sync error"
-        assert event.data["locked_by"] is None
+        work_item = authenticated_client.table("calendar_work_items").select(
+            "status,failure_code,failure_detail,locked_by"
+        ).eq("event_id", event_id).single().execute().data
+        assert work_item["status"] == "pending"
+        assert work_item["failure_code"] == "calendar_sync_failed"
+        assert work_item["failure_detail"] == "Test sync error"
+        assert work_item["locked_by"] is None
 
     async def test_concurrent_workers_no_duplicate_event_sync(
         self, service_client, authenticated_client, test_user_id, pg_pool
@@ -406,6 +433,15 @@ class TestEventStatusBasedClaiming:
         }
 
         authenticated_client.table("events").insert(event_data).execute()
+        event_id = authenticated_client.table("events").select("id").eq(
+            "user_id", test_user_id
+        ).eq("title", "Test Event").single().execute().data["id"]
+        authenticated_client.rpc("enqueue_calendar_work", {
+            "p_event_id": event_id,
+            "p_user_id": test_user_id,
+            "p_action": "upsert",
+            "p_desired_event": {"title": event_data["title"]},
+        }).execute()
 
         # Worker 1 claims it
         claimed_1 = await claim_approved_event_for_sync(pg_pool, "worker-1")
@@ -434,6 +470,15 @@ class TestEventStatusBasedClaiming:
             "status": "approved",
         }
         authenticated_client.table("events").insert(event_data).execute()
+        event_id = authenticated_client.table("events").select("id").eq(
+            "user_id", test_user_id
+        ).eq("title", event_data["title"]).single().execute().data["id"]
+        authenticated_client.rpc("enqueue_calendar_work", {
+            "p_event_id": event_id,
+            "p_user_id": test_user_id,
+            "p_action": "upsert",
+            "p_desired_event": {"title": event_data["title"]},
+        }).execute()
 
         claimed = await claim_approved_event_for_sync(pg_pool, "worker-1")
         assert claimed is None

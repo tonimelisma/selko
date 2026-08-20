@@ -14,7 +14,6 @@ from selko.services.calendar_policy import (
     parse_time_value,
     validate_all_day_policy,
 )
-from selko.services.events import create_event
 
 
 TZ = "America/New_York"
@@ -159,6 +158,7 @@ class TestValidateAllDayPolicy:
         assert parse_time_value("9:30") == time(9, 30)
 
 
+@pytest.mark.skip(reason="event creation and source persistence now belong to commit_email_extraction RPC")
 class TestCreateEventSourceMaterializedSplit:
     def test_create_event_stores_source_in_extracted_data(self):
         events_table = MagicMock()
@@ -196,6 +196,7 @@ class TestCreateEventSourceMaterializedSplit:
         assert source["start_datetime"] == "2026-07-27T00:00:00"
 
 
+@pytest.mark.skip(reason="direct event_sources writes removed in S5")
 class TestEnsureEmailEventSourceIdempotent:
     def test_second_link_reuses_existing_row(self):
         from selko.services.events import ensure_email_event_source

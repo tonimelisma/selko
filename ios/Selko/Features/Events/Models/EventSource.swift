@@ -95,8 +95,6 @@ struct EventSource: Identifiable, Codable, Sendable, Equatable {
     let sourceOrigin: SourceOrigin
     let sourceType: SourceType
     let extractedData: ExtractedData?
-    let changeSet: EventChangeSet?
-    let isUndone: Bool
     let createdAt: Date?
     let emails: Email?
 
@@ -107,8 +105,6 @@ struct EventSource: Identifiable, Codable, Sendable, Equatable {
         case sourceOrigin = "source_origin"
         case sourceType = "source_type"
         case extractedData = "extracted_data"
-        case changeSet = "change_set"
-        case isUndone = "is_undone"
         case createdAt = "created_at"
         case emails
     }
@@ -130,8 +126,6 @@ extension EventSource {
                 description: nil,
                 sourceQuote: "Let's meet at..."
             ),
-            changeSet: nil,
-            isUndone: false,
             createdAt: Date(),
             emails: .mock
         )
@@ -152,8 +146,6 @@ extension EventSource {
                 description: nil,
                 sourceQuote: "Event ticket detected in photo"
             ),
-            changeSet: nil,
-            isUndone: false,
             createdAt: Date(),
             emails: nil
         )

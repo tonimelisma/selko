@@ -1,6 +1,13 @@
 # State Ownership and Deterministic Recovery
 
-**Status:** S1–S3 implemented; S4–S5 remain open.
+> Historical design record. S1-S5 are implemented in the current schema and
+> code; references below to `pending_change`, `is_undone`, or event-level
+> calendar queue columns describe the pre-S5 compatibility phases, not current
+> interfaces. See `CLAUDE.md` and `docs/database-schema.md` for the live model.
+
+**Status:** S1–S5 implemented in the current revision; S5 still requires the
+real-Postgres/staging gate and operator production-observation gate before this
+record can be retired.
 
 **Written:** 2026-08-13, after repairing a production Changes card whose
 `events.status = 'pending_change'` row had no active proposal, then auditing
@@ -31,13 +38,12 @@ it is never silently overwritten. Real-Postgres integration coverage is in
 `backend/tests/integration/test_integration_calendar_work_items.py`; the
 schema contract exercises the new RPCs and trigger.
 
-**S3 delivery:** `event_change_proposals` is now the authoritative owner of
+**S3 delivery (historical transition):** `event_change_proposals` is now the authoritative owner of
 update/cancellation lifecycle. The migration backfills only complete legacy
-rows and aborts ambiguous `pending_change` events with identifiers/counts;
+rows and aborts ambiguous legacy Changes rows with identifiers/counts;
 proposal apply, reject, reopen, and closed-legacy repair resolution are
 service-only, fingerprint-fenced RPCs. `event_sources` remains readable by
-owners as provenance and mirrors proposal fields only for deployed-client
-compatibility. Python review transitions select a typed proposal ID and the
+owners as provenance only. Python review transitions select a typed proposal ID and the
 repair manifest no longer accepts the retired source-resolution action. Real
 Postgres coverage is in `backend/tests/integration/test_integration_event_change_proposals.py`.
 
@@ -818,6 +824,15 @@ current source, tests, and reference docs may not.
   and unfenced calendar work.
 - After approved production deployment and verification, fold durable content
   into references and delete this completed spec per `docs/specs/README.md`.
+
+### S5 implementation evidence
+
+The current S5 implementation is present in migration
+`20260826000001_remove_legacy_event_state.sql`, the client model/query changes,
+the repair tooling, and the state-ownership guards. The local mocked/unit gate
+passes; the real database gate remains explicitly open until local Supabase or
+staging access is available. No production deployment is implied by this
+implementation record.
 
 ---
 

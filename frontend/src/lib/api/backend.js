@@ -406,7 +406,7 @@ export async function syncEventToCalendar(eventId) {
 }
 
 /**
- * Apply a pending_change proposal (Changes lane approve).
+ * Apply an event change proposal (Changes lane approve).
  * @param {string} eventId
  * @returns {Promise<{data: {event_id: string, status: string} | null, error: ApiError | null}>}
  */
@@ -431,7 +431,7 @@ export async function applyEventChange(eventId) {
 }
 
 /**
- * Reject a pending_change proposal (Changes lane reject).
+ * Reject an event change proposal (Changes lane reject).
  * @param {string} eventId
  * @returns {Promise<{data: {event_id: string, status: string} | null, error: ApiError | null}>}
  */

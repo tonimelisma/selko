@@ -270,41 +270,19 @@ const { data, error } = await supabase
   .order('created_at', { ascending: true });
 ```
 
-### Undo Source Contribution
-
-```sql
-UPDATE event_sources SET is_undone = true WHERE id = {sourceId}
-```
-
-**JS:**
-```javascript
-const { data, error } = await supabase
-  .from('event_sources')
-  .update({ is_undone: true })
-  .eq('id', sourceId)
-  .select()
-  .single();
-```
-
-### Redo Source Contribution
-
-```javascript
-const { data, error } = await supabase
-  .from('event_sources')
-  .update({ is_undone: false })
-  .eq('id', sourceId)
-  .select()
-  .single();
-```
-
-### Key Fields
+### Proposal and provenance fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `source_type` | enum | `new_invitation`, `update`, `cancellation`, `reminder`, `unknown` |
 | `extracted_data` | JSONB | LLM extraction: `{title, start_datetime, location, description, source_quote}` |
-| `event_snapshot_before` | JSON | Previous event state for undo |
-| `is_undone` | boolean | Whether contribution is undone |
+| `event_change_proposals.source_id` | UUID | Provenance source for the proposal |
+| `event_change_proposals.change_set` | JSONB | Reversible field diff |
+| `event_change_proposals.event_snapshot_before` | JSONB | Canonical pre-change event state |
+
+Undo, redo, accept, and reject are service-owned proposal/history transitions;
+the frontend must call the corresponding backend route or RPC and must never
+mutate `event_sources` directly.
 
 ---
 
