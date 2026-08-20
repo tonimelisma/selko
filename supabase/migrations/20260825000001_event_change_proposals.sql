@@ -340,7 +340,7 @@ BEGIN
     END IF;
     IF p_delete_event THEN
         IF v_event.google_calendar_event_id IS NULL OR v_event.synced_at IS NOT NULL THEN
-            RAISE EXCEPTION 'event % is not an unsynced calendar-only proposal';
+            RAISE EXCEPTION 'event % is not an unsynced calendar-only proposal', p_event_id;
         END IF;
         DELETE FROM public.events WHERE id = p_event_id;
         RETURN jsonb_build_object('event_id', p_event_id, 'proposal_id', v_proposal.id, 'status', 'deleted');
