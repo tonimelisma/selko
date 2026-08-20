@@ -826,7 +826,9 @@ Actions:
 
 - `merge_duplicate_group`: survivor plus duplicate IDs;
 - `cancel_event`: exact ID and reason (`authoritative_user_report` here); and
-- `mark_source_resolved`: optional cleanup after failed historical proposal.
+- `resolve_proposal`: optional cleanup of a `closed_legacy` proposal using its
+  proposal ID, expected proposal hash, confirmed event owner, and an
+  enumerated operator reason. It never mutates `event_sources` directly.
 
 Dry-run prints safe IDs/statuses/counts and every failed precondition. Apply is
 one transaction, locking targets in deterministic UUID order.

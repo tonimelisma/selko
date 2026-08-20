@@ -29,7 +29,7 @@ MANIFEST_VERSION = 1
 ALLOWED_ACTIONS = {
     "merge_duplicate_group",
     "cancel_event",
-    "mark_source_resolved",
+    "resolve_proposal",
 }
 ALLOWED_MERGE_STATUSES = {
     "pending_review",
@@ -149,9 +149,12 @@ def _load_manifest(path_value: str) -> tuple[str, list[RepairAction]]:
             if not isinstance(payload.get("expected_field_hash"), str) or len(payload["expected_field_hash"]) != 64:
                 raise RepairError(f"actions[{index}] is missing expected_field_hash")
         else:
-            payload["source_id"] = _uuid(payload.get("source_id"), f"actions[{index}].source_id")
-            if not isinstance(payload.get("expected_source_hash"), str) or len(payload["expected_source_hash"]) != 64:
-                raise RepairError(f"actions[{index}] is missing expected_source_hash")
+            payload["event_id"] = _uuid(payload.get("event_id"), f"actions[{index}].event_id")
+            payload["proposal_id"] = _uuid(payload.get("proposal_id"), f"actions[{index}].proposal_id")
+            if payload.get("reason") not in {"historical_proposal_cleanup", "operator_confirmed_rejection"}:
+                raise RepairError("resolve_proposal reason is not an enumerated operator reason")
+            if not isinstance(payload.get("expected_proposal_hash"), str) or len(payload["expected_proposal_hash"]) != 64:
+                raise RepairError(f"actions[{index}] is missing expected_proposal_hash")
         actions.append(RepairAction(kind, payload))
     return user_id, actions
 
@@ -186,6 +189,8 @@ def _event_ids(actions: list[RepairAction], additional_ids: set[str] | None = No
             ids.add(action.payload["survivor_id"])
             ids.update(action.payload["duplicate_ids"])
         elif action.kind == "cancel_event":
+            ids.add(action.payload["event_id"])
+        elif action.kind == "resolve_proposal":
             ids.add(action.payload["event_id"])
     ids.update(additional_ids or set())
     return ids
@@ -278,70 +283,58 @@ async def _check_cancel(action: RepairAction, events: dict[str, dict[str, Any]])
     return failures
 
 
-async def _check_source(action: RepairAction, source_rows: dict[str, dict[str, Any]]) -> tuple[dict[str, Any] | None, list[str]]:
-    source_id = action.payload["source_id"]
-    row = source_rows.get(source_id)
+async def _check_proposal(action: RepairAction, proposal_rows: dict[str, dict[str, Any]], conn: asyncpg.Connection) -> tuple[dict[str, Any] | None, list[str]]:
+    proposal_id = action.payload["proposal_id"]
+    row = proposal_rows.get(proposal_id)
     failures: list[str] = []
     if row is None:
-        failures.append(f"source {source_id} is missing or not owned by the confirmed user")
+        failures.append(f"proposal {proposal_id} is missing or not owned by the confirmed user")
         return None, failures
     data = dict(row)
-    if source_field_hash(data) != action.payload["expected_source_hash"]:
-        failures.append(f"source {source_id} field hash changed")
-    if data["is_undone"] is not True:
-        failures.append(f"source {source_id} is not an undone historical proposal")
+    actual_hash = await conn.fetchval(
+        "SELECT public.event_change_proposal_hash(p) FROM public.event_change_proposals p WHERE p.id = $1::uuid",
+        proposal_id,
+    )
+    if actual_hash != action.payload["expected_proposal_hash"]:
+        failures.append(f"proposal {proposal_id} hash changed")
+    if data["status"] != "closed_legacy":
+        failures.append(f"proposal {proposal_id} is not a closed legacy proposal")
     return data, failures
 
 
 async def _preconditions(conn: asyncpg.Connection, user_id: str, actions: list[RepairAction]) -> tuple[dict[str, dict[str, Any]], list[str], dict[str, Any]]:
-    source_ids = sorted(
-        action.payload["source_id"]
+    proposal_ids = sorted(
+        action.payload["proposal_id"]
         for action in actions
-        if action.kind == "mark_source_resolved"
+        if action.kind == "resolve_proposal"
     )
-    source_event_ids = {
-        str(row["event_id"])
-        for row in await conn.fetch(
-            """
-            SELECT s.event_id
-            FROM public.event_sources s
-            JOIN public.events e ON e.id = s.event_id
-            WHERE s.id = ANY($1::uuid[]) AND e.user_id = $2::uuid
-            ORDER BY s.event_id
-            """,
-            source_ids,
-            user_id,
-        )
-    } if source_ids else set()
-    events = await _lock_events(conn, user_id, actions, source_event_ids)
-    failures: list[str] = []
-    locked_source_rows = {
+    proposal_rows = {
         str(row["id"]): dict(row)
         for row in await conn.fetch(
             """
-            SELECT s.*
-            FROM public.event_sources s
-            JOIN public.events e ON e.id = s.event_id
-            WHERE s.id = ANY($1::uuid[]) AND e.user_id = $2::uuid
-            ORDER BY s.id
-            FOR UPDATE OF s
+            SELECT p.* FROM public.event_change_proposals p
+            WHERE p.id = ANY($1::uuid[]) AND p.user_id = $2::uuid
+            ORDER BY p.id FOR UPDATE
             """,
-            source_ids,
+            proposal_ids,
             user_id,
         )
-    } if source_ids else {}
-    source_rows: dict[str, Any] = {}
+    } if proposal_ids else {}
+    proposal_event_ids = {str(row["event_id"]) for row in proposal_rows.values()}
+    events = await _lock_events(conn, user_id, actions, proposal_event_ids)
+    failures: list[str] = []
+    proposals: dict[str, Any] = {}
     for action in actions:
         if action.kind == "merge_duplicate_group":
             failures.extend(await _check_merge(action, events, user_id, conn))
         elif action.kind == "cancel_event":
             failures.extend(await _check_cancel(action, events))
         else:
-            source, source_failures = await _check_source(action, locked_source_rows)
+            proposal, source_failures = await _check_proposal(action, proposal_rows, conn)
             failures.extend(source_failures)
-            if source is not None:
-                source_rows[action.payload["source_id"]] = source
-    return events, failures, source_rows
+            if proposal is not None:
+                proposals[action.payload["proposal_id"]] = proposal
+    return events, failures, proposals
 
 
 async def _audit(conn: asyncpg.Connection, user_id: str, event_id: str | None, action: str, reason: str, pre_change: dict[str, Any]) -> None:
@@ -429,7 +422,7 @@ async def _merge(conn: asyncpg.Connection, user_id: str, action: RepairAction, e
     return changed
 
 
-async def _apply(conn: asyncpg.Connection, user_id: str, actions: list[RepairAction], events: dict[str, dict[str, Any]], source_rows: dict[str, Any]) -> tuple[int, list[dict[str, Any]]]:
+async def _apply(conn: asyncpg.Connection, user_id: str, actions: list[RepairAction], events: dict[str, dict[str, Any]], proposals: dict[str, Any]) -> tuple[int, list[dict[str, Any]]]:
     changed = 0
     reverse_ops: list[dict[str, Any]] = []
     for action in actions:
@@ -452,13 +445,19 @@ async def _apply(conn: asyncpg.Connection, user_id: str, actions: list[RepairAct
             changed += 1
             reverse_ops.append({"action": "restore_event_state", "event_id": event_id, "before_status": before["status"], "before_calendar_sync_action": before.get("calendar_sync_action"), "before_calendar_work_generation": before.get("calendar_work_generation")})
         else:
-            source_id = action.payload["source_id"]
-            source = source_rows[source_id]
-            await conn.execute("UPDATE public.event_sources SET is_undone = false WHERE id = $1::uuid", source_id)
-            await _regenerate_attribution(conn, str(source["event_id"]))
-            await _audit(conn, user_id, str(source["event_id"]), "mark_source_resolved", "historical_proposal_cleanup", {"source_id": source_id, "before_is_undone": True})
+            proposal_id = action.payload["proposal_id"]
+            proposal = proposals[proposal_id]
+            await conn.fetchval(
+                "SELECT public.resolve_event_change_proposal($1::uuid, $2::uuid, $3::uuid, $4, $5)",
+                str(proposal["event_id"]), user_id, proposal_id,
+                action.payload["expected_proposal_hash"], action.payload["reason"],
+            )
+            await _audit(conn, user_id, str(proposal["event_id"]), "resolve_proposal", action.payload["reason"], {
+                "proposal_id": proposal_id,
+                "before_status": proposal["status"],
+            })
             changed += 1
-            reverse_ops.append({"action": "mark_source_undone", "source_id": source_id})
+            reverse_ops.append({"action": "restore_closed_legacy_proposal", "proposal_id": proposal_id})
     return changed, reverse_ops
 
 
@@ -508,7 +507,7 @@ async def _run(args: argparse.Namespace) -> int:
                 for row in rows:
                     print(f"event id={row['id']} user_id={row['user_id']} status={row['status']}")
                 return 0
-            events, failures, source_rows = await _preconditions(conn, user_id, actions)
+            events, failures, proposals = await _preconditions(conn, user_id, actions)
             if failures:
                 print("PRECONDITION FAILED")
                 for failure in failures:
@@ -519,7 +518,7 @@ async def _run(args: argparse.Namespace) -> int:
             print(f"DRY-RUN actions={len(actions)} events={len(events)}")
             if not args.apply:
                 return 0
-            changed, reverse_ops = await _apply(conn, user_id, actions, events, source_rows)
+            changed, reverse_ops = await _apply(conn, user_id, actions, events, proposals)
             if changed == 0:
                 raise RepairError("--apply completed without mutating any row")
             artifact_document = {
