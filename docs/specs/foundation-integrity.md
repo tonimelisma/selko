@@ -947,8 +947,11 @@ Only after F7a exits 0.
    hardening finding 30. Execute it on staging: revert, confirm the system runs,
    re-apply. A rollback plan that has never been run is not a rollback plan.
 
-**Definition of done:** `./scripts/verify.sh staging` exits 0 from a clean
-checkout; staging has processed real email through the worker path for 24 h with
+**Definition of done:** `STAGING_REQUIRE_WORKERS=1 ./scripts/verify.sh staging`
+exits 0 from a clean checkout; the worker-on health gate proves
+`background_processing_enabled=true`, every managed task is alive,
+`listener.connected=true`, and egress reports `transport=asyncpg`; staging has
+processed real email through the worker path for 24 h with
 `items_dead_letter = 0`; the H1/H3/H4 pooler properties are confirmed on real
 infrastructure; the rollback has been performed and undone at least once; and
 the measured egress figure is recorded.

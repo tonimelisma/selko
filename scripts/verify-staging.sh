@@ -22,6 +22,10 @@ linked_ref=$(tr -d '[:space:]' < "$LINKED_REF_FILE")
 [[ -n "${STAGING_API_BASE_URL:-}" ]] || fail "STAGING_API_BASE_URL is required"
 [[ -n "${SUPABASE_DB_PASSWORD:-}" ]] || fail "SUPABASE_DB_PASSWORD is required for staging migration verification"
 [[ "${STAGING_APPLY_MIGRATIONS:-}" == "1" ]] || fail "set STAGING_APPLY_MIGRATIONS=1 after reviewing the migration dry-run"
+case "${STAGING_REQUIRE_WORKERS:-0}" in
+  0|1) ;;
+  *) fail "STAGING_REQUIRE_WORKERS must be 0 or 1" ;;
+esac
 
 echo "Tier 2: staging ref verified"
 uv run python -m cli.cli_seed_tokens --sync --provider gmail
@@ -51,7 +55,14 @@ for attempt in $(seq 1 30); do
   [[ "$attempt" -lt 30 ]] || fail "staging health did not become ready"
   sleep 10
 done
-curl --fail --silent --show-error "$ingestion_url"
-curl --fail --silent --show-error "$egress_url"
+ingestion_json=$(curl --fail --silent --show-error "$ingestion_url")
+egress_json=$(curl --fail --silent --show-error "$egress_url")
+printf '%s\n' "$ingestion_json"
+printf '%s\n' "$egress_json"
+
+if [[ "${STAGING_REQUIRE_WORKERS:-0}" == "1" ]]; then
+  printf '%s\n' "$ingestion_json" | ./scripts/assert-staging-health.sh ingestion
+  printf '%s\n' "$egress_json" | ./scripts/assert-staging-health.sh egress
+fi
 
 ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m staging -v --tb=short -n auto
