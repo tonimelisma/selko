@@ -69,14 +69,16 @@ class IngestionRuntime:
         # factory lets the watchdog respawn a task that exits unexpectedly.
         self._managed: list[dict[str, Any]] = []
         self._stop_event = asyncio.Event()
-        self._health_stop: asyncio.Event | None = None
+        self._health_evaluator: EmailSyncHealthEvaluator | None = None
         self._watchdog_task: asyncio.Task | None = None
 
     def _spawn(self, suffix: str, loop_name: str, task_name: str) -> None:
         def factory() -> asyncio.Task:
             worker = EmailIngestionWorker(
                 self.client, self.config, f"{self.instance_id}-{suffix}",
-                pg_pool=self.pg_pool, work_listener=self.work_listener,
+                pg_pool=self.pg_pool,
+                work_listener=self.work_listener,
+                health_evaluator=self._health_evaluator,
             )
             self._workers.append(worker)
             return asyncio.create_task(getattr(worker, loop_name)(), name=task_name)
@@ -110,27 +112,15 @@ class IngestionRuntime:
             except Exception:
                 pass
 
-    def _spawn_health(self) -> None:
-        def factory() -> asyncio.Task:
-            self._health_stop = asyncio.Event()
-            health = EmailSyncHealthEvaluator(self.client, self.config, build_notifier(self.config))
-            return asyncio.create_task(health.run(self._health_stop), name="email-sync-health")
-
-        self._managed.append({
-            "name": "email-sync-health",
-            "factory": factory,
-            "task": factory(),
-            "restarts": 0,
-            "last_exception_code": None,
-        })
-
     async def start(self) -> None:
         self._stop_event.clear()
+        self._health_evaluator = EmailSyncHealthEvaluator(
+            self.client, self.config, build_notifier(self.config)
+        )
         self._spawn("coordinator", "coordinator_loop", "email-sync-coordinator")
         # Inc2: one claim loop per type, concurrency via Semaphore in worker (not pollers)
         self._spawn("acquisition", "acquisition_loop", "email-acquisition")
         self._spawn("attachment", "attachment_loop", "email-attachment")
-        self._spawn_health()
         self._watchdog_task = asyncio.create_task(self._watchdog(), name="ingestion-watchdog")
         logger.info(
             "Email ingestion v2 runtime started (%d tasks, instance=%s)",
@@ -202,8 +192,6 @@ class IngestionRuntime:
         self._stop_event.set()
         for worker in self._workers:
             worker.stop()
-        if self._health_stop is not None:
-            self._health_stop.set()
         if self._watchdog_task is not None:
             self._watchdog_task.cancel()
             await asyncio.gather(self._watchdog_task, return_exceptions=True)
@@ -213,7 +201,7 @@ class IngestionRuntime:
         await asyncio.gather(*(entry["task"] for entry in self._managed), return_exceptions=True)
         self._managed.clear()
         self._workers.clear()
-        self._health_stop = None
+        self._health_evaluator = None
         logger.info("Email ingestion v2 runtime stopped; unfinished leases remain reclaimable")
 
     def status(self) -> dict[str, Any]:
@@ -318,9 +306,10 @@ def _exception_code(exc: BaseException | None) -> str | None:
     try:
         from selko.services.email_ingestion import classify_email_error
 
-        return classify_email_error(exc).code
+        code = classify_email_error(exc).code
+        return "unclassified" if code == "unknown" else code
     except Exception:
-        return "unknown"
+        return "unclassified"
 
 
 def _parse_ts(value: str | None) -> datetime | None:

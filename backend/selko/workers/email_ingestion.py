@@ -18,6 +18,7 @@ from selko.services.attachments import (
     upload_to_storage,
 )
 from selko.services.email_folders import upsert_discovered_folders
+from selko.services.email_sync_health import EmailSyncHealthEvaluator
 from selko.services.email_ingestion import (
     EmailIngestionRepository,
     ProviderAuthenticationError,
@@ -110,12 +111,22 @@ def _eligible_gmail_metadata(metadata: dict[str, Any], excluded: set[str]) -> bo
 class EmailIngestionWorker:
     """Coordinates v2 work while preserving one durable owner per item."""
 
-    def __init__(self, client: Client, config: Config, worker_id: str, *, pg_pool=None, work_listener=None):
+    def __init__(
+        self,
+        client: Client,
+        config: Config,
+        worker_id: str,
+        *,
+        pg_pool=None,
+        work_listener=None,
+        health_evaluator: EmailSyncHealthEvaluator | None = None,
+    ):
         self.client = client
         self.config = config
         self.worker_id = worker_id
         self.repository = EmailIngestionRepository(config, pg_pool)
         self._work_listener = work_listener
+        self._health_evaluator = health_evaluator
         # C4: executor width, NOT poller count. One claim loop per type drains
         # the queue; these bound how many items are processed concurrently.
         # The semaphore is acquired BEFORE the claim so a claimed row never
@@ -202,6 +213,7 @@ class EmailIngestionWorker:
             logger.warning("Email sync failed provider=%s code=%s", claim.provider, safe_error_code(exc))
             await self.repository.fail_sync(claim, self.worker_id, exc)
             self._log_sync_run(claim, started_at, error_code=safe_error_code(exc))
+        await self._evaluate_health_on_activity()
         return True
 
     async def run_reconciliation_once(self) -> bool:
@@ -229,7 +241,17 @@ class EmailIngestionWorker:
             logger.warning("Email reconcile failed provider=%s code=%s", claim.provider, safe_error_code(exc))
             await self.repository.fail_sync(claim, self.worker_id, exc)
             self._log_sync_run(claim, started_at, error_code=safe_error_code(exc))
+        await self._evaluate_health_on_activity()
         return True
+
+    async def _evaluate_health_on_activity(self) -> None:
+        """Reconcile operational incidents only after durable work activity."""
+        if self._health_evaluator is None:
+            return
+        try:
+            await self._health_evaluator.evaluate_once()
+        except Exception:
+            logger.exception("Email sync health evaluation failed after work activity")
 
     def _log_sync_run(
         self,
