@@ -79,8 +79,13 @@ Don't use `--run-llm` for:
 # Start local Supabase
 supabase start
 
-# Run the complete local verification gate (unit + integration)
+# Run the complete local verification gate (unit + integration). The gate
+# writes .verify/backend-<sha>.json and fails if any skip is not budgeted.
 ./scripts/verify.sh backend
+
+# Explicit operator waiver for missing/stale development Gmail credentials.
+# The waiver is recorded in the evidence manifest; it is never implicit.
+./scripts/verify.sh backend --accept-stale-gmail-token
 
 # Create test user
 uv run python -m cli.cli_user create \
@@ -125,6 +130,9 @@ Staging tokens are persistent and usually valid. `--sync` is the normal fix; OAu
 > Tests are designed to FAIL when credentials are unavailable. This is intentional.
 > The correct fix is ALWAYS to refresh/seed the credentials, not to nerf the tests.
 > Changing `pytest.fail()` to `pytest.skip()` masks real problems and breaks CI.
+> The only local exception is the explicit `--accept-stale-gmail-token` gate
+> flag; it records the accepted degradation and exposes every skipped node in
+> the manifest for review.
 
 ## Token Persistence Rules
 
