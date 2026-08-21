@@ -1,6 +1,6 @@
 +++
 spec_id = "cutover-verification-20260807"
-readme_order = 7
+readme_order = 8
 title = "Cutover verification"
 increments = "Ordered checklist"
 gate = "Executed through F7–F8, never directly"
