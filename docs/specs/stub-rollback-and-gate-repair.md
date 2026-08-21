@@ -1,3 +1,18 @@
++++
+spec_id = "stub-rollback-and-gate-repair"
+readme_order = 1
+title = "Stub rollback and gate repair"
+increments = "G1–G7"
+gate = "G1–G7 merged; staging access remains an operator check"
+tests = [
+  "tests/test_gate_contract.py::test_gate_has_no_success_by_refusal_or_ignored_failure",
+  "tests/test_gate_contract.py::test_missing_gmail_token_requires_explicit_degradation_flag",
+  "tests/test_gate_contract.py::test_manifest_writer_records_every_skip_and_rejects_unbudgeted_nodes",
+]
+health = []
+drills = []
++++
+
 # Stub Rollback and Gate Repair
 
 > Historical gate-repair record. It documents the pre-S5 compatibility

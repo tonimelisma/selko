@@ -1,3 +1,18 @@
++++
+spec_id = "parallel-extraction-fenced-commit"
+readme_order = 2
+title = "Parallel extraction, fenced commit"
+increments = "P1–P4"
+gate = "G1–G4 merged, gate green ×3"
+tests = [
+  "tests/integration/test_integration_fenced_event_commit.py::test_python_and_sql_fingerprints_agree",
+  "tests/integration/test_integration_fenced_event_commit.py::test_stale_fingerprint_returns_conflict_and_mutates_nothing",
+  "tests/test_repair_review_queue_integrity.py::test_apply_requires_manifest_and_confirmed_user",
+]
+health = []
+drills = []
++++
+
 # Parallel Extraction, Fenced Commit
 
 **Status:** P1–P3 are implemented. P4's guarded repair tooling is implemented;

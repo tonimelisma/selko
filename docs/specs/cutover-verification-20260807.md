@@ -1,3 +1,14 @@
++++
+spec_id = "cutover-verification-20260807"
+readme_order = 7
+title = "Cutover verification"
+increments = "Ordered checklist"
+gate = "Executed through F7–F8, never directly"
+tests = []
+health = ["/health", "/health/ingestion", "/health/egress"]
+drills = ["production-cutover-rehearsal"]
++++
+
 # Cutover Verification — Egress + Hardening Batch (Inc 10)
 
 **Status:** verified locally, not deployed. `ENABLE_BACKGROUND_PROCESSING=false` stays.
