@@ -428,7 +428,8 @@ class TestServiceRoleOAuthRoutes:
         mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
             data={
                 "user_id": "test-user-id",
-                "status": "approved",
+                "review_status": "active",
+                "calendar_work_items": [{"action": "upsert", "generation": 1, "status": "pending", "failure_code": None}],
                 "synced_at": None,
                 "google_calendar_event_id": None,
             }
@@ -436,7 +437,8 @@ class TestServiceRoleOAuthRoutes:
         mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
             data={
                 "user_id": "test-user-id",
-                "status": "approved",
+                "review_status": "active",
+                "calendar_work_items": [{"action": "upsert", "generation": 1, "status": "pending", "failure_code": None}],
                 "synced_at": None,
                 "google_calendar_event_id": None,
             }
@@ -460,7 +462,8 @@ class TestServiceRoleOAuthRoutes:
         event_id = "00000000-0000-0000-0000-000000000001"
         syncing = {
             "user_id": "test-user-id",
-            "status": "syncing",
+            "review_status": "active",
+            "calendar_work_items": [{"action": "upsert", "generation": 1, "status": "processing", "failure_code": None}],
             "synced_at": None,
             "google_calendar_event_id": None,
         }
@@ -485,7 +488,8 @@ class TestServiceRoleOAuthRoutes:
         mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
             data={
                 "user_id": "test-user-id",
-                "status": "sync_failed",
+                "review_status": "active",
+                "calendar_work_items": [{"action": "upsert", "generation": 1, "status": "failed", "failure_code": "server_error"}],
                 "synced_at": None,
                 "google_calendar_event_id": None,
             }
@@ -493,7 +497,8 @@ class TestServiceRoleOAuthRoutes:
         mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
             data={
                 "user_id": "test-user-id",
-                "status": "approved",
+                "review_status": "active",
+                "calendar_work_items": [{"action": "upsert", "generation": 2, "status": "pending", "failure_code": None}],
                 "synced_at": None,
                 "google_calendar_event_id": None,
             }

@@ -308,7 +308,7 @@ class TestEventStatusBasedClaiming:
             "user_id": test_user_id,
             "title": "Test Event for Claiming",
             "start_datetime": "2026-05-01T14:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
@@ -325,9 +325,12 @@ class TestEventStatusBasedClaiming:
 
         assert claimed is not None
         assert str(claimed["id"]) == event_id
-        assert claimed["status"] == "syncing"
         assert claimed["calendar_work_item_action"] == "upsert"
         assert claimed["calendar_work_item_attempts"] == 1
+        work_item = service_client.table("calendar_work_items").select("status").eq(
+            "event_id", event_id
+        ).single().execute().data
+        assert work_item["status"] == "processing"
 
     async def test_complete_event_sync_updates_status(
         self, service_client, authenticated_client, test_user_id, pg_pool
@@ -338,7 +341,7 @@ class TestEventStatusBasedClaiming:
             "user_id": test_user_id,
             "title": "Test Event",
             "start_datetime": "2026-05-01T14:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
@@ -364,7 +367,7 @@ class TestEventStatusBasedClaiming:
             "id", event_id
         ).single().execute()
 
-        assert event.data["status"] == "synced"
+        assert event.data["review_status"] == "active"
         assert event.data["google_calendar_event_id"] == "google-event-123"
         assert event.data["synced_at"] is not None
 
@@ -377,7 +380,7 @@ class TestEventStatusBasedClaiming:
             "user_id": test_user_id,
             "title": "Test Event",
             "start_datetime": "2026-05-01T14:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
@@ -402,7 +405,7 @@ class TestEventStatusBasedClaiming:
             "id", event_id
         ).single().execute()
 
-        assert event.data["status"] == "approved"
+        assert event.data["review_status"] == "active"
         work_item = authenticated_client.table("calendar_work_items").select(
             "status,failure_code,failure_detail,locked_by"
         ).eq("event_id", event_id).single().execute().data
@@ -417,15 +420,15 @@ class TestEventStatusBasedClaiming:
         """Test that SKIP LOCKED prevents concurrent workers from claiming same event."""
         # Clean up any existing approved events first
         service_client.table("events").update({
-            "status": "synced"
-        }).eq("user_id", test_user_id).eq("status", "approved").execute()
+            "review_status": "active"
+        }).eq("user_id", test_user_id).eq("review_status", "active").execute()
 
         # Create a single event
         event_data = {
             "user_id": test_user_id,
             "title": "Test Event",
             "start_datetime": "2026-05-01T14:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         }
 
         authenticated_client.table("events").insert(event_data).execute()
@@ -463,7 +466,7 @@ class TestEventStatusBasedClaiming:
             "user_id": test_user_id,
             "title": "Blocked on expired calendar auth",
             "start_datetime": "2026-05-01T14:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         }
         authenticated_client.table("events").insert(event_data).execute()
         event_id = authenticated_client.table("events").select("id").eq(
@@ -581,7 +584,7 @@ class TestCalendarSyncWorker:
             "title": "Worker Test Event",
             "start_datetime": "2026-05-01T14:00:00Z",
             "end_datetime": "2026-05-01T15:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
@@ -723,7 +726,7 @@ class TestWorkerConcurrency:
                 "user_id": test_user_id,
                 "title": f"Test Event {i}",
                 "start_datetime": f"2026-05-0{i+1}T14:00:00Z",
-                "status": "pending_review",
+                "review_status": "pending_review",
             }
             result = authenticated_client.table("events").insert(event_data).execute()
             event_ids.append(result.data[0]["id"])

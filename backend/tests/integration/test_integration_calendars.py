@@ -106,7 +106,7 @@ class TestCalendarSync:
             "all_day": False,
             "location": "Test Location",
             "description": "Test description",
-            "status": "approved",
+            "review_status": "active",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
@@ -136,7 +136,7 @@ class TestCalendarSync:
             "id", event_id
         ).single().execute()
 
-        assert updated_event.data["status"] == "approved"
+        assert updated_event.data["review_status"] == "active"
         assert updated_event.data["google_calendar_event_id"] is None
         assert updated_event.data["synced_at"] is None
 
@@ -147,7 +147,7 @@ class TestCalendarSync:
             "user_id": test_user_id,
             "title": "Log Test Event",
             "start_datetime": "2026-03-20T10:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
@@ -184,7 +184,7 @@ class TestCalendarSync:
             "title": "Already Synced Event",
             "start_datetime": "2026-03-25T14:00:00Z",
             "end_datetime": "2026-03-25T15:00:00Z",
-            "status": "approved",
+            "review_status": "active",
             "google_calendar_event_id": "existing-google-event-456",
         }
 
@@ -224,7 +224,7 @@ class TestCalendarSync:
             "user_id": test_user_id,
             "title": "Recreate Test Event",
             "start_datetime": "2026-04-01T14:00:00Z",
-            "status": "approved",
+            "review_status": "active",
             "google_calendar_event_id": "deleted-google-event-789",
         }
 
@@ -283,7 +283,7 @@ class TestCalendarSync:
             "user_id": test_user_id,
             "title": "No Credentials Event",
             "start_datetime": "2026-04-05T14:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         }
 
         result = admin_client.table("events").insert(event_data).execute()
@@ -302,7 +302,7 @@ class TestCalendarSync:
             "id", event_id
         ).single().execute()
 
-        assert updated_event.data["status"] == "approved"
+        assert updated_event.data["review_status"] == "active"
         # The provider adapter reports the auth failure; work-item failure
         # state is written only by the worker's fenced transition.
         assert "sync_failure_code" not in updated_event.data
@@ -321,7 +321,7 @@ class TestCancelCalendarEvent:
             "user_id": test_user_id,
             "title": "Meeting to Cancel",
             "start_datetime": "2026-04-10T14:00:00Z",
-            "status": "synced",
+            "review_status": "active",
         }
 
         result = authenticated_client.table("events").insert(event_data).execute()
@@ -335,7 +335,7 @@ class TestCancelCalendarEvent:
         ).single().execute()
 
         assert updated_event.data["title"] == "CANCELLED: Meeting to Cancel"
-        assert updated_event.data["status"] == "cancelled"
+        assert updated_event.data["review_status"] == "cancelled"
 
     def test_cancel_updates_google_calendar_event(self, authenticated_client, test_user_id):
         """Test that cancelling updates the Google Calendar event title."""
@@ -344,7 +344,7 @@ class TestCancelCalendarEvent:
             "user_id": test_user_id,
             "title": "Synced Meeting",
             "start_datetime": "2026-04-15T14:00:00Z",
-            "status": "synced",
+            "review_status": "active",
             "google_calendar_event_id": "google-to-cancel-123",
         }
 
@@ -387,7 +387,7 @@ class TestCancelCalendarEvent:
             "user_id": test_user_id,
             "title": "Already Deleted",
             "start_datetime": "2026-04-20T14:00:00Z",
-            "status": "synced",
+            "review_status": "active",
             "google_calendar_event_id": "google-already-deleted-456",
         }
 
@@ -420,4 +420,4 @@ class TestCancelCalendarEvent:
         ).single().execute()
 
         assert updated_event.data["title"] == "CANCELLED: Already Deleted"
-        assert updated_event.data["status"] == "cancelled"
+        assert updated_event.data["review_status"] == "cancelled"

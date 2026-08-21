@@ -2,8 +2,13 @@ package net.melisma.selko.data.repository
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.postgrest.query.filter.FilterOperator
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.EventStatus
 import kotlin.time.Instant
@@ -24,17 +29,6 @@ data class FetchEventsOptions(
 class EventRepository(
     private val supabaseClient: SupabaseClient
 ) {
-    private fun statusToString(status: EventStatus): String = when (status) {
-        EventStatus.PENDING_REVIEW -> "pending_review"
-        EventStatus.APPROVED -> "approved"
-        EventStatus.SYNCING -> "syncing"
-        EventStatus.SYNCED -> "synced"
-        EventStatus.SYNC_FAILED -> "sync_failed"
-        EventStatus.CANCEL_QUEUED -> "cancel_queued"
-        EventStatus.CANCELLED -> "cancelled"
-        EventStatus.REJECTED -> "rejected"
-    }
-
     suspend fun fetchPendingEvents(): EventResult<List<CalendarEvent>> {
         return try {
             val now = kotlin.time.Clock.System.now()
@@ -69,7 +63,17 @@ class EventRepository(
                     filter {
                         options.statuses?.let { statuses ->
                             if (statuses.isNotEmpty()) {
-                                isIn("status", statuses.map { statusToString(it) })
+                                val reviewStatuses = statuses.mapNotNull {
+                                    when (it) {
+                                        EventStatus.PENDING_REVIEW -> "pending_review"
+                                        EventStatus.REJECTED -> "rejected"
+                                        EventStatus.CANCELLED -> "cancelled"
+                                        else -> null
+                                    }
+                                }
+                                if (reviewStatuses.size == statuses.size) {
+                                    isIn("review_status", reviewStatuses)
+                                }
                             }
                         }
                         options.startAfter?.let {
@@ -124,14 +128,21 @@ class EventRepository(
 
     suspend fun updateEventStatus(eventId: String, status: EventStatus): EventResult<CalendarEvent> {
         return try {
-            val event = supabaseClient.from("events")
-                .update(mapOf("status" to statusToString(status))) {
-                    select()
-                    filter {
-                        eq("id", eventId)
-                    }
+            val reviewStatus = when (status) {
+                EventStatus.APPROVED -> "active"
+                EventStatus.REJECTED -> "rejected"
+                else -> throw IllegalArgumentException("Unsupported review transition: $status")
+            }
+            supabaseClient.postgrest.rpc("set_event_review_status", buildJsonObject {
+                put("p_event_id", eventId)
+                put("p_review_status", reviewStatus)
+            })
+            val event = getEventWithSources(eventId).let { result ->
+                when (result) {
+                    is EventResult.Success -> result.data
+                    is EventResult.Error -> throw IllegalStateException(result.message)
                 }
-                .decodeSingle<CalendarEvent>()
+            }
 
             EventResult.Success(event)
         } catch (e: Exception) {
@@ -204,6 +215,7 @@ class EventRepository(
                 .select(Columns.raw("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)")) {
                     filter {
                         isIn("review_status", listOf("active", "rejected", "cancelled"))
+                        filterNot("event_change_proposals.status", FilterOperator.EQ, "pending")
                     }
                     order("updated_at", Order.DESCENDING)
                     range(offset.toLong(), (offset + limit - 1).toLong())

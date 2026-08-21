@@ -162,7 +162,7 @@
  * @property {string} [description]
  * @property {string} [source_attribution]
  * @property {EventImportance} importance
- * @property {EventStatus} status
+ * @property {EventStatus} status - Derived from review_status and calendar_work_items; not stored on events
  * @property {string} [google_calendar_event_id]
  * @property {string} [synced_at]
  * @property {EventReviewStatus} review_status

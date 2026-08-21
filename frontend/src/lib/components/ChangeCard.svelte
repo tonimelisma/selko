@@ -9,7 +9,7 @@
 	/** @param {string} field */
 	function fieldLabel(field) {
 		/** @type {Record<string, string>} */
-		const map = { title: $_('events.fieldTitle'), start_datetime: $_('events.fieldStart'), end_datetime: $_('events.fieldEnd'), location: $_('events.fieldLocation'), description: $_('events.fieldDescription'), status: $_('events.fieldStatus'), all_day: $_('events.fieldAllDay') };
+		const map = { title: $_('events.fieldTitle'), start_datetime: $_('events.fieldStart'), end_datetime: $_('events.fieldEnd'), location: $_('events.fieldLocation'), description: $_('events.fieldDescription'), review_status: $_('events.fieldStatus'), status: $_('events.fieldStatus'), all_day: $_('events.fieldAllDay') };
 		return map[field] || field;
 	}
 

@@ -17,6 +17,7 @@ import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.Email
 import net.melisma.selko.data.model.EventSource
+import net.melisma.selko.data.model.EventReviewStatus
 import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.data.model.SourceType
 import net.melisma.selko.data.model.Integration
@@ -95,14 +96,14 @@ class ReviewQueueViewModelTest {
             id = "event-1",
             userId = "user-1",
             title = "Test Event 1",
-            status = EventStatus.PENDING_REVIEW,
+            reviewStatus = EventReviewStatus.PENDING_REVIEW,
             eventSources = listOf(testEventSource)
         ),
         CalendarEvent(
             id = "event-2",
             userId = "user-1",
             title = "Test Event 2",
-            status = EventStatus.PENDING_REVIEW,
+            reviewStatus = EventReviewStatus.PENDING_REVIEW,
             eventSources = listOf(
                 testEventSource.copy(id = "source-2", eventId = "event-2")
             )
@@ -215,7 +216,7 @@ class ReviewQueueViewModelTest {
             senderRuleRepository.createRule("sender@example.com", null, "ignore")
         } returns RepositoryResult.Success(testRule)
         coEvery { eventRepository.rejectEvent(any()) } returns
-                EventResult.Success(testEvents[0].copy(status = EventStatus.REJECTED))
+                EventResult.Success(testEvents[0].copy(reviewStatus = EventReviewStatus.REJECTED))
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -240,7 +241,7 @@ class ReviewQueueViewModelTest {
             senderRuleRepository.createRule("sender@example.com", null, "auto_approve")
         } returns RepositoryResult.Success(testRule)
         coEvery { eventRepository.approveEvent(any()) } returns
-                EventResult.Success(testEvents[0].copy(status = EventStatus.APPROVED))
+                EventResult.Success(testEvents[0].copy(reviewStatus = EventReviewStatus.ACTIVE))
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -302,7 +303,7 @@ class ReviewQueueViewModelTest {
             senderRuleRepository.createRule("sender@example.com", null, "ignore")
         } returns RepositoryResult.Success(testRule)
         coEvery { eventRepository.rejectEvent(any()) } returns
-                EventResult.Success(testEvents[0].copy(status = EventStatus.REJECTED))
+                EventResult.Success(testEvents[0].copy(reviewStatus = EventReviewStatus.REJECTED))
 
         viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -339,7 +340,7 @@ class RejectUndoParityTest {
         }
 
         fun event(id: String, title: String = "Event $id") = CalendarEvent(
-            id = id, userId = "user-1", title = title, status = EventStatus.PENDING_REVIEW
+            id = id, userId = "user-1", title = title, reviewStatus = EventReviewStatus.PENDING_REVIEW
         )
 
         fun viewModel(

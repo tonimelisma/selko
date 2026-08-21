@@ -161,7 +161,7 @@ def cleanup_user(client, user_id: str, apply: bool) -> dict[str, int]:
     if orphaned_email_ids:
         event_rows = fetch_all_rows(
             lambda: client.table("events")
-            .select("id, status, review_status")
+            .select("id, review_status")
             .eq("user_id", user_id)
             .in_("review_status", ["pending_review", "active"])
         )
@@ -179,7 +179,7 @@ def cleanup_user(client, user_id: str, apply: bool) -> dict[str, int]:
                 ):
                     summary["rejected_new_events"] += 1
                     if apply:
-                        client.table("events").update({"status": "rejected", "review_status": "rejected"}).eq(
+                        client.table("events").update({"review_status": "rejected"}).eq(
                             "id", event["id"]
                         ).execute()
             else:  # active event with a pending authoritative proposal
@@ -223,7 +223,7 @@ def cleanup_user(client, user_id: str, apply: bool) -> dict[str, int]:
     for _keep_id, reject_ids in duplicates:
         summary["duplicate_events_rejected"] += len(reject_ids)
         if apply:
-            client.table("events").update({"status": "rejected", "review_status": "rejected"}).in_(
+            client.table("events").update({"review_status": "rejected"}).in_(
                 "id", reject_ids
             ).execute()
 

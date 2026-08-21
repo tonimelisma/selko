@@ -11,9 +11,43 @@ import pytest
 from selko.services.events import (
     EventsError,
     check_sender_rules,
+    derive_delivery_status,
     find_matching_event,
     generate_source_attribution,
 )
+
+
+class TestDeliveryStatus:
+    def test_review_lane_owns_pending_and_terminal_review_states(self):
+        assert derive_delivery_status({"review_status": "pending_review"}) == "pending_review"
+        assert derive_delivery_status({"review_status": "rejected"}) == "rejected"
+        assert derive_delivery_status({"review_status": "cancelled"}) == "cancelled"
+
+    @pytest.mark.parametrize(
+        ("work_item", "expected"),
+        [
+            ({"action": "upsert", "status": "pending", "generation": 1}, "approved"),
+            ({"action": "upsert", "status": "processing", "generation": 1}, "syncing"),
+            ({"action": "upsert", "status": "succeeded", "generation": 1}, "synced"),
+            ({"action": "upsert", "status": "failed", "generation": 1}, "sync_failed"),
+            ({"action": "upsert", "status": "blocked", "failure_code": "oauth_required", "generation": 1}, "approved"),
+            ({"action": "cancel", "status": "pending", "generation": 1}, "cancel_queued"),
+            ({"action": "cancel", "status": "succeeded", "generation": 1}, "cancelled"),
+        ],
+    )
+    def test_delivery_is_derived_from_latest_non_superseded_work_item(self, work_item, expected):
+        event = {"review_status": "active", "calendar_work_items": [work_item]}
+        assert derive_delivery_status(event) == expected
+
+    def test_superseded_work_does_not_mask_latest_delivery(self):
+        event = {
+            "review_status": "active",
+            "calendar_work_items": [
+                {"action": "upsert", "status": "failed", "generation": 1},
+                {"action": "upsert", "status": "superseded", "generation": 2},
+            ],
+        }
+        assert derive_delivery_status(event) == "sync_failed"
 
 
 class TestCheckSenderRules:

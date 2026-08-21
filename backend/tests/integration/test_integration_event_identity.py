@@ -87,7 +87,7 @@ async def test_hint_lookup_is_part_of_the_commit_fence(pg_pool, temp_user):
     )
     await pg_pool.execute(
         """
-        INSERT INTO public.events (id, user_id, title, start_datetime, end_datetime, status)
+        INSERT INTO public.events (id, user_id, title, start_datetime, end_datetime, review_status)
         VALUES ($1, $2, 'outside local day', '2036-02-02T10:00:00Z', '2036-02-02T11:00:00Z', 'pending_review')
         """,
         existing_event_id, user_id,

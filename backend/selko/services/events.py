@@ -65,6 +65,40 @@ class WorkItemLease:
     generation: int
 
 
+def derive_delivery_status(event: dict[str, Any]) -> str:
+    """Derive the API/UI delivery state without persisting a second owner."""
+    review_status = event.get("review_status")
+    if review_status == "pending_review":
+        return "pending_review"
+    if review_status == "rejected":
+        return "rejected"
+    if review_status == "cancelled":
+        return "cancelled"
+
+    items = [
+        item for item in (event.get("calendar_work_items") or [])
+        if item.get("status") != "superseded"
+    ]
+    item = max(items, key=lambda value: value.get("generation", 0), default=None)
+    if item is None:
+        return "synced" if event.get("google_calendar_event_id") else "approved"
+
+    oauth_blocked = item.get("failure_code") in {"oauth_required", "oauth_scope_required"}
+    if item.get("action") == "cancel":
+        if item.get("status") == "succeeded":
+            return "cancelled"
+        if item.get("status") in {"failed", "blocked"} and not oauth_blocked:
+            return "sync_failed"
+        return "cancel_queued"
+    if item.get("status") == "processing":
+        return "syncing"
+    if item.get("status") == "succeeded":
+        return "synced"
+    if item.get("status") in {"failed", "blocked"}:
+        return "approved" if oauth_blocked else "sync_failed"
+    return "approved"
+
+
 @dataclass
 class EventMatch:
     """A dedup match against a local Selko event or Google Calendar event."""
@@ -397,6 +431,7 @@ def save_extracted_events(
         supabase_client, user_id
     )
     auto_apply = initial_status == "approved"
+    initial_review_status = "active" if auto_apply else "pending_review"
 
     try:
         user_tz = ZoneInfo(user_timezone)
@@ -479,19 +514,14 @@ def save_extracted_events(
                 cancellation_outcomes.append("cancellation_unmatched")
                 continue
 
-            status = str(match.baseline.get("status") or "")
-            if status == "rejected":
-                next_status = "rejected"
-            elif status in {"synced", "syncing", "sync_failed", "approved", "cancel_queued"}:
-                next_status = "cancel_queued"
-            else:
-                next_status = "cancelled"
+            review_status = str(match.baseline.get("review_status") or "active")
 
             decisions.append({
                 "action": "update",
                 "event_id": match.match_id,
                 "fields": {
-                    "status": next_status,
+                    "review_status": "active",
+                    "calendar_action": "cancel",
                 },
                 **_window_fields(candidate_window),
                 "hints": hint_payload,
@@ -503,9 +533,9 @@ def save_extracted_events(
                     "change_set": {
                         "kind": "cancellation",
                         "changes": [{
-                            "field": "status",
-                            "before": status,
-                            "after": next_status,
+                            "field": "review_status",
+                            "before": review_status,
+                            "after": "active",
                             "reason": "organizer cancellation",
                         }],
                         "reasoning": "Structured or strong cancellation matched an existing event.",
@@ -521,7 +551,7 @@ def save_extracted_events(
             decisions.append({
                 "action": "create",
                 "event_id": None,
-                "fields": {**event_data, "status": initial_status},
+                "fields": {**event_data, "review_status": initial_review_status},
                 **_window_fields(candidate_window),
                 "hints": hint_payload,
                 "source": {
@@ -614,7 +644,8 @@ def save_extracted_events(
                 "event_id": None,
                 "fields": {
                     **applied,
-                    "status": "approved",
+                    "review_status": "active",
+                    "calendar_action": "upsert",
                     "google_calendar_event_id": match.gcal_id,
                 },
                 **_window_fields(candidate_window),
@@ -636,7 +667,8 @@ def save_extracted_events(
                 "event_id": None,
                     "fields": {
                     **match.baseline,
-                    "status": match.baseline.get("status") or "synced",
+                    "review_status": "active",
+                    "calendar_action": "upsert",
                     "google_calendar_event_id": match.gcal_id,
                 },
                 **_window_fields(candidate_window),
@@ -652,7 +684,7 @@ def save_extracted_events(
                     }],
                 },
             })
-        elif match.baseline.get("status") == "pending_review":
+        elif match.baseline.get("review_status") == "pending_review":
             decisions.append({
                 "action": "update",
                 "event_id": match.match_id,
@@ -666,7 +698,7 @@ def save_extracted_events(
             decisions.append({
                 "action": "update",
                 "event_id": match.match_id,
-                "fields": {**applied, "status": "approved"},
+                "fields": {**applied, "review_status": "active", "calendar_action": "upsert"},
                 **_window_fields(candidate_window),
                 "hints": hint_payload,
                 "source": {**source, "replace_pending_proposal": True},
@@ -948,7 +980,7 @@ def _event_baseline(row: dict[str, Any]) -> dict[str, Any]:
         "location": row.get("location"),
         "description": row.get("description"),
         "importance": row.get("importance"),
-        "status": row.get("status"),
+        "review_status": row.get("review_status"),
         "google_calendar_event_id": row.get("google_calendar_event_id"),
     }
 
@@ -1268,7 +1300,7 @@ def find_matching_event(
         existing = supabase_client.table("events").select("*").eq(
             "user_id", user_id
         ).eq("google_calendar_event_id", gcal_id).not_.in_(
-            "status", ["rejected", "cancelled"]
+            "review_status", ["rejected", "cancelled"]
         ).order("created_at").limit(1).execute()
         if existing.data:
             row = existing.data[0]
@@ -1282,7 +1314,7 @@ def find_matching_event(
                     "location": row.get("location"),
                     "description": row.get("description"),
                     "importance": row.get("importance"),
-                    "status": row.get("status"),
+                    "review_status": row.get("review_status"),
                 },
                 candidate_window=candidate_window,
             ))
@@ -1294,7 +1326,7 @@ def find_matching_event(
             "location": candidate.get("location"),
             "description": candidate.get("description"),
             "all_day": False,
-            "status": "synced",
+            "review_status": "active",
         }
         return resolved(EventMatch(
             match_id=matched_id,
@@ -1311,7 +1343,7 @@ def find_matching_event(
         "location": candidate.get("location"),
         "description": candidate.get("description"),
         "importance": candidate.get("importance"),
-        "status": candidate.get("status"),
+        "review_status": candidate.get("review_status"),
     }
     return resolved(EventMatch(
         match_id=matched_id,
@@ -1379,6 +1411,7 @@ def apply_change_proposal(
         "description": merged.get("description"),
         "importance": merged.get("importance", event.get("importance", "action_required")),
         "status": next_status,
+        "review_status": "cancelled" if is_cancellation and not has_provider_event else "active",
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     supabase_client.rpc("apply_event_change_proposal", {
@@ -1393,7 +1426,7 @@ def apply_change_proposal(
         "p_location": update_fields["location"],
         "p_description": update_fields["description"],
         "p_importance": update_fields["importance"],
-        "p_next_status": update_fields["status"],
+        "p_next_status": next_status,
         "p_calendar_sync_action": next_action,
     }).execute()
     logger.info("Applied event change proposal %s on event %s", proposal["id"], event_id)
@@ -1620,7 +1653,7 @@ def get_events_new(supabase_client: Client, user_id: str) -> list[dict[str, Any]
     """Get New-lane events pending approval, grouped by sender."""
     result = supabase_client.table("events").select(
         "*, event_sources(*, emails(*))"
-    ).eq("user_id", user_id).eq("status", "pending_review").order(
+    ).eq("user_id", user_id).eq("review_status", "pending_review").order(
         "start_datetime"
     ).execute()
 
@@ -1631,7 +1664,7 @@ def get_events_approved(supabase_client: Client, user_id: str) -> list[dict[str,
     """Get approved/synced events."""
     result = supabase_client.table("events").select("*").eq(
         "user_id", user_id
-    ).in_("status", ["approved", "synced"]).order("start_datetime").execute()
+    ).eq("review_status", "active").order("start_datetime").execute()
     
     return result.data
 

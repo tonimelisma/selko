@@ -44,7 +44,7 @@ def sample_event() -> dict[str, object]:
         "location": None,
         "description": None,
         "importance": "action_required",
-        "status": "pending_review",
+        "review_status": "pending_review",
         "recurrence_rule": None,
         "google_calendar_event_id": None,
         "source_attribution": None,

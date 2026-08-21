@@ -353,7 +353,7 @@ async def test_python_and_sql_fingerprints_agree(pg_pool, temp_user):
     event_id = uuid4()
     try:
         await pg_pool.execute(
-            "INSERT INTO public.events (id, user_id, title, start_datetime, end_datetime, status) VALUES ($1, $2, 'fingerprint', '2031-05-03T10:00:00Z', '2031-05-03T11:00:00Z', 'pending_review')",
+            "INSERT INTO public.events (id, user_id, title, start_datetime, end_datetime, review_status) VALUES ($1, $2, 'fingerprint', '2031-05-03T10:00:00Z', '2031-05-03T11:00:00Z', 'pending_review')",
             event_id, user_id,
         )
         rows = await pg_pool.fetch(
