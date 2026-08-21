@@ -224,6 +224,7 @@ def test_graph_transport_sends_correlation_and_immutable_request_headers():
             "https://graph.microsoft.com/v1.0/me/messages",
             prefer='IdType="ImmutableId"',
             max_attempts=1,
+            operation="GET /me/messages/{message-id}",
         )
 
     assert result == {"value": []}
@@ -240,7 +241,12 @@ def test_graph_429_honors_retry_after_before_success():
     success.json.return_value = {"value": [{"id": "immutable-id"}]}
     sleeps = []
     with patch("selko.services.msgraph.requests.get", side_effect=[throttled, success]):
-        result = request_json("token", "https://graph.microsoft.com/v1.0/me/messages", sleep=sleeps.append)
+        result = request_json(
+            "token",
+            "https://graph.microsoft.com/v1.0/me/messages",
+            sleep=sleeps.append,
+            operation="GET /me/messages/{message-id}",
+        )
 
     assert result["value"][0]["id"] == "immutable-id"
     assert sleeps == [7.0]

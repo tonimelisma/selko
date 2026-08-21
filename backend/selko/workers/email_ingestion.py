@@ -61,7 +61,7 @@ from selko.services.outlook import (
     parse_outlook_message,
     resolve_well_known_folder_ids,
 )
-from selko.services.msgraph import record_graph_failure
+from selko.services.msgraph import GraphCallContext, record_graph_failure
 from selko.workers.concurrency import _try_acquire
 
 logger = logging.getLogger(__name__)
@@ -465,11 +465,21 @@ class EmailIngestionWorker:
         totals = {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
         await self.repository.require_heartbeat(claim.integration_id, self.worker_id, claim.lease_generation)
         self._outlook_token(claim.user_id)
+        graph_context = GraphCallContext(
+            client=self.client,
+            config=self.config,
+            integration_id=claim.integration_id,
+            run_id=claim.run_id,
+        )
 
         def list_folders(token: str):
-            resolved = resolve_well_known_folder_ids(token)
+            resolved = resolve_well_known_folder_ids(token, context=graph_context)
             return normalize_mail_folders(
-                fetch_mail_folders(token, resolved_well_known_ids=resolved)
+                fetch_mail_folders(
+                    token,
+                    resolved_well_known_ids=resolved,
+                    context=graph_context,
+                )
             )
 
         # Inc1 payload: hourly folder refresh
@@ -527,7 +537,10 @@ class EmailIngestionWorker:
                     changes = self._outlook_call(
                         claim.user_id,
                         lambda tok: fetch_folder_messages(
-                            tok, folder["provider_folder_id"], since=since
+                            tok,
+                            folder["provider_folder_id"],
+                            since=since,
+                            context=graph_context,
                         ),
                     )
                     cursor = None
@@ -540,6 +553,7 @@ class EmailIngestionWorker:
                             folder_id=folder["provider_folder_id"],
                             since=since if not folder.get("sync_cursor") else None,
                             immutable_ids=True,
+                            context=graph_context,
                         ),
                     )
                     if cursor == RESYNC_REQUIRED:
@@ -551,6 +565,7 @@ class EmailIngestionWorker:
                                 folder_id=folder["provider_folder_id"],
                                 since=since,
                                 immutable_ids=True,
+                                context=graph_context,
                             ),
                         )
                     if cursor == RESYNC_REQUIRED:
@@ -587,14 +602,6 @@ class EmailIngestionWorker:
                     )
                     _accumulate_page_totals(totals, page_totals)
             except GraphHttpError as exc:
-                record_graph_failure(
-                    self.client, self.config,
-                    integration_id=claim.integration_id,
-                    operation="folder_delta",
-                    url=getattr(exc, "safe_url_template", "/me/mailFolders/{folder-id}/messages/delta"),
-                    error=exc,
-                    run_id=claim.run_id,
-                )
                 if exc.status_code == 404:
                     self.client.table("email_folders").delete().eq("id", folder["id"]).execute()
                     continue
@@ -720,7 +727,15 @@ class EmailIngestionWorker:
             token = get_access_token(self.client, self.config, item["user_id"])
             if not token:
                 raise ProviderAuthenticationError("Outlook credentials are unavailable")
-            message = get_outlook_full_message(token, item["provider_message_id"])
+            message = get_outlook_full_message(
+                token,
+                item["provider_message_id"],
+                context=GraphCallContext(
+                    client=self.client,
+                    config=self.config,
+                    integration_id=item["integration_id"],
+                ),
+            )
             parsed = parse_outlook_message(message)
             parsed["integration_id"] = item["integration_id"]
             parsed["provider_folder_ids"] = item.get("provider_folder_ids") or parsed.get("provider_folder_ids") or []
@@ -732,7 +747,15 @@ class EmailIngestionWorker:
                     "mime_type": d.get("contentType"),
                     "size_bytes": d.get("size"),
                 }
-                for d in list_attachments(token, item["provider_message_id"])
+                for d in list_attachments(
+                    token,
+                    item["provider_message_id"],
+                    context=GraphCallContext(
+                        client=self.client,
+                        config=self.config,
+                        integration_id=item["integration_id"],
+                    ),
+                )
             ]
         else:
             raise ValueError(f"Unsupported email provider: {provider}")
@@ -801,7 +824,22 @@ class EmailIngestionWorker:
             token = get_access_token(self.client, self.config, email["user_id"])
             if not token:
                 raise ProviderAuthenticationError("Outlook credentials are unavailable")
-            descriptor = next((d for d in list_attachments(token, email["provider_message_id"]) if d.get("id") == attachment["provider_attachment_id"]), None)
+            descriptor = next(
+                (
+                    d
+                    for d in list_attachments(
+                        token,
+                        email["provider_message_id"],
+                        context=GraphCallContext(
+                            client=self.client,
+                            config=self.config,
+                            integration_id=email["integration_id"],
+                        ),
+                    )
+                    if d.get("id") == attachment["provider_attachment_id"]
+                ),
+                None,
+            )
             if not descriptor or descriptor.get("@odata.type") != "#microsoft.graph.fileAttachment":
                 return "unsupported"
             data = base64.b64decode(descriptor.get("contentBytes") or "", validate=True)

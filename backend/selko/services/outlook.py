@@ -24,7 +24,7 @@ from selko.services.integrations import (
     update_integration_status,
     update_provider_tokens,
 )
-from selko.services.msgraph import GraphRequestError, request_json
+from selko.services.msgraph import GraphCallContext, GraphRequestError, request_json
 
 logger = logging.getLogger(__name__)
 
@@ -218,10 +218,22 @@ def _graph_get(
     *,
     params: dict[str, Any] | None = None,
     prefer: str | None = None,
+    context: GraphCallContext | None = None,
+    operation: str,
 ) -> dict[str, Any]:
     """GET a Microsoft Graph JSON resource through shared transport."""
     try:
-        return request_json(access_token, url, params=params, prefer=prefer)
+        return request_json(
+            access_token,
+            url,
+            params=params,
+            prefer=prefer,
+            client=context.client if context else None,
+            config=context.config if context else None,
+            integration_id=context.integration_id if context else None,
+            run_id=context.run_id if context else None,
+            operation=operation,
+        )
     except GraphRequestError as exc:
         raise GraphHttpError(
             exc.status_code or 0,
@@ -239,12 +251,16 @@ def _graph_prefer(*values: str) -> str:
     return ", ".join(value for value in values if value)
 
 
-def get_user_profile(access_token: str) -> dict[str, Any]:
+def get_user_profile(
+    access_token: str, *, context: GraphCallContext | None = None
+) -> dict[str, Any]:
     """Fetch the signed-in Microsoft profile."""
-    return _graph_get(access_token, f"{GRAPH}/me")
+    return _graph_get(access_token, f"{GRAPH}/me", context=context, operation="GET /me")
 
 
-def resolve_well_known_folder_ids(access_token: str) -> dict[str, str]:
+def resolve_well_known_folder_ids(
+    access_token: str, *, context: GraphCallContext | None = None
+) -> dict[str, str]:
     """Resolve Graph folder aliases to immutable IDs.
 
     Missing aliases are normal for some tenants, so a 404 is ignored. Other
@@ -259,6 +275,8 @@ def resolve_well_known_folder_ids(access_token: str) -> dict[str, str]:
                 access_token,
                 f"{GRAPH}/me/mailFolders/{alias}",
                 prefer=_graph_prefer('IdType="ImmutableId"'),
+                context=context,
+                operation="GET /me/mailFolders/{well-known-name}",
             )
         except GraphHttpError as exc:
             if exc.status_code == 404:
@@ -274,13 +292,14 @@ def fetch_mail_folders(
     access_token: str,
     *,
     resolved_well_known_ids: dict[str, str] | None = None,
+    context: GraphCallContext | None = None,
 ) -> list[dict[str, Any]]:
     """Discover the complete Outlook mail-folder hierarchy."""
 
     resolved = (
         resolved_well_known_ids
         if resolved_well_known_ids is not None
-        else resolve_well_known_folder_ids(access_token)
+        else resolve_well_known_folder_ids(access_token, context=context)
     )
     excluded_ids = {
         folder_id
@@ -300,6 +319,8 @@ def fetch_mail_folders(
                 url,
                 params=params,
                 prefer=_graph_prefer('IdType="ImmutableId"', "odata.maxpagesize=100"),
+                context=context,
+                operation="GET /me/mailFolders",
             )
             params = None
             for folder in page.get("value", []):
@@ -378,6 +399,7 @@ def fetch_folder_messages(
     folder_id: str,
     *,
     since: datetime,
+    context: GraphCallContext | None = None,
 ) -> list[dict[str, Any]]:
     """Fetch every message page for an included folder during first sync."""
 
@@ -395,6 +417,8 @@ def fetch_folder_messages(
             url,
             params=params,
             prefer=_graph_prefer('IdType="ImmutableId"', "odata.maxpagesize=50", 'outlook.body-content-type="text"'),
+            context=context,
+            operation="GET /me/mailFolders/{folder-id}/messages",
         )
         params = None
         messages.extend(page.get("value", []))
@@ -408,6 +432,7 @@ def fetch_message_changes(
     folder_id: str = "inbox",
     since: datetime | None = None,
     immutable_ids: bool = False,
+    context: GraphCallContext | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
     """Fetch one folder's changes and return message IDs plus the next cursor."""
     url = delta_link or f"{GRAPH}/me/mailFolders/{folder_id}/messages/delta"
@@ -432,6 +457,8 @@ def fetch_message_changes(
                     'IdType="ImmutableId"' if immutable_ids else "",
                     "odata.maxpagesize=50",
                 ),
+                context=context,
+                operation="GET /me/mailFolders/{folder-id}/messages/delta",
             )
         except GraphHttpError as exc:
             if exc.status_code == 410:
@@ -455,21 +482,35 @@ def fetch_message_changes(
     return changes, ""
 
 
-def get_full_message(access_token: str, message_id: str) -> dict[str, Any]:
+def get_full_message(
+    access_token: str,
+    message_id: str,
+    *,
+    context: GraphCallContext | None = None,
+) -> dict[str, Any]:
     """Fetch one Outlook message with a plain-text body."""
     return _graph_get(
         access_token,
         f"{GRAPH}/me/messages/{message_id}",
         prefer=_graph_prefer('IdType="ImmutableId"', 'outlook.body-content-type="text"'),
+        context=context,
+        operation="GET /me/messages/{message-id}",
     )
 
 
-def list_attachments(access_token: str, message_id: str) -> list[dict[str, Any]]:
+def list_attachments(
+    access_token: str,
+    message_id: str,
+    *,
+    context: GraphCallContext | None = None,
+) -> list[dict[str, Any]]:
     """List inline and regular file attachments for one Outlook message."""
     result = _graph_get(
         access_token,
         f"{GRAPH}/me/messages/{message_id}/attachments",
         prefer=_graph_prefer('IdType="ImmutableId"'),
+        context=context,
+        operation="GET /me/messages/{message-id}/attachments",
     )
     return result.get("value", [])
 
