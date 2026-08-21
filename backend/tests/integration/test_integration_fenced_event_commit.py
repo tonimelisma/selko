@@ -165,7 +165,7 @@ async def test_multi_event_email_commits_all_or_nothing(pg_pool, temp_user):
         {"action": "invalid", "event_id": None, "fields": {}, "source": {}},
     ]
     try:
-        with pytest.raises(Exception, match="invalid extraction decision action"):
+        with pytest.raises(Exception, match="invalid extraction decision envelope"):
             await pg_pool.fetchval(
                 "SELECT public.commit_email_extraction($1, $2, $3, $4::jsonb, $5)",
                 email_id,

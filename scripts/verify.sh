@@ -12,9 +12,14 @@ usage() {
 }
 
 require_local_supabase() {
-  # JSON status reports the core services' health without treating disabled
-  # optional services (pooler/imgproxy) as a failed local database.
-  if ! supabase status -o json >/dev/null 2>&1; then
+  # Supabase CLI status output is TTY-sensitive and returns non-zero in
+  # redirected/non-TTY mode when optional services are stopped. Inspect the
+  # health state of the required database and gateway containers instead of
+  # treating that exit status as proof that local Postgres is unavailable.
+  local db_health gateway_health
+  db_health="$(docker inspect -f '{{.State.Health.Status}}' supabase_db_selko 2>/dev/null || true)"
+  gateway_health="$(docker inspect -f '{{.State.Health.Status}}' supabase_kong_selko 2>/dev/null || true)"
+  if [[ "$db_health" != "healthy" || "$gateway_health" != "healthy" ]]; then
     echo "ERROR: Local Supabase is not running. Start it with: supabase start" >&2
     exit 1
   fi
