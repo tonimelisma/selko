@@ -1,0 +1,236 @@
+# Every skipped node must be listed here. These tests exercise APIs removed by
+# S5 and are retained as historical characterization records until their
+# replacement coverage is complete. A changed reason or an unlisted skip
+# makes the verification gate fail.
+
+[[skip]]
+nodeid = "tests/test_calendar_policy.py::TestEnsureEmailEventSourceIdempotent::test_second_link_reuses_existing_row"
+reason = "direct event_sources writes removed in S5"
+
+[[skip]]
+nodeid = "tests/test_calendar_policy.py::TestCreateEventSourceMaterializedSplit::test_create_event_stores_source_in_extracted_data"
+reason = "event creation and source persistence now belong to commit_email_extraction RPC"
+
+[[skip]]
+nodeid = "tests/test_calendars.py::TestRemovedInlineCancellation::test_prefixes_title_with_cancelled"
+reason = "inline cancellation was removed; cancellation is worker-owned"
+
+[[skip]]
+nodeid = "tests/test_calendars.py::TestRemovedInlineCancellation::test_does_not_double_prefix"
+reason = "inline cancellation was removed; cancellation is worker-owned"
+
+[[skip]]
+nodeid = "tests/test_events.py::TestGenerateSourceAttribution::test_skips_undone_sources"
+reason = "event_sources is provenance-only; undo is now a proposal decision"
+
+[[skip]]
+nodeid = "tests/test_events.py::TestUpdateEventResync::test_requeues_synced_for_resync"
+reason = "legacy direct event update API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_events.py::TestUpdateEventResync::test_preserves_pending_review"
+reason = "legacy direct event update API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_events.py::TestRedoEmailContribution::test_marks_source_as_not_undone"
+reason = "legacy event_source redo API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_events.py::TestCreateEventFromGCalMatch::test_creates_event_with_gcal_id_and_two_sources"
+reason = "legacy direct event creation API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_events.py::TestUndoEmailContribution::test_restores_snapshot_and_marks_undone"
+reason = "legacy event_source undo API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_events.py::TestUndoEmailContribution::test_raises_error_when_no_snapshot"
+reason = "legacy event_source undo API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_event_processing.py::TestGenerateSourceAttribution::test_returns_empty_when_only_undone_sources"
+reason = "event_sources no longer has an undone compatibility flag"
+
+[[skip]]
+nodeid = "tests/test_event_processing.py::TestGenerateSourceAttribution::test_skips_undone_sources"
+reason = "event_sources no longer has an undone compatibility flag"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestRejectPendingChange::test_rejects_and_restores_through_one_database_rpc"
+reason = "legacy pending_change status API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestRejectPendingChange::test_refuses_an_orphaned_pending_change"
+reason = "legacy pending_change status API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestApplyPendingChange::test_cancellation_is_local_state_only_and_preserves_title"
+reason = "legacy pending_change status API removed in S5"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_handles_multiple_events"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_counts_are_correct_with_mixed_results"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_creates_new_event_when_no_match"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_passes_recency_context_to_propose_event_update"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_proposes_gcal_change_when_material"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_returns_zero_for_empty_extraction"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_retries_resolution_after_candidate_conflict"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_skips_events_older_than_24_hours"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_skips_event_with_null_start_datetime"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_skips_noop_gcal_match"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_keeps_events_exactly_at_24_hour_cutoff"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_keeps_timezone_aware_events_inside_cutoff_window"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_proposes_local_change_when_material"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_proposed_zero_length_change_gets_one_hour_duration"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_gcal_match_passes_none_baseline_info_date"
+reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestPastEventFiltering::test_filters_past_events"
+reason = "legacy direct event-creation mock removed; commit RPC integration covers persistence"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestPastEventFiltering::test_keeps_recent_past_events"
+reason = "legacy direct event-creation mock removed; commit RPC integration covers persistence"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestAutoApproveSenderRule::test_process_email_no_rule_creates_pending_events"
+reason = "direct event creation mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestAutoApproveSenderRule::test_process_email_auto_approve_returns_flag"
+reason = "direct event creation mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestAutoApproveSenderRule::test_process_email_auto_approve_creates_approved_events"
+reason = "direct event creation mocks replaced by commit_email_extraction RPC contract"
+
+[[skip]]
+nodeid = "tests/test_events_refactor.py::TestAutoApproveSenderRule::test_create_event_with_initial_status"
+reason = "direct event creation API removed in S5"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_ingestion_drill.py::TestKillMidPass::test_kill_mid_pass"
+reason = "Use scripts/drill-lease-recovery.sh for the live kill-mid-pass drill"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_ingestion_drill.py::TestIngestionGate::test_gate_blocks_llm_until_attachments_terminal"
+reason = "9b full-path DB gate drill requires local Supabase"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLlmWithDatabase::test_fetch_nonexistent_email"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLlmWithDatabase::test_fetch_and_extract_from_database"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLlmRealAPI::test_receipt_no_events"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLlmRealAPI::test_newsletter_no_events"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLlmRealAPI::test_thinking_level_low"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLlmRealAPI::test_birthday_party_extraction"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLlmRealAPI::test_doctor_appointment_extraction"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLlmRealAPI::test_multiple_events_extraction"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLLMGatewayErrorHandling::test_missing_api_key"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_event_processing.py::TestLLMGatewayErrorHandling::test_invalid_api_key"
+reason = "LLM test requires --run-llm flag to avoid API costs"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_get_user_profile_real"
+reason = "No Gmail credentials - run cli_seed_tokens first"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_fetch_messages_real"
+reason = "No Gmail credentials - run cli_seed_tokens first"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_get_credentials_real"
+reason = "No Gmail credentials found."
+
+[[skip]]
+nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_token_refresh_if_expired"
+reason = "No Gmail credentials - run cli_seed_tokens first"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_build_service_real"
+reason = "No Gmail credentials - run cli_seed_tokens first"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_calendars.py::TestCancelCalendarEvent::test_cancel_prefixes_title"
+reason = "inline cancellation was removed; cancellation is worker-owned"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_calendars.py::TestCancelCalendarEvent::test_cancel_handles_already_deleted_google_event"
+reason = "inline cancellation was removed; cancellation is worker-owned"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_calendars.py::TestCancelCalendarEvent::test_cancel_updates_google_calendar_event"
+reason = "inline cancellation was removed; cancellation is worker-owned"
+
+[[skip]]
+nodeid = "tests/integration/test_integration_events.py::TestEventProcessing::test_process_email_creates_event"
+reason = "LLM test requires --run-llm flag to avoid API costs"

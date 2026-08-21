@@ -43,6 +43,7 @@ frontend/coverage/
 ios/TestResults.xcresult/
 frontend/test-results.json
 test-results/
+.verify/
 
 # MCP tool artifacts
 .playwright-mcp/
