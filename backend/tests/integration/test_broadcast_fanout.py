@@ -30,7 +30,7 @@ def fanout_user(admin_client, temp_user):
             "title": f"c7-fanout-{i}",
             "start_datetime": "2026-08-11T10:00:00Z",
             "end_datetime": "2026-08-11T11:00:00Z",
-            "status": "pending_review",
+            "review_status": "pending_review",
         }).execute()
     yield user_id
     try:
@@ -57,8 +57,8 @@ async def test_bulk_update_emits_one_broadcast_per_resource(pg_pool, fanout_user
     async with pg_pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
-                "UPDATE public.events SET status = 'rejected'"
-                " WHERE user_id = $1 AND status = 'pending_review'",
+                "UPDATE public.events SET review_status = 'rejected'"
+                " WHERE user_id = $1 AND review_status = 'pending_review'",
                 user_id,
             )
     after = await _message_count(pg_pool, user_id)
@@ -77,8 +77,8 @@ async def test_distinct_transactions_emit_distinct_broadcasts(pg_pool, fanout_us
         for i in range(3):
             async with conn.transaction():
                 await conn.execute(
-                    "UPDATE public.events SET status = 'rejected'"
-                    " WHERE user_id = $1 AND status = 'pending_review'"
+                    "UPDATE public.events SET review_status = 'rejected'"
+                    " WHERE user_id = $1 AND review_status = 'pending_review'"
                     " AND title = $2",
                     user_id, f"c7-fanout-{i}",
                 )

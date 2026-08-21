@@ -234,6 +234,10 @@ defended forever, and today's hand-written dual-write is precisely the
 "two mutable sources of truth" shape that produced the orphaned Changes card
 that started the S-plan.
 
+**Decision recorded 2026-08-21: (a).** `events.status` is removed. Delivery is
+derived from `review_status` and the latest non-superseded
+`calendar_work_items` row.
+
 **D2 — staging worker posture (blocks V4).** Staging currently runs workers off
 on a free Render instance. Either:
 
@@ -491,9 +495,9 @@ Do not delete the dead `else` branches. Delete the *possibility* of them:
 **Done when:** an unfenced completion call does not type-check, and the S5 guard
 file contains no assertion about the text of a migration.
 
-### V8 — Finish the state-ownership collapse *(blocked on D1)*
+### V8 — Finish the state-ownership collapse
 
-**Branch:** `refactor/single-event-state-owner`
+**Branch:** `refactor/delete-events-status`
 
 **Files:** migration, `backend/selko/services/events.py`,
 `frontend/src/lib/services/events.js`, `frontend/src/routes/app/history/+page.svelte`,

@@ -1,7 +1,8 @@
 """Event sync endpoints.
 
 These endpoints require server-side secrets (Google Calendar API credentials).
-For direct event queries and status updates, use Supabase client from frontend.
+For direct event queries, use Supabase client from frontend. Review transitions
+go through the service-only RPC so approval always creates worker-owned work.
 """
 
 import logging
@@ -34,6 +35,7 @@ from selko.services.events import (
     EventsError,
     apply_change_proposal,
     reject_change_proposal,
+    derive_delivery_status,
     undo_history_event,
 )
 
@@ -70,7 +72,8 @@ async def sync_event(
     try:
         # Verify ownership and status - use maybe_single for graceful 404
         response_fields = (
-            "user_id, status, synced_at, google_calendar_event_id, title, "
+            "user_id, review_status, synced_at, google_calendar_event_id, "
+            "calendar_work_items(status, action, generation, failure_code), title, "
             "start_datetime, end_datetime, all_day, location, description, "
             "importance, source_attribution"
         )
@@ -95,7 +98,7 @@ async def sync_event(
                 detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
             )
 
-        current_status = event_result.data["status"]
+        current_status = derive_delivery_status(event_result.data)
         if current_status not in ("approved", "syncing", "synced", "sync_failed"):
             raise HTTPException(
                 status_code=400,
@@ -152,7 +155,7 @@ async def sync_event(
                 "google_calendar_event_id"
             ),
             synced_at=updated_event.data.get("synced_at"),
-            status=updated_event.data["status"],
+            status=derive_delivery_status(updated_event.data),
         )
 
     except HTTPException:
@@ -194,7 +197,7 @@ async def unsync_event(
         # Verify ownership and status, and capture the provider identity for
         # the service-only queue RPC.
         event_result = client.table("events").select(
-            "user_id, status, google_calendar_event_id"
+            "user_id, review_status, calendar_work_items(status, action, generation, failure_code), google_calendar_event_id"
         ).eq(
             "id", str(event_id)
         ).maybe_single().execute()
@@ -212,12 +215,13 @@ async def unsync_event(
             )
 
         # Validate event is synced
-        if event_result.data["status"] != "synced":
+        current_status = derive_delivery_status(event_result.data)
+        if current_status != "synced":
             raise HTTPException(
                 status_code=400,
                 detail=error_detail(
                     ErrorCode.INVALID_REQUEST,
-                    f"Only synced events can be unsynced (current status: {event_result.data['status']})",
+                    f"Only synced events can be unsynced (current status: {current_status})",
                 ),
             )
 
@@ -270,7 +274,7 @@ async def unsync_event(
 
 
 def _get_owned_event(client: Client, user_id: str, event_id: UUID) -> dict:
-    event_result = client.table("events").select("user_id, status, review_status").eq(
+    event_result = client.table("events").select("user_id, review_status").eq(
         "id", str(event_id)
     ).maybe_single().execute()
     if event_result is None or event_result.data is None:
@@ -362,10 +366,10 @@ async def undo_event(
 ) -> EventUndoResponse:
     """Undo a History action back to New or Changes review lane.
 
-    When the event is synced, also reverts Google Calendar to the pre-Selko
-    state (delete for new approvals, restore snapshot for applied changes).
-    If the user edited GCal after Selko's last write, returns 409 unless
-    ``force`` is true.
+    When the event is synced, queues a worker-owned compensation for the
+    pre-Selko state (delete for new approvals, restore snapshot for applied
+    changes). The request performs no provider write. If the user edited GCal
+    after Selko's last write, returns 409 unless ``force`` is true.
     """
     _get_owned_event(client, user.id, event_id)
     try:

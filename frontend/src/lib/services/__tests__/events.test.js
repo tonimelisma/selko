@@ -4,9 +4,11 @@ import { mockEvents, mockErrors } from '../../../../tests/fixtures/mock-data.js'
 
 // Mock supabase module
 const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 vi.mock('$lib/supabase.js', () => ({
 	supabase: {
-		from: (...args) => mockFrom(...args)
+		from: (...args) => mockFrom(...args),
+		rpc: (...args) => mockRpc(...args)
 	}
 }));
 
@@ -24,6 +26,7 @@ const {
 describe('events service', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockRpc.mockReset();
 	});
 
 	describe('fetchPendingEvents', () => {
@@ -50,7 +53,7 @@ describe('events service', () => {
 
 			expect(mockFrom).toHaveBeenCalledWith('events');
 			expect(mockQuery.select).toHaveBeenCalledWith('*', { count: 'exact' });
-			expect(mockQuery.eq).toHaveBeenCalledWith('status', 'pending_review');
+			expect(mockQuery.eq).toHaveBeenCalledWith('review_status', 'pending_review');
 			expect(mockQuery.order).toHaveBeenCalledWith('start_datetime', { ascending: true });
 			expect(result.data).toEqual(pendingEvents);
 			expect(result.count).toBe(pendingEvents.length);
@@ -98,6 +101,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
 				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: eventsWithSources,
@@ -122,6 +126,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
 				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: null,
@@ -141,6 +146,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
 				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({
 					data: null,
@@ -168,6 +174,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
 				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({ data: eventsWithSources, error: null })
 			};
@@ -184,6 +191,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
 				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockResolvedValue({ data: eventsWithSources, error: null })
 			};
@@ -200,6 +208,7 @@ describe('events service', () => {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
 				or: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
 				order: vi.fn().mockReturnThis(),
 				range: vi.fn().mockResolvedValue({
 					data: activityEvents,
@@ -214,6 +223,7 @@ describe('events service', () => {
 
 			expect(mockFrom).toHaveBeenCalledWith('events');
 			expect(mockQuery.in).toHaveBeenCalledWith('review_status', ['active', 'rejected', 'cancelled']);
+			expect(mockQuery.not).toHaveBeenCalledWith('event_change_proposals.status', 'eq', 'pending');
 			expect(mockQuery.order).toHaveBeenCalledWith('updated_at', { ascending: false });
 			expect(mockQuery.range).toHaveBeenCalledWith(0, 19);
 			expect(result.data).toEqual(activityEvents);
@@ -225,6 +235,7 @@ describe('events service', () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
 				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockReturnThis(),
 				range: vi.fn().mockResolvedValue({
@@ -241,10 +252,37 @@ describe('events service', () => {
 			expect(mockQuery.range).toHaveBeenCalledWith(20, 29);
 		});
 
+		it('keeps paginated history on the server-side activity relation filter', async () => {
+			const pages = [
+				[{ ...mockEvents[1], id: 'history-1' }, { ...mockEvents[1], id: 'history-2' }],
+				[{ ...mockEvents[1], id: 'history-3' }, { ...mockEvents[1], id: 'history-4' }]
+			];
+			const queries = pages.map((page) => ({
+				select: vi.fn().mockReturnThis(),
+				in: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				range: vi.fn().mockResolvedValue({ data: page, error: null, count: 4 })
+			}));
+			mockFrom.mockImplementation(() => queries.shift());
+
+			const firstPage = await fetchActivityEvents({ limit: 2, offset: 0 });
+			const secondPage = await fetchActivityEvents({ limit: 2, offset: 2 });
+
+			expect(firstPage.data.map((event) => event.id)).toEqual(['history-1', 'history-2']);
+			expect(secondPage.data.map((event) => event.id)).toEqual(['history-3', 'history-4']);
+			expect(new Set([...firstPage.data, ...secondPage.data].map((event) => event.id)).size).toBe(4);
+			expect(firstPage.count).toBe(4);
+			expect(secondPage.count).toBe(4);
+			expect(firstPage.error).toBeNull();
+			expect(secondPage.error).toBeNull();
+		});
+
 		it('handles errors gracefully', async () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				in: vi.fn().mockReturnThis(),
+				not: vi.fn().mockReturnThis(),
 				or: vi.fn().mockReturnThis(),
 				order: vi.fn().mockReturnThis(),
 				range: vi.fn().mockResolvedValue({
@@ -287,24 +325,24 @@ describe('events service', () => {
 			expect(result.data).toEqual(mockEvents);
 		});
 
-		it('filters by statuses', async () => {
+		it('filters review-lane statuses without querying the removed event status column', async () => {
 			const mockQuery = {
 				select: vi.fn().mockReturnThis(),
 				order: vi.fn().mockReturnThis(),
-				range: vi.fn().mockReturnThis(),
-				in: vi.fn().mockResolvedValue({
-					data: mockEvents.filter((e) => e.status === 'approved'),
+				range: vi.fn().mockResolvedValue({
+					data: mockEvents.filter((e) => e.review_status === 'pending_review'),
 					error: null,
-					count: 1
-				})
+					count: 2
+				}),
+				in: vi.fn().mockReturnThis()
 			};
 
 			mockFrom.mockReturnValue(mockQuery);
 
-			const result = await fetchEvents({ statuses: ['approved', 'synced'] });
+			const result = await fetchEvents({ statuses: ['pending_review'] });
 
-			expect(mockQuery.in).toHaveBeenCalledWith('status', ['approved', 'synced']);
-			expect(result.data.every((e) => e.status === 'approved')).toBe(true);
+			expect(mockQuery.in).toHaveBeenCalledWith('review_status', ['pending_review']);
+			expect(result.data.every((e) => e.status === 'pending_review')).toBe(true);
 		});
 
 		it('filters by date range', async () => {
@@ -393,59 +431,31 @@ describe('events service', () => {
 
 	describe('updateEventStatus', () => {
 		it('approves an event', async () => {
-			const approvedEvent = { ...mockEvents[0], status: 'approved' };
-			const mockQuery = {
-				update: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				select: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: approvedEvent,
-					error: null
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
+			mockRpc.mockResolvedValue({ data: { review_status: 'active' }, error: null });
 
 			const result = await updateEventStatus(mockEvents[0].id, 'approved');
 
-			expect(mockFrom).toHaveBeenCalledWith('events');
-			expect(mockQuery.update).toHaveBeenCalledWith({ status: 'approved' });
-			expect(mockQuery.eq).toHaveBeenCalledWith('id', mockEvents[0].id);
+			expect(mockRpc).toHaveBeenCalledWith('set_event_review_status', {
+				p_event_id: mockEvents[0].id,
+				p_review_status: 'active'
+			});
 			expect(result.data?.status).toBe('approved');
 		});
 
 		it('rejects an event', async () => {
-			const rejectedEvent = { ...mockEvents[0], status: 'rejected' };
-			const mockQuery = {
-				update: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				select: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: rejectedEvent,
-					error: null
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
+			mockRpc.mockResolvedValue({ data: { review_status: 'rejected' }, error: null });
 
 			const result = await updateEventStatus(mockEvents[0].id, 'rejected');
 
-			expect(mockQuery.update).toHaveBeenCalledWith({ status: 'rejected' });
+			expect(mockRpc).toHaveBeenCalledWith('set_event_review_status', {
+				p_event_id: mockEvents[0].id,
+				p_review_status: 'rejected'
+			});
 			expect(result.data?.status).toBe('rejected');
 		});
 
 		it('handles errors', async () => {
-			const mockQuery = {
-				update: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				select: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: null,
-					error: mockErrors.permissionDenied
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
+			mockRpc.mockResolvedValue({ data: null, error: mockErrors.permissionDenied });
 
 			const result = await updateEventStatus('id', 'approved');
 

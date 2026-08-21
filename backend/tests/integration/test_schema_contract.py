@@ -41,6 +41,8 @@ TRIGGER_ONLY_FUNCTIONS = {
     "reset_skipped_emails_for_sender_rule",
     "trg_emails_broadcast",
     "trg_event_sources_broadcast",
+    "trg_event_change_proposals_broadcast",
+    "trg_calendar_work_items_broadcast",
     "trg_events_broadcast",
     "trg_integrations_broadcast",
 }
@@ -88,10 +90,6 @@ EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
     ("event_repair_audit", "action"): {"merge_duplicate_group", "merge_source", "cancel_event", "resolve_proposal"},
     ("events", "review_status"): {"pending_review", "active", "rejected", "cancelled"},
     ("events", "importance"): {"action_required", "fyi"},
-    ("events", "status"): {
-        "pending_review", "approved", "rejected", "cancelled",
-        "cancel_queued", "syncing", "synced", "sync_failed",
-    },
     ("graph_api_failures", "graph_surface"): {"outlook_mail", "onedrive"},
     ("integration_recoveries", "reason"): {"initial_connection", "reauthorization"},
     ("integration_recoveries", "status"): {
@@ -221,7 +219,7 @@ async def _seed_context(conn) -> ContractContext:
         folder_id,
     )
     await conn.execute(
-        "INSERT INTO public.events (id, user_id, title, status) VALUES ($1, $2, 'schema contract event', 'pending_review')",
+        "INSERT INTO public.events (id, user_id, title, review_status) VALUES ($1, $2, 'schema contract event', 'pending_review')",
         event_id,
         user_id,
     )
@@ -403,6 +401,7 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
                 "size_bytes": 1,
             }],
         ),
+        "set_event_review_status": (context.event_id, "active", context.user_id),
         "claim_calendar_work": ("schema-contract-worker", 60),
         "claim_calendar_work_item": ("schema-contract-worker", 60),
         "complete_calendar_work": (context.event_id, worker, 1, "schema-contract-google", None),
@@ -482,19 +481,28 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
             await conn.execute(
                 """
                 UPDATE public.events
-                SET status = 'synced', google_calendar_event_id = 'contract-google-event'
+                SET review_status = 'active', google_calendar_event_id = 'contract-google-event'
                 WHERE id = $1
                 """,
                 context.event_id,
             )
+            await conn.execute(
+                """
+                INSERT INTO public.calendar_work_items
+                    (event_id, user_id, action, generation, status, provider_event_id)
+                VALUES ($1, $2, 'upsert', 99, 'succeeded', 'contract-google-event')
+                """,
+                context.event_id,
+                context.user_id,
+            )
         if name == "reopen_event_change_proposal":
-            await conn.execute("UPDATE public.events SET status = 'approved', review_status = 'active' WHERE id = $1", context.event_id)
+            await conn.execute("UPDATE public.events SET review_status = 'active' WHERE id = $1", context.event_id)
             await conn.execute(
                 "UPDATE public.event_change_proposals SET status = 'applied', resolution_reason = 'contract' WHERE source_id = $1",
                 context.attachment_id,
             )
         elif name in {"apply_event_change_proposal", "reject_event_change_proposal"}:
-            await conn.execute("UPDATE public.events SET status = 'synced', review_status = 'active' WHERE id = $1", context.event_id)
+            await conn.execute("UPDATE public.events SET review_status = 'active' WHERE id = $1", context.event_id)
             await conn.execute(
                 "UPDATE public.event_change_proposals SET status = 'pending', resolution_reason = NULL WHERE source_id = $1",
                 context.attachment_id,
@@ -546,6 +554,19 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
             await conn.fetch(f"SELECT * FROM public.{name}({placeholders})", *encoded_args)
         except Exception as exc:
             pytest.fail(f"{name}({args!r}) is not callable: {exc}")
+
+
+@pytest.mark.asyncio
+async def test_event_delivery_state_has_no_legacy_status_column(contract_connection):
+    conn, _ = contract_connection
+    assert await conn.fetchval(
+        """
+        SELECT NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'events' AND column_name = 'status'
+        )
+        """
+    ) is True
 
 
 @pytest.mark.asyncio
@@ -708,10 +729,10 @@ async def _exercise_event_change_proposal_triggers(conn, context):
 async def _exercise_event_triggers(conn, context):
     row_id = uuid4()
     await conn.execute(
-        "INSERT INTO public.events (id, user_id, title, status) VALUES ($1, $2, 'trigger event', 'pending_review')",
+        "INSERT INTO public.events (id, user_id, title, review_status) VALUES ($1, $2, 'trigger event', 'pending_review')",
         row_id, context.user_id,
     )
-    await conn.execute("UPDATE public.events SET title = 'updated trigger event', status = 'rejected' WHERE id = $1", row_id)
+    await conn.execute("UPDATE public.events SET title = 'updated trigger event', review_status = 'rejected' WHERE id = $1", row_id)
     await conn.execute("DELETE FROM public.events WHERE id = $1", row_id)
 
 
@@ -803,7 +824,7 @@ async def test_reject_event_change_proposal_is_one_atomic_transition(contract_co
         """,
         context.event_id, context.user_id, source_id,
     )
-    await conn.execute("UPDATE public.events SET status = 'synced', review_status = 'active' WHERE id = $1", context.event_id)
+    await conn.execute("UPDATE public.events SET review_status = 'active' WHERE id = $1", context.event_id)
 
     result = await conn.fetchval(
         """
@@ -826,9 +847,9 @@ async def test_reject_event_change_proposal_is_one_atomic_transition(contract_co
         source_id,
     ) == "rejected"
     assert await conn.fetchval(
-        "SELECT status FROM public.events WHERE id = $1",
+        "SELECT review_status FROM public.events WHERE id = $1",
         context.event_id,
-    ) == "approved"
+    ) == "active"
 
 
 @pytest.mark.asyncio

@@ -4,9 +4,47 @@ import { parseSupabaseError } from '$lib/errors.js';
 /**
  * @typedef {import('$lib/types.js').CalendarEvent} CalendarEvent
  * @typedef {import('$lib/types.js').EventStatus} EventStatus
- */
+*/
 
-const EVENT_RELATIONS = `*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, event_snapshot_before, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, desired_event, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)`;
+const EVENT_RELATIONS = `*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, event_snapshot_before, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)`;
+
+/** @param {any} event */
+function latestCalendarWorkItem(event) {
+	return [...(event?.calendar_work_items || [])]
+		.filter((item) => item?.status !== 'superseded')
+		.sort((left, right) => (right?.generation || 0) - (left?.generation || 0))[0] || null;
+}
+
+/**
+ * Derive the user-facing delivery state from the authoritative review state
+ * and the latest worker-owned calendar item. This is deliberately client
+ * state, not a persisted events column.
+ * @param {any} event
+ * @returns {EventStatus}
+ */
+export function deriveEventStatus(event) {
+	if (event?.review_status === 'pending_review') return 'pending_review';
+	if (event?.review_status === 'rejected') return 'rejected';
+	if (event?.review_status === 'cancelled') return 'cancelled';
+
+	const item = latestCalendarWorkItem(event);
+	if (!item) return event?.google_calendar_event_id ? 'synced' : 'approved';
+	const oauthBlocked = ['oauth_required', 'oauth_scope_required'].includes(item.failure_code);
+	if (item.action === 'cancel') {
+		if (item.status === 'succeeded') return 'cancelled';
+		if (item.status === 'failed' || item.status === 'blocked') return oauthBlocked ? 'cancel_queued' : 'sync_failed';
+		return 'cancel_queued';
+	}
+	if (item.status === 'processing') return 'syncing';
+	if (item.status === 'succeeded') return 'synced';
+	if (item.status === 'failed' || item.status === 'blocked') return oauthBlocked ? 'approved' : 'sync_failed';
+	return 'approved';
+}
+
+/** @param {any} event */
+function withDeliveryStatus(event) {
+	return { ...event, status: deriveEventStatus(event) };
+}
 
 /** @param {any} event */
 export function pendingEventProposal(event) {
@@ -18,7 +56,7 @@ export function pendingEventProposal(event) {
 
 /** @param {any} event */
 export function isNewReviewEvent(event) {
-	return event?.review_status === 'pending_review' || (!event?.review_status && event?.status === 'pending_review');
+	return event?.review_status === 'pending_review';
 }
 
 /** @param {any} event */
@@ -50,7 +88,7 @@ export async function fetchPendingEvents() {
 		const { data, error, count } = await supabase
 			.from('events')
 			.select('*', { count: 'exact' })
-			.eq('status', 'pending_review')
+			.eq('review_status', 'pending_review')
 			.or(`end_datetime.gte.${nowIso},and(end_datetime.is.null,start_datetime.gte.${nowIso}),and(end_datetime.is.null,start_datetime.is.null)`)
 			.order('start_datetime', { ascending: true });
 
@@ -62,7 +100,7 @@ export async function fetchPendingEvents() {
 			if (!raw) return true;
 			return new Date(raw) >= now;
 		});
-		return { data: filtered, count: filtered.length, error: null };
+		return { data: filtered.map(withDeliveryStatus), count: filtered.length, error: null };
 	} catch (error) {
 		return { data: [], count: null, error: parseSupabaseError(error) };
 	}
@@ -80,11 +118,10 @@ export async function fetchEvents(options = {}) {
 		let query = supabase
 			.from('events')
 			.select('*', { count: 'exact' })
-			.order('start_datetime', { ascending: true })
-			.range(offset, offset + limit - 1);
+			.order('start_datetime', { ascending: true });
 
-		if (statuses && statuses.length > 0) {
-			query = query.in('status', statuses);
+		if (statuses && statuses.length > 0 && statuses.every((status) => ['pending_review', 'rejected', 'cancelled'].includes(status))) {
+			query = query.in('review_status', statuses);
 		}
 		if (startAfter) {
 			query = query.gte('start_datetime', startAfter);
@@ -92,12 +129,13 @@ export async function fetchEvents(options = {}) {
 		if (startBefore) {
 			query = query.lte('start_datetime', startBefore);
 		}
+		query = query.range(offset, offset + limit - 1);
 
 		const { data, error, count } = await query;
 
 		if (error) throw error;
 
-		return { data: data ?? [], count, error: null };
+		return { data: (data ?? []).map(withDeliveryStatus), count, error: null };
 	} catch (error) {
 		return { data: [], count: null, error: parseSupabaseError(error) };
 	}
@@ -114,30 +152,31 @@ export async function getEvent(eventId) {
 
 		if (error) throw error;
 
-		return { data, error: null };
+		return { data: withDeliveryStatus(data), error: null };
 	} catch (error) {
 		return { data: null, error: parseSupabaseError(error) };
 	}
 }
 
 /**
- * Update event status (approve, reject, etc.)
+ * Update the authoritative review state (approve or reject).
  * @param {string} eventId - The event UUID
  * @param {EventStatus} status - New status
  * @returns {Promise<{data: CalendarEvent | null, error: import('$lib/errors.js').SupabaseError | null}>}
  */
 export async function updateEventStatus(eventId, status) {
 	try {
-		const { data, error } = await supabase
-			.from('events')
-			.update({ status })
-			.eq('id', eventId)
-			.select()
-			.single();
+		if (!['approved', 'rejected'].includes(status)) {
+			throw new Error(`Unsupported review transition: ${status}`);
+		}
+		const { data, error } = await supabase.rpc('set_event_review_status', {
+			p_event_id: eventId,
+			p_review_status: status === 'approved' ? 'active' : 'rejected'
+		});
 
 		if (error) throw error;
 
-		return { data, error: null };
+		return { data: data ? withDeliveryStatus(data) : data, error: null };
 	} catch (error) {
 		return { data: null, error: parseSupabaseError(error) };
 	}
@@ -164,7 +203,7 @@ export async function fetchPendingEventsWithSources() {
 			if (!raw) return true;
 			return new Date(raw) >= now;
 		});
-		return { data: filtered, error: null };
+		return { data: filtered.map(withDeliveryStatus), error: null };
 	} catch (error) {
 		return { data: [], error: parseSupabaseError(error) };
 	}
@@ -186,10 +225,11 @@ export async function fetchActivityEvents(options = {}) {
 				count: 'exact'
 			})
 			.in('review_status', ['active', 'rejected', 'cancelled'])
+			.not('event_change_proposals.status', 'eq', 'pending')
 			.order('updated_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 		if (error) throw error;
-		return { data: (data ?? []).filter(isHistoryEvent), count, error: null };
+		return { data: (data ?? []).map(withDeliveryStatus), count, error: null };
 	} catch (error) {
 		return { data: [], count: null, error: parseSupabaseError(error) };
 	}

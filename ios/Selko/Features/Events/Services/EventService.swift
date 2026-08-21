@@ -106,6 +106,7 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
         let events: [CalendarEvent] = try await supabase.from("events")
             .select("*, event_sources(*, emails(id, subject, from_email, from_name, date_sent)), event_change_proposals(id, event_id, user_id, source_id, kind, status, change_set, resolution_reason, created_at, resolved_at, updated_at), calendar_work_items(id, event_id, user_id, action, generation, status, provider_event_id, expected_provider_revision, force_overwrite, attempts, max_attempts, next_retry_at, failure_code, failure_detail, created_at, updated_at, completed_at)")
             .in("review_status", values: ["active", "rejected", "cancelled"])
+            .not("event_change_proposals.status", operator: .eq, value: "pending")
             .order("updated_at", ascending: false)
             .range(from: offset, to: offset + limit - 1)
             .execute()
@@ -125,8 +126,17 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
             .select()
 
         if let statuses = statuses, !statuses.isEmpty {
-            let statusStrings = statuses.map { $0.rawValue }
-            query = query.in("status", values: statusStrings)
+            let reviewStatuses = statuses.compactMap { status -> String? in
+                switch status {
+                case .pendingReview: return "pending_review"
+                case .rejected: return "rejected"
+                case .cancelled: return "cancelled"
+                default: return nil
+                }
+            }
+            if reviewStatuses.count == statuses.count {
+                query = query.in("review_status", values: reviewStatuses)
+            }
         }
 
         if let startAfter = startAfter {
@@ -169,15 +179,21 @@ final class EventService: EventServiceProtocol, @unchecked Sendable {
     }
 
     func updateEventStatus(id: UUID, status: EventStatus) async throws -> CalendarEvent {
-        let event: CalendarEvent = try await supabase.from("events")
-            .update(["status": status.rawValue])
-            .eq("id", value: id)
-            .select()
-            .single()
-            .execute()
-            .value
-
-        return event
+        let reviewStatus: String
+        switch status {
+        case .approved: reviewStatus = "active"
+        case .rejected: reviewStatus = "rejected"
+        default: throw NSError(domain: "EventService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unsupported review transition"])
+        }
+        let params: [String: AnyJSON] = [
+            "p_event_id": .string(id.uuidString),
+            "p_review_status": .string(reviewStatus)
+        ]
+        try await supabase.rpc(
+            "set_event_review_status",
+            params: params
+        ).execute()
+        return try await getEventWithSources(id: id)
     }
 
     func updateEvent(

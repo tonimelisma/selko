@@ -33,7 +33,6 @@ struct CalendarEvent: Identifiable, Codable, Sendable, Equatable {
     let location: String?
     let description: String?
     let sourceAttribution: String?
-    let status: EventStatus
     let reviewStatus: EventReviewStatus?
     let googleCalendarEventId: String?
     let syncedAt: Date?
@@ -53,7 +52,6 @@ struct CalendarEvent: Identifiable, Codable, Sendable, Equatable {
         case location
         case description
         case sourceAttribution = "source_attribution"
-        case status
         case reviewStatus = "review_status"
         case googleCalendarEventId = "google_calendar_event_id"
         case syncedAt = "synced_at"
@@ -93,7 +91,6 @@ struct CalendarEvent: Identifiable, Codable, Sendable, Equatable {
         self.location = location
         self.description = description
         self.sourceAttribution = sourceAttribution
-        self.status = status
         self.reviewStatus = reviewStatus
         self.googleCalendarEventId = googleCalendarEventId
         self.syncedAt = syncedAt
@@ -113,7 +110,7 @@ struct CalendarEvent: Identifiable, Codable, Sendable, Equatable {
     }
 
     var isNewReview: Bool {
-        reviewStatus == .pendingReview || (reviewStatus == nil && status == .pendingReview)
+        reviewStatus == .pendingReview
     }
 
     var hasAppliedProposal: Bool {
@@ -126,6 +123,30 @@ struct CalendarEvent: Identifiable, Codable, Sendable, Equatable {
 
     var isSynced: Bool {
         status == .synced
+    }
+
+    var status: EventStatus {
+        if reviewStatus == .pendingReview { return .pendingReview }
+        if reviewStatus == .rejected { return .rejected }
+        if reviewStatus == .cancelled { return .cancelled }
+        let item = calendarWorkItems?
+            .filter { $0.status != .superseded }
+            .max { $0.generation < $1.generation }
+        guard let item else {
+            return googleCalendarEventId == nil ? .approved : .synced
+        }
+        let oauthBlocked = item.failureCode == "oauth_required" || item.failureCode == "oauth_scope_required"
+        if item.action == .cancel {
+            if item.status == .succeeded { return .cancelled }
+            if (item.status == .failed || item.status == .blocked) && !oauthBlocked { return .syncFailed }
+            return .cancelQueued
+        }
+        switch item.status {
+        case .processing: return .syncing
+        case .succeeded: return .synced
+        case .failed, .blocked: return oauthBlocked ? .approved : .syncFailed
+        case .pending, .superseded: return .approved
+        }
     }
 }
 

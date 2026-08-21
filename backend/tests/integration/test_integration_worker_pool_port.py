@@ -93,7 +93,7 @@ def approved_event(admin_client, temp_user):
         "title": "C2 probe event",
         "start_datetime": _iso(3600),
         "end_datetime": _iso(7200),
-        "status": "approved",
+        "review_status": "active",
     }).execute()
     admin_client.rpc("enqueue_calendar_work", {
         "p_event_id": event_id,
@@ -387,10 +387,10 @@ class TestLooseWorkerFunctionsOverPool:
             "transient probe",
         )
         row = await pg_pool.fetchrow(
-            "SELECT status FROM public.events WHERE id = $1",
+            "SELECT review_status FROM public.events WHERE id = $1",
             approved_event,
         )
-        assert row["status"] == "approved"
+        assert row["review_status"] == "active"
 
     async def test_email_claim_complete_roundtrip(
         self, pg_pool, pending_email

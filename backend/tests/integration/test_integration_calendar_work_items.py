@@ -47,7 +47,7 @@ async def test_enqueue_claim_complete_is_item_fenced(
             "title": "S2 event",
             "start_datetime": "2026-09-01T14:00:00Z",
             "end_datetime": "2026-09-01T15:00:00Z",
-            "status": "pending_review",
+            "review_status": "pending_review",
         }
     ).execute().data[0]["id"]
 
@@ -71,10 +71,9 @@ async def test_enqueue_claim_complete_is_item_fenced(
         pg_pool, claimed["calendar_work_lease"], "google-s2-event",
     ) is True
     final = admin_client.table("events").select(
-        "status,review_status,google_calendar_event_id"
+        "review_status,google_calendar_event_id"
     ).eq("id", event_id).single().execute().data
     assert final == {
-        "status": "synced",
         "review_status": "active",
         "google_calendar_event_id": "google-s2-event",
     }
@@ -95,7 +94,7 @@ async def test_new_enqueue_supersedes_old_and_stale_completion_is_fenced(
         on_conflict="user_id,provider",
     ).execute()
     event_id = admin_client.table("events").insert(
-        {"user_id": user_id, "title": "Race", "status": "pending_review"}
+        {"user_id": user_id, "title": "Race", "review_status": "pending_review"}
     ).execute().data[0]["id"]
     first = admin_client.rpc("enqueue_calendar_work", {
         "p_event_id": event_id, "p_user_id": user_id, "p_action": "upsert",
@@ -138,7 +137,7 @@ async def test_expired_processing_item_is_reclaimable(
         on_conflict="user_id,provider",
     ).execute()
     event_id = admin_client.table("events").insert(
-        {"user_id": user_id, "title": "Expired", "status": "pending_review"}
+        {"user_id": user_id, "title": "Expired", "review_status": "pending_review"}
     ).execute().data[0]["id"]
     queued = admin_client.rpc("enqueue_calendar_work", {
         "p_event_id": event_id, "p_user_id": user_id, "p_action": "upsert",
@@ -177,10 +176,19 @@ async def test_unsync_is_worker_owned_and_clears_remote_identity_on_completion(
         {
             "user_id": user_id,
             "title": "Unsync me",
-            "status": "synced",
+            "review_status": "active",
             "google_calendar_event_id": "google-delete-me",
         }
     ).execute().data[0]["id"]
+
+    admin_client.table("calendar_work_items").insert({
+        "event_id": event_id,
+        "user_id": user_id,
+        "action": "upsert",
+        "generation": 1,
+        "status": "succeeded",
+        "provider_event_id": "google-delete-me",
+    }).execute()
 
     queued = admin_client.rpc("unsync_event_and_enqueue_calendar_work", {
         "p_event_id": event_id,
@@ -200,9 +208,8 @@ async def test_unsync_is_worker_owned_and_clears_remote_identity_on_completion(
         claimed["calendar_work_lease"],
     ) is True
     final = admin_client.table("events").select(
-        "status,review_status,google_calendar_event_id,synced_at"
+        "review_status,google_calendar_event_id,synced_at"
     ).eq("id", event_id).single().execute().data
-    assert final["status"] == "pending_review"
     assert final["review_status"] == "pending_review"
     assert final["google_calendar_event_id"] is None
     assert final["synced_at"] is None

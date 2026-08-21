@@ -36,7 +36,7 @@ vi.mock('$lib/services/events.js', () => ({
 	getEvent: (...args) => mockGetEvent(...args),
 	updateEvent: (...args) => mockUpdateEvent(...args),
  updateEventStatus: (...args) => mockUpdateEventStatus(...args),
- isNewReviewEvent: (event) => event.review_status === 'pending_review' || event.status === 'pending_review'
+	 isNewReviewEvent: (event) => event.review_status === 'pending_review' || event.status === 'pending_review'
 }));
 
 const mockFetchEventSources = vi.fn();

@@ -13,7 +13,7 @@ export async function fetchEmailHistory(options = {}) {
 		const { data, error, count } = await supabase
 			.from('emails')
 			.select(
-			'id,email_provider,subject,from_email,from_name,date_sent,processing_status,processing_error,processing_outcome,processing_explanation,processed_at,event_sources(id,event_id,source_type,events(id,title,status,review_status,event_change_proposals(id,kind,status,change_set,resolution_reason),calendar_work_items(id,action,status,failure_code,failure_detail)))',
+				'id,email_provider,subject,from_email,from_name,date_sent,processing_status,processing_error,processing_outcome,processing_explanation,processed_at,event_sources(id,event_id,source_type,is_undone,events(id,title,review_status,event_change_proposals(id,kind,status,change_set,resolution_reason),calendar_work_items(id,action,status,generation,failure_code,failure_detail)))',
 				{ count: 'exact' }
 			)
 			// Calendar invites are skipped (never claimed/processed), but per product

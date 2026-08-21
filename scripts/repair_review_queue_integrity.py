@@ -31,13 +31,7 @@ ALLOWED_ACTIONS = {
     "cancel_event",
     "resolve_proposal",
 }
-ALLOWED_MERGE_STATUSES = {
-    "pending_review",
-    "approved",
-    "synced",
-    "sync_failed",
-    "cancel_queued",
-}
+ALLOWED_MERGE_REVIEW_STATUSES = {"pending_review", "active"}
 EVENT_HASH_FIELDS = (
     "id",
     "user_id",
@@ -48,7 +42,7 @@ EVENT_HASH_FIELDS = (
     "location",
     "description",
     "importance",
-    "status",
+    "review_status",
     "recurrence_rule",
     "google_calendar_event_id",
     "source_attribution",
@@ -256,16 +250,20 @@ async def _check_merge(action: RepairAction, events: dict[str, dict[str, Any]], 
     expected = payload["expected_field_hashes"]
     if event_field_hash(survivor) != expected[survivor_id]:
         failures.append(f"event {survivor_id} field hash changed")
-    if survivor["status"] not in ALLOWED_MERGE_STATUSES:
-        failures.append(f"survivor {survivor_id} has disallowed status {survivor['status']}")
+    if survivor["review_status"] not in ALLOWED_MERGE_REVIEW_STATUSES:
+        failures.append(
+            f"survivor {survivor_id} has disallowed review status {survivor['review_status']}"
+        )
     for duplicate_id in duplicate_ids:
         duplicate = events[duplicate_id]
         if duplicate_id == survivor_id:
             failures.append("survivor cannot also be a duplicate")
         if event_field_hash(duplicate) != expected[duplicate_id]:
             failures.append(f"event {duplicate_id} field hash changed")
-        if duplicate["status"] not in ALLOWED_MERGE_STATUSES:
-            failures.append(f"duplicate {duplicate_id} has disallowed status {duplicate['status']}")
+        if duplicate["review_status"] not in ALLOWED_MERGE_REVIEW_STATUSES:
+            failures.append(
+                f"duplicate {duplicate_id} has disallowed review status {duplicate['review_status']}"
+            )
         if duplicate["google_calendar_event_id"] and survivor["google_calendar_event_id"] not in (None, duplicate["google_calendar_event_id"]):
             failures.append(f"duplicate {duplicate_id} has a conflicting calendar identity")
     locked = await _active_source_locks(conn, [survivor_id, *duplicate_ids])
@@ -283,8 +281,10 @@ async def _check_cancel(action: RepairAction, events: dict[str, dict[str, Any]],
     failures: list[str] = []
     if event_field_hash(row) != payload["expected_field_hash"]:
         failures.append(f"event {payload['event_id']} field hash changed")
-    if row["status"] in {"cancelled", "rejected", "syncing"}:
-        failures.append(f"event {payload['event_id']} cannot be cancelled from status {row['status']}")
+    if row["review_status"] in {"cancelled", "rejected"}:
+        failures.append(
+            f"event {payload['event_id']} cannot be cancelled from review status {row['review_status']}"
+        )
     if await _active_calendar_work_locks(conn, [payload["event_id"]]):
         failures.append(f"event {payload['event_id']} has an active calendar work lock")
     return failures
@@ -445,11 +445,15 @@ async def _apply(conn: asyncpg.Connection, user_id: str, actions: list[RepairAct
                 continue
             await _audit(conn, user_id, event_id, "cancel_event", action.payload["reason"], {
                 "event_id": event_id,
-                "before_status": before["status"],
+                "before_review_status": before["review_status"],
                 "before_work_item_table": "calendar_work_items",
             })
             changed += 1
-            reverse_ops.append({"action": "restore_event_state", "event_id": event_id, "before_status": before["status"]})
+            reverse_ops.append({
+                "action": "restore_event_state",
+                "event_id": event_id,
+                "before_review_status": before["review_status"],
+            })
         else:
             proposal_id = action.payload["proposal_id"]
             proposal = proposals[proposal_id]
@@ -508,10 +512,10 @@ async def _run(args: argparse.Namespace) -> int:
         # those locks to make the inspection coherent.
         async with conn.transaction(isolation="serializable"):
             if not actions:
-                rows = await conn.fetch("SELECT id, user_id, status, review_status FROM public.events WHERE review_status IN ('pending_review', 'active') ORDER BY id LIMIT 1000")
+                rows = await conn.fetch("SELECT id, user_id, review_status FROM public.events WHERE review_status IN ('pending_review', 'active') ORDER BY id LIMIT 1000")
                 print(f"DRY-RUN candidates={len(rows)}")
                 for row in rows:
-                    print(f"event id={row['id']} user_id={row['user_id']} status={row['status']}")
+                    print(f"event id={row['id']} user_id={row['user_id']} review_status={row['review_status']}")
                 return 0
             events, failures, proposals = await _preconditions(conn, user_id, actions)
             if failures:
@@ -520,7 +524,7 @@ async def _run(args: argparse.Namespace) -> int:
                     print(f"- {failure}")
                 return 2
             for event_id, row in sorted(events.items()):
-                print(f"target event id={event_id} status={row['status']}")
+                print(f"target event id={event_id} review_status={row['review_status']}")
             print(f"DRY-RUN actions={len(actions)} events={len(events)}")
             if not args.apply:
                 return 0

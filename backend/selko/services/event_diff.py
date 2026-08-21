@@ -334,7 +334,7 @@ def baseline_from_gcal_event(
         "all_day": all_day,
         "location": gcal_event.get("location") or None,
         "description": gcal_event.get("description") or None,
-        "status": "synced",
+        "review_status": "active",
     }
 
 

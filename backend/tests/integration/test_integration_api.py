@@ -336,7 +336,7 @@ class TestEventUnsyncEndpoint:
             "user_id": test_user_id,
             "title": "Not Synced Event",
             "start_datetime": "2026-04-01T10:00:00Z",
-            "status": "pending_review",
+            "review_status": "pending_review",
         }
         result = authenticated_client.table("events").insert(event_data).execute()
         event_id = result.data[0]["id"]
@@ -358,7 +358,7 @@ class TestEventUnsyncEndpoint:
             "user_id": test_user_id,
             "title": "Other User Event",
             "start_datetime": "2026-04-01T10:00:00Z",
-            "status": "synced",
+            "review_status": "active",
             "google_calendar_event_id": "google-abc",
         }
         result = authenticated_client.table("events").insert(event_data).execute()

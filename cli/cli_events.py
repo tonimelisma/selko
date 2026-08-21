@@ -15,6 +15,7 @@ sys.path.insert(0, str(__file__ + "/../.."))
 from selko.config import load_config
 from selko.services.auth import get_authenticated_client, get_current_user_id
 from selko.services import calendars
+from selko.services.events import derive_delivery_status
 
 app = typer.Typer(help="Manage calendar events")
 console = Console()
@@ -26,9 +27,9 @@ def new():
     config = load_config()
     client = get_authenticated_client(config)
 
-    result = client.table("events").select("*").eq(
-        "status", "pending_review"
-    ).order("created_at", desc=True).execute()
+    result = client.table("events").select(
+        "*, calendar_work_items(status, action, generation, failure_code)"
+    ).eq("review_status", "pending_review").order("created_at", desc=True).execute()
 
     events = result.data
 
@@ -62,9 +63,9 @@ def approved():
     config = load_config()
     client = get_authenticated_client(config)
 
-    result = client.table("events").select("*").in_(
-        "status", ["approved", "synced"]
-    ).order("start_datetime", desc=False).execute()
+    result = client.table("events").select(
+        "*, calendar_work_items(status, action, generation, failure_code)"
+    ).eq("review_status", "active").order("start_datetime", desc=False).execute()
 
     events = result.data
 
@@ -83,7 +84,7 @@ def approved():
             event["id"][:8],
             event["title"],
             event.get("start_datetime", "No date") or "No date",
-            event["status"],
+            derive_delivery_status(event),
         )
 
     console.print(table)
