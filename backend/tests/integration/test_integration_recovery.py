@@ -229,6 +229,51 @@ class TestClaimIntegrationRecovery:
         assert row.data["locked_by"] is None
         assert row.data["locked_until"] is None
 
+    async def test_superseded_recovery_cannot_be_requeued_by_old_worker(
+        self, admin_client, test_user_id, pg_pool
+    ):
+        complete_integration_reauthorization(
+            admin_client,
+            user_id=test_user_id,
+            provider="google_calendar",
+            access_token="access-1",
+            refresh_token="refresh-1",
+            token_expiry=None,
+            scopes=["calendar"],
+            provider_email=None,
+        )
+        claimed = await claim_integration_recovery(pg_pool, "worker-1", lock_seconds=300)
+        assert claimed is not None
+
+        # Reauthorization supersedes the locked generation and creates the
+        # only active replacement. The old worker must not revive its row.
+        complete_integration_reauthorization(
+            admin_client,
+            user_id=test_user_id,
+            provider="google_calendar",
+            access_token="access-2",
+            refresh_token=None,
+            token_expiry=None,
+            scopes=["calendar"],
+            provider_email=None,
+        )
+        result = admin_client.rpc("requeue_calendar_recovery_batch", {
+            "p_recovery_id": claimed["id"],
+            "p_worker_id": "worker-1",
+            "p_batch_size": 10,
+            "p_max_batches": 1,
+        }).execute()
+
+        assert result.data == -1
+        statuses = (
+            admin_client.table("integration_recoveries")
+            .select("status")
+            .eq("user_id", test_user_id)
+            .execute()
+            .data
+        )
+        assert sorted(row["status"] for row in statuses) == ["pending", "superseded"]
+
 
 @pytest.mark.integration
 @pytest.mark.development

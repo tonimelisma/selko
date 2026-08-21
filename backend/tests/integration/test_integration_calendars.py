@@ -129,14 +129,16 @@ class TestCalendarSync:
 
             assert google_event_id == "google-event-abc123"
 
-        # Verify event was updated in database
+        # The provider adapter is deliberately side-effect limited: the
+        # worker-owned completion RPC, not this adapter, projects provider
+        # identity/status back onto events.
         updated_event = authenticated_client.table("events").select("*").eq(
             "id", event_id
         ).single().execute()
 
-        assert updated_event.data["status"] == "synced"
-        assert updated_event.data["google_calendar_event_id"] == "google-event-abc123"
-        assert updated_event.data["synced_at"] is not None
+        assert updated_event.data["status"] == "approved"
+        assert updated_event.data["google_calendar_event_id"] is None
+        assert updated_event.data["synced_at"] is None
 
     def test_sync_creates_log_entry(self, authenticated_client, test_user_id):
         """Test that sync operation creates an audit log entry."""
@@ -258,12 +260,13 @@ class TestCalendarSync:
             assert google_event_id == "new-google-event-abc"
             mock_service.events.return_value.insert.assert_called_once()
 
-        # Verify database was updated with new Google event ID
+        # The provider adapter does not mutate the event projection; the
+        # worker completion RPC owns that transition.
         updated_event = authenticated_client.table("events").select("*").eq(
             "id", event_id
         ).single().execute()
 
-        assert updated_event.data["google_calendar_event_id"] == "new-google-event-abc"
+        assert updated_event.data["google_calendar_event_id"] == "deleted-google-event-789"
 
     def test_sync_fails_without_credentials(self, admin_client, test_user_id):
         """Test that sync fails gracefully when no credentials are available.

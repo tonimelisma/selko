@@ -445,6 +445,7 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
         f"stale={sorted(set(contracts) | TRIGGER_ONLY_FUNCTIONS - actual_names)}"
     )
 
+    worker = "schema-contract-worker"
     for name, args in contracts.items():
         call_args = list(args)
         if name in {
@@ -661,9 +662,18 @@ async def _exercise_email_triggers(conn, context):
 
 async def _exercise_event_source_triggers(conn, context):
     row_id = uuid4()
+    trigger_email_id = uuid4()
+    await conn.execute(
+        """
+        INSERT INTO public.emails
+            (id, user_id, integration_id, provider_message_id, email_provider, provider_labels, processing_status)
+        VALUES ($1, $2, $3, $4, 'gmail', ARRAY['INBOX'], 'processed')
+        """,
+        trigger_email_id, context.user_id, context.gmail_integration_id, str(trigger_email_id),
+    )
     await conn.execute(
         "INSERT INTO public.event_sources (id, event_id, email_id, extracted_data) VALUES ($1, $2, $3, '{}'::jsonb)",
-        row_id, context.event_id, context.email_id,
+        row_id, context.event_id, trigger_email_id,
     )
     await conn.execute("UPDATE public.event_sources SET extracted_data = '{\"updated\": true}'::jsonb WHERE id = $1", row_id)
 

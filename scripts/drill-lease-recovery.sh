@@ -31,8 +31,12 @@ if ! command -v supabase >/dev/null 2>&1; then
   exit 1
 fi
 
-# Check local Supabase is reachable
-if ! supabase status >/dev/null 2>&1; then
+# Check local Supabase is reachable. CLI status is TTY-sensitive and can
+# return non-zero when optional services are stopped, so inspect the required
+# database and gateway container health instead.
+db_health="$(docker inspect -f '{{.State.Health.Status}}' supabase_db_selko 2>/dev/null || true)"
+gateway_health="$(docker inspect -f '{{.State.Health.Status}}' supabase_kong_selko 2>/dev/null || true)"
+if [[ "$db_health" != "healthy" || "$gateway_health" != "healthy" ]]; then
   echo "ERROR: supabase status failed — is local Supabase running?" >&2
   exit 1
 fi

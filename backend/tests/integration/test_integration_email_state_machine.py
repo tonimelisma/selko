@@ -44,6 +44,14 @@ def _claim_for_email(admin_client, email_id: str, worker_id: str) -> dict:
     pytest.fail(f"email {email_id} was not claimable")
 
 
+def _health_row(admin_client) -> dict:
+    data = admin_client.rpc("health_work_state", {
+        "p_warning_seconds": 60,
+    }).execute().data
+    assert data, "health_work_state must return one row"
+    return data[0] if isinstance(data, list) else data
+
+
 @pytest.mark.integration
 @pytest.mark.development
 class TestDurableEmailStateMachine:
@@ -264,9 +272,7 @@ class TestDurableEmailStateMachine:
             locked_until=_iso(-3600),
         )
 
-        result = admin_client.rpc("health_work_state", {
-            "p_warning_seconds": 60,
-        }).execute().data
+        result = _health_row(admin_client)
 
         assert result["stale_processing_emails"] >= 1
         assert result["status"] == "degraded"
@@ -283,14 +289,30 @@ class TestDurableEmailStateMachine:
             locked_until=_iso(3600),
         )
 
-        result = admin_client.rpc("health_work_state", {
-            "p_warning_seconds": 60,
-        }).execute().data
+        result = _health_row(admin_client)
 
         assert result["ready_emails"] >= 1
         assert result["unclaimable_emails"] >= 1
         assert result["processing_emails"] >= 1
         assert result["stale_processing_emails"] == 0
+
+    def test_health_ignores_expired_integration_poll_age(self, admin_client, synced_integration):
+        """Expired integrations are not eligible work and cannot degrade health."""
+        before = _health_row(admin_client)
+
+        admin_client.table("integrations").update({"status": "expired"}).eq(
+            "id", synced_integration
+        ).execute()
+        admin_client.table("email_sync_state").update({
+            "next_poll_at": "2000-01-01T00:00:00+00:00",
+        }).eq("integration_id", synced_integration).execute()
+
+        after = _health_row(admin_client)
+
+        assert after["status"] == before["status"]
+        # No active integrations remain, so there is no eligible poll cursor.
+        # The expired integration's 26-year-old cursor must not be reported.
+        assert after["oldest_next_poll_seconds"] is None
 
 
 @pytest.mark.integration

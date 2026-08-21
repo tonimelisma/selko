@@ -88,13 +88,24 @@ class TestAutomaticCancellation:
                 "google_calendar_event_id": "google-race-event",
             }
         ).execute().data[0]["id"]
+        admin_client.rpc("enqueue_calendar_work", {
+            "p_event_id": event_id,
+            "p_user_id": test_user_id,
+            "p_action": "upsert",
+            "p_desired_event": {"title": "Race event"},
+        }).execute()
         claimed = await claim_approved_event_for_sync(pg_pool, "upsert-worker")
         assert claimed is not None
         old_generation = int(claimed["calendar_work_item_generation"])
 
-        admin_client.rpc("queue_event_cancellation", {
+        # Superseding an actively leased item is the authoritative race
+        # transition; the user-facing cancellation RPC intentionally rejects
+        # a syncing projection rather than mutating it underneath its worker.
+        admin_client.rpc("enqueue_calendar_work", {
             "p_event_id": event_id,
             "p_user_id": test_user_id,
+            "p_action": "cancel",
+            "p_desired_event": None,
         }).execute()
 
         completed = await complete_event_sync(
