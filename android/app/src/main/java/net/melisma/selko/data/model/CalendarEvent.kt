@@ -35,7 +35,6 @@ data class CalendarEvent(
     val location: String? = null,
     val description: String? = null,
     @SerialName("source_attribution") val sourceAttribution: String? = null,
-    val status: EventStatus = EventStatus.PENDING_REVIEW,
     @SerialName("review_status") val reviewStatus: EventReviewStatus? = null,
     @SerialName("google_calendar_event_id") val googleCalendarEventId: String? = null,
     @SerialName("synced_at") val syncedAt: Instant? = null,
@@ -53,8 +52,7 @@ data class CalendarEvent(
         get() = eventChangeProposals?.any { it.status == EventChangeProposalStatus.PENDING } == true
 
     val isNewReview: Boolean
-        get() = reviewStatus == EventReviewStatus.PENDING_REVIEW ||
-            (reviewStatus == null && status == EventStatus.PENDING_REVIEW)
+        get() = reviewStatus == EventReviewStatus.PENDING_REVIEW
 
     val hasAppliedProposal: Boolean
         get() = eventChangeProposals?.any { it.status == EventChangeProposalStatus.APPLIED } == true
@@ -64,4 +62,31 @@ data class CalendarEvent(
 
     val isSynced: Boolean
         get() = status == EventStatus.SYNCED
+
+    val status: EventStatus
+        get() {
+            if (reviewStatus == EventReviewStatus.PENDING_REVIEW) return EventStatus.PENDING_REVIEW
+            if (reviewStatus == EventReviewStatus.REJECTED) return EventStatus.REJECTED
+            if (reviewStatus == EventReviewStatus.CANCELLED) return EventStatus.CANCELLED
+            val item = calendarWorkItems
+                ?.filter { it.status != CalendarWorkStatus.SUPERSEDED }
+                ?.maxByOrNull { it.generation }
+            if (item == null) {
+                return if (googleCalendarEventId == null) EventStatus.APPROVED else EventStatus.SYNCED
+            }
+            val oauthBlocked = item.failureCode == "oauth_required" || item.failureCode == "oauth_scope_required"
+            if (item.action == CalendarWorkAction.CANCEL) {
+                if (item.status == CalendarWorkStatus.SUCCEEDED) return EventStatus.CANCELLED
+                if ((item.status == CalendarWorkStatus.FAILED || item.status == CalendarWorkStatus.BLOCKED) && !oauthBlocked) {
+                    return EventStatus.SYNC_FAILED
+                }
+                return EventStatus.CANCEL_QUEUED
+            }
+            return when (item.status) {
+                CalendarWorkStatus.PROCESSING -> EventStatus.SYNCING
+                CalendarWorkStatus.SUCCEEDED -> EventStatus.SYNCED
+                CalendarWorkStatus.FAILED, CalendarWorkStatus.BLOCKED -> if (oauthBlocked) EventStatus.APPROVED else EventStatus.SYNC_FAILED
+                CalendarWorkStatus.PENDING, CalendarWorkStatus.SUPERSEDED -> EventStatus.APPROVED
+            }
+        }
 }

@@ -17,6 +17,7 @@ import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.CalendarEvent
 import net.melisma.selko.data.model.Email
 import net.melisma.selko.data.model.EventSource
+import net.melisma.selko.data.model.EventReviewStatus
 import net.melisma.selko.data.model.EventStatus
 import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.data.model.SourceType
@@ -106,7 +107,7 @@ class EventDetailViewModelTest {
             id = "event-1",
             userId = "user-1",
             title = "Email Event",
-            status = EventStatus.PENDING_REVIEW,
+            reviewStatus = EventReviewStatus.PENDING_REVIEW,
             eventSources = listOf(emailSource)
         )
         coEvery { eventRepository.getEventWithSources("event-1") } returns
@@ -136,7 +137,7 @@ class EventDetailViewModelTest {
             id = "event-2",
             userId = "user-1",
             title = "Photo Event",
-            status = EventStatus.PENDING_REVIEW,
+            reviewStatus = EventReviewStatus.PENDING_REVIEW,
             eventSources = listOf(photoSource)
         )
         coEvery { eventRepository.getEventWithSources("event-2") } returns
@@ -166,7 +167,7 @@ class EventDetailViewModelTest {
             id = "event-3",
             userId = "user-1",
             title = "Calendar Event",
-            status = EventStatus.PENDING_REVIEW,
+            reviewStatus = EventReviewStatus.PENDING_REVIEW,
             eventSources = listOf(calendarSource)
         )
         coEvery { eventRepository.getEventWithSources("event-3") } returns
@@ -189,7 +190,7 @@ class EventDetailViewModelTest {
             id = "event-4",
             userId = "user-1",
             title = "No Source Event",
-            status = EventStatus.PENDING_REVIEW,
+            reviewStatus = EventReviewStatus.PENDING_REVIEW,
             eventSources = emptyList()
         )
         coEvery { eventRepository.getEventWithSources("event-4") } returns
@@ -211,7 +212,7 @@ class EventDetailViewModelTest {
             id = "event-5",
             userId = "user-1",
             title = "Test Event",
-            status = EventStatus.PENDING_REVIEW,
+            reviewStatus = EventReviewStatus.PENDING_REVIEW,
             eventSources = emptyList()
         )
         coEvery { eventRepository.getEventWithSources("event-5") } returns
@@ -247,7 +248,7 @@ class EventDetailViewModelTest {
             id = "event-expired",
             userId = "user-1",
             title = "Review me",
-            status = EventStatus.PENDING_REVIEW,
+            reviewStatus = EventReviewStatus.PENDING_REVIEW,
             eventSources = emptyList()
         )
         coEvery { eventRepository.getEventWithSources("event-expired") } returns

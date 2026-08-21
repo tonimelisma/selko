@@ -15,7 +15,7 @@ def _snapshot(title: str = "before") -> dict:
         "location": None,
         "description": None,
         "importance": "action_required",
-        "status": "approved",
+        "review_status": "active",
     }
 
 
@@ -32,7 +32,6 @@ def _event(admin_client, user_id: str, title: str = "proposal event") -> str:
         "title": title,
         "start_datetime": "2026-09-01T14:00:00Z",
         "end_datetime": "2026-09-01T15:00:00Z",
-        "status": "synced",
         "review_status": "active",
     }).execute().data[0]["id"]
 
@@ -95,9 +94,9 @@ async def test_proposal_is_authoritative_and_apply_reject_reopen_are_atomic(
         "p_expected_hash": None,
     }).execute().data
     assert reopened["status"] == "active"
-    assert admin_client.table("events").select("status,review_status").eq(
+    assert admin_client.table("events").select("review_status").eq(
         "id", event_id
-    ).single().execute().data == {"status": "approved", "review_status": "active"}
+    ).single().execute().data == {"review_status": "active"}
 
 
 @pytest.mark.asyncio

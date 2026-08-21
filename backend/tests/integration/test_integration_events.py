@@ -7,7 +7,7 @@ import pytest
 from selko.services import events, event_processing
 
 
-def _seed_event(client, user_id, event_data, email_id, status="pending_review"):
+def _seed_event(client, user_id, event_data, email_id, review_status="pending_review"):
     """Seed event/source rows directly from the test boundary.
 
     Production event creation is owned by ``commit_email_extraction``; tests
@@ -22,8 +22,7 @@ def _seed_event(client, user_id, event_data, email_id, status="pending_review"):
         "location": event_data.get("location"),
         "description": event_data.get("description"),
         "importance": event_data.get("importance", "action_required"),
-        "status": status,
-        "review_status": "pending_review" if status == "pending_review" else "active",
+        "review_status": review_status,
     }
     event_id = client.table("events").insert(row).execute().data[0]["id"]
     client.table("event_sources").insert({
@@ -269,7 +268,7 @@ class TestEventProcessing:
             "user_id": test_user_id,
             "title": "Test Event",
             "start_datetime": "2026-03-01T10:00:00Z",
-            "status": "pending_review",
+            "review_status": "pending_review",
         }
         
         authenticated_client.table("events").insert(event_data).execute()
@@ -500,7 +499,7 @@ class TestEventUndoRedo:
                 "title": "Team Meeting",
                 "start_datetime": "2026-03-20T14:00:00Z",
                 "end_datetime": "2026-03-20T15:00:00Z",
-                "status": "pending_review",
+                "review_status": "active",
             },
             "resolution_reason": "approved",
         }).execute().data[0]
@@ -588,7 +587,7 @@ class TestEventUndoRedo:
             "change_set": {"kind": "material_update", "changes": [
                 {"field": "location", "before": None, "after": "New Venue"},
             ]},
-            "event_snapshot_before": {"title": "Party", "status": "pending_review"},
+            "event_snapshot_before": {"title": "Party", "review_status": "active"},
             "resolution_reason": "approved",
         }).execute().data[0]
 

@@ -15,7 +15,10 @@ import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.model.CalendarEvent
-import net.melisma.selko.data.model.EventStatus
+import net.melisma.selko.data.model.CalendarWorkAction
+import net.melisma.selko.data.model.CalendarWorkItem
+import net.melisma.selko.data.model.CalendarWorkStatus
+import net.melisma.selko.data.model.EventReviewStatus
 import net.melisma.selko.ui.theme.SelkoTheme
 import org.junit.Rule
 import org.junit.Test
@@ -77,7 +80,8 @@ class HistoryScreenTest {
         coEvery { eventRepository.fetchActivityEvents(any(), any()) } returns EventResult.Success(listOf(
             CalendarEvent(
                 id = "event-1", userId = "user-1", title = "Project review",
-                status = EventStatus.SYNCED,
+                reviewStatus = EventReviewStatus.ACTIVE,
+                googleCalendarEventId = "google-event-1",
                 updatedAt = kotlin.time.Instant.parse("2026-07-18T12:00:00Z")
             )
         ))
@@ -100,7 +104,13 @@ class HistoryScreenTest {
         coEvery { eventRepository.fetchActivityEvents(any(), any()) } returns EventResult.Success(listOf(
             CalendarEvent(
                 id = "event-cancel", userId = "user-1", title = "Cancelled meeting",
-                status = EventStatus.CANCEL_QUEUED,
+                reviewStatus = EventReviewStatus.ACTIVE,
+                calendarWorkItems = listOf(
+                    CalendarWorkItem(
+                        id = "work-cancel", eventId = "event-cancel", userId = "user-1",
+                        action = CalendarWorkAction.CANCEL, generation = 1, status = CalendarWorkStatus.PENDING
+                    )
+                ),
                 updatedAt = kotlin.time.Instant.parse("2026-07-18T12:00:00Z")
             )
         ))

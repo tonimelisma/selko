@@ -52,7 +52,7 @@ def _make_blocked_event(admin_client, user_id, failure_code="oauth_required"):
             "user_id": user_id,
             "title": "Recovery worker test event",
             "start_datetime": "2026-05-01T14:00:00Z",
-            "status": "approved",
+            "review_status": "active",
         })
         .execute()
     )
@@ -66,6 +66,7 @@ def _make_blocked_event(admin_client, user_id, failure_code="oauth_required"):
     if failure_code is not None:
         admin_client.table("calendar_work_items").update({
             "failure_code": failure_code,
+            "status": "failed",
         }).eq("event_id", event_id).execute()
     return event_id
 
@@ -155,9 +156,10 @@ class TestRequeueCalendarRecoveryBatch:
         await requeue_calendar_recovery_batch(pg_pool, recovery["id"], "worker-1")
 
         # Simulate the normal calendar worker syncing the tagged event.
-        admin_client.table("events").update({"status": "synced"}).eq(
-            "id", event_id
-        ).execute()
+        admin_client.table("calendar_work_items").update({
+            "status": "succeeded",
+            "provider_event_id": "recovered-google-event",
+        }).eq("event_id", event_id).execute()
 
         await refresh_waiting_calendar_recoveries(pg_pool)
 
@@ -181,9 +183,6 @@ class TestRequeueCalendarRecoveryBatch:
 
         # Simulate the normal calendar worker permanently failing the event
         # for a non-OAuth reason after recovery tagged it.
-        admin_client.table("events").update(
-            {"status": "sync_failed"}
-        ).eq("id", event_id).execute()
         admin_client.table("calendar_work_items").update(
             {"failure_code": "invalid_event", "status": "failed"}
         ).eq("event_id", event_id).execute()
