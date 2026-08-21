@@ -357,17 +357,22 @@ unchanged.
 applied locally and is committed. Amending a committed migration breaks anyone
 whose local database already ran it, so the repairs land as a new migration.
 
-1. **Complete the backfill.** Extend the preservation block to cover every
-   pre-drop status, not just `synced`. `sync_failed` becomes a work item with
-   `status = 'failed'`; `approved`, `syncing` and `cancel_queued` become
-   `pending` items of the right action. Because `20260829000001` has already
-   dropped the column by the time this migration runs, the new migration must
-   perform its arm of the work *inside* `20260829000001` for a fresh database
-   and be a verified no-op for one that already migrated — so the correct shape
-   is: fix the block in `20260829000001` **and** ship
-   `20260830000002` as the idempotent repair for databases that ran the
-   incomplete version. Both paths converge on the same end state; the test
-   asserts the end state, not the path.
+1. **Complete the backfill, by amending `20260829000001` in place.**
+
+   *Corrected during implementation.* This section originally proposed shipping
+   a follow-up migration as an "idempotent repair for databases that ran the
+   incomplete version." **That is impossible.** Once `DROP COLUMN status`
+   executes, the values are gone and nothing can reconstruct which rows were
+   `sync_failed`. There is exactly one moment at which this is fixable: before
+   the migration reaches a durable environment. It has not — staging is at
+   `20260827000002`, production at `20260822000001`, and the local database was
+   at `20260828000001`, so `20260829000001` has never executed anywhere.
+
+   Extend the preservation block to cover every pre-drop status. `sync_failed`
+   becomes a `failed` work item; `approved`, `syncing` and `cancel_queued`
+   become `pending` items of the right action; `pending_review`, `rejected` and
+   `cancelled` are review states that never attempted a provider write and get
+   none.
 2. **Delete `p_legacy_status`** from `_enqueue_calendar_work` and the four call
    sites that compute a value for it. **Delete the `'event_status'` key** from
    `fail_calendar_work`'s return. **Delete `p_restore_status`** from
@@ -458,14 +463,24 @@ red; the staging manifest records the drill.
 
 **Files:** `scripts/rehearse-cutover.sh` (new), `docs/specs/cutover-verification-20260807.md`
 
-1. `rehearse-cutover.sh` takes a logical dump of production, restores it into a
-   scratch local database, applies every migration production is missing in
-   order, then runs the schema-contract suite and the W3 backfill test against
-   the result. It is read-only against production and refuses to run if the
-   linked ref is production.
-2. It prints a content-free report: row counts per legacy status before, work
-   items per destination after, and any migration that failed.
+*Corrected during implementation.* This originally read "takes a logical dump
+of production, restores it into a scratch local database." That would move real
+users' OAuth refresh tokens and email bodies onto a developer laptop — exactly
+what `CLAUDE.md`'s environment-separation rule forbids. The plan proposed it
+anyway, which is worth recording: the rule did not survive contact with a
+convenient design.
+
+1. `scripts/rehearse_cutover.py` **copies no production data**. What it reads
+   from production is content-free and already permitted for diagnosis: row
+   counts grouped by status label, and the current migration version. It then
+   builds a scratch local database, replays every migration up to production's
+   version, seeds synthetic rows matching production's *status distribution*,
+   applies the pending batch in order, and asserts.
+2. It prints a content-free report: counts per legacy status before, work items
+   per destination after, and any migration that failed.
 3. Per D5 this is the review of record for `supabase/migrations/**`.
+4. What it does not prove: behaviour that depends on row *content*. No
+   migration in this batch branches on content.
 
 **Done when:** the rehearsal applies all 9 pending migrations to a copy of
 production's real data and the contract suite passes against the result; a
