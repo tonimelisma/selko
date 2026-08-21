@@ -1,6 +1,6 @@
 +++
 spec_id = "foundation-integrity"
-readme_order = 6
+readme_order = 7
 title = "Foundation integrity"
 increments = "F7b, F8 open; F9 complete with accepted history debt"
 gate = "F7b needs staging access; F8 needs operator approval"

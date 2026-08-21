@@ -1,6 +1,6 @@
 +++
 spec_id = "oauth-reconnect-catch-up"
-readme_order = 8
+readme_order = 9
 title = "OAuth reconnect catch-up"
 increments = "Steps 7–9 open"
 gate = "Independent; C3 adds cancel_queued to its recovery sets"
