@@ -141,10 +141,15 @@ class TestExponentialBackoffEvents:
         """Event retry should include next_retry_at with exponential backoff."""
         import asyncio
 
-        from selko.services.events import fail_event_sync
+        from selko.services.events import WorkItemLease, fail_event_sync
 
         self.queue_processing_item()
-        asyncio.run(fail_event_sync(self.pool, "event-1", "Calendar API error"))
+        asyncio.run(
+            fail_event_sync(
+                self.pool, WorkItemLease("work-item-1", "worker-1", 2),
+                "Calendar API error",
+            )
+        )
 
         sql, args = self.pool.calls[-1]
         assert "public.fail_calendar_work(" in sql
@@ -157,10 +162,14 @@ class TestExponentialBackoffEvents:
         """Event delay should also be capped at 3600s."""
         import asyncio
 
-        from selko.services.events import fail_event_sync
+        from selko.services.events import WorkItemLease, fail_event_sync
 
         self.queue_processing_item()
-        asyncio.run(fail_event_sync(self.pool, "event-1", "error"))
+        asyncio.run(
+            fail_event_sync(
+                self.pool, WorkItemLease("work-item-1", "worker-1", 2), "error"
+            )
+        )
 
         sql, args = self.pool.calls[-1]
         assert "public.fail_calendar_work(" in sql
@@ -169,12 +178,16 @@ class TestExponentialBackoffEvents:
         """Quota deferral returns the claimed event to its pre-claim budget."""
         import asyncio
 
-        from selko.services.events import defer_event_sync_for_quota
+        from selko.services.events import WorkItemLease, defer_event_sync_for_quota
 
         reset_at = "2026-04-10T00:00:00+00:00"
 
         self.queue_processing_item()
-        asyncio.run(defer_event_sync_for_quota(self.pool, "event-1", reset_at))
+        asyncio.run(
+            defer_event_sync_for_quota(
+                self.pool, WorkItemLease("work-item-1", "worker-1", 2), reset_at
+            )
+        )
 
         sql, args = self.pool.calls[-1]
         assert "public.defer_calendar_work(" in sql
@@ -193,12 +206,12 @@ class TestExponentialBackoffEvents:
         """
         import asyncio
 
-        from selko.services.events import park_event_for_oauth_reauth
+        from selko.services.events import WorkItemLease, park_event_for_oauth_reauth
 
         self.queue_processing_item()
         asyncio.run(park_event_for_oauth_reauth(
             self.pool,
-            "event-1",
+            WorkItemLease("work-item-1", "worker-1", 2),
             "oauth_required",
             "Google Calendar needs to be reconnected.",
         ))
@@ -242,10 +255,15 @@ class TestDeadLetterEvent:
         """When max sync attempts exceeded, dead_letter fields should be set."""
         import asyncio
 
-        from selko.services.events import fail_event_sync
+        from selko.services.events import WorkItemLease, fail_event_sync
 
         self.queue_processing_item()
-        asyncio.run(fail_event_sync(self.pool, "event-1", "Calendar API down"))
+        asyncio.run(
+            fail_event_sync(
+                self.pool, WorkItemLease("work-item-1", "worker-1", 2),
+                "Calendar API down",
+            )
+        )
 
         sql, args = self.pool.calls[-1]
         assert "public.fail_calendar_work(" in sql
@@ -258,10 +276,15 @@ class TestDeadLetterEvent:
         """When retries remain, dead_letter fields should NOT be set."""
         import asyncio
 
-        from selko.services.events import fail_event_sync
+        from selko.services.events import WorkItemLease, fail_event_sync
 
         self.queue_processing_item()
-        asyncio.run(fail_event_sync(self.pool, "event-1", "Temporary error"))
+        asyncio.run(
+            fail_event_sync(
+                self.pool, WorkItemLease("work-item-1", "worker-1", 2),
+                "Temporary error",
+            )
+        )
 
         sql, args = self.pool.calls[-1]
         assert "public.fail_calendar_work(" in sql

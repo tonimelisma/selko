@@ -368,10 +368,8 @@ class TestLooseWorkerFunctionsOverPool:
         assert str(event["id"]) == approved_event
         await complete_event_sync(
             pg_pool,
-            approved_event,
+            event["calendar_work_lease"],
             "google-c2-probe",
-            "c2-probe-worker-7",
-            int(event["calendar_work_item_generation"]),
         )
 
     async def test_event_fail_retries_then_dead_letters(
@@ -385,10 +383,8 @@ class TestLooseWorkerFunctionsOverPool:
         assert event is not None
         await fail_event_sync(
             pg_pool,
-            approved_event,
+            event["calendar_work_lease"],
             "transient probe",
-            "c2-probe-worker-8",
-            int(event["calendar_work_item_generation"]),
         )
         row = await pg_pool.fetchrow(
             "SELECT status FROM public.events WHERE id = $1",

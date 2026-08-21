@@ -380,7 +380,7 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
         "request_email_sync_now": (context.gmail_integration_id,),
         "requeue_calendar_recovery_batch": (context.recovery_id, worker, 10, 1),
         "undo_event_and_enqueue_calendar_work": (
-            context.event_id, context.user_id, None, {}, None, None, None, False,
+            context.event_id, context.user_id, None, None, None, False,
         ),
         "unsync_event_and_enqueue_calendar_work": (
             context.event_id, context.user_id, None, False,
