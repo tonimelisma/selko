@@ -91,6 +91,7 @@ Configure at: Repository -> Settings -> Secrets and variables -> Actions
 |--------|---------|-----------------|
 | `SUPABASE_ACCESS_TOKEN` | Authenticate Supabase CLI for migrations | https://supabase.com/dashboard/account/tokens |
 | `STAGING_SUPABASE_DB_PASSWORD` | Password-authenticated staging migration queries and pushes | Supabase project database settings |
+| `STAGING_SUPABASE_DB_URL` | Session-pooler URL used by staging workers and acceptance drills | Supabase dashboard -> Connect -> Session pooler |
 | `STAGING_SUPABASE_URL` | Staging database connection | Supabase dashboard |
 | `STAGING_SUPABASE_ANON_KEY` | Staging API access | Supabase dashboard -> Settings -> API |
 | `STAGING_SUPABASE_SERVICE_ROLE_KEY` | Staging admin operations | Supabase dashboard -> Settings -> API |

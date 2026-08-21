@@ -237,6 +237,9 @@ that started the S-plan.
 **D2 — staging worker posture (blocks V4).** Staging currently runs workers off
 on a free Render instance. Either:
 
+**Decision recorded 2026-08-21: (a).** Staging workers stay enabled, and the
+Tier-2 verifier fails closed unless the deployed service proves that posture.
+
 - **(a)** Staging runs workers on, permanently, and Tier 2 means what
   `CLAUDE.md` says it means. If the free instance cannot hold that, this costs
   money and that is the price of having a staging tier.
