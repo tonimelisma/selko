@@ -1,3 +1,17 @@
++++
+spec_id = "state-ownership-and-deterministic-recovery"
+readme_order = 4
+title = "State ownership and deterministic recovery"
+increments = "S1–S5"
+gate = "P1–P3 and C1–C3 implemented; production incident repaired and audited"
+tests = [
+  "tests/integration/test_integration_email_state_machine.py::TestDurableEmailStateMachine::test_expired_processing_email_is_reclaimed_without_restart",
+  "tests/integration/test_integration_calendar_work_items.py::test_enqueue_claim_complete_is_item_fenced",
+]
+health = ["/health", "/health/ingestion"]
+drills = ["state-ownership-acceptance-drill"]
++++
+
 # State Ownership and Deterministic Recovery
 
 > Historical design record. S1-S5 are implemented in the current schema and

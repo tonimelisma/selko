@@ -1,3 +1,14 @@
++++
+spec_id = "foundation-integrity"
+readme_order = 6
+title = "Foundation integrity"
+increments = "F7b, F8 open; F9 complete with accepted history debt"
+gate = "F7b needs staging access; F8 needs operator approval"
+tests = []
+health = ["/health", "/health/ingestion", "/health/egress"]
+drills = ["foundation-integrity-cutover-drill"]
++++
+
 # Foundation Integrity — make the repo's claims verifiable, then deploy
 
 **Status:** Partially implemented (corrected 2026-08-20). F1–F7a merged in

@@ -1,3 +1,17 @@
++++
+spec_id = "calendar-identity-and-cancellation"
+readme_order = 3
+title = "Calendar identity and cancellation"
+increments = "C1–C3"
+gate = "P1–P3 verified in production"
+tests = [
+  "tests/integration/test_integration_event_identity.py::test_hint_lookup_is_part_of_the_commit_fence",
+  "tests/integration/test_integration_automatic_cancellation.py::TestAutomaticCancellation::test_stale_upsert_completion_cannot_reset_cancellation",
+]
+health = []
+drills = []
++++
+
 # Calendar Identity and Cancellation
 
 > Historical requirements record. The current cancellation and delivery
