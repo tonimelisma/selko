@@ -7,6 +7,10 @@ the response: the meter that attributes bytes, and the backoff that stops the
 loop generating them.
 """
 
+import ast
+import inspect
+from pathlib import Path
+
 import pytest
 
 from selko.services.egress import (
@@ -40,6 +44,40 @@ def test_snapshot_attributes_bytes_by_destination_and_operation():
     assert snapshot["by_destination"][GMAIL]["bytes"] == 50_000
     # Ranked by bytes, so the biggest consumer is the first thing an operator sees.
     assert snapshot["top_operations"][0]["destination"] == GMAIL
+
+
+def test_graph_egress_never_uses_unknown_operation():
+    from selko.services.egress import GRAPH
+
+    record_egress(GRAPH, "GET /me/messages/{message-id}", response_bytes=1)
+
+    snapshot = egress_snapshot()
+
+    assert all(row["operation"] != "unknown" for row in snapshot["top_operations"])
+
+
+def test_graph_request_requires_bounded_operation_at_construction():
+    from selko.services.msgraph import request_json
+
+    operation = inspect.signature(request_json).parameters["operation"]
+    assert operation.default is inspect.Parameter.empty
+
+    source = Path(__file__).parents[1] / "selko" / "services" / "outlook.py"
+    tree = ast.parse(source.read_text())
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_graph_get"
+    ]
+    assert calls
+    for call in calls:
+        operation_kw = next(
+            keyword for keyword in call.keywords if keyword.arg == "operation"
+        )
+        assert isinstance(operation_kw.value, ast.Constant)
+        assert operation_kw.value.value != "unknown"
 
 
 def test_operation_names_drop_query_strings_and_ids():
@@ -181,4 +219,3 @@ def test_bytes_per_mailbox_per_day_field_exists():
     # This test ensures the egress_snapshot contract is stable for health to derive from.
     assert "total_bytes" in snap
     assert "by_destination" in snap
-

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import time
 import uuid
+from dataclasses import dataclass
 from typing import Any, Callable
 
 import requests
@@ -24,6 +25,16 @@ class GraphRequestError(Exception):
         self.status_code = status_code
         for key, value in metadata.items():
             setattr(self, key, value)
+
+
+@dataclass(frozen=True)
+class GraphCallContext:
+    """Durable ownership context for a Graph request and its failure ledger."""
+
+    client: Client
+    config: Config
+    integration_id: str
+    run_id: str | None = None
 
 
 def safe_url_template(url: str) -> str:
@@ -109,7 +120,7 @@ def request_json(
     config: Config | None = None,
     integration_id: str | None = None,
     run_id: str | None = None,
-    operation: str = "unknown",
+    operation: str,
 ) -> dict[str, Any]:
     """GET JSON, honoring Graph throttling and recording safe failures."""
     request_params = params
