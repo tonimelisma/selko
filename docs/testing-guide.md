@@ -206,3 +206,19 @@ Pull-request CI, when it runs, covers mocked/unit checks only and may not run
 because Actions minutes are not funded. The authoritative gates are
 `./scripts/verify.sh backend` before merge and `./scripts/verify.sh staging`
 after merge. See `docs/ci-cd.md` for the bonus CI details.
+
+## When the gate reports an unresponsive Docker daemon
+
+`./scripts/verify.sh backend` bounds every Docker probe at
+`DOCKER_PROBE_TIMEOUT_SECONDS` (default 15). If it exits with *"the Docker
+daemon did not answer"*, Docker Desktop is running but its daemon is not
+answering — usually because the VM disk has taken an I/O fault. Confirm with:
+
+```bash
+tail -5 ~/Library/Containers/com.docker.docker/Data/log/vm/console.log
+```
+
+An `EXT4-fs (vda1): ... error -5` line is that fault. Quit and reopen Docker
+Desktop; if probes still hang, use Troubleshoot → Clean / Purge data and re-run
+`supabase start`. The gate fails closed here by design — before the bound
+existed it blocked indefinitely, which is indistinguishable from a slow suite.
