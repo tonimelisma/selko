@@ -121,6 +121,29 @@ ALTER TABLE public.event_sources
     DROP COLUMN IF EXISTS event_snapshot_before,
     DROP COLUMN IF EXISTS is_undone;
 
+-- 20260825000001 created an event_change_proposals row for every
+-- status = 'pending_change' event but left the column itself alone, and the
+-- constraint below drops that value from the domain. Production holds 11 such
+-- rows (2026-08-21), so this migration fails there with
+--   check constraint "events_status_check" of relation "events" is violated
+-- before any later migration in the batch can run.
+--
+-- Staging applied this migration cleanly only because it had no pending_change
+-- rows, which is why no gate saw it; ./scripts/rehearse_cutover.py found it by
+-- replaying the batch against production's real status distribution.
+--
+-- The proposal now owns the change, so the event returns to the state it held
+-- before the change arrived: delivered rows keep their provider link through
+-- 'synced' (20260829000001 turns that into a succeeded work item), and
+-- undelivered rows go back to review.
+UPDATE public.events
+SET status = CASE
+        WHEN google_calendar_event_id IS NOT NULL THEN 'synced'
+        ELSE 'pending_review'
+    END,
+    updated_at = now()
+WHERE status = 'pending_change';
+
 ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_status_check;
 ALTER TABLE public.events ADD CONSTRAINT events_status_check CHECK (status IN (
     'pending_review', 'approved', 'rejected', 'cancelled', 'cancel_queued',

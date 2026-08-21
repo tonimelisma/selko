@@ -55,7 +55,7 @@ case "${STAGING_REQUIRE_WORKERS:-1}" in
   *) fail "STAGING_REQUIRE_WORKERS must be 0 or 1" ;;
 esac
 if [[ "${STAGING_REQUIRE_WORKERS:-1}" == "1" ]]; then
-  [[ -n "${SUPABASE_DB_URL:-}" ]] || fail "SUPABASE_DB_URL is required for worker and drill verification"
+  [[ -n "${SUPABASE_DB_URL:-}" ]] || fail "SUPABASE_DB_URL (session pooler, port 5432) is required to run the worker drill"
 fi
 
 echo "Tier 2: staging ref verified"
@@ -99,13 +99,26 @@ egress_json=$(curl --fail --silent --show-error "$egress_url")
 printf '%s\n' "$ingestion_json"
 printf '%s\n' "$egress_json"
 
-if [[ "${STAGING_REQUIRE_WORKERS:-0}" == "1" ]]; then
-  printf '%s\n' "$ingestion_json" | ./scripts/assert-staging-health.sh ingestion
-  VERIFY_STAGING_HEALTH_ASSERTIONS+=("/health/ingestion")
-  printf '%s\n' "$egress_json" | ./scripts/assert-staging-health.sh egress
-  VERIFY_STAGING_HEALTH_ASSERTIONS+=("/health/egress")
+# D4: the deployed staging service runs on Render's FREE plan and spins down
+# after ~15 minutes idle, so it cannot hold workers on. Asserting that posture
+# against the deployed service would be asserting something staging does not
+# have. Worker properties are proven instead by drill-staging-workers.sh, which
+# runs selko.worker_app from this machine against staging Supabase over the real
+# Supavisor session pooler.
+#
+# What that covers: real Postgres, real LISTEN/NOTIFY, real leases, real
+# generation fencing, real expiry reclaim.
+# What it does NOT cover: Render's memory ceiling, and the deployed service's
+# own worker posture. Nothing below may claim otherwise.
+echo "NOTE: staging runs with background processing off by design (Render free plan)."
+echo "      Worker behaviour is proven by ./scripts/drill-staging-workers.sh, not by"
+echo "      the deployed service's /health/ingestion."
+
+if [[ "${STAGING_REQUIRE_WORKERS:-1}" == "1" ]]; then
+  # Runs the entire drill suite with a live worker attached to staging, so it
+  # is what proves the acceptance drill too.
+  ./scripts/drill-staging-workers.sh
+  VERIFY_STAGING_DRILLS+=("staging-worker-drill" "state-ownership-acceptance-drill")
 fi
 
 ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m staging -v --tb=short -n auto
-RUN_ACCEPTANCE_DRILL=1 uv run pytest backend/tests/drills/test_acceptance_drill.py -m "staging and drill" -v --tb=short
-VERIFY_STAGING_DRILLS+=("state-ownership-acceptance-drill")
