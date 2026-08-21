@@ -355,10 +355,8 @@ class TestEventStatusBasedClaiming:
         # Complete sync
         await complete_event_sync(
             pg_pool,
-            event_id,
+            claimed["calendar_work_lease"],
             "google-event-123",
-            "test-worker",
-            int(claimed["calendar_work_item_generation"]),
         )
 
         # Verify status
@@ -395,10 +393,8 @@ class TestEventStatusBasedClaiming:
         claimed = await claim_approved_event_for_sync(pg_pool, "worker-1")
         await fail_event_sync(
             pg_pool,
-            event_id,
+            claimed["calendar_work_lease"],
             "Test sync error",
-            "worker-1",
-            int(claimed["calendar_work_item_generation"]),
         )
 
         # Should be back to approved for retry
