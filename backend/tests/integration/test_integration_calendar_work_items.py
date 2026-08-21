@@ -68,8 +68,7 @@ async def test_enqueue_claim_complete_is_item_fenced(
     assert claimed["status"] == "syncing"
 
     assert await complete_event_sync(
-        pg_pool, item_id, "google-s2-event", "s2-worker",
-        int(claimed["calendar_work_generation"]),
+        pg_pool, claimed["calendar_work_lease"], "google-s2-event",
     ) is True
     final = admin_client.table("events").select(
         "status,review_status,google_calendar_event_id"
@@ -106,7 +105,7 @@ async def test_new_enqueue_supersedes_old_and_stale_completion_is_fenced(
     first_id = first["id"] if isinstance(first, dict) else first[0]["id"]
     claimed = await claim_approved_event_for_sync(pg_pool, "old-worker")
     assert claimed is not None
-    generation = int(claimed["calendar_work_item_generation"])
+    lease = claimed["calendar_work_lease"]
 
     second = admin_client.rpc("enqueue_calendar_work", {
         "p_event_id": event_id, "p_user_id": user_id, "p_action": "cancel",
@@ -116,7 +115,7 @@ async def test_new_enqueue_supersedes_old_and_stale_completion_is_fenced(
     second_id = second["id"] if isinstance(second, dict) else second[0]["id"]
     assert str(first_id) != str(second_id)
     assert await complete_event_sync(
-        pg_pool, first_id, "stale-google-event", "old-worker", generation
+        pg_pool, lease, "stale-google-event"
     ) is False
     row = admin_client.table("calendar_work_items").select(
         "status,action,generation"
@@ -198,9 +197,7 @@ async def test_unsync_is_worker_owned_and_clears_remote_identity_on_completion(
 
     assert await complete_event_cancellation(
         pg_pool,
-        event_id,
-        "unsync-worker",
-        int(claimed["calendar_work_generation"]),
+        claimed["calendar_work_lease"],
     ) is True
     final = admin_client.table("events").select(
         "status,review_status,google_calendar_event_id,synced_at"

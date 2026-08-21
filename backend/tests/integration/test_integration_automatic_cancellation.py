@@ -60,10 +60,10 @@ class TestAutomaticCancellation:
         assert str(claimed["id"]) == event_id
         assert claimed["status"] == "syncing"
         assert claimed["calendar_work_item_action"] == "cancel"
-        generation = int(claimed["calendar_work_item_generation"])
+        lease = claimed["calendar_work_lease"]
 
         completed = await complete_event_cancellation(
-            pg_pool, event_id, "c3-worker", generation
+            pg_pool, lease
         )
         assert completed is True
         final = admin_client.table("events").select(
@@ -96,7 +96,7 @@ class TestAutomaticCancellation:
         }).execute()
         claimed = await claim_approved_event_for_sync(pg_pool, "upsert-worker")
         assert claimed is not None
-        old_generation = int(claimed["calendar_work_item_generation"])
+        old_lease = claimed["calendar_work_lease"]
 
         # Superseding an actively leased item is the authoritative race
         # transition; the user-facing cancellation RPC intentionally rejects
@@ -109,7 +109,7 @@ class TestAutomaticCancellation:
         }).execute()
 
         completed = await complete_event_sync(
-            pg_pool, event_id, "google-race-event", "upsert-worker", old_generation
+            pg_pool, old_lease, "google-race-event"
         )
         assert completed is False
         row = admin_client.table("events").select("status").eq(

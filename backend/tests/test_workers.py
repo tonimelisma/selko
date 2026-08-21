@@ -8,6 +8,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from selko.services.events import WorkItemLease
 from selko.workers.concurrency import _try_acquire
 from selko.workers.pool import WorkerPool
 
@@ -656,6 +657,7 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "sync_attempts": 1,
+            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
         }
         quota_result = MagicMock(allowed=True)
 
@@ -676,7 +678,9 @@ class TestCalendarSyncWorker:
             "u1", "calendar_syncs"
         )
         sync.assert_awaited_once_with(mock_client, mock_config, event)
-        complete.assert_awaited_once_with(fake_pg_pool, "ev1", "google-1")
+        complete.assert_awaited_once_with(
+            fake_pg_pool, event["calendar_work_lease"], "google-1"
+        )
 
     @pytest.mark.asyncio
     async def test_worker_cancels_calendar_event_with_fenced_completion(
@@ -691,9 +695,8 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "google_calendar_event_id": "google-cancel-1",
-            "calendar_sync_action": "cancel",
-            "calendar_work_generation": 4,
-            "locked_by": "worker-1",
+            "calendar_work_item_action": "cancel",
+            "calendar_work_lease": WorkItemLease("ev-cancel", "worker-1", 4),
             "sync_attempts": 1,
         }
         quota_result = MagicMock(allowed=True)
@@ -721,7 +724,7 @@ class TestCalendarSyncWorker:
             "u1", "calendar_syncs"
         )
         cancel.assert_awaited_once_with(mock_client, mock_config, event)
-        complete.assert_awaited_once_with(fake_pg_pool, "ev-cancel", "worker-1", 4)
+        complete.assert_awaited_once_with(fake_pg_pool, event["calendar_work_lease"])
         sync.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -737,7 +740,7 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "calendar_work_item_action": "upsert",
-            "calendar_work_item_generation": 1,
+            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
             "calendar_work_item_attempts": 2,
         }
         quota_result = MagicMock(
@@ -759,10 +762,8 @@ class TestCalendarSyncWorker:
 
         defer.assert_awaited_once_with(
             fake_pg_pool,
-            "ev1",
+            event["calendar_work_lease"],
             "2026-08-01T00:00:00+00:00",
-            "worker-1",
-            1,
         )
         sync.assert_not_awaited()
         complete.assert_not_awaited()
@@ -787,7 +788,7 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "calendar_work_item_action": "upsert",
-            "calendar_work_item_generation": 1,
+            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
             "calendar_work_item_attempts": 1,
         }
         quota_result = MagicMock(allowed=True)
@@ -810,11 +811,9 @@ class TestCalendarSyncWorker:
 
         park.assert_awaited_once_with(
             fake_pg_pool,
-            "ev1",
+            event["calendar_work_lease"],
             "oauth_required",
             "Google Calendar needs to be reconnected.",
-            "worker-1",
-            1,
         )
         fail.assert_not_awaited()
         cb.record_failure.assert_not_called()
@@ -834,6 +833,7 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "sync_attempts": 1,
+            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
         }
         quota_result = MagicMock(allowed=True)
 
@@ -851,7 +851,9 @@ class TestCalendarSyncWorker:
             quota_service.return_value.check_and_increment.return_value = quota_result
             await pool._process_event_sync(mock_client, "worker-1", event)
 
-        fail.assert_awaited_once_with(fake_pg_pool, "ev1", "Calendar API down")
+        fail.assert_awaited_once_with(
+            fake_pg_pool, event["calendar_work_lease"], "Calendar API down"
+        )
         park.assert_not_awaited()
         cb.record_failure.assert_called_once_with("google_calendar")
 
@@ -1210,6 +1212,7 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "sync_attempts": 1,
+            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
         }
         quota_result = MagicMock(allowed=True)
 
@@ -1230,7 +1233,9 @@ class TestCalendarSyncWorker:
             "u1", "calendar_syncs"
         )
         sync.assert_awaited_once_with(mock_client, mock_config, event)
-        complete.assert_awaited_once_with(fake_pg_pool, "ev1", "google-1")
+        complete.assert_awaited_once_with(
+            fake_pg_pool, event["calendar_work_lease"], "google-1"
+        )
 
     @pytest.mark.asyncio
     async def test_worker_defers_without_writing_when_calendar_quota_is_exhausted(
@@ -1245,7 +1250,7 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "calendar_work_item_action": "upsert",
-            "calendar_work_item_generation": 1,
+            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
             "calendar_work_item_attempts": 2,
         }
         quota_result = MagicMock(
@@ -1267,10 +1272,8 @@ class TestCalendarSyncWorker:
 
         defer.assert_awaited_once_with(
             fake_pg_pool,
-            "ev1",
+            event["calendar_work_lease"],
             "2026-08-01T00:00:00+00:00",
-            "worker-1",
-            1,
         )
         sync.assert_not_awaited()
         complete.assert_not_awaited()
@@ -1295,7 +1298,7 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "calendar_work_item_action": "upsert",
-            "calendar_work_item_generation": 1,
+            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
             "calendar_work_item_attempts": 1,
         }
         quota_result = MagicMock(allowed=True)
@@ -1318,11 +1321,9 @@ class TestCalendarSyncWorker:
 
         park.assert_awaited_once_with(
             fake_pg_pool,
-            "ev1",
+            event["calendar_work_lease"],
             "oauth_required",
             "Google Calendar needs to be reconnected.",
-            "worker-1",
-            1,
         )
         fail.assert_not_awaited()
         cb.record_failure.assert_not_called()
@@ -1342,6 +1343,7 @@ class TestCalendarSyncWorker:
             "user_id": "u1",
             "title": "Meeting",
             "sync_attempts": 1,
+            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
         }
         quota_result = MagicMock(allowed=True)
 
@@ -1359,7 +1361,9 @@ class TestCalendarSyncWorker:
             quota_service.return_value.check_and_increment.return_value = quota_result
             await pool._process_event_sync(mock_client, "worker-1", event)
 
-        fail.assert_awaited_once_with(fake_pg_pool, "ev1", "Calendar API down")
+        fail.assert_awaited_once_with(
+            fake_pg_pool, event["calendar_work_lease"], "Calendar API down"
+        )
         park.assert_not_awaited()
         cb.record_failure.assert_called_once_with("google_calendar")
 

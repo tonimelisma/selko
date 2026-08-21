@@ -56,6 +56,15 @@ class CandidateWindow:
     hint_fingerprint: Optional[str] = None
 
 
+@dataclass(frozen=True, slots=True)
+class WorkItemLease:
+    """The only identity accepted for a calendar work-item write."""
+
+    item_id: str
+    worker_id: str
+    generation: int
+
+
 @dataclass
 class EventMatch:
     """A dedup match against a local Selko event or Google Calendar event."""
@@ -1596,8 +1605,6 @@ def undo_history_event(
     result = supabase_client.rpc("undo_event_and_enqueue_calendar_work", {
         "p_event_id": event_id,
         "p_user_id": owner_id,
-        "p_change_source_id": None,
-        "p_restore_fields": {},
         "p_action": "cancel" if provider_exists else None,
         "p_desired_event": None,
         "p_expected_provider_revision": expected_provider_revision,
@@ -1767,9 +1774,11 @@ async def claim_approved_event_for_sync(
             event["calendar_work_item_id"] = str(item["id"])
             event["calendar_work_item_action"] = item["action"]
             event["calendar_work_item_generation"] = int(item["generation"])
-            # Keep the legacy event-view field available to older worker
-            # callers while the queue-owned name remains authoritative.
-            event["calendar_work_generation"] = int(item["generation"])
+            event["calendar_work_lease"] = WorkItemLease(
+                item_id=str(item["id"]),
+                worker_id=worker_id,
+                generation=int(item["generation"]),
+            )
             event["calendar_work_item_attempts"] = item["attempts"]
             event["calendar_work_item_max_attempts"] = item["max_attempts"]
             event["expected_provider_revision"] = item.get("expected_provider_revision")
@@ -1800,49 +1809,36 @@ async def claim_approved_event_for_sync(
 
 async def _resolve_calendar_work_item(
     pool,
-    identifier: str,
-    worker_id: str | None,
-    generation: int | None,
+    lease: WorkItemLease,
 ) -> dict[str, Any] | None:
-    """Resolve an item id, or a legacy event id, to the current work item."""
-    if worker_id is None or generation is None:
-        row = await pool.fetchrow(
-            "SELECT * FROM public.calendar_work_items "
-            "WHERE (id = $1 OR event_id = $1) AND status = 'processing' "
-            "ORDER BY generation DESC LIMIT 1",
-            identifier,
-        )
-    else:
-        row = await pool.fetchrow(
-            "SELECT * FROM public.calendar_work_items "
-            "WHERE (id = $1 OR event_id = $1) AND status = 'processing' "
-            "AND locked_by = $2 AND generation = $3 "
-            "ORDER BY generation DESC LIMIT 1",
-            identifier,
-            worker_id,
-            generation,
-        )
+    """Resolve only the exact leased row; there is no unfenced fallback."""
+    row = await pool.fetchrow(
+        "SELECT * FROM public.calendar_work_items "
+        "WHERE id = $1 AND status = 'processing' "
+        "AND locked_by = $2 AND generation = $3",
+        lease.item_id,
+        lease.worker_id,
+        lease.generation,
+    )
     return dict(row) if row else None
 
 
 async def complete_event_sync(
     pool,
-    event_id: str,
+    lease: WorkItemLease,
     google_event_id: str,
-    worker_id: str | None = None,
-    generation: int | None = None,
 ) -> bool:
     """Complete an upsert through the calendar work-item RPC."""
     try:
-        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
-            logger.warning("Ignoring stale upsert completion for event %s", event_id)
+            logger.warning("Ignoring stale upsert completion for item %s", lease.item_id)
             return False
         result = await pool.fetchval(
             "SELECT public.complete_calendar_work($1, $2, $3, $4, $5)",
             item["id"],
-            worker_id or item.get("locked_by"),
-            generation if generation is not None else int(item["generation"]),
+            lease.worker_id,
+            lease.generation,
             google_event_id,
             None,
         )
@@ -1854,21 +1850,19 @@ async def complete_event_sync(
 
 async def complete_event_cancellation(
     pool,
-    event_id: str,
-    worker_id: str,
-    generation: int,
+    lease: WorkItemLease,
 ) -> bool:
     """Complete a cancellation through the calendar work-item RPC."""
     try:
-        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
-            logger.warning("Ignoring stale cancellation completion for event %s", event_id)
+            logger.warning("Ignoring stale cancellation completion for item %s", lease.item_id)
             return False
         result = await pool.fetchval(
             "SELECT public.complete_calendar_work($1, $2, $3, $4, $5)",
             item["id"],
-            worker_id,
-            generation,
+            lease.worker_id,
+            lease.generation,
             item.get("provider_event_id"),
             None,
         )
@@ -1879,10 +1873,8 @@ async def complete_event_cancellation(
 
 async def defer_event_sync_for_quota(
     pool,
-    event_id: str,
+    lease: WorkItemLease,
     next_retry_at: str,
-    worker_id: str | None = None,
-    generation: int | None = None,
 ) -> None:
     """Release a claimed calendar work item until the daily quota resets.
 
@@ -1891,20 +1883,20 @@ async def defer_event_sync_for_quota(
     consuming its retry budget.
     """
     try:
-        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
             return
         await pool.fetchval(
             "SELECT public.defer_calendar_work($1, $2, $3, $4, $5)",
             item["id"],
-            worker_id or item.get("locked_by"),
-            generation if generation is not None else int(item["generation"]),
+            lease.worker_id,
+            lease.generation,
             next_retry_at,
             "Daily calendar sync quota exceeded",
         )
         logger.warning(
             "Deferred event %s until calendar quota resets at %s",
-            event_id,
+            lease.item_id,
             next_retry_at,
         )
     except Exception as e:
@@ -1913,11 +1905,9 @@ async def defer_event_sync_for_quota(
 
 async def park_event_for_oauth_reauth(
     pool,
-    event_id: str,
+    lease: WorkItemLease,
     sync_failure_code: str,
     user_message: str,
-    worker_id: str | None = None,
-    generation: int | None = None,
 ) -> None:
     """Park a claimed calendar work item after an OAuth-blocked sync.
 
@@ -1926,20 +1916,20 @@ async def park_event_for_oauth_reauth(
     recovery later makes the item claimable again.
     """
     try:
-        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
             return
         await pool.fetchval(
             "SELECT public.fail_calendar_work($1, $2, $3, $4, $5, $6)",
             item["id"],
-            worker_id or item.get("locked_by"),
-            generation if generation is not None else int(item["generation"]),
+            lease.worker_id,
+            lease.generation,
             sync_failure_code,
             user_message,
             False,
         )
         logger.warning(
-            "Parked event %s for %s reauthorization", event_id, sync_failure_code
+            "Parked calendar item %s for %s reauthorization", lease.item_id, sync_failure_code
         )
     except Exception as e:
         raise EventsError(f"Failed to park event for oauth reauth: {e}") from e
@@ -1947,10 +1937,8 @@ async def park_event_for_oauth_reauth(
 
 async def fail_event_sync(
     pool,
-    event_id: str,
+    lease: WorkItemLease,
     error: str,
-    worker_id: str | None = None,
-    generation: int | None = None,
 ) -> None:
     """Mark calendar work as failed through its fenced work-item RPC.
 
@@ -1959,27 +1947,27 @@ async def fail_event_sync(
 
     Args:
         pool: asyncpg session-pooler pool.
-        event_id: UUID of event that failed syncing.
+        lease: Exact worker lease for the item that failed syncing.
         error: Error message to store.
 
     Raises:
         EventsError: If update fails.
     """
     try:
-        item = await _resolve_calendar_work_item(pool, event_id, worker_id, generation)
+        item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
-            logger.warning("Ignoring stale calendar failure for %s", event_id)
+            logger.warning("Ignoring stale calendar failure for item %s", lease.item_id)
             return
         result = await pool.fetchval(
             "SELECT public.fail_calendar_work($1, $2, $3, $4, $5, $6)",
             item["id"],
-            worker_id or item.get("locked_by"),
-            generation if generation is not None else int(item["generation"]),
+            lease.worker_id,
+            lease.generation,
             "calendar_sync_failed",
             error,
             True,
         )
-        logger.warning("Calendar work failure for %s: %s", event_id, result)
+        logger.warning("Calendar work failure for %s: %s", lease.item_id, result)
 
     except EventsError:
         raise
