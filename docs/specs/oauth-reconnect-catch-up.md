@@ -1,3 +1,17 @@
++++
+spec_id = "oauth-reconnect-catch-up"
+readme_order = 8
+title = "OAuth reconnect catch-up"
+increments = "Steps 7–9 open"
+gate = "Independent; C3 adds cancel_queued to its recovery sets"
+tests = [
+  "tests/integration/test_integration_recovery.py::TestCompleteIntegrationReauthorization::test_upserts_credentials_and_creates_calendar_recovery",
+  "tests/integration/test_integration_recovery.py::TestClaimIntegrationRecovery::test_reclaims_expired_recovery",
+]
+health = []
+drills = ["oauth-reconnect-catch-up-drill"]
++++
+
 # OAuth Reconnect Catch-Up
 
 > Historical requirements record. Calendar failure and retry state now lives

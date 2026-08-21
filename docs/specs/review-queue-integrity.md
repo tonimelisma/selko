@@ -1,3 +1,15 @@
++++
+spec_id = "review-queue-integrity"
+readme_order = 99
+display_order = "—"
+title = "Review queue integrity"
+increments = "R1 defects repaired by G5; remaining text is normative"
+gate = "R2–R5 superseded by plans 2 and 3"
+tests = []
+health = []
+drills = []
++++
+
 # Review Queue Integrity
 
 > Historical requirements record. The compatibility state machines described

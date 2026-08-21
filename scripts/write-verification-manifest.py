@@ -23,6 +23,7 @@ def _node_id(testcase: ET.Element) -> str:
 def _collect_xml(paths: list[Path]) -> dict[str, object]:
     totals = {"tests": 0, "passed": 0, "failed": 0, "errors": 0, "skipped": 0}
     skipped: list[dict[str, str]] = []
+    passed_nodes: list[str] = []
     suites: list[dict[str, object]] = []
     for path in paths:
         if not path.exists():
@@ -53,8 +54,9 @@ def _collect_xml(paths: list[Path]) -> dict[str, object]:
             else:
                 totals["passed"] += 1
                 suite_counts["passed"] += 1
+                passed_nodes.append(_node_id(testcase))
         suites.append({"file": str(path), **suite_counts, "tests": len(cases)})
-    return {**totals, "skips": skipped, "suites": suites}
+    return {**totals, "skips": skipped, "passed_nodes": passed_nodes, "suites": suites}
 
 
 def _load_budget(path: Path) -> dict[str, dict[str, str]]:

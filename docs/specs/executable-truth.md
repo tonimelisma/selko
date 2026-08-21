@@ -1,3 +1,17 @@
++++
+spec_id = "executable-truth"
+readme_order = 5
+title = "Executable truth"
+increments = "V1–V8, D1–D3"
+gate = "Gates plan 4's outstanding evidence — start before any further S-plan claim"
+tests = [
+  "tests/test_spec_status.py::test_generated_status_table_is_current",
+  "tests/test_spec_status.py::test_hand_editing_a_status_cell_fails",
+]
+health = ["/health", "/health/egress"]
+drills = ["executable-truth-acceptance-drill"]
++++
+
 # Executable Truth
 
 **Status:** Planned. Nothing implemented. No increment below has started.
