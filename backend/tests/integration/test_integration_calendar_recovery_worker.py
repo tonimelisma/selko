@@ -182,8 +182,11 @@ class TestRequeueCalendarRecoveryBatch:
         # Simulate the normal calendar worker permanently failing the event
         # for a non-OAuth reason after recovery tagged it.
         admin_client.table("events").update(
-            {"status": "sync_failed", "sync_failure_code": "invalid_event"}
+            {"status": "sync_failed"}
         ).eq("id", event_id).execute()
+        admin_client.table("calendar_work_items").update(
+            {"failure_code": "invalid_event", "status": "failed"}
+        ).eq("event_id", event_id).execute()
 
         await refresh_waiting_calendar_recoveries(pg_pool)
 

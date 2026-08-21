@@ -1767,11 +1767,22 @@ async def claim_approved_event_for_sync(
             event["calendar_work_item_id"] = str(item["id"])
             event["calendar_work_item_action"] = item["action"]
             event["calendar_work_item_generation"] = int(item["generation"])
+            # Keep the legacy event-view field available to older worker
+            # callers while the queue-owned name remains authoritative.
+            event["calendar_work_generation"] = int(item["generation"])
             event["calendar_work_item_attempts"] = item["attempts"]
             event["calendar_work_item_max_attempts"] = item["max_attempts"]
             event["expected_provider_revision"] = item.get("expected_provider_revision")
             event["force_overwrite"] = bool(item.get("force_overwrite"))
-            event["calendar_work_desired_event"] = item.get("desired_event")
+            desired_event = item.get("desired_event")
+            if isinstance(desired_event, str):
+                import json
+
+                try:
+                    desired_event = json.loads(desired_event)
+                except json.JSONDecodeError:
+                    pass
+            event["calendar_work_desired_event"] = desired_event
             title = event.get("title", "(no title)")[:50]
             logger.info(
                 "Worker %s claimed event %s: %s (attempt %s/%s)",

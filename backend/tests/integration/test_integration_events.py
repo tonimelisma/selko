@@ -343,7 +343,7 @@ class TestSenderRules:
 class TestEventSources:
     """Test event source tracking and undo."""
 
-    def test_create_event_with_source(self, authenticated_client, test_user_id):
+    def test_create_event_with_source(self, authenticated_client, admin_client, test_user_id):
         """Test creating event with source link."""
         # Create test email
         email_data = {
@@ -368,7 +368,7 @@ class TestEventSources:
             "source_quote": "Test quote from email",
         }
         
-        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
+        event_id = _seed_event(admin_client, test_user_id, event_data, email_id)
         
         # Verify event_source was created
         sources = authenticated_client.table("event_sources").select("*").eq(
@@ -379,7 +379,7 @@ class TestEventSources:
         assert sources.data[0]["email_id"] == email_id
         assert sources.data[0]["source_type"] == "new_invitation"
 
-    def test_source_attribution_generation(self, authenticated_client, test_user_id):
+    def test_source_attribution_generation(self, authenticated_client, admin_client, test_user_id):
         """Test natural English attribution generation."""
         # Create test email and event
         email_data = {
@@ -403,7 +403,7 @@ class TestEventSources:
             "source_quote": "Quote from email",
         }
         
-        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
+        event_id = _seed_event(admin_client, test_user_id, event_data, email_id)
         
         # Check attribution was generated
         event = authenticated_client.table("events").select("*").eq(
@@ -421,7 +421,7 @@ class TestEventSources:
 class TestEventUndoRedo:
     """Test event undo/redo functionality with snapshot restore."""
 
-    def test_undo_restores_snapshot(self, authenticated_client, test_user_id, mock_llm_gateway):
+    def test_undo_restores_snapshot(self, authenticated_client, admin_client, test_user_id, mock_llm_gateway):
         """Test that undo restores the event to its previous snapshot."""
         # Create test email
         email_data = {
@@ -447,7 +447,7 @@ class TestEventUndoRedo:
             "source_quote": "Initial meeting invite",
         }
 
-        event_id = _seed_event(authenticated_client, test_user_id, initial_event_data, email_id)
+        event_id = _seed_event(admin_client, test_user_id, initial_event_data, email_id)
 
         # Create second email with update
         email_data_2 = {
@@ -472,7 +472,7 @@ class TestEventUndoRedo:
             "description": "Updated description",
         }
 
-        _seed_event_update(authenticated_client, event_id, email_id_2, updated_data)
+        _seed_event_update(admin_client, event_id, email_id_2, updated_data)
 
         # Verify event was updated
         updated_event = authenticated_client.table("events").select("*").eq(
@@ -486,7 +486,7 @@ class TestEventUndoRedo:
 
         assert len(sources.data) == 1
         update_source_id = sources.data[0]["id"]
-        proposal = authenticated_client.table("event_change_proposals").insert({
+        proposal = admin_client.table("event_change_proposals").insert({
             "event_id": event_id,
             "user_id": test_user_id,
             "source_id": update_source_id,
@@ -506,7 +506,7 @@ class TestEventUndoRedo:
         }).execute().data[0]
 
         # Now undo the update
-        events.undo_history_event(authenticated_client, event_id, proposal["id"])
+        events.undo_history_event(admin_client, event_id, test_user_id)
 
         # Verify event was restored
         restored_event = authenticated_client.table("events").select("*").eq(
@@ -522,7 +522,7 @@ class TestEventUndoRedo:
         ).single().execute()
         assert proposal_after.data["status"] == "pending"
 
-    def test_redo_reactivates_source(self, authenticated_client, test_user_id, mock_llm_gateway):
+    def test_redo_reactivates_source(self, authenticated_client, admin_client, test_user_id, mock_llm_gateway):
         """Test that redo marks the source as active again."""
         # Create test email
         email_data = {
@@ -546,7 +546,7 @@ class TestEventUndoRedo:
             "description": "Celebration",
         }
 
-        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
+        event_id = _seed_event(admin_client, test_user_id, event_data, email_id)
 
         # Create second email
         email_data_2 = {
@@ -571,7 +571,7 @@ class TestEventUndoRedo:
             "description": "Location updated",
         }
 
-        _seed_event_update(authenticated_client, event_id, email_id_2, updated_data)
+        _seed_event_update(admin_client, event_id, email_id_2, updated_data)
 
         # Get update provenance and create its authoritative proposal.
         sources = authenticated_client.table("event_sources").select("*").eq(
@@ -579,7 +579,7 @@ class TestEventUndoRedo:
         ).eq("source_type", "update").execute()
 
         update_source_id = sources.data[0]["id"]
-        proposal = authenticated_client.table("event_change_proposals").insert({
+        proposal = admin_client.table("event_change_proposals").insert({
             "event_id": event_id,
             "user_id": test_user_id,
             "source_id": update_source_id,
@@ -592,17 +592,17 @@ class TestEventUndoRedo:
             "resolution_reason": "approved",
         }).execute().data[0]
 
-        events.undo_history_event(authenticated_client, event_id, proposal["id"])
+        events.undo_history_event(admin_client, event_id, test_user_id)
         assert authenticated_client.table("event_change_proposals").select("status").eq(
             "id", proposal["id"]
         ).single().execute().data["status"] == "pending"
 
-        events.apply_change_proposal(authenticated_client, event_id, proposal["id"])
+        events.apply_change_proposal(admin_client, event_id, proposal["id"])
         assert authenticated_client.table("event_change_proposals").select("status").eq(
             "id", proposal["id"]
         ).single().execute().data["status"] == "applied"
 
-    def test_undo_fails_without_snapshot(self, authenticated_client, test_user_id):
+    def test_undo_fails_without_snapshot(self, authenticated_client, admin_client, test_user_id):
         """Test that undo fails gracefully when no snapshot exists."""
         # Create test email
         email_data = {
@@ -625,7 +625,7 @@ class TestEventUndoRedo:
             "start_datetime": "2026-04-01T10:00:00Z",
         }
 
-        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id)
+        event_id = _seed_event(admin_client, test_user_id, event_data, email_id)
 
         # A provenance row without a proposal is not undoable.
         sources = authenticated_client.table("event_sources").select("*").eq(
@@ -638,7 +638,7 @@ class TestEventUndoRedo:
         ).execute().data
         assert proposals == []
 
-    def test_attribution_excludes_undone_sources(self, authenticated_client, test_user_id, mock_llm_gateway):
+    def test_attribution_excludes_undone_sources(self, authenticated_client, admin_client, test_user_id, mock_llm_gateway):
         """Test that source attribution excludes undone sources."""
         # Create first email
         email_data_1 = {
@@ -661,7 +661,7 @@ class TestEventUndoRedo:
             "start_datetime": "2026-04-10T14:00:00Z",
         }
 
-        event_id = _seed_event(authenticated_client, test_user_id, event_data, email_id_1)
+        event_id = _seed_event(admin_client, test_user_id, event_data, email_id_1)
 
         # Create second email
         email_data_2 = {
@@ -684,7 +684,7 @@ class TestEventUndoRedo:
             "start_datetime": "2026-04-10T15:00:00Z",
         }
 
-        _seed_event_update(authenticated_client, event_id, email_id_2, updated_data)
+        _seed_event_update(admin_client, event_id, email_id_2, updated_data)
 
         attribution = events.generate_source_attribution(authenticated_client, event_id)
         assert "First Sender" in attribution or "first@example.com" in attribution

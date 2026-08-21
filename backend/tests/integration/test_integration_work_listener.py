@@ -7,6 +7,7 @@ and that one notification still means one claim.
 """
 
 import asyncio
+import json
 from uuid import uuid4
 
 import pytest
@@ -113,6 +114,10 @@ class TestWorkListenerLive:
             " now() + interval '2 hours', 'approved')",
             event_id, user_id,
         )
+        await pg_pool.fetchval(
+            "SELECT public.enqueue_calendar_work($1, $2, 'upsert', $3::jsonb)",
+            event_id, user_id, json.dumps({"title": "durability probe"}),
+        )
         claimed = await claim_approved_event_for_sync(
             pg_pool, "c3-durability-worker", lock_duration_seconds=120
         )
@@ -183,6 +188,10 @@ class TestWorkListenerLive:
             " VALUES ($1, $2, 'd3 probe', now() + interval '1 hour',"
             " now() + interval '2 hours', 'approved')",
             event_id, user_id,
+        )
+        await pg_pool.fetchval(
+            "SELECT public.enqueue_calendar_work($1, $2, 'upsert', $3::jsonb)",
+            event_id, user_id, json.dumps({"title": "d3 probe"}),
         )
         async with pg_pool.acquire() as conn:
             async with conn.transaction():

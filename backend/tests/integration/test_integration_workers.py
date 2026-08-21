@@ -710,17 +710,33 @@ class TestWorkerConcurrency:
         self, service_client, authenticated_client, test_user_id, pg_pool
     ):
         """Test that multiple workers claim different events."""
-        # Create multiple approved events
+        # Calendar delivery is owned by calendar_work_items. Provision the
+        # integration and enqueue each event explicitly so this test exercises
+        # the same authoritative path as production workers.
+        service_client.table("integrations").upsert({
+            "user_id": test_user_id,
+            "provider": "google_calendar",
+            "status": "active",
+            "access_token": "multi-worker-test-token",
+        }, on_conflict="user_id,provider").execute()
+
+        # Create multiple queued events
         event_ids = []
         for i in range(3):
             event_data = {
                 "user_id": test_user_id,
                 "title": f"Test Event {i}",
                 "start_datetime": f"2026-05-0{i+1}T14:00:00Z",
-                "status": "approved",
+                "status": "pending_review",
             }
             result = authenticated_client.table("events").insert(event_data).execute()
             event_ids.append(result.data[0]["id"])
+            authenticated_client.rpc("enqueue_calendar_work", {
+                "p_event_id": event_ids[-1],
+                "p_user_id": test_user_id,
+                "p_action": "upsert",
+                "p_desired_event": {"title": event_data["title"]},
+            }).execute()
 
         # Multiple workers claim events
         claimed_ids = set()
