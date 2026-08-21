@@ -38,8 +38,15 @@ BEGIN
         JOIN pg_namespace AS n ON n.oid = p.pronamespace
         WHERE n.nspname = 'public' AND p.prosecdef
     LOOP
+        -- PUBLIC as well as the two API roles. PostgreSQL's own default is
+        -- GRANT EXECUTE ... TO PUBLIC, and anon inherits through it, so a
+        -- function created without an explicit revoke is reachable even when
+        -- the Supabase default ACL is closed. 20260829000001 created three
+        -- broadcast trigger functions that way; executing this migration
+        -- against the local database is what surfaced them.
         EXECUTE format(
-            'REVOKE ALL ON FUNCTION %s FROM anon, authenticated', v_function.signature
+            'REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated',
+            v_function.signature
         );
     END LOOP;
 END;
