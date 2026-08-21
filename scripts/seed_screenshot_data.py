@@ -24,6 +24,7 @@ from selko.services.users import (
     get_admin_client,
     list_users,
 )
+from selko.services.resolution_fingerprint import candidate_fingerprint
 
 # Screenshot test user credentials
 SCREENSHOT_EMAIL = "screenshots@selko.local"
@@ -89,6 +90,54 @@ def do_seed(config):
 
     user_id = user["id"]
     print(f"  Created user: {user_id} ({user['email']})")
+
+    seed_worker = "screenshot-fixture-seed"
+
+    def call_rpc(name, params):
+        response = admin.rpc(name, params).execute()
+        data = response.data
+        if isinstance(data, list) and len(data) == 1:
+            return data[0]
+        return data
+
+    def lock_email(email_id):
+        admin.table("emails").update({
+            "processing_status": "processing",
+            "locked_by": seed_worker,
+            "locked_until": (now + timedelta(minutes=10)).isoformat(),
+            "lock_generation": 1,
+        }).eq("id", email_id).execute()
+
+    def commit_decision(email_id, decision):
+        lock_email(email_id)
+        result = call_rpc("commit_email_extraction", {
+            "p_email_id": email_id,
+            "p_worker_id": seed_worker,
+            "p_generation": 1,
+            "p_decisions": [decision],
+            "p_terminal": "processed",
+        })
+        if not isinstance(result, dict) or result.get("fenced") or result.get("conflict"):
+            raise RuntimeError(f"fixture extraction commit failed: {result!r}")
+        return result
+
+    def day_window(start_datetime):
+        start = datetime.fromisoformat(start_datetime.replace("Z", "+00:00"))
+        day_start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        return day_start.isoformat(), (day_start + timedelta(days=1)).isoformat()
+
+    def decision_envelope(action, fields, source, *, event_id=None, expected_fingerprint=None, window=None):
+        window = window or day_window(fields["start_datetime"])
+        return {
+            "action": action,
+            "event_id": event_id,
+            "fields": fields,
+            "window_start": window[0],
+            "window_end": window[1],
+            "expected_fingerprint": expected_fingerprint or candidate_fingerprint([]),
+            "hints": [],
+            "source": source,
+        }
 
     # Step 2: Update display name
     print("Setting display name...")
@@ -220,258 +269,193 @@ def do_seed(config):
     email_ids = {row["provider_message_id"]: row["id"] for row in result.data}
     print(f"  Inserted {len(result.data)} emails")
 
-    # Step 5: Insert events
-    print("Inserting events...")
+    # Step 5: Create events and sources through the fenced application RPC.
+    print("Committing events through application RPCs...")
 
     def make_dt(days_offset, hour, minute=0):
-        """Create a datetime offset from now at a specific hour."""
         dt = now + timedelta(days=days_offset)
         return dt.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
 
-    events_data = [
-        # Pending review events (for Review Queue)
-        {
-            "user_id": user_id,
-            "title": "Parent-Teacher Conference",
-            "start_datetime": make_dt(3, 15),
-            "end_datetime": make_dt(3, 16),
-            "all_day": False,
-            "location": "Lincoln Elementary School, Room 204",
-            "description": "Meet with Ms. Thompson to discuss Emma's progress in 3rd grade.",
-            "status": "pending_review",
-            "importance": "action_required",
-            "updated_at": (now - timedelta(minutes=30)).isoformat(),
-            "source_attribution": "From email: Parent-Teacher Conference Reminder",
-        },
-        {
-            "user_id": user_id,
-            "title": "Spring Concert",
-            "start_datetime": make_dt(10, 18),
-            "end_datetime": make_dt(10, 20),
-            "all_day": False,
-            "location": "Lincoln Elementary Auditorium",
-            "description": "Annual spring concert featuring performances by grades K-5.",
-            "status": "pending_review",
-            "importance": "fyi",
-            "updated_at": (now - timedelta(minutes=45)).isoformat(),
-            "source_attribution": "From email: Spring Concert Information",
-        },
-        {
-            "user_id": user_id,
-            "title": "Q2 Planning Offsite",
-            "start_datetime": make_dt(7, 9),
-            "end_datetime": make_dt(7, 17),
-            "all_day": True,
-            "location": "TechCorp HQ, Building 5, Conference Room A",
-            "description": "Full-day offsite to plan Q2 roadmap. Lunch will be provided.",
-            # Changes are represented by an active proposal, not an event status.
-            "status": "synced",
-            "review_status": "active",
-            "importance": "action_required",
-            "updated_at": (now - timedelta(minutes=60)).isoformat(),
-            "source_attribution": "From email: Q2 Planning Offsite Details",
-        },
-        # Other status events (for History)
-        {
-            "user_id": user_id,
-            "title": "Dentist - Dr. Martinez",
-            "start_datetime": make_dt(5, 10),
-            "end_datetime": make_dt(5, 11),
-            "all_day": False,
-            "location": "Downtown Dental, 456 Oak Ave",
-            "description": "Regular checkup and cleaning.",
-            "status": "synced",
-            "importance": "action_required",
-            "google_calendar_event_id": "fake_gcal_id_1",
-            "synced_at": (now - timedelta(hours=1)).isoformat(),
-            "updated_at": (now - timedelta(hours=8)).isoformat(),
-            "source_attribution": "From email: Appointment Confirmation",
-        },
-        {
-            "user_id": user_id,
-            "title": "Team Standup",
-            "start_datetime": make_dt(1, 9),
-            "end_datetime": make_dt(1, 9, 15),
-            "all_day": False,
-            "location": "",
-            "description": "Daily team sync.",
-            "status": "approved",
-            "importance": "action_required",
-            "updated_at": (now - timedelta(hours=2)).isoformat(),
-            "source_attribution": "",
-        },
-        {
-            "user_id": user_id,
-            "title": "Marketing Webinar",
-            "start_datetime": make_dt(2, 14),
-            "end_datetime": make_dt(2, 15),
-            "all_day": False,
-            "location": "Zoom",
-            "description": "Q1 marketing results review.",
-            "status": "rejected",
-            "importance": "fyi",
-            "updated_at": (now - timedelta(hours=4)).isoformat(),
-            "source_attribution": "",
-        },
-        {
-            "user_id": user_id,
-            "title": "Yoga Class",
-            "start_datetime": make_dt(4, 18),
-            "end_datetime": make_dt(4, 19),
-            "all_day": False,
-            "location": "Downtown Fitness Center",
-            "description": "Weekly yoga class.",
-            "status": "sync_failed",
-            "importance": "action_required",
-            "updated_at": (now - timedelta(hours=6)).isoformat(),
-            "source_attribution": "",
-        },
+    event_specs = [
+        ("Parent-Teacher Conference", "msg_screenshot_1", 3, 15, 16, False,
+         "Lincoln Elementary School, Room 204", "Meet with Ms. Thompson to discuss Emma's progress in 3rd grade.", "pending_review", "action_required"),
+        ("Spring Concert", "msg_screenshot_2", 10, 18, 20, False,
+         "Lincoln Elementary Auditorium", "Annual spring concert featuring performances by grades K-5.", "pending_review", "fyi"),
+        ("Q2 Planning Offsite", "msg_screenshot_4", 7, 9, 17, True,
+         "TechCorp HQ, Building 5, Conference Room A", "Full-day offsite to plan Q2 roadmap. Lunch will be provided.", "synced", "action_required"),
+        ("Dentist - Dr. Martinez", "msg_screenshot_3", 5, 10, 11, False,
+         "Downtown Dental, 456 Oak Ave", "Regular checkup and cleaning.", "approved", "action_required"),
+        ("Team Standup", "msg_screenshot_1", 1, 9, 9, False,
+         "", "Daily team sync.", "approved", "action_required"),
+        ("Marketing Webinar", "msg_screenshot_2", 2, 14, 15, False,
+         "Zoom", "Q1 marketing results review.", "rejected", "fyi"),
+        ("Yoga Class", "msg_screenshot_3", 4, 18, 19, False,
+         "Downtown Fitness Center", "Weekly yoga class.", "approved", "action_required"),
     ]
-
-    result = admin.table("events").insert(events_data).execute()
-    # Map event titles to IDs for linking
-    event_ids = {row["title"]: row["id"] for row in result.data}
-    print(f"  Inserted {len(result.data)} events")
-
-    # Step 6: Insert event_sources
-    print("Inserting event sources...")
-
-    event_sources_data = [
-        {
-            "event_id": event_ids["Parent-Teacher Conference"],
-            "email_id": email_ids["msg_screenshot_1"],
+    event_ids = {}
+    for title, provider_message_id, day, start_hour, end_hour, all_day, location, description, status, importance in event_specs:
+        start_datetime = make_dt(day, start_hour)
+        end_datetime = make_dt(day, end_hour)
+        fields = {
+            "title": title,
+            "start_datetime": start_datetime,
+            "end_datetime": end_datetime,
+            "all_day": all_day,
+            "location": location,
+            "description": description,
+            "status": status,
+            "importance": importance,
+        }
+        source = {
+            "email_id": email_ids[provider_message_id],
             "source_type": "new_invitation",
-            "extracted_data": {
-                "source_quote": (
-                    "Dear Parents, This is a reminder about the upcoming "
-                    "parent-teacher conferences scheduled for next week. Your "
-                    "child's conference is scheduled with Ms. Thompson."
-                ),
-                "title": "Parent-Teacher Conference",
-                "start_datetime": make_dt(3, 15),
-            },
-        },
-        {
-            "event_id": event_ids["Spring Concert"],
-            "email_id": email_ids["msg_screenshot_2"],
-            "source_type": "new_invitation",
-            "extracted_data": {
-                "source_quote": (
-                    "We are excited to announce the annual Spring Concert! "
-                    "Students from grades K-5 will be performing musical "
-                    "selections they have been practicing."
-                ),
-                "title": "Spring Concert",
-                "start_datetime": make_dt(10, 18),
-            },
-        },
-        {
-            "event_id": event_ids["Q2 Planning Offsite"],
-            "email_id": email_ids["msg_screenshot_4"],
-            "source_type": "update",
-            "extracted_data": {
-                "source_quote": (
-                    "Hi team, Location update: we'll meet in Building 3 instead of Building 5."
-                ),
-                "title": "Q2 Planning Offsite",
-                "location": "TechCorp HQ, Building 3, Conference Room B",
-                "start_datetime": make_dt(7, 9),
-            },
-        },
-        {
-            "event_id": event_ids["Dentist - Dr. Martinez"],
-            "email_id": email_ids["msg_screenshot_3"],
-            "source_type": "new_invitation",
-            "extracted_data": {
-                "source_quote": (
-                    "This is a confirmation of your appointment with Dr. Martinez "
-                    "on the scheduled date. Please arrive 15 minutes early."
-                ),
-                "title": "Dentist - Dr. Martinez",
-                "start_datetime": make_dt(5, 10),
-            },
-        },
-    ]
+            "extracted_data": {**fields, "source_quote": f"Fixture source for {title}."},
+        }
+        result = commit_decision(
+            email_ids[provider_message_id],
+            decision_envelope("create", fields, source),
+        )
+        event_ids[title] = result["event_ids"][0]
+    print(f"  Committed {len(event_ids)} events and their sources")
 
-    result = admin.table("event_sources").insert(event_sources_data).execute()
-    print(f"  Inserted {len(result.data)} event sources")
-
-    q2_source = next(
-        row for row in result.data
-        if row["event_id"] == event_ids["Q2 Planning Offsite"]
-    )
-    admin.table("event_change_proposals").insert({
-        "event_id": event_ids["Q2 Planning Offsite"],
+    # Q2's second email is an update: the RPC owns proposal creation and
+    # review-state transitions from the same source payload.
+    q2_update_email = admin.table("emails").insert({
         "user_id": user_id,
-        "source_id": q2_source["id"],
-        "kind": "material_update",
-        "status": "pending",
-        "event_snapshot_before": {
+        "from_name": "Alex Chen",
+        "from_email": "alex.chen@techcorp.com",
+        "subject": "Q2 Planning Offsite Room Change",
+        "provider_message_id": "msg_screenshot_5",
+        "thread_id": "thread_4",
+        "to_emails": ["sarah.johnson@gmail.com"],
+        "date_sent": (now - timedelta(days=1)).isoformat(),
+        "processing_status": "processing",
+        "content_hash": content_hash("Q2 Planning Offsite Room Change"),
+    }).execute().data[0]["id"]
+    q2 = admin.table("events").select("*").eq("id", event_ids["Q2 Planning Offsite"]).single().execute().data
+    q2_window = day_window(q2["start_datetime"])
+    q2_source = {
+        "email_id": q2_update_email,
+        "source_type": "update",
+        "extracted_data": {
             "title": "Q2 Planning Offsite",
-            "location": "TechCorp HQ, Building 5, Conference Room A",
-            "start_datetime": make_dt(7, 9),
-            "status": "synced",
+            "location": "TechCorp HQ, Building 3, Conference Room B",
+            "start_datetime": q2["start_datetime"],
+            "source_quote": "Room moved to Building 3.",
         },
+        "event_snapshot_before": q2,
         "change_set": {
             "kind": "material_update",
             "changes": [{
                 "field": "location",
-                "before": "TechCorp HQ, Building 5, Conference Room A",
+                "before": q2["location"],
                 "after": "TechCorp HQ, Building 3, Conference Room B",
                 "reason": "Room moved to Building 3",
             }],
             "reasoning": "Email updates the offsite location",
         },
-    }).execute()
+    }
+    commit_decision(
+        q2_update_email,
+        decision_envelope(
+            "update",
+            {},
+            q2_source,
+            event_id=event_ids["Q2 Planning Offsite"],
+            expected_fingerprint=candidate_fingerprint([q2]),
+            window=q2_window,
+        ),
+    )
+    print("  Created the Q2 pending proposal through commit_email_extraction")
 
-    admin.table("calendar_work_items").insert([
-        {
-            "event_id": event_ids["Q2 Planning Offsite"],
-            "user_id": user_id,
-            "action": "upsert",
-            "generation": 1,
-            "status": "succeeded",
-            "desired_event": {"title": "Q2 Planning Offsite"},
-            "attempts": 1,
-            "max_attempts": 3,
-            "completed_at": (now - timedelta(minutes=55)).isoformat(),
-        },
-        {
-            "event_id": event_ids["Dentist - Dr. Martinez"],
-            "user_id": user_id,
-            "action": "upsert",
-            "generation": 1,
-            "status": "succeeded",
-            "desired_event": {"title": "Dentist - Dr. Martinez"},
-            "provider_event_id": "fake_gcal_id_1",
-            "attempts": 1,
-            "max_attempts": 3,
-            "completed_at": (now - timedelta(hours=1)).isoformat(),
-        },
-        {
-            "event_id": event_ids["Team Standup"],
-            "user_id": user_id,
-            "action": "upsert",
-            "generation": 1,
-            "status": "pending",
-            "desired_event": {"title": "Team Standup"},
-            "attempts": 0,
-            "max_attempts": 3,
-        },
-        {
-            "event_id": event_ids["Yoga Class"],
-            "user_id": user_id,
-            "action": "upsert",
-            "generation": 1,
-            "status": "failed",
-            "desired_event": {"title": "Yoga Class"},
-            "attempts": 3,
-            "max_attempts": 3,
-            "failure_code": "provider_transient",
-            "failure_detail": "Failed to connect to Google Calendar API",
-            "completed_at": (now - timedelta(hours=6)).isoformat(),
-        },
-    ]).execute()
+    # Step 6: Drive calendar delivery through the public enqueue/claim/complete
+    # and fail RPCs, never by inserting queue rows directly.
+    print("Seeding calendar work through worker RPCs...")
+
+    def desired_event(title):
+        row = admin.table("events").select(
+            "title,start_datetime,end_datetime,all_day,location,description,importance"
+        ).eq("id", event_ids[title]).single().execute().data
+        return row
+
+    def enqueue(title):
+        data = call_rpc("enqueue_calendar_work", {
+            "p_event_id": event_ids[title],
+            "p_user_id": user_id,
+            "p_action": "upsert",
+            "p_desired_event": desired_event(title),
+            "p_expected_provider_revision": None,
+            "p_force_overwrite": False,
+        })
+        if not isinstance(data, dict) or not data.get("id"):
+            raise RuntimeError(f"calendar work enqueue failed: {data!r}")
+        return data
+
+    def claim_next():
+        rows = call_rpc("claim_calendar_work_item", {
+            "p_worker_id": seed_worker,
+            "p_lease_seconds": 600,
+        })
+        row = rows[0] if isinstance(rows, list) else rows
+        if not row:
+            raise RuntimeError(f"calendar work claim failed: {rows!r}")
+        return row
+
+    def complete(item, provider_event_id=None):
+        ok = call_rpc("complete_calendar_work", {
+            "p_item_id": item["id"],
+            "p_worker_id": seed_worker,
+            "p_generation": item["generation"],
+            "p_provider_event_id": provider_event_id,
+            "p_provider_revision": None,
+        })
+        if ok is not True:
+            raise RuntimeError(f"calendar work completion failed: {ok!r}")
+
+    def fail(item):
+        result = call_rpc("fail_calendar_work", {
+            "p_item_id": item["id"],
+            "p_worker_id": seed_worker,
+            "p_generation": item["generation"],
+            "p_error_code": "provider_transient",
+            "p_error_detail": "Fixture provider failure",
+            "p_retryable": False,
+        })
+        if not isinstance(result, dict) or result.get("status") != "blocked":
+            raise RuntimeError(f"calendar work failure transition failed: {result!r}")
+
+    enqueue("Q2 Planning Offsite")
+    completed_targets = set()
+    for _ in range(8):
+        if {"q2", "dentist", "yoga"} <= completed_targets:
+            break
+        claimed = claim_next()
+        event_id = claimed["event_id"]
+        if event_id == event_ids["Q2 Planning Offsite"]:
+            complete(claimed)
+            completed_targets.add("q2")
+        elif event_id == event_ids["Dentist - Dr. Martinez"]:
+            complete(claimed, "fake_gcal_id_1")
+            completed_targets.add("dentist")
+        elif event_id == event_ids["Yoga Class"]:
+            fail(claimed)
+            completed_targets.add("yoga")
+        elif event_id == event_ids["Team Standup"]:
+            # The fixture deliberately leaves this item pending. A retryable
+            # failure is the public worker transition that releases the claim.
+            released = call_rpc("fail_calendar_work", {
+                "p_item_id": claimed["id"],
+                "p_worker_id": seed_worker,
+                "p_generation": claimed["generation"],
+                "p_error_code": "provider_transient",
+                "p_error_detail": "Fixture pending work release",
+                "p_retryable": True,
+            })
+            if not isinstance(released, dict) or released.get("status") != "pending":
+                raise RuntimeError(f"calendar work release failed: {released!r}")
+        else:
+            raise RuntimeError(f"unexpected screenshot work item: {claimed!r}")
+    print("  Seeded succeeded, pending, and blocked worker-owned calendar work")
 
     # Step 7: Insert user_calendar_settings
     print("Inserting calendar settings...")

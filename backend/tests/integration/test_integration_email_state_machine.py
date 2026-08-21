@@ -310,9 +310,10 @@ class TestDurableEmailStateMachine:
         after = _health_row(admin_client)
 
         assert after["status"] == before["status"]
-        # No active integrations remain, so there is no eligible poll cursor.
         # The expired integration's 26-year-old cursor must not be reported.
-        assert after["oldest_next_poll_seconds"] is None
+        # The screenshot gate may leave another active integration with an
+        # upcoming poll, which the health contract represents as zero age.
+        assert after["oldest_next_poll_seconds"] in (None, 0)
 
 
 @pytest.mark.integration

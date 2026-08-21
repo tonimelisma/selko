@@ -17,6 +17,7 @@ VERIFY_DIR=".verify"
 VERIFY_MANIFEST="${VERIFY_DIR}/backend-${VERIFY_SHA}.json"
 VERIFY_UNIT_XML="${TMPDIR:-/tmp}/selko-unit-${VERIFY_SHA}.xml"
 VERIFY_INTEGRATION_XML="${TMPDIR:-/tmp}/selko-integration-${VERIFY_SHA}.xml"
+VERIFY_FIXTURE_XML="${TMPDIR:-/tmp}/selko-screenshot-fixtures-${VERIFY_SHA}.xml"
 VERIFY_SCHEMA_HASH=""
 VERIFY_SEED="${PYTEST_RANDOMLY_SEED:-$RANDOM}"
 VERIFY_ACCEPTED_DEGRADATIONS=""
@@ -40,14 +41,14 @@ write_manifest_on_exit() {
   if [[ -n "$VERIFY_ACCEPTED_DEGRADATIONS" ]]; then
     command+=(--accepted-degradation "$VERIFY_ACCEPTED_DEGRADATIONS")
   fi
-  command+=("$VERIFY_UNIT_XML" "$VERIFY_INTEGRATION_XML")
+  command+=("$VERIFY_UNIT_XML" "$VERIFY_INTEGRATION_XML" "$VERIFY_FIXTURE_XML")
   "${command[@]}"
   manifest_status=$?
   set -e
   if [[ "$status" -eq 0 && "$manifest_status" -ne 0 ]]; then
     status="$manifest_status"
   fi
-  rm -f "$VERIFY_UNIT_XML" "$VERIFY_INTEGRATION_XML"
+  rm -f "$VERIFY_UNIT_XML" "$VERIFY_INTEGRATION_XML" "$VERIFY_FIXTURE_XML"
   trap - EXIT
   exit "$status"
 }
@@ -130,7 +131,13 @@ verify_backend() {
     --randomly-seed="${VERIFY_SEED}"
   echo "Running backend integration tests with random seed ${VERIFY_SEED}"
   run_pytest_with_evidence "$VERIFY_INTEGRATION_XML" backend/tests/integration/ -m "not staging" -v --tb=short \
+    -k "not test_screenshot_seed_has_complete_lane_and_work_state" \
     --randomly-seed="${VERIFY_SEED}"
+  echo "Seeding screenshot fixtures through the application write paths"
+  uv run python scripts/seed_screenshot_data.py seed --cleanup-first
+  echo "Verifying the seeded screenshot fixtures"
+  run_pytest_with_evidence "$VERIFY_FIXTURE_XML" \
+    backend/tests/integration/test_integration_seed_fixtures.py -m integration -q
 }
 
 verify_frontend() {
