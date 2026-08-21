@@ -88,6 +88,7 @@ class HealthResponse(BaseModel):
     """Health check response."""
 
     status: str
+    build_sha: str | None = None
     resolution: dict[str, object] = {}
 
 

@@ -12,8 +12,8 @@ set -euo pipefail
 surface="${1:-}"
 case "$surface" in
   root)
-    filter='(.status == "ok")'
-    failure="staging API health status is not ok"
+    filter='(.status == "ok") and (.build_sha | type == "string" and length > 0)'
+    failure="staging API health is not ok or does not publish a build SHA"
     ;;
   ingestion)
     filter='

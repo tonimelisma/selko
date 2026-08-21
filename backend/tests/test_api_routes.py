@@ -130,6 +130,22 @@ class TestHealthEndpoints:
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
+    def test_health_publishes_build_sha(self, test_client, mock_config):
+        mock_config.build_sha = "abc123"
+        mock_sb = MagicMock()
+        mock_sb.rpc.return_value.execute.return_value = MagicMock(
+            data=[{"status": "ok"}]
+        )
+        mock_sb.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+            data=[], count=0
+        )
+        with patch(
+            "selko.api.routes.health.get_service_client", return_value=mock_sb
+        ):
+            resp = test_client.get("/health")
+        assert resp.status_code == 200
+        assert resp.json()["build_sha"] == "abc123"
+
     def test_health_degraded_when_work_state_reports_degraded(self, test_client, mock_config):
         mock_sb = MagicMock()
         mock_sb.rpc.return_value.execute.return_value = MagicMock(
