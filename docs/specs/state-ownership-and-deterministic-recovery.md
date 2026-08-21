@@ -5,11 +5,27 @@
 > calendar queue columns describe the pre-S5 compatibility phases, not current
 > interfaces. See `CLAUDE.md` and `docs/database-schema.md` for the live model.
 
-**Status:** S1–S5 implemented in the current revision. The post-merge staging
-migration, deploy, health, and integration gates passed on 2026-08-20; the
-local real-Postgres gate remains unavailable in this environment, and the
-operator production-observation/cutover gate remains before this record can be
-retired.
+**Status:** S1–S5 implemented in the current revision. Corrected 2026-08-21
+after direct verification; the earlier wording overstated what had been proven.
+
+- **Local real-Postgres gate: passes.** `./scripts/verify.sh backend` on HEAD:
+  259 integration tests passed, 21 skipped, seed 10741. The gate had been
+  reporting "Local Supabase is not running" because it probed
+  `supabase status -o json`, whose exit status is TTY-sensitive; #334 repaired
+  the detection. The batch merged without this gate ever running.
+- **Staging schema/RPC gate: green at HEAD.** `Deploy to Staging` and
+  `Integration Tests (Staging)` succeeded on the #334 push. That job exercises
+  staging Supabase, not the deployed service.
+- **Staging service/worker gate: never run.** The only run that asserted service
+  health failed (`ERROR: staging API health status is not ok`, run
+  `32357060237`, 2026-08-20T10:04:28Z). Staging currently reports
+  `background_processing_enabled: false` and `transport: "none"`, so no durable
+  worker path in S1–S5 has executed there.
+- **§12 acceptance drill: never run.** No drill evidence is recorded anywhere.
+- **Production: none of S1–S5 is deployed.** Production runs `7768cfb6`
+  (2026-08-14T03:28Z), which predates #327.
+
+The repairs are planned in [`executable-truth.md`](executable-truth.md).
 
 **Written:** 2026-08-13, after repairing a production Changes card whose
 `events.status = 'pending_change'` row had no active proposal, then auditing
