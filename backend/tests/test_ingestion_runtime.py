@@ -66,8 +66,7 @@ def test_idle_backoff_resets_after_work_is_found(mock_config):
 def test_runtime_spawns_configured_workers_and_stops_cleanly(mock_config):
     """One coordinator plus the configured acquisition/attachment workers.
 
-    Plus one health evaluator, all managed by the watchdog so a task that
-    exits is respawned rather than dying silently.
+    The evaluator is activity-driven and is not an idle runtime task.
     """
     config = replace(
         mock_config, email_acquisition_concurrency=2, email_attachment_concurrency=3
@@ -88,7 +87,7 @@ def test_runtime_spawns_configured_workers_and_stops_cleanly(mock_config):
 
     spawned, names, remaining = asyncio.run(scenario())
 
-    assert spawned == 1 + 1 + 1 + 1  # coordinator + single acquisition + single attachment + health (Inc2)
+    assert spawned == 1 + 1 + 1  # coordinator + single acquisition + single attachment
     assert names[0] == "test-instance-coordinator"
     assert "test-instance-acquisition" in names
     assert "test-instance-attachment" in names
@@ -332,7 +331,7 @@ def test_status_reports_alive_and_restart_counts(mock_config):
             assert st["instance_id"] == "instance-1"
             names = {t["name"] for t in st["tasks"]}
             assert "email-sync-coordinator" in names
-            assert "email-sync-health" in names
+            assert "email-sync-health" not in names
             for t in st["tasks"]:
                 assert t["alive"] is True
                 assert t["restarts"] == 0
