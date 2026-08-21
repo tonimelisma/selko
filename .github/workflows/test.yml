@@ -148,8 +148,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Deploy database migrations first (atomic deployment requirement)
-      # R5: migrations must not be behind code — see assert-schema-code-compat gate
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3
         with:
@@ -160,44 +158,35 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - name: Deploy migrations to Staging
-        run: supabase db push
+      - name: Install uv for the local staging verifier
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Install verifier dependencies
+        run: uv sync --extra test
+
+      - name: Verify the deployed staging revision and worker drill
+        run: ./scripts/verify-staging.sh
         env:
+          ENVIRONMENT: staging
+          STAGING_RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}
+          STAGING_API_BASE_URL: https://selko.onrender.com
+          STAGING_APPLY_MIGRATIONS: "1"
+          STAGING_REQUIRE_WORKERS: "1"
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
-
-      - name: Verify migration gate after apply
-        run: ./scripts/assert-schema-code-compat.sh --linked
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
-
-      - name: Deploy to Render (Staging)
-        run: |
-          echo "Triggering Render deployments..."
-          for hook_name in "App:${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}" "Web:${{ secrets.RENDER_DEPLOY_HOOK_WEB_STAGING }}"; do
-            name="${hook_name%%:*}"
-            url="${hook_name#*:}"
-            if [ -z "$url" ]; then
-              echo "  ${name} deploy hook not configured, skipping"
-              continue
-            fi
-            for attempt in 1 2; do
-              status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$url")
-              if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
-                echo "  ${name} deploy hook triggered successfully (HTTP ${status})"
-                break
-              else
-                echo "  ${name} deploy hook returned HTTP ${status} (attempt ${attempt}/2)"
-                if [ "$attempt" -eq 2 ]; then
-                  echo "  ERROR: ${name} deploy hook failed after 2 attempts"
-                  exit 1
-                fi
-                sleep 5
-              fi
-            done
-          done
-          echo "Deploy hooks triggered. Builds will complete asynchronously."
+          SUPABASE_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
   integration-tests-staging:
     name: Integration Tests (Staging)
@@ -241,6 +230,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
           TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -359,6 +349,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
           TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}

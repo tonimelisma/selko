@@ -34,6 +34,7 @@ class Config:
     environment: str
     supabase_url: str
     supabase_key: str  # Publishable key for client operations
+    build_sha: Optional[str] = None
     supabase_service_role_key: Optional[str] = None
     supabase_jwt_secret: Optional[str] = None
     google_client_id: Optional[str] = None
@@ -471,6 +472,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         environment=environment,
         supabase_url=supabase_url,
         supabase_key=supabase_key,
+        build_sha=getenv("RENDER_GIT_COMMIT") or getenv("GIT_COMMIT_SHA"),
         supabase_service_role_key=getenv("SUPABASE_SERVICE_ROLE_KEY"),
         supabase_jwt_secret=getenv("SUPABASE_JWT_SECRET"),
         google_client_id=getenv("GOOGLE_CLIENT_ID"),

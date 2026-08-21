@@ -83,14 +83,18 @@ def _pending_email_metrics() -> dict[str, int | None]:
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check() -> HealthResponse:
+async def health_check(config: Config = Depends(get_config)) -> HealthResponse:
     """Basic health check endpoint.
 
     Returns 200 OK if the API is running.
     """
     resolution = resolution_metrics.snapshot()
     resolution.update(_pending_email_metrics())
-    return HealthResponse(status=_work_state_status(), resolution=resolution)
+    return HealthResponse(
+        status=_work_state_status(),
+        build_sha=config.build_sha,
+        resolution=resolution,
+    )
 
 
 @router.get("/health/db", response_model=HealthDbResponse)
