@@ -8,10 +8,40 @@ from selko.services.events import (
     claim_approved_event_for_sync,
     complete_event_cancellation,
     complete_event_sync,
+    fail_event_sync,
 )
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.development]
+
+
+async def _claim_until(pg_pool, worker_id, event_id, *, attempts=25):
+    """Claim until this event's item comes up, then return that claim.
+
+    claim_approved_event_for_sync takes the OLDEST pending item in the whole
+    database, not this test's. On a clean local reset those are the same thing;
+    against staging, or after another test in the same run leaves a pending
+    item behind, they are not -- which is how this assertion failed in the
+    staging drill while passing every Tier 1 run.
+
+    Items belonging to someone else are released with a retryable failure, the
+    same transition a worker uses when it cannot proceed, so nothing is left
+    locked behind us.
+    """
+    for _ in range(attempts):
+        claimed = await claim_approved_event_for_sync(pg_pool, worker_id)
+        assert claimed is not None, "no calendar work available to claim"
+        if str(claimed["id"]) == event_id:
+            return claimed
+        await fail_event_sync(
+            pg_pool,
+            claimed["calendar_work_lease"],
+            "released by _claim_until: not this test's item",
+        )
+    raise AssertionError(
+        f"event {event_id} never came up for claim within {attempts} attempts"
+    )
+
 
 
 def _desired(title: str = "S2 event") -> dict:
@@ -61,9 +91,7 @@ async def test_enqueue_claim_complete_is_item_fenced(
     }).execute().data
     item_id = queued["id"] if isinstance(queued, dict) else queued[0]["id"]
 
-    claimed = await claim_approved_event_for_sync(pg_pool, "s2-worker")
-    assert claimed is not None
-    assert str(claimed["id"]) == event_id
+    claimed = await _claim_until(pg_pool, "s2-worker", event_id)
     assert claimed["calendar_work_item_id"] == str(item_id)
     # Delivery state is the work item's, not a second column on events.
     assert claimed["calendar_work_item_status"] == "processing"
