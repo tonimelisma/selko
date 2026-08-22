@@ -2,8 +2,8 @@
 spec_id = "foundation-integrity"
 readme_order = 7
 title = "Foundation integrity"
-increments = "F7b, F8 open; F9 complete with accepted history debt"
-gate = "F7b needs staging access; F8 needs operator approval"
+increments = "F7b drills done (see plan 6); F8 + 24h soak open; F9 complete with accepted history debt"
+gate = "F8 needs the 24h soak and operator approval"
 tests = []
 health = ["/health", "/health/ingestion", "/health/egress"]
 drills = ["foundation-integrity-cutover-drill"]
@@ -15,10 +15,29 @@ drills = ["foundation-integrity-cutover-drill"]
 PRs #287–#294. F4 enforces live function, trigger, RLS and privilege contracts
 against a reset database; F6 provides the migration-order guard; F7a provides
 the fail-closed staging verifier, including explicit health assertions. Base
-staging execution has run, but F7b's worker-on configuration, pooler drills,
-24-hour soak, and rollback rehearsal remain pending — they require staging
-access and an operator-run cutover. F8 production cutover remains blocked on
-those and on explicit operator approval.
+staging execution has run. F7b has since been partly delivered and partly
+superseded, by `grant-integrity-and-cutover-safety.md`:
+
+- **Pooler drills: done.** `./scripts/drill-staging-workers.sh` runs
+  `selko.worker_app` against staging over the Supavisor session pooler
+  (port 5432, LISTEN verified on connect) and the ten-step acceptance drill
+  passes 10/10 against real staging Postgres.
+- **Worker-on configuration: superseded by D4.** `selko-app-staging` is a
+  Render free service that spins down after ~15 minutes idle, so the deployed
+  service cannot hold workers on. Worker behaviour is proven by the drill
+  above, run from the operator's machine, and the Tier 2 verifier now says so
+  rather than asserting a posture staging does not have.
+- **Rollback rehearsal: replaced by something better.**
+  `./scripts/rehearse_cutover.py --faithful` replays the whole pending batch
+  against a redacted clone of production's real rows. There is no rollback to
+  rehearse: the batch drops a column and the Supabase org has no PITR or
+  automated backups, so a pre-cutover `pg_dump` is the only restore point that
+  will exist. See the corrected Rollback section in
+  `cutover-verification-20260807.md`.
+- **24-hour soak: still pending**, and inherently an operator-time gate.
+
+F8 production cutover remains blocked on that soak and on explicit operator
+approval.
 
 **Two corrections from the 2026-08-12 review of the R1–R5 batch:**
 
