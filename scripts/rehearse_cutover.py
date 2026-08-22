@@ -232,6 +232,16 @@ def version_of(path: Path) -> str:
 async def read_production_shape(url: str) -> dict[str, int]:
     conn = await asyncpg.connect(url)
     try:
+        # events.status is dropped by 20260829000001. After that cutover there
+        # is no legacy distribution to read, and the synthetic seed built from
+        # it is meaningless -- but --faithful still works, because it clones
+        # real rows rather than synthesising from a histogram.
+        has_status = await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns"
+            " WHERE table_schema='public' AND table_name='events' AND column_name='status')"
+        )
+        if not has_status:
+            return {}
         rows = await conn.fetch(PRODUCTION_SHAPE_QUERY)
     finally:
         await conn.close()
@@ -527,6 +537,17 @@ async def _count_delivery_bearing(conn) -> int:
     converts a pending_change row carrying a provider id into 'synced' before
     20260829000001 backfills work items from it.
     """
+    # Post-cutover the column is gone, so there is no pre-state to count and no
+    # backfill to check against. Returning None makes the assertion skip rather
+    # than crash -- this script has to keep working on both sides of the
+    # cutover it exists to rehearse.
+    has_status = await conn.fetchval(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns"
+        " WHERE table_schema='public' AND table_name='events' AND column_name='status')"
+    )
+    if not has_status:
+        return None
+
     return await conn.fetchval(
         """
         SELECT count(*) FROM public.events
