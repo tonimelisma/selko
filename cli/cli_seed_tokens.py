@@ -32,28 +32,44 @@ class TokenSeedError(Exception):
     pass
 
 
-def get_integration_by_provider(admin_client, provider: str) -> dict | None:
-    """Get integration record by provider (bypasses RLS via service role).
+def get_integration_by_provider(
+    admin_client, provider: str, test_user_email: str | None = None
+) -> dict | None:
+    """Get the TEST USER's integration for a provider (service role, bypasses RLS).
 
     Args:
         admin_client: Supabase client with service role key.
         provider: Integration provider name (e.g., 'gmail').
+        test_user_email: Scope to this user. Strongly recommended -- see below.
 
     Returns:
         Integration record dict or None if not found.
     """
-    # An unordered limit(1) silently picks an arbitrary row, and environments
-    # routinely hold several accounts per provider — seeding an expired one
-    # looks like a successful copy but leaves the target unusable. Take an
-    # active integration, and only fall back to a non-active row if that is
-    # genuinely all there is.
-    result = (
-        admin_client.table("integrations")
-        .select("*")
-        .eq("provider", provider)
-        .order("updated_at", desc=True)
-        .execute()
-    )
+    # Scope to the test user, not "whichever row has this provider".
+    #
+    # This selected across ALL users, preferring active + most recently
+    # updated. The screenshot fixture seeds a gmail integration with a
+    # plausible-looking active status and an expiry a month out, so it wins
+    # that contest against the real test account -- and `--sync` then copied
+    # the FIXTURE's fake token over staging's real one, silently destroying a
+    # working grant while logging "Successfully seeded".
+    #
+    # Status and recency cannot disambiguate two accounts; only identity can.
+    query = admin_client.table("integrations").select("*").eq("provider", provider)
+    if test_user_email:
+        user_rows = (
+            admin_client.table("users").select("id").eq("email", test_user_email).execute()
+        ).data or []
+        if user_rows:
+            query = query.eq("user_id", user_rows[0]["id"])
+        else:
+            logger.warning(
+                "Test user %s not found; refusing to guess which %s integration to use",
+                test_user_email,
+                provider,
+            )
+            return None
+    result = query.order("updated_at", desc=True).execute()
     rows = result.data or []
     if not rows:
         return None
@@ -240,7 +256,9 @@ def seed_tokens(
 
     # Get integration from source
     logger.info(f"Fetching {provider} integration from {source_env}...")
-    source_integration = get_integration_by_provider(source_admin, provider)
+    source_integration = get_integration_by_provider(
+        source_admin, provider, source_config.test_user_email
+    )
 
     if not source_integration:
         raise TokenSeedError(
@@ -299,6 +317,36 @@ def seed_tokens(
     logger.info(f"  Provider email: {source_integration.get('provider_email')}")
 
 
+def _try_refresh(label: str, admin, config, provider: str) -> bool:
+    """Attempt to refresh one environment's token in place.
+
+    Returns True if a refresh was attempted and appeared to succeed. Never
+    raises: a failure here just means the caller falls through to the
+    "genuinely needs reauth" path.
+
+    Only gmail has a refresh path wired here; other providers fall through
+    unchanged rather than pretending to have tried.
+    """
+    if provider != "gmail":
+        return False
+    try:
+        from selko.services.gmail import get_gmail_credentials
+
+        integration = get_integration_by_provider(admin, provider, config.test_user_email)
+        if not integration or not integration.get("refresh_token"):
+            logger.info(f"{label}: no refresh token for {provider}; cannot refresh")
+            return False
+        creds = get_gmail_credentials(admin, config, user_id=integration["user_id"])
+        if creds is None:
+            logger.info(f"{label}: refresh returned no credentials for {provider}")
+            return False
+        logger.info(f"{label}: refreshed {provider} access token")
+        return True
+    except Exception as exc:  # noqa: BLE001 - advisory; caller decides
+        logger.info(f"{label}: refresh attempt failed for {provider}: {type(exc).__name__}")
+        return False
+
+
 def sync_dev_staging(provider: str) -> str:
     """Check both dev and staging; copy working → stale if one is stale.
 
@@ -315,8 +363,10 @@ def sync_dev_staging(provider: str) -> str:
     dev_admin = create_client(dev_config.supabase_url, dev_config.supabase_service_role_key)
     staging_admin = create_client(staging_config.supabase_url, staging_config.supabase_service_role_key)
 
-    dev_integration = get_integration_by_provider(dev_admin, provider)
-    staging_integration = get_integration_by_provider(staging_admin, provider)
+    dev_integration = get_integration_by_provider(dev_admin, provider, dev_config.test_user_email)
+    staging_integration = get_integration_by_provider(
+        staging_admin, provider, staging_config.test_user_email
+    )
 
     dev_stale = is_integration_stale(dev_integration)
     staging_stale = is_integration_stale(staging_integration)
@@ -331,9 +381,43 @@ def sync_dev_staging(provider: str) -> str:
         return "already in sync"
 
     if dev_stale and staging_stale:
+        # An expired ACCESS token is not the same thing as a dead grant.
+        # Google access tokens last about an hour; the refresh token next to
+        # them is what the application uses to mint a new one, dozens of times
+        # a day. Declaring "need fresh OAuth" without trying that refresh sent
+        # an operator to a browser roughly once an hour, and turned CI red on
+        # the same cadence.
+        #
+        # get_gmail_credentials already refreshes and persists. Reuse it rather
+        # than growing a second implementation of the same operation, then
+        # re-read and re-check before giving up.
+        refreshed_any = False
+        for label, admin, cfg in (
+            ("development", dev_admin, dev_config),
+            ("staging", staging_admin, staging_config),
+        ):
+            if _try_refresh(label, admin, cfg, provider):
+                refreshed_any = True
+
+        if refreshed_any:
+            dev_integration = get_integration_by_provider(
+                dev_admin, provider, dev_config.test_user_email
+            )
+            staging_integration = get_integration_by_provider(
+                staging_admin, provider, staging_config.test_user_email
+            )
+            dev_stale = is_integration_stale(dev_integration)
+            staging_stale = is_integration_stale(staging_integration)
+            logger.info(
+                f"After refresh: dev stale={dev_stale}, staging stale={staging_stale}"
+            )
+
+    if dev_stale and staging_stale:
         raise TokenSeedError(
-            f"Both dev and staging {provider} tokens are stale/missing — need fresh OAuth. "
-            f"Run: uv run python -m cli.cli_auth_gmail (for dev) or ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail"
+            f"Both dev and staging {provider} tokens are stale and could not be "
+            f"refreshed — the grant itself is dead, so this does need fresh OAuth. "
+            f"Run: uv run python -m cli.cli_auth_gmail (for dev) or "
+            f"ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail"
         )
 
     if dev_stale and not staging_stale:
