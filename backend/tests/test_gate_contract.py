@@ -227,3 +227,41 @@ def test_no_workflow_step_has_env_entries_stranded_inside_its_script():
         f"{offenders}"
     )
 
+
+
+BACKEND_PYPROJECT = ROOT / "backend" / "pyproject.toml"
+ROOT_PYPROJECT = ROOT / "pyproject.toml"
+
+def _declared_test_deps(path):
+    import tomllib
+
+    data = tomllib.loads(path.read_text())
+    extras = data.get("project", {}).get("optional-dependencies", {})
+    names = []
+    for spec in extras.get("test", []):
+        name = spec.split(">")[0].split("=")[0].split("[")[0].strip()
+        names.append(name)
+    return names
+
+
+def test_backend_test_extra_is_covered_by_the_root_extra_or_dev_group():
+    """The root is what `uv sync` resolves, so it has to carry the union."""
+    import tomllib
+
+    backend = set(_declared_test_deps(BACKEND_PYPROJECT))
+    root_data = tomllib.loads(ROOT_PYPROJECT.read_text())
+    root = {
+        spec.split(">")[0].split("=")[0].split("[")[0].strip()
+        for spec in root_data.get("project", {}).get("optional-dependencies", {}).get("test", [])
+    }
+    for group in (root_data.get("dependency-groups") or {}).values():
+        for spec in group:
+            if isinstance(spec, str):
+                root.add(spec.split(">")[0].split("=")[0].split("[")[0].strip())
+    # httpx arrives transitively via supabase; it is importable either way and
+    # the installed-check above is the assertion that matters for it.
+    uncovered = backend - root - {"httpx"}
+    assert not uncovered, (
+        "declared in backend's test extra but not in the root extra or dev group, "
+        f"so `uv sync --extra test` will not install it: {sorted(uncovered)}"
+    )
