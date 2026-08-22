@@ -184,14 +184,73 @@ not authorize unrelated production-data mutations.
   environment that runs the code. A correct diff plus a missing value is an
   outage. Verify on staging (Tier 2), not by reading `.env.example`.
 
+### 1a. Pick verification by risk dimension, not just by file path
+
+File paths decide *which lane runs*. They do not decide whether the change is
+dangerous. Eight weeks of production-breaking commits, classified:
+
+| Root cause | Examples | Local tests catch it? |
+|---|---|---|
+| Config / environment | #218 prod env overrides, #217 workers off by default, #151 auth redirect URLs | **No** — invisible in a diff and locally |
+| Production data shape | #351 rehearsal vs real rows, #196 review incident | **No** — the local DB is empty or seeded |
+| Elapsed time / runtime | #191 OOM (~2 MB/min), #235 Outlook token refresh mid-pass | **No** — needs hours of running |
+| Observability gaps | #215 surface prod integration failures | **No** — you cannot test what is never reported |
+| Tests hiding bugs | #232 "the production bugs it was hiding" | The tests *were* the problem |
+
+Only the last row is code logic. Our verification is dense on the axis that
+rarely breaks and thin on the three that do, which is why "lots of tests" and
+"production broke again" are both true at once. Adding unit tests does not move
+these numbers. Match the dimension instead:
+
+| Dimension your change touches | Required beyond the lanes |
+|---|---|
+| A one-line config or env var | Verify the value **in the target environment**. A correct diff plus a missing value is an outage; `.env.example` proves nothing |
+| Migration touching a populated table | `scripts/rehearse_cutover.py --faithful` against production row shapes. A migration that applies cleanly to an empty table has not been tested |
+| Worker, loop, or long-running path | Watch RSS and `/health/egress` over hours, recorded in the deploy log. A laptop has no memory ceiling and no token expiry |
+| New table | `ENABLE ROW LEVEL SECURITY` in the same migration |
+| New code path behind a flag or injected dependency | A test asserting the dependency actually reaches the call site |
+| Pure logic, no schema/config change | The lanes are sufficient |
+
+**A 500-line refactor with no schema or config change is usually safer than a
+one-line `.env` edit.** Scope verification to that reality.
+
+### 1b. Run the lanes, don't hand-roll the verification
+
+```bash
+./scripts/verify-lanes.py --gate prod     # blocks a production deploy
+./scripts/verify-lanes.py --gate mobile   # ships via app stores; never blocks prod
+./scripts/verify-report.py                # what each lane costs and has caught
+```
+
+Lanes are declared in `scripts/lanes.toml`. The runner fingerprints each lane's
+declared inputs by **content**, so a lane that already passed for exactly those
+inputs is reused rather than re-run: fix one lane, run again, and only that lane
+executes. Results are keyed by fingerprint, so reverting an edit restores the
+cached result instead of forcing a re-run.
+
+Every lane execution appends to `.verify/ledger.jsonl` (duration, outcome,
+executed-or-reused) and each run writes `.verify/runs/<id>.json`. That history is
+what makes verification improvable: `verify-report.py` shows which lanes have
+ever caught a real failure and what each costs, so a lane that has never fired
+across many runs can be demoted on evidence rather than kept on faith.
+
+**A lane that cannot run is RED, never skipped.** `schema-compat` reports failure
+without `SUPABASE_ACCESS_TOKEN` and a linked project, because a local-only check
+proves nothing. Silence is not success.
+
+**`prod` and `mobile` are separate gates.** Production is backend + supabase +
+frontend. iOS and Android ship through app stores. A red iOS suite has never been
+a reason to hold a backend deploy, and treating it as one has cost hours.
+
 ### 2. Ship it
 
 - [ ] Source code → feature branch in a worktree. Config/docs → edit `main` directly (`git push origin main`).
 - [ ] The scoped tests above pass locally — **local tests are the gate, not CI**
 - [ ] Commit (conventional format), push, `gh pr create`
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges and does full cleanup: deletes remote + local branch, fast-forwards `main`, removes the worktree, prunes. **Does not wait on CI.**
+- [ ] **After any production deploy, open a `docs/deploy-log/<date>-<sha>.md` entry from `TEMPLATE.md` and fill the T+0 and T+15m rows before reporting done.** The T+24h row is filled the next day. Config, real-data and elapsed-time failures are only observable here — a deploy is not finished when it is applied, it is finished when it has been watched. Always fill in "which gate should have caught it"; that is what turns an incident into a permanent gate improvement instead of folklore.
 - [ ] **Check CI on `main` and fix forward if it ran and failed** — `gh run list --branch main --limit 3`. Not a merge gate, but never left red. See "CI Ownership" below.
-- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **the last sentence of your final report MUST be: "Should I deploy this to production?"** Never deploy to prod without an explicit yes. Once the user says yes, deploy; a previously disclosed staging failure does not require another confirmation. Apply production migrations locally, then dispatch `test.yml` with `staging_action=none` and `deploy_production=true`; that explicit job owns the secret Render hooks.
+- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **report the `--gate prod` lane table and state a recommendation**, then ask whether to deploy. A bare "Should I deploy this to production?" with no evidence attached asks the operator to adjudicate a question the lane table already answers. Never deploy to prod without an explicit yes. Once the user says yes, deploy; a previously disclosed staging failure does not require another confirmation. Apply production migrations locally, then dispatch `test.yml` with `staging_action=none` and `deploy_production=true`; that explicit job owns the secret Render hooks.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
@@ -409,6 +468,7 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
 | **Microsoft Graph failure ledger** | `docs/microsoft-graph-failure-ledger.md` | Before changing Graph request/retry/resync behavior or after any production Graph failure |
 | **OAuth reconnect catch-up** | `docs/specs/oauth-reconnect-catch-up.md` | When implementing automatic email/calendar recovery after OAuth reauthorization |
+| **Deploy log** | `docs/deploy-log/` | Before and after every production deploy. Config, real production data, and elapsed-time failures are invisible to local tests; two of those categories are only observable after deploy. Records what shipped, T+0/T+15m/T+24h observations, and **which gate should have caught** anything that broke |
 | **Executable truth** | `docs/specs/executable-truth.md` | **Read before trusting any gate, drill, or spec status.** V1–V8 make gates incapable of reporting success without evidence, then fix what they were hiding: unattributed Graph egress, a Graph failure ledger with no writer, an unconditional idle poll, fencing implemented as a branch, and the half of the S5 state collapse left undone. Carries decisions D1–D3 |
 | **Cutover verification** | `docs/specs/cutover-verification-20260807.md` | The single ordered production cutover checklist (migrations → code → flag last). Execute it through foundation-integrity F7–F8, never directly |
 | **Foundation integrity** | `docs/specs/foundation-integrity.md` | Read after the stub-rollback plan above. Builds a real execution gate (integration tests against local Postgres) because the mocked-only DoD gate is why broken SQL, unreachable code and a non-functional schema gate all shipped green. Carries the six open defects (D1–D6) from the C1–C9 review and the production cutover |

@@ -25,9 +25,25 @@ echo "  Supabase: running"
 
 # Native folder-preference screens use the authenticated backend API. Reuse an
 # existing local server or start one for this capture run and stop only that PID.
+#
+# The probe must identify *Selko's* API, not merely something answering on the
+# port. An unrelated dev server occupying 8000 answered 200 on /health, this
+# script concluded "Backend API: running", and the iOS app then decoded that
+# server's HTML as JSON -- surfacing as "The data couldn't be read because it
+# isn't in the correct format" on the Settings screen, with no hint that the
+# wrong service was being talked to. `resolution` is unique to HealthResponse.
+selko_api_is_up() {
+    curl -fsS --max-time 5 http://127.0.0.1:8000/health 2>/dev/null \
+        | grep -q '"resolution"'
+}
+
 SCREENSHOT_API_PID=""
-if curl -fsS -o /dev/null http://127.0.0.1:8000/health 2>/dev/null; then
+if selko_api_is_up; then
     echo "  Backend API: running"
+elif curl -fsS -o /dev/null --max-time 5 http://127.0.0.1:8000/health 2>/dev/null; then
+    echo "ERROR: Port 8000 is serving something that is not the Selko API." >&2
+    echo "       Stop that process (lsof -nP -iTCP:8000 -sTCP:LISTEN) and retry." >&2
+    exit 1
 else
     echo "==> Starting local backend API..."
     uv run uvicorn selko.api.app:app --host 127.0.0.1 --port 8000 \
@@ -35,12 +51,12 @@ else
     SCREENSHOT_API_PID=$!
     trap 'if [ -n "$SCREENSHOT_API_PID" ]; then kill "$SCREENSHOT_API_PID" 2>/dev/null || true; fi' EXIT
     for _ in {1..30}; do
-        if curl -fsS -o /dev/null http://127.0.0.1:8000/health 2>/dev/null; then
+        if selko_api_is_up; then
             break
         fi
         sleep 1
     done
-    if ! curl -fsS -o /dev/null http://127.0.0.1:8000/health 2>/dev/null; then
+    if ! selko_api_is_up; then
         echo "ERROR: Local backend API did not start. See /tmp/selko-screenshot-api.log" >&2
         exit 1
     fi
