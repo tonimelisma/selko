@@ -56,8 +56,27 @@ done
 BLOCKED=false
 MODULES_NEEDING_TESTS=""
 
-# Check backend using pytest cache
+# Check backend: a passing verify.sh manifest first, pytest cache as fallback.
 check_backend() {
+    # ./scripts/verify.sh backend is the project's actual Tier 1 gate. It runs
+    # three scoped pytest invocations -- unit, non-staging integration, then the
+    # screenshot fixtures after seeding them -- and records the outcome in
+    # .verify/backend-<sha>.json.
+    #
+    # The pytest cache alone cannot represent that, and the command this hook
+    # used to print could never pass: a bare `pytest backend/tests/` collects
+    # the staging-marked tests, which need cloud credentials, and runs the
+    # fixture test before its seed. Trust the gate's own evidence when it
+    # exists, is for this commit, and nothing has changed since.
+    local head_sha manifest
+    head_sha="$(git -C "$PROJECT_ROOT" rev-parse HEAD 2>/dev/null)"
+    manifest="$PROJECT_ROOT/.verify/backend-${head_sha}.json"
+    if [ -n "$head_sha" ] && [ -f "$manifest" ] && grep -q '"status": "passed"' "$manifest"; then
+        if [ -z "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/cli" -name '*.py' -newer "$manifest" 2>/dev/null | head -1)" ]; then
+            return 0
+        fi
+    fi
+
     local cache_dir="$PROJECT_ROOT/backend/.pytest_cache/v/cache"
     local nodeids_file="$cache_dir/nodeids"
     local lastfailed_file="$cache_dir/lastfailed"
@@ -232,7 +251,10 @@ if [ "$BLOCKED" = true ]; then
         case "$module" in
             backend)
                 echo "  backend:"
-                echo "    uv run pytest backend/tests/ -v"
+                echo "    ./scripts/verify.sh backend        # the real Tier 1 gate"
+                echo "    # (a bare 'pytest backend/tests/' collects staging-marked"
+                echo "    #  tests needing cloud credentials, and runs the fixture"
+                echo "    #  test before its seed, so it cannot pass)"
                 ;;
             frontend)
                 echo "  frontend:"
