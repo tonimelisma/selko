@@ -314,7 +314,7 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
     return {
         "_enqueue_calendar_work": (
             context.event_id, context.user_id, "upsert",
-            {"title": "schema contract event"}, None, False, "approved",
+            {"title": "schema contract event"}, None, False,
         ),
         "apply_event_change_proposal": (
             context.event_id,
@@ -328,7 +328,7 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
             "contract location",
             "contract description",
             "action_required",
-            "approved",
+            "active",
             "upsert",
         ),
         "broadcast_user_ui_change": (context.user_id, "events", "updated", context.event_id),
@@ -369,7 +369,6 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
             context.attachment_id,
             None,
             False,
-            "approved",
             "rejected contract event",
             now,
             now + timedelta(hours=1),
@@ -520,6 +519,31 @@ async def test_every_security_definer_function_has_a_contract(contract_connectio
             await conn.execute(
                 "UPDATE public.event_change_proposals SET status = 'pending', resolution_reason = NULL WHERE source_id = $1",
                 context.attachment_id,
+            )
+        if name in {"requeue_calendar_recovery_batch", "refresh_waiting_calendar_recoveries"}:
+            # Earlier calls in this same loop (claim_integration_recovery,
+            # complete_integration_reauthorization) leave their own recovery
+            # rows behind, and integration_recoveries_one_active_idx allows one
+            # active row per integration. Terminate the others and re-lease the
+            # fixture row, so the call under test is both legal and meaningful:
+            # without the lease requeue returns -1 and asserts nothing.
+            await conn.execute(
+                """
+                UPDATE public.integration_recoveries
+                SET status = 'completed', locked_by = NULL, locked_until = NULL
+                WHERE integration_id = $1 AND id <> $2
+                  AND status IN ('pending', 'processing', 'waiting')
+                """,
+                context.calendar_integration_id, context.recovery_id,
+            )
+            await conn.execute(
+                """
+                UPDATE public.integration_recoveries
+                SET status = 'processing', locked_by = $2,
+                    locked_until = now() + interval '5 minutes'
+                WHERE id = $1
+                """,
+                context.recovery_id, worker,
             )
         if name in {
             "heartbeat_calendar_work",
@@ -910,7 +934,7 @@ async def test_reject_event_change_proposal_is_one_atomic_transition(contract_co
     result = await conn.fetchval(
         """
         SELECT public.reject_event_change_proposal(
-            $1, $2, $3, NULL, false, 'approved', 'before', NULL, NULL,
+            $1, $2, $3, NULL, false, 'before', NULL, NULL,
             false, NULL, NULL, 'action_required', 'user_rejected'
         )
         """,
@@ -922,7 +946,7 @@ async def test_reject_event_change_proposal_is_one_atomic_transition(contract_co
 
     if isinstance(result, str):
         result = json.loads(result)
-    assert result["status"] == "approved"
+    assert result["status"] == "active"
     assert await conn.fetchval(
         "SELECT status FROM public.event_change_proposals WHERE source_id = $1",
         source_id,

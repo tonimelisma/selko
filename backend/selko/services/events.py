@@ -1396,10 +1396,12 @@ def apply_change_proposal(
 
     if is_cancellation:
         has_provider_event = bool(event.get("google_calendar_event_id"))
-        next_status = "cancel_queued" if has_provider_event else "cancelled"
+        # Without a provider event there is nothing to cancel remotely, so the
+        # decision is terminal and no work item is enqueued.
+        review_status = "active" if has_provider_event else "cancelled"
         next_action = "cancel"
     else:
-        next_status = "approved"
+        review_status = "active"
         next_action = "upsert"
 
     update_fields = {
@@ -1410,8 +1412,7 @@ def apply_change_proposal(
         "location": merged.get("location"),
         "description": merged.get("description"),
         "importance": merged.get("importance", event.get("importance", "action_required")),
-        "status": next_status,
-        "review_status": "cancelled" if is_cancellation and not has_provider_event else "active",
+        "review_status": review_status,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     supabase_client.rpc("apply_event_change_proposal", {
@@ -1426,7 +1427,7 @@ def apply_change_proposal(
         "p_location": update_fields["location"],
         "p_description": update_fields["description"],
         "p_importance": update_fields["importance"],
-        "p_next_status": next_status,
+        "p_review_status": review_status,
         "p_calendar_sync_action": next_action,
     }).execute()
     logger.info("Applied event change proposal %s on event %s", proposal["id"], event_id)
@@ -1438,7 +1439,9 @@ def reject_change_proposal(
 ) -> str:
     """Reject an authoritative change proposal.
 
-    Returns the resulting status (or \"deleted\" if the Selko row is removed).
+    Returns the resulting review status -- always ``"active"``, since a pending
+    proposal requires an active event -- or ``"deleted"`` when the Selko row is
+    a provider-only adopt with no original invitation and is removed.
     """
     event_result = supabase_client.table("events").select("*").eq(
         "id", event_id
@@ -1454,15 +1457,17 @@ def reject_change_proposal(
         raise EventsError(f"No pending change proposal for event {event_id}")
     snapshot = proposal.get("event_snapshot_before")
 
-    # GCal-only adopt that has no original invitation: delete the row.
-    created_as_change_only = (
-        proposal.get("status") == "pending"
-        and event.get("google_calendar_event_id")
-        and not event.get("synced_at")
-        and (snapshot or {}).get("status") == "synced"
-    )
-    # Heuristic: if snapshot status is synced and event never synced via Selko,
-    # and the only meaningful history is this proposal, delete.
+    # An event Selko never wrote to the provider (no synced_at) but which
+    # carries a provider id was adopted from Google Calendar. If it has no
+    # original invitation among its sources, this proposal is its entire
+    # reason to exist, so rejecting it deletes the row.
+    #
+    # This previously had a second arm keyed off `snapshot.get("status") ==
+    # "synced"`. events.status was deleted in 20260829000001, so that key is
+    # absent from every snapshot written since and present in every one written
+    # before -- the arm's behaviour depended on when the row happened to be
+    # created. The provider-id-plus-sources test below is what it was reaching
+    # for and does not depend on a vanished column.
     sources = supabase_client.table("event_sources").select(
         "id, source_type, source_origin"
     ).eq("event_id", event_id).execute()
@@ -1474,7 +1479,7 @@ def reject_change_proposal(
         and not event.get("synced_at")
     )
 
-    if gcal_only_proposal or created_as_change_only:
+    if gcal_only_proposal:
         supabase_client.rpc("reject_event_change_proposal", {
             "p_event_id": event_id,
             "p_user_id": event["user_id"],
@@ -1482,7 +1487,6 @@ def reject_change_proposal(
             "p_expected_hash": None,
             "p_resolution_reason": "user_rejected",
             "p_delete_event": True,
-            "p_restore_status": "approved",
             "p_title": event.get("title"),
             "p_start_datetime": event.get("start_datetime"),
             "p_end_datetime": event.get("end_datetime"),
@@ -1494,12 +1498,10 @@ def reject_change_proposal(
         logger.info("Deleted GCal proposal event %s on reject", event_id)
         return "deleted"
 
-    restore_status = "synced" if event.get("google_calendar_event_id") else "approved"
-    if snapshot and snapshot.get("status") in {
-        "pending_review", "approved", "synced", "sync_failed", "rejected", "cancelled"
-    }:
-        restore_status = snapshot["status"]
-
+    # No restore status is computed or sent. A pending proposal requires
+    # events.review_status = 'active' (enforce_event_change_proposal_invariant),
+    # so the event already holds the right review state; rejecting the proposal
+    # resolves the proposal, it does not change the user's review decision.
     restored_event = {
         "title": event.get("title"),
         "start_datetime": event.get("start_datetime"),
@@ -1524,7 +1526,6 @@ def reject_change_proposal(
         "p_expected_hash": None,
         "p_resolution_reason": "user_rejected",
         "p_delete_event": False,
-        "p_restore_status": restore_status,
         "p_title": restored_event["title"],
         "p_start_datetime": restored_event["start_datetime"],
         "p_end_datetime": restored_event["end_datetime"],
@@ -1533,8 +1534,8 @@ def reject_change_proposal(
         "p_description": restored_event["description"],
         "p_importance": restored_event["importance"],
     }).execute()
-    logger.info("Rejected event change proposal on event %s -> %s", event_id, restore_status)
-    return restore_status
+    logger.info("Rejected event change proposal on event %s", event_id)
+    return "active"
 
 
 def undo_history_event(
@@ -1806,6 +1807,9 @@ async def claim_approved_event_for_sync(
             event = _normalize_pg_row(dict(event_row))
             event["calendar_work_item_id"] = str(item["id"])
             event["calendar_work_item_action"] = item["action"]
+            # Delivery state lives on the work item now that events.status is
+            # gone. Callers that used to read event["status"] read this.
+            event["calendar_work_item_status"] = item["status"]
             event["calendar_work_item_generation"] = int(item["generation"])
             event["calendar_work_lease"] = WorkItemLease(
                 item_id=str(item["id"]),

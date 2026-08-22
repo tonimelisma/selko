@@ -5,34 +5,58 @@
 -- derived status for presentation, but no database column stores that second
 -- state machine.
 
+-- Preserve every legacy delivery state before the column is removed.
+--
+-- This block is the ONLY chance to do so: once `status` is dropped the values
+-- are gone, and no follow-up migration can recover which rows were
+-- `sync_failed`. An earlier draft preserved `synced` alone, which would have
+-- silently reclassified every failed and in-flight delivery as
+-- never-attempted. Production held 71 synced, 3 sync_failed and 182 rejected
+-- rows when this was written.
+--
+-- Review states (`pending_review`, `rejected`, `cancelled`) never attempted a
+-- provider write, so they get no work item; `review_status` already owns them.
 DO $$
 DECLARE
     v_event public.events;
+    v_action text;
+    v_status text;
 BEGIN
-    -- Older synced rows predate the durable queue. Preserve their provider
-    -- history before the legacy column is removed.
     FOR v_event IN
         SELECT e.*
         FROM public.events e
-        WHERE e.status = 'synced'
+        WHERE e.status IN ('synced', 'sync_failed', 'approved', 'syncing', 'cancel_queued')
           AND NOT EXISTS (
               SELECT 1 FROM public.calendar_work_items w WHERE w.event_id = e.id
           )
     LOOP
+        v_action := CASE WHEN v_event.status = 'cancel_queued' THEN 'cancel' ELSE 'upsert' END;
+        v_status := CASE v_event.status
+            WHEN 'synced' THEN 'succeeded'
+            WHEN 'sync_failed' THEN 'failed'
+            -- `syncing` was in flight against a worker that no longer exists
+            -- after the cutover; it must be retried, not assumed complete.
+            ELSE 'pending'
+        END;
         INSERT INTO public.calendar_work_items (
             event_id, user_id, action, generation, status, desired_event,
-            provider_event_id, attempts, max_attempts, created_at, updated_at,
-            completed_at
+            provider_event_id, attempts, max_attempts, failure_code,
+            created_at, updated_at, completed_at
         ) VALUES (
-            v_event.id, v_event.user_id, 'upsert', 1, 'succeeded',
-            jsonb_build_object(
+            v_event.id, v_event.user_id, v_action, 1, v_status,
+            CASE WHEN v_action = 'cancel' THEN NULL ELSE jsonb_build_object(
                 'title', v_event.title, 'start_datetime', v_event.start_datetime,
                 'end_datetime', v_event.end_datetime, 'all_day', v_event.all_day,
                 'location', v_event.location, 'description', v_event.description,
                 'importance', v_event.importance, 'source_attribution', v_event.source_attribution
-            ),
-            v_event.google_calendar_event_id, 1, 3,
-            v_event.updated_at, v_event.updated_at, v_event.synced_at
+            ) END,
+            v_event.google_calendar_event_id,
+            CASE WHEN v_status = 'pending' THEN 0 ELSE 1 END, 3,
+            CASE WHEN v_status = 'failed' THEN 'migrated_sync_failed' ELSE NULL END,
+            v_event.updated_at, v_event.updated_at,
+            CASE WHEN v_status = 'pending' THEN NULL
+                 WHEN v_status = 'succeeded' THEN v_event.synced_at
+                 ELSE v_event.updated_at END
         );
     END LOOP;
 END;
@@ -166,7 +190,15 @@ BEGIN
     UPDATE public.events SET
         google_calendar_event_id = CASE WHEN v_item.action = 'cancel' THEN NULL ELSE COALESCE(p_provider_event_id, google_calendar_event_id) END,
         synced_at = CASE WHEN v_item.action = 'cancel' THEN NULL ELSE now() END,
-        review_status = CASE WHEN v_item.action = 'cancel' THEN 'cancelled' ELSE review_status END,
+        -- Only a cancel that delivers an *active* event's cancellation makes
+        -- the event cancelled. unsync_event_and_enqueue_calendar_work also
+        -- enqueues action='cancel', but it means "remove it from Google
+        -- Calendar and put it back in my review queue" and has already set
+        -- review_status='pending_review'. The unconditional form silently
+        -- converted every unsync into a cancellation.
+        review_status = CASE
+            WHEN v_item.action = 'cancel' AND review_status = 'active' THEN 'cancelled'
+            ELSE review_status END,
         updated_at = now()
     WHERE id = v_item.event_id;
     UPDATE public.calendar_work_items SET status = 'succeeded',

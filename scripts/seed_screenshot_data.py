@@ -359,7 +359,11 @@ def do_seed(config):
         q2_update_email,
         decision_envelope(
             "update",
-            {},
+            # commit_email_extraction derives auto-apply from the review status
+            # and defaults an unspecified one to 'active', which applies the
+            # proposal immediately. This fixture is the Changes lane, so it has
+            # to say so: a pending proposal on an active event.
+            {"review_status": "pending_review"},
             q2_source,
             event_id=event_ids["Q2 Planning Offsite"],
             expected_fingerprint=candidate_fingerprint([q2]),

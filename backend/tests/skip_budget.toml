@@ -56,18 +56,6 @@ nodeid = "tests/test_event_processing.py::TestGenerateSourceAttribution::test_sk
 reason = "event_sources no longer has an undone compatibility flag"
 
 [[skip]]
-nodeid = "tests/test_events_refactor.py::TestRejectPendingChange::test_rejects_and_restores_through_one_database_rpc"
-reason = "legacy pending_change status API removed in S5"
-
-[[skip]]
-nodeid = "tests/test_events_refactor.py::TestRejectPendingChange::test_refuses_an_orphaned_pending_change"
-reason = "legacy pending_change status API removed in S5"
-
-[[skip]]
-nodeid = "tests/test_events_refactor.py::TestApplyPendingChange::test_cancellation_is_local_state_only_and_preserves_title"
-reason = "legacy pending_change status API removed in S5"
-
-[[skip]]
 nodeid = "tests/test_events_refactor.py::TestSaveExtractedEvents::test_handles_multiple_events"
 reason = "direct event/source mocks replaced by commit_email_extraction RPC contract"
 

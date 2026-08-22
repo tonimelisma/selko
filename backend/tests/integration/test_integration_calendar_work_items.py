@@ -65,7 +65,8 @@ async def test_enqueue_claim_complete_is_item_fenced(
     assert claimed is not None
     assert str(claimed["id"]) == event_id
     assert claimed["calendar_work_item_id"] == str(item_id)
-    assert claimed["status"] == "syncing"
+    # Delivery state is the work item's, not a second column on events.
+    assert claimed["calendar_work_item_status"] == "processing"
 
     assert await complete_event_sync(
         pg_pool, claimed["calendar_work_lease"], "google-s2-event",
