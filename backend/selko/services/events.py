@@ -65,6 +65,15 @@ class WorkItemLease:
     generation: int
 
 
+# A user who rejected an event, or whose event was cancelled, has decided it
+# does not belong on their calendar. Later emails about the same meeting still
+# record provenance and identity hints -- that is what keeps the match working,
+# and therefore what keeps the decision terminal rather than letting the next
+# email create a duplicate in the New lane -- but they never revive it.
+# See docs/specs/review-queue-integrity.md 8.2.
+DECLINED_REVIEW_STATUSES = frozenset({"rejected", "cancelled"})
+
+
 def derive_delivery_status(event: dict[str, Any]) -> str:
     """Derive the API/UI delivery state without persisting a second owner."""
     review_status = event.get("review_status")
@@ -400,11 +409,21 @@ def save_extracted_events(
 ) -> tuple[int, int]:
     """Deduplicate and persist extracted events into New or Changes lanes.
 
+    Every decision states an explicit ``intent`` that ``commit_email_extraction``
+    acts on; it has no default, and neither does ``fields.review_status``.
+
     Routing:
-    - No match → New lane (``pending_review``), or auto-approved when requested.
+    - No match → New lane (``pending_review``), or auto-approved when requested
+      (``intent="no_change"``).
     - Match + noop changeset → silent skip.
-    - Match + real change → Changes lane (an active event with a pending proposal), or apply immediately
-      when ``initial_status == "approved"`` (sender auto_approve).
+    - Match on a declined event (``rejected``/``cancelled``) → provenance and
+      identity only, no proposal, no revival (``intent="record_only"``).
+    - Match still in the New lane → absorb the newer information, stay in New
+      (``intent="apply"`` with ``review_status="pending_review"``, so nothing is
+      queued for the calendar).
+    - Match + real change → Changes lane: the event is untouched and a pending
+      proposal owns the change (``intent="review"``), or the change is applied
+      immediately when ``initial_status == "approved"`` (sender auto_approve).
     Args:
         supabase_client: Authenticated Supabase client.
         gateway: LLMGateway instance for LLM operations.
@@ -516,9 +535,29 @@ def save_extracted_events(
 
             review_status = str(match.baseline.get("review_status") or "active")
 
+            if review_status in DECLINED_REVIEW_STATUSES:
+                # Cancelling something the user already declined would revive it
+                # and queue a provider cancellation for an event that may never
+                # have reached their calendar. Record the match and stop.
+                decisions.append({
+                    "action": "update",
+                    "event_id": match.match_id,
+                    "intent": "record_only",
+                    "fields": {},
+                    **_window_fields(candidate_window),
+                    "hints": hint_payload,
+                    "source": {
+                        "email_id": email_id,
+                        "extracted_data": source_event_data,
+                        "source_type": "cancellation",
+                    },
+                })
+                continue
+
             decisions.append({
                 "action": "update",
                 "event_id": match.match_id,
+                "intent": "apply",
                 "fields": {
                     "review_status": "active",
                     "calendar_action": "cancel",
@@ -540,7 +579,6 @@ def save_extracted_events(
                         }],
                         "reasoning": "Structured or strong cancellation matched an existing event.",
                     },
-                    "replace_pending_proposal": True,
                 },
             })
             num_updated += 1
@@ -551,6 +589,7 @@ def save_extracted_events(
             decisions.append({
                 "action": "create",
                 "event_id": None,
+                "intent": "no_change",
                 "fields": {**event_data, "review_status": initial_review_status},
                 **_window_fields(candidate_window),
                 "hints": hint_payload,
@@ -561,6 +600,32 @@ def save_extracted_events(
                 },
             })
             num_new += 1
+            continue
+
+        if str(match.baseline.get("review_status") or "") in DECLINED_REVIEW_STATUSES:
+            # Terminal. Record that this email is about the declined event and
+            # keep its identity hints, so the next email matches here too rather
+            # than creating a duplicate in the New lane -- but propose nothing,
+            # revive nothing, and do not spend an LLM call deciding what a
+            # change the user will never see would have been.
+            logger.info(
+                "Email %s matched declined event %s; recording provenance only",
+                email_id,
+                match.match_id,
+            )
+            decisions.append({
+                "action": "update",
+                "event_id": match.match_id,
+                "intent": "record_only",
+                "fields": {},
+                **_window_fields(candidate_window),
+                "hints": hint_payload,
+                "source": {
+                    "email_id": email_id,
+                    "extracted_data": source_event_data,
+                    "source_type": "update",
+                },
+            })
             continue
 
         # LLM proposes what to update; code gate drops no-ops
@@ -642,6 +707,7 @@ def save_extracted_events(
             decisions.append({
                 "action": "create",
                 "event_id": None,
+                "intent": "apply",
                 "fields": {
                     **applied,
                     "review_status": "active",
@@ -662,13 +728,16 @@ def save_extracted_events(
                 },
             })
         elif match.is_gcal:
+            # Adopt the provider's event exactly as it stands and hold the
+            # change for review. No calendar work is queued: the user's own
+            # calendar entry is not rewritten until they accept.
             decisions.append({
                 "action": "create",
                 "event_id": None,
-                    "fields": {
+                "intent": "review",
+                "fields": {
                     **match.baseline,
                     "review_status": "active",
-                    "calendar_action": "upsert",
                     "google_calendar_event_id": match.gcal_id,
                 },
                 **_window_fields(candidate_window),
@@ -685,10 +754,14 @@ def save_extracted_events(
                 },
             })
         elif match.baseline.get("review_status") == "pending_review":
+            # The user has not decided anything yet, so there is nothing to
+            # propose: absorb the newer information and stay in the New lane.
+            # review_status is stated so the commit cannot infer a different one.
             decisions.append({
                 "action": "update",
                 "event_id": match.match_id,
-                "fields": proposed_fields,
+                "intent": "apply",
+                "fields": {**proposed_fields, "review_status": "pending_review"},
                 **_window_fields(candidate_window),
                 "hints": hint_payload,
                 "source": source,
@@ -698,19 +771,23 @@ def save_extracted_events(
             decisions.append({
                 "action": "update",
                 "event_id": match.match_id,
+                "intent": "apply",
                 "fields": {**applied, "review_status": "active", "calendar_action": "upsert"},
                 **_window_fields(candidate_window),
                 "hints": hint_payload,
-                "source": {**source, "replace_pending_proposal": True},
+                "source": source,
             })
         else:
+            # The Changes lane. The event keeps every current value; the pending
+            # proposal owns the change until the user accepts or rejects it.
             decisions.append({
                 "action": "update",
                 "event_id": match.match_id,
-                "fields": {},
+                "intent": "review",
+                "fields": {"review_status": "active"},
                 **_window_fields(candidate_window),
                 "hints": hint_payload,
-                "source": {**source, "replace_pending_proposal": True},
+                "source": source,
             })
         num_updated += 1
 
@@ -1297,11 +1374,16 @@ def find_matching_event(
 
     if matched_id.startswith("gcal:"):
         gcal_id = candidate.get("_gcal_id") or matched_id[5:]
+        # "Do I already have a Selko row for this provider event?" is answered
+        # yes even when the user declined it. Excluding declined rows here sent
+        # the caller down the adopt-a-new-row path and produced a duplicate of
+        # something they had already said no to; the declined row is the correct
+        # match, and routes to record_only.
         existing = supabase_client.table("events").select("*").eq(
             "user_id", user_id
-        ).eq("google_calendar_event_id", gcal_id).not_.in_(
-            "review_status", ["rejected", "cancelled"]
-        ).order("created_at").limit(1).execute()
+        ).eq("google_calendar_event_id", gcal_id).order(
+            "created_at"
+        ).limit(1).execute()
         if existing.data:
             row = existing.data[0]
             return resolved(EventMatch(

@@ -78,6 +78,7 @@ def _create_decision(email_id, title: str, window: tuple[str, str], fingerprint:
     return {
         "action": "create",
         "event_id": None,
+        "intent": "no_change",
         "window_start": window[0],
         "window_end": window[1],
         "expected_fingerprint": fingerprint,
@@ -85,6 +86,7 @@ def _create_decision(email_id, title: str, window: tuple[str, str], fingerprint:
             "title": title,
             "start_datetime": f"{window[0][:10]}T10:00:00Z",
             "end_datetime": f"{window[0][:10]}T11:00:00Z",
+            "review_status": "pending_review",
         },
         "source": {"email_id": str(email_id), "extracted_data": {}},
     }
@@ -120,6 +122,7 @@ async def test_stale_generation_cannot_write(pg_pool, temp_user):
             json.dumps([{
                 "action": "create",
                 "event_id": None,
+                "intent": "no_change",
                 "window_start": "2030-01-02T00:00:00Z",
                 "window_end": "2030-01-03T00:00:00Z",
                 "expected_fingerprint": candidate_fingerprint([]),
@@ -127,6 +130,7 @@ async def test_stale_generation_cannot_write(pg_pool, temp_user):
                     "title": "must not exist",
                     "start_datetime": "2030-01-01T10:00:00Z",
                     "end_datetime": "2030-01-01T11:00:00Z",
+                    "review_status": "pending_review",
                 },
                 "source": {"email_id": str(email_id), "extracted_data": {}},
             }]),
@@ -152,6 +156,7 @@ async def test_multi_event_email_commits_all_or_nothing(pg_pool, temp_user):
         {
             "action": "create",
             "event_id": None,
+            "intent": "no_change",
             "window_start": "2030-01-02T00:00:00Z",
             "window_end": "2030-01-03T00:00:00Z",
             "expected_fingerprint": candidate_fingerprint([]),
@@ -159,6 +164,7 @@ async def test_multi_event_email_commits_all_or_nothing(pg_pool, temp_user):
                 "title": title,
                 "start_datetime": "2030-01-02T10:00:00Z",
                 "end_datetime": "2030-01-02T11:00:00Z",
+                "review_status": "pending_review",
             },
             "source": {"email_id": str(email_id), "extracted_data": {}},
         },
@@ -323,10 +329,14 @@ async def test_conflict_recomputed_fingerprint_matches_winner(pg_pool, temp_user
             [{
                 "action": "update",
                 "event_id": str(event_id),
+                "intent": "no_change",
                 "window_start": window[0],
                 "window_end": window[1],
                 "expected_fingerprint": fingerprint,
-                "fields": {"description": "winner plus loser"},
+                "fields": {
+                    "description": "winner plus loser",
+                    "review_status": "pending_review",
+                },
                 "source": {
                     "email_id": str(loser["id"]),
                     "source_type": "update",
