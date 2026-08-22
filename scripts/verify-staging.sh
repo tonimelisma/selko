@@ -133,4 +133,10 @@ fi
 # attributed to the thing that needs it.
 uv run python -m cli.cli_seed_tokens --sync --provider gmail
 
-ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m staging -v --tb=short -n auto
+# Serial, deliberately. These tests share one cloud database, and -n auto
+# had them competing for the same rows -- the same failure mode that made
+# the worker drill red. (It also never ran: pytest-xdist was declared in
+# backend's test extra but `uv sync --extra test` resolves the ROOT
+# project's extra, which does not list it, so CI died on `unrecognized
+# arguments: -n`.)
+ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m staging -v --tb=short
