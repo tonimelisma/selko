@@ -80,8 +80,27 @@ def _validate_skips(skips: list[dict[str, str]], budget: dict[str, dict[str, str
             problems.append(
                 f"skip reason changed for {nodeid}: expected {expected!r}, got {item['reason']!r}"
             )
-    for nodeid in sorted(set(budget) - seen):
-        problems.append(f"budgeted skip was not observed: {nodeid}")
+    # A budget entry is PERMISSION to skip, not a requirement to.
+    #
+    # These entries name a test that skips when its precondition is missing --
+    # no LLM key, no live Gmail token, no real Google Calendar. When the
+    # precondition is satisfied the test runs, which is strictly better, and
+    # treating that as a gate failure punishes exactly the improvement the
+    # budget exists to track. Observed: refreshing the Gmail token made three
+    # real-Gmail tests execute and pass, and the gate reported "failed" on a
+    # run with 1364 passed and 0 failed.
+    #
+    # Entries that go permanently unobserved are still worth pruning; they are
+    # reported so they cannot rot silently, but they do not fail the gate.
+    unobserved = sorted(set(budget) - seen)
+    if unobserved:
+        print(
+            "NOTE: budgeted skips that did not skip this run (their precondition "
+            "was available, so they ran). Prune the entry if that is now permanent:",
+            file=sys.stderr,
+        )
+        for nodeid in unobserved:
+            print(f"  {nodeid}", file=sys.stderr)
     return problems
 
 
