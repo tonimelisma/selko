@@ -14,6 +14,14 @@ protocol AuthServiceProtocol: Sendable {
     func signUp(email: String, password: String) async throws -> User
     func signOut() async throws
     func getCurrentUser() async -> User?
+    /// Installs a session obtained out of band.
+    ///
+    /// UI tests use this instead of driving the login form. Typing into a field
+    /// that is still settling drops characters, which fails sign-in with
+    /// "Invalid email or password" and reads as a backend problem; it also
+    /// charges every test a full auth round trip. The login *form* is still
+    /// covered by tests that exercise it directly.
+    func applyExternalSession(accessToken: String, refreshToken: String) async throws
     var authStatePublisher: AnyPublisher<AuthState, Never> { get }
 }
 
@@ -28,6 +36,10 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
     init(supabase: SupabaseClient) {
         self.supabase = supabase
         setupAuthListener()
+    }
+
+    func applyExternalSession(accessToken: String, refreshToken: String) async throws {
+        try await supabase.auth.setSession(accessToken: accessToken, refreshToken: refreshToken)
     }
 
     private func setupAuthListener() {

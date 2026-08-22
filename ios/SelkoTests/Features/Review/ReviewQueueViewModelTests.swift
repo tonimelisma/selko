@@ -26,7 +26,7 @@ struct ReviewQueueViewModelTests {
         )
     }
 
-    private func makeEvent(title: String = "Test Event", status: EventStatus = .pendingReview) -> CalendarEvent {
+    private func makeEvent(title: String = "Test Event") -> CalendarEvent {
         CalendarEvent(
             id: UUID(),
             userId: UUID(),
@@ -37,7 +37,6 @@ struct ReviewQueueViewModelTests {
             location: "Conference Room",
             description: "A test event",
             sourceAttribution: "From test@example.com",
-            status: status,
             googleCalendarEventId: nil,
             syncedAt: nil,
             createdAt: Date(),
@@ -257,7 +256,6 @@ struct ReviewQueueViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .synced,
             googleCalendarEventId: "gcal-1",
             syncedAt: nil,
             createdAt: Date(),
@@ -291,7 +289,7 @@ struct ReviewQueueViewModelTests {
             emails: Email(id: UUID(), userId: nil, integrationId: nil, emailProvider: "gmail", providerMessageId: "m", threadId: "t", subject: "Hi", fromEmail: "a@b.com", fromName: "A", toEmails: nil, dateSent: Date(), snippet: nil, providerLabels: nil, isSpam: false, isTrash: false, isPromotions: false, isSocial: false, isUpdates: false, isForums: false, isPrimary: true, isImportant: false, isStarred: false, isUnread: true, hasAttachments: false, createdAt: Date())
         )
         var eventWithSource = event
-        eventWithSource = CalendarEvent(id: event.id, userId: event.userId, title: event.title, startDatetime: event.startDatetime, endDatetime: event.endDatetime, allDay: event.allDay, location: event.location, description: event.description, sourceAttribution: event.sourceAttribution, status: event.status, googleCalendarEventId: event.googleCalendarEventId, syncedAt: event.syncedAt, createdAt: event.createdAt, updatedAt: event.updatedAt, eventSources: [source])
+        eventWithSource = CalendarEvent(id: event.id, userId: event.userId, title: event.title, startDatetime: event.startDatetime, endDatetime: event.endDatetime, allDay: event.allDay, location: event.location, description: event.description, sourceAttribution: event.sourceAttribution, googleCalendarEventId: event.googleCalendarEventId, syncedAt: event.syncedAt, createdAt: event.createdAt, updatedAt: event.updatedAt, eventSources: [source])
         viewModel.senderGroups = [SenderGroup(id: "a@b.com", senderName: "A", senderEmail: "a@b.com", events: [eventWithSource])]
         viewModel.newSenderGroups = viewModel.senderGroups
         viewModel.changeSenderGroups = []

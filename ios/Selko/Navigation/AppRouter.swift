@@ -33,10 +33,55 @@ final class AppRouter {
     private let authService: AuthServiceProtocol
     private var cancellables = Set<AnyCancellable>()
 
+    /// UI tests pass this to guarantee a launch starts signed out.
+    ///
+    /// `app.launch()` does not reset app state, so a session persisted by an
+    /// earlier test leaks into the next one: the login screen never appears,
+    /// the sign-in step is skipped, and the run fails somewhere later with a
+    /// misleading message. Resetting at startup makes each launch deterministic
+    /// instead of dependent on test execution order.
+    static let resetSessionArgument = "--selko-reset-session"
+
+    /// Session handed in by the UI test harness; see `applyExternalSession`.
+    static let testAccessTokenVariable = "SELKO_TEST_ACCESS_TOKEN"
+    static let testRefreshTokenVariable = "SELKO_TEST_REFRESH_TOKEN"
+
     init(authService: AuthServiceProtocol? = nil) {
         self.authService = authService ?? DependencyContainer.shared.authService
 
-        self.authService.authStatePublisher
+        guard ProcessInfo.processInfo.arguments.contains(Self.resetSessionArgument) else {
+            observeAuthState()
+            return
+        }
+
+        // Sign out *before* observing auth state, and stay in the loading state
+        // until it finishes. Doing the sign-out concurrently with observation
+        // let it land after the test had already signed in, silently revoking
+        // the fresh session -- which surfaced as "Main tab view did not appear
+        // after signing in" and looked like a slow login rather than a race.
+        isLoading = true
+        let service = self.authService
+        let environment = ProcessInfo.processInfo.environment
+        let accessToken = environment[Self.testAccessTokenVariable]
+        let refreshToken = environment[Self.testRefreshTokenVariable]
+        Task { @MainActor [weak self] in
+            try? await service.signOut()
+            // A session supplied by the test harness is installed before auth
+            // state is observed, so the app comes up authenticated without the
+            // login form being driven by simulated typing.
+            if let accessToken, let refreshToken,
+               !accessToken.isEmpty, !refreshToken.isEmpty {
+                try? await service.applyExternalSession(
+                    accessToken: accessToken,
+                    refreshToken: refreshToken
+                )
+            }
+            self?.observeAuthState()
+        }
+    }
+
+    private func observeAuthState() {
+        authService.authStatePublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 self?.handleAuthStateChange(state)

@@ -14,7 +14,7 @@ final class SelkoUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
-        app.launchArguments = ["--uitesting"]
+        app.launchArguments = ["--uitesting", "--selko-reset-session"]
     }
 
     override func tearDownWithError() throws {
@@ -107,10 +107,8 @@ final class SelkoUITests: XCTestCase {
         throw XCTSkip("Simulator secure-field focus is unreliable for this UITest")
     }
 
-    @MainActor
-    func testLaunchPerformance() throws {
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
-    }
+    // testLaunchPerformance was removed: XCTest ran it five times for 40s per
+    // suite and no one has ever acted on the number. Launch time regressions
+    // would be caught by a metric we actually watch, not by a test whose output
+    // nobody reads.
 }
