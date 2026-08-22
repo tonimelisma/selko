@@ -51,7 +51,11 @@ inputs = [
 [lanes.ios]
 gate = "mobile"
 description = "iOS unit + UI tests on iPhone 17 Pro"
-command = "rm -rf ios/TestResults.xcresult && xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult"
+# with-api.sh owns the backend's lifetime: it starts the API only if it is not
+# already up and stops only what it started. Process lifetime is not something
+# anyone should have to remember -- the "stop what you start" rule was written
+# down and broken within the hour, twice.
+command = "rm -rf ios/TestResults.xcresult && ./scripts/with-api.sh xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult"
 # The API surface is an input too: with a real backend in the loop, an API
 # response-shape change alters this lane's result. Without it here, a cached
 # green iOS pass survives a backend change that would break the app.
@@ -62,15 +66,6 @@ inputs = [
     "backend/selko/api/**",
 ]
 
-# Settings reads email folders through the backend API. Without it the app
-# renders a decode error instead of folder rows, and the UI tests fail with a
-# message that says nothing about the real cause. Declared so the lane fails
-# closed with a remedy instead of depending on whoever happened to start a
-# server by hand.
-[[lanes.ios.requires]]
-name = "Selko API on :8000"
-check = "curl -fsS --max-time 5 http://127.0.0.1:8000/health | grep -q '\"resolution\"'"
-remedy = "start it: uv run uvicorn selko.api.app:app --host 127.0.0.1 --port 8000"
 
 [lanes.android]
 gate = "mobile"
