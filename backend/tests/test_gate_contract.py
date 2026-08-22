@@ -265,3 +265,52 @@ def test_backend_test_extra_is_covered_by_the_root_extra_or_dev_group():
         "declared in backend's test extra but not in the root extra or dev group, "
         f"so `uv sync --extra test` will not install it: {sorted(uncovered)}"
     )
+
+
+def test_manifest_records_which_nodes_failed(tmp_path):
+    """A red gate must name the failing tests, not just count them.
+
+    The manifest recorded `passed_nodes` only, so diagnosing a failure meant
+    re-running and hoping to reproduce it -- which for an order-dependent or
+    network-dependent test is precisely what does not reproduce. Twice in this
+    project's history a red gate was investigated by re-running until it went
+    green, which is not diagnosis.
+    """
+    junit = tmp_path / "results.xml"
+    junit.write_text(
+        """<testsuite tests="3">
+  <testcase classname="tests.test_example.Example" name="test_ok" />
+  <testcase classname="tests.test_example.Example" name="test_broken">
+    <failure message="AssertionError: expected 1 got 2&#10;second line" />
+  </testcase>
+  <testcase classname="tests.test_example.Example" name="test_errored">
+    <error message="ConnectionError: refused" />
+  </testcase>
+</testsuite>
+"""
+    )
+    budget = tmp_path / "skip_budget.toml"
+    budget.write_text("")
+    manifest = tmp_path / "manifest.json"
+    subprocess.run(
+        [
+            "python3", str(MANIFEST_WRITER),
+            "--manifest", str(manifest),
+            "--skip-budget", str(budget),
+            "--status", "1",
+            "--git-sha", "abc",
+            "--seed", "123",
+            str(junit),
+        ],
+        capture_output=True, text=True, check=False,
+    )
+    data = json.loads(manifest.read_text())
+    failed = {entry["nodeid"]: entry for entry in data["pytest"]["failed_nodes"]}
+    assert set(failed) == {
+        "tests/test_example.py::Example::test_broken",
+        "tests/test_example.py::Example::test_errored",
+    }
+    assert failed["tests/test_example.py::Example::test_broken"]["kind"] == "failure"
+    assert failed["tests/test_example.py::Example::test_errored"]["kind"] == "error"
+    # First line only -- identifying, never a payload dump.
+    assert "second line" not in failed["tests/test_example.py::Example::test_broken"]["message"]
