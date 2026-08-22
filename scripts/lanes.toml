@@ -1,0 +1,61 @@
+# Verification lanes.
+#
+# Each lane declares the inputs it verifies and the command that verifies them.
+# The runner (scripts/verify-lanes.py) fingerprints the inputs, so a lane whose
+# inputs have not changed since it last passed is reused rather than re-run.
+# That is what makes a failed run cheap to retry: fix one lane, re-run, and only
+# that lane executes.
+#
+# `gate` decides what a lane blocks:
+#   prod   -> ships to a server; blocks a production deploy
+#   mobile -> ships through an app store; does NOT block a production deploy
+#
+# Conflating these is why a flaky iOS UI test once held up a backend deploy it
+# had no bearing on.
+
+[lanes.backend]
+gate = "prod"
+description = "Tier 1: migrations applied to local Postgres, unit + integration"
+command = "./scripts/verify.sh backend"
+inputs = [
+    "backend/**/*.py",
+    "cli/**/*.py",
+    "supabase/migrations/**/*.sql",
+    "pyproject.toml",
+    "uv.lock",
+]
+
+[lanes.schema-compat]
+gate = "prod"
+description = "Schema and code agree (R5 gate)"
+command = "./scripts/assert-schema-code-compat.sh --linked"
+inputs = ["supabase/migrations/**/*.sql", "backend/selko/**/*.py"]
+
+[lanes.migration-order]
+gate = "prod"
+description = "Migrations are monotonically ordered"
+command = "./scripts/check-migration-order.sh"
+inputs = ["supabase/migrations/**/*.sql"]
+
+[lanes.frontend]
+gate = "prod"
+description = "Web unit tests and svelte-check"
+command = "./scripts/verify.sh frontend"
+inputs = [
+    "frontend/src/**",
+    "frontend/package.json",
+    "frontend/tsconfig.json",
+    "frontend/tailwind.config.js",
+]
+
+[lanes.ios]
+gate = "mobile"
+description = "iOS unit + UI tests on iPhone 17 Pro"
+command = "rm -rf ios/TestResults.xcresult && xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult"
+inputs = ["ios/Selko/**", "ios/SelkoTests/**", "ios/SelkoUITests/**"]
+
+[lanes.android]
+gate = "mobile"
+description = "Android unit tests"
+command = "./gradlew -p android testDebugUnitTest"
+inputs = ["android/**/*.kt", "android/**/*.kts"]

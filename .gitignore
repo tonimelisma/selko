@@ -43,7 +43,11 @@ frontend/coverage/
 ios/TestResults.xcresult/
 frontend/test-results.json
 test-results/
-.verify/
+.verify/*
+# The ledger is the audit history that makes verification improvable over time
+# (which lanes cost what, which have ever caught a failure). Local-only history
+# is lost on a machine change, so this one file is tracked.
+!.verify/ledger.jsonl
 
 # MCP tool artifacts
 .playwright-mcp/
