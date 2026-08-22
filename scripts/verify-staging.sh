@@ -59,7 +59,6 @@ if [[ "${STAGING_REQUIRE_WORKERS:-1}" == "1" ]]; then
 fi
 
 echo "Tier 2: staging ref verified"
-uv run python -m cli.cli_seed_tokens --sync --provider gmail
 
 if ! gate_output=$(./scripts/assert-schema-code-compat.sh --linked 2>&1); then
   if ! grep -q "these migrations exist in the repo but not on the remote" <<<"$gate_output"; then
@@ -120,5 +119,13 @@ if [[ "${STAGING_REQUIRE_WORKERS:-1}" == "1" ]]; then
   ./scripts/drill-staging-workers.sh
   VERIFY_STAGING_DRILLS+=("staging-worker-drill" "state-ownership-acceptance-drill")
 fi
+
+# The Gmail token is a precondition for the real-Gmail staging tests only. It
+# was previously synced as the very first thing this script did, so an expired
+# test token failed the whole run before a single migration was pushed or a
+# single health assertion made -- and the reported cause was OAuth, not
+# whatever the change under test actually did. It is still a hard failure, just
+# attributed to the thing that needs it.
+uv run python -m cli.cli_seed_tokens --sync --provider gmail
 
 ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m staging -v --tb=short -n auto
