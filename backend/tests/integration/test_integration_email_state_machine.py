@@ -52,6 +52,11 @@ def _health_row(admin_client) -> dict:
     return data[0] if isinstance(data, list) else data
 
 
+# One reclaim per claim call, so the bound is "more calls than any plausible
+# number of expired rows another test can leave behind".
+_RECLAIM_ATTEMPTS = 25
+
+
 @pytest.mark.integration
 @pytest.mark.development
 class TestDurableEmailStateMachine:
@@ -82,15 +87,26 @@ class TestDurableEmailStateMachine:
             locked_until=_iso(-1),
         )
 
-        rows = admin_client.rpc("claim_unprocessed_email", {
-            "p_worker_id": "new-worker",
-            "p_lock_duration_seconds": 300,
-        }).execute().data or []
+        # claim_unprocessed_email reclaims exactly ONE expired lease per call,
+        # by design: recovery rides on the claim path instead of a sweeper. The
+        # RPC is global, so any expired row another test left behind consumes a
+        # call before this one is reached. Asserting after a single call made
+        # the test pass or fail on the random ordering seed -- seed 1012 broke
+        # it while 4043 did not. Drive the claim until this row settles instead.
+        for _ in range(_RECLAIM_ATTEMPTS):
+            rows = admin_client.rpc("claim_unprocessed_email", {
+                "p_worker_id": "new-worker",
+                "p_lock_duration_seconds": 300,
+            }).execute().data or []
+            assert not any(str(row["id"]) == str(email["id"]) for row in rows), (
+                "an expired lease at the attempt limit must never be re-claimed"
+            )
+            result = admin_client.table("emails").select(
+                "processing_status,dead_letter_reason,locked_by,locked_until"
+            ).eq("id", email["id"]).single().execute().data
+            if result["processing_status"] != "processing":
+                break
 
-        assert not any(str(row["id"]) == str(email["id"]) for row in rows)
-        result = admin_client.table("emails").select(
-            "processing_status,dead_letter_reason,locked_by,locked_until"
-        ).eq("id", email["id"]).single().execute().data
         assert result["processing_status"] == "failed"
         assert result["dead_letter_reason"] == "lease_expired_at_limit"
         assert result["locked_by"] is None
