@@ -17,6 +17,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## MANDATORY: The verification process
+
+This is the whole loop. Do not invent a different one per task.
+
+1. **Run the lanes. Never hand-roll verification.**
+   `./scripts/verify-lanes.py --gate prod` before any production deploy.
+   `--gate mobile` for iOS/Android. Lanes cache on input content, so a re-run
+   after a fix executes only what changed.
+2. **Read the printed table, not your memory of what you ran.** It states each
+   lane's status, duration, and whether it executed or was reused.
+3. **Red or BLOCKED means stop.** Fix, re-run, repeat. A lane that cannot run
+   is red — never "probably fine".
+4. **Report the table plus a recommendation.** Never ask "should I deploy?"
+   with no evidence attached.
+5. **After deploying, fill in `docs/deploy-log/<date>-<sha>.md`.** T+0 and T+15m
+   before you report done; T+24h next day.
+
+### Long-running commands: one at a time, stop what you start
+
+These rules exist because all three were broken in one session: a `uvicorn`
+left running for 1h47m, two `xcodebuild` runs driving the same simulator
+simultaneously, and an exit code read from `echo` instead of the command.
+
+- **A background task is finished when the harness reports it exited** — not
+  when its output looks complete. `xcodebuild` prints test results and then
+  stays alive for up to 600s collecting simulator diagnostics.
+- **Never start a command that shares a resource** (the simulator, port 8000,
+  the local database) **while another holds it.** Check with
+  `ps -eo pid,etime,command | grep xcodebuild`. `verify-lanes.py` enforces this
+  with a per-lane lock and reports `BUSY` rather than running anyway.
+- **Stop every process you start**, in the same session, as soon as its
+  consumer finishes. Never kill a process you did not start — it may be the
+  operator's.
+- **Never end a command with `; echo "exit=$?"`.** That reports `echo`'s status.
+  Let the command's own exit code propagate.
+- **Prefer a declared precondition over a hand-started dependency.** If a lane
+  needs a service, declare it in `scripts/lanes.toml` under `[[lanes.X.requires]]`
+  so it fails closed with a remedy instead of passing only on the machine where
+  someone happened to start it.
+
+### Never trust a signal that cannot fail
+
+Every serious defect in this codebase came from a green signal that meant less
+than it looked like. A `/health` probe satisfied by *any* server on the port. A
+UI test whose assertions sat behind `guard ... else { return }`. An initializer
+parameter accepted and discarded. Before trusting a gate, ask: **if this were
+broken right now, would this check actually go red?** If not, it is decoration.
+
+---
+
 ## MANDATORY: Discovery Before Implementation
 
 Every non-trivial task starts with read-only research and discovery in the main
