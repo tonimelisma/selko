@@ -83,6 +83,31 @@ echo "Worker ready against staging (pid ${WORKER_PID})"
 # event than the one it created, and test_07 claimed nothing at all because the
 # worker got there first. Both looked like fencing failures and were races
 # against my own worker.
+# Drain before stopping. SIGTERM mid-run leaves the sync run `running` and the
+# lease held. On a machine with a live worker that self-heals -- the next
+# claim_due_email_sync abandons the stale run (test_08 proves it). Staging has
+# no worker by design (D4), so nothing ever claims, the run stays `running`
+# forever, and health_work_state degrades permanently:
+#
+#   stale_sync_runs: 1, open_incidents: 1  ->  /health "degraded"
+#
+# which then fails Tier 2's own root assertion. A drill that breaks the
+# environment it verifies is worse than no drill.
+instance_id="$(sed -n 's/.*instance=\([A-Za-z0-9-]*\).*/\1/p' "$WORKER_LOG" | head -1)"
+[[ -n "$instance_id" ]] || fail "could not determine the worker instance id from its log"
+echo "Draining worker ${instance_id} before stopping it"
+drained=0
+for _ in $(seq 1 "${DRILL_DRAIN_ATTEMPTS:-60}"); do
+  held="$(uv run python scripts/_drill_lease_probe.py "$instance_id" 2>/dev/null | sed -n 's/^held=//p')"
+  if [[ "$held" == "0" ]]; then
+    drained=1
+    break
+  fi
+  sleep 3
+done
+[[ "$drained" == "1" ]] || fail "worker still holds leases after draining; refusing to strand them on staging"
+echo "Worker holds no leases"
+
 echo "Stopping the worker before the drills (it competes for the same claims)"
 kill -TERM "$WORKER_PID" 2>/dev/null || :
 waited=0
@@ -95,6 +120,11 @@ grep -q "unfinished leases remain reclaimable" "$WORKER_LOG" \
   || fail "worker did not shut down cleanly; leases may still be held"
 WORKER_PID=""
 echo "Worker stopped cleanly; leases released"
+
+# Assert the environment is no worse than we found it. A drill that degrades
+# staging has to say so rather than hand the next run a red root assertion.
+held_after="$(uv run python scripts/_drill_lease_probe.py "$instance_id" 2>/dev/null | sed -n 's/^held=//p')"
+[[ "$held_after" == "0" ]] || fail "worker left ${held_after} lease/run rows behind on staging"
 
 echo "Running the drill suite against staging"
 RUN_ACCEPTANCE_DRILL=1 ENVIRONMENT=staging \
