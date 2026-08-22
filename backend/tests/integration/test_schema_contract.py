@@ -48,6 +48,20 @@ TRIGGER_ONLY_FUNCTIONS = {
 }
 
 
+# The only SECURITY DEFINER functions a signed-in user may execute. Each entry
+# records why exposing it is safe: the function must derive the acting user from
+# auth.uid(), or reject a p_user_id that does not match it. Everything else in
+# public is worker coordination and belongs to service_role alone.
+#
+# anon is absent by design. This product has no unauthenticated RPC.
+AUTHENTICATED_EXECUTABLE_FUNCTIONS: dict[str, str] = {
+    "reprocess_email": "raises unless auth.uid() = p_user_id or caller is service_role",
+    "request_email_sync_now": "returns false unless the integration belongs to auth.uid()",
+    "set_email_folder_preference": "updates only rows whose user_id = auth.uid()",
+    "set_event_review_status": "raises unless auth.uid() = p_user_id or caller is service_role",
+}
+
+
 # Every enumerated CHECK domain in public is pinned here. Adding a value is a
 # one-line edit, while removing one requires checking every writer first.
 EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
@@ -587,20 +601,87 @@ async def test_every_public_table_has_rls_enabled(pg_pool):
 
 
 @pytest.mark.asyncio
-async def test_security_definer_functions_are_not_executable_by_public(pg_pool):
+async def test_security_definer_functions_are_not_executable_by_api_roles(pg_pool):
+    """The roles PostgREST authenticates as may execute only the contract set.
+
+    The predecessor of this test asserted ``has_function_privilege('public',
+    ...)``. ``public`` is the pseudo-role. Supabase installs ``ALTER DEFAULT
+    PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon,
+    authenticated``, so every function is granted to those roles *directly* and
+    a revoke aimed at the pseudo-role changes nothing. The old assertion passed
+    in every environment while 56 SECURITY DEFINER functions -- including
+    ``commit_email_extraction`` and ``claim_unprocessed_email`` -- were callable
+    with the published anon key.
+    """
     rows = await pg_pool.fetch(
         """
         SELECT p.proname AS name,
-               pg_get_function_identity_arguments(p.oid) AS identity_arguments
+               pg_get_function_identity_arguments(p.oid) AS identity_arguments,
+               has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_executes,
+               has_function_privilege('authenticated', p.oid, 'EXECUTE')
+                   AS authenticated_executes
         FROM pg_proc AS p
         JOIN pg_namespace AS n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'public'
-          AND p.prosecdef
-          AND has_function_privilege('public', p.oid, 'EXECUTE')
+        WHERE n.nspname = 'public' AND p.prosecdef
         ORDER BY p.proname, identity_arguments
         """
     )
-    assert not rows, [f"{row['name']}({row['identity_arguments']})" for row in rows]
+    assert rows, "no SECURITY DEFINER functions found; the query is wrong"
+
+    anon_executable = [
+        f"{row['name']}({row['identity_arguments']})"
+        for row in rows
+        if row["anon_executes"]
+    ]
+    assert not anon_executable, (
+        "anon may execute SECURITY DEFINER functions; there is no unauthenticated "
+        f"RPC in this product: {anon_executable}"
+    )
+
+    authenticated_executable = {
+        row["name"] for row in rows if row["authenticated_executes"]
+    }
+    expected = set(AUTHENTICATED_EXECUTABLE_FUNCTIONS)
+    assert authenticated_executable == expected, (
+        f"unexpected={sorted(authenticated_executable - expected)}, "
+        f"missing={sorted(expected - authenticated_executable)}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_default_function_privileges_do_not_grant_api_roles(pg_pool):
+    """Close the hole at the source, not one function at a time.
+
+    Revoking each function individually is a treadmill: the next migration that
+    does ``DROP FUNCTION`` + ``CREATE`` silently re-grants from the default ACL.
+    This asserts the default itself is closed, so a new function is private on
+    creation.
+    """
+    rows = await pg_pool.fetch(
+        """
+        SELECT defaclrole::regrole::text AS grantor, defaclacl::text AS acl
+        FROM pg_default_acl AS d
+        WHERE d.defaclobjtype = 'f'
+          AND d.defaclnamespace = 'public'::regnamespace
+          -- Only grantors that actually own SECURITY DEFINER functions here can
+          -- reopen the hole; supabase_admin's default applies to objects it
+          -- creates in its own schemas and is not ours to alter.
+          AND EXISTS (
+              SELECT 1
+              FROM pg_proc AS p
+              JOIN pg_namespace AS n ON n.oid = p.pronamespace
+              WHERE n.nspname = 'public' AND p.prosecdef AND p.proowner = d.defaclrole
+          )
+        """
+    )
+    offenders = [
+        f"{row['grantor']}: {row['acl']}"
+        for row in rows
+        if "anon=" in (row["acl"] or "") or "authenticated=" in (row["acl"] or "")
+    ]
+    assert not offenders, (
+        f"default privileges still grant EXECUTE to the API roles: {offenders}"
+    )
 
 
 @pytest.mark.asyncio

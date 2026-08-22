@@ -113,6 +113,31 @@ async def pg_pool(development_config):
     await pool.close()
 
 
+@pytest.fixture
+async def staging_pg_pool(staging_config):
+    """Real asyncpg session-pooler pool against staging Supabase.
+
+    Some properties are only observable on the hosted platform. The default ACL
+    for functions in ``public`` differs between local Supabase and a hosted
+    project, so a grant posture can be correct locally and wide open in staging
+    and production -- which is exactly what happened.
+
+    Fails rather than skips when ``SUPABASE_DB_URL`` is absent.
+    ``scripts/verify-staging.sh`` already requires it, and a skip here would
+    reintroduce the success-by-refusal that V1 deleted.
+    """
+    from selko.services.pg import create_pool
+
+    if not getattr(staging_config, "supabase_db_url", None):
+        raise AssertionError(
+            "SUPABASE_DB_URL is required to verify the staging grant posture; "
+            "see scripts/verify-staging.sh"
+        )
+    pool = await create_pool(staging_config)
+    yield pool
+    await pool.close()
+
+
 @pytest.fixture(scope="function")
 def config(request, development_config, staging_config):
     """Get config based on test markers.
