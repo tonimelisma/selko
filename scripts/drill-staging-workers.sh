@@ -73,6 +73,29 @@ grep -q "Supavisor session pooler connected" "$WORKER_LOG" \
   || fail "worker started without the session pooler; the drill would prove nothing"
 echo "Worker ready against staging (pid ${WORKER_PID})"
 
+# That is the whole of what a LIVE worker proves here: selko.worker_app boots
+# against staging over the Supavisor session pooler, with LISTEN/NOTIFY, and
+# reaches a healthy runtime. Stop it before the drills run.
+#
+# The drill suite drives the claim/heartbeat/complete RPCs itself, and a live
+# worker is a competing claimer for exactly the same rows. Left running, it
+# steals the work the drills are about to claim: test_05 claimed a different
+# event than the one it created, and test_07 claimed nothing at all because the
+# worker got there first. Both looked like fencing failures and were races
+# against my own worker.
+echo "Stopping the worker before the drills (it competes for the same claims)"
+kill -TERM "$WORKER_PID" 2>/dev/null || :
+waited=0
+while kill -0 "$WORKER_PID" 2>/dev/null && [[ "$waited" -lt 30 ]]; do
+  sleep 1
+  waited=$((waited + 1))
+done
+kill -0 "$WORKER_PID" 2>/dev/null && fail "worker did not stop; refusing to race the drills"
+grep -q "unfinished leases remain reclaimable" "$WORKER_LOG" \
+  || fail "worker did not shut down cleanly; leases may still be held"
+WORKER_PID=""
+echo "Worker stopped cleanly; leases released"
+
 echo "Running the drill suite against staging"
 RUN_ACCEPTANCE_DRILL=1 ENVIRONMENT=staging \
   uv run pytest backend/tests/drills/ -m "staging and drill" -v --tb=short
