@@ -189,3 +189,41 @@ def test_sourcing_the_gate_does_not_run_it(tmp_path):
     assert "sourced" in result.stdout
     assert "Usage:" not in result.stdout
     assert not marker.exists()
+
+
+WORKFLOW = ROOT / ".github" / "workflows" / "test.yml"
+
+# A shell line that is really a misplaced YAML env entry: NAME: ${{ ... }}
+_STRAY_ENV_IN_SHELL = re.compile(r"^\s*[A-Z][A-Z0-9_]*:\s*\$\{\{")
+
+
+def test_no_workflow_step_has_env_entries_stranded_inside_its_script():
+    """A step's env keys must not fall into the previous step's run: block.
+
+    This is not hypothetical. A step inserted mid-``env:`` pushed four secret
+    entries into the preceding step's block scalar, where they ran as shell:
+
+        line 8: TEST_USER_EMAIL:: command not found   (exit 127)
+
+    ``yaml.safe_load`` accepted the file without complaint, because misplaced
+    lines inside a block scalar are valid YAML. A parse check proves the file
+    is YAML; it says nothing about whether the structure means what was
+    intended. This asserts the structure.
+    """
+    import yaml
+
+    workflow = yaml.safe_load(WORKFLOW.read_text())
+    offenders = []
+    for job_name, job in (workflow.get("jobs") or {}).items():
+        for step in job.get("steps") or []:
+            script = step.get("run")
+            if not isinstance(script, str):
+                continue
+            for line in script.splitlines():
+                if _STRAY_ENV_IN_SHELL.match(line):
+                    offenders.append(f"{job_name} / {step.get('name')}: {line.strip()}")
+    assert not offenders, (
+        "env entries stranded inside a run: block — they will execute as shell: "
+        f"{offenders}"
+    )
+
