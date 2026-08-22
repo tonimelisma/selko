@@ -71,4 +71,10 @@ final class MockAuthService: AuthServiceProtocol, @unchecked Sendable {
     func setAuthState(_ state: AuthState) {
         authStateSubject.send(state)
     }
+
+    var applyExternalSessionCalled = false
+
+    func applyExternalSession(accessToken: String, refreshToken: String) async throws {
+        applyExternalSessionCalled = true
+    }
 }
