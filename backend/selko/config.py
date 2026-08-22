@@ -119,6 +119,9 @@ class Config:
     email_reconcile_weekly_days: int = 90
     email_reconcile_max_identities: int = 2000
     email_health_warning_seconds: int = 1800
+    # Safety-net floor for incident evaluation, not a schedule. See
+    # IngestionRuntime._health_floor.
+    email_health_floor_seconds: int = 900
     email_health_critical_seconds: int = 3600
     email_lease_seconds: int = 900
     email_sync_max_run_seconds: int = 900
@@ -525,6 +528,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_reconcile_weekly_days=int(getenv("EMAIL_RECONCILE_WEEKLY_DAYS", "90")),
         email_reconcile_max_identities=int(getenv("EMAIL_RECONCILE_MAX_IDENTITIES", "2000")),
         email_health_warning_seconds=int(getenv("EMAIL_HEALTH_WARNING_SECONDS", "1800")),
+        email_health_floor_seconds=int(getenv("EMAIL_HEALTH_FLOOR_SECONDS", "900")),
         email_health_critical_seconds=int(getenv("EMAIL_HEALTH_CRITICAL_SECONDS", "3600")),
         email_lease_seconds=int(getenv("EMAIL_LEASE_SECONDS", "900")),
         email_sync_max_run_seconds=int(getenv("EMAIL_SYNC_MAX_RUN_SECONDS", "900")),
