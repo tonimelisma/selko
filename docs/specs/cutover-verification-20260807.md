@@ -49,6 +49,25 @@ environment (the checked-in `.env.production` says `false`; Render is
 authoritative and they disagree). Do not flip flags via Render env alone.
 Follow the ordered cutover below.
 
+## Extraction decision intent — migration and code must land together
+
+`20260831000001_extraction_decision_intent.sql` makes
+`commit_email_extraction` require an explicit `intent` on every decision, and
+`save_extracted_events` supplies one. **They are a matched pair**, and the
+ordering rule below (migrations first, code second) is what makes the pair
+safe: the new function refuses a decision the *old* code would send, so between
+the migration and the code deploy, email extraction fails closed rather than
+auto-applying. That is the intended failure direction — a stalled extraction is
+recoverable, a silent write to a user's Google Calendar is not — but it does
+mean the gap should be short, and `ENABLE_BACKGROUND_PROCESSING` should stay
+off across it if the gap will not be short.
+
+Production currently runs code `7768cfb6` (an ancestor of #332) against schema
+`20260822000001`, so production has **never** run the defective combination:
+its Changes lane still works. Staging, at `20260827000002`, is also pre-S3.
+Nothing needs repairing in either environment — this batch must simply not ship
+the defect.
+
 ## Ordered cutover (must be migrations first, code second, flag last)
 
 Ordering constraint (migrations first, code second, flag last) carried from the
@@ -59,7 +78,7 @@ egress-scheduling and polling-v2 work:
 3. **Staging deploy (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push` (dry-run then push). Render deploys on main push. `gh workflow run test.yml` to staging is a bonus only — never required.
 4. **Staging drills:** `ENVIRONMENT=staging ./scripts/drill-staging-workers.sh` — starts `selko.worker_app` against staging over the Supavisor session pooler, drains it, then runs the ten-step acceptance drill. (`drill-lease-recovery.sh` is deleted: it ran its delegate with `|| true` and echoed `PASSED` regardless.)
 4b. **Faithful cutover rehearsal (required, and re-run on the day):** `uv run python scripts/rehearse_cutover.py --production-url <read-only> --faithful`. Replays every pending migration against a redacted clone of production's real rows. Production data changes; a rehearsal from last week is evidence about last week.
-5. **Prod migrations (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref khahcozfbnpykspvatrg && supabase db push --dry-run` (**12 pending**, review them) then `supabase db push`. Take the `pg_dump` from the Rollback section FIRST — it is the only restore point that will exist.
+5. **Prod migrations (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref khahcozfbnpykspvatrg && supabase db push --dry-run` (review every pending migration; the count has grown past the 12 recorded here) then `supabase db push`. Take the `pg_dump` from the Rollback section FIRST — it is the only restore point that will exist.
 6. **Prod code:** after explicit approval and the local production migration gate, run `gh workflow run test.yml -f staging_action=none -f deploy_production=true`. The dependency-free production job owns both secret Render hooks. Do not wait for unrelated test jobs after that deploy job succeeds.
 7. **Flag:** set `ENABLE_BACKGROUND_PROCESSING=true` only after steps 5-6 and health below.
 

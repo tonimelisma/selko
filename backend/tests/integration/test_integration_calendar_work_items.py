@@ -77,7 +77,11 @@ async def test_enqueue_claim_complete_is_item_fenced(
             "title": "S2 event",
             "start_datetime": "2026-09-01T14:00:00Z",
             "end_datetime": "2026-09-01T15:00:00Z",
-            "review_status": "pending_review",
+            # Calendar work is queued for an event the user has approved.
+            # Queueing no longer promotes the event itself -- events.review_status
+            # owns the user decision, so the caller states it (see
+            # test_integration_extraction_intent.py).
+            "review_status": "active",
         }
     ).execute().data[0]["id"]
 
