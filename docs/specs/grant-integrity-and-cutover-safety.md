@@ -16,7 +16,9 @@ drills = ["staging-worker-drill"]
 
 # Grant Integrity and Cutover Safety
 
-**Status:** Planned. Nothing implemented. No increment below has started.
+**Status is not authored here.** `docs/specs/README.md` derives it from
+evidence manifests (V3). What follows in §10 is the recorded evidence §9 asks
+for — commands, timestamps and content-free counts — not a status claim.
 
 **Written:** 2026-08-21, after reviewing every change between `eb41562c` (the
 `executable-truth` plan) and `24e770c2` (HEAD, V8), querying the live grant
@@ -519,3 +521,87 @@ recorded command:
 
 Record commands, timestamps, safe counts and HTTP responses. Never record
 production content, tokens, provider ids, subjects, addresses or raw errors.
+
+---
+
+## 10. Evidence record
+
+Commands and results, 2026-08-21/22. Counts only; no production content.
+
+**W1 — grant integrity.** `20260830000001` + `20260830000003`. Measured on the
+live staging project after the batch reached it:
+
+```sql
+SELECT count(*) FILTER (WHERE has_function_privilege('anon', p.oid,'EXECUTE'))
+FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE n.nspname='public' AND p.prosecdef;
+```
+
+| | before | after |
+|---|---:|---:|
+| staging, anon-executable | 56 / 56 | **0 / 59** |
+| staging, authenticated-executable | 56 | **4** (the contract set) |
+
+Production was 45 / 45 before and is unchanged — it has not been deployed.
+
+Two findings that only execution produced: the local Supabase default ACL for
+functions in `public` is `{postgres=X/postgres}` while the hosted one is
+`{postgres=X,anon=X,authenticated=X,service_role=X}`, so no local gate could
+ever have failed on this; and PostgreSQL's own `GRANT EXECUTE … TO PUBLIC`
+default left three broadcast trigger functions reachable after the first
+revoke pass, which is why the revoke covers `PUBLIC` as well.
+
+**W2 — bounded gate.** Verified against a genuinely wedged daemon
+(`EXT4-fs (vda1) … error -5`): `./scripts/verify.sh backend` exited 1 in 16 s
+where it previously never returned.
+
+**W3 — collapse finished.** Executing `20260829000001` for the first time
+found: `claim_calendar_work_item` still writing the dropped column, so every
+calendar claim would have failed; `complete_calendar_work` converting every
+unsync into a cancellation; the `enqueue_calendar_work` wrapper passing a
+dropped argument; and a backfill covering one of five delivery-bearing
+statuses.
+
+**W4 — health floor.** Idle runtime evaluates once per floor interval; a busy
+one never evaluates on the floor. Both asserted, because the first alone passes
+for an unconditional timer.
+
+**W5 — staging worker drill (D4).**
+
+```
+ENVIRONMENT=staging ./scripts/drill-staging-workers.sh   → 10 passed, exit 0
+```
+
+`selko.worker_app` booted against staging over the Supavisor session pooler
+(port 5432, LISTEN accepted), was stopped cleanly, and the ten-step acceptance
+drill then ran green against real staging Postgres. Progression across fixes:
+8/2 → 9/1 → 10/0. The deployed staging service still runs with background
+processing off, by design.
+
+**W6 — cutover rehearsal.**
+
+```
+uv run python scripts/rehearse_cutover.py \
+  --shape "rejected=182,synced=71,pending_review=25,pending_change=11,sync_failed=3" \
+  --production-version 20260822000001
+```
+
+Replays 97 migrations to production's state, seeds production's content-free
+status distribution, applies the 9 pending migrations. It found the blocker
+this plan was written too late to have prevented: `20260826000001` narrows the
+status domain to exclude `pending_change` and never migrates the rows holding
+it. Production has 11. The migration would have failed there, before any later
+migration in the batch could run — and staging applied it cleanly only because
+staging has no such rows.
+
+**Tier 1.** `./scripts/verify.sh backend` — 1359 passed, 0 failed, 55 skipped.
+`main` at `24e770c2` failed its own gate with 18 failures; the same gate on the
+merged result is green, verified across four random-ordering seeds after three
+order-dependent assertions were removed.
+
+**Not done.** Production deployment. Production remains 9 migrations and ~20
+commits behind, and the cutover has a hard breakage window: the running code
+writes `events.status` in twelve places, so it breaks the moment the migration
+lands and stays broken until the code deploy completes. The Supabase
+organisation is on the free plan — no PITR, no automated backups — so a
+`pg_dump` immediately before is the only rollback that will exist.
