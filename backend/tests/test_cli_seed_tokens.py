@@ -122,7 +122,7 @@ def test_sync_dev_staging_copies_working_to_stale(monkeypatch):
     # mock get_integration_by_provider to return fresh for dev, stale for staging
     import cli_seed_tokens as m
     calls = {}
-    def fake_get(client, provider):
+    def fake_get(client, provider, test_user_email=None):
         # client is mock with _env attr we set
         return fresh if getattr(client, "_env", "") == "dev" else stale
     monkeypatch.setattr(m, "get_integration_by_provider", fake_get)
@@ -153,7 +153,7 @@ def test_sync_dev_staging_copies_working_to_stale(monkeypatch):
     assert seeded["args"] == ("development", "staging", "gmail")
 
     # flip: staging fresh, dev stale
-    def fake_get2(client, provider):
+    def fake_get2(client, provider, test_user_email=None):
         return stale if getattr(client, "_env", "") == "dev" else fresh
     monkeypatch.setattr(m, "get_integration_by_provider", fake_get2)
     seeded.clear()
@@ -162,7 +162,7 @@ def test_sync_dev_staging_copies_working_to_stale(monkeypatch):
     assert seeded["args"] == ("staging", "development", "gmail")
 
     # both fresh -> no-op
-    def fake_get3(client, provider):
+    def fake_get3(client, provider, test_user_email=None):
         return fresh
     monkeypatch.setattr(m, "get_integration_by_provider", fake_get3)
     seeded.clear()
@@ -171,7 +171,7 @@ def test_sync_dev_staging_copies_working_to_stale(monkeypatch):
     assert seeded == {}
 
     # both stale -> error
-    def fake_get4(client, provider):
+    def fake_get4(client, provider, test_user_email=None):
         return stale
     monkeypatch.setattr(m, "get_integration_by_provider", fake_get4)
     import pytest as _pytest
@@ -186,3 +186,84 @@ def test_sync_cli_requires_provider():
     with _pytest.raises(SystemExit):
         cli_seed_tokens.main()
 
+
+
+class TestIntegrationSelectionIsScopedToTheTestUser:
+    """Selecting an integration by provider alone destroyed a live credential.
+
+    The screenshot fixture seeds a gmail integration with an active status and
+    an expiry a month out. `get_integration_by_provider` selected across ALL
+    users, preferring active + most-recently-updated, so the fixture won that
+    contest against the real test account -- and `--sync` copied the FIXTURE's
+    fake token over staging's real one, logging "Successfully seeded" while
+    destroying a working grant.
+
+    Status and recency cannot tell two accounts apart. Only identity can.
+    """
+
+    def _client(self, users, integrations):
+        from unittest.mock import MagicMock
+
+        client = MagicMock()
+
+        def table(name):
+            builder = MagicMock()
+            rows = users if name == "users" else integrations
+            state = {"user_id": None}
+
+            def eq(column, value):
+                if column == "user_id":
+                    state["user_id"] = value
+                return builder
+
+            def execute():
+                data = rows
+                if name == "integrations" and state["user_id"] is not None:
+                    data = [r for r in rows if r["user_id"] == state["user_id"]]
+                elif name == "users":
+                    data = rows
+                result = MagicMock()
+                result.data = data
+                return result
+
+            builder.select.return_value = builder
+            builder.eq.side_effect = eq
+            builder.order.return_value = builder
+            builder.execute.side_effect = execute
+            return builder
+
+        client.table.side_effect = table
+        return client
+
+    def test_fixture_integration_is_never_chosen_over_the_test_user(self):
+        from cli_seed_tokens import get_integration_by_provider
+
+        users = [{"id": "real-user"}]
+        integrations = [
+            # The fixture: newer, active, plausible expiry. It must lose.
+            {"user_id": "fixture-user", "provider": "gmail", "status": "active",
+             "provider_email": "sarah.johnson@gmail.com", "refresh_token": "fake",
+             "updated_at": "2026-08-22T05:00:00Z"},
+            {"user_id": "real-user", "provider": "gmail", "status": "active",
+             "provider_email": "selkotesting@gmail.com", "refresh_token": "real",
+             "updated_at": "2026-08-21T00:00:00Z"},
+        ]
+        client = self._client(users, integrations)
+
+        chosen = get_integration_by_provider(client, "gmail", "selkotesting@gmail.com")
+        assert chosen is not None
+        assert chosen["provider_email"] == "selkotesting@gmail.com", (
+            "picked the screenshot fixture over the real test account"
+        )
+
+    def test_missing_test_user_refuses_rather_than_guessing(self):
+        from cli_seed_tokens import get_integration_by_provider
+
+        integrations = [
+            {"user_id": "fixture-user", "provider": "gmail", "status": "active",
+             "provider_email": "sarah.johnson@gmail.com", "refresh_token": "fake",
+             "updated_at": "2026-08-22T05:00:00Z"},
+        ]
+        client = self._client([], integrations)
+
+        assert get_integration_by_provider(client, "gmail", "nobody@selko.local") is None
