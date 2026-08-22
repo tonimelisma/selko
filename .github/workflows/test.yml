@@ -169,20 +169,41 @@ jobs:
       - name: Install verifier dependencies
         run: uv sync --extra test
 
-      - name: Verify the deployed staging revision and worker drill
+      # D4: the worker drill runs selko.worker_app from the operator's machine
+      # against staging Supabase. It is deliberately NOT run here, and this job
+      # must not imply otherwise -- see the coverage note step below.
+      #
+      # It also cannot run here: STAGING_SUPABASE_DB_URL is not configured as a
+      # repository secret, so every SUPABASE_DB_URL below resolves to the empty
+      # string. That is why this job began failing once W5 made the drill the
+      # default -- a correct diff plus a missing value, which is the exact
+      # failure mode CLAUDE.md's "configuration is part of the change" rule is
+      # about.
+      - name: Deploy staging and verify the deployed revision
         run: ./scripts/verify-staging.sh
         env:
           ENVIRONMENT: staging
           STAGING_RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}
           STAGING_API_BASE_URL: https://selko.onrender.com
           STAGING_APPLY_MIGRATIONS: "1"
-          STAGING_REQUIRE_WORKERS: "1"
+          STAGING_REQUIRE_WORKERS: "0"
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
           SUPABASE_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: State what this job did not verify
+        if: always()
+        run: |
+          echo "Verified here: staging migrations applied, deploy hook fired,"
+          echo "  /health served the pushed revision, root health assertion."
+          echo "NOT verified here: worker leases, generation fencing, expiry"
+          echo "  reclaim, LISTEN/NOTIFY. Those need a live worker on the"
+          echo "  Supavisor session pooler and are proven by"
+          echo "  ./scripts/drill-staging-workers.sh from the operator's"
+          echo "  machine (plan 6, D4). A green tick here is not a Tier 2 pass."
           TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
