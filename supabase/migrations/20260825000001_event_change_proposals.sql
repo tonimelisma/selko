@@ -497,8 +497,32 @@ GRANT EXECUTE ON FUNCTION public.reject_pending_event_change(uuid, uuid, uuid, b
 
 COMMENT ON TABLE public.event_change_proposals IS 'S3 authoritative lifecycle for event update and cancellation review proposals';
 
+-- Migrate the legacy audit vocabulary BEFORE narrowing the domain.
+--
+-- The repair tool's action was renamed 'mark_source_resolved' ->
+-- 'resolve_proposal' without migrating the rows already written under the old
+-- name. Production holds one such row; staging and local hold none. So this
+-- migration applied cleanly everywhere it had ever been run, and failed on
+-- production at statement 51 during the real cutover:
+--
+--   check constraint "event_repair_audit_action_check" of relation
+--   "event_repair_audit" is violated by some row (SQLSTATE 23514)
+--
+-- Exactly the hazard CLAUDE.md names: never narrow a CHECK constraint without
+-- checking its writers -- including the writers that no longer exist.
+--
+-- The row is an audit record of a real operation, so it is retained under the
+-- current name for that same operation rather than deleted.
+-- Drop first, then migrate, then re-add. The OLD constraint enumerates
+-- 'mark_source_resolved' and not 'resolve_proposal', so updating the row while
+-- it is still in force fails on the old domain instead of the new one.
 ALTER TABLE public.event_repair_audit
     DROP CONSTRAINT IF EXISTS event_repair_audit_action_check;
+
+UPDATE public.event_repair_audit
+SET action = 'resolve_proposal'
+WHERE action = 'mark_source_resolved';
+
 ALTER TABLE public.event_repair_audit
     ADD CONSTRAINT event_repair_audit_action_check CHECK (action IN (
         'merge_duplicate_group', 'merge_source', 'cancel_event', 'resolve_proposal'
