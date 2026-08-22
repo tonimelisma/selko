@@ -476,7 +476,7 @@ class TestFindMatchingEventGCal:
         mock_result.data = []
         mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
         # No existing Selko row already linked to this GCal event
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.not_.in_.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
 
         event_data = {
             "title": "Team Meeting",
@@ -628,7 +628,7 @@ class TestFindMatchingEventGCal:
             "status": "synced",
             "google_calendar_event_id": "gcal-abc",
         }
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.not_.in_.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
             data=[existing_row]
         )
 

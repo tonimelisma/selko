@@ -28,6 +28,7 @@ async def test_commit_writes_identity_hints_in_same_transaction(pg_pool, temp_us
     decision = {
         "action": "create",
         "event_id": None,
+        "intent": "no_change",
         "window_start": "2035-01-02T00:00:00Z",
         "window_end": "2035-01-03T00:00:00Z",
         "expected_fingerprint": md5(b"").hexdigest(),
@@ -45,6 +46,7 @@ async def test_commit_writes_identity_hints_in_same_transaction(pg_pool, temp_us
             "title": "C2 identity event",
             "start_datetime": "2035-01-02T10:00:00Z",
             "end_datetime": "2035-01-02T11:00:00Z",
+            "review_status": "pending_review",
         },
         "source": {"email_id": str(email_id), "extracted_data": {}},
     }
@@ -103,6 +105,7 @@ async def test_hint_lookup_is_part_of_the_commit_fence(pg_pool, temp_user):
     decision = {
         "action": "create",
         "event_id": None,
+        "intent": "no_change",
         "window_start": "2036-02-03T00:00:00Z",
         "window_end": "2036-02-04T00:00:00Z",
         "expected_fingerprint": md5(b"").hexdigest(),
@@ -113,6 +116,7 @@ async def test_hint_lookup_is_part_of_the_commit_fence(pg_pool, temp_user):
             "title": "must be fenced",
             "start_datetime": "2036-02-03T10:00:00Z",
             "end_datetime": "2036-02-03T11:00:00Z",
+            "review_status": "pending_review",
         },
         "source": {"email_id": str(email_id), "extracted_data": {}},
     }

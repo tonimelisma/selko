@@ -126,11 +126,13 @@ def do_seed(config):
         day_start = start.replace(hour=0, minute=0, second=0, microsecond=0)
         return day_start.isoformat(), (day_start + timedelta(days=1)).isoformat()
 
-    def decision_envelope(action, fields, source, *, event_id=None, expected_fingerprint=None, window=None):
+    def decision_envelope(action, fields, source, *, intent, event_id=None,
+                          expected_fingerprint=None, window=None):
         window = window or day_window(fields["start_datetime"])
         return {
             "action": action,
             "event_id": event_id,
+            "intent": intent,
             "fields": fields,
             "window_start": window[0],
             "window_end": window[1],
@@ -296,6 +298,13 @@ def do_seed(config):
     for title, provider_message_id, day, start_hour, end_hour, all_day, location, description, status, importance in event_specs:
         start_datetime = make_dt(day, start_hour)
         end_datetime = make_dt(day, end_hour)
+        # The spec's `status` is the *delivery* state step 6 produces through
+        # the work queue. events.status itself was deleted by 20260829000001, and
+        # the commit RPC no longer infers a review lane from anything -- so the
+        # lane this implies is stated outright.
+        review_status = (
+            status if status in ("pending_review", "rejected", "cancelled") else "active"
+        )
         fields = {
             "title": title,
             "start_datetime": start_datetime,
@@ -303,7 +312,7 @@ def do_seed(config):
             "all_day": all_day,
             "location": location,
             "description": description,
-            "status": status,
+            "review_status": review_status,
             "importance": importance,
         }
         source = {
@@ -313,7 +322,7 @@ def do_seed(config):
         }
         result = commit_decision(
             email_ids[provider_message_id],
-            decision_envelope("create", fields, source),
+            decision_envelope("create", fields, source, intent="no_change"),
         )
         event_ids[title] = result["event_ids"][0]
     print(f"  Committed {len(event_ids)} events and their sources")
@@ -359,12 +368,14 @@ def do_seed(config):
         q2_update_email,
         decision_envelope(
             "update",
-            # commit_email_extraction derives auto-apply from the review status
-            # and defaults an unspecified one to 'active', which applies the
-            # proposal immediately. This fixture is the Changes lane, so it has
-            # to say so: a pending proposal on an active event.
-            {"review_status": "pending_review"},
+            # The Changes lane: a pending proposal on an active event. This used
+            # to require sending review_status='pending_review' -- a value the
+            # fixture knew to be wrong -- because the commit RPC derived
+            # auto-apply from that field and defaulted it to 'active'. It now
+            # takes an explicit intent, so the fixture can state what it means.
+            {"review_status": "active"},
             q2_source,
+            intent="review",
             event_id=event_ids["Q2 Planning Offsite"],
             expected_fingerprint=candidate_fingerprint([q2]),
             window=q2_window,
