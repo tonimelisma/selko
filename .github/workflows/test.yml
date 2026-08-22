@@ -193,6 +193,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: State what this job did not verify
         if: always()
@@ -204,10 +208,6 @@ jobs:
           echo "  Supavisor session pooler and are proven by"
           echo "  ./scripts/drill-staging-workers.sh from the operator's"
           echo "  machine (plan 6, D4). A green tick here is not a Tier 2 pass."
-          TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
-          TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
   integration-tests-staging:
     name: Integration Tests (Staging)
