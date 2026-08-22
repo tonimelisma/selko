@@ -67,7 +67,8 @@ final class ScreenshotCaptureTests: XCTestCase {
     private func waitForAny(
         _ elements: [XCUIElement],
         timeout: TimeInterval,
-        description: String
+        description: String,
+        failOnTimeout: Bool = true
     ) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         repeat {
@@ -78,8 +79,15 @@ final class ScreenshotCaptureTests: XCTestCase {
         } while Date() < deadline
 
         let found = elements.contains(where: \.exists)
-        if !found {
-            XCTFail("\(description) did not appear within \(timeout) seconds")
+        if !found && failOnTimeout {
+            // Dump what IS on screen. Without this the failure says only that
+            // an expected element is absent, which is the least useful half of
+            // the information -- three wrong diagnoses were made from it.
+            XCTFail("""
+                \(description) did not appear within \(timeout) seconds.
+                On screen instead:
+                \(app.debugDescription)
+                """)
         }
         return found
     }
@@ -101,23 +109,35 @@ final class ScreenshotCaptureTests: XCTestCase {
     }
 
     @MainActor
-    private func waitForReviewScreen(timeout: TimeInterval = 15) -> Bool {
+    private func waitForReviewScreen(
+        timeout: TimeInterval = 15,
+        failOnTimeout: Bool = true
+    ) -> Bool {
         // Do NOT treat the Review tab button as success — it exists on every tab.
-        let eventButton = app.buttons.matching(
-            NSPredicate(format: "identifier CONTAINS %@", "eventCard")
-        ).firstMatch
+        // An event card is identified by its title text; the card itself is not
+        // a button and carries no identifier of its own.
+        let eventButton = app.staticTexts["eventTitle"].firstMatch
 
         return waitForAny(
             [
                 app.navigationBars["Review"],
                 app.otherElements["integrationSetupView"],
                 app.otherElements["emptyStateView"],
+                app.scrollViews["emptyStateView"],
+                // ReviewQueueView's eventList is a SwiftUI List. Since iOS 16
+                // that is backed by UICollectionView, so it surfaces as
+                // `collectionViews`, not `tables`. Matching only tables and
+                // otherElements meant a fully-populated Review screen was
+                // invisible to this wait and the test timed out on a screen
+                // that had rendered correctly.
+                app.collectionViews["eventList"],
                 app.tables["eventList"],
                 app.otherElements["eventList"],
                 eventButton
             ],
             timeout: timeout,
-            description: "Review screen"
+            description: "Review screen",
+            failOnTimeout: failOnTimeout
         )
     }
 
@@ -185,7 +205,7 @@ final class ScreenshotCaptureTests: XCTestCase {
         // Force portrait orientation regardless of simulator state from previous test runs
         XCUIDevice.shared.orientation = .portrait
 
-        app.launchArguments = ["--selko-screenshot-appearance", appearance]
+        app.launchArguments = ["--selko-screenshot-appearance", appearance, "--selko-reset-session"]
         app.launch()
 
         let appearanceProbe = app.otherElements["screenshotAppearanceProbe"]
@@ -228,21 +248,50 @@ final class ScreenshotCaptureTests: XCTestCase {
         // Wait for login screen to be back
         XCTAssertTrue(emailField.waitForExistence(timeout: 5), "Login screen did not reappear after dismissing register")
 
-        // 3. Log in with seed user
-        emailField.tap()
-        emailField.typeText("screenshots@selko.local")
+        // 3. Become authenticated by installing a session, not by typing.
+        //
+        // Simulated typing into the login form was this suite's largest source
+        // of flakiness: a dropped keystroke fails sign-in with "Invalid email
+        // or password", and each failed run then cost ~600s while xcodebuild
+        // collected simulator diagnostics. The login form itself is still
+        // covered by SelkoUITests, which drives it directly.
+        guard let session = TestSession.fetch(
+            email: "screenshots@selko.local",
+            password: "screenshotpass123"
+        ) else {
+            XCTFail("Could not obtain a session from local Supabase at 127.0.0.1:54321")
+            return
+        }
 
-        let passwordField = app.secureTextFields["passwordField"]
-        passwordField.tap()
-        passwordField.typeText("screenshotpass123")
+        app.terminate()
+        app.launchEnvironment = session.launchEnvironment
+        app.launch()
 
-        app.buttons["signInButton"].tap()
-
-        // Wait for the main tab view to appear (review queue loads)
         let reviewTab = app.tabBars.buttons["Review"]
-        XCTAssertTrue(reviewTab.waitForExistence(timeout: 15), "Main tab view did not appear after login")
-        reviewTab.tap()
-        XCTAssertTrue(waitForReviewScreen(), "Review screen did not settle after login")
+        XCTAssertTrue(
+            reviewTab.waitForExistence(timeout: 20),
+            """
+            Main tab view did not appear with an injected session.
+            On screen instead:
+            \(app.debugDescription)
+            """
+        )
+
+        // Tap until it takes. `app.launch()` does not reset app state, so the
+        // TabView restores whichever tab the previous run left selected -- and
+        // that restoration races this tap. When Settings won the race the test
+        // failed with "Review screen did not appear", which reads like a data
+        // or query problem and is not one; the element dump on failure now
+        // shows `NavigationBar identifier: 'Settings'` and says so plainly.
+        var landedOnReview = false
+        for _ in 0..<3 {
+            reviewTab.tap()
+            if waitForReviewScreen(timeout: 8, failOnTimeout: false) {
+                landedOnReview = true
+                break
+            }
+        }
+        XCTAssertTrue(landedOnReview, "Review screen did not settle after login")
         // Loading can leave the nav title visible before content is ready — wait for content.
         let loading = app.otherElements["reviewQueueLoading"]
         if loading.exists {
@@ -264,12 +313,52 @@ final class ScreenshotCaptureTests: XCTestCase {
         // 4. Review queue
         saveScreenshot(named: "ios-review-queue")
 
-        // 5. Event detail — tap the upper area of the card (title), avoiding action buttons.
-        let eventCard = app.buttons.matching(
-            NSPredicate(format: "identifier CONTAINS %@", "eventCard")
+        // Accessibility contract for the review card, folded in from the
+        // deleted ReviewQueueUITests: each action is individually labeled with
+        // its event's title (so VoiceOver users can tell three "Accept" buttons
+        // apart) and meets the 48pt target from design/tokens.json. Asserted
+        // here because this test is already signed in and on this screen --
+        // the deleted test spent ~24s re-reaching it to assert the same thing.
+        let eventTitle = app.staticTexts["eventTitle"].firstMatch
+        XCTAssertTrue(eventTitle.waitForExistence(timeout: 10), "No event card in the review queue")
+        let cardTitle = eventTitle.label
+        XCTAssertFalse(app.buttons["eventCard"].exists, "The card itself must not be a button")
+        for action in ["Accept ", "Edit ", "Reject "] {
+            // Match on the event title too: the screen also has a bulk
+            // "Accept all" button, which BEGINSWITH "Accept " but names no event.
+            let button = app.buttons.matching(
+                NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", action, cardTitle)
+            ).firstMatch
+            XCTAssertTrue(
+                button.exists,
+                "No \(action)action naming \(cardTitle) on the review card"
+            )
+            // Round before comparing: SwiftUI lays a 48pt control out as
+            // 47.99999999999994, and an exact >= 48 comparison fails a control
+            // that meets the spec. The tolerance is float noise, not slack in
+            // the requirement.
+            XCTAssertGreaterThanOrEqual(
+                button.frame.height.rounded(),
+                48,
+                "\(action)target below 48pt (measured \(button.frame.height))"
+            )
+        }
+
+        // 5. Event detail
+        // Detail opens from the card's Edit button, not from the card body.
+        // ReviewQueueView passes `onEdit: { onNavigateToEvent(event.id) }`, and
+        // eventCardContainer is a plain VStack with no tap gesture or
+        // NavigationLink -- so tapping its upper area, as this did, lands on
+        // dead space and the test waited 10s for a push that was never going
+        // to happen.
+        let editButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Edit ")
         ).firstMatch
-        XCTAssertTrue(eventCard.waitForExistence(timeout: 10), "Expected at least one event card for detail screenshot")
-        eventCard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
+        XCTAssertTrue(
+            editButton.waitForExistence(timeout: 5),
+            "No Edit action on the event card to open detail with"
+        )
+        editButton.tap()
 
         // Title is a TextField (accessibility id eventDetailTitle), not a StaticText
         let detailAppeared = waitForAny(
@@ -300,7 +389,11 @@ final class ScreenshotCaptureTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Synced"].waitForExistence(timeout: 3))
         let undoButton = app.buttons["undoButton"].firstMatch
         XCTAssertTrue(undoButton.waitForExistence(timeout: 3))
-        XCTAssertGreaterThanOrEqual(undoButton.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(
+            undoButton.frame.height.rounded(),
+            44,
+            "Undo target below 44pt (measured \(undoButton.frame.height))"
+        )
         saveScreenshot(named: "ios-history")
 
         // 7. Settings tab
@@ -311,14 +404,73 @@ final class ScreenshotCaptureTests: XCTestCase {
             app.staticTexts["Email Folders"].waitForExistence(timeout: 15),
             "Email-folder content did not finish loading"
         )
+        // Connected Accounts is asserted here, at the top of Settings and
+        // before any scrolling: a SwiftUI Form is a UICollectionView, so once
+        // the folder rows are scrolled into view these rows may no longer be
+        // instantiated. Folded in from the deleted SettingsUITests, which paid
+        // a full sign-in to reach this same screen.
         XCTAssertTrue(
-            app.staticTexts["Included"].waitForExistence(timeout: 5),
-            "Included folder state did not finish rendering"
+            app.staticTexts["integrationName_gmail"].exists
+                || app.staticTexts["integrationName_outlook"].exists,
+            "Connected Accounts section rendered no provider rows"
         )
-        XCTAssertTrue(
-            app.staticTexts["Excluded"].waitForExistence(timeout: 5),
-            "Excluded folder state did not finish rendering"
-        )
+
+        // Capture before scrolling so the committed screenshot always shows
+        // the top of Settings.
         saveScreenshot(named: "ios-settings")
+
+        // A SwiftUI Form is a UICollectionView, so rows below the fold are
+        // never instantiated and are genuinely absent from the accessibility
+        // tree -- waiting cannot conjure them, which is why a 15s timeout
+        // behaved exactly like a 5s one. Scroll the folder rows into view the
+        // same way the sign-out assertion does.
+        //
+        // Assert the switch and its label rather than a bare StaticText: the
+        // include/exclude wording belongs to the Toggle, and tokens.json
+        // specifies this control as a *labeled switch*.
+        let folderSwitches = app.switches.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "folderToggle_")
+        )
+        for _ in 0..<6 where folderSwitches.firstMatch.exists == false {
+            app.swipeUp()
+        }
+        if !folderSwitches.firstMatch.waitForExistence(timeout: 5) {
+            XCTFail(
+                """
+                No folder toggle rendered in the Email Folders section.
+                Switches: \(app.switches.count)
+                Elements on screen:
+                \(app.debugDescription)
+                """
+            )
+        }
+
+        // Folded in from the deleted SettingsUITests: the sign-out target meets
+        // 44pt. It sits at the bottom of the Form, so this runs after the
+        // folder rows have already been scrolled into view.
+        let signOut = app.buttons["signOutButton"]
+        for _ in 0..<6 where !signOut.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(signOut.waitForExistence(timeout: 3), "Log out button never appeared")
+        XCTAssertGreaterThanOrEqual(
+            signOut.frame.height.rounded(),
+            44,
+            "Log out target below 44pt (measured \(signOut.frame.height))"
+        )
+
+        // Every rendered toggle must state its include/exclude status. Only the
+        // rows the Form has currently instantiated are in the tree, so asserting
+        // that *both* states appear at once depends on scroll position rather
+        // than on behaviour -- the run that failed here had scrolled past the
+        // included folder and saw only the excluded one.
+        let states = folderSwitches.allElementsBoundByIndex.map(\.label)
+        XCTAssertFalse(states.isEmpty, "No folder toggles rendered")
+        for state in states {
+            XCTAssertTrue(
+                state.contains("Included") || state.contains("Excluded"),
+                "Folder toggle must state its include/exclude status; label was \(state)"
+            )
+        }
     }
 }

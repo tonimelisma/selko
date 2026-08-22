@@ -23,7 +23,6 @@ struct HistoryViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .approved,
             googleCalendarEventId: nil,
             syncedAt: nil,
             createdAt: Date(),
@@ -40,7 +39,6 @@ struct HistoryViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .synced,
             googleCalendarEventId: nil,
             syncedAt: nil,
             createdAt: Date(),
@@ -83,9 +81,36 @@ struct HistoryViewModelTests {
     @Test
     func loadIncludesCancellationQueuedEvents() async throws {
         let mockEventService = MockEventService()
-        let event = CalendarEvent(
+        // `status` is derived, not stored: a queued cancellation is an
+        // un-superseded work item with action == .cancel that has not yet
+        // succeeded. This test used to pass `status: .cancelQueued` to the
+        // initializer, which silently discarded it (the parameter existed but
+        // was never assigned), so the event derived .approved and the test had
+        // been failing since clients moved to authoritative event state.
+        let eventId = UUID()
+        let userId = UUID()
+        let cancelItem = CalendarWorkItem(
             id: UUID(),
-            userId: UUID(),
+            eventId: eventId,
+            userId: userId,
+            action: .cancel,
+            generation: 1,
+            status: .pending,
+            providerEventId: nil,
+            expectedProviderRevision: nil,
+            forceOverwrite: false,
+            attempts: 0,
+            maxAttempts: 5,
+            nextRetryAt: nil,
+            failureCode: nil,
+            failureDetail: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            completedAt: nil
+        )
+        let event = CalendarEvent(
+            id: eventId,
+            userId: userId,
             title: "Cancelled meeting",
             startDatetime: Date(),
             endDatetime: Date().addingTimeInterval(3600),
@@ -93,12 +118,12 @@ struct HistoryViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .cancelQueued,
             googleCalendarEventId: UUID().uuidString,
             syncedAt: Date(),
             createdAt: Date(),
             updatedAt: Date(),
-            eventSources: nil
+            eventSources: nil,
+            calendarWorkItems: [cancelItem]
         )
         mockEventService.fetchActivityEventsResult = .success([event])
 
@@ -126,7 +151,6 @@ struct HistoryViewModelTests {
                 location: nil,
                 description: nil,
                 sourceAttribution: nil,
-                status: .approved,
                 googleCalendarEventId: nil,
                 syncedAt: nil,
                 createdAt: Date(),
@@ -156,7 +180,6 @@ struct HistoryViewModelTests {
                 location: nil,
                 description: nil,
                 sourceAttribution: nil,
-                status: .approved,
                 googleCalendarEventId: nil,
                 syncedAt: nil,
                 createdAt: Date(),
@@ -208,7 +231,6 @@ struct HistoryViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .approved,
             googleCalendarEventId: nil,
             syncedAt: nil,
             createdAt: Date(),
@@ -253,7 +275,6 @@ struct HistoryViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .synced,
             googleCalendarEventId: nil,
             syncedAt: nil,
             createdAt: Date(),
@@ -290,7 +311,6 @@ struct HistoryViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .synced,
             googleCalendarEventId: "gcal-1",
             syncedAt: Date(),
             createdAt: Date(),
@@ -338,7 +358,6 @@ struct HistoryViewModelTests {
             location: nil,
             description: nil,
             sourceAttribution: nil,
-            status: .syncFailed,
             googleCalendarEventId: nil,
             syncedAt: nil,
             createdAt: Date(),

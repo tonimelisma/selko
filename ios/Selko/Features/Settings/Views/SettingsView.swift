@@ -61,7 +61,12 @@ struct SettingsView: View {
     // MARK: - Connected Accounts
 
     private var connectedAccountsSection: some View {
-        Section("Connected Accounts") {
+        // Header carries an identifier so UI tests do not assert on a display
+        // string. "Connected Accounts" is localized (Localizable.xcstrings), so
+        // matching it in English is a test that fails on a non-English
+        // simulator for reasons unrelated to the code under test.
+        Section(header: Text("Connected Accounts")
+            .accessibilityIdentifier("connectedAccountsHeader")) {
             if let error = authorizer.errorMessage {
                 Text(error)
                     .font(SelkoTypography.body)
@@ -72,7 +77,12 @@ struct SettingsView: View {
             integrationRow(provider: .outlook)
             integrationRow(provider: .googleCalendar)
         }
-        .accessibilityIdentifier("connectedAccountsSection")
+        // No .accessibilityIdentifier on the Section. Applied to a container,
+        // that modifier does not name the container -- it overwrites the
+        // identifier of every accessibility element inside it. It was
+        // stamping "connectedAccountsSection" onto all three provider rows and
+        // their Connect buttons, destroying their individual identities and
+        // making every per-row query unresolvable.
     }
 
     @ViewBuilder
@@ -86,6 +96,7 @@ struct SettingsView: View {
                     Text(viewModel.providerDisplayName(provider))
                         .font(SelkoTypography.title)
                         .foregroundStyle(Color.selkoInk)
+                        .accessibilityIdentifier("integrationName_\(provider.rawValue)")
                     Spacer()
                     SelkoStatusIndicator(text: "Connected", systemImage: "checkmark.circle", tone: .success)
                 }
@@ -113,6 +124,7 @@ struct SettingsView: View {
                     Text(viewModel.providerDisplayName(provider))
                         .font(SelkoTypography.title)
                         .foregroundStyle(Color.selkoInk)
+                        .accessibilityIdentifier("integrationName_\(provider.rawValue)")
 
                     if let integration {
                         Text(integration.status.rawValue.capitalized)
@@ -171,7 +183,8 @@ struct SettingsView: View {
             } footer: {
                 Text("Included folders are scanned for calendar-relevant messages.")
             }
-            .accessibilityIdentifier("emailFoldersSection")
+            // Omitted for the same reason as connectedAccountsSection above:
+            // a container identifier was clobbering every folderToggle_<id>.
         }
     }
 

@@ -111,7 +111,12 @@ struct EventCardView: View {
             }
         }
         .padding(.vertical, 8)
-        .accessibilityIdentifier("eventCardContainer")
+        // No .accessibilityIdentifier here. On a container that modifier does
+        // not name the container -- it overwrites the identifier of every
+        // element inside it, which erased "eventTitle" and stamped
+        // "eventCardContainer" onto all three action buttons. A UI test that
+        // looked up eventTitle therefore never found it and silently skipped
+        // its assertions behind a `guard ... else { return }`.
         .listRowBackground(Color.clear)
         .onChange(of: event.id) { _, _ in
             resetDescriptionExpansion()
