@@ -119,6 +119,74 @@ def git_sha() -> str:
     return result.stdout.strip() or "unknown"
 
 
+def check_requirements(lane: dict) -> str | None:
+    """Verify a lane's declared preconditions; return a failure message or None.
+
+    A lane that silently depends on something the environment happens to provide
+    is not reproducible: it passes for whoever hand-started that dependency and
+    fails for everyone else, and no gate can explain the difference. Undeclared
+    preconditions have cost real hours here -- the iOS lane needs Selko's API on
+    port 8000, which was satisfied by a manually started server rather than by
+    anything the lane knew about.
+    """
+    for requirement in lane.get("requires", []):
+        completed = subprocess.run(
+            requirement["check"], shell=True, cwd=ROOT, capture_output=True, text=True
+        )
+        if completed.returncode != 0:
+            return f"{requirement['name']}: {requirement['remedy']}"
+    return None
+
+
+class LaneBusy(Exception):
+    """Raised when a lane is already running elsewhere."""
+
+
+def _lock_path(name: str) -> Path:
+    return VERIFY_DIR / "locks" / f"{name}.lock"
+
+
+def acquire_lane_lock(name: str) -> Path:
+    """Prevent two runs of the same lane from overlapping.
+
+    Two xcodebuild runs were once started against the same simulator because the
+    first had printed its test results but had not yet exited -- both results
+    were meaningless. Shared resources (a simulator, port 8000, the local
+    database) make concurrent lanes actively wrong, not merely slow, so this is
+    enforced rather than left to whoever is driving.
+    """
+    path = _lock_path(name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            holder = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            holder = {}
+        pid = holder.get("pid")
+        if pid and not _pid_alive(pid):
+            # Stale lock from a killed run; reclaim it rather than block forever.
+            path.unlink(missing_ok=True)
+            return acquire_lane_lock(name)
+        raise LaneBusy(
+            f"lane '{name}' is already running (pid {pid}, started {holder.get('started')}). "
+            f"Wait for it or kill it; concurrent runs share the simulator/ports and "
+            f"produce results that mean nothing."
+        )
+    with os.fdopen(fd, "w") as handle:
+        json.dump({"pid": os.getpid(), "started": _now()}, handle)
+    return path
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except (OSError, ProcessLookupError):
+        return False
+    return True
+
+
 def run_lane(name: str, lane: dict, run_id: str) -> dict:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_path = LOG_DIR / f"{run_id}-{name}.log"
@@ -218,8 +286,48 @@ def main() -> int:
                 "timestamp": _now(),
             }
             print(f"reused (unchanged, {file_count} files)")
+        elif (unmet := check_requirements(lane)) is not None:
+            # Fail closed. An unmet precondition is RED, never skipped: a lane
+            # that cannot run has verified nothing, and silence reads as success.
+            record = {
+                "lane": name,
+                "gate": lane["gate"],
+                "status": "fail",
+                "executed": False,
+                "reason": f"precondition not met -- {unmet}",
+                "duration_seconds": 0.0,
+                "fingerprint": fp,
+                "input_files": file_count,
+                "run_id": run_id,
+                "git_sha": sha,
+                "timestamp": _now(),
+            }
+            print(f"BLOCKED -- {unmet}")
         else:
-            outcome = run_lane(name, lane, run_id)
+            try:
+                lock = acquire_lane_lock(name)
+            except LaneBusy as busy:
+                record = {
+                    "lane": name,
+                    "gate": lane["gate"],
+                    "status": "fail",
+                    "executed": False,
+                    "reason": f"already running -- {busy}",
+                    "duration_seconds": 0.0,
+                    "fingerprint": fp,
+                    "input_files": file_count,
+                    "run_id": run_id,
+                    "git_sha": sha,
+                    "timestamp": _now(),
+                }
+                print(f"BUSY -- {busy}")
+                results.append(record)
+                append_ledger(record)
+                continue
+            try:
+                outcome = run_lane(name, lane, run_id)
+            finally:
+                lock.unlink(missing_ok=True)
             status = "pass" if outcome["exit_code"] == 0 else "fail"
             record = {
                 "lane": name,
@@ -292,6 +400,9 @@ def main() -> int:
 
     for record in failed:
         print()
+        if not record.get("log"):
+            print(f"--- {record['lane']} blocked: {record['reason']}")
+            continue
         print(f"--- {record['lane']} failed; last lines of {record.get('log')}:")
         for line in _tail(Path(record["log"]) if Path(record["log"]).is_absolute() else ROOT / record["log"]):
             print(f"    {line}")
