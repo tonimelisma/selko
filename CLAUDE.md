@@ -190,26 +190,44 @@ not authorize unrelated production-data mutations.
 - [ ] The scoped tests above pass locally — **local tests are the gate, not CI**
 - [ ] Commit (conventional format), push, `gh pr create`
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges and does full cleanup: deletes remote + local branch, fast-forwards `main`, removes the worktree, prunes. **Does not wait on CI.**
+- [ ] **Check CI on `main` and fix forward if it ran and failed** — `gh run list --branch main --limit 3`. Not a merge gate, but never left red. See "CI Ownership" below.
 - [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **the last sentence of your final report MUST be: "Should I deploy this to production?"** Never deploy to prod without an explicit yes. Once the user says yes, deploy; a previously disclosed staging failure does not require another confirmation. Apply production migrations locally, then dispatch `test.yml` with `staging_action=none` and `deploy_production=true`; that explicit job owns the secret Render hooks.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
-### CI Ownership — never gate, never funded
+### CI Ownership — never a gate, but never ignored
 
-**We will never top up GitHub Actions minutes. Never trust CI to run.**
-
+**We will never top up GitHub Actions minutes, and CI is never a merge gate.**
 Verification is two tiers, both run from your machine: Tier 1 (local, pre-merge)
-and Tier 2 (staging, post-merge). See "Verification tiers" above. CI is a bonus.
-If it runs and fails, fix forward; if it never runs, that is expected.
+and Tier 2 (staging, post-merge). See "Verification tiers" above.
 
-The `deploy-staging` and `integration-tests-staging` jobs in `test.yml` require
-Actions minutes and therefore do not run. `./scripts/verify.sh staging` is what
-actually deploys and verifies staging. Do not read those jobs as a live path.
+**But CI does run, and a red CI is never left red.** The previous version of
+this section claimed `deploy-staging` and `integration-tests-staging` "require
+Actions minutes and therefore do not run." That was false: those jobs have been
+running on every push to `main`, and `deploy-staging` was failing on `main`
+across three consecutive runs while this file said it could not execute. A
+status nobody reads is worse than no status.
 
-If CI does run and fails, fix forward:
+**MANDATORY — after every merge to `main`, check CI and fix forward.** This is
+step 3 of "Ship it" and is not optional. Never leave `main` red.
+
+```bash
+gh run list --branch main --limit 3
+```
+
+If it failed:
 1. **Diagnose** — `gh run view <id> --log-failed`
-2. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, re-auth one side then re-run `--sync`, then re-trigger *only if minutes exist — otherwise ignore and proceed locally*.
-3. **Code issue** — follow-up PR.
+2. **Missing configuration** — the most common cause, and the one a diff cannot
+   show. `gh secret list` shows what exists; a referenced secret that is not in
+   that list expands to the empty string silently. Fix the workflow or tell the
+   operator which secret to add — do not paper over it by disabling the check.
+3. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, re-auth one side then re-run `--sync`.
+4. **Code issue** — follow-up PR.
+
+**A CI job may never imply coverage it does not have.** If a job cannot run part
+of its verification, it says so in its own output rather than passing quietly —
+`deploy-staging` prints exactly what it did and did not verify. A green tick
+that reads as more than it is has caused more damage here than a red one.
 
 Production migrations are pushed locally after `./scripts/assert-schema-code-compat.sh` (R5 gate). Production code is deployed with `gh workflow run test.yml -f staging_action=none -f deploy_production=true`, because the secret Render hooks live in that explicit, dependency-free job. Do not wait for unrelated test jobs after the production deploy job succeeds. `./scripts/poll-and-merge.sh` is deprecated.
 
