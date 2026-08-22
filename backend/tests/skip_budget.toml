@@ -140,10 +140,6 @@ nodeid = "tests/test_events_refactor.py::TestAutoApproveSenderRule::test_create_
 reason = "direct event creation API removed in S5"
 
 [[skip]]
-nodeid = "tests/integration/test_integration_ingestion_drill.py::TestKillMidPass::test_kill_mid_pass"
-reason = "Use scripts/drill-lease-recovery.sh for the live kill-mid-pass drill"
-
-[[skip]]
 nodeid = "tests/integration/test_integration_ingestion_drill.py::TestIngestionGate::test_gate_blocks_llm_until_attachments_terminal"
 reason = "9b full-path DB gate drill requires local Supabase"
 

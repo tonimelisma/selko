@@ -55,7 +55,23 @@ BEGIN
         WHERE s.event_id = v_event.id
           AND s.source_type IN ('update', 'cancellation')
           AND s.is_undone = false;
-        IF v_total <> 1 OR v_complete <> 1 THEN
+        -- The guard is on v_complete alone, deliberately.
+        --
+        -- It was `v_total <> 1 OR v_complete <> 1`, which also refused any
+        -- event carrying an extra active update/cancellation source that has
+        -- no change_set. Production has two such events (verified read-only,
+        -- 2026-08-22: total=2, complete=1 for both), so this migration would
+        -- have raised on the fourth of twelve migrations and aborted the
+        -- cutover. Staging has none, so staging applied it cleanly and no gate
+        -- ever saw it; ./scripts/rehearse_cutover.py --faithful found it by
+        -- replaying the batch against production's real event_sources rows.
+        --
+        -- An incomplete source is provenance, not a proposal -- there is
+        -- nothing to propose from a row with no change_set, and the INSERT
+        -- below already selects only complete sources. What must be
+        -- unambiguous is which source becomes THE proposal, and that is
+        -- exactly `v_complete = 1`.
+        IF v_complete <> 1 THEN
             RAISE EXCEPTION 'event_change_proposals backfill ambiguous event_id=% total=% complete=%',
                 v_event.id, v_total, v_complete;
         END IF;
