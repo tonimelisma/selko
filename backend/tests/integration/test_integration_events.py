@@ -1,5 +1,7 @@
 """Integration tests for event processing pipeline."""
 
+import re
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -688,3 +690,110 @@ class TestEventUndoRedo:
         attribution = events.generate_source_attribution(authenticated_client, event_id)
         assert "First Sender" in attribution or "first@example.com" in attribution
         assert "Second Sender" in attribution or "second@example.com" in attribution
+
+
+# --- V8/W3: the events.status collapse -------------------------------------
+
+MIGRATIONS = Path(__file__).parents[3] / "supabase" / "migrations"
+LEGACY_DOMAIN_MIGRATION = MIGRATIONS / "20260826000001_remove_legacy_event_state.sql"
+DROP_MIGRATION = MIGRATIONS / "20260829000001_delete_events_status.sql"
+
+
+def _legacy_status_domain() -> set[str]:
+    """The events.status CHECK domain as it stood immediately before the drop."""
+    text = LEGACY_DOMAIN_MIGRATION.read_text()
+    marker = "ADD CONSTRAINT events_status_check CHECK (status IN ("
+    body = text[text.index(marker) + len(marker):]
+    body = body[: body.index("))")]
+    return set(re.findall(r"'([a-z_]+)'", body))
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_delete_events_status_backfill_preserves_every_legacy_status(pg_pool):
+    """Every legacy delivery state must have a declared destination.
+
+    Scope note, stated plainly: this cannot be executed end to end. The DO block
+    runs once, in the same migration that drops the column, so by the time any
+    test connects the source data no longer exists and cannot be reconstructed.
+    A follow-up migration cannot repair an incomplete backfill for the same
+    reason -- which is why the block had to be fixed before it reached any
+    durable environment rather than patched afterwards.
+
+    What is executable here: the destination statuses are checked against the
+    live CHECK constraint, and the column's absence is checked against the live
+    catalog. The end-to-end proof is ./scripts/rehearse-cutover.sh, which
+    applies the real migration to a copy of production's real rows.
+    """
+    handled = DROP_MIGRATION.read_text()
+    block = handled[handled.index("DO $$"): handled.index("\n$$;\n")]
+
+    covered = set(re.findall(r"'([a-z_]+)'", block[block.index("e.status IN ("):]))
+    review_only = {"pending_review", "rejected", "cancelled"}
+    domain = _legacy_status_domain()
+
+    unhandled = domain - covered - review_only
+    assert not unhandled, (
+        f"legacy statuses with no destination in the backfill: {sorted(unhandled)}. "
+        "Once the column is dropped these rows are unrecoverable."
+    )
+
+    # The destinations the block writes must be legal work-item statuses. This
+    # half is a live-catalog assertion, not a source-text one.
+    work_item_domain = await pg_pool.fetchval(
+        """
+        SELECT pg_get_constraintdef(c.oid)
+        FROM pg_constraint AS c
+        JOIN pg_class AS t ON t.oid = c.conrelid
+        WHERE t.relname = 'calendar_work_items' AND c.conname LIKE '%status%'
+        """
+    )
+    for destination in ("succeeded", "failed", "pending"):
+        assert f"'{destination}'" in work_item_domain, (
+            f"backfill writes calendar_work_items.status = {destination!r}, "
+            f"which the live constraint rejects: {work_item_domain}"
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_events_has_exactly_one_state_owner(pg_pool):
+    """review_status owns the decision; calendar_work_items owns delivery."""
+    columns = {
+        row["column_name"]
+        for row in await pg_pool.fetch(
+            """
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'events'
+            """
+        )
+    }
+    assert "status" not in columns, "events.status is back; D1(a) chose to delete it"
+    assert "review_status" in columns
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_no_rpc_signature_carries_the_deleted_delivery_vocabulary(pg_pool):
+    """The column is gone; its vocabulary must not survive in the API surface.
+
+    A live catalog assertion: it reads the argument names PostgreSQL actually
+    holds, so it cannot be satisfied by editing a migration's text.
+    """
+    rows = await pg_pool.fetch(
+        """
+        SELECT p.proname AS name,
+               pg_get_function_identity_arguments(p.oid) AS args,
+               pg_get_function_arguments(p.oid) AS named_args
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.prosecdef
+        """
+    )
+    banned = ("p_legacy_status", "p_restore_status", "p_next_status")
+    offenders = [
+        f"{row['name']}({row['named_args']})"
+        for row in rows
+        if any(token in (row["named_args"] or "") for token in banned)
+    ]
+    assert not offenders, f"deleted delivery vocabulary survives in: {offenders}"

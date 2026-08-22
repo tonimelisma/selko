@@ -79,7 +79,7 @@ async def test_proposal_is_authoritative_and_apply_reject_reopen_are_atomic(
         "p_location": None,
         "p_description": None,
         "p_importance": "action_required",
-        "p_next_status": "approved",
+        "p_review_status": "active",
         "p_calendar_sync_action": "upsert",
     }).execute().data
     assert applied["proposal_id"] == proposal["id"]
