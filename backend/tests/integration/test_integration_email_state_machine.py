@@ -326,10 +326,22 @@ class TestDurableEmailStateMachine:
         after = _health_row(admin_client)
 
         assert after["status"] == before["status"]
-        # The expired integration's 26-year-old cursor must not be reported.
-        # The screenshot gate may leave another active integration with an
-        # upcoming poll, which the health contract represents as zero age.
-        assert after["oldest_next_poll_seconds"] in (None, 0)
+
+        # The invariant is that the EXPIRED integration's year-2000 cursor is
+        # excluded -- not that no other integration contributes an age at all.
+        #
+        # This asserted `in (None, 0)`, allowing only "no integrations" or "all
+        # upcoming". Other tests in the same run legitimately leave an active
+        # integration overdue (test_next_sync_claim_abandons_previous_expired_run
+        # sets next_poll_at 60s in the past), so the assertion failed with
+        # `assert 46 in (None, 0)` depending on the random ordering seed.
+        #
+        # A year-2000 cursor is ~830,000,000 seconds old. Anything under an hour
+        # is another test's row, and is not what this test is about.
+        ancient = after["oldest_next_poll_seconds"]
+        assert ancient is None or ancient < 3600, (
+            f"expired integration's stale cursor leaked into health: {ancient}s"
+        )
 
 
 @pytest.mark.integration

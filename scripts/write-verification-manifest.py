@@ -24,6 +24,12 @@ def _collect_xml(paths: list[Path]) -> dict[str, object]:
     totals = {"tests": 0, "passed": 0, "failed": 0, "errors": 0, "skipped": 0}
     skipped: list[dict[str, str]] = []
     passed_nodes: list[str] = []
+    # A red gate has to say WHAT failed. Without this the manifest recorded only
+    # passed_nodes, so diagnosing a failure meant re-running the suite and
+    # hoping to reproduce it -- which for an order- or network-dependent test is
+    # exactly what does not reproduce. The seed is already recorded; the failing
+    # node id is the other half of making a failure investigable after the fact.
+    failed_nodes: list[dict[str, str]] = []
     suites: list[dict[str, object]] = []
     for path in paths:
         if not path.exists():
@@ -39,9 +45,22 @@ def _collect_xml(paths: list[Path]) -> dict[str, object]:
             if failure is not None:
                 totals["failed"] += 1
                 suite_counts["failed"] += 1
+                failed_nodes.append({
+                    "nodeid": _node_id(testcase),
+                    "kind": "failure",
+                    # First line only: enough to identify, never a payload dump.
+                    "message": (failure.attrib.get("message") or "").splitlines()[:1][0]
+                    if failure.attrib.get("message") else "",
+                })
             elif error is not None:
                 totals["errors"] += 1
                 suite_counts["errors"] += 1
+                failed_nodes.append({
+                    "nodeid": _node_id(testcase),
+                    "kind": "error",
+                    "message": (error.attrib.get("message") or "").splitlines()[:1][0]
+                    if error.attrib.get("message") else "",
+                })
             elif skip is not None:
                 totals["skipped"] += 1
                 suite_counts["skipped"] += 1
@@ -56,7 +75,13 @@ def _collect_xml(paths: list[Path]) -> dict[str, object]:
                 suite_counts["passed"] += 1
                 passed_nodes.append(_node_id(testcase))
         suites.append({"file": str(path), **suite_counts, "tests": len(cases)})
-    return {**totals, "skips": skipped, "passed_nodes": passed_nodes, "suites": suites}
+    return {
+        **totals,
+        "skips": skipped,
+        "passed_nodes": passed_nodes,
+        "failed_nodes": failed_nodes,
+        "suites": suites,
+    }
 
 
 def _load_budget(path: Path) -> dict[str, dict[str, str]]:

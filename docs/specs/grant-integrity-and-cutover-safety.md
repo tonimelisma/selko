@@ -578,7 +578,34 @@ drill then ran green against real staging Postgres. Progression across fixes:
 8/2 → 9/1 → 10/0. The deployed staging service still runs with background
 processing off, by design.
 
-**W6 — cutover rehearsal.**
+**W6 — cutover rehearsal.** Two modes. The shape mode replays the batch
+against production's status distribution; the faithful mode (`--faithful`)
+replays it against a **redacted clone of production's real rows** — 14,181 rows
+across 14 tables, including 2,409 emails, 8,247 sync runs, 447 attachments and
+370 event_sources. Redaction is the default and structural columns are the
+allowlist, so a content column added later is redacted automatically; JSON keeps
+its shape because migrations branch on it.
+
+The faithful mode found what the shape mode could not — **the batch would have
+aborted on migration 4 of 12 in production**:
+
+```
+20260825000001: event_change_proposals backfill ambiguous
+                event_id=2f6fabd6-… total=2 complete=1
+```
+
+Verified read-only against production: two events carry two active
+update/cancellation sources with only one complete. The guard demanded
+`v_total = 1`, which is a claim about provenance rows rather than about the
+proposal. It is now `v_complete = 1` — the property that actually has to be
+unambiguous. Staging has no such rows, so staging applied it cleanly and no gate
+ever saw it.
+
+It also disproved one alarm it raised itself: flattening jsonb to `{}` made the
+same guard report `complete=0` on healthy rows. That was a redaction artifact,
+and chasing it is why redaction now preserves JSON shape.
+
+
 
 ```
 uv run python scripts/rehearse_cutover.py \

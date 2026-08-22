@@ -133,15 +133,21 @@ class TestKillMidPass:
             # If the RPC exists, the claim succeeds; no extra Python gate.
             assert True  # structural test: no Python-side lease expiry gate exists
 
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_kill_mid_pass(self):
-        """Real 9a drill: requires local Supabase and two runtimes.
-
-        Run via: ./scripts/drill-lease-recovery.sh
-        This marker keeps it out of the default ` -m \"not integration\"` gate.
-        """
-        pytest.skip("Use scripts/drill-lease-recovery.sh for the live kill-mid-pass drill")
+    # test_kill_mid_pass lived here and did nothing.
+    #
+    # It skipped unconditionally with "Use scripts/drill-lease-recovery.sh",
+    # and that script ran this same test with `|| true` before echoing
+    # "Drill 9a PASSED". The delegation was circular: neither end executed, and
+    # a green tick was printed regardless. executable-truth §2 records it as the
+    # clearest single instance of the failure that plan exists to end.
+    #
+    # The property it named -- a lease expires and the next generation reclaims
+    # the work without a restart -- is now genuinely proven by
+    # tests/drills/test_acceptance_drill.py::test_01_lease_expiry_reclaims_without_restart,
+    # which runs against real staging Postgres via
+    # ./scripts/drill-staging-workers.sh. The script is deleted and so is this
+    # placeholder; a test that asserts nothing is worse than no test, because it
+    # occupies the space where somebody would otherwise notice the gap.
 
 
 class TestOutlookFixture:

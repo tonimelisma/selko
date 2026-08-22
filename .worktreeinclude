@@ -2,3 +2,11 @@
 .env.test
 .env.production
 frontend/.env
+# Gitignored, machine-local, and required by every Gradle task: without it
+# `./gradlew testDebugUnitTest` fails in a worktree with "SDK location not
+# found", so the Android half of the DoD was unrunnable anywhere except the
+# main checkout.
+android/local.properties
+# Supabase's linked project ref. Without it the staging drill and Tier 2
+# verifier refuse in a worktree ("linked project ref is unknown").
+supabase/.temp/project-ref

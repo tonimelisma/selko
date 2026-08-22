@@ -11,8 +11,12 @@ drills = ["production-cutover-rehearsal"]
 
 # Cutover Verification — Egress + Hardening Batch (Inc 10)
 
-**Status:** verified locally, not deployed. `ENABLE_BACKGROUND_PROCESSING=false` stays.
-**Branch:** `main` at `7ee04d6e` + this commit. No prod deploy until you explicitly approve.
+**Status is not authored here** — `docs/specs/README.md` derives it from
+evidence manifests. The Local DoD figures below are a dated record of one
+2026-08-07 run, kept for history; they are not a current claim.
+
+**Production still runs `7768cfb6` with 12 migrations pending.** No prod
+deploy until explicitly approved.
 
 This is the operational checklist consolidated from the ingestion-hardening
 (#241–#247), egress-scheduling and polling-v2 (#231–#235) cutover runbooks, all
@@ -30,15 +34,20 @@ flag is ever flipped.
   integration first poll, resilient ConnectionRecovery poll, live-ui debt noted.
 - **Hardening 8:** `__import__` hack removed, `get_gmail_credentials` rename,
   explicit grants migration, Outlook failure logging, reconciliation ledger, token init.
-- **Hardening 9:** `scripts/drill-lease-recovery.sh` + `test_integration_ingestion_drill.py`
+- **Hardening 9:** `backend/tests/drills/test_acceptance_drill.py` via `scripts/drill-staging-workers.sh`
   (gate + Outlook fixture).
 
-Migrations added (11 pending on prod, was 9):
+Migrations added by that batch (the pending set has since grown to **12** —
+run `supabase db push --dry-run` for the current list rather than trusting
+a count written here):
 - `20260807000001_fix_recovery_withdrawn_and_complete.sql` (withdrawn_count)
 - `20260807000002_explicit_service_role_grants.sql` (explicit 11 grants)
 
-Prod is still at `a50e1e4e` code vs `20260803000002` schema, with BG off — inert mismatch.
-Do not flip the flag via Render env alone. Follow the ordered cutover below.
+As of 2026-08-22 production runs code `7768cfb6` against schema
+`20260822000001`, with background processing ON in the Render service
+environment (the checked-in `.env.production` says `false`; Render is
+authoritative and they disagree). Do not flip flags via Render env alone.
+Follow the ordered cutover below.
 
 ## Ordered cutover (must be migrations first, code second, flag last)
 
@@ -48,8 +57,9 @@ egress-scheduling and polling-v2 work:
 1. **No CI minutes will ever be bought for test gating.** Local verification remains authoritative. The dependency-free production deployment job is the exception because it owns the secret Render hooks; wait only for that job, not unrelated test jobs.
 2. **Staging token:** `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging, copies working → stale; if both stale, re-auth one side then re-sync). Do not ask to reauth when one side is working.
 3. **Staging deploy (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push` (dry-run then push). Render deploys on main push. `gh workflow run test.yml` to staging is a bonus only — never required.
-4. **Staging drills:** `./scripts/drill-lease-recovery.sh` (local Supabase) and staging full-path.
-5. **Prod migrations (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref khahcozfbnpykspvatrg && supabase db push --dry-run` (review 11) then `supabase db push`.
+4. **Staging drills:** `ENVIRONMENT=staging ./scripts/drill-staging-workers.sh` — starts `selko.worker_app` against staging over the Supavisor session pooler, drains it, then runs the ten-step acceptance drill. (`drill-lease-recovery.sh` is deleted: it ran its delegate with `|| true` and echoed `PASSED` regardless.)
+4b. **Faithful cutover rehearsal (required, and re-run on the day):** `uv run python scripts/rehearse_cutover.py --production-url <read-only> --faithful`. Replays every pending migration against a redacted clone of production's real rows. Production data changes; a rehearsal from last week is evidence about last week.
+5. **Prod migrations (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref khahcozfbnpykspvatrg && supabase db push --dry-run` (**12 pending**, review them) then `supabase db push`. Take the `pg_dump` from the Rollback section FIRST — it is the only restore point that will exist.
 6. **Prod code:** after explicit approval and the local production migration gate, run `gh workflow run test.yml -f staging_action=none -f deploy_production=true`. The dependency-free production job owns both secret Render hooks. Do not wait for unrelated test jobs after that deploy job succeeds.
 7. **Flag:** set `ENABLE_BACKGROUND_PROCESSING=true` only after steps 5-6 and health below.
 
@@ -62,7 +72,7 @@ Ran 2026-08-07 against `main`:
 - `npm --prefix frontend run check` → **0 errors 0 warnings**
 - New migrations syntax-checked (no `psql` errors on `supabase db diff` — local instance not running, but SQL parses and grants match the 11 revoke targets).
 
-No integration tests run by default (`-m "not integration"` gate per AGENTS.md); the two integration-only drills are behind `scripts/drill-lease-recovery.sh` and require `supabase start`.
+Superseded: `./scripts/verify.sh backend` is now the Tier 1 gate and runs the integration suite against local Postgres. The drills live in `backend/tests/drills/` behind the `drill` marker and run against staging via `./scripts/drill-staging-workers.sh`.
 
 ## Health to confirm after flag on (staging then prod)
 
@@ -75,7 +85,54 @@ No integration tests run by default (`-m "not integration"` gate per AGENTS.md);
 
 ## Rollback
 
-`email_fetch.py` was deleted in #234 before v2 ever ran in prod, so rollback is `git revert` of the five v2 PRs plus four migrations. No v2 state is destroyed — tables, leases, discovered identities persist, so a later re-cutover resumes. Verify this claim on staging before prod cutover (currently an assertion, not a tested property per hardening finding 30).
+**There is no code rollback for this batch. `git revert` does not restore a
+dropped column.**
+
+The previous text here said rollback was *"`git revert` of the five v2 PRs plus
+four migrations"*, and flagged itself as *"an assertion, not a tested
+property"*. It was written for the polling-v2 batch, where nothing was
+destroyed. It is wrong for this one, and it is wrong in the most dangerous
+possible way: a stale rollback plan is read under pressure, at the exact moment
+nobody has time to check whether it still applies.
+
+The pending batch is **12 migrations** ending in `20260829000001`, which runs
+`ALTER TABLE public.events DROP COLUMN status`. Once that commits, the values
+are gone. No later migration and no revert can reconstruct which rows were
+`sync_failed` — that is precisely why the backfill in that migration had to be
+completed before it reached any durable environment.
+
+Compounding it: the Supabase organisation is on the **free plan**. No PITR, no
+automated backups. There is no restore point you did not take yourself.
+
+**The only rollback is a dump taken immediately before the cutover:**
+
+```bash
+pg_dump "$PRODUCTION_DB_URL" --format=custom --file=pre-cutover-$(date +%Y%m%dT%H%M%SZ).dump
+```
+
+Production is ~55 MB / 295 events / 2409 emails, so this takes seconds. Take it,
+verify it is non-empty, and keep it until the cutover has been healthy for at
+least 24 hours.
+
+**Restoring is a full-database operation, not a selective one.** Anything
+written between the dump and the restore is lost, so the decision to roll back
+is also a decision to discard that window.
+
+### Forward is usually the better direction
+
+Every defect this batch has produced was fixed forward, and the machinery to do
+that safely now exists:
+
+- `./scripts/rehearse_cutover.py --production-url <ro> --faithful` replays the
+  whole batch against a redacted clone of production's real rows. It found two
+  blockers a synthetic rehearsal could not: the `pending_change` CHECK domain,
+  and the `event_change_proposals` backfill guard refusing two real events.
+- `./scripts/verify.sh backend` is the Tier 1 gate.
+- `./scripts/drill-staging-workers.sh` proves worker behaviour against staging.
+
+Run the faithful rehearsal again immediately before the cutover. Production is a
+live system; its data changes, and a rehearsal from yesterday is evidence about
+yesterday's rows.
 
 ## Historical non-deploy record
 
