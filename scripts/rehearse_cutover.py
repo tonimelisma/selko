@@ -265,7 +265,80 @@ _CLONE_ORDER = (
     "email_sync_runs", "emails", "email_ingestion_items", "attachments",
     "events", "event_sources", "sender_rules", "user_calendar_settings",
     "operational_incidents", "usage_quotas",
+    # event_repair_audit was missing, and its absence let a cutover failure
+    # through to production: 20260825000001 narrows
+    # event_repair_audit_action_check, production held one row written under
+    # the pre-rename action 'mark_source_resolved', and the real push aborted
+    # at migration 5 of 12 on SQLSTATE 23514.
+    #
+    # A hand-maintained allowlist encodes "tables someone thought of". The
+    # property that matters is "every table a pending migration touches", which
+    # is why _assert_clone_covers_pending_migrations below derives that set
+    # from the migration SQL and fails when this tuple falls behind it.
+    "event_repair_audit",
+    # Flagged by the coverage check on its first run: it exists in production
+    # and 20260830000003 updates it.
+    "integration_recoveries",
+    # These two were created BY the 2026-08-22 batch, so they held no rows
+    # before it and the check ignored them then. They exist now, so any future
+    # migration touching them needs their real rows in the rehearsal. Children
+    # of events -- keep them after it.
+    "calendar_work_items", "event_change_proposals",
 )
+
+
+# Statements that can only fail because of rows that already exist: a narrowed
+# CHECK, a NOT NULL added to a populated column, or a data transform. If a
+# pending migration runs one of these against a table the clone skipped, the
+# rehearsal is blind to it in exactly the way that let SQLSTATE 23514 reach
+# production.
+_DATA_SENSITIVE = (
+    re.compile(r"ALTER TABLE\s+(?:ONLY\s+)?public\.(\w+)[^;]*?ADD CONSTRAINT", re.I | re.S),
+    re.compile(r"ALTER TABLE\s+(?:ONLY\s+)?public\.(\w+)[^;]*?SET NOT NULL", re.I | re.S),
+    re.compile(r"UPDATE\s+public\.(\w+)", re.I),
+    re.compile(r"DELETE\s+FROM\s+public\.(\w+)", re.I),
+)
+
+
+def tables_pending_migrations_transform(pending: list[Path]) -> set[str]:
+    """Tables whose EXISTING ROWS a pending migration could trip over."""
+    touched: set[str] = set()
+    for path in pending:
+        sql = path.read_text()
+        for pattern in _DATA_SENSITIVE:
+            touched.update(match.lower() for match in pattern.findall(sql))
+    return touched
+
+
+async def assert_clone_covers_pending_migrations(pending: list[Path], prod_url: str) -> list[str]:
+    """Fail when the clone list has fallen behind what the migrations touch.
+
+    A hand-maintained allowlist encodes "tables someone thought of". This
+    derives the set from the migration SQL, so forgetting a table is a loud
+    rehearsal failure rather than a silent blind spot that surfaces during the
+    real push.
+    """
+    required = tables_pending_migrations_transform(pending)
+    if not required:
+        return []
+    prod = await asyncpg.connect(prod_url)
+    try:
+        real = {
+            row["table_name"]
+            for row in await prod.fetch(
+                "SELECT table_name FROM information_schema.tables"
+                " WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+            )
+        }
+    finally:
+        await prod.close()
+    missing = sorted((required & real) - set(_CLONE_ORDER))
+    if missing:
+        return [
+            "clone list is behind the pending migrations; these tables have "
+            f"rows a migration could trip over but are not cloned: {missing}"
+        ]
+    return []
 
 
 async def clone_production_shape(prod_url: str, conn) -> dict[str, int]:
@@ -473,6 +546,10 @@ async def main() -> int:
             # credentials left in production. This is what proves the S-batch
             # backfills transform production's actual data, rather than merely
             # applying against a synthesised status distribution.
+            coverage = await assert_clone_covers_pending_migrations(pending, args.production_url)
+            if coverage:
+                failures.extend(coverage)
+                return _report(failures)
             print("Cloning production's structure and volume (content redacted)")
             # auth.users is the FK target for public.users; mirror the ids.
             prod = await asyncpg.connect(args.production_url)
