@@ -21,9 +21,9 @@ declares a dependency on has landed.
 | 4 | [State ownership and deterministic recovery](state-ownership-and-deterministic-recovery.md) | S1–S5 | Evidence pending (tests 0/2; health 0/2; drills 0/1) | P1–P3 and C1–C3 implemented; production incident repaired and audited |
 | 5 | [Executable truth](executable-truth.md) | V1–V8, D1–D3 | Evidence pending (tests 0/2; health 0/2; drills 0/1) | Gates plan 4's outstanding evidence — start before any further S-plan claim |
 | 6 | [Grant integrity and cutover safety](grant-integrity-and-cutover-safety.md) | W1–W6, D4–D5 | Evidence pending (tests 0/4; health 0/1; drills 0/1) | Blocks the S+V production cutover; W1 is independent and ships first |
-| 7 | [Foundation integrity](foundation-integrity.md) | F7b, F8 open; F9 complete with accepted history debt | Evidence pending (tests 0/0; health 0/3; drills 0/1) | F7b needs staging access; F8 needs operator approval |
+| 7 | [Foundation integrity](foundation-integrity.md) | F7b drills done (see plan 6); F8 + 24h soak open; F9 complete with accepted history debt | Evidence pending (tests 0/0; health 0/3; drills 0/1) | F8 needs the 24h soak and operator approval |
 | 8 | [Cutover verification](cutover-verification-20260807.md) | Ordered checklist | Evidence pending (tests 0/0; health 0/3; drills 0/1) | Executed through F7–F8, never directly |
-| 9 | [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) | Steps 7–9 open | Evidence pending (tests 0/2; health 0/0; drills 0/1) | Independent; C3 adds cancel_queued to its recovery sets |
+| 9 | [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) | Step 8 delivered by plan 6; steps 7 and 9 operator-gated | Evidence pending (tests 0/2; health 0/0; drills 0/1) | Independent; C3 adds cancel_queued to its recovery sets |
 | — | [Review queue integrity](review-queue-integrity.md) | R1 defects repaired by G5; remaining text is normative | No executable acceptance criteria declared | R2–R5 superseded by plans 2 and 3 |
 
 ### 1 · Stub rollback and gate repair — completed record

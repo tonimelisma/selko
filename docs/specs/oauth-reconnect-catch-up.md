@@ -2,7 +2,7 @@
 spec_id = "oauth-reconnect-catch-up"
 readme_order = 9
 title = "OAuth reconnect catch-up"
-increments = "Steps 7–9 open"
+increments = "Step 8 delivered by plan 6; steps 7 and 9 operator-gated"
 gate = "Independent; C3 adds cancel_queued to its recovery sets"
 tests = [
   "tests/integration/test_integration_recovery.py::TestCompleteIntegrationReauthorization::test_upserts_credentials_and_creates_calendar_recovery",
@@ -22,8 +22,14 @@ drills = ["oauth-reconnect-catch-up-drill"]
 review-fix migration `20260802000006`; the recovery UI projection (section 4)
 shipped with it. Email half is delivered by the polling-ingestion-v2 trigger.
 Remaining from the delivery sequence: live invalidation wiring (step 6, built
-on the Realtime invalidation shipped in #270–#272), reviewed legacy production repair (step 7), staging
-fault injection (step 8), and production rollout (step 9).
+on the Realtime invalidation shipped in #270–#272), reviewed legacy production
+repair (step 7), and production rollout (step 9) — both operator-gated.
+
+**Step 8, staging fault injection, is delivered.** The drill suite runs against
+real staging Postgres via `./scripts/drill-staging-workers.sh` and injects the
+faults this step called for: a crashed discovery run reclaimed without a
+restart (`test_08`), a stale provider run generation fenced (`test_10`), and
+faulted work degrading health (`test_09`). 10/10 green.
 
 The **email half is done**. The `integrations_ensure_email_sync_state` trigger
 (migration `20260802000002`) fires whenever an integration becomes active, so a
