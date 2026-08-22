@@ -33,14 +33,15 @@ class TestQuotaDatabaseIntegration:
         assert "calendar_syncs_daily" in limit_types
 
     def test_usage_quotas_rls_only_own_data(
-        self, authenticated_client, temp_user_client, test_user_id, temp_user
+        self, admin_client, temp_user_client, test_user_id, temp_user
     ):
         """Test RLS prevents users from seeing other users' quota data."""
         temp_user_id, _, _ = temp_user
 
-        # Create quota record for test user (via service role or RPC)
-        # First, let's use the RPC to increment quota for test user
-        authenticated_client.rpc(
+        # Seed the row over the service role. The quota RPCs are no longer
+        # reachable with a user JWT (W1); this test is about table RLS, not
+        # about who may call the RPC.
+        admin_client.rpc(
             "check_and_increment_quota",
             {
                 "p_user_id": test_user_id,
@@ -60,10 +61,18 @@ class TestQuotaDatabaseIntegration:
         # RLS should filter this out
         assert len(result.data) == 0
 
-    def test_quota_rpc_check_and_increment(self, authenticated_client, test_user_id):
-        """Test check_and_increment_quota RPC function."""
-        # First call should succeed
-        result = authenticated_client.rpc(
+    def test_quota_rpc_check_and_increment(self, admin_client, test_user_id):
+        """check_and_increment_quota over the service role the app actually uses.
+
+        This previously called the RPC as ``authenticated_client``. Both quota
+        RPCs take an arbitrary ``p_user_id`` and never compare it to
+        ``auth.uid()``, so that grant let any signed-in user read another
+        user's usage or burn their daily quota. Neither call site in the
+        application uses a user JWT -- ``selko/services/quotas.py`` is
+        constructed from ``get_service_role_client`` -- so the grant bought
+        nothing and W1 removed it. See the denial test below.
+        """
+        result = admin_client.rpc(
             "check_and_increment_quota",
             {
                 "p_user_id": test_user_id,
@@ -78,9 +87,9 @@ class TestQuotaDatabaseIntegration:
         assert row["current_count"] >= 1
         assert row["quota_limit"] > 0
 
-    def test_quota_rpc_get_user_usage(self, authenticated_client, test_user_id):
-        """Test get_user_quota_usage RPC function."""
-        result = authenticated_client.rpc(
+    def test_quota_rpc_get_user_usage(self, admin_client, test_user_id):
+        """get_user_quota_usage over the service role the app actually uses."""
+        result = admin_client.rpc(
             "get_user_quota_usage",
             {"p_user_id": test_user_id},
         ).execute()
@@ -91,6 +100,30 @@ class TestQuotaDatabaseIntegration:
         assert "llm_calls_limit" in row
         assert "email_syncs_count" in row
         assert "calendar_syncs_count" in row
+
+    @pytest.mark.parametrize(
+        "rpc_name, params",
+        [
+            ("check_and_increment_quota",
+             {"p_quota_type": "llm_calls", "p_increment": 1}),
+            ("get_user_quota_usage", {}),
+        ],
+    )
+    def test_quota_rpcs_are_denied_to_a_signed_in_user(
+        self, authenticated_client, test_user_id, rpc_name, params
+    ):
+        """A user JWT must not reach a quota RPC that trusts its p_user_id.
+
+        Turning the old grant into an assertion: these functions accept any
+        user id and do no ownership check, so reachability from the
+        ``authenticated`` role is itself the vulnerability.
+        """
+        with pytest.raises(Exception) as excinfo:
+            authenticated_client.rpc(
+                rpc_name, {"p_user_id": test_user_id, **params}
+            ).execute()
+        message = str(excinfo.value).lower()
+        assert "permission" in message or "does not exist" in message, message
 
 
 @pytest.mark.integration

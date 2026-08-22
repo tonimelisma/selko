@@ -37,14 +37,31 @@ def auth_headers(authenticated_client):
 class TestHealthEndpoints:
     """Test health check endpoints (no auth required)."""
 
-    def test_health_check(self, test_client):
-        """GET /health returns ok status."""
+    def test_health_check(self, test_client, admin_client):
+        """GET /health reports exactly what health_work_state reports.
+
+        This asserted `status == "ok"` outright, which is a claim about the
+        whole database: /health is driven by health_work_state, and any test
+        that leaves a pending or stale email behind makes the roll-up degrade.
+        Whether it passed therefore depended on the random ordering seed.
+
+        The contract worth pinning is that the endpoint is driven by the
+        roll-up rather than hard-coded -- which is the actual regression risk
+        here, and is order-independent.
+        """
         response = test_client.get("/health")
 
         assert response.status_code == 200
         body = response.json()
-        assert body["status"] == "ok"
         assert "resolution" in body
+        assert body["status"] in {"ok", "degraded"}
+
+        rollup = admin_client.rpc("health_work_state", {"p_warning_seconds": 1800}).execute().data
+        row = (rollup or [None])[0] if isinstance(rollup, list) else rollup
+        expected = "ok" if isinstance(row, dict) and row.get("status") == "ok" else "degraded"
+        assert body["status"] == expected, (
+            "/health disagreed with health_work_state; it is not driven by the roll-up"
+        )
 
     def test_health_db_check(self, test_client):
         """GET /health/db returns connected status."""
@@ -489,9 +506,10 @@ class TestCORSConfiguration:
         response = test_client.get("/health")
 
         assert response.status_code == 200
-        # No CORS headers needed for same-origin requests
-        data = response.json()
-        assert data["status"] == "ok"
+        # No CORS headers needed for same-origin requests. This deliberately
+        # asserts nothing about the health payload: the subject is CORS, and
+        # /health's status reflects global work state that other tests perturb.
+        assert "access-control-allow-origin" not in response.headers
 
     def test_cors_preflight_disallowed_origin(self, test_client):
         """OPTIONS preflight from disallowed origin is handled."""

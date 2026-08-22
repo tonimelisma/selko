@@ -109,9 +109,9 @@ class TestWorkListenerLive:
         )
         await pg_pool.execute(
             "INSERT INTO public.events"
-            " (id, user_id, title, start_datetime, end_datetime, status)"
+            " (id, user_id, title, start_datetime, end_datetime, review_status)"
             " VALUES ($1, $2, 'durability probe', now() + interval '1 hour',"
-            " now() + interval '2 hours', 'approved')",
+            " now() + interval '2 hours', 'active')",
             event_id, user_id,
         )
         await pg_pool.fetchval(
@@ -184,9 +184,9 @@ class TestWorkListenerLive:
         )
         await pg_pool.execute(
             "INSERT INTO public.events"
-            " (id, user_id, title, start_datetime, end_datetime, status)"
+            " (id, user_id, title, start_datetime, end_datetime, review_status)"
             " VALUES ($1, $2, 'd3 probe', now() + interval '1 hour',"
-            " now() + interval '2 hours', 'approved')",
+            " now() + interval '2 hours', 'active')",
             event_id, user_id,
         )
         await pg_pool.fetchval(
