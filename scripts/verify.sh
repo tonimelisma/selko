@@ -53,22 +53,68 @@ write_manifest_on_exit() {
   exit "$status"
 }
 
+DOCKER_PROBE_TIMEOUT_SECONDS="${DOCKER_PROBE_TIMEOUT_SECONDS:-15}"
+
+# Run one docker command under a wall-clock bound.
+#
+# Docker Desktop can be fully "running" -- app, com.docker.backend and
+# com.docker.virtualization all alive -- while its VM disk has taken an I/O
+# fault, at which point every daemon call blocks forever rather than failing.
+# An unbounded probe turns the gate from "refuses with a reason" into "hangs
+# with no output", which is strictly worse: it consumes the whole CI budget and
+# is locally indistinguishable from a slow suite.
+#
+# macOS ships no timeout(1), so the bound is implemented here rather than
+# assumed. Echoes the command's stdout on success; returns 124 on timeout.
+bounded_docker() {
+  local output_file status waited pid
+  output_file="$(mktemp)"
+  docker "$@" >"$output_file" 2>/dev/null &
+  pid=$!
+  waited=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if [[ "$waited" -ge "$DOCKER_PROBE_TIMEOUT_SECONDS" ]]; then
+      kill -9 "$pid" 2>/dev/null || :
+      wait "$pid" 2>/dev/null || :
+      rm -f "$output_file"
+      return 124
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  status=0
+  wait "$pid" || status=$?
+  cat "$output_file"
+  rm -f "$output_file"
+  return "$status"
+}
+
+fail_unresponsive_daemon() {
+  echo "ERROR: the Docker daemon did not answer within ${DOCKER_PROBE_TIMEOUT_SECONDS}s." >&2
+  echo "       Docker Desktop reports itself as running even when its VM disk has" >&2
+  echo "       taken an I/O fault. Check the tail of" >&2
+  echo "       ~/Library/Containers/com.docker.docker/Data/log/vm/console.log for" >&2
+  echo "       'EXT4-fs (vda1)' errors." >&2
+  echo "       Repair: quit Docker Desktop and reopen it. If probes still hang," >&2
+  echo "       use Docker Desktop -> Troubleshoot -> Clean / Purge data, then" >&2
+  echo "       re-run 'supabase start'." >&2
+  exit 1
+}
+
 require_local_supabase() {
   # Supabase CLI status output is TTY-sensitive and returns non-zero in
   # redirected/non-TTY mode when optional services are stopped. Inspect the
   # health state of the required database and gateway containers instead of
   # treating that exit status as proof that local Postgres is unavailable.
-  local db_health gateway_health
-  if db_health="$(docker inspect -f '{{.State.Health.Status}}' supabase_db_selko 2>/dev/null)"; then
-    :
-  else
-    db_health=""
-  fi
-  if gateway_health="$(docker inspect -f '{{.State.Health.Status}}' supabase_kong_selko 2>/dev/null)"; then
-    :
-  else
-    gateway_health=""
-  fi
+  local db_health gateway_health probe_status
+  probe_status=0
+  db_health="$(bounded_docker inspect -f '{{.State.Health.Status}}' supabase_db_selko)" || probe_status=$?
+  [[ "$probe_status" -ne 124 ]] || fail_unresponsive_daemon
+  [[ "$probe_status" -eq 0 ]] || db_health=""
+  probe_status=0
+  gateway_health="$(bounded_docker inspect -f '{{.State.Health.Status}}' supabase_kong_selko)" || probe_status=$?
+  [[ "$probe_status" -ne 124 ]] || fail_unresponsive_daemon
+  [[ "$probe_status" -eq 0 ]] || gateway_health=""
   if [[ "$db_health" != "healthy" || "$gateway_health" != "healthy" ]]; then
     echo "ERROR: Local Supabase is not running. Start it with: supabase start" >&2
     exit 1
@@ -177,4 +223,8 @@ main() {
   esac
 }
 
-main "$@"
+# Sourcing this file exposes the helpers without running the gate, so the gate
+# contract test can drive bounded_docker against a stubbed daemon.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
