@@ -64,9 +64,10 @@ def test_idle_backoff_resets_after_work_is_found(mock_config):
 
 
 def test_runtime_spawns_configured_workers_and_stops_cleanly(mock_config):
-    """One coordinator plus the configured acquisition/attachment workers.
+    """Coordinator, acquisition, attachment, plus the health floor.
 
-    The evaluator is activity-driven and is not an idle runtime task.
+    Evaluation is activity-driven; the floor is the bounded safety net under
+    it, and it is a managed task so the watchdog respawns it like any other.
     """
     config = replace(
         mock_config, email_acquisition_concurrency=2, email_attachment_concurrency=3
@@ -81,13 +82,16 @@ def test_runtime_spawns_configured_workers_and_stops_cleanly(mock_config):
             health.return_value.run = AsyncMock()
             await runtime.start()
             spawned = len(runtime._managed)
+            managed_names = [dict(entry) for entry in runtime._managed]
             names = [w.worker_id for w in runtime._workers]
             await runtime.stop()
-        return spawned, names, runtime._managed
+        return spawned, names, runtime._managed, managed_names
 
-    spawned, names, remaining = asyncio.run(scenario())
+    spawned, names, remaining, runtime_managed_names = asyncio.run(scenario())
 
-    assert spawned == 1 + 1 + 1  # coordinator + single acquisition + single attachment
+    # coordinator + acquisition + attachment + health floor
+    assert spawned == 1 + 1 + 1 + 1
+    assert "email-sync-health-floor" in [entry["name"] for entry in runtime_managed_names]
     assert names[0] == "test-instance-coordinator"
     assert "test-instance-acquisition" in names
     assert "test-instance-attachment" in names
@@ -711,3 +715,86 @@ def test_claim_loop_nudge_wakes_acquisition(mock_config):
         await asyncio.wait_for(task, timeout=1.0)
         assert calls["n"] >= 2
     asyncio.run(scenario())
+
+
+# --- W4: the floor under notification-driven health evaluation ---------------
+
+
+async def _run_floor(config, evaluator, *, cycles: int) -> None:
+    """Drive IngestionRuntime._health_floor for a bounded number of intervals.
+
+    The floor waits on the stop event with a timeout, so a tiny interval makes
+    the loop run in milliseconds without patching the clock.
+    """
+    runtime = IngestionRuntime(MagicMock(), config, instance_id="floor-test")
+    runtime._health_evaluator = evaluator
+    task = asyncio.create_task(runtime._health_floor())
+    await asyncio.sleep(config.email_health_floor_seconds * (cycles + 0.5))
+    runtime._stop_event.set()
+    await asyncio.wait_for(task, timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_health_evaluation_has_a_safety_net_floor(mock_config):
+    """An idle runtime still evaluates health.
+
+    V6 made evaluation notification-driven, which leaves no evaluation at all
+    when the coordinator cannot claim anything -- every integration
+    OAuth-blocked, the claim path broken, or no active integrations. That is
+    exactly the state incidents exist to report, so it cannot be the state in
+    which reporting stops.
+    """
+    config = replace(mock_config, email_health_floor_seconds=0.05)
+    evaluator = MagicMock(spec=EmailSyncHealthEvaluator)
+    evaluator.evaluate_once = AsyncMock(return_value=0)
+    # Never evaluated by work activity: the floor is the only caller.
+    evaluator.seconds_since_last_evaluation = MagicMock(return_value=None)
+
+    await _run_floor(config, evaluator, cycles=2)
+
+    assert evaluator.evaluate_once.await_count >= 1, (
+        "an idle runtime never evaluated health; the floor is missing"
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_busy_runtime_never_evaluates_health_on_the_floor(mock_config):
+    """The floor must not decay back into the 300s poll V6 deleted.
+
+    Work-activity evaluation already happened inside this interval, so the
+    floor must stay silent. Without this assertion the floor could be written
+    as an unconditional timer and still pass the test above.
+    """
+    config = replace(mock_config, email_health_floor_seconds=0.05)
+    evaluator = MagicMock(spec=EmailSyncHealthEvaluator)
+    evaluator.evaluate_once = AsyncMock(return_value=0)
+    # Work activity evaluated a moment ago, every time the floor looks.
+    evaluator.seconds_since_last_evaluation = MagicMock(return_value=0.0)
+
+    await _run_floor(config, evaluator, cycles=3)
+
+    assert evaluator.evaluate_once.await_count == 0, (
+        "the floor evaluated while work activity was already doing so; "
+        "it is a schedule, not a floor"
+    )
+
+
+@pytest.mark.asyncio
+async def test_health_floor_stops_with_the_runtime(mock_config):
+    config = replace(mock_config, email_health_floor_seconds=5)
+    runtime = IngestionRuntime(MagicMock(), config, instance_id="floor-stop")
+    runtime._health_evaluator = None
+    task = asyncio.create_task(runtime._health_floor())
+    await asyncio.sleep(0)
+    runtime._stop_event.set()
+    # Must return promptly on stop rather than sleeping out the interval.
+    await asyncio.wait_for(task, timeout=2)
+    assert task.done()
+
+
+def test_evaluator_reports_when_it_last_ran(mock_config):
+    evaluator = EmailSyncHealthEvaluator(MagicMock(), mock_config)
+    assert evaluator.seconds_since_last_evaluation() is None
+    evaluator._last_evaluated_monotonic = __import__("time").monotonic()
+    since = evaluator.seconds_since_last_evaluation()
+    assert since is not None and since >= 0

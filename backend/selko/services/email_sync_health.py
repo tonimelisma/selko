@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+import time
 from datetime import datetime, timezone
 from typing import Protocol
 
@@ -124,6 +125,15 @@ class EmailSyncHealthEvaluator:
         self.client = client
         self.config = config
         self.notifier = notifier
+        # Monotonic, so a clock adjustment cannot make the floor fire early or
+        # never. None means "has not run since this process started".
+        self._last_evaluated_monotonic: float | None = None
+
+    def seconds_since_last_evaluation(self) -> float | None:
+        """Seconds since evaluate_once last completed, or None if never."""
+        if self._last_evaluated_monotonic is None:
+            return None
+        return time.monotonic() - self._last_evaluated_monotonic
 
     def _incident(self, state: dict, incident_type: str, severity: str, summary: str) -> SafeIncident:
         key = f"email-sync:{state['integration_id']}:{incident_type}"
@@ -288,6 +298,7 @@ class EmailSyncHealthEvaluator:
                     self.client.table("operational_incidents").update({"resolved_notification_sent_at": now.isoformat()}).eq("id", row["id"]).execute()
                 except Exception:
                     logger.exception("Operational recovery notification failed")
+        self._last_evaluated_monotonic = time.monotonic()
         return len(expected)
 
     async def run(self, stop_event: asyncio.Event) -> None:

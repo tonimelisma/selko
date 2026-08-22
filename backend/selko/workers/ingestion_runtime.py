@@ -121,12 +121,62 @@ class IngestionRuntime:
         # Inc2: one claim loop per type, concurrency via Semaphore in worker (not pollers)
         self._spawn("acquisition", "acquisition_loop", "email-acquisition")
         self._spawn("attachment", "attachment_loop", "email-attachment")
+        self._managed.append({
+            "name": "email-sync-health-floor",
+            "factory": lambda: asyncio.create_task(
+                self._health_floor(), name="email-sync-health-floor"
+            ),
+            "task": asyncio.create_task(self._health_floor(), name="email-sync-health-floor"),
+            "restarts": 0,
+            "last_exception_code": None,
+        })
         self._watchdog_task = asyncio.create_task(self._watchdog(), name="ingestion-watchdog")
         logger.info(
             "Email ingestion v2 runtime started (%d tasks, instance=%s)",
             len(self._managed),
             self.instance_id,
         )
+
+    async def _health_floor(self) -> None:
+        """A floor under notification-driven health evaluation, not a schedule.
+
+        V6 deleted the unconditional 300s evaluator and drove incident
+        evaluation from work activity instead. That is correct for *work* --
+        work announces itself. Health is the absence-of-work detector, and
+        absence announces nothing: if the coordinator cannot claim anything
+        (every integration OAuth-blocked, the claim path itself broken, or no
+        active integrations at all) then ``evaluate_once`` never runs, no
+        incident is ever opened, and no notification is ever sent. The stall
+        detector ends up depending on the thing it exists to detect.
+
+        The architecture principle already says what to do here: work arrives
+        by notification, and the safety-net poll is a floor rather than a
+        schedule. V6 removed the schedule without leaving the floor.
+
+        This fires only when a whole interval has passed with no work-activity
+        evaluation, so a busy system pays nothing for it and the egress budget
+        is unchanged.
+        """
+        # Float, and clamped only against a zero/negative busy-loop. An int()
+        # coercion here would silently round every sub-second value up to 1.
+        interval = max(0.01, float(self.config.email_health_floor_seconds))
+        while not self._stop_event.is_set():
+            try:
+                await asyncio.wait_for(self._stop_event.wait(), timeout=interval)
+                return
+            except asyncio.TimeoutError:
+                pass
+            evaluator = self._health_evaluator
+            if evaluator is None:
+                continue
+            since = evaluator.seconds_since_last_evaluation()
+            if since is not None and since < interval:
+                # Work activity already evaluated inside this interval.
+                continue
+            try:
+                await evaluator.evaluate_once()
+            except Exception:
+                logger.exception("Floor health evaluation failed")
 
     async def _watchdog(self) -> None:
         """Respawn any task that exits while the runtime is not stopping.
