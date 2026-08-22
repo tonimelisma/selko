@@ -263,7 +263,10 @@ if [ "$BLOCKED" = true ]; then
             ios)
                 echo "  ios:"
                 echo "    xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \\"
-                echo "      -destination 'platform=iOS Simulator,name=iPhone 16' \\"
+                # iPhone 16 does not exist on this machine (CLAUDE.md lists
+                # iPhone 17 Pro / 17 / Air). Telling an operator to run a
+                # command that cannot work is worse than saying nothing.
+                echo "      -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \\"
                 echo "      -resultBundlePath ios/TestResults.xcresult"
                 ;;
             android)
