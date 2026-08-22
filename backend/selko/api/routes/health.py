@@ -125,6 +125,50 @@ async def health_db_check(
         )
 
 
+_WORK_STATE_COUNT_FIELDS = (
+    "integrations_due", "oldest_next_poll_seconds", "leases_held",
+    "items_pending", "items_dead_letter", "attachments_dead_letter",
+    "open_incidents", "ready_emails", "processing_emails",
+    "stale_processing_emails", "unclaimable_emails",
+)
+
+
+def _work_state_counts() -> dict[str, int | None]:
+    """The health_work_state roll-up as plain counters, or all None."""
+    try:
+        cfg = load_config()
+        client = get_service_client(cfg)
+        result = client.rpc(
+            "health_work_state",
+            {"p_warning_seconds": int(cfg.email_health_warning_seconds or 1800)},
+        ).execute()
+        data = getattr(result, "data", None)
+        row = (data or [None])[0] if isinstance(data, list) else data
+        if not isinstance(row, dict):
+            return {field: None for field in _WORK_STATE_COUNT_FIELDS}
+        return {field: row.get(field) for field in _WORK_STATE_COUNT_FIELDS}
+    except Exception:
+        logger.exception("Work state counts unavailable")
+        return {field: None for field in _WORK_STATE_COUNT_FIELDS}
+
+
+def _status_from_work_state(counts: dict[str, int | None]) -> str:
+    """Degrade only on work that is lost, stuck, or unclaimable.
+
+    Stale polling and due integrations are the expected steady state when
+    background processing is off, so they must not degrade this surface -- that
+    is what made Tier 2's root assertion unsatisfiable against staging. Work
+    that has dead-lettered or become unclaimable is a real defect either way.
+    """
+    for field in (
+        "items_dead_letter", "attachments_dead_letter",
+        "stale_processing_emails", "unclaimable_emails",
+    ):
+        value = counts.get(field)
+        if isinstance(value, int) and value > 0:
+            return "degraded"
+    return "ok"
+
 @router.get("/health/ingestion", response_model=HealthIngestionResponse)
 async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
     """Live ingestion health — the surface Render's health check should watch.
@@ -147,13 +191,19 @@ async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
         listener_status = work_listener.status()
 
     if ingestion_runtime is None:
-        # Background processing disabled (local servers, tests, CI). Nothing
-        # is running, so the system cannot be "down"; report the disabled
-        # state instead of pretending ingestion is healthy.
+        # Background processing disabled (local servers, tests, CI, and staging
+        # by D4). Nothing is running here, so there are no tasks to supervise --
+        # but the work-state counters are a property of the DATABASE, not of
+        # this process, and they are exactly what an operator needs when no
+        # worker is running. Returning a bare "ok" asserted that ingestion was
+        # fine on the strength of nobody looking; staging could hold
+        # dead-lettered work and this endpoint would still say ok.
+        counts = _work_state_counts()
         return HealthIngestionResponse(
-            status="ok",
+            status=_status_from_work_state(counts),
             background_processing_enabled=False,
             listener=listener_status,
+            **counts,
         )
 
     try:

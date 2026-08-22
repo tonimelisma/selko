@@ -84,7 +84,7 @@ health_attempts="${STAGING_HEALTH_ATTEMPTS:-60}"
 for attempt in $(seq 1 "$health_attempts"); do
   if health_json=$(curl --fail --silent --show-error "$health_url"); then
     if printf '%s\n' "$health_json" | jq -e --arg expected_sha "$expected_sha" \
-      '(.status == "ok") and (.build_sha == $expected_sha)' >/dev/null; then
+      '((.status == "ok") or (.status == "degraded")) and (.build_sha == $expected_sha)' >/dev/null; then
       break
     fi
   fi
@@ -94,6 +94,11 @@ done
 printf '%s\n' "$health_json" | ./scripts/assert-staging-health.sh root
 VERIFY_STAGING_HEALTH_ASSERTIONS+=("/health")
 ingestion_json=$(curl --fail --silent --show-error "$ingestion_url")
+# Degradations that are never acceptable whatever the worker posture. Stale
+# polling and due integrations are expected with background processing off;
+# dead-lettered, stale or unclaimable work is not.
+printf '%s\n' "$ingestion_json" | ./scripts/assert-staging-health.sh work-state
+VERIFY_STAGING_HEALTH_ASSERTIONS+=("/health/ingestion")
 egress_json=$(curl --fail --silent --show-error "$egress_url")
 printf '%s\n' "$ingestion_json"
 printf '%s\n' "$egress_json"

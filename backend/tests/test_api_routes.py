@@ -194,16 +194,62 @@ class TestHealthEndpoints:
         assert resp.status_code == 503
 
     def test_health_ingestion_when_background_processing_is_off(self, test_client):
-        """When the runtime is None (ENABLE_BACKGROUND_PROCESSING off), the
-        route reports the disabled state — never "down" — and does not call
-        into the database."""
-        with patch("selko.api.app.ingestion_runtime", None):
+        """Runtime is None: report the disabled state, never "down", and still
+        report the work-state roll-up.
+
+        This previously also asserted the route "does not call into the
+        database". That property was dropped deliberately: the work-state
+        counters describe the DATABASE, not this process, and they are exactly
+        what an operator needs when no worker is running. Staging runs with
+        background processing off by design (D4), so under the old contract it
+        could hold dead-lettered work while this endpoint reported a bare "ok".
+
+        The cost is one health_work_state call, which is what `/health`
+        already does on every hit.
+        """
+        with patch("selko.api.app.ingestion_runtime", None), \
+             patch("selko.api.routes.health._work_state_counts") as counts:
+            counts.return_value = {
+                "integrations_due": 3,
+                "oldest_next_poll_seconds": 99999,
+                "leases_held": 0,
+                "items_pending": 0,
+                "items_dead_letter": 0,
+                "attachments_dead_letter": 0,
+                "open_incidents": 1,
+                "ready_emails": 0,
+                "processing_emails": 0,
+                "stale_processing_emails": 0,
+                "unclaimable_emails": 0,
+            }
             resp = test_client.get("/health/ingestion")
         assert resp.status_code == 200
         body = resp.json()
+        # Stale polling and open incidents are the expected steady state with
+        # workers off; they must not degrade this surface.
         assert body["status"] == "ok"
         assert body["background_processing_enabled"] is False
         assert body["tasks"] == []
+        assert body["integrations_due"] == 3
+        assert body["open_incidents"] == 1
+
+    def test_health_ingestion_degrades_on_lost_work_even_with_workers_off(self, test_client):
+        """Dead-lettered or unclaimable work is a defect whatever the posture."""
+        base = {
+            "integrations_due": 0, "oldest_next_poll_seconds": 0, "leases_held": 0,
+            "items_pending": 0, "items_dead_letter": 0, "attachments_dead_letter": 0,
+            "open_incidents": 0, "ready_emails": 0, "processing_emails": 0,
+            "stale_processing_emails": 0, "unclaimable_emails": 0,
+        }
+        for field in (
+            "items_dead_letter", "attachments_dead_letter",
+            "stale_processing_emails", "unclaimable_emails",
+        ):
+            with patch("selko.api.app.ingestion_runtime", None), \
+                 patch("selko.api.routes.health._work_state_counts") as counts:
+                counts.return_value = {**base, field: 2}
+                resp = test_client.get("/health/ingestion")
+            assert resp.json()["status"] == "degraded", field
 
     def test_health_ingestion_reports_runtime_snapshot(self, test_client):
         """The route surfaces IngestionRuntime.health_snapshot()."""
