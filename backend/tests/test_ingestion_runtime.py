@@ -33,6 +33,41 @@ def test_idle_backoff_grows_geometrically_and_is_capped(mock_config):
     assert worker.idle_backoff(100) == 30.0
 
 
+def test_idle_backoff_survives_an_indefinitely_idle_queue(mock_config):
+    """Regression: the attachment loop died after ~8.5 hours of an empty queue.
+
+    `consecutive_idle` grows without bound, and `2 ** (n - 1)` exceeds what a
+    float can represent at n = 1025 -- roughly 1025 cycles at a 30s ceiling.
+    `base * huge_int` then raised OverflowError while computing min()'s
+    argument, so the ceiling never applied and the worker crashed:
+
+        OverflowError: int too large to convert to float
+
+    The old test stopped at n=100, where 2**99 still converts cleanly, so it
+    could not see this. These values straddle the float limit.
+    """
+    config = replace(
+        mock_config, email_worker_idle_base_seconds=1.0, email_worker_idle_max_seconds=30.0
+    )
+    worker = EmailIngestionWorker(MagicMock(), config, "worker-1")
+
+    assert worker.idle_backoff(1025) == 30.0
+    assert worker.idle_backoff(10_000) == 30.0
+    # A full day of idling at the ceiling, and then some.
+    assert worker.idle_backoff(1_000_000) == 30.0
+
+
+def test_idle_backoff_handles_a_ceiling_equal_to_base(mock_config):
+    """log2(ceiling / base) is 0 here; the exponent clamp must not go negative."""
+    config = replace(
+        mock_config, email_worker_idle_base_seconds=5.0, email_worker_idle_max_seconds=5.0
+    )
+    worker = EmailIngestionWorker(MagicMock(), config, "worker-1")
+
+    assert worker.idle_backoff(1) == 5.0
+    assert worker.idle_backoff(100_000) == 5.0
+
+
 def test_idle_backoff_resets_after_work_is_found(mock_config):
     """Backoff must not persist once the queue is busy again."""
     config = replace(

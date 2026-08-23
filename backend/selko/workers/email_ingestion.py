@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import math
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
@@ -939,7 +940,20 @@ class EmailIngestionWorker:
         """
         base = max(self.config.email_worker_idle_base_seconds, 0.1)
         ceiling = max(self.config.email_worker_idle_max_seconds, base)
-        return min(ceiling, base * (2 ** max(consecutive_idle - 1, 0)))
+
+        # Clamp the exponent, not just the result. `consecutive_idle` grows
+        # without bound while a queue stays empty, and `2 ** (n - 1)` becomes an
+        # integer too large to convert to float long before anything else
+        # notices -- `base * huge_int` raises OverflowError while *computing*
+        # min()'s argument, so the ceiling below never gets the chance to apply.
+        # That killed the attachment loop in production after roughly 1025 idle
+        # cycles, about 8.5 hours at a 30s ceiling.
+        #
+        # Any exponent past the one that first reaches the ceiling is already
+        # irrelevant, so clamping there changes no returned value.
+        steps_to_ceiling = math.ceil(math.log2(ceiling / base)) if ceiling > base else 0
+        exponent = min(max(consecutive_idle - 1, 0), steps_to_ceiling)
+        return min(ceiling, base * (2**exponent))
 
     async def _claim_loop(self, run_once, work_type: str) -> None:
         # R3: claim loop is nudge-aware — discovery wakes it in <100ms instead
