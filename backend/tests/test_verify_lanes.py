@@ -116,3 +116,45 @@ def test_every_execution_is_recorded_in_the_ledger(probe_file, tmp_path):
     assert record["lane"] == "probe"
     assert "duration_seconds" in record
     assert "executed" in record
+
+
+def test_an_unmet_precondition_is_red_not_skipped(probe_file, tmp_path):
+    """A lane that cannot run has verified nothing, so it must report failure.
+
+    The iOS lane depends on the backend API being up. When that dependency was
+    undeclared, the lane's result silently depended on whether someone had
+    started a server by hand -- reproducible for nobody.
+    """
+    lanes = tmp_path / "lanes.toml"
+    lanes.write_text(
+        "[lanes.probe]\n"
+        'gate = "prod"\n'
+        'description = "probe"\n'
+        'command = "true"\n'
+        f'inputs = ["{probe_file.relative_to(ROOT).as_posix()}"]\n'
+        "[[lanes.probe.requires]]\n"
+        'name = "impossible"\n'
+        'check = "false"\n'
+        'remedy = "cannot be satisfied"\n'
+    )
+    result = _run(lanes, tmp_path)
+    assert result.returncode == 1, result.stdout
+    assert "BLOCKED" in result.stdout, result.stdout
+    assert "cannot be satisfied" in result.stdout, result.stdout
+
+
+def test_a_met_precondition_lets_the_lane_run(probe_file, tmp_path):
+    lanes = tmp_path / "lanes.toml"
+    lanes.write_text(
+        "[lanes.probe]\n"
+        'gate = "prod"\n'
+        'description = "probe"\n'
+        'command = "true"\n'
+        f'inputs = ["{probe_file.relative_to(ROOT).as_posix()}"]\n'
+        "[[lanes.probe.requires]]\n"
+        'name = "always true"\n'
+        'check = "true"\n'
+        'remedy = "n/a"\n'
+    )
+    result = _run(lanes, tmp_path)
+    assert result.returncode == 0, result.stdout
