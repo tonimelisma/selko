@@ -194,6 +194,8 @@ class TestCLIStaging:
 
         assert result.returncode == 0
 
+    @pytest.mark.gmail
+
     def test_cli_fetch_emails_staging(self):
         """CLI fetch emails works in staging (with credentials)."""
         result = run_cli(
