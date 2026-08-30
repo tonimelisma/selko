@@ -193,3 +193,76 @@ def _component_sequence(component: dict[str, object]) -> int | None:
 def _component_dtstamp(component: dict[str, object]) -> str | None:
     value = component.get("dtstamp")
     return str(value) if value else None
+
+
+def hints_from_calendar_event(gcal_event: dict[str, object]) -> list[IdentityHint]:
+    """Identity hints for an event that lives in the user's Google Calendar.
+
+    Hints were only ever derived from incoming email and stored against Selko's
+    own events, so an event the user had already accepted from an invite -- and
+    which therefore existed only in their calendar -- could not be matched by
+    identity at all. It was compared by title, time and an LLM judgement, and
+    when that declined it was proposed as New all over again.
+
+    Google Calendar returns `iCalUID` on every event, and it is the same UID
+    that was in the invite. Reading it turns "the user already has this" from a
+    text guess into a deterministic match.
+    """
+    hints: list[IdentityHint] = []
+
+    # A single occurrence of a recurring series is identified by its UID plus
+    # the original start; `recurringEventId` alone would collapse the series.
+    original_start = gcal_event.get("originalStartTime")
+    recurrence_id = ""
+    if isinstance(original_start, dict):
+        recurrence_id = str(
+            original_start.get("dateTime") or original_start.get("date") or ""
+        )
+
+    uid_hint = canonical_ical_uid(gcal_event.get("iCalUID"), recurrence_id)
+    if uid_hint:
+        hints.append(uid_hint)
+
+    join_candidates: list[object] = [gcal_event.get("hangoutLink")]
+    conference = gcal_event.get("conferenceData")
+    if isinstance(conference, dict):
+        entry_points = conference.get("entryPoints")
+        if isinstance(entry_points, list):
+            for entry in entry_points:
+                if isinstance(entry, dict) and entry.get("entryPointType") == "video":
+                    join_candidates.append(entry.get("uri"))
+
+    for candidate in join_candidates:
+        join_hint = canonical_join_url(candidate)
+        if join_hint and not any(
+            h.kind == join_hint.kind and h.value_hash == join_hint.value_hash
+            for h in hints
+        ):
+            hints.append(join_hint)
+
+    return hints
+
+
+def match_by_identity(
+    incoming: list[IdentityHint], existing: list[IdentityHint]
+) -> IdentityHint | None:
+    """Return the hint proving two events are the same, or None.
+
+    An authoritative hint (an iCalendar UID, with its recurrence id) decides on
+    its own. A supporting hint such as a join URL does not: several distinct
+    sessions of one interview loop legitimately share a meeting room link, and
+    merging them would be worse than the duplicate this is meant to prevent.
+    """
+    if not incoming or not existing:
+        return None
+
+    existing_by_key = {
+        (hint.kind, hint.value_hash, hint.recurrence_id): hint for hint in existing
+    }
+    for hint in incoming:
+        if hint.strength != "authoritative":
+            continue
+        found = existing_by_key.get((hint.kind, hint.value_hash, hint.recurrence_id))
+        if found:
+            return found
+    return None
