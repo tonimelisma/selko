@@ -524,3 +524,99 @@ class TestCORSConfiguration:
         # Request goes through but CORS headers won't allow the origin
         cors_origin = response.headers.get("access-control-allow-origin")
         assert cors_origin != "https://evil-site.com"
+
+
+class TestApplyChangeRoute:
+    """POST /events/{id}/apply-change, exercised end to end.
+
+    This route had no test of any kind. Its service function was covered, so
+    when 20260829000001 deleted events.status the route kept reading
+    `applied["status"]` -- a key the service never returns -- and raised
+    KeyError on every call. Production answered 500 to every accept for eight
+    days while the whole suite stayed green.
+
+    The lesson matches the SQL one already in CLAUDE.md: a route no test calls
+    has not been tested, however well covered the code beneath it is. These
+    tests call the route.
+    """
+
+    def _make_event_with_pending_proposal(self, authenticated_client, admin_client, test_user_id):
+        event = authenticated_client.table("events").insert({
+            "user_id": test_user_id,
+            "title": "Original Title",
+            "start_datetime": "2026-04-01T10:00:00Z",
+            "end_datetime": "2026-04-01T11:00:00Z",
+            "review_status": "active",
+        }).execute().data[0]
+        # A proposal carries provenance: source_id is NOT NULL, and
+        # event_sources_origin_check requires an email for source_origin='email'.
+        email = authenticated_client.table("emails").insert({
+            "user_id": test_user_id,
+            "provider_message_id": f"apply-change-{event['id']}",
+            "subject": "Updated Title",
+            "from_email": "sender@example.com",
+            "date_sent": "2026-03-30T09:00:00Z",
+            "snippet": "The title changed",
+        }).execute().data[0]
+        source = admin_client.table("event_sources").insert({
+            "event_id": event["id"],
+            "email_id": email["id"],
+            "source_type": "update",
+            "extracted_data": {"title": "Updated Title"},
+        }).execute().data[0]
+        # event_change_proposals is service-only; RLS denies the user client.
+        proposal = admin_client.table("event_change_proposals").insert({
+            "event_id": event["id"],
+            "user_id": test_user_id,
+            "source_id": source["id"],
+            "kind": "material_update",
+            "status": "pending",
+            "change_set": {"kind": "material_update", "changes": [
+                {"field": "title", "before": "Original Title", "after": "Updated Title"},
+            ]},
+            "event_snapshot_before": {"title": "Original Title", "review_status": "active"},
+        }).execute().data[0]
+        return event["id"], proposal["id"]
+
+    def test_apply_change_returns_200_and_the_review_status(
+        self, test_client, auth_headers, authenticated_client, admin_client, test_user_id
+    ):
+        event_id, _ = self._make_event_with_pending_proposal(
+            authenticated_client, admin_client, test_user_id
+        )
+        try:
+            response = test_client.post(
+                f"/events/{event_id}/apply-change", headers=auth_headers
+            )
+            assert response.status_code == 200, response.text
+            body = response.json()
+            assert body["event_id"] == event_id
+            # The value must come from what the service actually returns.
+            assert body["status"] == "active", body
+        finally:
+            authenticated_client.table("events").delete().eq("id", event_id).execute()
+
+    def test_apply_change_actually_applies_the_proposal(
+        self, test_client, auth_headers, authenticated_client, admin_client, test_user_id
+    ):
+        """A 200 must mean the change landed, not merely that nothing raised."""
+        event_id, proposal_id = self._make_event_with_pending_proposal(
+            authenticated_client, admin_client, test_user_id
+        )
+        try:
+            response = test_client.post(
+                f"/events/{event_id}/apply-change", headers=auth_headers
+            )
+            assert response.status_code == 200, response.text
+
+            proposal = admin_client.table("event_change_proposals").select(
+                "status"
+            ).eq("id", proposal_id).single().execute().data
+            assert proposal["status"] == "applied"
+
+            event = authenticated_client.table("events").select("title").eq(
+                "id", event_id
+            ).single().execute().data
+            assert event["title"] == "Updated Title"
+        finally:
+            authenticated_client.table("events").delete().eq("id", event_id).execute()

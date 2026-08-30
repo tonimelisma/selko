@@ -98,6 +98,10 @@ class HealthResponse(BaseModel):
     #: absolute start time makes that distinction trivial: same value means the
     #: same process, and it can be compared directly against the deploy time.
     started_at: str | None = None
+    #: What this process has actually been answering, over the last hour.
+    #: `server_errors_per_hour` is the signal that was missing when every accept
+    #: returned 500 for eight days with all other invariants green.
+    requests: dict[str, object] = {}
     resolution: dict[str, object] = {}
 
 
