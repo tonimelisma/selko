@@ -54,6 +54,13 @@ CREATE TABLE public.calendar_entries (
 );
 
 ALTER TABLE public.calendar_entries ENABLE ROW LEVEL SECURITY;
+-- The owner may read their own mirror; the API roles get nothing else, and the
+-- mirror worker writes as service_role. Without the grant below the worker
+-- cannot insert a single row -- RLS alone does not confer table privileges, and
+-- 20260830000001 revoked the default ones from the API roles.
+REVOKE ALL ON TABLE public.calendar_entries FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.calendar_entries TO authenticated;
+GRANT ALL ON TABLE public.calendar_entries TO service_role;
 CREATE POLICY "Users can view own calendar entries"
     ON public.calendar_entries FOR SELECT
     USING (auth.uid() = user_id);
