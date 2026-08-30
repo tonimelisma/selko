@@ -2,8 +2,8 @@
 spec_id = "event-identity-reach"
 readme_order = 12
 title = "Event identity reach: invites, reschedules, and the user's existing calendar"
-increments = "I1–I5"
-gate = "I1 implemented; I2–I5 open"
+increments = "I1–I5, D1–D2"
+gate = "I1 implemented; D1–D2 decisions open and block I2"
 tests = [
   "tests/test_calendar_identity_match.py::test_matching_uid_proves_the_user_already_has_the_event",
   "tests/test_calendar_identity_match.py::test_a_shared_join_url_alone_never_merges_two_events",
@@ -132,6 +132,112 @@ Rungs are tried in order; the first that resolves wins.
 
 Today only rungs 2, 4 and 5 can fire, because rung 1 has no data and rung 3 does
 not exist.
+
+## 4a. What the code does today (read 2026-08-30, not assumed)
+
+| Fact | Where | Consequence |
+|---|---|---|
+| Calendar reads are `timeMin`/`timeMax`, `singleEvents=True`, **`maxResults=50`**, no `syncToken` | `calendars.fetch_calendar_events_for_date_range` | A busy day truncates silently; nothing is retained between calls |
+| No table mirrors the calendar. `calendar_sync_log` records *our own writes*; `user_calendar_settings` holds settings | schema | "Do I already know this?" has no index to consult |
+| Hints are keyed to `event_id`, unique on `(event_id, kind, value_hash, recurrence_id)`, looked up by `(user_id, kind, value_hash, recurrence_id)` | `event_identity_hints` | Only Selko-created events can be found by identity |
+| `commit_email_extraction` re-checks a window fingerprint **and** a hint fingerprint over `events` before writing | `20260830000002` | Any new matching source must join the fence, or a concurrent writer can invalidate the decision |
+| A calendar match already **adopts** the entry: creates an event carrying `google_calendar_event_id` with `source_origin: google_calendar` | `events.py` ~705–755 | Adoption exists; only *discovery* is missing |
+| `_calendar_service_for_user` resolves credentials by provider and `target_calendar_id or "primary"` | `calendars.py:1131` | With two `google_calendar` integration rows, which calendar is read is not deterministic |
+| Divergence is detected per event by a live GET at undo time | `assert_calendar_not_diverged` | External edits are invisible until someone undoes something |
+
+The adoption path is the important one: Selko already knows how to take a
+calendar entry as the baseline for an event. What is missing is that it only
+ever sees an entry when an email happens to match it inside a one-day window.
+
+## 4b. Plan
+
+Five increments. Each is shippable, wired to call sites, and testable on its own;
+none is a refactor without behaviour.
+
+### D1 — Decide what is stored about events Selko did not create *(blocks I2)*
+
+Mirroring an external calendar means retaining data about events the user never
+sent us. Identity (`ical_uid`, join URL) and times are required. Titles and
+locations are what make the LLM rung and any conflict message useful, and are
+the escalation. **Decide explicitly**: store titles for matching-window entries
+only, or hash them and accept a weaker last rung. Not a migration-author choice.
+
+### D2 — Deterministic calendar selection *(blocks I2)*
+
+Production holds two `google_calendar` integration rows, one stale since
+2026-07-17. Mirroring makes that ambiguity load-bearing. Pick the rule (most
+recently authorised active row per user), pin it in a test, and scope every
+mirrored row by `integration_id` **and** `calendar_id`.
+
+### I2 — Mirror the calendar, incrementally
+
+`calendar_entries`: `user_id, integration_id, calendar_id, provider_event_id,
+ical_uid, recurring_event_id, original_start, start_at, end_at, all_day,
+timezone, status, self_response, etag, provider_updated_at, sequence, origin
+(selko_created|external), deleted_at`. Unique on
+`(integration_id, calendar_id, provider_event_id)`. **RLS in the same
+migration**, owner-readable, service-writable.
+
+`calendar_mirror_state`, one row per `(integration_id, calendar_id)`, copying
+the shape `email_sync_state` already proves: `sync_token, last_full_resync_at,
+next_poll_at, lease_owner, lease_expires_at, lease_generation,
+consecutive_failures, last_error_code`.
+
+Sync uses `events.list(syncToken=…)`, so a steady state transfers only changes —
+this matters because the egress rule forbids unconditional periodic reads. A
+`410 GONE` clears the token and forces one full resync. Deletions become
+tombstones (`deleted_at`), never row deletes, so drift and undo stay answerable.
+
+The loop is a task in `IngestionRuntime` using the existing claim → heartbeat →
+complete/fail fencing, which also satisfies the reachability test.
+
+### I3 — Let identity reach the mirror
+
+Add `calendar_entry_id uuid` to `event_identity_hints`, nullable, with
+`CHECK (num_nonnulls(event_id, calendar_entry_id) = 1)` so a hint names exactly
+one entity. The existing lookup index already covers
+`(user_id, kind, value_hash, recurrence_id)` and needs no change.
+
+Populate hints on every mirror upsert via the existing
+`hints_from_calendar_event`. Extend `_load_identity_candidates` to return
+calendar entries beside events.
+
+**Extend the fence.** `commit_email_extraction`'s hint fingerprint currently
+covers `events` reached through hints; it must also cover `calendar_entries`
+reached through hints, or a concurrent mirror sync can invalidate a decision
+between match and commit. This is the step most likely to be skipped and the one
+that would reintroduce the race P2 closed.
+
+I1 (shipped) already compares calendar identity inline at match time. I3
+replaces that with the index, so the answer no longer depends on the entry
+falling inside a 50-result day window.
+
+### I4 — A hint that survives a date change
+
+Text-only mail carries no UID. Derive `provider_thread` (already implemented in
+`event_identity`) plus a normalised organiser, and add rung 3: same thread and
+organiser with an overlapping window **decides for updates only, never for
+creates**. That asymmetry is deliberate — a thread is strong evidence that two
+messages concern one event, and weak evidence that a new event exists.
+
+This is what closes S4 and S5 for mail without an invite; I1 only closes them
+when an ICS is present.
+
+### I5 — Backfill and drift
+
+Re-parse the 18 ICS-bearing emails that predate component capture so their UIDs
+enter the index, or record the decision not to. Then use the mirror for what it
+uniquely enables: noticing that the user moved or deleted an event themselves,
+which today is invisible until an undo triggers `assert_calendar_not_diverged`.
+
+### Verification each increment owes
+
+| Increment | Beyond the lanes |
+|---|---|
+| I2 | New tables → RLS in the same migration. New loop → watch RSS and `/health/egress` over hours; a mirror that re-reads everything is the exact shape of the #191 OOM and the 942 MB egress bill |
+| I3 | Migration touches a populated table → `rehearse_cutover.py --faithful`. Fence change → the conflict test must fail without it |
+| I4 | Evals: S4/S5 fixtures alongside the three already committed |
+| I5 | Backfill is a production data mutation → dry run, manifest, reverse artifact |
 
 ## 5. Scenarios that must be covered
 
