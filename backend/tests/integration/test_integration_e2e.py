@@ -207,6 +207,8 @@ class TestEndToEndStaging:
     - OAuth tokens stored in staging database
     """
 
+    @pytest.mark.gmail
+
     def test_full_email_sync_pipeline(
         self, authenticated_client, admin_client, test_user_id, config
     ):
@@ -242,6 +244,8 @@ class TestEndToEndStaging:
             stored_ids = {e["provider_message_id"] for e in result.data}
             fetched_ids = {m["id"] for m in messages}
             assert fetched_ids.issubset(stored_ids)
+
+    @pytest.mark.gmail
 
     def test_existing_user_fetch_new_emails(
         self, admin_client, test_user_id, config

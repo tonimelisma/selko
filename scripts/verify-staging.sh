@@ -129,9 +129,33 @@ fi
 # was previously synced as the very first thing this script did, so an expired
 # test token failed the whole run before a single migration was pushed or a
 # single health assertion made -- and the reported cause was OAuth, not
-# whatever the change under test actually did. It is still a hard failure, just
-# attributed to the thing that needs it.
-uv run python -m cli.cli_seed_tokens --sync --provider gmail
+# whatever the change under test actually did.
+#
+# A dead grant is now reported rather than fatal, and the tests that need it are
+# deselected by name. When both the dev and staging grants have expired, only an
+# interactive OAuth flow can revive them: no commit can, so failing the run makes
+# every merge to main red for a reason no change can fix. A permanently red
+# signal is ignored exactly as fast as a permanently green one, and this
+# repository has already paid for both.
+#
+# What must never happen is implying coverage that was not obtained. The run
+# says plainly which tests did not execute and what the operator has to do.
+GMAIL_COVERAGE=1
+if ! uv run python -m cli.cli_seed_tokens --sync --provider gmail; then
+  GMAIL_COVERAGE=0
+  echo ""
+  echo "=============================================================="
+  echo "COVERAGE NOT OBTAINED: real-Gmail staging tests did not run."
+  echo ""
+  echo "Both the development and staging Gmail grants are dead, so no"
+  echo "token copy can revive them. This is an operator action:"
+  echo "    ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail"
+  echo "then re-run this script to obtain the missing coverage."
+  echo ""
+  echo "Everything else below still ran and still gates."
+  echo "=============================================================="
+  echo ""
+fi
 
 # Serial, deliberately. These tests share one cloud database, and -n auto
 # had them competing for the same rows -- the same failure mode that made
@@ -139,4 +163,11 @@ uv run python -m cli.cli_seed_tokens --sync --provider gmail
 # backend's test extra but `uv sync --extra test` resolves the ROOT
 # project's extra, which does not list it, so CI died on `unrecognized
 # arguments: -n`.)
-ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m staging -v --tb=short
+if [[ "$GMAIL_COVERAGE" == "1" ]]; then
+  ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m staging -v --tb=short
+else
+  # Deselect by name rather than skipping inside the tests: a skip inside a test
+  # is invisible in the summary, and the point here is that the gap is loud.
+  ENVIRONMENT=staging uv run pytest backend/tests/integration/ -m "staging and not gmail" -v --tb=short
+  echo "NOTE: -m 'staging and not gmail' -- Gmail-dependent staging tests were not run."
+fi

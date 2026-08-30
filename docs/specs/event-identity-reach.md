@@ -3,10 +3,14 @@ spec_id = "event-identity-reach"
 readme_order = 12
 title = "Event identity reach: invites, reschedules, and the user's existing calendar"
 increments = "I1–I5"
-gate = "I1 implemented; I2–I5 open"
+gate = "I1–I5 implemented; backfill not yet applied to production"
 tests = [
   "tests/test_calendar_identity_match.py::test_matching_uid_proves_the_user_already_has_the_event",
   "tests/test_calendar_identity_match.py::test_a_shared_join_url_alone_never_merges_two_events",
+  "tests/test_calendar_mirror.py::test_the_runtime_actually_runs_the_mirror",
+  "tests/test_thread_identity_rung.py::test_a_thread_matches_its_event_across_a_date_change",
+  "tests/test_thread_identity_rung.py::test_a_shared_thread_does_not_merge_different_events",
+  "tests/integration/test_integration_identity_hint_coverage.py::test_ordinary_email_yields_a_provider_thread_hint",
 ]
 health = []
 drills = []
@@ -14,8 +18,19 @@ drills = []
 
 # Event identity reach
 
-**Status:** I1 implemented (calendar entries are matched by identity). I2–I5
-open.
+**Status:** I1–I5 implemented and merged. The backfill script (I5) has been
+dry-run against production, which reports 19 candidate attachments, but has not
+been applied.
+
+One defect found while building I4 is worth recording separately, because it
+invalidates the measurement in §1: `_load_identity_context` selected a
+`body_html` column that no longer exists. PostgREST rejects the whole select for
+an unknown column and the failure was swallowed by a debug-level `except`, so
+`provider` and `thread_id` were empty for every email and **no `provider_thread`
+hint had ever been written**. The 14 hints counted below were the `join_url`
+ones, derived from event text rather than from that query. Hint coverage should
+therefore improve on its own now that the select works, independently of the
+backfill.
 
 **Written:** 2026-08-30, from production data rather than from design intent.
 

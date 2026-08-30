@@ -305,6 +305,8 @@ class TestAttachmentStorageStaging:
 class TestGmailAttachmentStaging:
     """Test Gmail attachment download with real Gmail API."""
 
+    @pytest.mark.gmail
+
     def test_gmail_attachment_full_pipeline(
         self, authenticated_client, admin_client, test_user_id, config
     ):
