@@ -11,7 +11,7 @@ from supabase import Client
 
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.config import Config
-from selko.services import calendars, event_processing, ics_parser
+from selko.services import calendars, event_identity, event_processing, ics_parser
 from selko.services.event_diff import (
     EventChangeSet,
     apply_asserted_fields,
@@ -1344,6 +1344,34 @@ def find_matching_event(
             candidate_by_id[match_id] = candidate
     except Exception as e:
         logger.warning(f"GCal read-back failed during dedup, continuing with local only: {e}")
+
+    # Rung 1 of the ladder, for events that live only in the user's calendar.
+    #
+    # An invite the user accepted elsewhere exists in Google Calendar and not in
+    # `events`, so no stored hint can match it. Its iCalUID is the same UID the
+    # invite carried, so comparing it against the incoming event's hints settles
+    # "the user already has this" deterministically -- previously it fell to the
+    # LLM text comparison below, which is why already-accepted invites kept
+    # reappearing in the review queue as New.
+    if identity_hints:
+        for candidate in candidates:
+            raw = candidate.get("_gcal_raw")
+            if not isinstance(raw, dict):
+                continue
+            proof = event_identity.match_by_identity(
+                identity_hints, event_identity.hints_from_calendar_event(raw)
+            )
+            if proof is None:
+                continue
+            logger.info(
+                "Calendar identity match on %s hint; skipping LLM comparison",
+                proof.kind,
+            )
+            return resolved(EventMatch(
+                match_id=candidate["id"],
+                baseline=candidate.get("_baseline") or _event_baseline(candidate),
+                candidate_window=candidate_window,
+            ))
 
     if not candidates:
         return resolved(None)

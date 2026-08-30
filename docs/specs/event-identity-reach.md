@@ -3,15 +3,19 @@ spec_id = "event-identity-reach"
 readme_order = 12
 title = "Event identity reach: invites, reschedules, and the user's existing calendar"
 increments = "I1–I5"
-gate = "not started"
-tests = []
+gate = "I1 implemented; I2–I5 open"
+tests = [
+  "tests/test_calendar_identity_match.py::test_matching_uid_proves_the_user_already_has_the_event",
+  "tests/test_calendar_identity_match.py::test_a_shared_join_url_alone_never_merges_two_events",
+]
 health = []
 drills = []
 +++
 
 # Event identity reach
 
-**Status:** requirements only. No increment implemented.
+**Status:** I1 implemented (calendar entries are matched by identity). I2–I5
+open.
 
 **Written:** 2026-08-30, from production data rather than from design intent.
 
@@ -85,11 +89,17 @@ reliably; a durable non-text signal is required.
 
 ## 3. Requirements
 
-**I1 — Match the user's calendar by identity.** Extract identity hints from
-Google Calendar entries (`iCalUID`, and the join URL in `conferenceData` or
-`hangoutLink`) and admit them to the same resolution ladder as email-derived
-hints. An event whose UID or join URL already exists in the user's calendar is
-**already known** and must not be proposed as New.
+**I1 — Match the user's calendar by identity. _Implemented._** Identity hints
+are extracted from Google Calendar entries (`iCalUID` plus `originalStartTime`
+for a recurring occurrence, and the video join URL from `hangoutLink` or
+`conferenceData`) and compared against the incoming event's hints before the LLM
+rung runs. An authoritative UID match resolves immediately.
+
+A shared join URL never merges on its own: sessions in one interview loop
+routinely share a meeting link, and collapsing five real events into one is
+worse than the duplicate this prevents. `match_by_identity` accepts only
+`strength == "authoritative"`, and a test asserts that removing the guard breaks
+the loop case.
 
 **I2 — Identity lookup must not be bounded by the candidate window.** Hint
 matching already uses a time-independent read set; the calendar-derived hints of
