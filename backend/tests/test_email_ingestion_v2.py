@@ -362,7 +362,12 @@ def test_dead_letter_attachment_incident_is_scoped_to_its_own_integration(mock_c
 
     def table(name):
         handle = MagicMock()
-        if name == "email_sync_state":
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+                {"id": "integration-2", "status": "active"},
+            ]
+        elif name == "email_sync_state":
             handle.select.return_value.execute.return_value.data = [_health_state()]
         elif name == "attachments":
             handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan(
@@ -400,7 +405,12 @@ def test_dead_letter_scan_pages_past_the_postgrest_row_cap(mock_config):
 
     def table(name):
         handle = MagicMock()
-        if name == "email_sync_state":
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+                {"id": "integration-2", "status": "active"},
+            ]
+        elif name == "email_sync_state":
             handle.select.return_value.execute.return_value.data = [_health_state()]
         elif name == "email_ingestion_items":
             handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan(rows)
@@ -431,7 +441,12 @@ def test_incident_sweep_does_not_resolve_a_foreign_incident_key(mock_config):
 
     def table(name):
         handle = MagicMock()
-        if name == "email_sync_state":
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+                {"id": "integration-2", "status": "active"},
+            ]
+        elif name == "email_sync_state":
             handle.select.return_value.execute.return_value.data = []
         elif name in ("email_ingestion_items", "attachments"):
             handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
@@ -463,7 +478,12 @@ def test_reopened_incident_can_send_a_second_recovery_notification(mock_config):
 
     def table(name):
         handle = MagicMock()
-        if name == "email_sync_state":
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+                {"id": "integration-2", "status": "active"},
+            ]
+        elif name == "email_sync_state":
             state = _health_state()
             state["consecutive_failures"] = 3
             handle.select.return_value.execute.return_value.data = [state]
@@ -526,7 +546,12 @@ def test_health_evaluation_records_incidents_without_a_notifier(mock_config):
 
     def table(name):
         handle = MagicMock()
-        if name == "email_sync_state":
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+                {"id": "integration-2", "status": "active"},
+            ]
+        elif name == "email_sync_state":
             state = _health_state()
             state["consecutive_failures"] = 3
             handle.select.return_value.execute.return_value.data = [state]
@@ -565,7 +590,12 @@ def test_new_integration_first_poll_in_flight_does_not_open_stale_incident(mock_
 
     def table(name):
         handle = MagicMock()
-        if name == "email_sync_state":
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+                {"id": "integration-2", "status": "active"},
+            ]
+        elif name == "email_sync_state":
             handle.select.return_value.execute.return_value.data = [state]
         elif name in {"attachments", "email_ingestion_items"}:
             handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
@@ -594,7 +624,12 @@ def test_new_integration_never_started_has_grace_and_no_stale_incident(mock_conf
 
     def table(name):
         handle = MagicMock()
-        if name == "email_sync_state":
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+                {"id": "integration-2", "status": "active"},
+            ]
+        elif name == "email_sync_state":
             handle.select.return_value.execute.return_value.data = [state]
         elif name in {"attachments", "email_ingestion_items"}:
             handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
@@ -624,7 +659,12 @@ def test_stale_poll_after_grace_does_open_incident(mock_config):
 
     def table(name):
         handle = MagicMock()
-        if name == "email_sync_state":
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+                {"id": "integration-2", "status": "active"},
+            ]
+        elif name == "email_sync_state":
             handle.select.return_value.execute.return_value.data = [state]
         elif name in {"attachments", "email_ingestion_items"}:
             handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
@@ -1404,3 +1444,81 @@ def test_every_concurrency_knob_is_read_by_a_worker():
         "worker_calendar_sync_concurrency",
     ):
         assert knob in source, f"{knob} is not read by any worker"
+
+
+def test_expired_integration_does_not_raise_a_stale_poll_incident(mock_config):
+    """An expired integration is not polled, so its poll age must not degrade us.
+
+    Production ran for 18 days with a critical `stale_poll` incident against a
+    Gmail integration whose OAuth had expired. Because an expired integration is
+    intentionally not claimable, its poll age grows without bound and the
+    incident is re-raised on every evaluation -- pinning /health to 'degraded'
+    permanently for a condition whose only real remedy (reconnect the account)
+    was already surfaced by the integration's own status and the
+    ConnectionRecovery card.
+
+    Migration 20260827000001 applied exactly this scope to `integrations_due`
+    and `oldest_next_poll_seconds`; the incident evaluator never got it.
+    """
+    stale = _health_state()
+    stale["last_success_at"] = (
+        datetime.now(timezone.utc) - timedelta(days=18)
+    ).isoformat()
+    stale["last_started_at"] = stale["last_success_at"]
+
+    client = MagicMock()
+    inserted: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "expired"},
+            ]
+        elif name == "email_sync_state":
+            handle.select.return_value.execute.return_value.data = [stale]
+        elif name in ("attachments", "email_ingestion_items"):
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
+        elif name == "operational_incidents":
+            handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.like.return_value.execute.return_value.data = []
+            handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
+        return handle
+
+    client.table.side_effect = table
+    asyncio.run(EmailSyncHealthEvaluator(client, mock_config).evaluate_once())
+
+    assert not [row for row in inserted if row["incident_type"] == "stale_poll"], inserted
+
+
+def test_active_integration_still_raises_a_stale_poll_incident(mock_config):
+    """The scope must narrow to inactive integrations only, not silence the check."""
+    stale = _health_state()
+    stale["last_success_at"] = (
+        datetime.now(timezone.utc) - timedelta(days=18)
+    ).isoformat()
+    stale["last_started_at"] = stale["last_success_at"]
+
+    client = MagicMock()
+    inserted: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "integrations":
+            handle.select.return_value.execute.return_value.data = [
+                {"id": "integration-1", "status": "active"},
+            ]
+        elif name == "email_sync_state":
+            handle.select.return_value.execute.return_value.data = [stale]
+        elif name in ("attachments", "email_ingestion_items"):
+            handle.select.return_value.eq.return_value.range.side_effect = _dead_letter_scan([])
+        elif name == "operational_incidents":
+            handle.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.like.return_value.execute.return_value.data = []
+            handle.insert.side_effect = lambda payload: (inserted.append(payload), MagicMock())[1]
+        return handle
+
+    client.table.side_effect = table
+    asyncio.run(EmailSyncHealthEvaluator(client, mock_config).evaluate_once())
+
+    assert [row for row in inserted if row["incident_type"] == "stale_poll"], inserted
