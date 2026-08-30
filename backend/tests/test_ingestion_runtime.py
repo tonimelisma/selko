@@ -124,8 +124,8 @@ def test_runtime_spawns_configured_workers_and_stops_cleanly(mock_config):
 
     spawned, names, remaining, runtime_managed_names = asyncio.run(scenario())
 
-    # coordinator + acquisition + attachment + health floor
-    assert spawned == 1 + 1 + 1 + 1
+    # coordinator + acquisition + attachment + health floor + calendar mirror
+    assert spawned == 1 + 1 + 1 + 1 + 1
     assert "email-sync-health-floor" in [entry["name"] for entry in runtime_managed_names]
     assert names[0] == "test-instance-coordinator"
     assert "test-instance-acquisition" in names

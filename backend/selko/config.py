@@ -122,6 +122,9 @@ class Config:
     # Safety-net floor for incident evaluation, not a schedule. See
     # IngestionRuntime._health_floor.
     email_health_floor_seconds: int = 900
+    #: Floor under calendar mirror syncs. Incremental after the first pass, so a
+    #: quiet calendar costs one near-empty request per interval.
+    calendar_mirror_floor_seconds: int = 900
     email_health_critical_seconds: int = 3600
     email_lease_seconds: int = 900
     email_sync_max_run_seconds: int = 900
@@ -529,6 +532,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_reconcile_max_identities=int(getenv("EMAIL_RECONCILE_MAX_IDENTITIES", "2000")),
         email_health_warning_seconds=int(getenv("EMAIL_HEALTH_WARNING_SECONDS", "1800")),
         email_health_floor_seconds=int(getenv("EMAIL_HEALTH_FLOOR_SECONDS", "900")),
+        calendar_mirror_floor_seconds=int(getenv("CALENDAR_MIRROR_FLOOR_SECONDS", "900")),
         email_health_critical_seconds=int(getenv("EMAIL_HEALTH_CRITICAL_SECONDS", "3600")),
         email_lease_seconds=int(getenv("EMAIL_LEASE_SECONDS", "900")),
         email_sync_max_run_seconds=int(getenv("EMAIL_SYNC_MAX_RUN_SECONDS", "900")),

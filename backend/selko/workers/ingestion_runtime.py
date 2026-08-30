@@ -29,6 +29,7 @@ from typing import Any
 from supabase import Client
 
 from selko.config import Config
+from selko.services import calendar_mirror
 from selko.services.egress import log_egress_summary
 from selko.services.email_sync_health import (
     EmailSyncHealthEvaluator,
@@ -130,6 +131,17 @@ class IngestionRuntime:
             "restarts": 0,
             "last_exception_code": None,
         })
+        self._managed.append({
+            "name": "calendar-mirror",
+            "factory": lambda: asyncio.create_task(
+                self._calendar_mirror_floor(), name="calendar-mirror"
+            ),
+            "task": asyncio.create_task(
+                self._calendar_mirror_floor(), name="calendar-mirror"
+            ),
+            "restarts": 0,
+            "last_exception_code": None,
+        })
         self._watchdog_task = asyncio.create_task(self._watchdog(), name="ingestion-watchdog")
         logger.info(
             "Email ingestion v2 runtime started (%d tasks, instance=%s)",
@@ -177,6 +189,55 @@ class IngestionRuntime:
                 await evaluator.evaluate_once()
             except Exception:
                 logger.exception("Floor health evaluation failed")
+
+    async def _calendar_mirror_floor(self) -> None:
+        """Keep `calendar_entries` current for every active calendar.
+
+        A floor, not a schedule. The first pass for a calendar reads its rolling
+        window; every pass after that sends the stored sync token, so Google
+        returns only what changed and a quiet calendar costs one near-empty
+        request per interval. That is what keeps a mirror inside the egress
+        rule -- a projection that re-read everything would be the shape of both
+        the #191 OOM and the 942 MB bandwidth bill.
+        """
+        interval = max(60.0, float(self.config.calendar_mirror_floor_seconds))
+        while not self._stop_event.is_set():
+            try:
+                await asyncio.wait_for(self._stop_event.wait(), timeout=interval)
+                return
+            except asyncio.TimeoutError:
+                pass
+            try:
+                rows = (
+                    self.client.table("integrations")
+                    .select("id,user_id")
+                    .eq("provider", "google_calendar")
+                    .eq("status", "active")
+                    .execute()
+                    .data
+                    or []
+                )
+            except Exception:
+                logger.exception("Could not list calendars to mirror")
+                continue
+            for row in rows:
+                if self._stop_event.is_set():
+                    return
+                try:
+                    summary = await asyncio.to_thread(
+                        calendar_mirror.sync_calendar,
+                        self.client,
+                        row["user_id"],
+                        row["id"],
+                    )
+                    logger.info(
+                        "Calendar mirror synced %d entries (full_resync=%s)",
+                        summary["entries"],
+                        summary["full_resync"],
+                    )
+                except Exception:
+                    # One user's expired token must not stop the others.
+                    logger.exception("Calendar mirror sync failed for one integration")
 
     async def _watchdog(self) -> None:
         """Respawn any task that exits while the runtime is not stopping.

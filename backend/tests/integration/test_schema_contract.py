@@ -70,6 +70,9 @@ EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
     ("attachments", "ingestion_status"): {
         "pending", "processing", "stored", "unsupported", "retry", "dead_letter",
     },
+    # I2: distinguishes entries Selko wrote (they carry our private
+    # extendedProperty) from ones the user created or accepted elsewhere.
+    ("calendar_entries", "origin"): {"selko_created", "external"},
     ("calendar_work_items", "action"): {"upsert", "cancel"},
     ("calendar_work_items", "status"): {
         "pending", "processing", "succeeded", "failed", "blocked", "superseded",

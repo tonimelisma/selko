@@ -35,8 +35,16 @@ def test_idle_runtime_stays_under_health_database_call_budget(mock_config):
             evaluator_class.return_value.evaluate_once = AsyncMock()
             await runtime.start()
             await asyncio.sleep(0.05)
-            # coordinator + acquisition + attachment + health floor
-            assert len(runtime._managed) == 4
+            # coordinator + acquisition + attachment + health floor + calendar mirror
+            #
+            # The mirror is the one task here that is not driven by email work
+            # arriving. Its cost is bounded the same way the health floor's is:
+            # it wakes once per CALENDAR_MIRROR_FLOOR_SECONDS, and after the
+            # first pass each wake sends a syncToken, so Google returns only
+            # what changed. A quiet calendar therefore costs one near-empty
+            # request per interval rather than a window re-read, which is what
+            # keeps a projection inside the egress rule.
+            assert len(runtime._managed) == 5
             # The floor's interval is far longer than this sleep, so an idle
             # runtime issues no health query at all in the first moments.
             evaluator_class.return_value.evaluate_once.assert_not_awaited()
