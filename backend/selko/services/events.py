@@ -1069,12 +1069,13 @@ def _load_identity_candidates(
 ) -> tuple[dict[str, list[dict[str, Any]]], dict[str, dict[str, Any]], str, tuple[str, ...]]:
     """Load hint rows and their events, returning a CAS fingerprint."""
     rows_by_key: dict[str, list[dict[str, Any]]] = {}
+    identity_events: dict[str, dict[str, Any]] = {}
     keys = tuple(sorted({_identity_key(hint) for hint in hints}))
     for hint in hints:
         key = _identity_key(hint)
         try:
             result = supabase_client.table("event_identity_hints").select(
-                "event_id,kind,value_hash,recurrence_id,strength,sequence,dtstamp"
+                "event_id,calendar_entry_id,kind,value_hash,recurrence_id,strength,sequence,dtstamp"
             ).eq("user_id", user_id).eq("kind", hint.kind).eq(
                 "value_hash", hint.value_hash
             ).eq("recurrence_id", hint.recurrence_id).execute()
@@ -1083,6 +1084,36 @@ def _load_identity_candidates(
         except Exception as exc:
             logger.debug("Could not load identity candidates (%s)", type(exc).__name__)
             rows_by_key[key] = []
+
+    # A hint names an event or a mirrored calendar entry. Both are candidates:
+    # an invite the user accepted elsewhere has only a calendar_entries row, and
+    # that is precisely the case that used to reappear as New.
+    entry_ids = sorted({
+        row.get("calendar_entry_id")
+        for rows in rows_by_key.values()
+        for row in rows
+        if row.get("calendar_entry_id")
+    })
+    if entry_ids:
+        try:
+            entries = supabase_client.table("calendar_entries").select(
+                "id,title,start_at,end_at,location,ical_uid,provider_event_id"
+            ).eq("user_id", user_id).in_("id", entry_ids).is_(
+                "deleted_at", "null"
+            ).execute()
+            for entry in (entries.data or []):
+                if not isinstance(entry, dict) or not entry.get("provider_event_id"):
+                    continue
+                identity_events[f"gcal:{entry['provider_event_id']}"] = {
+                    "id": f"gcal:{entry['provider_event_id']}",
+                    "title": entry.get("title") or "",
+                    "start_datetime": entry.get("start_at"),
+                    "end_datetime": entry.get("end_at"),
+                    "location": entry.get("location") or "",
+                    "_source": "calendar_mirror",
+                }
+        except Exception as exc:
+            logger.debug("Could not load mirrored identity candidates (%s)", type(exc).__name__)
 
     event_ids = sorted({row.get("event_id") for rows in rows_by_key.values() for row in rows if row.get("event_id")})
     events_by_id: dict[str, dict[str, Any]] = {}
@@ -1098,6 +1129,10 @@ def _load_identity_candidates(
             }
         except Exception as exc:
             logger.debug("Could not load identity event candidates (%s)", type(exc).__name__)
+    # Mirrored entries join the same candidate map, keyed "gcal:<provider id>"
+    # so downstream code treats them exactly like the live-read candidates it
+    # already understands.
+    events_by_id.update(identity_events)
     fingerprint = candidate_fingerprint(list(events_by_id.values()))
     return rows_by_key, events_by_id, fingerprint, keys
 

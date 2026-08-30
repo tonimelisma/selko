@@ -22,6 +22,7 @@ from supabase import Client
 
 from selko.services.integrations import get_credentials
 from selko.services.calendars import CalendarsError, get_calendar_settings
+from selko.services.event_identity import hints_from_calendar_event
 
 logger = logging.getLogger(__name__)
 
@@ -208,9 +209,14 @@ def sync_calendar(
             break
 
     if rows:
-        supabase_client.table("calendar_entries").upsert(
-            rows, on_conflict="integration_id,calendar_id,provider_event_id"
-        ).execute()
+        stored = (
+            supabase_client.table("calendar_entries")
+            .upsert(rows, on_conflict="integration_id,calendar_id,provider_event_id")
+            .execute()
+            .data
+            or []
+        )
+        _write_entry_hints(supabase_client, user_id, stored)
 
     supabase_client.table("calendar_mirror_state").upsert(
         {
@@ -236,3 +242,45 @@ def sync_calendar(
         "full_resync": full_resync,
         "has_sync_token": next_sync_token is not None,
     }
+
+
+def _write_entry_hints(
+    supabase_client: Client, user_id: str, stored: list[dict[str, Any]]
+) -> None:
+    """Index mirrored entries by identity so matching can find them.
+
+    Without this the mirror is only a table: `find_matching_event` resolves by
+    hint lookup, so an entry with no hint row is invisible to every rung above
+    the LLM text comparison.
+    """
+    payload: list[dict[str, Any]] = []
+    for row in stored:
+        entry_id = row.get("id")
+        if not entry_id or row.get("deleted_at"):
+            continue
+        for hint in hints_from_calendar_event(
+            {
+                "iCalUID": row.get("ical_uid"),
+                "originalStartTime": (
+                    {"dateTime": row["original_start"]} if row.get("original_start") else None
+                ),
+            }
+        ):
+            payload.append(
+                {
+                    "user_id": user_id,
+                    "event_id": None,
+                    "calendar_entry_id": entry_id,
+                    **hint.as_payload(),
+                }
+            )
+    if not payload:
+        return
+    try:
+        supabase_client.table("event_identity_hints").upsert(
+            payload,
+            on_conflict="calendar_entry_id,kind,value_hash,recurrence_id",
+        ).execute()
+    except Exception:
+        # A hint that fails to store costs a match, never a wrong one.
+        logger.exception("Could not index calendar entry identity hints")
