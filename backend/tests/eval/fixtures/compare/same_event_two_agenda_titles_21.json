@@ -1,0 +1,35 @@
+{
+  "description": "One community event announced twice with different agenda emphasis and a 30-minute start difference. Same event, should match. Anonymized from production 2026-09-18 ('Ice Cream Social & Costume Swap' vs '& PTA Meeting'), which shipped as two separate accepted events.",
+  "difficulty": "hard",
+  "tags": ["dedup", "match", "community", "production-derived"],
+  "input": {
+    "new_event": {
+      "title": "Ice Cream Social & Parent Meeting",
+      "start_datetime": "2026-09-18T17:30:00",
+      "end_datetime": "2026-09-18T18:30:00",
+      "location": "Lincoln Elementary multipurpose room",
+      "description": "Join us for ice cream and the first parent meeting of the year."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Ice Cream Social & Costume Swap",
+        "start_datetime": "2026-09-18T17:00:00",
+        "end_datetime": "2026-09-18T18:00:00",
+        "location": "Lincoln Elementary",
+        "description": "Ice cream social, plus bring outgrown costumes to swap."
+      },
+      {
+        "id": "event-002",
+        "title": "Fall Book Fair",
+        "start_datetime": "2026-09-18T09:00:00",
+        "end_datetime": "2026-09-18T15:00:00",
+        "location": "Lincoln Elementary library",
+        "description": "Annual book fair."
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}

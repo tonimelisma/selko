@@ -1,0 +1,35 @@
+{
+  "description": "Class series where several levels run on the same day. Similar titles, genuinely different classes -- must NOT merge. Anonymized from production 2026-08-27 (language courses at Intermediate vs Advanced).",
+  "difficulty": "medium",
+  "tags": ["dedup", "no-match", "classes", "production-derived"],
+  "input": {
+    "new_event": {
+      "title": "Swedish: Advanced",
+      "start_datetime": "2026-08-27T18:00:00",
+      "end_datetime": "2026-08-27T19:30:00",
+      "location": "Community Center room 3",
+      "description": "Advanced conversation class."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Swedish: Beginner 1A",
+        "start_datetime": "2026-08-27T16:00:00",
+        "end_datetime": "2026-08-27T17:30:00",
+        "location": "Community Center room 3",
+        "description": "Beginner class, first term."
+      },
+      {
+        "id": "event-002",
+        "title": "Swedish: Intermediate 1A",
+        "start_datetime": "2026-08-27T17:00:00",
+        "end_datetime": "2026-08-27T18:30:00",
+        "location": "Community Center room 2",
+        "description": "Intermediate class, first term."
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}
