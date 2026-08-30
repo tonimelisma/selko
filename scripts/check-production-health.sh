@@ -6,10 +6,13 @@
 #   ./scripts/check-production-health.sh <base-url>
 #
 # Why this exists: the invariants already existed and were correct, but were
-# wired only to staging. Production went unchecked, and a condition the
-# assertions call "NEVER acceptable" -- unclaimable_emails -- sat true in
-# production for an unknown period. A check that is never run against the
-# environment that matters is not a check.
+# wired only to staging. Production went unchecked, and a count the assertions
+# call "NEVER acceptable" sat true there for an unknown period. A check that is
+# never run against the environment that matters is not a check.
+#
+# That first production run also showed the count itself was wrong: it merged
+# terminal failures (permanent, expected) with stuck pending rows (actionable).
+# 20260901000001 split them; only the actionable half is asserted.
 #
 # Production is https://api.selkoapp.com. The .onrender.com host 404s and the
 # primary domain appears only in Render's deploy logs, which is how two

@@ -623,12 +623,26 @@ partial unique index (`email_sync_runs_one_running_per_integration`) makes "at
 most one running run per integration" a database invariant, not a convention.
 
 `health_work_state(warning_seconds)` is the single counted health RPC:
-ready/processing/stale-processing/unclaimable email counts (predicates pinned
-to `claim_unprocessed_email` in `test_schema_contract.py`), stale sync runs,
+ready/processing/stale-processing email counts (predicates pinned to
+`claim_unprocessed_email` in `test_schema_contract.py`), stale sync runs,
 ingestion/attachment dead-letter and pending counts, due integrations, the
 oldest overdue poll for active integrations, and open incidents — plus its own computed `status`
 (`ok`/`degraded`). `/health` and `/health/ingestion` both read it; `/health`
 no longer hard-codes `ok`.
+
+Two counts describe stuck email work and they mean different things:
+
+| Column | Meaning | Degrades `status`? |
+|---|---|---|
+| `unclaimable_pending` | `pending` rows with `attempts >= max_attempts` — rows the claim RPC will never take. `emails_pending_is_claimable_check` makes this impossible, so non-zero means that invariant has been violated | **Yes** — actionable |
+| `failed_emails` | `processing_status = 'failed'`, the terminal state written by `fail_email_processing` once retries are exhausted | **No** — history |
+
+They were one column until `20260901000001`. Merging them meant a single
+permanently failed email pinned `status` to `degraded` forever and made
+`assert-health.sh` unsatisfiable, because that file requires the count to be
+zero. Production carried 27 terminal failures under the old definition and
+reported degraded continuously. A gate that cannot succeed is ignored exactly
+as reliably as one that cannot fail.
 
 Reconciliation passes a NULL cursor, so `upsert_discovered_email_items` leaves
 `integrations.sync_cursor` and per-folder cursors untouched during a
