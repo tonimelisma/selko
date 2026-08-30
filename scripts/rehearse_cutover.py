@@ -284,6 +284,11 @@ _CLONE_ORDER = (
     # migration touching them needs their real rows in the rehearsal. Children
     # of events -- keep them after it.
     "calendar_work_items", "event_change_proposals",
+    # Flagged by the coverage check when 20260903000001 added a CHECK to it:
+    # a populated table gaining num_nonnulls(event_id, calendar_entry_id) = 1
+    # is exactly the shape that aborted the 2026-08-22 push. Child of events --
+    # keep it after both events and calendar_entries.
+    "calendar_entries", "event_identity_hints",
 )
 
 
@@ -660,11 +665,24 @@ async def _assert_post_cutover(conn: asyncpg.Connection, expected: int | None) -
     # The property that actually matters, asserted against the post-state: no
     # event may carry more than one live work item, or the delivery status
     # derived from "latest non-superseded item" is ambiguous.
+    # "Live" means pending or processing, not "not superseded".
+    #
+    # A finished item keeps its terminal status forever, so an event legitimately
+    # synced twice -- accepted, later edited and re-synced, or simply retried
+    # while the API was returning 500 -- accumulates several succeeded rows and
+    # would read as contention for good. Production holds 9 such events and zero
+    # with contended live work, so the old form could never return to green.
+    #
+    # This is the same conflation of history with current state that made
+    # unclaimable_emails pin health to degraded permanently (20260901000001) and
+    # made stale_poll fire forever against integrations that are deliberately not
+    # polled. What matters here is two workers racing one event, which is exactly
+    # pending or processing.
     ambiguous = await conn.fetchval(
         """
         SELECT count(*) FROM (
             SELECT event_id FROM public.calendar_work_items
-            WHERE status <> 'superseded'
+            WHERE status IN ('pending', 'processing')
             GROUP BY event_id HAVING count(*) > 1
         ) AS t
         """
