@@ -34,6 +34,33 @@ This is the whole loop. Do not invent a different one per task.
 5. **After deploying, fill in `docs/deploy-log/<date>-<sha>.md`.** T+0 and T+15m
    before you report done; T+24h next day.
 
+### Checking that production is actually healthy
+
+```bash
+./scripts/check-production-health.sh          # production (api.selkoapp.com)
+./scripts/check-production-health.sh <url>    # any deployment
+```
+
+It runs the invariants in `scripts/assert-health.sh` — the standard list:
+
+| Surface | Must hold |
+|---|---|
+| `work-state` | `items_dead_letter`, `attachments_dead_letter`, `stale_processing_emails`, `unclaimable_emails` are **all zero**, whatever the worker posture |
+| `ingestion` | status ok, background processing on, every task alive, pg listener connected |
+| `root` | publishes a 40-character build SHA (which build answered) |
+| `egress` | worker transport is asyncpg |
+
+Those assertions existed and were correct for months, but were wired only to
+staging — `verify-staging.sh` and CI called them and nothing else. Pointed at
+production for the first time, they immediately went red on
+`unclaimable_emails: 27`, a condition the file itself calls never acceptable.
+**A check that never runs against the environment that matters is not a check.**
+
+**Production is `https://api.selkoapp.com`.** The `.onrender.com` host 404s and
+the primary domain appears only in Render's deploy logs. `selko.onrender.com` is
+*staging*, on the free plan, so it spins down and reports degraded — its state
+has already been mistaken for production's twice.
+
 ### Long-running commands: one at a time, stop what you start
 
 These rules exist because all three were broken in one session: a `uvicorn`

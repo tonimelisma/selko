@@ -336,14 +336,14 @@ jobs:
         if: inputs.staging_action == 'deploy'
         run: |
           health_json=$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health)
-          printf '%s\n' "$health_json" | ./scripts/assert-staging-health.sh root
+          printf '%s\n' "$health_json" | ./scripts/assert-health.sh root
           ingestion_json=$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health/ingestion)
           egress_json=$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://selko.onrender.com/health/egress)
           printf '%s\n' "$ingestion_json"
           printf '%s\n' "$egress_json"
           if [[ "${{ inputs.require_workers }}" == "true" ]]; then
-            printf '%s\n' "$ingestion_json" | ./scripts/assert-staging-health.sh ingestion
-            printf '%s\n' "$egress_json" | ./scripts/assert-staging-health.sh egress
+            printf '%s\n' "$ingestion_json" | ./scripts/assert-health.sh ingestion
+            printf '%s\n' "$egress_json" | ./scripts/assert-health.sh egress
           fi
 
       - name: Install uv
