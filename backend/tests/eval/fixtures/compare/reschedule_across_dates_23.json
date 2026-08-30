@@ -1,0 +1,35 @@
+{
+  "description": "S5: a plain-text email moves an event to a new date. The existing event is on the old date, so it is outside the new date's candidate window -- only a thread hint can reach it. Included so the LLM rung does not merge it wrongly if identity ever falls through.",
+  "difficulty": "hard",
+  "tags": ["dedup", "match", "reschedule", "production-derived"],
+  "input": {
+    "new_event": {
+      "title": "Quarterly Planning",
+      "start_datetime": "2026-09-11T17:00:00",
+      "end_datetime": "2026-09-11T18:00:00",
+      "location": "Video call",
+      "description": "Rescheduled from the 4th. Same agenda."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Quarterly Planning",
+        "start_datetime": "2026-09-04T17:00:00",
+        "end_datetime": "2026-09-04T18:00:00",
+        "location": "Video call",
+        "description": "Quarterly planning session."
+      },
+      {
+        "id": "event-002",
+        "title": "Quarterly Budget Review",
+        "start_datetime": "2026-09-11T19:00:00",
+        "end_datetime": "2026-09-11T20:00:00",
+        "location": "Video call",
+        "description": "Finance review, separate meeting."
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}

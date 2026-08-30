@@ -1,0 +1,35 @@
+{
+  "description": "S4: a plain-text follow-up updates an event that was created from an ICS invite. Same event, new location. Must match rather than create a second entry.",
+  "difficulty": "medium",
+  "tags": ["dedup", "match", "update", "production-derived"],
+  "input": {
+    "new_event": {
+      "title": "Design Review",
+      "start_datetime": "2026-09-15T14:00:00",
+      "end_datetime": "2026-09-15T15:00:00",
+      "location": "Room 4B (moved from Room 2)",
+      "description": "Note the room change for tomorrow's review."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Design Review",
+        "start_datetime": "2026-09-15T14:00:00",
+        "end_datetime": "2026-09-15T15:00:00",
+        "location": "Room 2",
+        "description": "Invitation: design review."
+      },
+      {
+        "id": "event-002",
+        "title": "Design Systems Guild",
+        "start_datetime": "2026-09-15T16:00:00",
+        "end_datetime": "2026-09-15T17:00:00",
+        "location": "Room 2",
+        "description": "Monthly guild meeting."
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}
