@@ -1,0 +1,43 @@
+{
+  "description": "Interview loop: several sessions with the same company on one day at different times. Each is a distinct event and must NOT be merged. Anonymized from production 2026-09-09, where one confirmation email produced five events across two days.",
+  "difficulty": "hard",
+  "tags": ["dedup", "no-match", "professional", "production-derived"],
+  "input": {
+    "new_event": {
+      "title": "Northwind PM Interview 3",
+      "start_datetime": "2026-09-09T18:00:00",
+      "end_datetime": "2026-09-09T18:45:00",
+      "location": "Video call",
+      "description": "Product management round with the hiring panel."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Northwind Behavioral Interview",
+        "start_datetime": "2026-09-09T17:00:00",
+        "end_datetime": "2026-09-09T17:45:00",
+        "location": "Video call",
+        "description": "Behavioral round."
+      },
+      {
+        "id": "event-002",
+        "title": "Northwind PM Interview 2",
+        "start_datetime": "2026-09-09T23:00:00",
+        "end_datetime": "2026-09-09T23:45:00",
+        "location": "Video call",
+        "description": "Second product management round."
+      },
+      {
+        "id": "event-003",
+        "title": "Northwind XFN or PM Interview 5",
+        "start_datetime": "2026-09-09T21:30:00",
+        "end_datetime": "2026-09-09T22:15:00",
+        "location": "Video call",
+        "description": "Cross-functional round."
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

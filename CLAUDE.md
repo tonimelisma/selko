@@ -590,6 +590,7 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **Parallel extraction, fenced commit** | `docs/specs/parallel-extraction-fenced-commit.md` | Before touching worker concurrency, `save_extracted_events`, or how extracted events are persisted. Extraction stays parallel; the commit is fenced on the candidate band it was computed against. Replaces review-queue-integrity R2 |
 | **Calendar identity and cancellation** | `docs/specs/calendar-identity-and-cancellation.md` | Before touching iCalendar parsing, event identity/dedup, or cancellation. Replaces review-queue-integrity R3–R4 |
 | **Review queue integrity** | `docs/specs/review-queue-integrity.md` | Normative requirements for web Review (§5), identity (§7), cancellation (§8) and the production repair (§9). Decisions 6–7 stand; **§6's fenced-lane mechanism is superseded** — see parallel-extraction-fenced-commit |
+| **Event identity reach** | `docs/specs/event-identity-reach.md` | Before touching dedup, invite handling, or why an event the user already has appears as New. Measured from production: ~4% of events carry any identity hint and none carry an iCalendar UID, so matching falls back to a one-local-day window plus LLM text comparison. Carries the S1–S15 scenario matrix |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |
 | **Architecture** | `PRD_ARCH.md` | For product requirements and architecture |
 | **UI user journeys** | `docs/ui/01-user-journeys.md` | When planning frontend work or understanding user flows |
