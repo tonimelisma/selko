@@ -14,6 +14,10 @@
 - **Affected table row counts:**
 
 ## Observation
+
+Run `./scripts/check-production-health.sh` at each window and paste the result.
+It asserts the invariants that must hold whatever the worker posture: no dead
+letters, no stale or unclaimable work, workers alive, listener connected.
 | Window | /health | ingestion | egress | RSS | dead letters | task restarts |
 |---|---|---|---|---|---|---|
 | T+0 | | | | | | |

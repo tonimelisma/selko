@@ -13,10 +13,23 @@ class ResolutionMetrics:
     def __init__(self) -> None:
         self._lock = Lock()
         self._started_at = datetime.now(timezone.utc)
+
         self._conflict_times: deque[datetime] = deque()
         self._retries_per_email: Counter[int] = Counter()
         self._fenced_writes = 0
         self._conflict_exhaustions = 0
+
+    @property
+    def started_at(self) -> datetime:
+        """When this process began recording, as an absolute instant.
+
+        Exposed on /health so a probe can tell *which* process answered.
+        A duration cannot do that: production once returned two uptimes 3.19
+        days apart within fifteen minutes while Render reported one instance,
+        and there was no way to distinguish a second process from a broken
+        counter.
+        """
+        return self._started_at
 
     def record_conflict(self) -> None:
         with self._lock:

@@ -89,6 +89,15 @@ class HealthResponse(BaseModel):
 
     status: str
     build_sha: str | None = None
+    #: Absolute UTC time this process started, ISO-8601.
+    #:
+    #: `resolution.uptime_seconds` is a duration, and a duration cannot tell you
+    #: *which* process answered. Two consecutive probes of production once
+    #: returned uptimes 3.19 days apart while Render reported a single instance,
+    #: and there was no way to tell a second process from a bad counter. An
+    #: absolute start time makes that distinction trivial: same value means the
+    #: same process, and it can be compared directly against the deploy time.
+    started_at: str | None = None
     resolution: dict[str, object] = {}
 
 

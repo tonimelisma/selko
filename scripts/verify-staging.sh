@@ -91,13 +91,13 @@ for attempt in $(seq 1 "$health_attempts"); do
   [[ "$attempt" -lt "$health_attempts" ]] || fail "staging health did not serve expected revision ${expected_sha}"
   sleep 10
 done
-printf '%s\n' "$health_json" | ./scripts/assert-staging-health.sh root
+printf '%s\n' "$health_json" | ./scripts/assert-health.sh root
 VERIFY_STAGING_HEALTH_ASSERTIONS+=("/health")
 ingestion_json=$(curl --fail --silent --show-error "$ingestion_url")
 # Degradations that are never acceptable whatever the worker posture. Stale
 # polling and due integrations are expected with background processing off;
 # dead-lettered, stale or unclaimable work is not.
-printf '%s\n' "$ingestion_json" | ./scripts/assert-staging-health.sh work-state
+printf '%s\n' "$ingestion_json" | ./scripts/assert-health.sh work-state
 VERIFY_STAGING_HEALTH_ASSERTIONS+=("/health/ingestion")
 egress_json=$(curl --fail --silent --show-error "$egress_url")
 printf '%s\n' "$ingestion_json"

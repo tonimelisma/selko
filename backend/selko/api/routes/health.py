@@ -93,6 +93,7 @@ async def health_check(config: Config = Depends(get_config)) -> HealthResponse:
     return HealthResponse(
         status=_work_state_status(),
         build_sha=config.build_sha,
+        started_at=resolution_metrics.started_at.isoformat(),
         resolution=resolution,
     )
 
