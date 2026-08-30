@@ -349,8 +349,15 @@ def _load_identity_context(
     email: dict[str, Any] = {}
     components: list[dict[str, Any]] = []
     try:
+        # No body_html: the column was dropped from emails (its contents moved
+        # to emails_body_html_backup). PostgREST rejects the whole select for an
+        # unknown column, the failure was swallowed by the debug-level handler
+        # below, and `email` came back empty -- so provider and thread_id were
+        # empty for every email and no provider_thread hint has ever been
+        # written. Production shows 14 identity hints across 364 events, all
+        # join_url, which are derived from event_data rather than from here.
         result = supabase_client.table("emails").select(
-            "email_provider,thread_id,subject,body_text,body_html"
+            "email_provider,thread_id,subject,body_text"
         ).eq("id", email_id).limit(1).execute()
         if isinstance(result.data, list) and result.data:
             email = result.data[0] or {}
@@ -385,7 +392,6 @@ def _identity_hints_for_event(
             event_data.get("description"),
             email.get("subject"),
             email.get("body_text"),
-            email.get("body_html"),
         ),
     )
 
@@ -1211,9 +1217,67 @@ def _identity_match(
                     candidate_window=candidate_window,
                 )
 
+    # Rung 3: the same provider thread, for an event that already exists.
+    #
+    # Mail carrying no invite has no UID, so nothing above this rung can reach
+    # it -- and without a hint the candidate set is the local day of the *new*
+    # start, which an event rescheduled to another date is not in. A thread is
+    # the only identity signal such mail carries.
+    #
+    # It decides updates and never creates. A thread is strong evidence that two
+    # messages concern one event and weak evidence that an event exists at all:
+    # a newsletter thread mentioning several happenings would otherwise collapse
+    # them into whichever event the thread first produced.
+    thread_hints = [hint for hint in hints if hint.kind == "provider_thread"]
+    for hint in thread_hints:
+        matched: set[str] = set()
+        for row in rows_by_key.get(_identity_key(hint), []):
+            event_id = str(row.get("event_id"))
+            if event_id in events_by_id:
+                matched.add(event_id)
+        # Exactly one event on the thread, or the thread cannot identify which.
+        if len(matched) != 1:
+            continue
+        event_id = next(iter(matched))
+        candidate = events_by_id[event_id]
+        if not _thread_update_is_plausible(event_data, candidate):
+            continue
+        return EventMatch(
+            match_id=event_id,
+            baseline=_event_baseline(candidate),
+            candidate_window=candidate_window,
+        )
+
     # Two supporting signals are a bounded LLM candidate set, not an automatic
     # merge.  The caller passes only signal labels, never hashes or raw values.
     return None
+
+
+def _thread_update_is_plausible(
+    event_data: dict[str, Any], candidate: dict[str, Any]
+) -> bool:
+    """Guard rung 3 against merging genuinely different events on one thread.
+
+    A reschedule keeps the event and moves its time. A thread that carries two
+    unrelated happenings must not have the second absorbed into the first, so a
+    shared thread alone is not enough: the titles must still describe the same
+    thing.
+    """
+    incoming = _normalized_title(event_data.get("title"))
+    existing = _normalized_title(candidate.get("title"))
+    if not incoming or not existing:
+        return False
+    if incoming == existing:
+        return True
+    # One title being a prefix of the other covers "Standup" vs "Standup (moved)".
+    return incoming.startswith(existing) or existing.startswith(incoming)
+
+
+def _normalized_title(value: Any) -> str:
+    text = str(value or "").casefold().strip()
+    # Collapse whitespace and drop trailing punctuation so cosmetic edits to a
+    # subject line do not read as a different event.
+    return " ".join(text.split()).rstrip(".!:-–— ")
 
 
 def _strong_identity_candidates(
