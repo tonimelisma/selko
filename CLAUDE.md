@@ -47,7 +47,7 @@ It runs the invariants in `scripts/assert-health.sh` — the standard list:
 |---|---|
 | `work-state` | `items_dead_letter`, `attachments_dead_letter`, `stale_processing_emails`, `unclaimable_pending` are **all zero**, whatever the worker posture. `failed_emails` is *not* asserted — terminal failures are permanent history, and requiring them to be zero made this check unsatisfiable forever after the first one |
 | `ingestion` | status ok, background processing on, every task alive, pg listener connected |
-| `root` | publishes a 40-character build SHA (which build answered) |
+| `root` | publishes a 40-character build SHA (which build answered), and `requests.server_errors_per_hour` is **zero** — a deployment answering 5xx is not healthy, whatever its queues look like |
 | `egress` | worker transport is asyncpg |
 
 Those assertions existed for months but were wired only to
@@ -489,6 +489,23 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 - **Durable email work state:** a `pending` email is invariant-guaranteed claimable (`emails_pending_is_claimable_check`: `attempts < max_attempts`, no owner, no unexpired lock). `claim_unprocessed_email` opportunistically reclaims one expired `processing` lease per call before claiming fresh work, so a crashed worker's row recovers on the next claim, never on a restart or a periodic sweep. `fail_email_processing` is the single fenced retry-or-terminate RPC; a stale `(worker_id, lock_generation)` is a no-op. Provider discovery leases (`email_sync_state`/`email_sync_runs`) are generation-fenced end to end via claim → heartbeat → complete/fail, and at most one `running` run exists per integration by a partial unique index. `health_work_state` is the single counted health RPC behind both `/health` and `/health/ingestion`; it reports `unclaimable_pending` (actionable, degrades the rollup) separately from `failed_emails` (terminal history, never degrades it) — merging them made `degraded` permanent after the first exhausted retry; see `docs/specs/state-ownership-and-deterministic-recovery.md` S1–S5 for the implemented current model. Local real-Postgres evidence and production observation/cutover remain explicit operator gates.
 - **Single-owner calendar sync:** Approval and proposal application enqueue `calendar_work_items`; the item owns action, generation, attempts, lease, error, and provider-write fencing. `events.review_status` owns the user decision — queueing calendar work never writes it, so each caller states the decision itself before enqueueing — while API and clients derive delivery state from the latest non-superseded work item. Automatic cancellation enqueues an item with `action='cancel'`. Background workers are the sole Google Calendar writers for both upserts and cancellations. Explicit `/events/{id}/sync` requests idempotently observe or requeue worker-owned work.
 - **Reviewed repair tooling:** `scripts/repair_review_queue_integrity.py` is dry-run by default; production mutation requires an absolute manifest, exact confirmed user, `--environment production`, `--apply`, and a redacted reverse-operation artifact. It uses the service-only `event_repair_audit` table and `queue_event_cancellation` transition; never run production apply without explicit approval.
+- **Measure what the API answers, not only what the workers are doing.** Every
+  health invariant here was internal — dead letters, worker liveness, listener,
+  transport — so `POST /events/{id}/apply-change` could return 500 to *every*
+  request for eight days with all of them green. `request_metrics` counts
+  responses by outcome and `/health` publishes `requests.server_errors_per_hour`,
+  which `assert-health.sh` requires to be zero.
+- **A route no test calls has not been tested.** The service function under
+  `apply-change` was well covered; the route itself had no test, so
+  `applied["status"]` was never executed and survived the deletion of
+  `events.status` in `20260829000001`. This is the HTTP twin of the SQL rule
+  above: coverage of the layer underneath proves nothing about the layer users
+  actually reach.
+- **An unhandled exception must still return a CORS-bearing response.**
+  Starlette's `ServerErrorMiddleware` sits outside `CORSMiddleware`, so a bare
+  crash produces a 500 the browser refuses to read — the client reports a
+  network failure ("Load failed" in Safari) and the real error is invisible.
+  `app.py` registers a catch-all handler so a 500 arrives as a readable 500.
 - **Health signals must be able to return to green.** A gauge that can never
   read zero is ignored exactly as fast as one that can never go red, and this
   codebase has shipped both. `unclaimable_emails` counted permanent terminal
