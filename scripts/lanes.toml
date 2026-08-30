@@ -38,7 +38,16 @@ command = "./scripts/check-migration-order.sh"
 inputs = ["supabase/migrations/**/*.sql"]
 
 [lanes.prod-health]
-gate = "prod"
+# gate = "observe", NOT "prod". This lane measures the *currently deployed*
+# production, so making it block a deploy is a deadlock by construction: a
+# degraded production turns the gate red, and the change that would heal it can
+# never ship. It was written as gate="prod" and immediately proved the point --
+# it went red because production was still running the code the pending change
+# fixes.
+#
+# It belongs after a deploy, not before one: docs/deploy-log/TEMPLATE.md calls
+# it at each observation window.
+gate = "observe"
 description = "Production health invariants (dead letters, stale/unclaimable work, workers, listener)"
 # Not fingerprinted on source: this lane checks a *running deployment*, so its
 # result depends on production's state rather than on the tree. lanes.toml is
