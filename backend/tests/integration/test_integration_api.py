@@ -526,6 +526,8 @@ class TestCORSConfiguration:
         assert cors_origin != "https://evil-site.com"
 
 
+@pytest.mark.integration
+@pytest.mark.development
 class TestApplyChangeRoute:
     """POST /events/{id}/apply-change, exercised end to end.
 
