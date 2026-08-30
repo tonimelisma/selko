@@ -299,8 +299,15 @@ one-line `.env` edit.** Scope verification to that reality.
 ```bash
 ./scripts/verify-lanes.py --gate prod     # blocks a production deploy
 ./scripts/verify-lanes.py --gate mobile   # ships via app stores; never blocks prod
+./scripts/verify-lanes.py --gate observe  # measures running production; blocks nothing
 ./scripts/verify-report.py                # what each lane costs and has caught
 ```
+
+**`observe` is deliberately not a deploy gate.** It measures the *currently
+deployed* production, so blocking a deploy on it deadlocks: a degraded
+production makes the gate red, and the change that would heal it can never
+ship. Run it after deploying — `docs/deploy-log/TEMPLATE.md` calls it at each
+observation window.
 
 Lanes are declared in `scripts/lanes.toml`. The runner fingerprints each lane's
 declared inputs by **content**, so a lane that already passed for exactly those

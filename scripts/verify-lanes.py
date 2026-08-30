@@ -227,8 +227,11 @@ def main() -> int:
     parser.add_argument(
         "--gate",
         default="prod",
-        choices=["prod", "mobile", "all"],
-        help="prod blocks a production deploy; mobile ships through an app store",
+        choices=["prod", "mobile", "observe", "all"],
+        help=(
+            "prod blocks a production deploy; mobile ships through an app store; "
+            "observe measures a running deployment and never blocks anything"
+        ),
     )
     parser.add_argument("--only", action="append", default=[], help="run just this lane")
     parser.add_argument(
