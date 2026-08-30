@@ -2,8 +2,8 @@
 spec_id = "event-identity-reach"
 readme_order = 12
 title = "Event identity reach: invites, reschedules, and the user's existing calendar"
-increments = "I1–I5, D1–D2"
-gate = "I1 implemented; D1–D2 decisions open and block I2"
+increments = "I1–I5"
+gate = "I1 implemented; I2–I5 open"
 tests = [
   "tests/test_calendar_identity_match.py::test_matching_uid_proves_the_user_already_has_the_event",
   "tests/test_calendar_identity_match.py::test_a_shared_join_url_alone_never_merges_two_events",
@@ -154,20 +154,36 @@ ever sees an entry when an email happens to match it inside a one-day window.
 Five increments. Each is shippable, wired to call sites, and testable on its own;
 none is a refactor without behaviour.
 
-### D1 — Decide what is stored about events Selko did not create *(blocks I2)*
+### Two questions that turned out not to be open
 
-Mirroring an external calendar means retaining data about events the user never
-sent us. Identity (`ical_uid`, join URL) and times are required. Titles and
-locations are what make the LLM rung and any conflict message useful, and are
-the escalation. **Decide explicitly**: store titles for matching-window entries
-only, or hash them and accept a weaker last rung. Not a migration-author choice.
+An earlier draft of this plan raised "what may we store about events the user
+did not send us" and "which calendar is authoritative" as decisions blocking I2.
+Both dissolve on inspection, and are recorded here so they are not raised again.
 
-### D2 — Deterministic calendar selection *(blocks I2)*
+**What is stored.** `emails` already holds `subject`, `snippet`, `body_text` and
+`from_email`; `events` already holds `title`, `description` and `location`. Every
+one of those tables has RLS enabled and is scoped to the owning user. Mirroring a
+calendar entry's title, times and location is the same posture, not an
+escalation. The *content-free* rule in this codebase governs two specific
+things — identity hints, whose values are hashed, and health and diagnostic
+telemetry, which carry counts, rates and status labels only. It has never
+governed user data at rest. Mirrored entries therefore store the field set the
+matcher and the review UI need, under RLS, and the hints derived from them stay
+hashed exactly as email-derived hints already are.
 
-Production holds two `google_calendar` integration rows, one stale since
-2026-07-17. Mirroring makes that ambiguity load-bearing. Pick the rule (most
-recently authorised active row per user), pin it in a test, and scope every
-mirrored row by `integration_id` **and** `calendar_id`.
+**Which calendar.** The one the user connected. Authority is not something this
+system chooses: an integration row belongs to a user, carries its own
+credentials, and `user_calendar_settings.target_calendar_id` names the calendar
+within it. If the user connects a different calendar, that is simply a different
+target and the mirror follows it. The two `google_calendar` rows in production
+that prompted the question belong to **two different users**, which is the
+system working correctly.
+
+The one genuine parameter is **how much calendar to mirror**. All history is
+unbounded and pointless; matching only ever asks about events near an extracted
+date. Mirror a rolling window — a few months back, a year forward — and let the
+window, not the row count, bound cost. That is an engineering choice inside I2,
+not a precondition for it.
 
 ### I2 — Mirror the calendar, incrementally
 
@@ -234,7 +250,7 @@ which today is invisible until an undo triggers `assert_calendar_not_diverged`.
 
 | Increment | Beyond the lanes |
 |---|---|
-| I2 | New tables → RLS in the same migration. New loop → watch RSS and `/health/egress` over hours; a mirror that re-reads everything is the exact shape of the #191 OOM and the 942 MB egress bill |
+| I2 | New tables → RLS in the same migration. New loop → watch RSS and `/health/egress` over hours; a mirror that re-reads everything is the exact shape of the #191 OOM and the 942 MB egress bill. Assert the rolling window actually bounds the row count, or it does not bound anything |
 | I3 | Migration touches a populated table → `rehearse_cutover.py --faithful`. Fence change → the conflict test must fail without it |
 | I4 | Evals: S4/S5 fixtures alongside the three already committed |
 | I5 | Backfill is a production data mutation → dry run, manifest, reverse artifact |
