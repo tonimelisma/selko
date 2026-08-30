@@ -9,10 +9,15 @@
 #
 # These invariants were staging-only for their whole life, called by
 # verify-staging.sh and CI and by nothing else. Nothing ever pointed them at
-# production -- so `unclaimable_emails: 27`, a condition this very file calls
-# never acceptable, sat true in production unnoticed until it was checked by
-# hand. The file is environment-agnostic now; check-production-health.sh runs
-# it against production.
+# production -- so a count this very file calls never acceptable sat true in
+# production unnoticed until it was checked by hand. The file is
+# environment-agnostic now; check-production-health.sh runs it against
+# production.
+#
+# That first production run also showed the assertion was wrong: the count it
+# read conflated terminal failures (permanent, expected) with stuck pending rows
+# (actionable). 20260901000001 split them, and only the actionable half is
+# asserted here.
 #
 # The endpoint responses are safe, content-free health payloads. Do not pass
 # deployment hooks, connection strings, or other secret-bearing values here.
@@ -46,8 +51,12 @@ case "$surface" in
       (.items_dead_letter == 0) and
       (.attachments_dead_letter == 0) and
       (.stale_processing_emails == 0) and
-      (.unclaimable_emails == 0)
+      (.unclaimable_pending == 0)
     '
+    # failed_emails is deliberately not asserted. It counts terminal failures,
+    # which are permanent and expected on any long-running deployment; asserting
+    # it made this check unsatisfiable forever after the first one, which is how
+    # production carried 27 of them unnoticed.
     failure="deployment holds dead-lettered, stale, or unclaimable work"
     ;;
   ingestion)

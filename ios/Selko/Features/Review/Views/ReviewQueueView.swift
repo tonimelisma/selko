@@ -81,6 +81,7 @@ struct ReviewQueueView: View {
                 .shadow(color: Color.selkoShadow.opacity(0.15), radius: 8, y: 4)
                 .padding(.horizontal, SelkoMetrics.screenGutter)
                 .padding(.bottom, 12)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("rejectUndoToast")
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -133,6 +134,7 @@ struct ReviewQueueView: View {
                 .padding(.horizontal, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("emptyStateView")
     }

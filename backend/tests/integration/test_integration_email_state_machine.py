@@ -308,7 +308,7 @@ class TestDurableEmailStateMachine:
         result = _health_row(admin_client)
 
         assert result["ready_emails"] >= 1
-        assert result["unclaimable_emails"] >= 1
+        assert result["failed_emails"] >= 1
         assert result["processing_emails"] >= 1
         assert result["stale_processing_emails"] == 0
 

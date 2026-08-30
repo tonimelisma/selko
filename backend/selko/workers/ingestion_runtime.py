@@ -306,7 +306,8 @@ class IngestionRuntime:
             "ready_emails": None,
             "processing_emails": None,
             "stale_processing_emails": None,
-            "unclaimable_emails": None,
+            "unclaimable_pending": None,
+            "failed_emails": None,
             "stale_sync_runs": None,
         }
         try:
@@ -330,7 +331,8 @@ class IngestionRuntime:
             snapshot["ready_emails"] = int(row.get("ready_emails") or 0)
             snapshot["processing_emails"] = int(row.get("processing_emails") or 0)
             snapshot["stale_processing_emails"] = int(row.get("stale_processing_emails") or 0)
-            snapshot["unclaimable_emails"] = int(row.get("unclaimable_emails") or 0)
+            snapshot["unclaimable_pending"] = int(row.get("unclaimable_pending") or 0)
+            snapshot["failed_emails"] = int(row.get("failed_emails") or 0)
             snapshot["stale_sync_runs"] = int(row.get("stale_sync_runs") or 0)
             db_degraded = row.get("status") != "ok"
         except Exception:

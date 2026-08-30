@@ -150,6 +150,7 @@ struct EventDetailView: View {
                 .shadow(color: Color.selkoShadow.opacity(0.15), radius: 8, y: 4)
                 .padding(.horizontal, SelkoMetrics.screenGutter)
                 .padding(.bottom, 12)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("detailRejectUndoToast")
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }

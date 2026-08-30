@@ -38,6 +38,7 @@ struct HistoryView: View {
                             .foregroundStyle(Color.selkoMuted)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("historyEmptyState")
                 } else {
                     historyList
@@ -117,6 +118,7 @@ struct HistoryView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Color.selkoPaper)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("historyList")
     }
 }

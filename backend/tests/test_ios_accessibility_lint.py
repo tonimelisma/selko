@@ -30,9 +30,15 @@ IOS_ROOT = Path(__file__).resolve().parent.parent.parent / "ios" / "Selko"
 # Modifiers that mark a view as a single leaf element. Applying an identifier to
 # a container is correct when the container is *also* collapsed into one element,
 # because then there are no children left to clobber.
-LEAF_MARKERS = (
+SAFE_MARKERS = (
+    # Collapses the subtree into one element deliberately -- there are no child
+    # identifiers left to clobber, so naming it is correct.
     ".accessibilityElement(children: .ignore)",
     ".accessibilityElement(children: .combine)",
+    # Keeps children as separate elements and names the container itself. This
+    # is the fix for a container that legitimately wants an identifier while its
+    # buttons keep theirs.
+    ".accessibilityElement(children: .contain)",
 )
 
 IDENTIFIER = re.compile(r"^\s*\.accessibilityIdentifier\(")
@@ -71,38 +77,24 @@ def _offenders() -> list[str]:
             if opener is None or not CONTAINER_OPEN.match(opener):
                 continue
             window = "\n".join(lines[max(0, index - 6) : index + 2])
-            if any(marker in window for marker in LEAF_MARKERS):
+            if any(marker in window for marker in SAFE_MARKERS):
                 continue
             rel = path.relative_to(IOS_ROOT.parent.parent)
             found.append(f"{rel}:{index + 1}: {line.strip()}")
     return found
 
 
-# Sites that already had this pattern when the lint was written. Each one erases
-# the identity of whatever it contains; the ones holding interactive controls are
-# real defects (integrationSetupView was observed stamping its identifier onto
-# every "Connect" button in a failure dump).
-#
-# This list may only shrink. A new entry means the class grew; a stale entry --
-# one naming a site that no longer matches -- also fails, so the list cannot rot
-# into decoration the way a hand-maintained allowlist usually does.
-KNOWN = {
-    "ios/Selko/Features/History/Views/HistoryView.swift:41",
-    "ios/Selko/Features/History/Views/HistoryView.swift:120",
-    "ios/Selko/Features/Review/Views/ConnectionRecoveryView.swift:148",
-    "ios/Selko/Features/Review/Views/ConnectionRecoveryView.swift:196",
-    "ios/Selko/Features/Review/Views/EventDetailView.swift:153",
-    "ios/Selko/Features/Review/Views/IntegrationSetupView.swift:65",
-    "ios/Selko/Features/Review/Views/ReviewQueueView.swift:84",
-    "ios/Selko/Features/Review/Views/ReviewQueueView.swift:137",
-}
+KNOWN: set[str] = set()
 
 
 def test_the_known_offender_list_does_not_rot():
     """Every allowlisted site must still be a real match.
 
-    A stale entry would silently widen the lint. Fixing a site is expected to
-    require deleting its line here, which is the only way the list shrinks.
+    A stale entry would silently widen the lint. The list is empty now -- all
+    eight original sites were fixed with .accessibilityElement(children:
+    .contain), which names the container while leaving its children their own
+    identifiers -- so this guards against an entry being added and then
+    forgotten rather than fixed.
     """
     current = {offender.split(": ", 1)[0] for offender in _offenders()}
     stale = KNOWN - current

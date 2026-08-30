@@ -130,7 +130,7 @@ _WORK_STATE_COUNT_FIELDS = (
     "integrations_due", "oldest_next_poll_seconds", "leases_held",
     "items_pending", "items_dead_letter", "attachments_dead_letter",
     "open_incidents", "ready_emails", "processing_emails",
-    "stale_processing_emails", "unclaimable_emails",
+    "stale_processing_emails", "unclaimable_pending", "failed_emails",
 )
 
 
@@ -163,7 +163,7 @@ def _status_from_work_state(counts: dict[str, int | None]) -> str:
     """
     for field in (
         "items_dead_letter", "attachments_dead_letter",
-        "stale_processing_emails", "unclaimable_emails",
+        "stale_processing_emails", "unclaimable_pending",
     ):
         value = counts.get(field)
         if isinstance(value, int) and value > 0:
@@ -236,7 +236,8 @@ async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
         ready_emails=snapshot.get("ready_emails"),
         processing_emails=snapshot.get("processing_emails"),
         stale_processing_emails=snapshot.get("stale_processing_emails"),
-        unclaimable_emails=snapshot.get("unclaimable_emails"),
+        unclaimable_pending=snapshot.get("unclaimable_pending"),
+        failed_emails=snapshot.get("failed_emails"),
         stale_sync_runs=snapshot.get("stale_sync_runs"),
     )
 

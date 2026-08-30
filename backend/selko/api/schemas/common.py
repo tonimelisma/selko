@@ -139,7 +139,15 @@ class HealthIngestionResponse(BaseModel):
     ready_emails: int | None = None
     processing_emails: int | None = None
     stale_processing_emails: int | None = None
-    unclaimable_emails: int | None = None
+    #: Pending rows the claim RPC will never take. Guaranteed impossible by
+    #: emails_pending_is_claimable_check, so any non-zero value means that
+    #: invariant has been violated. Actionable; degrades the rollup.
+    unclaimable_pending: int | None = None
+    #: Terminal failures written by fail_email_processing once retries are
+    #: exhausted. These rows are permanent, so this is history rather than a
+    #: current degradation and must not affect the rollup: counting it did,
+    #: which made 'ok' unreachable forever once any email failed.
+    failed_emails: int | None = None
     stale_sync_runs: int | None = None
     listener: dict | None = None
 
