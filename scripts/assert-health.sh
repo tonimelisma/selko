@@ -40,8 +40,18 @@ case "$surface" in
     # replaced by `work-state` below, which names the counters that must be
     # zero whatever the worker posture -- a narrower claim than "ok", not a
     # weaker one.
-    filter='(.build_sha | type == "string" and length == 40) and ((.status == "ok") or (.status == "degraded"))'
-    failure="API health does not publish a 40-character build SHA, or reports an unknown status"
+    # server_errors_per_hour is asserted here because nothing else was watching
+    # what the API actually answers. Every invariant in this file measured
+    # internal state -- dead letters, worker liveness, listener, transport -- so
+    # production returned 500 to every /apply-change for eight days with all of
+    # them green. A deployment answering 5xx is not healthy, whatever its queues
+    # look like.
+    filter='
+      (.build_sha | type == "string" and length == 40) and
+      ((.status == "ok") or (.status == "degraded")) and
+      ((.requests.server_errors_per_hour // 0) == 0)
+    '
+    failure="API health does not publish a 40-character build SHA, reports an unknown status, or has served 5xx responses in the last hour"
     ;;
   work-state)
     # Degradations that are NEVER acceptable, regardless of worker posture.

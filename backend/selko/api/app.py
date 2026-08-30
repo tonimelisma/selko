@@ -23,6 +23,7 @@ from selko.services.auth import AuthenticationError
 from selko.services.calendars import CalendarsError
 from selko.services.emails import EmailError
 from selko.services.events import EventsError
+from selko.services.request_metrics import request_metrics
 from selko.services.integrations import IntegrationError, OAuthStateError
 from selko.services.photos import PhotosError
 from selko.services.quotas import QuotaExceededError
@@ -239,6 +240,23 @@ def create_app() -> FastAPI:
     # Store limiter in app state for access in routes
     app.state.limiter = limiter
 
+    @app.middleware("http")
+    async def record_response_outcome(request: Request, call_next):
+        """Count what we actually answer, so a 500 storm is visible in /health.
+
+        Health measured internal state only -- workers, queues, listener -- so
+        production answered 500 to every /apply-change for eight days with every
+        invariant green. This is the missing signal.
+        """
+        response = await call_next(request)
+        route = request.scope.get("route")
+        request_metrics.record(
+            status_code=response.status_code,
+            # The route template, never the concrete path: no identifiers.
+            route=getattr(route, "path", "unmatched"),
+        )
+        return response
+
     # Add SlowAPI rate limiting middleware
     app.add_middleware(SlowAPIMiddleware)
 
@@ -316,6 +334,30 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={"error": "photos_error", "detail": "Photos operation failed"},
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        """Return unexpected failures as a normal response, not a bare crash.
+
+        Without this, an unhandled exception is turned into a 500 by Starlette's
+        ServerErrorMiddleware, which sits *outside* CORSMiddleware -- so the
+        response carries no Access-Control-Allow-Origin header and the browser
+        refuses to read it. The client sees a network-level failure
+        ("Load failed" in Safari) rather than the actual error.
+
+        That masked a real outage: /events/{id}/apply-change raised KeyError on
+        every call for eight days, and the web app could only report that the
+        request had failed to load, which reads like a connectivity problem and
+        is not one. Handling the exception here routes the response back through
+        CORSMiddleware, so a 500 arrives as a readable 500.
+
+        The body stays deliberately content-free; details go to the logs.
+        """
+        logger.exception("Unhandled error serving %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={"error": "internal_error", "detail": "Internal server error"},
         )
 
     @app.exception_handler(RateLimitExceeded)

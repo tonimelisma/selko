@@ -20,6 +20,7 @@ from selko.config import Config, load_config
 from selko.services.auth import get_service_client
 from selko.services.egress import egress_snapshot
 from selko.services.resolution_metrics import resolution_metrics
+from selko.services.request_metrics import request_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,7 @@ async def health_check(config: Config = Depends(get_config)) -> HealthResponse:
         status=_work_state_status(),
         build_sha=config.build_sha,
         started_at=resolution_metrics.started_at.isoformat(),
+        requests=request_metrics.snapshot(),
         resolution=resolution,
     )
 

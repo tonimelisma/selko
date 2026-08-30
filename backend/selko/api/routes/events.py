@@ -328,7 +328,13 @@ async def apply_change(
                 _pool.nudge()
         except Exception:
             pass
-        return EventChangeResponse(event_id=str(event_id), status=applied["status"])
+        # apply_change_proposal returns the update_fields it wrote, which carry
+        # review_status. There is no "status" key: events.status was deleted by
+        # 20260829000001 and this line was not updated with it, so every accept
+        # raised KeyError and returned 500. Users could not accept a change at
+        # all for eight days, and no test noticed because no test calls this
+        # route -- only the service function underneath it.
+        return EventChangeResponse(event_id=str(event_id), status=applied["review_status"])
     except EventsError as e:
         raise HTTPException(
             status_code=400,
