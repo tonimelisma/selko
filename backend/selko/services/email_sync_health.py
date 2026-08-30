@@ -181,9 +181,36 @@ class EmailSyncHealthEvaluator:
 
     async def evaluate_once(self) -> int:
         states = self.client.table("email_sync_state").select("*").execute().data or []
+        # Polling incidents apply only to integrations we are actually polling.
+        #
+        # An expired integration is intentionally not claimable, so its poll age
+        # grows without bound and stale_poll fires forever. Production ran for
+        # 18 days with a critical stale_poll incident raised against a Gmail
+        # integration whose OAuth had expired: it pinned /health to 'degraded'
+        # permanently while the only healthy signal -- reconnect the account --
+        # was already carried by the integration's own status and the
+        # ConnectionRecovery card.
+        #
+        # This is the same scope migration 20260827000001 applied to
+        # integrations_due and oldest_next_poll_seconds, whose comment reads:
+        # "Expired integrations are intentionally not claimable, so an old
+        # next_poll_at on one must not make the whole service report degraded."
+        # The incident evaluator never got that fix.
+        #
+        # Dead-letter incidents below are deliberately still evaluated for every
+        # integration: data needing repair does not stop needing repair because
+        # a token lapsed.
+        integration_rows = (
+            self.client.table("integrations").select("id,status").execute().data or []
+        )
+        active_integration_ids = {
+            row["id"] for row in integration_rows if row.get("status") == "active"
+        }
         now = datetime.now(timezone.utc)
         expected: dict[str, SafeIncident] = {}
         for state in states:
+            if state.get("integration_id") not in active_integration_ids:
+                continue
             last_success = _parse_datetime(state.get("last_success_at"))
             last_started = _parse_datetime(state.get("last_started_at"))
             # 7b: an integration whose first poll is still running (last_started set,
