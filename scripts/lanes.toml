@@ -37,6 +37,18 @@ description = "Migrations are monotonically ordered"
 command = "./scripts/check-migration-order.sh"
 inputs = ["supabase/migrations/**/*.sql"]
 
+[lanes.prod-health]
+gate = "prod"
+description = "Production health invariants (dead letters, stale/unclaimable work, workers, listener)"
+# Not fingerprinted on source: this lane checks a *running deployment*, so its
+# result depends on production's state rather than on the tree. lanes.toml is
+# listed so the lane re-runs whenever its own definition changes; the runner
+# will otherwise reuse a cached pass, which for a live check is wrong. Treat a
+# cached result here as stale by definition and use --force when you need a
+# fresh reading.
+command = "./scripts/check-production-health.sh"
+inputs = ["scripts/check-production-health.sh", "scripts/assert-health.sh"]
+
 [lanes.frontend]
 gate = "prod"
 description = "Web unit tests and svelte-check"

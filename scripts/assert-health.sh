@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Assert the health invariants required by the staging worker-on gate.
+# Assert the health invariants of a running deployment.
 #
 # Usage:
-#   ./scripts/assert-staging-health.sh root       < health.json
-#   ./scripts/assert-staging-health.sh work-state < ingestion.json
-#   ./scripts/assert-staging-health.sh ingestion  < ingestion.json
-#   ./scripts/assert-staging-health.sh egress < egress.json
+#   ./scripts/assert-health.sh root       < health.json
+#   ./scripts/assert-health.sh work-state < ingestion.json
+#   ./scripts/assert-health.sh ingestion  < ingestion.json
+#   ./scripts/assert-health.sh egress     < egress.json
+#
+# These invariants were staging-only for their whole life, called by
+# verify-staging.sh and CI and by nothing else. Nothing ever pointed them at
+# production -- so `unclaimable_emails: 27`, a condition this very file calls
+# never acceptable, sat true in production unnoticed until it was checked by
+# hand. The file is environment-agnostic now; check-production-health.sh runs
+# it against production.
 #
 # The endpoint responses are safe, content-free health payloads. Do not pass
 # deployment hooks, connection strings, or other secret-bearing values here.
@@ -29,7 +36,7 @@ case "$surface" in
     # zero whatever the worker posture -- a narrower claim than "ok", not a
     # weaker one.
     filter='(.build_sha | type == "string" and length == 40) and ((.status == "ok") or (.status == "degraded"))'
-    failure="staging API health does not publish a 40-character build SHA, or reports an unknown status"
+    failure="API health does not publish a 40-character build SHA, or reports an unknown status"
     ;;
   work-state)
     # Degradations that are NEVER acceptable, regardless of worker posture.
@@ -41,7 +48,7 @@ case "$surface" in
       (.stale_processing_emails == 0) and
       (.unclaimable_emails == 0)
     '
-    failure="staging holds dead-lettered, stale, or unclaimable work"
+    failure="deployment holds dead-lettered, stale, or unclaimable work"
     ;;
   ingestion)
     filter='
@@ -50,11 +57,11 @@ case "$surface" in
       (.tasks | type == "array" and length > 0 and all(.[]; .alive == true)) and
       (.listener | type == "object" and .connected == true)
     '
-    failure="staging ingestion health does not prove the worker/listener is running"
+    failure="ingestion health does not prove the worker/listener is running"
     ;;
   egress)
     filter='(.transport == "asyncpg")'
-    failure="staging egress health does not prove the asyncpg worker transport is active"
+    failure="egress health does not prove the asyncpg worker transport is active"
     ;;
   *)
     echo "ERROR: expected health surface 'root', 'work-state', 'ingestion', or 'egress'" >&2
@@ -72,4 +79,4 @@ if ! jq -e "$filter" >/dev/null; then
   exit 1
 fi
 
-echo "OK: staging $surface health invariants verified"
+echo "OK: $surface health invariants verified"

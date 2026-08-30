@@ -102,7 +102,7 @@ The backend gate is genuinely green now that #334 repaired the detection. The
 /health           → {"status":"ok", ...}
 /health/ingestion → {"background_processing_enabled": false, "tasks": [], "listener": null}
 /health/egress    → {"transport": "none"}
-./scripts/assert-staging-health.sh ingestion  → exit 1
+./scripts/assert-health.sh ingestion  → exit 1
 ```
 
 Staging runs with background processing **off**. Every durable-worker property
@@ -403,7 +403,7 @@ implied completeness of a batch whose staging worker gate has never run.
    delegates to delegates straight back to it.
 
 **Done when:** the drill suite runs green against staging; a deliberately
-introduced fence violation makes it red; `assert-staging-health.sh ingestion`
+introduced fence violation makes it red; `assert-health.sh ingestion`
 exits 0.
 
 ---
