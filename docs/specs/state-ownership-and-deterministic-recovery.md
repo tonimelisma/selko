@@ -393,16 +393,30 @@ and generation. A stale completion returns `false` without mutation.
 Replace split counting with one service-role RPC,
 `health_work_state(p_warning_seconds integer)`, returning safe counts/ages:
 
-- ready, processing, stale-processing, and unclaimable emails;
+- ready, processing, and stale-processing emails;
+- `unclaimable_pending` and `failed_emails` (see below);
 - stale sync runs;
 - pending/dead-letter ingestion items and attachments;
 - due integrations, oldest due age, and open incidents.
 
-The ready/stale/unclaimable predicates must match the claim RPC and be pinned
-in `test_schema_contract.py`. `IngestionRuntime.health_snapshot()` makes one
-RPC call. `down` means a task is dead; `degraded` means unknown DB counts,
-stale/unclaimable work, dead letters, stale runs, incidents, or exceeded SLO;
-otherwise `ok`.
+**Amended by `20260901000001`.** This originally specified a single
+"unclaimable emails" count, implemented as
+`processing_status = 'failed' OR (pending AND attempts >= max_attempts)`. Those
+are different things: the first is the terminal state written by
+`fail_email_processing` once retries are exhausted and is permanent, the second
+is a pending row the claim RPC will never take. Merging them meant one
+permanently failed email made the rollup `degraded` forever and made
+`assert-health.sh` — which requires the count to be zero — unsatisfiable.
+Production ran with 27 terminal failures and reported degraded continuously.
+
+`unclaimable_pending` is actionable and degrades the rollup;
+`failed_emails` is reported but never degrades it.
+
+The ready/stale/unclaimable-pending predicates must match the claim RPC and be
+pinned in `test_schema_contract.py`. `IngestionRuntime.health_snapshot()` makes
+one RPC call. `down` means a task is dead; `degraded` means unknown DB counts,
+stale or unclaimable-pending work, dead letters, stale runs, incidents, or
+exceeded SLO; otherwise `ok`.
 
 Make `/health` use the same roll-up instead of hard-coding `ok`.
 `/health/ingestion` remains detailed. A reachable degraded service may return

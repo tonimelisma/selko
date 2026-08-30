@@ -62,6 +62,7 @@ struct IntegrationSetupView: View {
         }
         .padding()
         .background(Color.selkoPaper.ignoresSafeArea())
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("integrationSetupView")
     }
 

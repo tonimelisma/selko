@@ -409,10 +409,10 @@ def _work_state_row(
     *, items_dead_letter=0, attachments_dead_letter=0, items_pending=0,
     integrations_due=0, leases_held=0, oldest_next_poll_seconds=0, open_incidents=0,
     ready_emails=0, processing_emails=0, stale_processing_emails=0,
-    unclaimable_emails=0, stale_sync_runs=0,
+    unclaimable_pending=0, failed_emails=0, stale_sync_runs=0,
 ):
     degraded = (
-        stale_processing_emails > 0 or unclaimable_emails > 0 or stale_sync_runs > 0
+        stale_processing_emails > 0 or unclaimable_pending > 0 or stale_sync_runs > 0
         or items_dead_letter > 0 or attachments_dead_letter > 0 or open_incidents > 0
     )
     return {
@@ -420,7 +420,8 @@ def _work_state_row(
         "ready_emails": ready_emails,
         "processing_emails": processing_emails,
         "stale_processing_emails": stale_processing_emails,
-        "unclaimable_emails": unclaimable_emails,
+        "unclaimable_pending": unclaimable_pending,
+        "failed_emails": failed_emails,
         "stale_sync_runs": stale_sync_runs,
         "items_pending": items_pending,
         "items_dead_letter": items_dead_letter,

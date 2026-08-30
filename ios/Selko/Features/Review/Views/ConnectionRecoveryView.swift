@@ -145,6 +145,7 @@ struct ConnectionRecoveryView: View {
         .clipShape(SelkoShape.card)
         .overlay(SelkoShape.card.stroke(Color.selkoWarning, lineWidth: 1))
         .accessibilityElement(children: .contain)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("catchUpView")
     }
 
@@ -192,6 +193,7 @@ struct ConnectionRecoveryView: View {
         .background(Color.selkoSurface)
         .clipShape(SelkoShape.card)
         .overlay(SelkoShape.card.stroke(Color.selkoWarning, lineWidth: 1))
+        .accessibilityElement(children: .contain)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("connectionRecoveryView")
     }

@@ -220,7 +220,8 @@ class TestHealthEndpoints:
                 "ready_emails": 0,
                 "processing_emails": 0,
                 "stale_processing_emails": 0,
-                "unclaimable_emails": 0,
+                "unclaimable_pending": 0,
+                "failed_emails": 0,
             }
             resp = test_client.get("/health/ingestion")
         assert resp.status_code == 200
@@ -239,17 +240,41 @@ class TestHealthEndpoints:
             "integrations_due": 0, "oldest_next_poll_seconds": 0, "leases_held": 0,
             "items_pending": 0, "items_dead_letter": 0, "attachments_dead_letter": 0,
             "open_incidents": 0, "ready_emails": 0, "processing_emails": 0,
-            "stale_processing_emails": 0, "unclaimable_emails": 0,
+            "stale_processing_emails": 0, "unclaimable_pending": 0, "failed_emails": 0,
         }
         for field in (
             "items_dead_letter", "attachments_dead_letter",
-            "stale_processing_emails", "unclaimable_emails",
+            "stale_processing_emails", "unclaimable_pending",
         ):
             with patch("selko.api.app.ingestion_runtime", None), \
                  patch("selko.api.routes.health._work_state_counts") as counts:
                 counts.return_value = {**base, field: 2}
                 resp = test_client.get("/health/ingestion")
             assert resp.json()["status"] == "degraded", field
+
+    def test_health_ingestion_does_not_degrade_on_terminal_failures(self, test_client):
+        """failed_emails is history, not a current degradation.
+
+        It counts rows written by fail_email_processing once retries are
+        exhausted, and those rows are permanent. Degrading on it meant that a
+        single permanently failed email pinned /health to 'degraded' forever and
+        made assert-health.sh unsatisfiable -- a gate that cannot succeed, which
+        is ignored exactly as reliably as one that cannot fail. Production
+        carried 27 of them unnoticed.
+        """
+        base = {
+            "integrations_due": 0, "oldest_next_poll_seconds": 0, "leases_held": 0,
+            "items_pending": 0, "items_dead_letter": 0, "attachments_dead_letter": 0,
+            "open_incidents": 0, "ready_emails": 0, "processing_emails": 0,
+            "stale_processing_emails": 0, "unclaimable_pending": 0, "failed_emails": 0,
+        }
+        with patch("selko.api.app.ingestion_runtime", None), \
+             patch("selko.api.routes.health._work_state_counts") as counts:
+            counts.return_value = {**base, "failed_emails": 27}
+            resp = test_client.get("/health/ingestion")
+        body = resp.json()
+        assert body["status"] == "ok", body
+        assert body["failed_emails"] == 27, "the count must still be reported"
 
     def test_health_ingestion_reports_runtime_snapshot(self, test_client):
         """The route surfaces IngestionRuntime.health_snapshot()."""
