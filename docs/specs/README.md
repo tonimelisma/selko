@@ -24,7 +24,7 @@ declares a dependency on has landed.
 | 7 | [Foundation integrity](foundation-integrity.md) | F7b drills done (see plan 6); F8 + 24h soak open; F9 complete with accepted history debt | Evidence pending (tests 0/0; health 0/3; drills 0/1) | F8 needs the 24h soak and operator approval |
 | 8 | [Cutover verification](cutover-verification-20260807.md) | Ordered checklist | Evidence pending (tests 0/0; health 0/3; drills 0/1) | Executed through F7–F8, never directly |
 | 9 | [OAuth reconnect catch-up](oauth-reconnect-catch-up.md) | Step 8 delivered by plan 6; steps 7 and 9 operator-gated | Evidence pending (tests 0/2; health 0/0; drills 0/1) | Independent; C3 adds cancel_queued to its recovery sets |
-| 12 | [Event identity reach: invites, reschedules, and the user's existing calendar](event-identity-reach.md) | I1–I5 | Evidence pending (tests 0/2; health 0/0; drills 0/0) | I1 implemented; I2–I5 open |
+| 12 | [Event identity reach: invites, reschedules, and the user's existing calendar](event-identity-reach.md) | I1–I5, D1–D2 | Evidence pending (tests 0/2; health 0/0; drills 0/0) | I1 implemented; D1–D2 decisions open and block I2 |
 | — | [Review queue integrity](review-queue-integrity.md) | R1 defects repaired by G5; remaining text is normative | No executable acceptance criteria declared | R2–R5 superseded by plans 2 and 3 |
 
 ### 1 · Stub rollback and gate repair — completed record
