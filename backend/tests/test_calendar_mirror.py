@@ -148,3 +148,45 @@ def test_the_runtime_actually_runs_the_mirror():
     assert "google_calendar" in loop and "active" in loop, (
         "the loop must only mirror active google_calendar integrations"
     )
+
+
+def test_entries_are_indexed_even_though_upsert_returns_nothing():
+    """The mirror must index what it stores, not what the upsert echoes back.
+
+    Production mirrored 1595 calendar entries carrying 1595 iCalUIDs and wrote
+    zero identity hints, because the code indexed `upsert(...).execute().data`
+    and PostgREST returned no representation. The mirror existed and the index
+    it exists to populate stayed empty.
+
+    Every other test passed: they cover the row mapping and the runtime wiring,
+    and neither can see what the database hands back.
+    """
+    from selko.services.calendar_mirror import _reload_stored, _write_entry_hints
+
+    client = MagicMock()
+    upserted: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "calendar_entries":
+            # The shape that caused the bug: an upsert that echoes nothing.
+            handle.upsert.return_value.execute.return_value.data = None
+            handle.select.return_value.eq.return_value.in_.return_value.execute.return_value.data = [
+                {"id": "entry-1", "ical_uid": "uid-1@example.com", "original_start": "", "deleted_at": None},
+            ]
+        elif name == "event_identity_hints":
+            handle.upsert.side_effect = lambda payload, **kw: (
+                upserted.extend(payload), MagicMock()
+            )[1]
+        return handle
+
+    client.table.side_effect = table
+
+    stored = _reload_stored(client, "user-1", [{"provider_event_id": "evt-1"}])
+    assert stored, "entries must be read back when the upsert returns nothing"
+
+    _write_entry_hints(client, "user-1", stored)
+    assert upserted, "a mirrored entry with an iCalUID must produce a hint"
+    assert upserted[0]["calendar_entry_id"] == "entry-1"
+    assert upserted[0]["kind"] == "ical_uid"
+    assert upserted[0]["event_id"] is None

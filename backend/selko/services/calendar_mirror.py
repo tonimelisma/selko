@@ -209,14 +209,20 @@ def sync_calendar(
             break
 
     if rows:
-        stored = (
-            supabase_client.table("calendar_entries")
-            .upsert(rows, on_conflict="integration_id,calendar_id,provider_event_id")
-            .execute()
-            .data
-            or []
+        supabase_client.table("calendar_entries").upsert(
+            rows, on_conflict="integration_id,calendar_id,provider_event_id"
+        ).execute()
+        # Read the rows back rather than trusting the upsert's response. It
+        # returned nothing, so `stored` was empty and no hint was ever written:
+        # production mirrored 1595 entries carrying 1595 iCalUIDs and indexed
+        # none of them, which is the whole point of the mirror. The tests
+        # covered the row mapping and the wiring, and neither could see this,
+        # because the gap is in what the database hands back.
+        _write_entry_hints(
+            supabase_client,
+            user_id,
+            _reload_stored(supabase_client, user_id, rows),
         )
-        _write_entry_hints(supabase_client, user_id, stored)
 
     supabase_client.table("calendar_mirror_state").upsert(
         {
@@ -284,3 +290,32 @@ def _write_entry_hints(
     except Exception:
         # A hint that fails to store costs a match, never a wrong one.
         logger.exception("Could not index calendar entry identity hints")
+
+
+def _reload_stored(
+    supabase_client: Client, user_id: str, rows: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Fetch the ids of entries just written, in batches.
+
+    Upsert does not return representations here, and hint rows need the entry
+    id. Batched because `in_` on a few thousand provider ids is a URL, not a
+    query, and a mirror of a busy calendar will exceed what one request can
+    carry.
+    """
+    provider_ids = [row["provider_event_id"] for row in rows if row.get("provider_event_id")]
+    stored: list[dict[str, Any]] = []
+    batch = 200
+    for start in range(0, len(provider_ids), batch):
+        chunk = provider_ids[start : start + batch]
+        try:
+            result = (
+                supabase_client.table("calendar_entries")
+                .select("id,ical_uid,original_start,deleted_at")
+                .eq("user_id", user_id)
+                .in_("provider_event_id", chunk)
+                .execute()
+            )
+            stored.extend(row for row in (result.data or []) if isinstance(row, dict))
+        except Exception:
+            logger.exception("Could not reload mirrored entries for indexing")
+    return stored
