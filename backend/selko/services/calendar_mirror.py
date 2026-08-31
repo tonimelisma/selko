@@ -408,6 +408,15 @@ def sync_all_calendars(
         calendar_id = calendar.get("id")
         if not calendar_id:
             continue
+        # Never mirror the literal alias. "primary" resolves to the account's
+        # own calendar, which list_calendars also returns under its real id, so
+        # accepting both stores every event twice under two calendar ids. That
+        # is not merely wasteful: one iCalUID then names two mirrored entries,
+        # and identity matching treats an ambiguous hint as no match at all --
+        # the alias would silently undo the thing this mirror exists for. 241
+        # UIDs were duplicated this way before it was caught.
+        if calendar_id == "primary":
+            continue
         try:
             summary = sync_calendar(
                 supabase_client, user_id, integration_id, calendar_id
