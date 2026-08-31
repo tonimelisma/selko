@@ -578,6 +578,9 @@ class TestFindMatchingEventGCal:
         mock_result = MagicMock()
         mock_result.data = []
         mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
+        # The mirrored-entry read walks the same window and then filters out
+        # soft-deleted rows.
+        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.is_.return_value.execute.return_value = mock_result
 
         event_data = {
             "title": "Application Deadline",
@@ -597,12 +600,18 @@ class TestFindMatchingEventGCal:
             )
 
         eq_mock = mock_client.table.return_value.select.return_value.eq.return_value
-        eq_mock.gte.assert_called_once_with(
-            "start_datetime", "2026-07-27T07:00:00+00:00"
-        )
-        eq_mock.gte.return_value.lt.assert_called_once_with(
-            "start_datetime", "2026-07-28T07:00:00+00:00"
-        )
+        # Two reads share the band: stored events, and the mirrored calendar
+        # entries that are now part of the same candidate set. Asserting both
+        # is what keeps the mirror read from drifting onto a different window
+        # than the fence was computed against.
+        assert [c.args for c in eq_mock.gte.call_args_list] == [
+            ("start_datetime", "2026-07-27T07:00:00+00:00"),
+            ("start_at", "2026-07-27T07:00:00+00:00"),
+        ]
+        assert [c.args for c in eq_mock.gte.return_value.lt.call_args_list] == [
+            ("start_datetime", "2026-07-28T07:00:00+00:00"),
+            ("start_at", "2026-07-28T07:00:00+00:00"),
+        ]
         assert mock_gcal_fetch.call_args[0][2] == "2026-07-27T07:00:00+00:00"
         assert mock_gcal_fetch.call_args[0][3] == "2026-07-28T07:00:00+00:00"
 
@@ -813,3 +822,72 @@ class TestGenerateAttributionWithCalendarSource:
 
         assert "your Google Calendar" in attribution
         assert "automatically created" in attribution
+
+
+class TestMirroredEntriesAreCandidates:
+    """A mirrored calendar entry is a match candidate, not only a hint target.
+
+    This is the defect that produced four "new" Snowflake interviews while
+    identical entries sat on an imported Google calendar at the same minute:
+    mirrored entries reached the candidate set only when an identity hint
+    named them, and an LLM-extracted event from plain email text has no hint
+    to name one with.
+    """
+
+    def _client_with_mirror(self, entries):
+        client = MagicMock()
+        events_result = MagicMock()
+        events_result.data = []
+        mirror_result = MagicMock()
+        mirror_result.data = entries
+        chain = client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value
+        chain.execute.return_value = events_result
+        chain.is_.return_value.execute.return_value = mirror_result
+        return client
+
+    def test_a_mirrored_entry_is_offered_to_matching(self):
+        from selko.services.events import _mirror_candidates_in_window
+
+        client = self._client_with_mirror([{
+            "title": "Snowflake Behavioral Interview",
+            "start_at": "2026-09-09T17:00:00+00:00",
+            "end_at": "2026-09-09T18:00:00+00:00",
+            "location": "",
+            "provider_event_id": "abc123",
+        }])
+
+        candidates = _mirror_candidates_in_window(
+            client, "user-1", "2026-09-09T07:00:00+00:00", "2026-09-10T07:00:00+00:00"
+        )
+
+        assert candidates == [{
+            "id": "gcal:abc123",
+            "title": "Snowflake Behavioral Interview",
+            "start_datetime": "2026-09-09T17:00:00+00:00",
+            "end_datetime": "2026-09-09T18:00:00+00:00",
+            "location": "",
+            "_source": "calendar_mirror",
+        }]
+
+    def test_an_entry_without_a_provider_id_is_not_a_candidate(self):
+        """Without a provider id there is no stable identity to adopt."""
+        from selko.services.events import _mirror_candidates_in_window
+
+        client = self._client_with_mirror([
+            {"title": "Orphan", "start_at": "2026-09-09T17:00:00+00:00"},
+        ])
+
+        assert _mirror_candidates_in_window(
+            client, "user-1", "2026-09-09T07:00:00+00:00", "2026-09-10T07:00:00+00:00"
+        ) == []
+
+    def test_a_failed_mirror_read_does_not_lose_the_extraction(self):
+        """Fail toward a duplicate the user can reject, never toward silence."""
+        from selko.services.events import _mirror_candidates_in_window
+
+        client = MagicMock()
+        client.table.side_effect = RuntimeError("mirror unavailable")
+
+        assert _mirror_candidates_in_window(
+            client, "user-1", "2026-09-09T07:00:00+00:00", "2026-09-10T07:00:00+00:00"
+        ) == []

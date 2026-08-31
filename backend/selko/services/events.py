@@ -1215,6 +1215,52 @@ def _load_identity_candidates(
     return rows_by_key, events_by_id, fingerprint, keys
 
 
+def _mirror_candidates_in_window(
+    supabase_client: Client, user_id: str, time_min: str, time_max: str
+) -> list[dict[str, Any]]:
+    """Mirrored calendar entries in the same band as the events read.
+
+    Until this existed, a mirrored entry could reach the candidate set only by
+    being named in an identity hint, which requires the email to carry a UID or
+    another structured signal. Measured on production, ~4% of events carry any
+    hint and none carry an iCalendar UID, so the overwhelmingly common case is
+    an LLM-extracted event with nothing to link it to the calendar. Those
+    matched nothing, and every one was offered as New even when the user
+    plainly already had it -- four Snowflake interviews sat in the New lane
+    while identical entries sat on an imported calendar at the same minute.
+
+    This does not widen the band: the read uses the exact window the events
+    query already computed, so the same fence covers it and no new local-day
+    assumption is introduced.
+    """
+    try:
+        entries = supabase_client.table("calendar_entries").select(
+            "title,start_at,end_at,location,provider_event_id"
+        ).eq("user_id", user_id).gte("start_at", time_min).lt(
+            "start_at", time_max
+        ).is_("deleted_at", "null").execute()
+    except Exception as exc:
+        # Fail toward the previous behaviour rather than losing the extraction.
+        # A missed match shows a duplicate the user can reject; raising here
+        # would drop an event they were never told about.
+        logger.debug("Could not load mirrored window candidates (%s)", type(exc).__name__)
+        return []
+
+    shaped: list[dict[str, Any]] = []
+    for entry in (entries.data or []):
+        if not isinstance(entry, dict) or not entry.get("provider_event_id"):
+            continue
+        shaped.append({
+            "id": f"gcal:{entry['provider_event_id']}",
+            "title": entry.get("title") or "",
+            "start_datetime": entry.get("start_at"),
+            "end_datetime": entry.get("end_at"),
+            "location": entry.get("location") or "",
+            "_source": "calendar_mirror",
+        })
+    return shaped
+
+
 def _times_match(left: dict[str, Any], right: dict[str, Any]) -> bool:
     try:
         return (
@@ -1424,6 +1470,11 @@ def find_matching_event(
     ).execute()
 
     candidates: list[dict[str, Any]] = list(result.data) if result.data else []
+    # The user's own calendar belongs in the candidate set, not behind a
+    # structured-hint gate that most real emails cannot pass.
+    candidates.extend(
+        _mirror_candidates_in_window(supabase_client, user_id, time_min, time_max)
+    )
     identity_rows, identity_events, hint_fingerprint, hint_keys = _load_identity_candidates(
         supabase_client, user_id, identity_hints
     )
