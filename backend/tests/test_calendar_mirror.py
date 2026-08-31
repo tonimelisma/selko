@@ -279,7 +279,7 @@ def test_every_calendar_is_mirrored_not_only_the_write_target():
     original_list = calendar_mirror.list_calendars
     original_sync = calendar_mirror.sync_calendar
     calendar_mirror.list_calendars = lambda client, user_id: [
-        {"id": "primary"}, {"id": "work@example.com"}, {"id": "shared@example.com"},
+        {"id": "me@example.com"}, {"id": "work@example.com"}, {"id": "shared@example.com"},
     ]
     calendar_mirror.sync_calendar = fake_sync
     try:
@@ -288,7 +288,7 @@ def test_every_calendar_is_mirrored_not_only_the_write_target():
         calendar_mirror.list_calendars = original_list
         calendar_mirror.sync_calendar = original_sync
 
-    assert seen == ["primary", "work@example.com", "shared@example.com"]
+    assert seen == ["me@example.com", "work@example.com", "shared@example.com"]
     assert totals == {"calendars": 3, "entries": 3, "failed": 0}
 
 
@@ -304,7 +304,7 @@ def test_one_failing_calendar_does_not_stop_the_others():
     original_list = calendar_mirror.list_calendars
     original_sync = calendar_mirror.sync_calendar
     calendar_mirror.list_calendars = lambda client, user_id: [
-        {"id": "primary"}, {"id": "broken@example.com"}, {"id": "work@example.com"},
+        {"id": "me@example.com"}, {"id": "broken@example.com"}, {"id": "work@example.com"},
     ]
     calendar_mirror.sync_calendar = fake_sync
     try:
@@ -314,3 +314,38 @@ def test_one_failing_calendar_does_not_stop_the_others():
         calendar_mirror.sync_calendar = original_sync
 
     assert totals == {"calendars": 2, "entries": 4, "failed": 1}
+
+
+def test_the_primary_alias_is_never_mirrored_alongside_its_real_id():
+    """"primary" is an alias, and list_calendars also returns the real id.
+
+    Mirroring both stores every event twice under two calendar ids, and one
+    iCalUID naming two entries makes the hint ambiguous -- which identity
+    matching treats as no match, silently undoing the mirror's whole purpose.
+    241 UIDs were duplicated this way in production before it was caught.
+    """
+    from selko.services import calendar_mirror
+
+    seen: list[str] = []
+
+    def fake_sync(client, user_id, integration_id, calendar_id, **kwargs):
+        seen.append(calendar_id)
+        return {"entries": 1, "full_resync": False, "has_sync_token": True}
+
+    original_list = calendar_mirror.list_calendars
+    original_sync = calendar_mirror.sync_calendar
+    calendar_mirror.list_calendars = lambda client, user_id: [
+        {"id": "primary"},
+        {"id": "me@example.com"},
+        {"id": "work@example.com"},
+    ]
+    calendar_mirror.sync_calendar = fake_sync
+    try:
+        totals = calendar_mirror.sync_all_calendars(MagicMock(), "u1", "i1")
+    finally:
+        calendar_mirror.list_calendars = original_list
+        calendar_mirror.sync_calendar = original_sync
+
+    assert "primary" not in seen
+    assert seen == ["me@example.com", "work@example.com"]
+    assert totals["calendars"] == 2

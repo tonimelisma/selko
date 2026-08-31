@@ -236,6 +236,16 @@ class IngestionRuntime:
                         summary["calendars"],
                         summary["failed"],
                     )
+                    if summary["failed"]:
+                        # A calendar we cannot read is a calendar whose events
+                        # look absent, which is indistinguishable from the user
+                        # not having them. Say so rather than counting silently.
+                        logger.warning(
+                            "Calendar mirror could not read %d of %d calendars; "
+                            "events on those calendars will appear as new",
+                            summary["failed"],
+                            summary["failed"] + summary["calendars"],
+                        )
                 except Exception:
                     # One user's expired token must not stop the others.
                     logger.exception("Calendar mirror sync failed for one integration")
@@ -368,6 +378,7 @@ class IngestionRuntime:
             "ready_emails": None,
             "processing_emails": None,
             "stale_processing_emails": None,
+            "mirrored_calendars": None,
             "unclaimable_pending": None,
             "failed_emails": None,
             "stale_sync_runs": None,

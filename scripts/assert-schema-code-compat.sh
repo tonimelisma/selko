@@ -61,6 +61,26 @@ main() {
     exit 1
   fi
 
+  # The password is a declared precondition, not something the operator is
+  # expected to have exported. This lane passed for weeks only on shells that
+  # happened to carry SUPABASE_DB_PASSWORD; in a fresh worktree it went red
+  # with an unrelated-looking CLI role error. Read it from the env file for the
+  # project that is actually linked, so the check behaves the same everywhere.
+  if [[ -z "${SUPABASE_DB_PASSWORD:-}" ]]; then
+    local repo_root env_file linked_ref
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    linked_ref="$(cat "$repo_root/supabase/.temp/project-ref" 2>/dev/null || true)"
+    case "$linked_ref" in
+      khahcozfbnpykspvatrg) env_file="$repo_root/.env.production" ;;
+      lxmysergoeaegxlyfzwk) env_file="$repo_root/.env.test" ;;
+      *) env_file="" ;;
+    esac
+    if [[ -n "$env_file" && -f "$env_file" ]]; then
+      SUPABASE_DB_PASSWORD="$(grep -m1 '^SUPABASE_DB_PASSWORD=' "$env_file" | cut -d= -f2- | tr -d '"'"'"'"')"
+      export SUPABASE_DB_PASSWORD
+    fi
+  fi
+
   local migration_list_args=(migration list --linked --output-format json)
   # Supabase's legacy linked-project path attempts to initialize a temporary
   # login role before reading migrations. Staging currently rejects that role
