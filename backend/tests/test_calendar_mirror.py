@@ -190,3 +190,68 @@ def test_entries_are_indexed_even_though_upsert_returns_nothing():
     assert upserted[0]["calendar_entry_id"] == "entry-1"
     assert upserted[0]["kind"] == "ical_uid"
     assert upserted[0]["event_id"] is None
+
+
+def test_entries_mirrored_before_indexing_worked_are_repaired():
+    """Indexing must be a repair, not a side effect of writing.
+
+    Once a sync token exists an unchanged calendar returns no rows, so nothing
+    is upserted and nothing is indexed. Production sat at 1595 mirrored entries
+    and 0 hints because indexing only ran for rows a pass happened to write --
+    every entry mirrored before the fix was unreachable for good.
+    """
+    from selko.services.calendar_mirror import _index_unhinted_entries
+
+    client = MagicMock()
+    written: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "calendar_entries":
+            chain = handle.select.return_value.eq.return_value.not_.is_.return_value.is_.return_value.limit.return_value
+            chain.execute.return_value.data = [
+                {"id": "entry-1", "ical_uid": "uid-1@example.com", "original_start": ""},
+                {"id": "entry-2", "ical_uid": "uid-2@example.com", "original_start": ""},
+            ]
+        elif name == "event_identity_hints":
+            handle.select.return_value.eq.return_value.not_.is_.return_value.execute.return_value.data = [
+                {"calendar_entry_id": "entry-1"},
+            ]
+            handle.upsert.side_effect = lambda payload, **kw: (
+                written.extend(payload), MagicMock()
+            )[1]
+        return handle
+
+    client.table.side_effect = table
+
+    indexed = _index_unhinted_entries(client, "user-1")
+    assert indexed == 1, "only the entry lacking a hint should be indexed"
+    assert [row["calendar_entry_id"] for row in written] == ["entry-2"]
+
+
+def test_indexing_is_a_no_op_when_everything_is_already_indexed():
+    """The repair must not rewrite hints on every sync."""
+    from selko.services.calendar_mirror import _index_unhinted_entries
+
+    client = MagicMock()
+    written: list[dict] = []
+
+    def table(name):
+        handle = MagicMock()
+        if name == "calendar_entries":
+            chain = handle.select.return_value.eq.return_value.not_.is_.return_value.is_.return_value.limit.return_value
+            chain.execute.return_value.data = [
+                {"id": "entry-1", "ical_uid": "uid-1@example.com", "original_start": ""},
+            ]
+        elif name == "event_identity_hints":
+            handle.select.return_value.eq.return_value.not_.is_.return_value.execute.return_value.data = [
+                {"calendar_entry_id": "entry-1"},
+            ]
+            handle.upsert.side_effect = lambda payload, **kw: (
+                written.extend(payload), MagicMock()
+            )[1]
+        return handle
+
+    client.table.side_effect = table
+    assert _index_unhinted_entries(client, "user-1") == 0
+    assert written == []
