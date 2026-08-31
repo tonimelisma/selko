@@ -38,7 +38,9 @@ def find_candidates(client) -> list[dict]:
     """Emails holding an .ics attachment but carrying no parsed component."""
     attachments = (
         client.table("attachments")
-        .select("id,email_id,filename,mime_type,storage_path")
+        # user_id travels with the attachment: email_calendar_components.user_id
+        # is NOT NULL, and an insert without it fails on the first row.
+        .select("id,email_id,user_id,filename,mime_type,storage_path")
         .execute()
         .data
         or []
@@ -112,6 +114,7 @@ def main() -> int:
         for index, component in enumerate(components):
             client.table("email_calendar_components").insert({
                 "email_id": row["email_id"],
+                "user_id": row["user_id"],
                 "component_index": index,
                 **component,
             }).execute()
