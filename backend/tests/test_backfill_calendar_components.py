@@ -30,7 +30,7 @@ def _client(attachments: list[dict], existing_component_emails: list[str]) -> Ma
 
 def test_finds_ics_attachments_with_no_component():
     client = _client(
-        [{"id": "a1", "email_id": "e1", "filename": "invite.ics", "mime_type": "application/octet-stream"}],
+        [{"id": "a1", "email_id": "e1", "user_id": "u1", "filename": "invite.ics", "mime_type": "application/octet-stream"}],
         [],
     )
     assert [row["id"] for row in find_candidates(client)] == ["a1"]
@@ -41,8 +41,8 @@ def test_detects_ics_by_mime_type_as_well_as_extension():
     with an .ics filename and a generic MIME. Either is an invite."""
     client = _client(
         [
-            {"id": "a1", "email_id": "e1", "filename": "attachment", "mime_type": "text/calendar"},
-            {"id": "a2", "email_id": "e2", "filename": "meeting.ICS", "mime_type": "application/octet-stream"},
+            {"id": "a1", "email_id": "e1", "user_id": "u1", "filename": "attachment", "mime_type": "text/calendar"},
+            {"id": "a2", "email_id": "e2", "user_id": "u1", "filename": "meeting.ICS", "mime_type": "application/octet-stream"},
         ],
         [],
     )
@@ -53,8 +53,8 @@ def test_skips_emails_that_already_have_a_component():
     """The backfill only ever adds; it must not touch a parsed email."""
     client = _client(
         [
-            {"id": "a1", "email_id": "e1", "filename": "invite.ics", "mime_type": ""},
-            {"id": "a2", "email_id": "e2", "filename": "invite.ics", "mime_type": ""},
+            {"id": "a1", "email_id": "e1", "user_id": "u1", "filename": "invite.ics", "mime_type": ""},
+            {"id": "a2", "email_id": "e2", "user_id": "u1", "filename": "invite.ics", "mime_type": ""},
         ],
         ["e1"],
     )
@@ -63,7 +63,7 @@ def test_skips_emails_that_already_have_a_component():
 
 def test_ignores_non_calendar_attachments():
     client = _client(
-        [{"id": "a1", "email_id": "e1", "filename": "agenda.pdf", "mime_type": "application/pdf"}],
+        [{"id": "a1", "email_id": "e1", "user_id": "u1", "filename": "agenda.pdf", "mime_type": "application/pdf"}],
         [],
     )
     assert find_candidates(client) == []
@@ -83,3 +83,21 @@ def test_apply_requires_an_explicit_environment():
     )
     assert result.returncode != 0
     assert "--environment" in result.stderr
+
+
+def test_candidates_carry_the_user_id_the_insert_requires():
+    """email_calendar_components.user_id is NOT NULL.
+
+    The first production run of this script aborted on its very first insert
+    with SQLSTATE 23502 because the select omitted user_id. Nothing was written,
+    so the failure was clean -- but the whole backfill was blocked on a column
+    the query never asked for.
+    """
+    client = _client(
+        [{"id": "a1", "email_id": "e1", "user_id": "u1", "filename": "invite.ics", "mime_type": ""}],
+        [],
+    )
+    rows = find_candidates(client)
+    assert rows and rows[0].get("user_id") == "u1", (
+        "a candidate must carry user_id or the insert cannot satisfy NOT NULL"
+    )
