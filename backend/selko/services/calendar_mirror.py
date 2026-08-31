@@ -81,6 +81,15 @@ def _join_url(entry: dict[str, Any]) -> str | None:
         for point in conference.get("entryPoints") or []:
             if isinstance(point, dict) and point.get("uri"):
                 return str(point["uri"])
+    # An entry imported from an ICS feed has no conferenceData at all: the
+    # organizer's Zoom link arrives in `location`. Every one of the Snowflake
+    # interviews on the user's imported calendar looked like this, so reading
+    # only the structured fields still left them unindexed after the join-URL
+    # column existed. Accept a location only when it is actually a URL, so a
+    # street address never becomes an identity signal.
+    location = str(entry.get("location") or "").strip()
+    if location.startswith(("http://", "https://")) and " " not in location:
+        return location
     return None
 
 

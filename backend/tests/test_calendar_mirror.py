@@ -411,3 +411,34 @@ class TestJoinUrlsReachTheHints:
 
         kinds = {h["kind"] for h in captured["payload"]}
         assert "join_url" in kinds
+
+
+class TestJoinUrlFromLocation:
+    """ICS-imported entries carry the join link in `location`, not conferenceData.
+
+    Every Snowflake interview on the user's imported calendar looked like this,
+    so adding the join_url column alone still left them unindexed.
+    """
+
+    def _row(self, entry):
+        from selko.services.calendar_mirror import entry_row
+        return entry_row(entry, user_id="u1", integration_id="i1", calendar_id="c1")
+
+    def test_a_url_location_becomes_the_join_url(self):
+        row = self._row({
+            "id": "e1",
+            "location": "https://snowflake.zoom.us/j/86723994247?pwd=fg82dzeav24uSFhw",
+        })
+        assert row["join_url"] == "https://snowflake.zoom.us/j/86723994247?pwd=fg82dzeav24uSFhw"
+
+    def test_a_street_address_never_becomes_an_identity_signal(self):
+        row = self._row({"id": "e1", "location": "1600 Amphitheatre Parkway, Mountain View"})
+        assert row["join_url"] is None
+
+    def test_structured_conferencing_still_wins_over_location(self):
+        row = self._row({
+            "id": "e1",
+            "hangoutLink": "https://meet.google.com/abc-defg-hij",
+            "location": "https://example.com/somewhere-else",
+        })
+        assert row["join_url"] == "https://meet.google.com/abc-defg-hij"
