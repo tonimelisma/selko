@@ -726,7 +726,7 @@ def save_extracted_events(
             # fix was live. Adoption is checked before the skip for that reason.
             adopt_id = (
                 _calendar_entry_sharing_a_join_link(
-                    supabase_client, user_id, identity_hints
+                    supabase_client, user_id, _own_join_hints(event_data)
                 )
                 if match.baseline.get("review_status") == "pending_review"
                 else None
@@ -853,7 +853,7 @@ def save_extracted_events(
             })
         elif match.baseline.get("review_status") == "pending_review":
             mirrored_id = _calendar_entry_sharing_a_join_link(
-                supabase_client, user_id, identity_hints
+                supabase_client, user_id, _own_join_hints(event_data)
             )
             if mirrored_id:
                 # The user already has this meeting: an entry on their calendar
@@ -1286,6 +1286,31 @@ def _load_identity_candidates(
     events_by_id.update(identity_events)
     fingerprint = candidate_fingerprint(list(events_by_id.values()))
     return rows_by_key, events_by_id, fingerprint, keys
+
+
+def _own_join_hints(event_data: dict[str, Any]) -> list[Any]:
+    """Join hints belonging to this event alone.
+
+    The identity hints carried through extraction are built from the whole
+    email -- subject and body included -- because that is what makes a thread
+    or a management link findable. For a schedule email that lists five
+    interviews, every extracted event therefore carries all five Zoom links:
+    18 join hints for one 45-minute meeting.
+
+    That is fine for lookup and fatal for adoption, where the question is
+    "which single calendar entry is this event?". Answering it from the
+    whole-body hints matched many entries at once and so adopted nothing, every
+    time. The event's own `location` is the link to the meeting it actually is.
+    """
+    return [
+        hint for hint in build_hints(
+            provider=None,
+            thread_id=None,
+            calendar_components=[],
+            event_values=(event_data.get("location"),),
+        )
+        if getattr(hint, "kind", None) == "join_url"
+    ]
 
 
 def _calendar_entry_sharing_a_join_link(

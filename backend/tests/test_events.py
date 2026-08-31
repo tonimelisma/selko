@@ -956,3 +956,33 @@ class TestAdoptingNewLaneItemsTheCalendarAlreadyHolds:
         assert _calendar_entry_sharing_a_join_link(
             client, "u1", [self._Hint("join_url", "hash-1")]
         ) is None
+
+
+class TestAdoptionUsesTheEventsOwnJoinLink:
+    """Adoption must ask about this event's link, not every link in the email.
+
+    Identity hints are built from the whole email -- subject and body included --
+    so a schedule email listing five interviews gives every extracted event all
+    five Zoom links (18 join hints, measured). Answering "which single calendar
+    entry is this?" from those matched many entries at once, and the ambiguity
+    guard then correctly adopted nothing, every single time.
+    """
+
+    def test_only_the_events_own_location_is_used(self):
+        from selko.services.events import _own_join_hints
+
+        hints = _own_join_hints({
+            "location": "https://snowflake.zoom.us/j/86723994247",
+            "description": "Other sessions: https://snowflake.zoom.us/j/83019654585",
+        })
+        assert len(hints) == 1
+
+    def test_an_event_with_a_physical_location_yields_no_join_hint(self):
+        from selko.services.events import _own_join_hints
+
+        assert _own_join_hints({"location": "Conference Room B"}) == []
+
+    def test_an_event_with_no_location_yields_no_join_hint(self):
+        from selko.services.events import _own_join_hints
+
+        assert _own_join_hints({}) == []
