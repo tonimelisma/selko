@@ -376,6 +376,60 @@ def _load_identity_context(
     return email, components
 
 
+def _invite_is_already_on_calendar(
+    supabase_client: Client, user_id: str, email_id: str
+) -> bool:
+    """True when this invitation's UID is already on the user's calendar.
+
+    Answers the question the old rule assumed. A calendar invitation is worth
+    skipping precisely when the calendar already holds it -- and worth
+    processing when it does not, which is the case where the user has received
+    an invite they never accepted and would otherwise never see in Selko.
+
+    Fails closed toward processing: if the components cannot be read, or no
+    component carries a UID, the invitation goes through extraction. Showing an
+    event the user already has is a duplicate they can reject; silently dropping
+    one they do not have is a commitment they never learn about.
+    """
+    try:
+        components = (
+            supabase_client.table("email_calendar_components")
+            .select("uid_hash")
+            .eq("email_id", email_id)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:
+        logger.debug("Could not read calendar components for invite check")
+        return False
+
+    uid_hashes = sorted({
+        row["uid_hash"] for row in components
+        if isinstance(row, dict) and row.get("uid_hash")
+    })
+    if not uid_hashes:
+        return False
+
+    try:
+        matches = (
+            supabase_client.table("event_identity_hints")
+            .select("calendar_entry_id")
+            .eq("user_id", user_id)
+            .eq("kind", "ical_uid")
+            .in_("value_hash", uid_hashes)
+            .not_.is_("calendar_entry_id", "null")
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:
+        logger.debug("Could not check the calendar mirror for invite UID")
+        return False
+    return bool(matches)
+
+
 def _identity_hints_for_event(
     email: dict[str, Any],
     components: list[dict[str, Any]],
@@ -926,10 +980,28 @@ def process_email_for_events(
                 )
             except Exception:
                 logger.debug("Could not inspect structured cancellation components for %s", email_id)
-        if (
-            not structured_cancellation
-            and (email_metadata.get("is_calendar_invite") or invite_method in ics_parser.INVITE_METHODS)
-        ):
+        # An invitation is skipped only when the user's calendar demonstrably
+        # already holds it. The rule used to be unconditional -- "already
+        # handled by your email client and calendar" -- which is an assumption
+        # about a system Selko could not see. It was wrong in the case that
+        # motivated this: five interview invitations were skipped, the plain
+        # text confirmation for the same loop was processed instead, and the
+        # five events it created carried no UID because the messages that had
+        # one were thrown away. The later cancellation then arrived as
+        # `cancellation_unmatched`, because the invite it referred to had never
+        # been indexed.
+        #
+        # The mirror makes the assumption checkable, so it is now checked.
+        is_invite = (
+            email_metadata.get("is_calendar_invite")
+            or invite_method in ics_parser.INVITE_METHODS
+        )
+        already_on_calendar = (
+            _invite_is_already_on_calendar(supabase_client, user_id, email_id)
+            if is_invite
+            else False
+        )
+        if not structured_cancellation and is_invite and already_on_calendar:
             result = {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
             commit = _commit_email_extraction(
                 supabase_client, email_id, locked_by, lock_generation, [], "skipped"
@@ -940,7 +1012,7 @@ def process_email_for_events(
             mark_email_status(
                 supabase_client, email_id, "skipped",
                 outcome="calendar_invite",
-                explanation="Calendar invitation — already handled by your email client and calendar.",
+                explanation="Calendar invitation already present on your calendar.",
                 result=result,
             )
             return result

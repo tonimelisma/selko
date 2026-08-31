@@ -737,8 +737,16 @@ class TestProcessEmailPipeline:
         status_calls = [call[0][2] for call in mock_mark.call_args_list]
         assert status_calls == ["processing", "skipped"]
 
-    def test_calendar_invite_flag_short_circuits(self):
-        """Regression: an Outlook eventMessage must never reach LLM extraction."""
+    def test_calendar_invite_already_on_the_calendar_short_circuits(self):
+        """An invitation the calendar already holds must not reach extraction.
+
+        This used to be unconditional -- every invitation was skipped as
+        "already handled by your email client and calendar", which is an
+        assumption about a system Selko could not see. It was wrong for five
+        interview invitations that were skipped while their calendar entries
+        never existed, so the only record became a plain-text confirmation whose
+        events carried no UID. The skip now requires the mirror to confirm it.
+        """
         mock_client = MagicMock()
         mock_gateway = MagicMock()
         mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
@@ -753,6 +761,10 @@ class TestProcessEmailPipeline:
                  ),
              ), \
              patch("selko.services.events.check_sender_rules", return_value=None), \
+             patch(
+                 "selko.services.events._invite_is_already_on_calendar",
+                 return_value=True,
+             ), \
              patch("selko.services.events.event_processing.extract_calendar_events") as mock_extract:
             result = process_email_for_events(
                 mock_client, mock_gateway, "email-1", "user-1"
@@ -767,6 +779,42 @@ class TestProcessEmailPipeline:
         statuses = [call.args[2] for call in mock_mark.call_args_list]
         assert "skipped" in statuses
         assert "processed" not in statuses
+
+
+    def test_an_invite_the_calendar_does_not_hold_is_processed(self):
+        """The case the old rule got wrong, stated as a test.
+
+        An invitation the user never accepted is not on their calendar, so
+        skipping it means the commitment is never surfaced anywhere. Showing an
+        event they already have is a duplicate they can reject; dropping one
+        they do not have is a meeting they never learn about, so this fails
+        toward processing.
+        """
+        mock_client = MagicMock()
+        mock_gateway = MagicMock()
+        mock_gateway.for_user.return_value.for_email.return_value = mock_gateway
+
+        with patch("selko.services.events.mark_email_status"), \
+             patch(
+                 "selko.services.events.event_processing.fetch_email_with_attachments",
+                 return_value=(
+                     {"from_email": "organizer@example.com", "is_calendar_invite": True},
+                     "text",
+                     [],
+                 ),
+             ), \
+             patch("selko.services.events.check_sender_rules", return_value=None), \
+             patch(
+                 "selko.services.events._invite_is_already_on_calendar",
+                 return_value=False,
+             ), \
+             patch(
+                 "selko.services.events.event_processing.extract_calendar_events"
+             ) as mock_extract:
+            mock_extract.return_value = MagicMock(events=[])
+            process_email_for_events(mock_client, mock_gateway, "email-1", "user-1")
+
+        mock_extract.assert_called_once()
 
     def test_ics_invite_method_short_circuits(self):
         """Regression: a Gmail METHOD:REQUEST .ics attachment must never reach LLM extraction."""
@@ -787,6 +835,10 @@ class TestProcessEmailPipeline:
                  return_value=({"from_email": "organizer@example.com"}, "text", attachments),
              ), \
              patch("selko.services.events.check_sender_rules", return_value=None), \
+             patch(
+                 "selko.services.events._invite_is_already_on_calendar",
+                 return_value=True,
+             ), \
              patch("selko.services.events.event_processing.extract_calendar_events") as mock_extract:
             result = process_email_for_events(
                 mock_client, mock_gateway, "email-1", "user-1"
