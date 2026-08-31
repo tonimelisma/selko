@@ -224,6 +224,16 @@ def sync_calendar(
             _reload_stored(supabase_client, user_id, rows),
         )
 
+    # Index anything still missing a hint, whether or not this pass changed it.
+    #
+    # Indexing only what a pass upserts leaves every entry mirrored before the
+    # indexing worked unreachable for good: once a sync token exists, an
+    # unchanged calendar returns no rows, so nothing is upserted and nothing is
+    # indexed. Production sat at 1595 mirrored entries and 0 hints for exactly
+    # that reason. Making this a repair rather than a side effect of writing
+    # means the index converges on its own.
+    _index_unhinted_entries(supabase_client, user_id)
+
     supabase_client.table("calendar_mirror_state").upsert(
         {
             "integration_id": integration_id,
@@ -319,3 +329,56 @@ def _reload_stored(
         except Exception:
             logger.exception("Could not reload mirrored entries for indexing")
     return stored
+
+
+def _index_unhinted_entries(
+    supabase_client: Client, user_id: str, limit: int = 500
+) -> int:
+    """Write hints for mirrored entries that have none. Returns how many.
+
+    Bounded per pass so a large calendar converges over several syncs instead of
+    issuing one unbounded query, and so a failure costs one batch rather than
+    the whole sync.
+    """
+    try:
+        entries = (
+            supabase_client.table("calendar_entries")
+            .select("id,ical_uid,original_start")
+            .eq("user_id", user_id)
+            .not_.is_("ical_uid", "null")
+            .is_("deleted_at", "null")
+            .limit(limit)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:
+        logger.exception("Could not list calendar entries for indexing")
+        return 0
+    if not entries:
+        return 0
+
+    try:
+        hinted = {
+            row["calendar_entry_id"]
+            for row in (
+                supabase_client.table("event_identity_hints")
+                .select("calendar_entry_id")
+                .eq("user_id", user_id)
+                .not_.is_("calendar_entry_id", "null")
+                .execute()
+                .data
+                or []
+            )
+            if row.get("calendar_entry_id")
+        }
+    except Exception:
+        logger.exception("Could not list existing calendar hints")
+        return 0
+
+    missing = [entry for entry in entries if entry.get("id") not in hinted]
+    if not missing:
+        return 0
+    _write_entry_hints(supabase_client, user_id, missing)
+    logger.info("Indexed %d previously unindexed calendar entries", len(missing))
+    return len(missing)
