@@ -21,7 +21,7 @@ from googleapiclient.errors import HttpError
 from supabase import Client
 
 from selko.services.integrations import get_credentials
-from selko.services.calendars import CalendarsError, get_calendar_settings
+from selko.services.calendars import CalendarsError, list_calendars
 from selko.services.event_identity import hints_from_calendar_event
 
 logger = logging.getLogger(__name__)
@@ -141,6 +141,7 @@ def sync_calendar(
     supabase_client: Client,
     user_id: str,
     integration_id: str,
+    calendar_id: str = "primary",
     *,
     now: datetime | None = None,
 ) -> dict[str, Any]:
@@ -152,8 +153,6 @@ def sync_calendar(
     if not credentials:
         raise CalendarsError("No Google Calendar credentials found")
 
-    settings = get_calendar_settings(supabase_client, user_id)
-    calendar_id = settings.get("target_calendar_id") or "primary"
     window = rolling_window(now)
 
     state = (
@@ -382,3 +381,40 @@ def _index_unhinted_entries(
     _write_entry_hints(supabase_client, user_id, missing)
     logger.info("Indexed %d previously unindexed calendar entries", len(missing))
     return len(missing)
+
+
+def sync_all_calendars(
+    supabase_client: Client, user_id: str, integration_id: str
+) -> dict[str, Any]:
+    """Mirror every calendar the account can see, not only the write target.
+
+    `target_calendar_id or "primary"` is where Selko *writes*. It is not where
+    invitations *arrive*. A Google account routinely carries several calendars,
+    and an invite lands on whichever one its address belongs to: this account
+    has three, and the interview invitations that Selko kept proposing as new
+    were on one it never read. Mirroring only the write target made "the user
+    already has this" unanswerable for every calendar but one.
+
+    One calendar failing -- a permission, a deleted subscription -- must not
+    stop the rest, so each is attempted independently.
+    """
+    try:
+        calendars = list_calendars(supabase_client, user_id)
+    except Exception as exc:
+        raise CalendarsError(f"Could not list calendars: {exc}") from exc
+
+    totals = {"calendars": 0, "entries": 0, "failed": 0}
+    for calendar in calendars:
+        calendar_id = calendar.get("id")
+        if not calendar_id:
+            continue
+        try:
+            summary = sync_calendar(
+                supabase_client, user_id, integration_id, calendar_id
+            )
+            totals["calendars"] += 1
+            totals["entries"] += summary["entries"]
+        except Exception:
+            totals["failed"] += 1
+            logger.exception("Calendar mirror sync failed for one calendar")
+    return totals
