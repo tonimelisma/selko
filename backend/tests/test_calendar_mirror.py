@@ -144,7 +144,10 @@ def test_the_runtime_actually_runs_the_mirror():
     assert "calendar-mirror" in source, "mirror loop is not registered as a task"
 
     loop = inspect.getsource(IngestionRuntime._calendar_mirror_floor)
-    assert "sync_calendar" in loop, "the registered loop does not call the sync"
+    assert "sync_all_calendars" in loop, (
+        "the loop must mirror every calendar, not only the write target: "
+        "invitations arrive on whichever calendar their address belongs to"
+    )
     assert "google_calendar" in loop and "active" in loop, (
         "the loop must only mirror active google_calendar integrations"
     )
@@ -255,3 +258,59 @@ def test_indexing_is_a_no_op_when_everything_is_already_indexed():
     client.table.side_effect = table
     assert _index_unhinted_entries(client, "user-1") == 0
     assert written == []
+
+
+def test_every_calendar_is_mirrored_not_only_the_write_target():
+    """target_calendar_id is where Selko writes, not where invites arrive.
+
+    This account carries three calendars, and the interview invitations Selko
+    kept proposing as new were on one it never read. Mirroring only the write
+    target made "the user already has this" unanswerable for every calendar but
+    one.
+    """
+    from selko.services import calendar_mirror
+
+    seen: list[str] = []
+
+    def fake_sync(client, user_id, integration_id, calendar_id, **kwargs):
+        seen.append(calendar_id)
+        return {"entries": 1, "full_resync": False, "has_sync_token": True}
+
+    original_list = calendar_mirror.list_calendars
+    original_sync = calendar_mirror.sync_calendar
+    calendar_mirror.list_calendars = lambda client, user_id: [
+        {"id": "primary"}, {"id": "work@example.com"}, {"id": "shared@example.com"},
+    ]
+    calendar_mirror.sync_calendar = fake_sync
+    try:
+        totals = calendar_mirror.sync_all_calendars(MagicMock(), "u1", "i1")
+    finally:
+        calendar_mirror.list_calendars = original_list
+        calendar_mirror.sync_calendar = original_sync
+
+    assert seen == ["primary", "work@example.com", "shared@example.com"]
+    assert totals == {"calendars": 3, "entries": 3, "failed": 0}
+
+
+def test_one_failing_calendar_does_not_stop_the_others():
+    """A permission error on one subscription must not blind the rest."""
+    from selko.services import calendar_mirror
+
+    def fake_sync(client, user_id, integration_id, calendar_id, **kwargs):
+        if calendar_id == "broken@example.com":
+            raise RuntimeError("permission denied")
+        return {"entries": 2, "full_resync": False, "has_sync_token": True}
+
+    original_list = calendar_mirror.list_calendars
+    original_sync = calendar_mirror.sync_calendar
+    calendar_mirror.list_calendars = lambda client, user_id: [
+        {"id": "primary"}, {"id": "broken@example.com"}, {"id": "work@example.com"},
+    ]
+    calendar_mirror.sync_calendar = fake_sync
+    try:
+        totals = calendar_mirror.sync_all_calendars(MagicMock(), "u1", "i1")
+    finally:
+        calendar_mirror.list_calendars = original_list
+        calendar_mirror.sync_calendar = original_sync
+
+    assert totals == {"calendars": 2, "entries": 4, "failed": 1}

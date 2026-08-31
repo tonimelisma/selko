@@ -225,15 +225,16 @@ class IngestionRuntime:
                     return
                 try:
                     summary = await asyncio.to_thread(
-                        calendar_mirror.sync_calendar,
+                        calendar_mirror.sync_all_calendars,
                         self.client,
                         row["user_id"],
                         row["id"],
                     )
                     logger.info(
-                        "Calendar mirror synced %d entries (full_resync=%s)",
+                        "Calendar mirror synced %d entries across %d calendars (%d failed)",
                         summary["entries"],
-                        summary["full_resync"],
+                        summary["calendars"],
+                        summary["failed"],
                     )
                 except Exception:
                     # One user's expired token must not stop the others.
