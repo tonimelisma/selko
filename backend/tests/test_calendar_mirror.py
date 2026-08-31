@@ -349,3 +349,65 @@ def test_the_primary_alias_is_never_mirrored_alongside_its_real_id():
     assert "primary" not in seen
     assert seen == ["me@example.com", "work@example.com"]
     assert totals["calendars"] == 2
+
+
+class TestJoinUrlsReachTheHints:
+    """A mirrored entry must be indexed by the same signal an email carries.
+
+    Emails carry Zoom/Meet links and no iCalUID; calendar entries carry a UID
+    the email never mentions. Indexing entries by UID alone left the two hint
+    sets disjoint, so four Snowflake interviews sat in the New lane while the
+    identical entries -- same Zoom links -- sat on an imported calendar.
+    """
+
+    def test_hangout_link_is_kept_on_the_row(self):
+        from selko.services.calendar_mirror import entry_row
+
+        row = entry_row(
+            {"id": "e1", "hangoutLink": "https://meet.google.com/abc-defg-hij"},
+            user_id="u1", integration_id="i1", calendar_id="c1",
+        )
+        assert row["join_url"] == "https://meet.google.com/abc-defg-hij"
+
+    def test_conference_entry_point_is_kept_when_there_is_no_hangout_link(self):
+        from selko.services.calendar_mirror import entry_row
+
+        row = entry_row(
+            {
+                "id": "e1",
+                "conferenceData": {"entryPoints": [
+                    {"entryPointType": "phone"},
+                    {"entryPointType": "video", "uri": "https://snowflake.zoom.us/j/123"},
+                ]},
+            },
+            user_id="u1", integration_id="i1", calendar_id="c1",
+        )
+        assert row["join_url"] == "https://snowflake.zoom.us/j/123"
+
+    def test_an_entry_without_conferencing_stores_no_join_url(self):
+        from selko.services.calendar_mirror import entry_row
+
+        row = entry_row(
+            {"id": "e1"}, user_id="u1", integration_id="i1", calendar_id="c1"
+        )
+        assert row["join_url"] is None
+
+    def test_the_stored_join_url_becomes_a_join_hint(self):
+        """The regression that matters: the hint writer must not drop it."""
+        from selko.services import calendar_mirror
+
+        client = MagicMock()
+        captured: dict = {}
+
+        def capture(payload, on_conflict=None):
+            captured["payload"] = payload
+            return MagicMock()
+
+        client.table.return_value.upsert.side_effect = capture
+
+        calendar_mirror._write_entry_hints(client, "u1", [
+            {"id": "entry-1", "ical_uid": None, "join_url": "https://snowflake.zoom.us/j/123"},
+        ])
+
+        kinds = {h["kind"] for h in captured["payload"]}
+        assert "join_url" in kinds

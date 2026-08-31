@@ -65,6 +65,25 @@ def _bound(value: Any) -> tuple[str | None, bool]:
     return None, False
 
 
+def _join_url(entry: dict[str, Any]) -> str | None:
+    """The entry's conferencing link, if it has one.
+
+    Kept on the row so `_write_entry_hints` can hand it back to
+    `hints_from_calendar_event`, which already knows how to hash a join URL.
+    Without it the mirror indexes entries by iCalUID only, and an event
+    extracted from an email -- which carries a join URL and no UID -- shares no
+    hint with the calendar entry describing the very same meeting.
+    """
+    if entry.get("hangoutLink"):
+        return str(entry["hangoutLink"])
+    conference = entry.get("conferenceData")
+    if isinstance(conference, dict):
+        for point in conference.get("entryPoints") or []:
+            if isinstance(point, dict) and point.get("uri"):
+                return str(point["uri"])
+    return None
+
+
 def entry_row(
     entry: dict[str, Any], *, user_id: str, integration_id: str, calendar_id: str
 ) -> dict[str, Any]:
@@ -86,6 +105,7 @@ def entry_row(
         "original_start": original_start,
         "title": entry.get("summary"),
         "location": entry.get("location"),
+        "join_url": _join_url(entry),
         "start_at": start_at,
         "end_at": end_at,
         "all_day": start_all_day,
@@ -279,6 +299,11 @@ def _write_entry_hints(
                 "originalStartTime": (
                     {"dateTime": row["original_start"]} if row.get("original_start") else None
                 ),
+                # The join URL is the only hint an email-extracted event and a
+                # calendar entry realistically share: emails carry Zoom links
+                # and no UID, calendar entries carry a UID the email never
+                # mentions. Omitting it left the two hint sets disjoint.
+                "hangoutLink": row.get("join_url"),
             }
         ):
             payload.append(
@@ -319,7 +344,7 @@ def _reload_stored(
         try:
             result = (
                 supabase_client.table("calendar_entries")
-                .select("id,ical_uid,original_start,deleted_at")
+                .select("id,ical_uid,original_start,deleted_at,join_url")
                 .eq("user_id", user_id)
                 .in_("provider_event_id", chunk)
                 .execute()
