@@ -814,18 +814,53 @@ def save_extracted_events(
                 },
             })
         elif match.baseline.get("review_status") == "pending_review":
-            # The user has not decided anything yet, so there is nothing to
-            # propose: absorb the newer information and stay in the New lane.
-            # review_status is stated so the commit cannot infer a different one.
-            decisions.append({
-                "action": "update",
-                "event_id": match.match_id,
-                "intent": "apply",
-                "fields": {**proposed_fields, "review_status": "pending_review"},
-                **_window_fields(candidate_window),
-                "hints": hint_payload,
-                "source": source,
-            })
+            mirrored_id = _calendar_entry_sharing_a_join_link(
+                supabase_client, user_id, identity_hints
+            )
+            if mirrored_id:
+                # The user already has this meeting: an entry on their calendar
+                # carries the very join link this email quotes. Leaving it in
+                # the New lane asks them to decide something they have already
+                # decided, which is how four Snowflake interviews sat unread as
+                # "new" while identical entries sat on the user's own calendar.
+                #
+                # Adopt the provider's copy and hold it for review, exactly as a
+                # first-time gcal match does. Nothing is written to the calendar.
+                decisions.append({
+                    "action": "update",
+                    "event_id": match.match_id,
+                    "intent": "review",
+                    "fields": {
+                        **proposed_fields,
+                        "review_status": "active",
+                        "google_calendar_event_id": mirrored_id,
+                    },
+                    **_window_fields(candidate_window),
+                    "hints": hint_payload,
+                    "source": {
+                        **source,
+                        "extra_sources": [{
+                            "source_origin": "google_calendar",
+                            "google_calendar_source_event_id": mirrored_id,
+                            "source_type": source_type,
+                            "extracted_data": {"google_calendar_event_id": mirrored_id},
+                            "change_set": change_set.model_dump_jsonable(),
+                        }],
+                    },
+                })
+            else:
+                # The user has not decided anything yet, so there is nothing to
+                # propose: absorb the newer information and stay in the New lane.
+                # review_status is stated so the commit cannot infer a different one.
+                decisions.append({
+                    "action": "update",
+                    "event_id": match.match_id,
+                    "intent": "apply",
+                    "fields": {**proposed_fields, "review_status": "pending_review"},
+                    **_window_fields(candidate_window),
+                    "hints": hint_payload,
+                    "source": source,
+                })
         elif auto_apply:
             applied = apply_asserted_fields(match.baseline, proposed_fields)
             decisions.append({
@@ -1213,6 +1248,56 @@ def _load_identity_candidates(
     events_by_id.update(identity_events)
     fingerprint = candidate_fingerprint(list(events_by_id.values()))
     return rows_by_key, events_by_id, fingerprint, keys
+
+
+def _calendar_entry_sharing_a_join_link(
+    supabase_client: Client, user_id: str, identity_hints: list[Any]
+) -> str | None:
+    """Provider id of a mirrored entry that carries this email's join link.
+
+    Deliberately *not* "an entry that starts at the same minute". Production
+    holds four unrelated pairs that collide on start time alone -- a teacher
+    placement release and a pub get-together, a farmers' market and a board
+    meeting. Time equality is not identity, and resolving on it would silently
+    mark unrelated events as already-handled.
+
+    A join link is different: it is the address of one specific meeting, and it
+    is the one signal an email and a calendar entry realistically share, since
+    emails quote Zoom links and never mention an iCalendar UID.
+    """
+    join_hashes = sorted({
+        hint.value_hash for hint in identity_hints
+        if getattr(hint, "kind", None) == "join_url" and getattr(hint, "value_hash", None)
+    })
+    if not join_hashes:
+        return None
+
+    try:
+        rows = supabase_client.table("event_identity_hints").select(
+            "calendar_entry_id"
+        ).eq("user_id", user_id).eq("kind", "join_url").in_(
+            "value_hash", join_hashes
+        ).not_.is_("calendar_entry_id", "null").execute().data or []
+        entry_ids = sorted({r["calendar_entry_id"] for r in rows if r.get("calendar_entry_id")})
+        if len(entry_ids) != 1:
+            # No entry, or several: a link shared by more than one entry names
+            # no single event to adopt. Leave it in the New lane rather than
+            # guessing which one the user meant.
+            return None
+        entry = supabase_client.table("calendar_entries").select(
+            "provider_event_id"
+        ).eq("user_id", user_id).eq("id", entry_ids[0]).is_(
+            "deleted_at", "null"
+        ).execute().data or []
+    except Exception:
+        # Fail toward leaving the item in New: showing something the user has
+        # already handled is a nuisance, adopting the wrong event is not.
+        logger.debug("Could not check the mirror for a shared join link")
+        return None
+
+    if not entry:
+        return None
+    return entry[0].get("provider_event_id")
 
 
 def _mirror_candidates_in_window(
