@@ -718,6 +718,44 @@ def save_extracted_events(
         change_set = resolve_description_append(change_set, match.baseline)
 
         if change_set.kind == "noop":
+            # "Nothing to update" is not "nothing to do". An item sitting in the
+            # New lane that the user's calendar already holds needs its lane
+            # corrected, and a lane correction is not a field change -- so
+            # skipping here on a noop changeset kept the Snowflake interviews
+            # unresolved through two full reprocessings after every matching
+            # fix was live. Adoption is checked before the skip for that reason.
+            adopt_id = (
+                _calendar_entry_sharing_a_join_link(
+                    supabase_client, user_id, identity_hints
+                )
+                if match.baseline.get("review_status") == "pending_review"
+                else None
+            )
+            if adopt_id:
+                decisions.append({
+                    "action": "update",
+                    "event_id": match.match_id,
+                    "intent": "review",
+                    "fields": {
+                        "review_status": "active",
+                        "google_calendar_event_id": adopt_id,
+                    },
+                    **_window_fields(candidate_window),
+                    "hints": hint_payload,
+                    "source": {
+                        "email_id": email_id,
+                        "extracted_data": source_event_data,
+                        "source_type": "update",
+                        "extra_sources": [{
+                            "source_origin": "google_calendar",
+                            "google_calendar_source_event_id": adopt_id,
+                            "source_type": "update",
+                            "extracted_data": {"google_calendar_event_id": adopt_id},
+                            "change_set": change_set.model_dump_jsonable(),
+                        }],
+                    },
+                })
+                continue
             logger.info(
                 "Skipping noop rediscovery for match %s (%s)",
                 match.match_id,
