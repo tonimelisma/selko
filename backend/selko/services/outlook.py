@@ -25,6 +25,7 @@ from selko.services.integrations import (
     update_provider_tokens,
 )
 from selko.services.msgraph import GraphCallContext, GraphRequestError, request_json
+from selko.services.email_body import html_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -557,8 +558,18 @@ def parse_outlook_message(
     component = _outlook_calendar_component(msg)
     if component:
         result["calendar_components"] = [component]
-    if body.get("contentType") == "text" and body.get("content"):
-        result["body_text"] = body["content"]
+    # Graph normally honours the `outlook.body-content-type="text"` Prefer
+    # header set on the list/get calls, so contentType is "text" and the
+    # content is already rendered. When it is not honoured the previous code
+    # stored nothing and extraction fell back to the ~255-char bodyPreview;
+    # render the HTML instead, the same way the Gmail path does.
+    if body.get("content"):
+        if body.get("contentType") == "text":
+            result["body_text"] = body["content"]
+        else:
+            rendered = html_to_text(body["content"])
+            if rendered:
+                result["body_text"] = rendered
     resolved_folder_id = folder_id or msg.get("parentFolderId")
     if resolved_folder_id:
         result["provider_folder_ids"] = [str(resolved_folder_id)]

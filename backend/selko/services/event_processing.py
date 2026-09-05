@@ -27,6 +27,7 @@ from selko.services.llm_gateway import (
 )
 from selko.services.llm_logging import LLMOperationType
 from selko.services.llm_provider import ContentPart, ImageContent, LLMResponse, strip_markdown_json
+from selko.services.email_body import is_substantive
 
 logger = logging.getLogger(__name__)
 
@@ -414,8 +415,16 @@ def fetch_email_with_attachments(
             "is_calendar_invite": email.get("is_calendar_invite", False),
         }
 
-        # Use full body text if available, otherwise fall back to snippet
-        email_text = email.get("body_text") or email.get("snippet", "")
+        # Use the full body text when it actually carries the message. A bare
+        # truthiness check let a placeholder body defeat this fallback: a
+        # text/plain part reading only "Ticketmaster" is truthy, so the LLM
+        # received 14 characters and correctly reported no event while the
+        # snippet held real content. Rows stored before the sync-time fix in
+        # services/email_body.py still look like that, so the choice is made
+        # here too rather than trusted upstream.
+        stored_body = email.get("body_text")
+        snippet = email.get("snippet", "")
+        email_text = stored_body if is_substantive(stored_body, alternative=snippet) else snippet
 
         # Fetch attachments from storage (all image types are stored at sync time)
         attachments: list[dict[str, Any]] = []
