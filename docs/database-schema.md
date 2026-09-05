@@ -305,12 +305,14 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 | `event_id` | uuid, FK | References `events.id` |
 | `email_id` | uuid, FK, nullable | References `emails.id` (required for email sources) |
 | `source_origin` | text | `email`, `google_calendar`, or `google_photos` |
+| `source_type` | text | What this source contributed: `new_invitation`, `update`, `cancellation`, `reminder`, or `unknown` |
 | `google_calendar_source_event_id` | text, nullable | Google Calendar event ID (required for calendar sources) |
 | `extracted_data` | jsonb | Raw extraction data from source |
 | `created_at` | timestamptz | Auto-set |
 
 **Constraints:**
 - `source_origin` must be one of: `email`, `google_calendar`, `google_photos`
+- `source_type` must be one of: `new_invitation`, `update`, `cancellation`, `reminder`, `unknown`
 - Email sources require `email_id`; calendar sources require `google_calendar_source_event_id`
 - Partial unique indexes: `(event_id, email_id)` for email sources, `(event_id, google_calendar_source_event_id)` for calendar sources
 
