@@ -1010,3 +1010,185 @@ async def test_status_literals_in_python_are_permitted():
         if value not in allowed_by_column.get(key, set())
     ]
     assert not violations, "status literals are outside their pinned domains: " + ", ".join(violations)
+
+
+# Every column a web client asks PostgREST for is part of the schema contract,
+# and it is the half no other gate covers. The frontend unit tests stub
+# ``supabase.from`` wholesale, so a select string is only ever asserted against
+# itself: it stays green after the column it names is dropped.
+#
+# email-history.js kept requesting ``event_sources.is_undone`` after
+# 20260826000001 dropped it. PostgREST names embedded relations
+# ``<relation>_1``, so every History load answered
+# "column event_sources_1.is_undone does not exist" and the whole processed
+# email list rendered empty. Nothing went red: the frontend lane mocks the
+# database and the backend never issues that query.
+#
+# The regression arrived by stale branch rather than by bad edit. #332 removed
+# the column; #342 branched before that, and its squash rewrote the same line
+# and restored it. Only the live schema can catch that.
+_SUPABASE_CALL = re.compile(r"\.(from|select)\(")
+_MODULE_CONSTANT = re.compile(
+    r"^\s*(?:export\s+)?const\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(['\"`])(.*?)\2\s*;?\s*$",
+    re.MULTILINE | re.DOTALL,
+)
+_ALIAS = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*:(?!:)")
+_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _first_call_argument(text: str, start: int) -> str | None:
+    """Return the source of the first argument of a call opened at ``start``.
+
+    ``start`` points just past the opening parenthesis. Quotes are tracked so a
+    comma or parenthesis inside a select string does not end the argument.
+    """
+    depth = 1
+    quote: str | None = None
+    index = start
+    while index < len(text):
+        char = text[index]
+        if quote is not None:
+            if char == "\\":
+                index += 2
+                continue
+            if char == quote:
+                quote = None
+        elif char in "'\"`":
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return text[start:index]
+        elif char == "," and depth == 1:
+            return text[start:index]
+        index += 1
+    return None
+
+
+def _split_top_level(select: str) -> list[str]:
+    parts: list[str] = []
+    depth = 0
+    current: list[str] = []
+    for char in select:
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        if char == "," and depth == 0:
+            parts.append("".join(current))
+            current = []
+            continue
+        current.append(char)
+    parts.append("".join(current))
+    return [part.strip() for part in parts if part.strip()]
+
+
+def _referenced_columns(table: str, select: str, origin: str) -> list[tuple[str, str]]:
+    """Resolve a PostgREST select string to the (table, column) pairs it needs.
+
+    An unrecognised token raises rather than being skipped. A parser that
+    quietly ignores what it cannot read is the same green-by-omission failure
+    this test exists to remove.
+    """
+    references: list[tuple[str, str]] = []
+    for token in _split_top_level(select):
+        if token == "*":
+            continue
+        if token.startswith("..."):
+            token = token[3:].strip()
+        alias = _ALIAS.match(token)
+        if alias:
+            token = token[alias.end() :].strip()
+        if token.endswith(")"):
+            head, _, inner = token.partition("(")
+            relation = head.split("!", 1)[0].strip()
+            if not _IDENTIFIER.match(relation):
+                raise AssertionError(f"{origin}: unreadable embedded relation {head!r}")
+            references.extend(_referenced_columns(relation, inner[:-1], origin))
+            continue
+        column = token.split("::", 1)[0].split("->", 1)[0].split("!", 1)[0].strip()
+        if column == "*" or not column:
+            continue
+        if not _IDENTIFIER.match(column):
+            raise AssertionError(f"{origin}: unreadable select token {token!r}")
+        references.append((table, column))
+    return references
+
+
+def _frontend_column_references() -> list[tuple[str, str, str]]:
+    """Every (table, column, origin) a frontend PostgREST select depends on.
+
+    Each ``.select()`` is attributed to the nearest preceding ``.from()`` in the
+    same file, which is how the Supabase JS builder chains. A select string held
+    in a module constant is resolved through that constant.
+    """
+    repo_root = Path(__file__).resolve().parents[3]
+    frontend_root = repo_root / "frontend" / "src"
+    sources = sorted(frontend_root.rglob("*.js")) + sorted(frontend_root.rglob("*.svelte"))
+    references: list[tuple[str, str, str]] = []
+    for path in sources:
+        if "__tests__" in path.parts:
+            continue
+        text = path.read_text()
+        constants = {
+            match.group(1): match.group(3) for match in _MODULE_CONSTANT.finditer(text)
+        }
+        table: str | None = None
+        for match in _SUPABASE_CALL.finditer(text):
+            argument = _first_call_argument(text, match.end())
+            if argument is None:
+                continue
+            argument = argument.strip()
+            line = text.count("\n", 0, match.start()) + 1
+            origin = f"{path.relative_to(repo_root)}:{line}"
+            if match.group(1) == "from":
+                # A non-literal argument is not a Supabase table selection --
+                # Array.from(...) reads identically here. Leave the current
+                # table alone rather than inventing one.
+                if len(argument) > 1 and argument[0] in "'\"`" and argument[-1] == argument[0]:
+                    table = argument[1:-1].strip()
+                continue
+            if not argument:
+                continue
+            if len(argument) > 1 and argument[0] in "'\"`" and argument[-1] == argument[0]:
+                select = argument[1:-1]
+            elif argument in constants:
+                select = constants[argument]
+            else:
+                # A computed select string cannot be checked here. Fail rather
+                # than skip: an unverifiable query is exactly what this gate is
+                # for, and the fix is to hoist it into a constant.
+                raise AssertionError(f"{origin}: select argument {argument!r} is not a literal")
+            if table is None:
+                raise AssertionError(f"{origin}: select has no resolvable .from() table")
+            references.extend(
+                (found_table, found_column, origin)
+                for found_table, found_column in _referenced_columns(table, select, origin)
+            )
+    return references
+
+
+@pytest.mark.asyncio
+async def test_frontend_select_columns_exist_in_the_live_schema(pg_pool):
+    rows = await pg_pool.fetch(
+        """
+        SELECT table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        """
+    )
+    live_columns = {(row["table_name"], row["column_name"]) for row in rows}
+    live_tables = {table for table, _ in live_columns}
+
+    missing: list[str] = []
+    for table, column, origin in _frontend_column_references():
+        if table not in live_tables:
+            missing.append(f"{origin}: table public.{table} does not exist")
+        elif (table, column) not in live_columns:
+            missing.append(f"{origin}: public.{table}.{column} does not exist")
+
+    assert not missing, "frontend queries request columns the schema does not have:\n" + "\n".join(
+        sorted(set(missing))
+    )

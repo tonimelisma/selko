@@ -64,11 +64,3 @@ export {
 	getCalendarSettings,
 	updateCalendarSettings
 } from './calendar-settings.js';
-
-// Job operations (read-only)
-export {
-	fetchJobs,
-	getJob,
-	getPendingJobCounts,
-	hasProcessingJobs
-} from './jobs.js';
