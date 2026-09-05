@@ -63,7 +63,17 @@ class TestParseOutlookMessage:
         }
         assert "body_html" not in result
 
-    def test_omits_empty_recipients_and_html_body(self):
+    def test_omits_empty_recipients_and_never_stores_markup(self):
+        """An HTML body is rendered to text, never stored as markup.
+
+        This previously asserted `body_text` was absent entirely. That pinned
+        the wrong half of the intent: the rule is that markup is never stored,
+        not that the message is discarded. Dropping it sent extraction the
+        ~255-char bodyPreview instead of the mail, which is the Outlook twin of
+        the Gmail defect in test_email_body.py. Graph normally honours the
+        `outlook.body-content-type="text"` Prefer header, so this path is the
+        fallback for when it does not.
+        """
         result = parse_outlook_message(
             {
                 "id": "message-2",
@@ -74,7 +84,8 @@ class TestParseOutlookMessage:
 
         assert result["to_emails"] is None
         assert "body_html" not in result
-        assert "body_text" not in result
+        assert result["body_text"] == "HTML"
+        assert "<p>" not in result["body_text"]
 
     def test_flags_event_message_request_as_calendar_invite(self):
         result = parse_outlook_message(
