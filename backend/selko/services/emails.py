@@ -25,6 +25,7 @@ from selko.services.gmail import (
     get_credentials,
 )
 from selko.services.attachments import AttachmentError, process_attachment, store_image_content
+from selko.services.email_body import select_body_text
 from selko.services.email_images import extract_data_uri_images, extract_linked_images
 from selko.services.ics_parser import INVITE_METHODS
 
@@ -226,11 +227,18 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
         "has_attachments": has_attachments,
     }
 
-    # Add body columns if content was found
-    if body_text:
-        result["body_text"] = body_text
-    # body_html intentionally not persisted (Inc1 payload fix) — linked
-    # images are extracted in-memory from payload, not from DB.
+    # Add body columns if content was found. The text/plain part is not
+    # trusted on its own: a multipart/alternative whose plain part is a
+    # placeholder (Ticketmaster sends the single word "Ticketmaster") would
+    # otherwise store 14 bytes and starve extraction of the entire message,
+    # which is exactly how "You Got Tickets To Monster Jam" produced no event.
+    # select_body_text renders the HTML part when it says more.
+    selected_body_text = select_body_text(body_text, body_html)
+    if selected_body_text:
+        result["body_text"] = selected_body_text
+    # body_html still intentionally not persisted (Inc1 payload fix) — linked
+    # images are extracted in-memory from payload, not from DB, and the text
+    # we need from it is now rendered above rather than stored twice.
 
     invite_method = _detect_gmail_invite_method(payload)
     result["is_calendar_invite"] = invite_method in INVITE_METHODS
