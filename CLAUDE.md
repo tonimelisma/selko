@@ -259,6 +259,17 @@ not authorize unrelated production-data mutations.
   and `20260809000003` (referenced `NEW.sync_status` on `events`, breaking every
   UPDATE) both applied cleanly, passed the full mocked suite, and were broken on
   their first real call.
+- **A client query string is schema, not text.** Frontend PostgREST `.select()`
+  strings are pinned against the live database by
+  `backend/tests/integration/test_schema_contract.py::test_frontend_select_columns_exist_in_the_live_schema`.
+  The frontend unit tests stub `supabase.from` wholesale, so a select string is
+  otherwise only ever asserted against itself and stays green after the column
+  it names is dropped. That is how `event_sources.is_undone` survived
+  `20260826000001` and made every History load answer 400 (#380) — PostgREST
+  names embedded relations `<relation>_1`, so the error named a table that
+  appears nowhere in the source. The regression also arrived by stale branch
+  rather than by a bad edit: a squash-merge of a branch cut before its
+  neighbour silently restores the lines that neighbour changed.
 - **Configuration is part of the change.** If your increment adds a required
   environment variable, it is not done until that variable is set in every
   environment that runs the code. A correct diff plus a missing value is an
