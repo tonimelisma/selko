@@ -5,11 +5,12 @@
 xcuserdata/
 *.xcuserstate
 
-# Environment files
+# Environment files.
+# Match by pattern, not by enumeration: an ad-hoc file such as .env.bf is not
+# on any list and was therefore committable. `git add -A` staged one during a
+# session and it reached a local commit before being caught.
 .env
-.env.local
-.env.test
-.env.production
+.env.*
 !.env.example
 
 # Supabase
