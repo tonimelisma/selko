@@ -92,6 +92,17 @@ class ProviderPermanentError(EmailIngestionError):
     """
 
 
+class ExecutorTimeoutError(EmailIngestionError):
+    """Raised when an executor exceeded its wall-clock bound.
+
+    An unbounded executor does not merely delay one row: it holds its
+    semaphore permit for as long as it runs. Executor width is 2 by default,
+    so two never-returning items stopped acquisition permanently and
+    silently — see ``EmailIngestionWorker._process_acquisition_item``. This
+    is retryable: a bound that fired tells us nothing about the payload.
+    """
+
+
 # Microsoft Graph error codes that mean throttle (retry) rather than auth.
 _GRAPH_RATE_LIMIT_CODES = {"TooManyRequests", "Throttled"}
 # Microsoft Graph error codes that mean scope/permission missing (auth).
@@ -155,6 +166,13 @@ def classify_email_error(exc: BaseException) -> EmailErrorClassification:
         # Removed by the caller, not failed-and-retried; keep a stable code.
         return EmailErrorClassification(
             code="provider_message_missing", retryable=True, auth_failure=False
+        )
+    # Distinct from the ``unknown`` fallback on purpose: a stalled executor is
+    # the one failure mode whose symptom is the *absence* of attempts, so it
+    # needs a code you can grep for once the rows start moving again.
+    if isinstance(exc, ExecutorTimeoutError):
+        return EmailErrorClassification(
+            code="executor_timeout", retryable=True, auth_failure=False
         )
 
     status = getattr(exc, "status_code", None)

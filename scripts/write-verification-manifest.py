@@ -100,10 +100,21 @@ def _validate_skips(skips: list[dict[str, str]], budget: dict[str, dict[str, str
         if entry is None:
             problems.append(f"skip is outside budget: {nodeid}")
             continue
+        # `reason` may be one string or several acceptable ones. A single
+        # precondition can go missing for more than one legitimate reason:
+        # the real-Gmail tests skip with "No Gmail credentials" when no token
+        # was ever seeded, and with the explicit-degradation message when
+        # verify.sh was run with --accept-stale-gmail-token. Pinning one
+        # string made the second case a gate failure on a run with zero
+        # failures. Listing both keeps the guard: any reason outside the list
+        # still trips it.
         expected = entry.get("reason", "")
-        if expected and expected not in item["reason"]:
+        accepted = [expected] if isinstance(expected, str) else list(expected)
+        accepted = [text for text in accepted if text]
+        if accepted and not any(text in item["reason"] for text in accepted):
             problems.append(
-                f"skip reason changed for {nodeid}: expected {expected!r}, got {item['reason']!r}"
+                f"skip reason changed for {nodeid}: expected one of {accepted!r}, "
+                f"got {item['reason']!r}"
             )
     # A budget entry is PERMISSION to skip, not a requirement to.
     #

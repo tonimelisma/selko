@@ -51,6 +51,11 @@ echo "Checking ${BASE_URL}"
 check root       /health
 check work-state /health/ingestion
 check ingestion  /health/ingestion
+# egress was listed as an invariant in CLAUDE.md and implemented in
+# assert-health.sh, but never called from here -- so the surface that is
+# supposed to prove the worker transport has never once been checked against
+# production. Exactly the gap this file's own header describes.
+check egress     /health/egress
 
 echo
 if [ "$failures" -gt 0 ]; then

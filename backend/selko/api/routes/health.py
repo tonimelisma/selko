@@ -1,5 +1,6 @@
 """Health check endpoints."""
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -131,8 +132,9 @@ async def health_db_check(
 _WORK_STATE_COUNT_FIELDS = (
     "integrations_due", "oldest_next_poll_seconds", "leases_held",
     "items_pending", "items_dead_letter", "attachments_dead_letter",
-    "open_incidents", "ready_emails", "processing_emails",
-    "stale_processing_emails", "unclaimable_pending", "failed_emails",
+    "items_stalled_seconds", "open_incidents", "ready_emails",
+    "processing_emails", "stale_processing_emails", "unclaimable_pending",
+    "failed_emails",
 )
 
 
@@ -234,6 +236,7 @@ async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
         items_pending=snapshot.get("items_pending"),
         items_dead_letter=snapshot.get("items_dead_letter"),
         attachments_dead_letter=snapshot.get("attachments_dead_letter"),
+        items_stalled_seconds=snapshot.get("items_stalled_seconds"),
         open_incidents=snapshot.get("open_incidents"),
         ready_emails=snapshot.get("ready_emails"),
         processing_emails=snapshot.get("processing_emails"),
@@ -242,6 +245,30 @@ async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
         failed_emails=snapshot.get("failed_emails"),
         stale_sync_runs=snapshot.get("stale_sync_runs"),
     )
+
+
+async def _pg_transport_state(pool) -> str:
+    """Prove the asyncpg pool can answer, not merely that it was constructed.
+
+    This used to be ``pool is not None``, which is just as true of a pool
+    whose every connection is wedged. assert-health.sh asserts
+    ``transport == "asyncpg"`` to prove the worker transport is active, so
+    that form could not fail for the one reason worth asserting: a pool that
+    exists and does not work. ``pool.acquire()`` has no default timeout, and
+    a hung acquire inside an unbounded executor is how acquisition stalled
+    for 19 days.
+
+    Bounded, so the probe cannot itself hang the health route.
+    """
+    if pool is None:
+        return "none"
+    try:
+        async with asyncio.timeout(5):
+            await pool.fetchval("SELECT 1")
+    except Exception:
+        logger.warning("asyncpg transport probe failed", exc_info=True)
+        return "unavailable"
+    return "asyncpg"
 
 
 @router.get("/health/egress", response_model=HealthEgressResponse)
@@ -296,5 +323,5 @@ async def health_egress_check(request: Request) -> HealthEgressResponse:
             EgressOperationResponse(**row) for row in snapshot["top_operations"]
         ],
         bytes_per_mailbox_per_day=bytes_per_mailbox,
-        transport="asyncpg" if getattr(request.app.state, "pg_pool", None) is not None else "none",
+        transport=await _pg_transport_state(getattr(request.app.state, "pg_pool", None)),
     )
