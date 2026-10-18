@@ -99,10 +99,16 @@ main() {
   fi
 
   # The password-authenticated Supabase CLI path writes connection progress
-  # before the JSON payload. Strip only leading non-JSON lines, then validate
-  # the complete payload with jq so noisy output cannot become a false pass.
+  # before the JSON payload, and newer CLI builds append an upgrade notice
+  # after it ("A new version of Supabase CLI is available: ..."). Stripping
+  # only the leading lines left that trailer in the buffer, so jq failed at
+  # line 2 and this gate reported "cannot verify" against a remote it had
+  # just listed successfully -- red for a reason that has nothing to do with
+  # the schema. `--output-format json` emits the payload as a single line, so
+  # take the first such line and nothing after it. Still validated with jq,
+  # so noisy output cannot become a false pass.
   local remote_json
-  if ! remote_json=$(printf '%s\n' "$REMOTE_RAW" | sed -n '/^[[:space:]]*{/,$p' | jq -c .); then
+  if ! remote_json=$(printf '%s\n' "$REMOTE_RAW" | grep -m 1 -E '^[[:space:]]*\{' | jq -c .); then
     echo "❌ FAIL: could not parse migration list output as JSON — cannot verify."
     echo "$REMOTE_RAW"
     exit 1

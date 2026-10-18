@@ -185,23 +185,23 @@ reason = "LLM test requires --run-llm flag to avoid API costs"
 
 [[skip]]
 nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_get_user_profile_real"
-reason = "No Gmail credentials - run cli_seed_tokens first"
+reason = ["No Gmail credentials - run cli_seed_tokens first", "real-Gmail development tests skipped"]
 
 [[skip]]
 nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_fetch_messages_real"
-reason = "No Gmail credentials - run cli_seed_tokens first"
+reason = ["No Gmail credentials - run cli_seed_tokens first", "real-Gmail development tests skipped"]
 
 [[skip]]
 nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_get_credentials_real"
-reason = "No Gmail credentials found."
+reason = ["No Gmail credentials found.", "real-Gmail development tests skipped"]
 
 [[skip]]
 nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_token_refresh_if_expired"
-reason = "No Gmail credentials - run cli_seed_tokens first"
+reason = ["No Gmail credentials - run cli_seed_tokens first", "real-Gmail development tests skipped"]
 
 [[skip]]
 nodeid = "tests/integration/test_integration_gmail.py::TestGmailDevelopment::test_build_service_real"
-reason = "No Gmail credentials - run cli_seed_tokens first"
+reason = ["No Gmail credentials - run cli_seed_tokens first", "real-Gmail development tests skipped"]
 
 [[skip]]
 nodeid = "tests/integration/test_integration_calendars.py::TestCancelCalendarEvent::test_cancel_prefixes_title"

@@ -70,13 +70,36 @@ case "$surface" in
     failure="deployment holds dead-lettered, stale, or unclaimable work"
     ;;
   ingestion)
+    # items_stalled_seconds is asserted HERE and not in work-state, because it
+    # is the one invariant in this file that depends on worker posture: with
+    # background processing off, nothing acquires and a non-empty queue is
+    # correct, not broken. work-state must hold whatever the posture, so this
+    # would have made it unsatisfiable on staging -- the same mistake as the
+    # root roll-up and D2's "staging runs workers permanently", twice undone
+    # already. This surface already asserts background_processing_enabled, so
+    # here the claim is meaningful: if ingestion says it is running, claimable
+    # work has to be moving.
+    #
+    # Liveness was never the problem. Every task reported alive:true for 19
+    # days while acquisition claimed nothing, because the loop was running --
+    # it had simply stopped asking. `.alive` can only see a dead task, so this
+    # adds the check that can see a live one doing nothing.
+    #
+    # `has(...)` is load-bearing. `.items_stalled_seconds // 0` is 0 both when
+    # the field is null (genuinely no claimable work: green) and when the
+    # deployment does not publish it at all (cannot prove anything), so
+    # without the presence check this assertion would pass against exactly
+    # the build that cannot answer it. Silence is not success: a deployment
+    # predating this field is RED here until it ships.
     filter='
       (.status == "ok") and
       (.background_processing_enabled == true) and
       (.tasks | type == "array" and length > 0 and all(.[]; .alive == true)) and
-      (.listener | type == "object" and .connected == true)
+      (.listener | type == "object" and .connected == true) and
+      has("items_stalled_seconds") and
+      ((.items_stalled_seconds // 0) <= 1800)
     '
-    failure="ingestion health does not prove the worker/listener is running"
+    failure="ingestion health does not prove the worker/listener is running, or claimable acquisition work has sat unclaimed for over 30 minutes"
     ;;
   egress)
     filter='(.transport == "asyncpg")'

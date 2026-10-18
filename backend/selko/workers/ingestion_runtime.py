@@ -374,6 +374,7 @@ class IngestionRuntime:
             "items_pending": None,
             "items_dead_letter": None,
             "attachments_dead_letter": None,
+            "items_stalled_seconds": None,
             "open_incidents": None,
             "ready_emails": None,
             "processing_emails": None,
@@ -401,6 +402,11 @@ class IngestionRuntime:
             snapshot["items_pending"] = int(row.get("items_pending") or 0)
             snapshot["items_dead_letter"] = int(row.get("items_dead_letter") or 0)
             snapshot["attachments_dead_letter"] = int(row.get("attachments_dead_letter") or 0)
+            # Kept nullable rather than coerced to 0, like oldest_next_poll_seconds:
+            # NULL means "no claimable work" and 0 means "work in flight", and
+            # collapsing the two would hide which one is true.
+            stalled = row.get("items_stalled_seconds")
+            snapshot["items_stalled_seconds"] = int(stalled) if stalled is not None else None
             snapshot["ready_emails"] = int(row.get("ready_emails") or 0)
             snapshot["processing_emails"] = int(row.get("processing_emails") or 0)
             snapshot["stale_processing_emails"] = int(row.get("stale_processing_emails") or 0)

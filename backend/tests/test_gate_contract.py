@@ -314,3 +314,54 @@ def test_manifest_records_which_nodes_failed(tmp_path):
     assert failed["tests/test_example.py::Example::test_errored"]["kind"] == "error"
     # First line only -- identifying, never a payload dump.
     assert "second line" not in failed["tests/test_example.py::Example::test_broken"]["message"]
+
+
+def test_a_skip_budget_entry_may_list_several_acceptable_reasons(tmp_path):
+    """One missing precondition can skip for more than one legitimate reason.
+
+    The real-Gmail tests skip with "No Gmail credentials" when no token was
+    ever seeded, and with an explicit-degradation message when verify.sh ran
+    with --accept-stale-gmail-token. Pinning a single string made the second
+    case a gate failure on a run with 1502 passed and 0 failed. Any reason
+    outside the list must still trip the guard.
+    """
+    junit = tmp_path / "junit.xml"
+    junit.write_text(
+        """<testsuite tests="1">
+  <testcase classname="tests.test_example.Example" name="test_skip">
+    <skipped message="staging token unavailable; real-Gmail development tests skipped" />
+  </testcase>
+</testsuite>
+"""
+    )
+    budget = tmp_path / "skip_budget.toml"
+    budget.write_text(
+        '[[skip]]\nnodeid = "tests/test_example.py::Example::test_skip"\n'
+        'reason = ["No Gmail credentials", "real-Gmail development tests skipped"]\n'
+    )
+
+    def run_writer():
+        return subprocess.run(
+            [
+                "python3", str(MANIFEST_WRITER),
+                "--manifest", str(tmp_path / "manifest.json"),
+                "--skip-budget", str(budget),
+                "--status", "0",
+                "--git-sha", "abc",
+                "--seed", "123",
+                str(junit),
+            ],
+            capture_output=True, text=True, check=False,
+        )
+
+    accepted = run_writer()
+    assert accepted.returncode == 0, accepted.stderr
+
+    # The guard still has teeth: a reason in neither entry is rejected.
+    budget.write_text(
+        '[[skip]]\nnodeid = "tests/test_example.py::Example::test_skip"\n'
+        'reason = ["No Gmail credentials", "some other sanctioned reason"]\n'
+    )
+    rejected = run_writer()
+    assert rejected.returncode != 0
+    assert "skip reason changed" in (rejected.stderr + rejected.stdout)

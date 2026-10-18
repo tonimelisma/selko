@@ -133,6 +133,14 @@ class Config:
     # them does not increase database polling.
     email_acquisition_concurrency: int = 2
     email_attachment_concurrency: int = 2
+    #: Wall-clock bound on one executor task. An executor holds its semaphore
+    #: permit for as long as it runs, and the width above is 2, so two
+    #: never-returning tasks stop that work type permanently and silently.
+    #: Keep this BELOW ``email_lease_seconds`` (900): the timeout handler
+    #: records the failure through ``fail_email_ingestion_item``, which fences
+    #: on ``lease_owner = worker_id``, so a bound that fired after the lease
+    #: expired would be a no-op and the row would stall again.
+    email_executor_timeout_seconds: float = 600.0
     email_worker_idle_base_seconds: float = 1.0
     email_worker_idle_max_seconds: float = 30.0
     email_worker_error_backoff_seconds: float = 5.0
@@ -538,6 +546,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         email_sync_max_run_seconds=int(getenv("EMAIL_SYNC_MAX_RUN_SECONDS", "900")),
         email_acquisition_concurrency=int(getenv("EMAIL_ACQUISITION_CONCURRENCY", "2")),
         email_attachment_concurrency=int(getenv("EMAIL_ATTACHMENT_CONCURRENCY", "2")),
+        email_executor_timeout_seconds=float(getenv("EMAIL_EXECUTOR_TIMEOUT_SECONDS", "600")),
         email_worker_idle_base_seconds=float(getenv("EMAIL_WORKER_IDLE_BASE_SECONDS", "1")),
         email_worker_idle_max_seconds=float(getenv("EMAIL_WORKER_IDLE_MAX_SECONDS", "30")),
         email_worker_error_backoff_seconds=float(getenv("EMAIL_WORKER_ERROR_BACKOFF_SECONDS", "5")),
