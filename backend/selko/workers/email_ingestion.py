@@ -22,6 +22,7 @@ from selko.services.email_folders import upsert_discovered_folders
 from selko.services.email_sync_health import EmailSyncHealthEvaluator
 from selko.services.email_ingestion import (
     EmailIngestionRepository,
+    ExecutorTimeoutError,
     ProviderAuthenticationError,
     ProviderMessageMissingError,
     SyncClaim,
@@ -137,6 +138,13 @@ class EmailIngestionWorker:
         )
         self._attachment_semaphore = asyncio.Semaphore(
             max(int(getattr(config, "email_attachment_concurrency", 2) or 2), 1)
+        )
+        # Wall-clock bound on one executor task. The permit above is released
+        # in the task's done callback, so an executor that never finishes
+        # never gives it back; with a width of 2, two of them end the work
+        # type for the lifetime of the process.
+        self._executor_timeout_seconds = max(
+            float(getattr(config, "email_executor_timeout_seconds", 600.0) or 600.0), 1.0
         )
         self._acquisition_inflight: set[asyncio.Task] = set()
         self._attachment_inflight: set[asyncio.Task] = set()
@@ -691,13 +699,37 @@ class EmailIngestionWorker:
         return True
 
     async def _process_acquisition_item(self, item: dict[str, Any]) -> None:
+        # The bound is the whole point of this method's shape. Before it, a
+        # provider fetch that never returned held its semaphore permit for the
+        # life of the process. Executor width is 2, so two such items ended
+        # acquisition permanently: `_try_acquire` failed on every subsequent
+        # tick, `_claim_loop` read that as "idle", and because nothing raised,
+        # `_guarded` logged nothing and the task kept reporting `alive: true`.
+        # Production stopped claiming on 2026-09-29 and sat on 912 claimable
+        # rows with attempts=0 and no errors for 19 days, with /health green.
         try:
-            if item.get("change_kind") == "removed":
-                await self.repository.remove_item(item["id"], self.worker_id)
-                return
-            email_id = await self.acquire_item(item)
-            if not await self.repository.complete_item(item["id"], self.worker_id, email_id):
-                logger.warning("Email acquisition completion lost lease")
+            async with asyncio.timeout(self._executor_timeout_seconds) as bound:
+                if item.get("change_kind") == "removed":
+                    await self.repository.remove_item(item["id"], self.worker_id)
+                    return
+                email_id = await self.acquire_item(item)
+                if not await self.repository.complete_item(item["id"], self.worker_id, email_id):
+                    logger.warning("Email acquisition completion lost lease")
+        except TimeoutError as exc:
+            # Our bound, or a provider socket timeout surfacing as the same
+            # type. Either way the row must be failed rather than abandoned:
+            # fail_item increments attempts and applies the retry ladder, so
+            # the item comes back instead of silently holding a slot.
+            ours = bound.expired()
+            logger.error(
+                "Email acquisition timed out (%s) after %.0fs item=%s; failing it",
+                "executor bound" if ours else "provider socket",
+                self._executor_timeout_seconds, item["id"],
+            )
+            await self.repository.fail_item(
+                item["id"], self.worker_id,
+                ExecutorTimeoutError("email acquisition executor timed out") if ours else exc,
+            )
         except (GraphHttpError, ProviderMessageMissingError) as exc:
             if getattr(exc, "status_code", None) == 404 or isinstance(exc, ProviderMessageMissingError):
                 await self.repository.remove_item(item["id"], self.worker_id)
@@ -815,10 +847,23 @@ class EmailIngestionWorker:
         return True
 
     async def _process_attachment_item(self, attachment: dict[str, Any]) -> None:
+        # Same bound, same reason as _process_acquisition_item: this executor
+        # holds an `_attachment_semaphore` permit until it returns, and the
+        # width is 2. The retry path below is reached by TimeoutError too,
+        # because `except Exception` catches it (TimeoutError is an OSError).
         try:
-            status = await self.acquire_attachment(attachment)
-            await self.repository.finish_attachment(attachment["id"], self.worker_id, status)
+            async with asyncio.timeout(self._executor_timeout_seconds) as bound:
+                status = await self.acquire_attachment(attachment)
+                await self.repository.finish_attachment(attachment["id"], self.worker_id, status)
         except Exception as exc:
+            if isinstance(exc, TimeoutError):
+                logger.error(
+                    "Attachment ingestion timed out (%s) after %.0fs attachment=%s; failing it",
+                    "executor bound" if bound.expired() else "provider socket",
+                    self._executor_timeout_seconds, attachment["id"],
+                )
+                if bound.expired():
+                    exc = ExecutorTimeoutError("attachment executor timed out")
             terminal = attachment.get("attempts", 0) >= attachment.get("max_attempts", 8)
             await self.repository.finish_attachment(
                 attachment["id"], self.worker_id,

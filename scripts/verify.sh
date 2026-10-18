@@ -198,7 +198,12 @@ main() {
   fi
   if [[ "$mode" == "backend" ]]; then
     if [[ "${1:-}" == "--accept-stale-gmail-token" ]]; then
-      ACCEPT_STALE_GMAIL=1
+      # Name must match the variable the token precondition actually reads.
+      # This set ACCEPT_STALE_GMAIL while the check tested
+      # ACCEPT_STALE_GMAIL_TOKEN, so the documented escape hatch silently did
+      # nothing: the flag was accepted, the run still failed closed, and the
+      # error message kept recommending the flag that could not work.
+      ACCEPT_STALE_GMAIL_TOKEN=1
       shift
     fi
     [[ "$#" -eq 0 ]] || { usage >&2; exit 1; }

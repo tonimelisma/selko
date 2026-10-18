@@ -139,6 +139,12 @@ class HealthIngestionResponse(BaseModel):
     items_pending: int | None = None
     items_dead_letter: int | None = None
     attachments_dead_letter: int | None = None
+    #: Seconds that claimable acquisition work has sat with nothing acquiring
+    #: it. ``items_pending`` is depth and says nothing about progress -- it
+    #: read 912 for 19 days while the executor was stalled and /health stayed
+    #: green. This is the one that degrades the rollup. NULL with no claimable
+    #: work, 0 while an acquisition lease is in flight.
+    items_stalled_seconds: int | None = None
     open_incidents: int | None = None
     ready_emails: int | None = None
     processing_emails: int | None = None
