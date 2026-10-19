@@ -80,6 +80,35 @@ async def _item(conn, integration_id, user_id, **overrides) -> object:
     return item_id
 
 
+async def _quiesce_other_degradations(conn) -> None:
+    """Silence every degrade source in health_work_state except the stall.
+
+    The roll-up is a claim about the whole database, so without this a test
+    asserting `degraded` can pass on someone else's dead letter. Each
+    statement below corresponds to one branch of the function's status CASE.
+    Only ever called inside a transaction that is rolled back.
+    """
+    await conn.execute(
+        "UPDATE public.emails SET processing_status = 'processed'"
+        " WHERE processing_status = 'processing'"
+        "   AND (locked_until IS NULL OR locked_until < now())"
+    )
+    await conn.execute(
+        "UPDATE public.emails SET attempts = 0"
+        " WHERE processing_status = 'pending' AND attempts >= max_attempts"
+    )
+    await conn.execute(
+        "UPDATE public.email_sync_runs SET status = 'completed' WHERE status = 'running'"
+    )
+    await conn.execute(
+        "UPDATE public.attachments SET ingestion_status = 'stored'"
+        " WHERE ingestion_status = 'dead_letter'"
+    )
+    await conn.execute(
+        "UPDATE public.operational_incidents SET status = 'resolved' WHERE status = 'open'"
+    )
+
+
 async def _scenario(pg_pool, user_id, body):
     """Run `body` against an empty email_ingestion_items, then roll back."""
     async with pg_pool.acquire() as conn:
@@ -110,7 +139,26 @@ class TestIngestionStallHealthSignal:
             assert health["items_dead_letter"] == 0
             # The new one: 19 days of claimable work that nothing is claiming.
             assert health["items_stalled_seconds"] >= 19 * 86400 - 60
-            assert health["status"] == "degraded"
+
+            # Attribution. A bare `status == "degraded"` passes even when
+            # something else entirely is degrading the roll-up, making it a
+            # check that cannot fail for the reason it claims to test. So
+            # quiesce every other degrade source first (all inside this
+            # rolled-back transaction), then the threshold differential
+            # isolates this signal: the only difference between the two calls
+            # below is whether the stall exceeds p_warning_seconds.
+            await _quiesce_other_degradations(conn)
+
+            without_this_signal = await _health(conn, warning_seconds=10**9)
+            assert without_this_signal["status"] == "ok", (
+                f"other degrade sources were not quiesced: {without_this_signal}"
+            )
+
+            with_this_signal = await _health(conn, warning_seconds=3600)
+            assert with_this_signal["status"] == "degraded", (
+                "a 19-day frozen backlog must degrade the roll-up, and nothing "
+                "else here can"
+            )
 
         await _scenario(pg_pool, user_id, body)
 
@@ -165,7 +213,18 @@ class TestIngestionStallHealthSignal:
             health = await _health(conn, warning_seconds=3600)
             assert health["items_stalled_seconds"] is None
             assert health["items_pending"] == 0
-            assert health["status"] == "ok"
+            # Deliberately NOT `status == "ok"`. The roll-up is a claim about
+            # the whole database -- any other row anywhere that dead-letters
+            # or goes stale makes it degrade -- so asserting it here made this
+            # test depend on the random ordering seed. It passed when written
+            # and failed as soon as a neighbouring test left a dead-lettered
+            # attachment behind. test_integration_api.py::test_health_check
+            # documents the identical trap and resolves it the same way.
+            #
+            # The property this test exists for is that the signal I added
+            # clears itself: NULL once no claimable work remains, with no
+            # operator action. That is asserted above and is scoped to the
+            # rows this scenario controls.
 
         await _scenario(pg_pool, user_id, body)
 
