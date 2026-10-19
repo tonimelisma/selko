@@ -27,6 +27,24 @@ class AttachmentError(Exception):
     pass
 
 
+class AttachmentTypeRejected(AttachmentError):
+    """Storage refused the content type, and will refuse it again.
+
+    Distinguished from a plain ``AttachmentError`` because the retry ladder is
+    the wrong response to it. A bucket MIME rejection is a property of the
+    type, not of the moment: retrying spends all 8 attempts to reach the same
+    `415`, and the row then lands in `dead_letter` -- one of the four counts
+    `assert-health.sh` calls never acceptable, which no worker clears, so a
+    single unstorable attachment pins /health to degraded indefinitely. That
+    is exactly what one `text/markdown` file did on 2026-10-18.
+
+    The honest terminal state is `unsupported`: the system genuinely cannot
+    store this type. It is informational rather than actionable, so it does
+    not degrade the roll-up, and the next allowlist drift costs one skipped
+    attachment instead of a permanently red gate.
+    """
+
+
 def calculate_content_hash(data: bytes) -> str:
     """Calculate SHA-256 hash of attachment content for deduplication.
 
@@ -188,7 +206,30 @@ def upload_to_storage(
         return storage_path
 
     except Exception as e:
+        if _is_mime_rejection(e):
+            # Permanent for this type. Raising the generic error here is what
+            # turned one unstorable file into a permanently red health check.
+            raise AttachmentTypeRejected(
+                f"Storage rejected content type {mime_type!r}: {e}"
+            ) from e
         raise AttachmentError(f"Failed to upload attachment: {e}") from e
+
+
+def _is_mime_rejection(exc: BaseException) -> bool:
+    """Is this storage failure a content-type refusal rather than a blip?
+
+    Supabase Storage answers `415` with `error: invalid_mime_type` and a
+    message naming the type. Both are checked: the status alone would miss a
+    client that surfaces only the body, and the string alone would miss a
+    future wording change. Deliberately narrow -- anything unrecognised stays
+    an ordinary retryable `AttachmentError`, because treating a transient
+    storage outage as permanent would silently drop real attachments.
+    """
+    for attribute in ("status", "statusCode", "status_code", "code"):
+        value = getattr(exc, attribute, None)
+        if value in (415, "415"):
+            return True
+    return "invalid_mime_type" in str(exc)
 
 
 def save_attachment_metadata(

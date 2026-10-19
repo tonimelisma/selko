@@ -174,6 +174,20 @@ def classify_email_error(exc: BaseException) -> EmailErrorClassification:
         return EmailErrorClassification(
             code="executor_timeout", retryable=True, auth_failure=False
         )
+    # Lazy import for the same reason as GmailAuthError above: attachments is
+    # imported by the workers that also import this module.
+    try:
+        from selko.services.attachments import AttachmentTypeRejected
+    except Exception:  # pragma: no cover - defensive; always importable
+        AttachmentTypeRejected = ()  # type: ignore[assignment]
+    # Not retryable: the bucket's answer is a property of the content type, so
+    # every further attempt reaches the same 415. The caller finishes the row
+    # as `unsupported` rather than letting it reach dead_letter, which nothing
+    # clears and which assert-health.sh calls never acceptable.
+    if isinstance(exc, AttachmentTypeRejected):  # type: ignore[arg-type]
+        return EmailErrorClassification(
+            code="attachment_type_rejected", retryable=False, auth_failure=False
+        )
 
     status = getattr(exc, "status_code", None)
     if status is not None:
