@@ -14,6 +14,7 @@ from supabase import Client
 
 from selko.config import Config
 from selko.services.attachments import (
+    AttachmentTypeRejected,
     calculate_content_hash,
     download_gmail_attachment,
     upload_to_storage,
@@ -855,6 +856,19 @@ class EmailIngestionWorker:
             async with asyncio.timeout(self._executor_timeout_seconds) as bound:
                 status = await self.acquire_attachment(attachment)
                 await self.repository.finish_attachment(attachment["id"], self.worker_id, status)
+        except AttachmentTypeRejected as exc:
+            # Storage will refuse this type every time, so the retry ladder
+            # only spends 8 attempts to reach the same 415 and then parks the
+            # row in dead_letter -- a count assert-health.sh calls never
+            # acceptable and no worker clears. `unsupported` is the truthful
+            # terminal state and does not degrade the roll-up.
+            logger.warning(
+                "Attachment %s rejected by storage as %s; marking unsupported: %s",
+                attachment["id"], attachment.get("mime_type"), exc,
+            )
+            await self.repository.finish_attachment(
+                attachment["id"], self.worker_id, "unsupported", safe_error_code(exc),
+            )
         except Exception as exc:
             if isinstance(exc, TimeoutError):
                 logger.error(
