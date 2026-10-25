@@ -482,6 +482,135 @@ class TestInitiateOAuthFlow:
             )
 
 
+class TestCombinedGoogleConsent:
+    """One consent for Gmail and Calendar, tolerant of a partial grant."""
+
+    @patch("selko.services.integrations._validate_and_consume_oauth_state")
+    @patch("selko.services.integrations.Flow")
+    def test_partial_grant_is_accepted_only_during_the_exchange(
+        self, mock_flow_class, mock_validate, mock_config, monkeypatch
+    ):
+        import os
+
+        from selko.services.integrations import GOOGLE_SCOPES
+
+        monkeypatch.delenv("OAUTHLIB_RELAX_TOKEN_SCOPE", raising=False)
+        mock_validate.return_value = {
+            "user_id": "user-123",
+            "provider": "google",
+            "redirect_uri": "http://localhost:8000/integrations/google/callback",
+            "code_verifier": "persisted-pkce-verifier",
+        }
+        seen = []
+        mock_flow = MagicMock()
+        mock_flow.fetch_token.side_effect = lambda **_: seen.append(
+            os.environ.get("OAUTHLIB_RELAX_TOKEN_SCOPE")
+        )
+        mock_flow_class.from_client_config.return_value = mock_flow
+
+        _, _, provider = complete_oauth_flow(
+            config=mock_config, code="auth-code-123", state="test-state"
+        )
+
+        assert provider == "google"
+        assert mock_flow_class.from_client_config.call_args.kwargs["scopes"] == GOOGLE_SCOPES
+        # Relaxed while the token is parsed, restored the moment it returns.
+        assert seen == ["1"]
+        assert "OAUTHLIB_RELAX_TOKEN_SCOPE" not in os.environ
+
+    @patch("selko.services.integrations._validate_and_consume_oauth_state")
+    @patch("selko.services.integrations.Flow")
+    def test_a_single_product_flow_stays_strict(
+        self, mock_flow_class, mock_validate, mock_config, monkeypatch
+    ):
+        import os
+
+        monkeypatch.delenv("OAUTHLIB_RELAX_TOKEN_SCOPE", raising=False)
+        mock_validate.return_value = {
+            "user_id": "user-123",
+            "provider": "gmail",
+            "redirect_uri": "http://localhost:8000/integrations/google/callback",
+            "code_verifier": "persisted-pkce-verifier",
+        }
+        seen = []
+        mock_flow = MagicMock()
+        mock_flow.fetch_token.side_effect = lambda **_: seen.append(
+            os.environ.get("OAUTHLIB_RELAX_TOKEN_SCOPE")
+        )
+        mock_flow_class.from_client_config.return_value = mock_flow
+
+        complete_oauth_flow(config=mock_config, code="c", state="s")
+
+        assert seen == [None]
+
+    @pytest.mark.parametrize(
+        ("granted", "expected"),
+        [
+            ("both", ["gmail", "google_calendar"]),
+            ("gmail", ["gmail"]),
+            ("calendar", ["google_calendar"]),
+            ("none", []),
+        ],
+    )
+    def test_grants_map_to_integrations(self, granted, expected):
+        from selko.services.integrations import (
+            CALENDAR_SCOPES,
+            GMAIL_SCOPES,
+            granted_google_providers,
+        )
+
+        scopes = {
+            "both": GMAIL_SCOPES + CALENDAR_SCOPES,
+            "gmail": GMAIL_SCOPES,
+            "calendar": CALENDAR_SCOPES,
+            "none": ["openid"],
+        }[granted]
+        creds = MagicMock()
+        creds.granted_scopes = scopes
+
+        assert granted_google_providers(creds) == expected
+
+    def test_real_oauthlib_rejects_a_partial_grant_unless_relaxed(self, monkeypatch):
+        """The mocks above cannot fail on this; the real token parser can.
+
+        A partial grant is what Google returns when the user unticks Calendar.
+        Unrelaxed, oauthlib raises and the user would connect nothing.
+        """
+        import json
+
+        from oauthlib.oauth2 import WebApplicationClient
+
+        from selko.services.integrations import (
+            GMAIL_SCOPES,
+            GOOGLE_SCOPES,
+            _partial_scope_grant_allowed,
+        )
+
+        monkeypatch.delenv("OAUTHLIB_RELAX_TOKEN_SCOPE", raising=False)
+        body = json.dumps({
+            "access_token": "a", "token_type": "Bearer", "expires_in": 3600,
+            "scope": " ".join(GMAIL_SCOPES),
+        })
+
+        with pytest.raises(Warning):
+            WebApplicationClient("id").parse_request_body_response(body, scope=GOOGLE_SCOPES)
+
+        with _partial_scope_grant_allowed():
+            token = WebApplicationClient("id").parse_request_body_response(
+                body, scope=GOOGLE_SCOPES
+            )
+        assert token["scope"] == GMAIL_SCOPES
+
+    def test_half_of_the_calendar_scopes_is_not_calendar(self):
+        """Calendar needs both of its scopes; one alone would fail on write."""
+        from selko.services.integrations import CALENDAR_SCOPES, granted_google_providers
+
+        creds = MagicMock()
+        creds.granted_scopes = CALENDAR_SCOPES[:1]
+
+        assert granted_google_providers(creds) == []
+
+
 class TestCompleteOAuthFlow:
     """Test OAuth flow completion with DB-backed state."""
 

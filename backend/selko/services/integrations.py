@@ -5,8 +5,10 @@ Uses RLS - all operations are scoped to the authenticated user.
 """
 
 import logging
+import os
 import re
 import secrets
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -32,6 +34,55 @@ CALENDAR_SCOPES = [
 
 # Google Photos scopes
 PHOTOS_SCOPES = ["https://www.googleapis.com/auth/photoslibrary.readonly"]
+
+# One Google consent covers both integrations. Connected separately, the two
+# rows held two refresh tokens that expired independently, so a user could
+# reconnect Calendar and still have mail silently stalled (or the reverse).
+# The OAuth state uses the pseudo-provider "google"; storage stays one
+# integrations row per provider, so polling, the mirror and reconnect
+# recovery are unchanged.
+GOOGLE_PROVIDER_SCOPES = {
+    "gmail": GMAIL_SCOPES,
+    "google_calendar": CALENDAR_SCOPES,
+}
+GOOGLE_SCOPES = [scope for scopes in GOOGLE_PROVIDER_SCOPES.values() for scope in scopes]
+
+
+def granted_google_providers(credentials: Credentials) -> list[str]:
+    """Integrations whose scopes this combined consent actually granted.
+
+    Google's consent screen lets the user untick individual scopes, so a
+    combined request can come back with only one product authorized. Saving
+    a row without its scope would report a connection that fails on first
+    use.
+    """
+    granted = set(credentials.granted_scopes or credentials.scopes or [])
+    return [
+        provider
+        for provider, scopes in GOOGLE_PROVIDER_SCOPES.items()
+        if set(scopes) <= granted
+    ]
+
+
+@contextmanager
+def _partial_scope_grant_allowed():
+    """Let oauthlib accept a token whose scope differs from the request.
+
+    Without this, unticking one product on the consent screen raises during
+    the token exchange and the user connects neither. The callback runs
+    synchronously on the event-loop thread, and background refreshes go
+    through google-auth rather than oauthlib, so nothing else observes the
+    variable while it is set.
+    """
+    previous = os.environ.get("OAUTHLIB_RELAX_TOKEN_SCOPE")
+    os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop("OAUTHLIB_RELAX_TOKEN_SCOPE", None)
+        else:
+            os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = previous
 
 
 def _parse_token_expiry(value: str) -> datetime:
@@ -645,7 +696,8 @@ def initiate_oauth_flow(
 
     Args:
         config: Configuration with Google OAuth client credentials.
-        provider: Integration provider ('gmail', 'google_calendar').
+        provider: 'google' (Gmail + Calendar in one consent), 'outlook', or a
+            single Google product ('gmail', 'google_calendar').
         user_id: User ID initiating the flow.
         redirect_uri: URI to redirect to after authorization.
 
@@ -667,7 +719,9 @@ def initiate_oauth_flow(
             "state": state,
         }
 
-    if provider == "gmail":
+    if provider == "google":
+        scopes = GOOGLE_SCOPES
+    elif provider == "gmail":
         scopes = GMAIL_SCOPES
     elif provider == "google_calendar":
         scopes = CALENDAR_SCOPES
@@ -774,7 +828,9 @@ def complete_oauth_flow(
         return token_result, user_id, provider
 
     # Determine scopes based on provider
-    if provider == "gmail":
+    if provider == "google":
+        scopes = GOOGLE_SCOPES
+    elif provider == "gmail":
         scopes = GMAIL_SCOPES
     elif provider == "google_calendar":
         scopes = CALENDAR_SCOPES
@@ -808,7 +864,11 @@ def complete_oauth_flow(
         )
 
         # Exchange authorization code for tokens
-        flow.fetch_token(code=code)
+        if provider == "google":
+            with _partial_scope_grant_allowed():
+                flow.fetch_token(code=code)
+        else:
+            flow.fetch_token(code=code)
         credentials = flow.credentials
 
         logger.info(f"OAuth flow completed for {provider} (user {user_id})")
