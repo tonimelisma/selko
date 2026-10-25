@@ -760,6 +760,62 @@ class TestOAuthCallback:
         assert "oauth=success" in location
         assert "provider=gmail" in location
 
+    def _combined_callback(self, test_client, granted_scopes):
+        creds = MagicMock()
+        creds.granted_scopes = granted_scopes
+        with (
+            patch(
+                "selko.api.routes.integrations.complete_oauth_flow",
+                return_value=(creds, "test-user-id", "google"),
+            ),
+            patch("selko.services.auth.get_service_client"),
+            patch("selko.api.routes.integrations.build_service"),
+            patch(
+                "selko.api.routes.integrations.get_user_profile",
+                return_value={"emailAddress": "user@gmail.com"},
+            ) as profile,
+            patch("googleapiclient.discovery.build"),
+            patch("selko.api.routes.integrations.save_oauth_credentials") as save,
+        ):
+            resp = test_client.get(
+                "/integrations/google/callback",
+                params={"code": "valid-code", "state": "valid-state"},
+                follow_redirects=False,
+            )
+        return resp, save, profile, creds
+
+    def test_one_consent_connects_gmail_and_calendar(self, test_client):
+        """Both rows get the same token, so they can never expire apart."""
+        from selko.services.integrations import CALENDAR_SCOPES, GMAIL_SCOPES
+
+        resp, save, _, creds = self._combined_callback(
+            test_client, GMAIL_SCOPES + CALENDAR_SCOPES
+        )
+
+        assert resp.status_code == 302
+        assert "oauth=success" in resp.headers["location"]
+        saved = [(c.args[2], c.args[3], c.args[4]) for c in save.call_args_list]
+        assert saved == [
+            ("gmail", creds, "user@gmail.com"),
+            ("google_calendar", creds, "user@gmail.com"),
+        ]
+
+    def test_an_unticked_product_is_not_connected(self, test_client):
+        """Google lets the user untick a scope; that product gets no row."""
+        from selko.services.integrations import CALENDAR_SCOPES
+
+        resp, save, profile, _ = self._combined_callback(test_client, CALENDAR_SCOPES)
+
+        assert "oauth=success" in resp.headers["location"]
+        assert [c.args[2] for c in save.call_args_list] == ["google_calendar"]
+        profile.assert_not_called()
+
+    def test_a_consent_granting_nothing_connects_nothing(self, test_client):
+        resp, save, _, _ = self._combined_callback(test_client, ["openid"])
+
+        assert "oauth=error" in resp.headers["location"]
+        save.assert_not_called()
+
     def test_callback_rejects_parked_google_photos(self, test_client):
         """Historical or stale Google Photos OAuth states cannot create integrations."""
         from selko.services.integrations import OAuthProviderNotAllowed
@@ -798,6 +854,29 @@ class TestOAuthCallback:
 # ===========================================================================
 # Redirect URI validation
 # ===========================================================================
+
+
+class TestEveryGoogleConnectIsOneConsent:
+    """Every Google connect path starts the same combined consent.
+
+    The Gmail and Calendar paths stay because shipped iOS and Android builds
+    call them; routing them to the combined flow is what gives those builds a
+    single sign-in without a release.
+    """
+
+    @pytest.mark.parametrize(
+        "path",
+        ["/integrations/google/auth", "/integrations/gmail/auth", "/integrations/calendar/auth"],
+    )
+    def test_path_starts_the_combined_flow(self, test_client, path):
+        with patch(
+            "selko.api.routes.integrations.initiate_oauth_flow",
+            return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
+        ) as initiate:
+            resp = test_client.get(path, follow_redirects=False)
+
+        assert resp.status_code == 302
+        assert initiate.call_args.kwargs["provider"] == "google"
 
 
 class TestRedirectURIValidation:
