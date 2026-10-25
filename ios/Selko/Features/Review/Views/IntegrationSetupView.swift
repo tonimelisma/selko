@@ -5,10 +5,9 @@
 
 import SwiftUI
 
+/// First-run onboarding. One Google consent connects both Gmail and Google
+/// Calendar, so the screen offers a single Google row.
 struct IntegrationSetupView: View {
-    let gmailConnected: Bool
-    let calendarConnected: Bool
-
     @State private var authorizer = OAuthAuthorizer()
     @Environment(\.openURL) private var openURL
 
@@ -36,26 +35,8 @@ struct IntegrationSetupView: View {
                     .accessibilityIdentifier("integrationSetupOAuthError")
             }
 
-            VStack(spacing: 16) {
-                integrationRow(
-                    title: "Gmail",
-                    description: "Read your emails to find events",
-                    systemImage: "envelope.fill",
-                    isConnected: gmailConnected
-                ) {
-                    Task { await openAuth(for: .gmail) }
-                }
-
-                integrationRow(
-                    title: "Google Calendar",
-                    description: "Sync approved events to your calendar",
-                    systemImage: "calendar",
-                    isConnected: calendarConnected
-                ) {
-                    Task { await openAuth(for: .googleCalendar) }
-                }
-            }
-            .padding(.horizontal)
+            googleRow
+                .padding(.horizontal)
 
             Spacer()
             Spacer()
@@ -66,39 +47,29 @@ struct IntegrationSetupView: View {
         .accessibilityIdentifier("integrationSetupView")
     }
 
-    @ViewBuilder
-    private func integrationRow(
-        title: String,
-        description: String,
-        systemImage: String,
-        isConnected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
+    private var googleRow: some View {
         HStack(spacing: 12) {
-            Image(systemName: systemImage)
+            Image(systemName: "envelope.fill")
                 .font(SelkoTypography.sectionTitle)
-                .foregroundStyle(isConnected ? Color.selkoSuccess : Color.selkoMuted)
+                .foregroundStyle(Color.selkoMuted)
                 .frame(width: 40)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text("Google")
                     .font(SelkoTypography.title)
-                Text(description)
+                Text("Find events in Gmail and sync them to Google Calendar")
                     .font(SelkoTypography.caption)
                     .foregroundStyle(Color.selkoMuted)
             }
 
             Spacer()
 
-            if isConnected {
-                SelkoStatusIndicator(text: "Connected", systemImage: "checkmark.circle", tone: .success)
-            } else {
-                Button("Connect") {
-                    action()
-                }
-                .buttonStyle(.selko(.primary))
-                .disabled(authorizer.connectingProvider != nil)
+            Button("Connect") {
+                Task { await openAuth(for: .gmail) }
             }
+            .buttonStyle(.selko(.primary))
+            .disabled(authorizer.connectingProvider != nil)
+            .accessibilityLabel("Connect Google")
         }
         .padding()
         .padding(.vertical, 2)
@@ -117,5 +88,5 @@ struct IntegrationSetupView: View {
 }
 
 #Preview {
-    IntegrationSetupView(gmailConnected: true, calendarConnected: false)
+    IntegrationSetupView()
 }

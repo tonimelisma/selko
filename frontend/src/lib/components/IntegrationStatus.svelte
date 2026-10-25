@@ -2,6 +2,7 @@
 	import { _ } from 'svelte-i18n';
 	import StatusBadge from './StatusBadge.svelte';
 	import InlineActionError from './InlineActionError.svelte';
+	import { deriveGoogleConnection } from '$lib/google-connection.js';
 
 	let {
 		integrations = [],
@@ -27,20 +28,72 @@
 	let fullyConnected = $derived(emailConnected && gcalConnected);
 	let partiallyConnected = $derived(emailConnected || gcalConnected);
 
-	let services = $derived([
-		{ key: 'gmail', label: $_('integrations.gmail'), description: $_('integrations.gmailDescription') },
-		{ key: 'outlook', label: $_('integrations.outlook'), description: $_('integrations.outlookDescription') },
+	let google = $derived(deriveGoogleConnection(integrations));
+
+	/**
+	 * One card per consent: Gmail and Google Calendar share one Google token,
+	 * so they connect, expire and disconnect together as a single card.
+	 * @typedef {Object} ConnectionCard
+	 * @property {'google' | 'outlook'} key
+	 * @property {string} label
+	 * @property {string} description
+	 * @property {string | null} email
+	 * @property {string} status - Badge status: active, not_connected, partial, or the row status
+	 * @property {string} [statusLabel] - Badge label for `partial`
+	 * @property {string} [hint]
+	 * @property {boolean} hasRows - Something is stored, so Disconnect applies
+	 * @property {string | null} action - Primary action label, null when none is needed
+	 */
+	/** @type {ConnectionCard[]} */
+	let cards = $derived([
 		{
-			key: 'google_calendar',
-			label: $_('integrations.googleCalendar'),
-			description: $_('integrations.googleCalendarDescription')
+			key: 'google',
+			label: $_('integrations.google'),
+			description: $_('integrations.googleDescription'),
+			email: google.email,
+			status:
+				google.state === 'connected'
+					? 'active'
+					: google.state === 'needs_reconnect'
+						? /** @type {string} */ (google.status)
+						: google.state,
+			statusLabel:
+				google.missing === 'gmail'
+					? $_('integrations.gmailMissing')
+					: $_('integrations.googleCalendarMissing'),
+			hint:
+				google.state === 'partial'
+					? $_('integrations.partialHint', {
+							values: {
+								product:
+									google.missing === 'gmail'
+										? $_('integrations.gmail')
+										: $_('integrations.googleCalendar')
+							}
+						})
+					: undefined,
+			hasRows: google.rows.length > 0,
+			action:
+				google.state === 'not_connected'
+					? $_('integrations.connect')
+					: google.state === 'connected'
+						? null
+						: $_('integrations.reconnectGoogle')
+		},
+		{
+			key: 'outlook',
+			label: $_('integrations.outlook'),
+			description: $_('integrations.outlookDescription'),
+			email: outlookIntegration?.provider_email ?? null,
+			status: outlookIntegration?.status ?? 'not_connected',
+			hasRows: Boolean(outlookIntegration),
+			action: !outlookIntegration
+				? $_('integrations.connect')
+				: outlookConnected
+					? null
+					: $_('integrations.reconnect')
 		}
 	]);
-
-	/** @param {string} key */
-	function getIntegrationForService(key) {
-		return integrations.find((i) => i.provider === key);
-	}
 
 	/**
 	 * @param {string} key
@@ -105,73 +158,59 @@
 		{#if setupMode}
 			<h2 class="text-xl font-bold mb-4">{$_('integrations.connectAccounts')}</h2>
 		{/if}
-		{#each services as service}
-			{@const integration = getIntegrationForService(service.key)}
-			{@const isConnecting = connectingKey === service.key}
-			<div class="warm-card p-4">
+		{#each cards as card (card.key)}
+			{@const isConnecting = connectingKey === card.key}
+			{@const showDisconnect = !setupMode && card.hasRows}
+			<div class="warm-card p-4" data-testid="connection-card-{card.key}">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div class="flex min-w-0 items-center gap-3">
-					<div class="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-base-200 text-sm font-extrabold text-primary">{service.label.slice(0, 1)}</div>
-					<div class="min-w-0">
-					<h3 class="font-bold">{service.label}</h3>
-					<p class="text-sm text-base-content/60">{service.description}</p>
-					{#if integration?.provider_email}
-						<p class="mt-1 text-sm text-base-content/50">{integration.provider_email}</p>
-					{/if}
-				</div>
+						<div class="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-base-200 text-sm font-extrabold text-primary">{card.label.slice(0, 1)}</div>
+						<div class="min-w-0">
+							<h3 class="font-bold">{card.label}</h3>
+							<p class="text-sm text-base-content/60">{card.description}</p>
+							{#if card.email}
+								<p class="mt-1 text-sm text-base-content/50">{card.email}</p>
+							{/if}
+						</div>
 					</div>
 					<div class="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-					{#if integration}
-						<StatusBadge status={integration.status} type="integration" />
-						{#if !setupMode || integration.status !== 'active'}
-							<div class="peer-action-group min-w-56" data-peer-count={!setupMode && integration.status !== 'active' ? '2' : '1'}>
-								{#if !setupMode}
+						<StatusBadge status={card.status} type="integration" label={card.statusLabel} />
+						{#if showDisconnect || card.action}
+							<div class="peer-action-group min-w-56" data-peer-count={showDisconnect && card.action ? '2' : '1'}>
+								{#if showDisconnect}
 									<button
 										class="btn peer-action peer-action-destructive"
 										disabled={connectingKey !== null}
-										onclick={() => ondisconnect?.(integration.id)}
+										onclick={() => ondisconnect?.(card.key)}
 									>
 										{$_('integrations.disconnect')}
 									</button>
 								{/if}
-								{#if integration.status !== 'active'}
+								{#if card.action}
 									<button
 										class="btn btn-primary peer-action shadow-brand"
 										disabled={connectingKey !== null}
 										aria-busy={isConnecting}
-										onclick={() => authorizeProvider(service.key)}
+										onclick={() => authorizeProvider(card.key)}
 									>
 										{#if isConnecting}
 											<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
 											{$_('integrations.connecting')}
 										{:else}
-											{$_('integrations.reconnect')}
+											{card.action}
 										{/if}
 									</button>
 								{/if}
 							</div>
 						{/if}
-					{:else}
-						<StatusBadge status="not_connected" type="integration" />
-						<button
-							class="btn btn-primary shadow-brand"
-							disabled={connectingKey !== null}
-							aria-busy={isConnecting}
-							onclick={() => authorizeProvider(service.key)}
-						>
-							{#if isConnecting}
-								<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-								{$_('integrations.connecting')}
-							{:else}
-								{$_('integrations.connect')}
-							{/if}
-						</button>
-					{/if}
 					</div>
 				</div>
+				{#if card.hint}
+					<p class="mt-3 text-sm text-base-content/70">{card.hint}</p>
+				{/if}
 				<InlineActionError
-					message={connectErrors.get(service.key) || ''}
-					onretry={() => authorizeProvider(service.key)}
+					message={connectErrors.get(card.key) || ''}
+					onretry={() => authorizeProvider(card.key)}
 				/>
 			</div>
 		{/each}

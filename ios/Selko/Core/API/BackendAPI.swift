@@ -314,11 +314,12 @@ final class BackendAPI: BackendAPIProtocol, @unchecked Sendable {
 
     // MARK: - OAuth
 
+    /// Gmail and Google Calendar share one Google consent, so both start the
+    /// combined flow that grants both scopes and connects both rows.
     static func oauthPath(provider: IntegrationProvider) -> String? {
         switch provider {
-        case .gmail: "/integrations/gmail/auth"
+        case .gmail, .googleCalendar: "/integrations/google/auth"
         case .outlook: "/integrations/outlook/auth"
-        case .googleCalendar: "/integrations/calendar/auth"
         case .googlePhotos: nil
         }
     }

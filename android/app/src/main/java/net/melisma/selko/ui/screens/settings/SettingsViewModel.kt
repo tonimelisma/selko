@@ -199,16 +199,20 @@ class SettingsViewModel(
         }
     }
 
-    fun disconnectIntegration(provider: IntegrationProvider) {
+    /**
+     * Removes the given rows. The Google card passes [GoogleConnection.PROVIDERS]:
+     * Gmail and Google Calendar share one token, so they disconnect together.
+     */
+    fun disconnectIntegrations(providers: List<IntegrationProvider>) {
         viewModelScope.launch {
             _uiState.update { it.copy(isDisconnecting = true) }
 
-            when (integrationRepository.deleteIntegration(provider)) {
+            when (integrationRepository.deleteIntegrations(providers)) {
                 is IntegrationResult.Success -> {
                     _uiState.update { state ->
                         state.copy(
                             isDisconnecting = false,
-                            integrations = state.integrations.filter { it.provider != provider }
+                            integrations = state.integrations.filter { it.provider !in providers }
                         )
                     }
                 }

@@ -5,9 +5,9 @@ import Testing
 struct BackendAPIFolderTests {
     @Test
     func oauthPathsRequireSupportedProviders() {
-        #expect(BackendAPI.oauthPath(provider: .gmail) == "/integrations/gmail/auth")
+        #expect(BackendAPI.oauthPath(provider: .gmail) == "/integrations/google/auth")
         #expect(BackendAPI.oauthPath(provider: .outlook) == "/integrations/outlook/auth")
-        #expect(BackendAPI.oauthPath(provider: .googleCalendar) == "/integrations/calendar/auth")
+        #expect(BackendAPI.oauthPath(provider: .googleCalendar) == "/integrations/google/auth")
         #expect(BackendAPI.oauthPath(provider: .googlePhotos) == nil)
     }
 

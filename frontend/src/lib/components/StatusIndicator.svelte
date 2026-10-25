@@ -1,10 +1,12 @@
 <script>
 	import { _ } from 'svelte-i18n';
-	/** @type {{ status: string, type?: 'event' | 'integration' }} */
-	let { status, type = 'event' } = $props();
+	/** @type {{ status: string, type?: 'event' | 'integration', label?: string }} */
+	let { status, type = 'event', label = undefined } = $props();
 
 	let info = $derived(() => {
 		if (type === 'integration') {
+			// One Google product granted, the other unticked on the consent screen.
+			if (status === 'partial') return { tone: 'warning', label: label ?? '', icon: 'error' };
 			return status === 'active'
 				? { tone: 'success', label: $_('status.connected'), icon: 'check' }
 				: { tone: status === 'not_connected' ? 'neutral' : 'error', label: status === 'not_connected' ? $_('status.notConnected') : $_(`status.${status}`), icon: status === 'not_connected' ? 'circle' : 'error' };

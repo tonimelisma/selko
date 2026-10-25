@@ -11,7 +11,7 @@ protocol IntegrationServiceProtocol: Sendable {
     func getIntegration(id: UUID) async throws -> Integration
     func getIntegrationByProvider(_ provider: IntegrationProvider) async throws -> Integration?
     func isProviderConnected(_ provider: IntegrationProvider) async -> Bool
-    func deleteIntegration(provider: IntegrationProvider) async throws
+    func deleteIntegrations(providers: [IntegrationProvider]) async throws
     func fetchCalendarRecovery() async throws -> IntegrationRecovery?
 }
 
@@ -67,10 +67,12 @@ final class IntegrationService: IntegrationServiceProtocol, @unchecked Sendable 
         }
     }
 
-    func deleteIntegration(provider: IntegrationProvider) async throws {
+    /// Deletes every listed provider's row in one request. The Google card
+    /// passes both Google providers, which share one token.
+    func deleteIntegrations(providers: [IntegrationProvider]) async throws {
         try await supabase.from("integrations")
             .delete()
-            .eq("provider", value: provider.rawValue)
+            .in("provider", values: providers.map(\.rawValue))
             .execute()
     }
 

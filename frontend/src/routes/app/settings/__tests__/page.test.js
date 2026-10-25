@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { writable, readable } from 'svelte/store';
 
@@ -44,12 +44,11 @@ vi.mock('$app/stores', () => ({
 
 const mockSignOut = vi.fn();
 const mockFetchIntegrations = vi.fn();
-const mockDisconnectIntegration = vi.fn();
+const mockDisconnectIntegrations = vi.fn();
 const mockGetCalendarSettings = vi.fn();
 const mockUpdateCalendarSettings = vi.fn();
 const mockListCalendars = vi.fn();
-const mockInitiateGmailAuth = vi.fn();
-const mockInitiateCalendarAuth = vi.fn();
+const mockInitiateGoogleAuth = vi.fn();
 
 vi.mock('$lib/supabase.js', () => ({
 	supabase: {
@@ -59,7 +58,7 @@ vi.mock('$lib/supabase.js', () => ({
 
 vi.mock('$lib/services/integrations.js', () => ({
 	fetchIntegrations: (...args) => mockFetchIntegrations(...args),
-	disconnectIntegration: (...args) => mockDisconnectIntegration(...args),
+	disconnectIntegrations: (...args) => mockDisconnectIntegrations(...args),
 	fetchCalendarRecovery: () => Promise.resolve({ data: null, error: null })
 }));
 
@@ -70,9 +69,8 @@ vi.mock('$lib/services/calendar-settings.js', () => ({
 
 vi.mock('$lib/api/backend.js', () => ({
 	listCalendars: (...args) => mockListCalendars(...args),
-	initiateGmailAuth: (...args) => mockInitiateGmailAuth(...args),
-	initiateOutlookAuth: vi.fn(),
-	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args)
+	initiateGoogleAuth: (...args) => mockInitiateGoogleAuth(...args),
+	initiateOutlookAuth: vi.fn()
 }));
 
 const mockFetchSenderRules = vi.fn();
@@ -102,7 +100,7 @@ describe('Settings Page', () => {
 		mockGetCalendarSettings.mockResolvedValue({ data: null, error: null });
 		mockListCalendars.mockResolvedValue({ data: null, error: null });
 		mockUpdateCalendarSettings.mockResolvedValue({ data: null, error: null });
-		mockDisconnectIntegration.mockResolvedValue({ data: true, error: null });
+		mockDisconnectIntegrations.mockResolvedValue({ data: true, error: null });
 		mockFetchSenderRules.mockResolvedValue({ data: [], error: null });
 		mockFetchEmailFolders.mockResolvedValue({ data: [], error: null });
 		mockUpdateEmailFolder.mockResolvedValue({ data: null, error: null });
@@ -139,7 +137,7 @@ describe('Settings Page', () => {
 
 		await waitFor(() => {
 			expect(screen.getByText('Connected Accounts')).toBeInTheDocument();
-			expect(screen.getByText('Gmail')).toBeInTheDocument();
+			expect(screen.getByText('Google')).toBeInTheDocument();
 		});
 	});
 
@@ -203,7 +201,7 @@ describe('Settings Page', () => {
 		});
 	});
 
-	it('shows disconnect buttons for connected integrations', async () => {
+	it('shows one Google card with one Disconnect for Gmail and Calendar', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [
 				{
@@ -225,10 +223,48 @@ describe('Settings Page', () => {
 
 		render(SettingsPage);
 
-		await waitFor(() => {
-			const disconnectButtons = screen.getAllByText('Disconnect');
-			expect(disconnectButtons.length).toBe(2);
+		const card = await screen.findByTestId('connection-card-google');
+		expect(within(card).getAllByRole('button', { name: 'Disconnect' })).toHaveLength(1);
+		expect(screen.queryByText('Gmail', { selector: 'h3' })).not.toBeInTheDocument();
+		expect(screen.queryByText('Google Calendar', { selector: 'h3' })).not.toBeInTheDocument();
+	});
+
+	it('disconnecting the Google card removes both Gmail and Calendar rows', async () => {
+		const user = userEvent.setup();
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: 'g-1', provider: 'gmail', status: 'active', provider_email: 'test@gmail.com' },
+				{ id: 'c-1', provider: 'google_calendar', status: 'active', provider_email: 'test@gmail.com' },
+				{ id: 'o-1', provider: 'outlook', status: 'active', provider_email: 'test@outlook.com' }
+			],
+			error: null
 		});
+		mockListCalendars.mockResolvedValue({ data: [], error: null });
+
+		render(SettingsPage);
+
+		const card = await screen.findByTestId('connection-card-google');
+		await user.click(within(card).getByRole('button', { name: 'Disconnect' }));
+		const description = await screen.findByText(/disconnects both Gmail and Google Calendar/);
+		// jsdom never opens <dialog>, so query its contents with hidden included.
+		const dialog = /** @type {HTMLElement} */ (description.closest('dialog'));
+		await user.click(within(dialog).getByRole('button', { name: 'Disconnect', hidden: true }));
+
+		await waitFor(() => {
+			expect(mockDisconnectIntegrations).toHaveBeenCalledWith(['g-1', 'c-1']);
+		});
+		await waitFor(() => {
+			expect(
+				within(screen.getByTestId('connection-card-google')).getByRole('button', {
+					name: 'Connect'
+				})
+			).toBeInTheDocument();
+		});
+		expect(
+			within(screen.getByTestId('connection-card-outlook')).getByRole('button', {
+				name: 'Disconnect'
+			})
+		).toBeInTheDocument();
 	});
 
 	it('shows Gmail and Outlook user folders with recommendation reasons', async () => {

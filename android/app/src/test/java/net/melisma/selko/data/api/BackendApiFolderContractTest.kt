@@ -11,7 +11,7 @@ class BackendApiFolderContractTest {
     @Test
     fun `oauth paths support active providers but not parked photos`() {
         assertEquals(
-            "/integrations/gmail/auth",
+            "/integrations/google/auth",
             BackendApiClient.oauthPath(IntegrationProvider.GMAIL)
         )
         assertEquals(
@@ -19,7 +19,7 @@ class BackendApiFolderContractTest {
             BackendApiClient.oauthPath(IntegrationProvider.OUTLOOK)
         )
         assertEquals(
-            "/integrations/calendar/auth",
+            "/integrations/google/auth",
             BackendApiClient.oauthPath(IntegrationProvider.GOOGLE_CALENDAR)
         )
         assertNull(BackendApiClient.oauthPath(IntegrationProvider.GOOGLE_PHOTOS))

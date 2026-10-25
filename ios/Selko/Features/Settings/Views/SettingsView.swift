@@ -43,8 +43,8 @@ struct SettingsView: View {
                 Task { await viewModel.disconnect() }
             }
         } message: {
-            if let provider = viewModel.providerToDisconnect {
-                Text("Are you sure you want to disconnect \(viewModel.providerDisplayName(provider))? You will need to reconnect to continue using this integration.")
+            if let message = viewModel.disconnectMessage {
+                Text(message)
             }
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
@@ -73,16 +73,92 @@ struct SettingsView: View {
                     .foregroundStyle(Color.selkoError)
                     .accessibilityIdentifier("settingsOAuthError")
             }
-            integrationRow(provider: .gmail)
+            googleRow
             integrationRow(provider: .outlook)
-            integrationRow(provider: .googleCalendar)
         }
         // No .accessibilityIdentifier on the Section. Applied to a container,
         // that modifier does not name the container -- it overwrites the
         // identifier of every accessibility element inside it. It was
-        // stamping "connectedAccountsSection" onto all three provider rows and
+        // stamping "connectedAccountsSection" onto all the provider rows and
         // their Connect buttons, destroying their individual identities and
         // making every per-row query unresolvable.
+    }
+
+    /// One row for Gmail and Google Calendar: they share one Google consent
+    /// and token, so they connect, expire and disconnect together.
+    @ViewBuilder
+    private var googleRow: some View {
+        let google = viewModel.googleConnection
+
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Google")
+                        .font(SelkoTypography.title)
+                        .foregroundStyle(Color.selkoInk)
+                        .accessibilityIdentifier("integrationName_google")
+                    Text("Gmail and Google Calendar")
+                        .font(SelkoTypography.caption)
+                        .foregroundStyle(Color.selkoMuted)
+                }
+                Spacer()
+                googleStatus(google.state)
+            }
+
+            if case .partial(let missing) = google.state {
+                Text("You didn’t allow \(viewModel.providerDisplayName(missing)) on Google’s screen. Reconnect and keep both boxes ticked.")
+                    .font(SelkoTypography.caption)
+                    .foregroundStyle(Color.selkoMuted)
+                    .accessibilityIdentifier("googlePartialHint")
+            }
+
+            HStack(spacing: 8) {
+                if let email = google.email {
+                    Text(email)
+                        .font(SelkoTypography.caption)
+                        .foregroundStyle(Color.selkoFaint)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer()
+                if !google.rows.isEmpty {
+                    Button(role: .destructive) {
+                        viewModel.confirmDisconnectGoogle()
+                    } label: {
+                        Text("Disconnect")
+                    }
+                    .buttonStyle(.selko(.destructiveOutline))
+                    .accessibilityIdentifier("disconnectGoogleButton")
+                }
+                if google.state != .connected {
+                    Button(google.state == .notConnected ? "Connect" : "Reconnect Google") {
+                        Task { await connectProvider(.gmail) }
+                    }
+                    .buttonStyle(.selko(.primary))
+                    .disabled(authorizer.connectingProvider != nil)
+                    .accessibilityLabel(google.state == .notConnected ? "Connect Google" : "Reconnect Google")
+                    .accessibilityIdentifier("connectGoogleButton")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func googleStatus(_ state: GoogleConnection.State) -> some View {
+        switch state {
+        case .connected:
+            SelkoStatusIndicator(text: "Connected", systemImage: "checkmark.circle", tone: .success)
+        case .partial(let missing):
+            SelkoStatusIndicator(
+                text: "\(viewModel.providerDisplayName(missing)) not connected",
+                systemImage: "exclamationmark.circle",
+                tone: .warning
+            )
+        case .needsReconnect(let status):
+            SelkoStatusIndicator(text: status.rawValue.capitalized, systemImage: "exclamationmark.circle", tone: .warning)
+        case .notConnected:
+            EmptyView()
+        }
     }
 
     @ViewBuilder
